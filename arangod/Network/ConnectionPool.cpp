@@ -37,10 +37,11 @@ namespace network {
 using namespace arangodb::fuerte::v1;
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : _config(config), _loop(config.numIOThreads) {
-      TRI_ASSERT(config.numIOThreads > 0);
-      TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
-    }
+    : _config(config), 
+      _loop(config.numIOThreads, config.name) {
+  TRI_ASSERT(config.numIOThreads > 0);
+  TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
+}
 
 ConnectionPool::~ConnectionPool() { shutdownConnections(); }
 

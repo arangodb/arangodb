@@ -260,7 +260,6 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
     if (cont == CommTask::Flow::Continue) {
       auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);
-      resp->setContentTypeRequested(req->contentTypeResponse());
       this->executeRequest(std::move(req), std::move(resp));
     } // abort is handled in prepareExecution
   } else {  // not supported on server
@@ -328,11 +327,14 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   resItem.release();
 
   // start writing if necessary
-  if (_writing.load() || _writing.exchange(true)) {
+  if (_writing.load()) {
     return;
   }
   this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
-    static_cast<VstCommTask<T>&>(*self).doWrite();
+    auto& me = static_cast<VstCommTask<T>&>(*self);
+    if (!me._writing.exchange(true)) {
+      me.doWrite();
+    }
   });
 }
 
@@ -352,10 +354,9 @@ void VstCommTask<T>::doWrite() {
       return; // done, someone else may restart
     }
 
-    if (!_writing.exchange(true)) {
+    if (_writing.exchange(true)) {
       return; // someone else restarted writing
     }
-    
     bool success = _writeQueue.pop(tmp);
     TRI_ASSERT(success);
   }

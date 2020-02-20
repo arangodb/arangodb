@@ -742,7 +742,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               VPackParser parser(builder);
               parser.parse(json);
               httpResponse->setContentType(rest::ContentType::VPACK);
-              httpResponse->setPayload(std::move(buffer), true);
+              httpResponse->setPayload(std::move(buffer));
             } catch (...) {
               httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
             }
@@ -825,7 +825,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           }
         }
 
-        response->setPayload(std::move(buffer), true);
+        response->setPayload(std::move(buffer));
         break;
       }
 
@@ -865,7 +865,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
         // create vpack from file
         response->setContentType(rest::ContentType::VPACK);
-        response->setPayload(std::move(buffer), true);
+        response->setPayload(std::move(buffer));
       }
       break;
 

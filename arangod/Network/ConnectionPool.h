@@ -65,6 +65,7 @@ class ConnectionPool final {
     unsigned int numIOThreads = 1;         /// number of IO threads
     bool verifyHosts = false;
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
+    char const* name = "";
   };
 
  public:

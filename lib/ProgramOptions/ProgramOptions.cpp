@@ -573,7 +573,7 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value,
       if (last > 1 && it.first > 2 * last) {
         break;
       }
-      if (it.first > cutOff) {
+      if (it.first > cutOff && it.second.substr(0, value.size()) != value) {
         continue;
       }
       result.emplace_back(it.second);

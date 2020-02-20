@@ -61,7 +61,7 @@ class LogThread final : public Thread {
  
   // handle all queued messages - normally this should not be called
   // by anyone, except from the crash handler
-  void processPendingMessages();
+  bool processPendingMessages();
 
  private:
   arangodb::basics::ConditionVariable _condition;

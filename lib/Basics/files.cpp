@@ -1082,43 +1082,38 @@ bool TRI_ProcessFile(char const* filename,
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return false;
   }
-
+  
   TRI_string_buffer_t result;
   TRI_InitStringBuffer(&result, false);
 
-  bool good = true;
-  while (good) {
-    int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+  auto guard = scopeGuard([&fd, &result]() {
+    TRI_CLOSE(fd);
+    TRI_AnnihilateStringBuffer(&result);
+  });
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_CLOSE(fd);
-      TRI_AnnihilateStringBuffer(&result);
+  int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return false;
-    }
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
-    TRI_read_return_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+  while (true) {
+    TRI_ASSERT(TRI_CapacityStringBuffer(&result) >= READBUFFER_SIZE);
+    TRI_read_return_t n = TRI_READ(fd, (void*) TRI_BeginStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
-      break;
+      return true;
     }
 
     if (n < 0) {
-      TRI_CLOSE(fd);
-
-      TRI_AnnihilateStringBuffer(&result);
-
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       return false;
     }
 
-    good = reader(result._buffer, n);
+    if (!reader(result._buffer, n)) {
+      return false;
+    }
   }
-
-  TRI_DestroyStringBuffer(&result);
-  TRI_CLOSE(fd);
-  return good;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
