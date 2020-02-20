@@ -134,14 +134,24 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
 template <typename Executor>
-constexpr bool isNewStyleExecutor =
-    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, HashedCollectExecutor, IndexExecutor,
+constexpr bool isNewStyleExecutor = is_one_of_v<
+    Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
+    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, HashedCollectExecutor, IndexExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                TestLambdaExecutor,
-                TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
+    TestLambdaExecutor,
+    TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-                ShortestPathExecutor, EnumerateListExecutor>;
+    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
+    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
+    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+    IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>,
+    IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>,
+    IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
+    IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+    IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+    ShortestPathExecutor, EnumerateListExecutor>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1056,14 +1066,26 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor ==
-                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, HashedCollectExecutor, IndexExecutor,
+  static_assert(
+      useExecutor ==
+          (is_one_of_v<
+              Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, HashedCollectExecutor, IndexExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                                 TestLambdaSkipExecutor,
+              TestLambdaSkipExecutor,
 #endif
-                                 EnumerateListExecutor, SortedCollectExecutor>),
+              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
+              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
+              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>,
+              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>,
+              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
+              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+              EnumerateListExecutor, SortedCollectExecutor>),
 
-                "Unexpected executor for SkipVariants::EXECUTOR");
+      "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(
