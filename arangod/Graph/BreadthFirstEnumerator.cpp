@@ -124,7 +124,7 @@ bool BreadthFirstEnumerator::next() {
 
       auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice e,
                           size_t cursorIdx) -> void {
-        if (!keepEdge(eid, e, cursorIdx, _currentDepth, nextVertex)) {
+        if (!keepEdge(eid, e, nextVertex, _currentDepth, cursorIdx)) {
           return;
         }
 

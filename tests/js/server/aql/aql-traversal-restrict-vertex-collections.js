@@ -24,7 +24,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Dan Larkin-York
 /// @author Copyright 2020, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -153,6 +153,76 @@ function vertexCollectionRestrictionSuite() {
       const query = `WITH @@vc1, @@vc2
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
                        OPTIONS {vertexCollections: ["${vc2Name}"]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`
+
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
+      const expected = [
+        vc2Name + "/node_3",
+      ];
+
+      assertEqual(actual, expected);
+    },
+
+    testNoRestrictionBfs : function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                       OPTIONS {bfs: true}
+                       SORT v._id
+                       RETURN DISTINCT v._id`
+
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName}).toArray();
+      const expected = [
+        vc1Name + "/node_4",
+        vc1Name + "/node_6",
+        vc1Name + "/node_8",
+        vc2Name + "/node_3",
+        vc2Name + "/node_5",
+        vc2Name + "/node_7",
+      ];
+
+      assertEqual(actual, expected);
+    },
+
+    testNoPracticalRestrictionBfs: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                       OPTIONS {bfs: true, vertexCollections: ["${vc1Name}", "${vc2Name}"]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`
+
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
+      const expected = [
+        vc1Name + "/node_4",
+        vc1Name + "/node_6",
+        vc1Name + "/node_8",
+        vc2Name + "/node_3",
+        vc2Name + "/node_5",
+        vc2Name + "/node_7",
+      ];
+
+      assertEqual(actual, expected);
+    },
+
+    testRestrict1Bfs: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                       OPTIONS {bfs: true, vertexCollections: ["${vc1Name}"]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`
+
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
+      const expected = [
+        vc1Name + "/node_8",
+      ];
+
+      assertEqual(actual, expected);
+    },
+
+    testRestrict2Bfs: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                       OPTIONS {bfs: true, vertexCollections: ["${vc2Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`
 

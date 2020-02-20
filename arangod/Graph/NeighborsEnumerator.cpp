@@ -75,7 +75,7 @@ bool NeighborsEnumerator::next() {
       swapLastAndCurrentDepth();
       for (auto const& nextVertex : _lastDepth) {
         auto callback = [&](EdgeDocumentToken&& eid, VPackSlice other, size_t cursorId) {
-          if (!keepEdge(eid, other, cursorId, _searchDepth, nextVertex)) {
+          if (!keepEdge(eid, other, nextVertex, _searchDepth, cursorId)) {
             return;
           }
 

@@ -70,20 +70,28 @@ void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex)
   TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
 }
 
-bool PathEnumerator::keepEdge(graph::EdgeDocumentToken& eid,
-                              VPackSlice const& edge, size_t cursorId, size_t depth,
-                              arangodb::velocypack::StringRef sourceVertex) {
-  if (_opts->hasEdgeFilter(depth, cursorId)) {
-    VPackSlice e = edge;
-    if (edge.isString()) {
-      e = _opts->cache()->lookupToken(eid);
-    }
-    if (!_traverser->edgeMatchesConditions(e, sourceVertex, depth, cursorId)) {
-      // This edge does not pass the filtering
-      return false;
-    }
+bool PathEnumerator::keepEdge(graph::EdgeDocumentToken& eid, VPackSlice edge,
+                              velocypack::StringRef sourceVertex, size_t depth, size_t cursorId) {
+  VPackSlice e = edge;
+  if (edge.isString()) {
+    e = _opts->cache()->lookupToken(eid);
+  }
+  return keepEdge(e, sourceVertex, depth, cursorId);
+}
+
+bool PathEnumerator::keepEdge(VPackSlice edge,
+                              arangodb::velocypack::StringRef sourceVertex, size_t depth, size_t cursorId) {
+  if (_opts->hasEdgeFilter(depth, cursorId) &&
+      !_traverser->edgeMatchesConditions(edge, sourceVertex, depth, cursorId)) {
+    // This edge does not pass the filtering
+    return false;
   }
 
+  return destinationCollectionAllowed(edge, sourceVertex);
+}
+
+bool PathEnumerator::destinationCollectionAllowed(VPackSlice edge,
+                                                  arangodb::velocypack::StringRef sourceVertex) {
   if (!_opts->vertexCollections.empty()) {
     auto destination = ::getDestination(edge, sourceVertex);
     auto collection = transaction::helpers::extractCollectionFromId(destination);
@@ -147,8 +155,9 @@ bool DepthFirstEnumerator::next() {
     bool foundPath = false;
 
     auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice const& edge, size_t cursorId) {
-      if (!keepEdge(eid, edge, cursorId, _enumeratedPath.edges.size(),
-                    arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()))) {
+      if (!keepEdge(eid, edge,
+                    arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()),
+          _enumeratedPath.edges.size(), cursorId)) {
         return;
       }
 
