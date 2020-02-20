@@ -640,6 +640,15 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
   } else if (AqlCall::IsGetSomeCall(myCall)) {
     auto const [state, block] = getSome(myCall.getLimit());
     // We do not need to count as softLimit will be overwritten, and hard cannot be set.
+    if (stack.empty() && myCall.hasHardLimit() && block != nullptr) {
+      // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
+      myCall.didProduce(block->size());
+      if (myCall.getLimit() == 0) {
+        LOG_DEVEL << "Faking DONE";
+        return {ExecutionState::DONE, 0, block};
+      }
+    }
+
     return {state, 0, block};
   } else if (AqlCall::IsFullCountCall(myCall)) {
     auto const [state, skipped] = skipSome(ExecutionBlock::SkipAllSize());
@@ -1267,6 +1276,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       clientCall = _clientRequest;
     }
 
+    auto returnToState = ExecState::CHECKCALL;
+
     LOG_QUERY("007ac", DEBUG) << "starting statemachine of executor " << printBlockInfo();
     while (_execState != ExecState::DONE) {
       switch (_execState) {
@@ -1327,6 +1338,15 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(clientCall.getLimit() > 0);
 
           LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call produceRows " << clientCall;
+          if (outputIsFull()) {
+            // We need to be able to write data
+            // But maybe the existing block is full here
+            // Then we need to wake up again.
+            // However the client might decide on a different
+            // call, so we do not record this position
+            _execState = ExecState::DONE;
+            break;
+          }
           ensureOutputBlock(std::move(clientCall));
           TRI_ASSERT(_outputItemRow);
 
@@ -1341,8 +1361,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
           if (state == ExecutorState::DONE) {
             _execState = ExecState::FASTFORWARD;
-          } else if (_outputItemRow->isInitialized() && _outputItemRow->allRowsUsed()) {
-            _execState = ExecState::DONE;
           } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
@@ -1422,6 +1440,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
           // an empty input. Only exception might be COLLECT COUNT.
           if (_lastRange.hasShadowRow()) {
+            if (outputIsFull()) {
+              // We need to be able to write data
+              // But maybe the existing block is full here
+              // Then we need to wake up again here.
+              returnToState = ExecState::SHADOWROWS;
+              _execState = ExecState::DONE;
+              break;
+            }
             auto const& [state, shadowRow] = _lastRange.nextShadowRow();
             TRI_ASSERT(shadowRow.isInitialized());
             ensureOutputBlock(std::move(clientCall));
@@ -1463,7 +1489,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
                                                  : SharedAqlItemBlockPtr{nullptr};
     // We are locally done with our output.
     // Next time we need to check the client call again
-    _execState = ExecState::CHECKCALL;
+    _execState = returnToState;
     // This is not strictly necessary here, as we shouldn't be called again
     // after DONE.
     _outputItemRow.reset();
@@ -1524,6 +1550,12 @@ ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
     }
   }
   return state;
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::outputIsFull() const noexcept -> bool {
+  return _outputItemRow != nullptr && _outputItemRow->isInitialized() &&
+         _outputItemRow->allRowsUsed();
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;

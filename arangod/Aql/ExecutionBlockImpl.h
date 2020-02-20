@@ -286,6 +286,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
   [[nodiscard]] auto nextState(AqlCall const& call) const -> ExecState;
 
+  [[nodiscard]] auto outputIsFull() const noexcept -> bool;
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this

@@ -73,6 +73,12 @@ class AqlCallStack {
   // This is used to bypass all executors until we reach the next subquery start.
   void increaseSubqueryDepth();
 
+  // TODO: Remove me again, only used to fake DONE
+  // @deprecated
+  auto empty() const noexcept -> bool {
+    return _operations.empty() && _depth == 0;
+  }
+
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from main query)
   std::stack<AqlCall> _operations;
