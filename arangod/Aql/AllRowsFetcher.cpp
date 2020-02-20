@@ -254,3 +254,8 @@ std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_
 
   return {state, row};
 }
+
+//@deprecated
+auto AllRowsFetcher::useStack(AqlCallStack const& stack) -> void {
+  _dependencyProxy->useStack(stack);
+}
