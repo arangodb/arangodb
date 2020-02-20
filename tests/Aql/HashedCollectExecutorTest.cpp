@@ -622,6 +622,7 @@ TEST_P(HashedCollectExecutorTestAggregate, run) {
   AqlCall call{};          // unlimited produce
   ExecutionStats stats{};  // No stats here
   ExecutorTestHelper<2, 2>(*fakedQuery)
+      .setExecBlock<HashedCollectExecutor>(std::move(infos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 5}, RowBuilder<2>{1, 1},
                                       RowBuilder<2>{2, 2}, RowBuilder<2>{1, 5},
                                       RowBuilder<2>{6, 1}, RowBuilder<2>{2, 2},
