@@ -72,6 +72,14 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
   }
 
   auto stats = Stats{};
+  auto skippedUpstream = inputRange.skipAll();
+  call.didSkip(skippedUpstream);
+  /*
+  if (_infos.doCount()) {
+    // TODO: do we need to include counted here?
+    stats.incrCounted(skippedUpstream);
+  }
+  */
 
   while (inputRange.hasDataRow() && call.needSkipMore()) {
     // I do not think that this is actually called.
