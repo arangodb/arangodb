@@ -1,6 +1,10 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Disable "collect-in-cluster" AQL optimizer rule in case a LIMIT node is
+  between the COLLECT and the source data. In this case it is not safe to apply
+  the distributed collect, as it may alter the results.
+
 * Updated arangosync to 0.7.3.
 
 * Updated ArangoDB Starter to 0.14.14.
