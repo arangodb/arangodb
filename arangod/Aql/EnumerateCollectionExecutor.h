@@ -154,9 +154,6 @@ class EnumerateCollectionExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
-  // TODO CHECK
-  // void setProducingFunction(DocumentProducingFunction const& documentProducer);
-
   void initializeCursor();
 
  private:
