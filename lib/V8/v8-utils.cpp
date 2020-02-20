@@ -277,10 +277,10 @@ std::chrono::duration<double> getMaxTimeoutConnectionToBeDead(std::chrono::durat
   LOG_DEVEL << "timeout in minuites: " <<std::chrono::duration_cast<std::chrono::minutes>(timeout).count(); // Are 20 minutes correct?
 
   if (delta > timeout) { // -29 s > 20 minutes - are you sure?
-    LOG_DEVEL << "original timeout";
+    LOG_DEVEL << "original timeout: " << std::chrono::duration_cast<std::chrono::seconds>(timeout).count(); ;
     return timeout;
   }
-  LOG_DEVEL << "modified timeout";
+  LOG_DEVEL << "modified timeout" << std::chrono::duration_cast<std::chrono::seconds>(delta).count();
   return delta;                       // Returns -29 seconds?! Not sure if you want that!
 
 }
