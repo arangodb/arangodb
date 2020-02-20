@@ -76,6 +76,7 @@ bool LogThread::hasMessages() const noexcept { return !_messages.empty(); }
 
 void LogThread::run() {
   constexpr uint64_t initialWaitTime = 25 * 1000;
+  constexpr uint64_t maxWaitTime = 100 * 1000;
 
   uint64_t waitTime = initialWaitTime;
   while (!isStopping() && Logger::_active.load()) {
@@ -84,7 +85,7 @@ void LogThread::run() {
       waitTime = initialWaitTime;
     } else {
       waitTime *= 2;
-      waitTime = std::min(initialWaitTime, waitTime);
+      waitTime = std::min(maxWaitTime, waitTime);
     }
 
     // cppcheck-suppress redundantPointerOp
