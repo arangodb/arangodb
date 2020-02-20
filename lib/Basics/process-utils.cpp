@@ -34,6 +34,7 @@
 #include <type_traits>
 
 #include "process-utils.h"
+#include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
@@ -1029,24 +1030,52 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
 
   if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
-    int opts;
-    int loc = 0;
+    if (timeout > 0) {
+      // if we use a timeout, it means we cannot use blocking
+      wait = false;
+    }
 
+    int opts;
     if (wait) {
       opts = WUNTRACED;
     } else {
       opts = WNOHANG | WUNTRACED;
     }
 
-    TRI_pid_t res = waitpid(external->_pid, &loc, opts);
+    int loc = 0;
+    TRI_pid_t res = 0;
+    bool timeoutHappened = false;
+    if (timeout) {
+      TRI_ASSERT((opts & WNOHANG) != 0);
+      double endTime = 0.0; 
+      while (true) {
+        res = waitpid(external->_pid, &loc, opts);
+        if (res != 0) {
+          break;
+        }
+        double now = TRI_microtime();
+        if (endTime == 0.0) {
+          endTime = now + timeout / 1000.0;
+        } else if (now >= endTime) {
+          res = external->_pid;
+          timeoutHappened = true;
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      }
+    } else {
+      res = waitpid(external->_pid, &loc, opts);
+    }
 
     if (res == 0) {
       if (wait) {
         status._errorMessage =
             std::string("waitpid returned 0 for pid while it shouldn't ") +
             arangodb::basics::StringUtils::itoa(external->_pid);
-
-        if (WIFEXITED(loc)) {
+        if (timeoutHappened) {
+          external->_status = TRI_EXT_TIMEOUT;
+          external->_exitStatus = -1;
+        } else if (WIFEXITED(loc)) {
           external->_status = TRI_EXT_TERMINATED;
           external->_exitStatus = WEXITSTATUS(loc);
         } else if (WIFSIGNALED(loc)) {
@@ -1074,7 +1103,10 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
                              arangodb::basics::StringUtils::itoa(external->_pid) +
                              std::string(": ") + std::string(TRI_last_error());
     } else if (static_cast<TRI_pid_t>(external->_pid) == static_cast<TRI_pid_t>(res)) {
-      if (WIFEXITED(loc)) {
+      if (timeoutHappened) {
+        external->_status = TRI_EXT_TIMEOUT;
+        external->_exitStatus = -1;
+      } else if (WIFEXITED(loc)) {
         external->_status = TRI_EXT_TERMINATED;
         external->_exitStatus = WEXITSTATUS(loc);
       } else if (WIFSIGNALED(loc)) {

@@ -2605,12 +2605,16 @@
                   geojson++;
                 }
               } else if (obj.hasOwnProperty('geometry')) {
-                if (obj.geometry.hasOwnProperty('coordinates') && obj.geometry.hasOwnProperty('type')) {
-                  if (obj.geometry.type === 'Point' || obj.geometry.type === 'MultiPoint' ||
-                    obj.geometry.type === 'Polygon' || obj.geometry.type === 'MultiPolygon' ||
-                    obj.geometry.type === 'LineString' || obj.geometry.type === 'MultiLineString') {
-                    geojson++;
+                try {
+                  if (obj.geometry.hasOwnProperty('coordinates') && obj.geometry.hasOwnProperty('type')) {
+                    if (obj.geometry.type === 'Point' || obj.geometry.type === 'MultiPoint' ||
+                      obj.geometry.type === 'Polygon' || obj.geometry.type === 'MultiPolygon' ||
+                      obj.geometry.type === 'LineString' || obj.geometry.type === 'MultiLineString') {
+                      geojson++;
+                    }
                   }
+                } catch (err) {
+                 // happens e.g. if doc.geomotry === null
                 }
               }
             }
