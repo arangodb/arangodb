@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #11137: http-proxy can't pass delete method req.body to foxx.
+
 * Rebuild UI.
 
 * Fix arangorestore:
