@@ -79,6 +79,10 @@ class AqlCallStack {
     return _operations.empty() && _depth == 0;
   }
 
+  auto subqueryLevel() const noexcept -> size_t {
+    return _operations.size() + _depth;
+  }
+
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from main query)
   std::stack<AqlCall> _operations;

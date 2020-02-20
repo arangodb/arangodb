@@ -644,7 +644,6 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
       // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
       myCall.didProduce(block->size());
       if (myCall.getLimit() == 0) {
-        LOG_DEVEL << "Faking DONE";
         return {ExecutionState::DONE, 0, block};
       }
     }
@@ -1408,8 +1407,18 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(!_lastRange.hasShadowRow());
           size_t skippedLocal = 0;
           auto callCopy = _upstreamRequest;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          size_t subqueryLevelBefore = stack.subqueryLevel();
+#endif
           stack.pushCall(std::move(callCopy));
           std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
+          // As the stack is copied into the fetcher, we need to pop off our call again.
+          // If we use other datastructures or moving we may hand over ownership of the stack here
+          // instead and no popCall is necessary.
+          stack.popCall();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          TRI_ASSERT(subqueryLevelBefore == stack.subqueryLevel());
+#endif
           if (_upstreamState == ExecutionState::WAITING) {
             // We need to persist the old call before we return.
             // We might have some local accounting to this call.
