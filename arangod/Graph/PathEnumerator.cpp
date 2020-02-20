@@ -35,6 +35,25 @@ using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
 using Traverser = arangodb::traverser::Traverser;
 using TraverserOptions = arangodb::traverser::TraverserOptions;
 
+namespace {
+arangodb::velocypack::StringRef getDestination(arangodb::velocypack::Slice edge,
+                                               arangodb::velocypack::StringRef origin) {
+  if (edge.isString()) {
+    return edge.stringRef();
+  }
+
+  TRI_ASSERT(edge.isObject());
+  auto from = edge.get(arangodb::StaticStrings::FromString);
+  TRI_ASSERT(from.isString());
+  if (from.stringRef() == origin) {
+    auto to = edge.get(arangodb::StaticStrings::ToString);
+    TRI_ASSERT(to.isString());
+    return to.stringRef();
+  }
+  return from.stringRef();
+}
+}  // namespace
+
 PathEnumerator::PathEnumerator(Traverser* traverser, TraverserOptions* opts)
     : _traverser(traverser), 
       _isFirst(true), 
@@ -66,9 +85,8 @@ bool PathEnumerator::keepEdge(graph::EdgeDocumentToken& eid,
   }
 
   if (!_opts->vertexCollections.empty()) {
-    TRI_ASSERT(edge.isString());
-    auto idRef = edge.stringRef();
-    auto collection = transaction::helpers::extractCollectionFromId(idRef);
+    auto destination = ::getDestination(edge, sourceVertex);
+    auto collection = transaction::helpers::extractCollectionFromId(destination);
     if (std::find(_opts->vertexCollections.begin(), _opts->vertexCollections.end(),
                   std::string_view(collection.data(), collection.size())) ==
         _opts->vertexCollections.end()) {
