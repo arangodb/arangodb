@@ -1,6 +1,8 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #11137: http-proxy can't pass delete method req.body to foxx.
+
 * Fixed a memory leak in ModificationExecutors.
 
 * Updated rclone to 1.51.1.
