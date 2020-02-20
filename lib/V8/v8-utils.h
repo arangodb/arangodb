@@ -110,7 +110,7 @@ void setConnectionToBeDeadInMS(uint64_t timeout);
 bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args);
 double getMaxTimeoutConnectionToBeDead(double timeout);
 #ifdef ARANGODB_SHELL_V8CLIENT_CONNECTION_H
-std::chrono::duration<double> getMaxTimeoutConnectionToBeDead(std::chrono::duration<double> timeout);
+std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

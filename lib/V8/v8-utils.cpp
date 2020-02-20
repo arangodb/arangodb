@@ -261,27 +261,23 @@ double getMaxTimeoutConnectionToBeDead(double timeout) {
   return delta;
 }
 #define ARANGODB_SHELL_V8CLIENT_CONNECTION_H 1
-std::chrono::duration<double> getMaxTimeoutConnectionToBeDead(std::chrono::duration<double> timeout) {
-  double epochDobuleWhen = connectionToBeDeadAt.load(); // time-point (seconds since epoch as double)
-  LOG_DEVEL << "epoch timeout: " << epochDobuleWhen;
-  if (epochDobuleWhen == 0.0) {
+std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout) {
+  using namespace std::chrono;
+
+  double epochDoubleWhen = connectionToBeDeadAt.load();
+  if (epochDoubleWhen == 0.0) {
     return timeout;
   }
 
-  std::chrono::time_point now = std::chrono::system_clock::now();
-  std::chrono::duration<double> durationWhen(epochDobuleWhen); // We need this to create a time-point.
-  std::chrono::time_point<decltype(now)::clock, std::chrono::duration<double>> timepointWhen(durationWhen);
+  time_point now = std::chrono::system_clock::now();
+  milliseconds durationWhen(static_cast<int>(epochDoubleWhen * 1000));
+  time_point<system_clock> timepointWhen(durationWhen);
 
-  auto delta = now - timepointWhen; // Your problem was here - You need 2 points to create a duration.
-  LOG_DEVEL << "delta in seconds: " <<std::chrono::duration_cast<std::chrono::seconds>(delta).count();      //-29s looks correct the code is running for about a second.
-  LOG_DEVEL << "timeout in minuites: " <<std::chrono::duration_cast<std::chrono::minutes>(timeout).count(); // Are 20 minutes correct?
-
-  if (delta > timeout) { // -29 s > 20 minutes - are you sure?
-    LOG_DEVEL << "original timeout: " << std::chrono::duration_cast<std::chrono::seconds>(timeout).count(); ;
+  milliseconds delta = duration_cast<milliseconds>(now - timepointWhen);
+  if (delta > timeout) {
     return timeout;
   }
-  LOG_DEVEL << "modified timeout" << std::chrono::duration_cast<std::chrono::seconds>(delta).count();
-  return delta;                       // Returns -29 seconds?! Not sure if you want that!
+  return delta;
 
 }
 #undef ARANGODB_SHELL_V8CLIENT_CONNECTION_H

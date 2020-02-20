@@ -154,7 +154,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
       setCustomError(503, msg);
       return nullptr;
     }
-    
+
     std::lock_guard<std::recursive_mutex> guard(_lock);
     _connection = newConnection;
 
@@ -204,11 +204,11 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
 
 std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  
+
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
-  
-  if (!_connection || 
+
+  if (!_connection ||
       (_connection->state() == fu::Connection::State::Disconnected ||
        _connection->state() == fu::Connection::State::Failed)) {
     return createConnection();
@@ -458,7 +458,7 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
   if (isConnectionToBeDead(args)) {
     return;
   }
- 
+
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
@@ -1671,7 +1671,7 @@ again:
       } else {
         req->header.contentType(fu::ContentType::Custom);
       }
-      
+
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
       if (pair.second == StaticStrings::MimeTypeVPack) {
         req->header.acceptType(fu::ContentType::VPack);
@@ -1749,10 +1749,9 @@ again:
     }
   }
   req->timeout(
-    std::chrono::duration_cast<std::chrono::milliseconds>(
       getMaxTimeoutConnectionToBeDead(
-        std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout))));
-  
+        std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
+
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Failed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
@@ -1767,7 +1766,7 @@ again:
   } catch (fu::Error const& ec) {
     rc = ec;
   }
-    
+
   if (rc == fu::Error::ConnectionClosed && retry) {
     retry = false;
     goto again;
@@ -1780,7 +1779,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fu::RestVerb method, arangodb::velocypack::StringRef const& location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
-  
+
   bool retry = true;
 
 again:
@@ -1834,9 +1833,8 @@ again:
     req->header.acceptType(fu::ContentType::VPack);
   }
   req->timeout(
-    std::chrono::duration_cast<std::chrono::milliseconds>(
       getMaxTimeoutConnectionToBeDead(
-        std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout))));
+        std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Failed) {
@@ -1854,7 +1852,7 @@ again:
     _lastErrorMessage.assign(fu::to_string(e));
     _lastHttpReturnCode = 503;
   }
-  
+
   if (rc == fu::Error::ConnectionClosed && retry) {
     retry = false;
     goto again;
@@ -1999,7 +1997,7 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
       VPackParser parser(builder);
       try {
         parser.parse(str, sb.size());
-        ret = TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr); 
+        ret = TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr);
       } catch (std::exception const& ex) {
         std::string err("Error parsing the server JSON reply: ");
         err += ex.what();
