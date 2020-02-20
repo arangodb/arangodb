@@ -1173,6 +1173,9 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
       return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call};
     }
   }
+  // Unreachable
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
 }
 
 /**
