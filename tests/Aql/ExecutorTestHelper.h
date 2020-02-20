@@ -271,6 +271,8 @@ struct ExecutorTestHelper {
   }
 
   auto run(typename E::Infos infos, bool const loop = false) -> void {
+    // NOTE: These may be different to outputColumns. The check of output is only on a subset of registers.
+    auto blockOutputColumns = infos.numberOfOutputRegisters();
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
 
@@ -283,7 +285,8 @@ struct ExecutorTestHelper {
 
     auto skippedTotal = size_t{0};
     auto finalState = ExecutionState::HASMORE;
-    auto allResults = AqlItemMatrix{outputColumns};
+
+    auto allResults = AqlItemMatrix{blockOutputColumns};
 
     if (!loop) {
       AqlCallStack stack{_call};
