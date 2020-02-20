@@ -33,6 +33,7 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -40,8 +41,6 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 
 #include <tuple>
-
-#include "Logger/LogMacros.h"
 
 namespace arangodb {
 namespace tests {
@@ -270,19 +269,15 @@ struct ExecutorTestHelper {
 
   template <typename E>
   auto setExecBlock(typename E::Infos infos) -> ExecutorTestHelper& {
-    // TODO: this unique_ptr goes out of scope and is free'd, but I think
-    //       it is fine for NODE to be nullptr?
     auto& testeeNode = _execNodes.emplace_back(std::move(
         std::make_unique<SingletonNode>(_query.plan(), _execNodes.size())));
-    _testee = std::make_unique<ExecutionBlockImpl<E>>(_query.engine(),
-                                                      testeeNode.get(), std::move(infos));
+    setPipeline(Pipeline{std::make_unique<ExecutionBlockImpl<E>>(_query.engine(),
+                                                      testeeNode.get(), std::move(infos))});
     return *this;
   }
 
   template <typename E>
   auto createExecBlock(typename E::Infos infos) -> ExecBlock {
-    // TODO: this unique_ptr goes out of scope and is free'd, but I think
-    //       it is fine for NODE to be nullptr?
     auto& testeeNode = _execNodes.emplace_back(std::move(
         std::make_unique<SingletonNode>(_query.plan(), _execNodes.size())));
     return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
@@ -320,29 +315,7 @@ struct ExecutorTestHelper {
 
     auto inputBlock = generateInputRanges(itemBlockManager);
 
-    _testee->addDependency(inputBlock.get());
-
-    AqlCallStack stack{_call};
-    auto const [state, skipped, result] = _testee->execute(stack);
-    EXPECT_EQ(skipped, _expectedSkip);
-
-    EXPECT_EQ(state, _expectedState);
-
-    SharedAqlItemBlockPtr expectedOutputBlock =
-        buildBlock<outputColumns>(itemBlockManager, std::move(_output));
-    testOutputBlock(result, expectedOutputBlock);
-    if (_testStats) {
-      auto actualStats = _query.engine()->getStats();
-      EXPECT_EQ(actualStats, _expectedStats);
-    }
-  };
-
-  auto runPipeline() -> void {
-    ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
-
-    auto inputBlock = generateInputRanges(itemBlockManager);
-
+    TRI_ASSERT(!_pipeline.empty());
     _pipeline.get().back()->addDependency(inputBlock.get());
 
     AqlCallStack stack{_call};
@@ -374,29 +347,6 @@ struct ExecutorTestHelper {
   };
 
  private:
-  void testOutputBlock(SharedAqlItemBlockPtr const& outputBlock,
-                       SharedAqlItemBlockPtr const& expectedOutputBlock) {
-    velocypack::Options vpackOptions;
-
-    if (expectedOutputBlock == nullptr) {
-      EXPECT_EQ(outputBlock, nullptr);
-    } else {
-      EXPECT_NE(outputBlock, nullptr);
-      EXPECT_NE(expectedOutputBlock, nullptr);
-      EXPECT_EQ(outputBlock->size(), expectedOutputBlock->size());
-      for (size_t i = 0; i < outputBlock->size(); i++) {
-        for (size_t j = 0; j < outputColumns; j++) {
-          AqlValue const& x = outputBlock->getValueReference(i, _outputRegisters[j]);
-          AqlValue const& y = expectedOutputBlock->getValueReference(i, j);
-
-          EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
-              << "Row " << i << " Column " << j << " (Reg "
-              << _outputRegisters[j] << ") do not agree";
-        }
-      }
-    }
-  }
-
   auto generateInputRanges(AqlItemBlockManager& itemBlockManager)
       -> std::unique_ptr<ExecutionBlock> {
     using VectorSizeT = std::vector<std::size_t>;
@@ -468,7 +418,6 @@ struct ExecutorTestHelper {
 
   arangodb::aql::Query& _query;
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;
-  ExecBlock _testee;
   Pipeline _pipeline;
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 };
