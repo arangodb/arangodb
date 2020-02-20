@@ -235,8 +235,13 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSomeFor
   while (state == ExecutionState::HASMORE && _skipped < atMost) {
     size_t skippedNow;
     TRI_ASSERT(_skipped <= atMost);
-    // The call on the stack is modified in-place
-    TRI_ASSERT(stack.peek().getOffset() == atMost - _skipped);
+    {
+      // Make sure we call with the correct offset
+      // This is just a temporary dance until execute is implemented everywhere.
+      auto tmpCall = stack.popCall();
+      tmpCall.offset = atMost - _skipped;
+      stack.pushCall(std::move(tmpCall));
+    }
     std::tie(state, skippedNow, block) = upstream.execute(stack);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(skippedNow == 0);
@@ -278,8 +283,13 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
     // Note: upstreamBlock will return next dependency
     // if we need to loop here
     TRI_ASSERT(_skipped <= toSkip);
-    // The call on the stack is modified in-place
-    TRI_ASSERT(stack.peek().getOffset() == toSkip - _skipped);
+    {
+      // Make sure we call with the correct offset
+      // This is just a temporary dance until execute is implemented everywhere.
+      auto tmpCall = stack.popCall();
+      tmpCall.offset = toSkip - _skipped;
+      stack.pushCall(std::move(tmpCall));
+    }
     if (_distributeId.empty()) {
       std::tie(state, skippedNow, block) = upstreamBlock().execute(stack);
     } else {
