@@ -141,7 +141,7 @@ constexpr bool isNewStyleExecutor =
                 TestLambdaExecutor,
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-                ShortestPathExecutor, LimitExecutor>;
+                ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -626,8 +626,11 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
 
   // Fall back to getSome/skipSome
   auto myCall = stack.popCall();
+
   TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall) ||
              AqlCall::IsFullCountCall(myCall) || AqlCall::IsFastForwardCall(myCall));
+  _rowFetcher.useStack(stack);
+
   if (AqlCall::IsSkipSomeCall(myCall)) {
     auto const [state, skipped] = skipSome(myCall.getOffset());
     if (state != ExecutionState::WAITING) {
@@ -1068,7 +1071,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                                  TestLambdaSkipExecutor,
 #endif
-                                 SortedCollectExecutor, LimitExecutor>),
+                                 EnumerateListExecutor, SortedCollectExecutor, LimitExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -1441,16 +1444,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             if (_outputItemRow->allRowsUsed()) {
               _execState = ExecState::DONE;
             } else if (state == ExecutorState::DONE) {
-              if (_lastRange.hasDataRow()) {
-                // TODO this state is invalid, and can just show up now if we exclude SKIP
-                _execState = ExecState::PRODUCE;
-              } else {
-                // Right now we cannot support to have more than one set of
-                // ShadowRows inside of a Range.
-                // We do not know how to continue with the above executor after a shadowrow.
-                TRI_ASSERT(!_lastRange.hasDataRow());
-                _execState = ExecState::DONE;
-              }
+              _execState = ExecState::DONE;
             }
           } else {
             _execState = ExecState::DONE;

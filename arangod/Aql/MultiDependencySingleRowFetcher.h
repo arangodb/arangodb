@@ -129,8 +129,10 @@ class MultiDependencySingleRowFetcher {
 
   std::pair<ExecutionState, size_t> skipRowsForDependency(size_t dependency, size_t atMost);
 
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize);
+  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
+
+  //@deprecated
+  auto useStack(AqlCallStack const& stack) -> void;
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
@@ -165,7 +167,7 @@ class MultiDependencySingleRowFetcher {
    * subquery level. If it returns false, there may or may not be more.
    */
   bool noMoreDataRows(DependencyInfo const& info) const;
-  
+
   bool isAtShadowRow(DependencyInfo const& info) const;
 
   bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
