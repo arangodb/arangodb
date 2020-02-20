@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #11137: http-proxy can't pass delete method req.body to foxx.
+
 * Fixed handling of `geometry` attributes in query editor of the web UI.
 
   Previously, document attributes named `geometry` were treated in a special
