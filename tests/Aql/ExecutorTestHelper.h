@@ -431,7 +431,7 @@ struct ExecutorTestHelper {
 
   arangodb::aql::Query& _query;
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;
-};  // namespace aql
+};
 
 enum class ExecutorCall {
   SKIP_ROWS,
