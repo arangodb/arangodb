@@ -325,10 +325,23 @@ struct ExecutorTestHelper {
     EXPECT_EQ(skipped, _expectedSkip);
 
     EXPECT_EQ(state, _expectedState);
+    if (result == nullptr) {
+      // Empty output, possible if we skip all
+      EXPECT_EQ(_output.size(), 0)
+          << "Executor does not yield output, although it is expected";
+    } else {
+      SharedAqlItemBlockPtr expectedOutputBlock =
+          buildBlock<outputColumns>(itemBlockManager, std::move(_output));
+      std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
+                                           _outputRegisters.end());
+      if (_unorderedOutput) {
+        asserthelper::ValidateBlocksAreEqualUnordered(result, expectedOutputBlock,
+                                                      _unorderedSkippedRows, outRegVector);
+      } else {
+        asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock, outRegVector);
+      }
+    }
 
-    SharedAqlItemBlockPtr expectedOutputBlock =
-        buildBlock<outputColumns>(itemBlockManager, std::move(_output));
-    testOutputBlock(result, expectedOutputBlock);
     if (_testStats) {
       auto actualStats = _query.engine()->getStats();
       EXPECT_EQ(actualStats, _expectedStats);

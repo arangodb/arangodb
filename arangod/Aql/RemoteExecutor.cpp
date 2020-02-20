@@ -431,7 +431,22 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::execute(
     AqlCallStack stack) {
-  TRI_ASSERT(false);
+  // Use the old getSome/SkipSome API.
+  // TODO needs execute implementation instead
+  auto myCall = stack.popCall();
+  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall));
+  if (AqlCall::IsSkipSomeCall(myCall)) {
+    auto const [state, skipped] = skipSome(myCall.getOffset());
+    if (state != ExecutionState::WAITING) {
+      myCall.didSkip(skipped);
+    }
+    return {state, skipped, nullptr};
+  } else if (AqlCall::IsGetSomeCall(myCall)) {
+    auto const [state, block] = getSome(myCall.getLimit());
+    // We do not need to count as softLimit will be overwritten, and hard cannot be set.
+    return {state, 0, block};
+  }
+  // Should never get here!
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

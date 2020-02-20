@@ -101,6 +101,8 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
   } else {
     uniqueEdges = TraverserOptions::UniquenessLevel::PATH;
   }
+  
+  _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* query,
@@ -241,10 +243,12 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
   TRI_ASSERT(uniqueVertices != TraverserOptions::UniquenessLevel::GLOBAL || useBreadthFirst);
+  
+  _produceVertices = VPackHelper::getBooleanValue(info, "produceVertices", true);
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& other)
-    : BaseOptions(other._query),
+    : BaseOptions(static_cast<BaseOptions const&>(other)),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
       minDepth(other.minDepth),
@@ -301,6 +305,7 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
       break;
   }
 
+  builder.add("produceVertices", VPackValue(_produceVertices));
   builder.add("type", VPackValue("traversal"));
 }
 
@@ -440,7 +445,7 @@ bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
 
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
                                               arangodb::velocypack::StringRef vertexId,
-                                              uint64_t depth, size_t cursorId) const {
+                                              uint64_t depth, size_t cursorId) {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _depthLookupInfo.find(depth);
@@ -484,7 +489,7 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
 }
 
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
-                                                uint64_t depth) const {
+                                                uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _vertexExpressions.find(depth);

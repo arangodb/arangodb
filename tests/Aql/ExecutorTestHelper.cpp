@@ -193,5 +193,5 @@ std::ostream& arangodb::tests::aql::operator<<(std::ostream& stream,
     // which is unable to figure out that the switch above is complete.
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
- }();
+  }();
 }

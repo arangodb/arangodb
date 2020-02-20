@@ -88,8 +88,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
     return {state, stats};
   }
 
-  // We must not update _counter here. It is only used to count until offset+limit
-  // is reached.
+  // We must not update _counter here. It is only used to count until
+  // offset+limit is reached.
 
   if (infos().isFullCountEnabled()) {
     stats.incrFullCountBy(skipped);
@@ -153,7 +153,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
       state = _stateOfLastRowToOutput;
       TRI_ASSERT(state != ExecutionState::WAITING);
       input = std::move(_lastRowToOutput);
-      TRI_ASSERT(!_lastRowToOutput.isInitialized()); // rely on the move
+      TRI_ASSERT(!_lastRowToOutput.isInitialized());  // rely on the move
     } else {
       std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
@@ -244,7 +244,7 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
     case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING:
       auto rv = _fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
-      return { rv.first, LimitStats{}, std::move(rv.second) };
+      return {rv.first, LimitStats{}, std::move(rv.second)};
   }
   // The control flow cannot reach this. It is only here to make MSVC happy,
   // which is unable to figure out that the switch above is complete.
@@ -287,4 +287,3 @@ std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows
 
   return std::make_tuple(state, LimitStats{}, reportSkipped);
 }
-

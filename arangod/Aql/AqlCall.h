@@ -65,6 +65,12 @@ struct AqlCall {
     return !call.hasHardLimit() && call.getLimit() > 0 && call.getOffset() == 0;
   }
 
+  // TODO Remove me, this will not be necessary later
+  static bool IsFullCountCall(AqlCall const& call) {
+    return call.hasHardLimit() && call.getLimit() == 0 &&
+           call.getOffset() == 0 && call.needsFullCount();
+  }
+
   std::size_t offset{0};
   // TODO: The defaultBatchSize function could move into this file instead
   Limit softLimit{Infinity{}};
