@@ -42,9 +42,11 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   // We must not have a row pending to be written as a
   // shadow row
+  LOG_DEVEL << "subquery start";
   TRI_ASSERT(!_inputRow.isInitialized());
   if (!output.isFull()) {
     if (input.hasDataRow()) {
+      LOG_DEVEL << "subquery start write that one row";
       std::tie(_upstreamState, _inputRow) = input.nextDataRow();
       output.copyRow(_inputRow);
       output.advanceRow();

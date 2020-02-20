@@ -49,6 +49,11 @@
 #include "Aql/TestLambdaExecutor.h"
 #include "Aql/WaitingExecutionBlockMock.h"
 
+// TODO: remove me
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
@@ -75,6 +80,7 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
     auto engine =
         std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
     fakedQuery->setEngine(engine.release());
+    arangodb::Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
   }
 
   // returns a new pipeline that contains body as a subquery
@@ -219,7 +225,7 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
 
   auto createSkipCall() -> SkipCall {
     return [](AqlItemBlockInputRange& input,
-              AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
+              AqlCall& call) -> std::tuple<ExecutorState, LambdaExe::Stats, size_t, AqlCall> {
       auto skipped = size_t{0};
       while (input.hasDataRow() && call.shouldSkip()) {
         auto const& [state, inputRow] = input.nextDataRow();
@@ -228,7 +234,7 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
         skipped++;
       }
       auto upstreamCall = AqlCall{call};
-      return {input.upstreamState(), skipped, upstreamCall};
+      return {input.upstreamState(), NoStats{}, skipped, upstreamCall};
     };
   };
 
@@ -283,7 +289,7 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
       .expectOutput({0}, {})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .runPipeline();
+      .run();
 };
 
 TEST_F(SplicedSubqueryIntegrationTest, single_subquery) {
@@ -296,7 +302,7 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery) {
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .runPipeline();
+      .run();
 };
 
 TEST_F(SplicedSubqueryIntegrationTest, single_subquery_skip) {
@@ -309,7 +315,7 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery_skip) {
       .expectOutput({0}, {{5}, {7}, {1}})
       .expectSkipped(5)
       .expectedState(ExecutionState::DONE)
-      .runPipeline();
+      .run();
 };
 
 TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
@@ -322,7 +328,7 @@ TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
       .expectOutput({0}, {})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .runPipeline();
+      .run();
 };
 
 TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries) {
@@ -335,7 +341,7 @@ TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries) {
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .runPipeline();
+      .run();
 };
 
 TEST_F(SplicedSubqueryIntegrationTest, two_sequential_subqueries) {
@@ -348,7 +354,7 @@ TEST_F(SplicedSubqueryIntegrationTest, two_sequential_subqueries) {
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .runPipeline();
+      .run();
 };
 
 TEST_F(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
@@ -362,7 +368,7 @@ TEST_F(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .runPipeline();
+      .run();
 };
 
 TEST_F(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
@@ -376,7 +382,7 @@ TEST_F(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
       .expectOutput({0}, {})
       .expectSkipped(8)
       .expectedState(ExecutionState::DONE)
-      .runPipeline();
+      .run();
 };
 
 TEST_F(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
@@ -390,5 +396,5 @@ TEST_F(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
       .expectOutput({0}, {})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .runPipeline();
+      .run();
 };
