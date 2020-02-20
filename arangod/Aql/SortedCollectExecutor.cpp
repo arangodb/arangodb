@@ -451,9 +451,11 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
             clientCall.didSkip(1);
           }
         } else {
-          LOG_DEVEL_SC << "skipping final group";
-          clientCall.didSkip(1);
-          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+          if (_currentGroup.isValid()) {
+            LOG_DEVEL_SC << "skipping final group";
+            clientCall.didSkip(1);
+            _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+          }
         }
         break;
       } else if (!input.isInitialized()) {
