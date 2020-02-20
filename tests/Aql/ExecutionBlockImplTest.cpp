@@ -1537,7 +1537,11 @@ class ExecutionBlockImplExecuteIntegrationTest
         output.copyRow(input);
         output.advanceRow();
       }
-      return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
+      // Do forward a softLimit call only.
+      // Do not oeverfetch here.
+      AqlCall request{};
+      request.softLimit = output.getClientCall().getLimit();
+      return {inputRange.upstreamState(), NoStats{}, request};
     };
 
     auto skipData = [&skipAsserter](AqlItemBlockInputRange& inputRange, AqlCall& call)
@@ -1553,7 +1557,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       }
       // Do forward a softLimit call only.
       // Do not oeverfetch here.
-      AqlCall request;
+      AqlCall request{};
       if (call.getOffset() > 0) {
         request.softLimit = call.getOffset();
       }  // else fullCount case, simple get UNLIMITED from above
