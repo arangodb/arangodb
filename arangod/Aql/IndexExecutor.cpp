@@ -751,14 +751,11 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
     stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
   }
 
-  bool reportDone = _state == ExecutorState::DONE && !_input.isInitialized();
-
   AqlCall upstreamCall;
   upstreamCall.fullCount = clientCall.needsFullCount();
 
-  LOG_DEVEL_IDX << "IndexExecutor::produceRows reporting state "
-                << (reportDone ? ExecutorState::DONE : ExecutorState::HASMORE);
-  return {reportDone ? ExecutorState::DONE : ExecutorState::HASMORE, stats, upstreamCall};
+  LOG_DEVEL_IDX << "IndexExecutor::produceRows reporting state " << returnState();
+  return {returnState(), stats, upstreamCall};
 }
 
 auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
@@ -831,9 +828,18 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
   _skipped = 0;
 
   AqlCall upstreamCall;
-  upstreamCall.fullCount = clientCall.needsFullCount();
 
-  LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange returning " << _state << " "
-                << skipped << " " << upstreamCall;
-  return {_state, stats, skipped, upstreamCall};
+  LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange returning " << returnState()
+                << " " << skipped << " " << upstreamCall;
+  return {returnState(), stats, skipped, upstreamCall};
+}
+
+auto IndexExecutor::returnState() const noexcept -> ExecutorState {
+  if (_input.isInitialized()) {
+    // We are still working.
+    // TODO: Potential optimization: We can ask if the cursor has more, or there
+    // are other cursors.
+    return ExecutorState::HASMORE;
+  }
+  return _state;
 }
