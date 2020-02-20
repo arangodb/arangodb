@@ -228,8 +228,8 @@ static void JS_SetConnectionsToBeDeadIn(v8::FunctionCallbackInfo<v8::Value> cons
 
   double n = TRI_ObjectToDouble(isolate, args[0]);
   setConnectionToBeDeadInMS(n);
-  std::cout << "when: " << when << " - now: " << now << std::endl;
-  TRI_V8_RETURN_BOOL((when != 0.0) && (now >= when) );
+
+  TRI_V8_RETURN_BOOL((when != 0.0) && (now - when > 0.0) );
   TRI_V8_TRY_CATCH_END
 }
 

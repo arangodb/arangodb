@@ -892,8 +892,6 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     setTotalTimeout(options.oneTestTimeout * 1000);
     let result = testFunc();
     let timeout = setTotalTimeout(0.0);
-    print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-    print(timeout)
     if (timeout) {
       return {
         timeout: true,
@@ -907,7 +905,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     let timeout = setTotalTimeout(0.0);
     return {
       timeout: timeout,
-      forceTerminate: timeout,
+      forceTerminate: true,
       status: false,
       message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
       stack: ex.stack
