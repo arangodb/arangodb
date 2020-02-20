@@ -107,6 +107,9 @@ class ConstFetcher {
   // NOLINTNEXTLINE google-default-arguments
   std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = 1) const;
 
+  //@deprecated
+  auto useStack(AqlCallStack const& stack) -> void{};
+
  private:
   /**
    * @brief Input block currently in use. Used for memory management by the

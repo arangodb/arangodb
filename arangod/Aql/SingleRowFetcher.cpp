@@ -278,5 +278,11 @@ template std::pair<ExecutionState, SharedAqlItemBlockPtr>
 SingleRowFetcher<BlockPassthrough::Enable>::fetchBlockForPassthrough<BlockPassthrough::Enable, void>(size_t atMost);
 #endif
 
+//@deprecated
+template <BlockPassthrough blockPassthrough>
+auto SingleRowFetcher<blockPassthrough>::useStack(AqlCallStack const& stack) -> void {
+  _dependencyProxy->useStack(stack);
+}
+
 template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Disable>;
 template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Enable>;

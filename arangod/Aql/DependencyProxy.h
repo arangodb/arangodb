@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_BLOCK_FETCHER_H
 #define ARANGOD_AQL_BLOCK_FETCHER_H
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -68,8 +69,7 @@ class DependencyProxy {
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   AqlItemBlockManager& itemBlockManager,
                   std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-                  RegisterId nrInputRegisters,
-                  velocypack::Options const*);
+                  RegisterId nrInputRegisters, velocypack::Options const*);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
@@ -115,6 +115,9 @@ class DependencyProxy {
 
   [[nodiscard]] velocypack::Options const* velocypackOptions() const noexcept;
 
+  //@deprecated
+  auto useStack(AqlCallStack stack) -> void { _injectedStack = stack; }
+
  protected:
   [[nodiscard]] AqlItemBlockManager& itemBlockManager();
   [[nodiscard]] AqlItemBlockManager const& itemBlockManager() const;
@@ -141,6 +144,9 @@ class DependencyProxy {
   size_t _currentDependency;
   size_t _skipped;
   velocypack::Options const* const _vpackOptions;
+
+  // @deprecated
+  AqlCallStack _injectedStack;
 };
 
 }  // namespace arangodb::aql
