@@ -298,14 +298,18 @@ TEST_P(LimitExecutorTest, testSuite) {
             std::min(clientCall.getLimit(),
                      nonNegativeSubtraction(limit, clientCall.getOffset()));
 
+        auto const numRowsReturnable =
+            nonNegativeSubtraction(std::min(numInputRows, offset + limit), offset);
+
         // Only the client's offset counts against the "skipped" count returned
         // by the limit block, the rest is upstream!
-        auto skipped = std::min(nonNegativeSubtraction(numInputRows, offset),
-                                clientCall.getOffset());
+        auto skipped = std::min(numRowsReturnable, clientCall.getOffset());
         if (clientCall.needsFullCount()) {
           // offset and limit are already handled.
-          // New we need to include the amount of rows left to count them by skipped.
-          skipped += nonNegativeSubtraction(numInputRows, effectiveOffset + effectiveLimit);
+          // New we need to include the amount of rows left to count them by
+          // skipped. However only those rows that the LIMIT will return.
+          skipped += nonNegativeSubtraction(numRowsReturnable,
+                                            clientCall.getOffset() + clientCall.getLimit());
         }
 
         auto const output = std::invoke([&]() {
