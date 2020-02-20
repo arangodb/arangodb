@@ -69,7 +69,7 @@ namespace aql {
 // CalculationExecutor<CalculationType::V8Condition> and
 // CalculationExecutor<CalculationType::Reference>!
 
-class CalculationExecutorTest : public ::testing::Test, public AqlExecutorTestCase<true> {
+class CalculationExecutorTest : public AqlExecutorTestCase<true> {
  protected:
   ExecutionState state;
   AqlItemBlockManager itemBlockManager;
