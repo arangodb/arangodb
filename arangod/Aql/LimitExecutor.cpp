@@ -162,43 +162,6 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
   // We're passthrough, we must not have any input left when the limit isfulfilled
   TRI_ASSERT(!limitFulfilled() || !inputRange.hasDataRow());
   return {inputRange.upstreamState(), stats, calculateUpstreamCall(call)};
-
-  /*
-    // We may not yet skip more than our offset, fullCount must happen after all
-    // rows were produced only.
-    auto const skipped = input.skip(upstreamCall.getOffset());
-    _counter += skipped;
-    if (infos().isFullCountEnabled()) {
-      stats.incrFullCountBy(skipped);
-    }
-
-    // We may not get data rows until our offset is reached
-    TRI_ASSERT(upstreamCall.getOffset() == skipped || !input.hasDataRow());
-
-    auto numRowsWritten = size_t{0};
-    while (numRowsWritten < upstreamCall.getLimit() && input.hasDataRow() &&
-           !output.isFull()) {
-      output.copyRow(input.nextDataRow().second);
-      output.advanceRow();
-      ++numRowsWritten;
-    }
-    _counter += numRowsWritten;
-    if (infos().isFullCountEnabled()) {
-      stats.incrFullCountBy(numRowsWritten);
-      if (limitFulfilled()) {
-        stats.incrFullCountBy(input.skipAll());
-      }
-    }
-
-    // When the limit is fulfilled, there must not be any skipped rows left.
-    // The offset is handled first, and skipped rows due to fullCount may only
-    // appear after the limit is fullfilled; and those are already counted.
-    TRI_ASSERT(!limitFulfilled() || input.skippedInFlight() == 0);
-
-
-
-    return {input.upstreamState(), stats, calculateUpstreamCall(clientCall)};
-    */
 }
 
 auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
@@ -227,26 +190,42 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
       if (infos().isFullCountEnabled()) {
         stats.incrFullCountBy(didSkip);
       }
-    } else if (call.getOffset() > 0) {
-      // Next we skip as many rows as ordered by the client
-      auto const didSkip = inputRange.skip(call.getOffset());
-      call.didSkip(didSkip);
-      _counter += didSkip;
-      if (infos().isFullCountEnabled()) {
-        stats.incrFullCountBy(didSkip);
+    } else if (remainingLimit() > 0) {
+      // We do only report to downstream if we have a limit to produce
+      if (call.getOffset() > 0) {
+        // Next we skip as many rows as ordered by the client,
+        // but never more then remainingLimit
+        auto const didSkip =
+            inputRange.skip(std::min(remainingLimit(), call.getOffset()));
+        call.didSkip(didSkip);
+        _counter += didSkip;
+        if (infos().isFullCountEnabled()) {
+          stats.incrFullCountBy(didSkip);
+        }
+      } else if (call.getLimit() > 0) {
+        // If we get here we need to break out, and let produce rows be called.
+        break;
+      } else if (call.needsFullCount()) {
+        auto const didSkip = inputRange.skip(remainingLimit());
+        call.didSkip(didSkip);
+        _counter += didSkip;
+        if (infos().isFullCountEnabled()) {
+          stats.incrFullCountBy(didSkip);
+        }
+      } else if (infos().isFullCountEnabled()) {
+        // Skip the remainder, it does not matter if we need to produce
+        // anything or not. This is only for reporting of the skipped numbers
+        auto const didSkip = inputRange.skipAll();
+        _counter += didSkip;
+        if (infos().isFullCountEnabled()) {
+          stats.incrFullCountBy(didSkip);
+        }
       }
-    } else if (call.getLimit() > 0 && remainingLimit() > 0) {
-      // If we get here we need to break out, and let produce rows be called.
-      break;
-    } else if (call.needsFullCount() || infos().isFullCountEnabled()) {
-      // Skip the remainder, it does not matter if we neeed to produce
+    } else if (infos().isFullCountEnabled()) {
+      // Skip the remainder, it does not matter if we need to produce
       // anything or not. This is only for reporting of the skipped numbers
       auto const didSkip = inputRange.skipAll();
       _counter += didSkip;
-      if (call.needsFullCount()) {
-        // Report to downstream
-        call.didSkip(didSkip);
-      }
       if (infos().isFullCountEnabled()) {
         stats.incrFullCountBy(didSkip);
       }
