@@ -266,7 +266,6 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
   _documentProducingFunctionContext.setOutputRow(&output);
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    TRI_ASSERT(!output.isFull());
 
     if (!_cursorHasMore) {
       initializeNewRow(inputRange);
