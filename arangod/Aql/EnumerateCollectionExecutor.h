@@ -161,10 +161,6 @@ class EnumerateCollectionExecutor {
 
   void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
-  /// @brief whether or not we are allowed to use the covering index
-  /// optimization in a callback
-  bool getAllowCoveringIndexOptimization() const noexcept;
-
  private:
   Infos& _infos;
   Fetcher& _fetcher;
