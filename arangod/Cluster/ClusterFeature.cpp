@@ -416,6 +416,7 @@ void ClusterFeature::prepare() {
   config.idleConnectionMilli = 1000;
   config.verifyHosts = false;
   config.clusterInfo = &clusterInfo();
+  config.name = "AgencyComm";
 
   _pool = std::make_unique<network::ConnectionPool>(config);
 

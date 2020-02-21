@@ -280,7 +280,8 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
               if (pos == std::string::npos || pos == 0) {
                 break;
               } else {
-                uri = uri.substr(0, pos);
+                // this is superior to  uri = uri.substr(0, pos);
+                uri.resize(pos);
               }
             }
           }
