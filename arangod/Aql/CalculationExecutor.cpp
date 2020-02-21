@@ -141,7 +141,7 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
   InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    std::tie(state, input) = inputRange.nextDataRow();  // TODO refactor
+    std::tie(state, input) = inputRange.nextDataRow(); 
     TRI_ASSERT(input.isInitialized());
 
     doEvaluation(input, output);
