@@ -174,28 +174,18 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) const {
       edge, weightAttribute.c_str(), defaultWeight);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursor(arangodb::velocypack::StringRef vid) {
+std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(arangodb::velocypack::StringRef vid) const {
   if (_isCoordinator) {
-    return nextCursorCoordinator(vid);
+    return std::make_unique<ClusterEdgeCursor>(vid, false, this);
   }
-  return nextCursorLocal(vid, _baseLookupInfos);
+  return buildCursorLocal(vid, _baseLookupInfos);
 }
 
-EdgeCursor* ShortestPathOptions::nextReverseCursor(arangodb::velocypack::StringRef vid) {
+std::unique_ptr<EdgeCursor> ShortestPathOptions::buildReverseCursor(arangodb::velocypack::StringRef vid) const {
   if (_isCoordinator) {
-    return nextReverseCursorCoordinator(vid);
+    return std::make_unique<ClusterEdgeCursor>(vid, true, this);
   }
-  return nextCursorLocal(vid, _reverseLookupInfos);
-}
-
-EdgeCursor* ShortestPathOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid) {
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, false, this);
-  return cursor.release();
-}
-
-EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(arangodb::velocypack::StringRef vid) {
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, true, this);
-  return cursor.release();
+  return buildCursorLocal(vid, _reverseLookupInfos);
 }
 
 void ShortestPathOptions::fetchVerticesCoordinator(

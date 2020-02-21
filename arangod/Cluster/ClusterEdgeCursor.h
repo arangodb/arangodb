@@ -28,7 +28,6 @@
 #include "Graph/TraverserOptions.h"
 
 namespace arangodb {
-class CollectionNameResolver;
 
 namespace graph {
 struct BaseOptions;
@@ -42,9 +41,9 @@ class Traverser;
 class ClusterEdgeCursor : public graph::EdgeCursor {
  public:
   // Traverser Variant
-  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, uint64_t, graph::BaseOptions*);
+  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, uint64_t, graph::BaseOptions const*);
   // ShortestPath Variant
-  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, bool isBackward, graph::BaseOptions*);
+  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, bool isBackward, graph::BaseOptions const*);
 
   ~ClusterEdgeCursor() = default;
 
@@ -59,8 +58,7 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
   std::vector<arangodb::velocypack::Slice> _edgeList;
 
   size_t _position;
-  CollectionNameResolver const* _resolver;
-  arangodb::graph::BaseOptions* _opts;
+  arangodb::graph::BaseOptions const* _opts;
   arangodb::graph::ClusterTraverserCache* _cache;
   size_t _httpRequests;
 };

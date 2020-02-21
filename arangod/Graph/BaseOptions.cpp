@@ -397,10 +397,11 @@ double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> c
   return cost;
 }
 
-EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
-                                         std::vector<LookupInfo> const& list) {
-  auto allCursor = std::make_unique<SingleServerEdgeCursor>(this, list.size());
+std::unique_ptr<EdgeCursor> BaseOptions::buildCursorLocal(arangodb::velocypack::StringRef vid,
+                                                          std::vector<LookupInfo> const& list) const {
+  auto allCursor = std::make_unique<SingleServerEdgeCursor>(this);
   auto& opCursors = allCursor->getCursors();
+  opCursors.reserve(list.size());
   for (auto& info : list) {
     auto& node = info.indexCondition;
     TRI_ASSERT(node->numMembers() > 0);
@@ -427,7 +428,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
     }
     opCursors.emplace_back(std::move(csrs));
   }
-  return allCursor.release();
+  return allCursor;
 }
 
 TraverserCache* BaseOptions::cache() {

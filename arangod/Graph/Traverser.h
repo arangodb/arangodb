@@ -292,8 +292,6 @@ class Traverser {
 
   bool vertexMatchesConditions(arangodb::velocypack::StringRef vid, uint64_t depth);
 
-  void allowOptimizedNeighbors();
-
   transaction::Methods* trx() const { return _trx; }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -315,8 +313,6 @@ class Traverser {
   /// @brief indicator if this traversal is done
   bool _done;
   
-  bool _canUseOptimizedNeighbors;
-
   /// @brief options for traversal
   TraverserOptions* _opts;
 

@@ -295,8 +295,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
   auto outputVertex = [this, depth](VPackBuilder& builder, VPackSlice vertex) {
     TRI_ASSERT(vertex.isString());
 
-    std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
-        _opts->nextCursor(arangodb::velocypack::StringRef(vertex), depth));
+    auto edgeCursor = _opts->buildCursor(arangodb::velocypack::StringRef(vertex), depth);
       
     edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
@@ -450,9 +449,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
       // result.clear();
       arangodb::velocypack::StringRef vertexId(v);
       if (backward) {
-        edgeCursor.reset(_opts->nextReverseCursor(vertexId));
+        edgeCursor = _opts->buildReverseCursor(vertexId);
       } else {
-        edgeCursor.reset(_opts->nextCursor(vertexId));
+        edgeCursor = _opts->buildCursor(vertexId);
       }
 
       edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
@@ -469,9 +468,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
   } else if (vertex.isString()) {
     arangodb::velocypack::StringRef vertexId(vertex);
     if (backward) {
-      edgeCursor.reset(_opts->nextReverseCursor(vertexId));
+      edgeCursor = _opts->buildReverseCursor(vertexId);
     } else {
-      edgeCursor.reset(_opts->nextCursor(vertexId));
+      edgeCursor = _opts->buildCursor(vertexId);
     }
     edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {

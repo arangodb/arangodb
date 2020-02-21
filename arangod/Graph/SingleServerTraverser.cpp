@@ -24,7 +24,6 @@
 #include "SingleServerTraverser.h"
 #include "Aql/AqlValue.h"
 #include "Graph/BreadthFirstEnumerator.h"
-#include "Graph/NeighborsEnumerator.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
@@ -81,11 +80,7 @@ void SingleServerTraverser::createEnumerator() {
   TRI_ASSERT(_enumerator == nullptr);
 
   if (_opts->useBreadthFirst) {
-    if (_canUseOptimizedNeighbors) {
-      _enumerator.reset(new NeighborsEnumerator(this, _opts));
-    } else {
-      _enumerator.reset(new BreadthFirstEnumerator(this, _opts));
-    }
+    _enumerator.reset(new BreadthFirstEnumerator(this, _opts));
   } else {
     _enumerator.reset(new DepthFirstEnumerator(this, _opts));
   }

@@ -115,8 +115,7 @@ bool BreadthFirstEnumerator::next() {
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const nextVertex = _schreier[nextIdx].vertex;
 
-    std::unique_ptr<EdgeCursor> cursor(
-        _opts->nextCursor(nextVertex, _currentDepth));
+    auto cursor = _opts->buildCursor(nextVertex, _currentDepth);
     if (cursor != nullptr) {
       incHttpRequests(cursor->httpRequests());
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;

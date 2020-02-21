@@ -32,6 +32,8 @@
 
 #include <velocypack/StringRef.h>
 
+#include <memory>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -127,7 +129,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
 
-  graph::EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid, uint64_t);
+  std::unique_ptr<graph::EdgeCursor> buildCursor(arangodb::velocypack::StringRef vid, uint64_t depth) const;
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
@@ -143,9 +145,6 @@ struct TraverserOptions : public graph::BaseOptions {
     TRI_ASSERT(usesPrune());
     return _pruneExpression.get();
   }
-
- private:
-  graph::EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid, uint64_t);
 };
 }  // namespace traverser
 }  // namespace arangodb

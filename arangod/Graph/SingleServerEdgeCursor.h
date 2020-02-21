@@ -51,7 +51,7 @@ struct SingleServerEdgeDocumentToken;
 
 class SingleServerEdgeCursor final : public EdgeCursor {
  private:
-  BaseOptions* _opts;
+  BaseOptions const* _opts;
   transaction::Methods* _trx;
   std::vector<std::vector<OperationCursor*>> _cursors;
   size_t _currentCursor;
@@ -61,8 +61,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   std::vector<size_t> const* _internalCursorMapping;
 
  public:
-  SingleServerEdgeCursor(BaseOptions* options, size_t,
-                         std::vector<size_t> const* mapping = nullptr);
+  explicit SingleServerEdgeCursor(BaseOptions const* options, std::vector<size_t> const* mapping = nullptr);
 
   ~SingleServerEdgeCursor();
 

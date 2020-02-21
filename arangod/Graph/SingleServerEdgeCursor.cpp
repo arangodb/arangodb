@@ -42,7 +42,7 @@ using namespace arangodb::graph;
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions* opts, size_t nrCursors,
+SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions const* opts,
                                                std::vector<size_t> const* mapping)
     : _opts(opts),
       _trx(opts->trx()),
@@ -50,7 +50,6 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions* opts, size_t nrCurso
       _currentSubCursor(0),
       _cachePos(0),
       _internalCursorMapping(mapping) {
-  _cursors.reserve(nrCursors);
   _cache.reserve(1000);
   if (_opts->cache() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

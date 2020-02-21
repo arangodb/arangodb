@@ -174,9 +174,9 @@ void ConstantWeightShortestPathFinder::fillResult(arangodb::velocypack::StringRe
 void ConstantWeightShortestPathFinder::expandVertex(bool backward, arangodb::velocypack::StringRef vertex) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (backward) {
-    edgeCursor.reset(_options.nextReverseCursor(vertex));
+    edgeCursor = _options.buildReverseCursor(vertex);
   } else {
-    edgeCursor.reset(_options.nextCursor(vertex));
+    edgeCursor = _options.buildCursor(vertex);
   }
 
   auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {

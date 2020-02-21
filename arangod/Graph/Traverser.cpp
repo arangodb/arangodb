@@ -131,7 +131,6 @@ void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const&
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::Methods* trx)
     : _trx(trx),
       _done(true),
-      _canUseOptimizedNeighbors(false),
       _opts(opts) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
@@ -186,12 +185,5 @@ size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
 }
 
 size_t arangodb::traverser::Traverser::getAndResetHttpRequests() {
-  if (_enumerator != nullptr) {
-    return _enumerator->getAndResetHttpRequests();
-  }
-  return 0;
-}
-
-void arangodb::traverser::Traverser::allowOptimizedNeighbors() {
-  _canUseOptimizedNeighbors = true;
+  return _enumerator->getAndResetHttpRequests();
 }

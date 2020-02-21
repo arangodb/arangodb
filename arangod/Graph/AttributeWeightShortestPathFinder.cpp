@@ -303,9 +303,9 @@ void AttributeWeightShortestPathFinder::expandVertex(
     std::vector<std::unique_ptr<Step>>& result) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (isBackward) {
-    edgeCursor.reset(_options.nextReverseCursor(vertex));
+    edgeCursor = _options.buildReverseCursor(vertex);
   } else {
-    edgeCursor.reset(_options.nextCursor(vertex));
+    edgeCursor = _options.buildCursor(vertex);
   }
 
   std::unordered_map<arangodb::velocypack::StringRef, size_t> candidates;

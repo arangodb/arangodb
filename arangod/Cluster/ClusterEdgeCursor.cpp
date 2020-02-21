@@ -39,9 +39,8 @@ using namespace arangodb::traverser;
 
 // Traverser variant
 ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, uint64_t depth,
-                                     graph::BaseOptions* opts)
+                                     graph::BaseOptions const* opts)
     : _position(0),
-      _resolver(opts->trx()->resolver()),
       _opts(opts),
       _cache(static_cast<ClusterTraverserCache*>(opts->cache())),
       _httpRequests(0) {
@@ -58,9 +57,8 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, u
 }
 
 // ShortestPath variant
-ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, bool backward, graph::BaseOptions* opts)
+ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, bool backward, graph::BaseOptions const* opts)
     : _position(0),
-      _resolver(opts->trx()->resolver()),
       _opts(opts),
       _cache(static_cast<ClusterTraverserCache*>(opts->cache())),
       _httpRequests(0) {

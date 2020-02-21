@@ -99,12 +99,11 @@ bool DepthFirstEnumerator::next() {
     if (_enumeratedPath.edges.size() < _opts->maxDepth && !_pruneNext) {
       // We are not done with this path, so
       // we reserve the cursor for next depth
-      auto cursor = _opts->nextCursor(arangodb::velocypack::StringRef(
-                                          _enumeratedPath.vertices.back()),
-                                      _enumeratedPath.edges.size());
+      auto cursor = _opts->buildCursor(arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()),
+                                       _enumeratedPath.edges.size());
       if (cursor != nullptr) {
         incHttpRequests(cursor->httpRequests());
-        _edgeCursors.emplace_back(cursor);
+        _edgeCursors.emplace_back(std::move(cursor));
       }
     } else {
       if (!_enumeratedPath.edges.empty()) {

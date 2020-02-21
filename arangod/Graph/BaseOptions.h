@@ -31,6 +31,8 @@
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Transaction/Methods.h"
 
+#include <memory>
+
 namespace arangodb {
 
 namespace aql {
@@ -49,6 +51,7 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
+class SingleServerEdgeCursor;
 class TraverserCache;
 
 struct BaseOptions {
@@ -155,8 +158,8 @@ struct BaseOptions {
                               std::string const& collectionName,
                               std::string const& attributeName, aql::AstNode* condition);
 
-  EdgeCursor* nextCursorLocal(arangodb::velocypack::StringRef vid,
-                              std::vector<LookupInfo> const&);
+  std::unique_ptr<EdgeCursor> buildCursorLocal(arangodb::velocypack::StringRef vid,
+                                               std::vector<LookupInfo> const&) const;
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 

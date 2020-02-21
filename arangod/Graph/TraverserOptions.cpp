@@ -605,23 +605,16 @@ bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
   return true;
 }
 
-EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
-    arangodb::velocypack::StringRef vid, uint64_t depth) {
+std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
+    arangodb::velocypack::StringRef vid, uint64_t depth) const {
   if (_isCoordinator) {
-    return nextCursorCoordinator(vid, depth);
+    return std::make_unique<ClusterEdgeCursor>(vid, depth, this);
   }
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
-    return nextCursorLocal(vid, specific->second);
+    return buildCursorLocal(vid, specific->second);
   }
-  return nextCursorLocal(vid, _baseLookupInfos);
-}
-
-EdgeCursor* TraverserOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid,
-                                                    uint64_t depth) {
-  TRI_ASSERT(_traverser != nullptr);
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, depth, this);
-  return cursor.release();
+  return buildCursorLocal(vid, _baseLookupInfos);
 }
 
 void TraverserOptions::linkTraverser(ClusterTraverser* trav) {

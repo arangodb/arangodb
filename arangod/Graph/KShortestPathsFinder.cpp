@@ -134,10 +134,10 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
 
   switch (direction) {
     case BACKWARD:
-      edgeCursor.reset(_options.nextReverseCursor(vertex));
+      edgeCursor = _options.buildReverseCursor(vertex);
       break;
     case FORWARD:
-      edgeCursor.reset(_options.nextCursor(vertex));
+      edgeCursor = _options.buildCursor(vertex);
       break;
     default:
       TRI_ASSERT(false);
