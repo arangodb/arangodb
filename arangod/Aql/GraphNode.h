@@ -62,6 +62,7 @@ class GraphNode : public ExecutionNode {
  protected:
   /// @brief Internal constructor to clone the node.
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+            TRI_edge_direction_e defaultDirection,
             std::vector<std::unique_ptr<Collection>> const& edgeColls,
             std::vector<std::unique_ptr<Collection>> const& vertexColls,
             std::vector<TRI_edge_direction_e> const& directions,
@@ -176,27 +177,26 @@ class GraphNode : public ExecutionNode {
   /// as an edge can also point to another edge, instead of a vertex).
   std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
 
-  /// @brief The default direction given in the query
-  TRI_edge_direction_e _defaultDirection;
-
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
 
   /// @brief Options for traversals
   std::unique_ptr<graph::BaseOptions> _options;
 
-  /// @brief Pseudo string value node to hold the last visited vertex id.
-  /// @brief Flag if the options have been build.
+  /// @brief Flag if the options have been built.
   /// Afterwards this class is not copyable anymore.
   bool _optionsBuilt;
+  
+  /// @brief flag, if graph is smart (enterprise edition only!)
+  bool _isSmart;
+  
+  /// @brief The default direction given in the query
+  TRI_edge_direction_e const _defaultDirection;
 
   /// @brief The list of traverser engines grouped by server.
   std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
 
-  /// @brief flag, if graph is smart (enterprise edition only!)
-  bool _isSmart;
-
-  /// @brief list of shards involved, requried for one-shard-databases
+  /// @brief list of shards involved, required for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
 };
 

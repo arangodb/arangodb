@@ -26,7 +26,7 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
-#include "Logger/LoggerBufferFeature.h"
+#include "Logger/LogBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Random/RandomFeature.h"
 
@@ -46,7 +46,7 @@ GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isC
   if (!isClient) {
     // These are server only features
     startsAfter<GreetingsFeature>();
-    startsAfter<LoggerBufferFeature>();
+    startsAfter<LogBufferFeature>();
   }
 }
 

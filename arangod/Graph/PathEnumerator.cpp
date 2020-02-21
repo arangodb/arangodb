@@ -35,24 +35,32 @@ using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
 using Traverser = arangodb::traverser::Traverser;
 using TraverserOptions = arangodb::traverser::TraverserOptions;
 
-PathEnumerator::PathEnumerator(Traverser* traverser, std::string const& startVertex,
-                               TraverserOptions* opts)
+PathEnumerator::PathEnumerator(Traverser* traverser, TraverserOptions* opts)
     : _traverser(traverser), 
       _isFirst(true), 
       _opts(opts),
-      _httpRequests(0) {
-  arangodb::velocypack::StringRef svId =
-      _opts->cache()->persistString(arangodb::velocypack::StringRef(startVertex));
-  // Guarantee that this vertex _id does not run away
-  _enumeratedPath.vertices.push_back(svId);
+      _httpRequests(0) {}
+
+void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+  _enumeratedPath.edges.clear();
+  _enumeratedPath.vertices.clear();
+  _isFirst = true; 
+  _httpRequests = 0;
+  
+  _enumeratedPath.vertices.push_back(startVertex);
   TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
 }
 
-DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, std::string const& startVertex,
-                                           TraverserOptions* opts)
-    : PathEnumerator(traverser, startVertex, opts), _pruneNext(false) {}
+DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, TraverserOptions* opts)
+    : PathEnumerator(traverser, opts), _pruneNext(false) {}
 
 DepthFirstEnumerator::~DepthFirstEnumerator() = default;
+
+void DepthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+  PathEnumerator::setStartVertex(startVertex);
+
+  _pruneNext = false;
+}
 
 bool DepthFirstEnumerator::next() {
   if (_isFirst) {
@@ -78,7 +86,7 @@ bool DepthFirstEnumerator::next() {
                                       _enumeratedPath.edges.size());
       if (cursor != nullptr) {
         incHttpRequests(cursor->httpRequests());
-        _edgeCursors.emplace(cursor);
+        _edgeCursors.emplace_back(cursor);
       }
     } else {
       if (!_enumeratedPath.edges.empty()) {
@@ -155,7 +163,7 @@ bool DepthFirstEnumerator::next() {
 
     while (!_edgeCursors.empty()) {
       TRI_ASSERT(_edgeCursors.size() == _enumeratedPath.edges.size() + 1);
-      auto& cursor = _edgeCursors.top();
+      auto& cursor = _edgeCursors.back();
 
       if (cursor->next(callback)) {
         if (foundPath) {
@@ -170,7 +178,7 @@ bool DepthFirstEnumerator::next() {
         }
       } else {
         // cursor is empty.
-        _edgeCursors.pop();
+        _edgeCursors.pop_back();
         if (!_enumeratedPath.edges.empty()) {
           _enumeratedPath.edges.pop_back();
           _enumeratedPath.vertices.pop_back();
