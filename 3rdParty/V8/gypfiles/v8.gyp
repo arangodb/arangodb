@@ -1408,7 +1408,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/src/regexp/special-case.cc',
           ],
           'action': [
-            'python',
+            '<(PYTHON_EXECUTABLE)',
             '<(V8_ROOT)/tools/run.py',
             '<@(_inputs)',
             '<@(_outputs)',
