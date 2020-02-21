@@ -107,10 +107,8 @@ bool NeighborsEnumerator::next() {
         };
 
         auto cursor = _opts->buildCursor(nextVertex, _searchDepth);
-        if (cursor != nullptr) {
-          incHttpRequests(cursor->httpRequests());
-          cursor->readAll(callback);
-        }
+        incHttpRequests(cursor->httpRequests());
+        cursor->readAll(callback);
       }
       if (_currentDepth.empty()) {
         // Nothing found. Cannot do anything more.

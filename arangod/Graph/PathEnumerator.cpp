@@ -101,10 +101,8 @@ bool DepthFirstEnumerator::next() {
       // we reserve the cursor for next depth
       auto cursor = _opts->buildCursor(arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()),
                                        _enumeratedPath.edges.size());
-      if (cursor != nullptr) {
-        incHttpRequests(cursor->httpRequests());
-        _edgeCursors.emplace_back(std::move(cursor));
-      }
+      incHttpRequests(cursor->httpRequests());
+      _edgeCursors.emplace_back(std::move(cursor));
     } else {
       if (!_enumeratedPath.edges.empty()) {
         // This path is at the end. cut the last step

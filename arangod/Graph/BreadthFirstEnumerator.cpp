@@ -116,57 +116,55 @@ bool BreadthFirstEnumerator::next() {
     auto const nextVertex = _schreier[nextIdx].vertex;
 
     auto cursor = _opts->buildCursor(nextVertex, _currentDepth);
-    if (cursor != nullptr) {
-      incHttpRequests(cursor->httpRequests());
-      bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
-      bool didInsert = false;
+    incHttpRequests(cursor->httpRequests());
+    bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
+    bool didInsert = false;
 
-      auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice e,
-                          size_t cursorIdx) -> void {
-        if (!keepEdge(eid, e, nextVertex, _currentDepth, cursorIdx)) {
+    auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice e,
+                        size_t cursorIdx) -> void {
+      if (!keepEdge(eid, e, nextVertex, _currentDepth, cursorIdx)) {
+        return;
+      }
+
+      if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+        if (pathContainsEdge(nextIdx, eid)) {
+          // This edge is on the path.
           return;
         }
+      }
 
-        if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
-          if (pathContainsEdge(nextIdx, eid)) {
-            // This edge is on the path.
+      arangodb::velocypack::StringRef vId;
+
+      if (_traverser->getSingleVertex(e, nextVertex, _currentDepth + 1, vId)) {
+        if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
+          if (pathContainsVertex(nextIdx, vId)) {
+            // This vertex is on the path.
             return;
           }
         }
 
-        arangodb::velocypack::StringRef vId;
-
-        if (_traverser->getSingleVertex(e, nextVertex, _currentDepth + 1, vId)) {
-          if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
-            if (pathContainsVertex(nextIdx, vId)) {
-              // This vertex is on the path.
-              return;
-            }
+        _schreier.emplace_back(nextIdx, std::move(eid), vId);
+        if (_currentDepth < _opts->maxDepth - 1) {
+          // Prune here
+          if (!shouldPrune()) {
+            _nextDepth.emplace_back(NextStep(_schreierIndex));
           }
-
-          _schreier.emplace_back(nextIdx, std::move(eid), vId);
-          if (_currentDepth < _opts->maxDepth - 1) {
-            // Prune here
-            if (!shouldPrune()) {
-              _nextDepth.emplace_back(NextStep(_schreierIndex));
-            }
-          }
-          _schreierIndex++;
-          didInsert = true;
         }
-      };
-
-      cursor->readAll(callback);
-
-      if (!shouldReturnPath) {
-        _lastReturned = _schreierIndex;
-        didInsert = false;
+        _schreierIndex++;
+        didInsert = true;
       }
-      if (didInsert) {
-        // We exit the loop here.
-        // _schreierIndex is moved forward
-        break;
-      }
+    };
+
+    cursor->readAll(callback);
+
+    if (!shouldReturnPath) {
+      _lastReturned = _schreierIndex;
+      didInsert = false;
+    }
+    if (didInsert) {
+      // We exit the loop here.
+      // _schreierIndex is moved forward
+      break;
     }
     // Nothing found for this vertex.
     // _toSearchPos is increased so
