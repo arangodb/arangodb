@@ -90,9 +90,7 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
   ExecutorState state{ExecutorState::HASMORE};
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
 
-  LOG_DEVEL << "subquery end exec";
   while (input.hasDataRow()) {
-    LOG_DEVEL << "has data row";
     std::tie(state, inputRow) = input.nextDataRow();
     TRI_ASSERT(inputRow.isInitialized());
 
@@ -103,7 +101,6 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
       _accumulator.addValue(inputRow.getValue(_infos.getInputRegister()));
     }
   }
-  LOG_DEVEL << " upstream state: " << input.upstreamState();
   return {input.upstreamState(), NoStats{}, AqlCall{}};
 }
 

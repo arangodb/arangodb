@@ -28,6 +28,8 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/QueryOptions.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -136,7 +138,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
   }
   size_t skipped = 0;
   SharedAqlItemBlockPtr result = nullptr;
-  if (_data.front() == nullptr) {
+  if (!_data.empty() && _data.front() == nullptr) {
     dropBlock();
   }
   while (!_data.empty()) {

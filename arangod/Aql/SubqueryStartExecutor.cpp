@@ -42,17 +42,18 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   // We must not have a row pending to be written as a
   // shadow row
-  LOG_DEVEL << "subquery start";
   TRI_ASSERT(!_inputRow.isInitialized());
   if (!output.isFull()) {
     if (input.hasDataRow()) {
-      LOG_DEVEL << "subquery start write that one row";
       std::tie(_upstreamState, _inputRow) = input.nextDataRow();
       output.copyRow(_inputRow);
       output.advanceRow();
+      return {ExecutorState::DONE, NoStats{}, AqlCall{}};
     }
+  } else {
+    return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
   }
-  return {ExecutorState::DONE, NoStats{}, AqlCall{}};
+  return {input.upstreamState(), NoStats{}, AqlCall{}};
 }
 
 auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
@@ -65,22 +66,19 @@ auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall
     std::tie(_upstreamState, _inputRow) = input.nextDataRow();
     call.didSkip(1);
   }
-  return {_upstreamState, NoStats{}, 1, AqlCall{}};
+  return {ExecutorState::DONE, NoStats{}, 1, AqlCall{}};
 }
 
 auto SubqueryStartExecutor::produceShadowRow(OutputAqlItemRow& output) -> void {
+  // TRI_ASSERT(!output.isFull());
   if (_inputRow.isInitialized()) {
-    if (!output.isFull()) {
-      output.createShadowRow(_inputRow);
-      output.advanceRow();
-      _inputRow = InputAqlItemRow(CreateInvalidInputRowHint{});
-    } else {
-    }
+    output.createShadowRow(_inputRow);
+    // We do not advanceRow here to make cleaner code in ExecutionBlockImpl
+    _inputRow = InputAqlItemRow(CreateInvalidInputRowHint{});
   }
 }
 
-// FIXME: we cannot prefetch anything
-//        because we dont' have a fetcher
+// TODO: remove me
 auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
     -> std::pair<ExecutionState, size_t> {
   TRI_ASSERT(false);

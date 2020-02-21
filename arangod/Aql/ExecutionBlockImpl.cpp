@@ -1179,15 +1179,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       return {_upstreamState, skippedLocal, bypassedRange.getBlock()};
     }
 
-    //    AqlCall subqueryCall{};
     AqlCall clientCall = stack.popCall();
-    if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-      // TODO: what happens to the call from the subquery? Currently
-      // we're just discarding it
-      // subqueryCall = clientCall;
-      // (void)subqueryCall;
-      clientCall = stack.popCall();
-    }
     ExecutorState localExecutorState = ExecutorState::DONE;
 
     // We can only have returned the following internal states
@@ -1346,18 +1338,29 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(!_lastRange.hasDataRow());
           TRI_ASSERT(!_lastRange.hasShadowRow());
           size_t skippedLocal = 0;
-          auto callCopy = _upstreamRequest;
 
-          stack.pushCall(std::move(callCopy));
+          // If we are SubqueryStart, we remove the top element of the stack
+          // which belongs to the subquery enclosed by this
+          // SubqueryStart and the partnered SubqueryEnd by *not*
+          // pushing the upstream request.
+          if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
+            auto callCopy = _upstreamRequest;
+            stack.pushCall(std::move(callCopy));
+          }
 
           // Callstack handling for subqueries
           // TODO: If the subquery is modifying we need to do some
           //       special handling here
           if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
             if (_executor.isModificationSubquery()) {
+              // In a modification subquery, we have to run the executors
+              // but not return results when skipping
+
             } else {
-              if (_upstreamRequest.getOffset() > 0) {
-                stack.pushCall(AqlCall{_upstreamRequest.getOffset(), 0, 0, false});
+              // In a non-modification subquery, we can just bypass the lot
+              // Offset > 0 means we skip everything in the subquery
+              if (clientCall.getOffset() > 0) {
+                stack.pushCall(AqlCall{0, 0, 0, false});
               } else {
                 stack.pushCall(AqlCall{});
               }
@@ -1390,12 +1393,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
           // an empty input. Only exception might be COLLECT COUNT.
 
+          // If we are a SubqueryStartExecutor instance, produceRows and
+          // skipRowsRange handle the data rows, but not the shadow rows; We
+          // stored whether we produced or skipped a data row in the
+          // SubqueryStartExecutor and produce the appropriate shadow row here.
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-            // TODO: make sure ensureOutputBlock can be called here
             ensureOutputBlock(std::move(clientCall));
             _executor.produceShadowRow(*_outputItemRow);
-            // produceShadowRow modifies output
-            clientCall = _outputItemRow->getClientCall();
           }
 
           if (_lastRange.hasShadowRow()) {
@@ -1411,9 +1415,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               _outputItemRow->increaseShadowRowDepth(shadowRow);
             } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
               // if SubqueryEnd, then we consume shadow row here
-              // TODO: can this be done in a less messy way?
               if (shadowRow.isRelevant()) {
-                //
                 AqlValue value;
                 AqlValueGuard guard = _executor.stealValue(value);
                 _outputItemRow->consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);

@@ -271,8 +271,9 @@ struct ExecutorTestHelper {
   auto setExecBlock(typename E::Infos infos) -> ExecutorTestHelper& {
     auto& testeeNode = _execNodes.emplace_back(std::move(
         std::make_unique<SingletonNode>(_query.plan(), _execNodes.size())));
-    setPipeline(Pipeline{std::make_unique<ExecutionBlockImpl<E>>(_query.engine(),
-                                                      testeeNode.get(), std::move(infos))});
+    setPipeline(Pipeline{
+        std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
+                                                std::move(infos))});
     return *this;
   }
 
@@ -319,9 +320,18 @@ struct ExecutorTestHelper {
     _pipeline.get().back()->addDependency(inputBlock.get());
 
     AqlCallStack stack{_call};
-    auto const [state, skipped, result] = _pipeline.get().front()->execute(stack);
-    EXPECT_EQ(skipped, _expectedSkip);
 
+    ExecutionState state;
+    size_t skipped;
+    SharedAqlItemBlockPtr result;
+    do {
+      std::tie(state, skipped, result) = _pipeline.get().front()->execute(stack);
+      if (result != nullptr) {
+        LOG_DEVEL << *result;  // .slice().toJson();
+      }
+    } while (state != ExecutionState::DONE);
+
+    EXPECT_EQ(skipped, _expectedSkip);
     EXPECT_EQ(state, _expectedState);
     if (result == nullptr) {
       // Empty output, possible if we skip all

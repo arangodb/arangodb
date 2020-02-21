@@ -39,6 +39,7 @@
 #include "Aql/IdExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/ReturnExecutor.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SubqueryEndExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
@@ -76,7 +77,7 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
   ExecutorTestHelper<1, 1> executorTestHelper;
 
   SplicedSubqueryIntegrationTest()
-      : fakedQuery(server.createFakeQuery()), executorTestHelper(*fakedQuery) {
+      : fakedQuery(server.createFakeQuery(true)), executorTestHelper(*fakedQuery) {
     auto engine =
         std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
     fakedQuery->setEngine(engine.release());
@@ -208,6 +209,20 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
     return executorTestHelper.createExecBlock<SubqueryEndExecutor>(std::move(infos));
   }
 
+  auto createReturnExecutionBlock() -> ExecBlock {
+    auto const inputRegister = RegisterId{0};
+    auto const outputRegister = RegisterId{0};
+    auto inputRegisterSet =
+        std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{inputRegister});
+    auto outputRegisterSet =
+        std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{outputRegister});
+    auto toKeepRegisterSet = RegisterSet{0};
+
+    auto infos = ReturnExecutor::Infos(inputRegister, 1, 1, false);
+
+    return executorTestHelper.createExecBlock<ReturnExecutor>(std::move(infos));
+  }
+
   auto createProduceCall() -> ProduceCall {
     return [](AqlItemBlockInputRange& input,
               OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
@@ -243,11 +258,11 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
   auto createAssertCall() -> ProduceCall {
     return [](AqlItemBlockInputRange& input,
               OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
-      TRI_ASSERT(false);
+      EXPECT_TRUE(false);
       NoStats stats{};
       AqlCall call{};
 
-      return {input.upstreamState(), stats, call};
+      return {ExecutorState::DONE, stats, call};
     };
   }
 
@@ -256,10 +271,10 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
                   OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       auto clientCall = output.getClientCall();
 
-      TRI_ASSERT(clientCall.offset == call.offset);
-      TRI_ASSERT(clientCall.softLimit == call.softLimit);
-      TRI_ASSERT(clientCall.hardLimit == call.hardLimit);
-      TRI_ASSERT(clientCall.fullCount == call.fullCount);
+      EXPECT_EQ(clientCall.offset, call.offset);
+      EXPECT_EQ(clientCall.softLimit, call.softLimit);
+      EXPECT_EQ(clientCall.hardLimit, call.hardLimit);
+      EXPECT_EQ(clientCall.fullCount, call.fullCount);
 
       while (input.hasDataRow() && !output.isFull()) {
         auto const [state, row] = input.nextDataRow();
@@ -286,7 +301,7 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
       .setInputValueList()
       .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
       .setCall(call)
-      .expectOutput({0}, {})
+      .expectOutput({1}, {})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
       .run();
@@ -299,7 +314,7 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery) {
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
       .setCall(call)
-      .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
+      .expectOutput({1}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
       .run();
@@ -312,7 +327,7 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery_skip) {
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
       .setCall(call)
-      .expectOutput({0}, {{5}, {7}, {1}})
+      .expectOutput({1}, {{5}, {7}, {1}})
       .expectSkipped(5)
       .expectedState(ExecutionState::DONE)
       .run();
