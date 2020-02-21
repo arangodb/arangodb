@@ -69,18 +69,11 @@ using RegisterSet = std::unordered_set<RegisterId>;
 using LambdaExePassThrough = TestLambdaExecutor;
 using LambdaExe = TestLambdaSkipExecutor;
 
-class SplicedSubqueryIntegrationTest : public ::testing::Test {
+class SplicedSubqueryIntegrationTest : public AqlExecutorTestCase<> {
  protected:
-  mocks::MockAqlServer server{};
-
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
   ExecutorTestHelper<1, 1> executorTestHelper;
 
-  SplicedSubqueryIntegrationTest()
-      : fakedQuery(server.createFakeQuery(true)), executorTestHelper(*fakedQuery) {
-    auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
+  SplicedSubqueryIntegrationTest() : executorTestHelper(*fakedQuery) {
     arangodb::Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
   }
 
@@ -310,11 +303,19 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
 TEST_F(SplicedSubqueryIntegrationTest, single_subquery) {
   auto call = AqlCall{};
   auto pipeline = createSubquery();
-  executorTestHelper.setPipeline(std::move(pipeline))
+  ExecutorTestHelper<1, 2>{*fakedQuery}
+      .setPipeline(std::move(pipeline))
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
       .setCall(call)
-      .expectOutput({1}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
+      .expectOutput({0, 1}, {{1, R"([1])"},
+                             {2, R"([2])"},
+                             {5, R"([5])"},
+                             {2, R"([2])"},
+                             {1, R"([1])"},
+                             {5, R"([5])"},
+                             {7, R"([7])"},
+                             {1, R"([1])"}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
       .run();
