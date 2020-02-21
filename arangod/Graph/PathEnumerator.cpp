@@ -51,8 +51,10 @@ void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex)
   TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
 }
 
-bool PathEnumerator::keepEdge(graph::EdgeDocumentToken& eid, VPackSlice edge,
-                              velocypack::StringRef sourceVertex, size_t depth, size_t cursorId) {
+bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
+                              arangodb::velocypack::slice edge,
+                              velocypack::StringRef sourceVertex, size_t depth,
+                              size_t cursorId) {
   VPackSlice e = edge;
   if (edge.isString()) {
     e = _opts->cache()->lookupToken(eid);
@@ -60,8 +62,9 @@ bool PathEnumerator::keepEdge(graph::EdgeDocumentToken& eid, VPackSlice edge,
   return keepEdge(e, sourceVertex, depth, cursorId);
 }
 
-bool PathEnumerator::keepEdge(VPackSlice edge,
-                              arangodb::velocypack::StringRef sourceVertex, size_t depth, size_t cursorId) {
+bool PathEnumerator::keepEdge(arangodb::velocypack::Slice edge,
+                              arangodb::velocypack::StringRef sourceVertex,
+                              size_t depth, size_t cursorId) {
   if (_opts->hasEdgeFilter(depth, cursorId) &&
       !_traverser->edgeMatchesConditions(edge, sourceVertex, depth, cursorId)) {
     // This edge does not pass the filtering
