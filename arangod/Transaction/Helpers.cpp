@@ -373,9 +373,8 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
 }
 
 velocypack::StringRef transaction::helpers::extractCollectionFromId(velocypack::StringRef id) {
-  std::string_view view(id.data(), id.size());
-  auto index = view.find('/');
-  if (index == std::string_view::npos) {
+  std::size_t index = id.find('/');
+  if (index == std::string::npos) {
     // can't find the '/' to split, bail out with only logical response
     return id;
   }

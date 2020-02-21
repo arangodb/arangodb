@@ -52,23 +52,18 @@ void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex)
 }
 
 bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
-                              arangodb::velocypack::slice edge,
+                              arangodb::velocypack::Slice edge,
                               velocypack::StringRef sourceVertex, size_t depth,
                               size_t cursorId) {
-  VPackSlice e = edge;
-  if (edge.isString()) {
-    e = _opts->cache()->lookupToken(eid);
-  }
-  return keepEdge(e, sourceVertex, depth, cursorId);
-}
-
-bool PathEnumerator::keepEdge(arangodb::velocypack::Slice edge,
-                              arangodb::velocypack::StringRef sourceVertex,
-                              size_t depth, size_t cursorId) {
-  if (_opts->hasEdgeFilter(depth, cursorId) &&
-      !_traverser->edgeMatchesConditions(edge, sourceVertex, depth, cursorId)) {
-    // This edge does not pass the filtering
-    return false;
+  if (_opts->hasEdgeFilter(depth, cursorId)) {
+    VPackSlice e = edge;
+    if (edge.isString()) {
+      e = _opts->cache()->lookupToken(eid);
+    }
+    if (!_traverser->edgeMatchesConditions(e, sourceVertex, depth, cursorId)) {
+      // This edge does not pass the filtering
+      return false;
+    }
   }
 
   return _opts->destinationCollectionAllowed(edge, sourceVertex);
