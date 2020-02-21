@@ -140,7 +140,9 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
   ExecutorState state = ExecutorState::HASMORE;
   InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
 
-  while (inputRange.hasDataRow() && !output.isFull()) {
+  while (inputRange.hasDataRow()) {
+    // This executor is passthrough. it has enough place to write.
+    TRI_ASSERT(!output.isFull());
     std::tie(state, input) = inputRange.nextDataRow(); 
     TRI_ASSERT(input.isInitialized());
 
