@@ -119,42 +119,6 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<true> {
   }
 };
 
-TEST_F(EnumerateCollectionExecutorTest, the_producer_does_not_wait) {
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input.steal(), false);
-  EnumerateCollectionExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateCollectionExecutor::produceRows().
-  EnumerateCollectionStats stats{};
-
-  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-}
-
-TEST_F(EnumerateCollectionExecutorTest, the_producer_waits) {
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input.steal(), true);
-  EnumerateCollectionExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateCollectionExecutor::produceRows().
-  EnumerateCollectionStats stats{};
-
-  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-}
-
 TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input.steal(), false);
@@ -378,8 +342,8 @@ class EnumerateCollectionExecutorTestProduce
   }
 };
 
-// PARTLY DISABLED because we need to be able to compare real documents (currently not possible)
-TEST_P(EnumerateCollectionExecutorTestProduce, produce_all_documents) {
+// DISABLED because we need to be able to compare real documents (currently not possible)
+TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
   auto [split] = GetParam();
 
   uint64_t numberOfDocumentsToInsert = 10;
