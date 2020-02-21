@@ -114,8 +114,7 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
   auto state = ExecutorState::HASMORE;
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{R"("a")"}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, inputBlock, 0, inputBlock->size()};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
@@ -141,8 +140,7 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_sin
   auto inputBlock =
       buildBlock<1>(itemBlockManager,
                     MatrixBuilder<1>{{{{{R"("a")"}}}, {{{R"("b")"}}}, {{R"("c")"}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, inputBlock, 0, inputBlock->size()};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(1000, 1);
   OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
@@ -168,8 +166,7 @@ TEST_F(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
   auto inputBlock =
       buildBlock<1>(itemBlockManager,
                     MatrixBuilder<1>{{{{{R"("a")"}}}, {{{R"("b")"}}}, {{R"("c")"}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, inputBlock, 0, inputBlock->size()};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(3, 1);
   OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),

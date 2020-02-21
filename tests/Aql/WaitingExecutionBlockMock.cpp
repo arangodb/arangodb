@@ -127,13 +127,18 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
     stack.pop();
   }
   auto myCall = stack.popCall();
+
+  TRI_ASSERT(!(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0}));
+  TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.fullCount));
+  TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.hasHardLimit()));
+
   if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
-    // If we orderd waiting check on _hasWaited and wait if not
+    // If we ordered waiting check on _hasWaited and wait if not
     _hasWaited = true;
     return {ExecutionState::WAITING, 0, nullptr};
   }
   if (_variant == WaitingBehaviour::ALWAYS) {
-    // If we allways wait, reset.
+    // If we always wait, reset.
     _hasWaited = false;
   }
   size_t skipped = 0;
@@ -143,8 +148,8 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
   }
   while (!_data.empty()) {
     if (_data.front() == nullptr) {
-      if (myCall.getOffset() > 0 || myCall.getLimit() > 0) {
-        TRI_ASSERT(skipped > 0 || result != nullptr);
+      if ((skipped > 0 || result != nullptr) &&
+          !(myCall.hasHardLimit() && myCall.getLimit() == 0)) {
         // This is a specific break point return now.
         // Sorry we can only return one block.
         // This means we have prepared the first block.
@@ -207,10 +212,12 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
           dropBlock();
         }
       }
-      if (_data.empty()) {
-        return {ExecutionState::DONE, skipped, result};
-      } else {
+      if (!_data.empty()) {
         return {ExecutionState::HASMORE, skipped, result};
+      } else if (result != nullptr && result->size() < myCall.hardLimit) {
+        return {ExecutionState::HASMORE, skipped, result};
+      } else {
+        return {ExecutionState::DONE, skipped, result};
       }
     }
   }

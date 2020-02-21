@@ -122,10 +122,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     SKIP,
     // We are producing rows
     PRODUCE,
-    // We are done producing (limit reached) and drop all rows that are unneeded
+    // We are done producing (limit reached) and drop all rows that are unneeded, might count.
     FASTFORWARD,
-    // We are done producing (limit reached), but we count all rows that could be used on higher limit
-    FULLCOUNT,
     // We need more information from dependency
     UPSTREAM,
     // We are done with a subquery, we need to pass forward ShadowRows
@@ -233,6 +231,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> executeSkipRowsRange(
       AqlItemBlockInputRange& input, AqlCall& call);
 
+  auto executeFastForward(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall>;
+
   /**
    * @brief Inner getSome() part, without the tracing calls.
    */
@@ -288,7 +289,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Executor is done, we need to handle ShadowRows of subqueries.
   // In most executors they are simply copied, in subquery executors
   // there needs to be actions applied here.
-  [[nodsicard]] auto shadowRowForwarding() -> ExecState;
+  [[nodiscard]] auto shadowRowForwarding() -> ExecState;
+
+  [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
  private:
   /**

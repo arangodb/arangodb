@@ -25,12 +25,12 @@
 
 #include <array>
 #include <memory>
-
-#include <boost/variant.hpp>
+#include <variant>
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/overload.h"
 
 #include "AqlHelper.h"
 #include "VelocyPackHelper.h"
@@ -77,7 +77,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-using EntryBuilder = boost::variant<int, const char*>;
+using EntryBuilder = std::variant<int, const char*>;
 
 template <::arangodb::aql::RegisterId columns>
 using RowBuilder = std::array<EntryBuilder, columns>;
@@ -100,16 +100,6 @@ namespace aql {
 
 using namespace ::arangodb::aql;
 
-class EntryToAqlValueVisitor : public boost::static_visitor<AqlValue> {
- public:
-  AqlValue operator()(int i) const { return AqlValue{AqlValueHintInt{i}}; }
-
-  AqlValue operator()(const char* json) const {
-    VPackBufferPtr tmpVpack = vpackFromJsonString(json);
-    return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
-  }
-};
-
 template <RegisterId columns>
 SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
                                  MatrixBuilder<columns>&& matrix,
@@ -122,8 +112,16 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
   for (size_t row = 0; row < matrix.size(); row++) {
     for (RegisterId col = 0; col < columns; col++) {
       auto const& entry = matrix[row][col];
-      auto visitor = EntryToAqlValueVisitor();
-      block->setValue(row, col, boost::apply_visitor(visitor, entry));
+      auto value = std::visit(
+          overload{
+              [](int i) { return AqlValue{AqlValueHintInt{i}}; },
+              [](const char* json) {
+                VPackBufferPtr tmpVpack = vpackFromJsonString(json);
+                return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
+              },
+          },
+          entry);
+      block->setValue(row, col, value);
     }
   }
 
