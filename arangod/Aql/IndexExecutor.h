@@ -248,6 +248,8 @@ class IndexExecutor {
 
   bool needsUniquenessCheck() const noexcept;
 
+  auto returnState() const noexcept -> ExecutorState;
+
  private:
   Infos& _infos;
   DocumentProducingFunctionContext _documentProducingFunctionContext;

@@ -65,15 +65,16 @@ DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
       break;
     }
 
-    if (block == nullptr) {
-      // We're not waiting and didn't get a block, so we have to be done.
+    if (skipped == 0 && block == nullptr) {
+      // We're not waiting and didn't get any input, so we have to be done.
       TRI_ASSERT(state == ExecutionState::DONE);
       if (!advanceDependency()) {
         break;
       }
     }
 
-  } while (block == nullptr);
+  } while (skipped == 0 && block == nullptr);
+
   return {state, skipped, block};
 }
 

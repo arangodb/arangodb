@@ -59,12 +59,12 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, AqlItemBlock const
 
 bool arangodb::aql::operator==(arangodb::aql::ExecutionStats const& left,
                                arangodb::aql::ExecutionStats const& right) {
-  TRI_ASSERT(left.nodes.empty());
-  TRI_ASSERT(right.nodes.empty());
-  TRI_ASSERT(left.executionTime == 0.0);
-  TRI_ASSERT(right.executionTime == 0.0);
-  TRI_ASSERT(left.peakMemoryUsage == 0);
-  TRI_ASSERT(right.peakMemoryUsage == 0);
+  // The below information is only set on profiling in AQL
+  // They are not included on purpose as they will never be equal.
+  // * nodes
+  // * executionTime
+  // * peakMemeoryUsage
+
   // clang-format off
   return left.writesExecuted == right.writesExecuted
       && left.writesIgnored == right.writesIgnored

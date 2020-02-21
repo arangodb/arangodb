@@ -51,7 +51,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   enum WaitingBehaviour {
     NEVER,  // Never return WAITING
     ONCE,  // Return WAITING on the first execute call, afterwards return all blocks
-    ALWAYS  // Return Waiting once for every execute Call.
+    ALWAYS  // Return WAITING once for every execute Call.
   };
 
   /**
@@ -60,7 +60,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    * @param engine Required by API.
    * @param node Required by API.
    * @param data Must be a shared_ptr to an VPackArray.
-   * @param variant The waiting behaviour of this block (default ONCE), see WaitingBehaviour
+   * @param variant The waiting behaviour of this block (default ALWAYS), see WaitingBehaviour
    */
   WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
                             arangodb::aql::ExecutionNode const* node,

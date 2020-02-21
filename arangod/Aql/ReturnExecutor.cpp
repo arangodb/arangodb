@@ -70,7 +70,17 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
   TRI_IF_FAILURE("ReturnExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  Stats stats{};
+
+  auto stats = Stats{};
+  auto skippedUpstream = inputRange.skipAll();
+  call.didSkip(skippedUpstream);
+  /*
+  if (_infos.doCount()) {
+    // TODO: do we need to include counted here?
+    stats.incrCounted(skippedUpstream);
+  }
+  */
+
   while (inputRange.hasDataRow() && call.needSkipMore()) {
     // I do not think that this is actually called.
     // It will be called first to get the upstream-Call
@@ -91,6 +101,7 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
     }
     */
   }
+
   return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
