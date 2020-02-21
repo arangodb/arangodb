@@ -99,7 +99,7 @@ function vertexCollectionRestrictionSuite() {
       const query = `WITH @@vc1, @@vc2
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
                        SORT v._id
-                       RETURN DISTINCT v._id`
+                       RETURN DISTINCT v._id`;
 
       const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName}).toArray();
       const expected = [
@@ -119,7 +119,7 @@ function vertexCollectionRestrictionSuite() {
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
                        OPTIONS {vertexCollections: ["${vc1Name}", "${vc2Name}"]}
                        SORT v._id
-                       RETURN DISTINCT v._id`
+                       RETURN DISTINCT v._id`;
 
       const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
       const expected = [
@@ -139,7 +139,7 @@ function vertexCollectionRestrictionSuite() {
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
                        OPTIONS {vertexCollections: ["${vc1Name}"]}
                        SORT v._id
-                       RETURN DISTINCT v._id`
+                       RETURN DISTINCT v._id`;
 
       const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
       const expected = [
@@ -154,7 +154,7 @@ function vertexCollectionRestrictionSuite() {
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
                        OPTIONS {vertexCollections: ["${vc2Name}"]}
                        SORT v._id
-                       RETURN DISTINCT v._id`
+                       RETURN DISTINCT v._id`;
 
       const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
       const expected = [
@@ -169,7 +169,7 @@ function vertexCollectionRestrictionSuite() {
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
                        OPTIONS {bfs: true}
                        SORT v._id
-                       RETURN DISTINCT v._id`
+                       RETURN DISTINCT v._id`;
 
       const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName}).toArray();
       const expected = [
@@ -189,7 +189,7 @@ function vertexCollectionRestrictionSuite() {
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
                        OPTIONS {bfs: true, vertexCollections: ["${vc1Name}", "${vc2Name}"]}
                        SORT v._id
-                       RETURN DISTINCT v._id`
+                       RETURN DISTINCT v._id`;
 
       const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
       const expected = [
@@ -209,7 +209,7 @@ function vertexCollectionRestrictionSuite() {
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
                        OPTIONS {bfs: true, vertexCollections: ["${vc1Name}"]}
                        SORT v._id
-                       RETURN DISTINCT v._id`
+                       RETURN DISTINCT v._id`;
 
       const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
       const expected = [
@@ -224,7 +224,7 @@ function vertexCollectionRestrictionSuite() {
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
                        OPTIONS {bfs: true, vertexCollections: ["${vc2Name}"]}
                        SORT v._id
-                       RETURN DISTINCT v._id`
+                       RETURN DISTINCT v._id`;
 
       const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
       const expected = [
