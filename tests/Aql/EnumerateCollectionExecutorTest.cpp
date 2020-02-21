@@ -316,7 +316,6 @@ class EnumerateCollectionExecutorTestProduce
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.createCollection(json->slice())),
-        // fakedQuery(server.createFakeQuery(true, "return 1")),
         ast(fakedQuery.get()),
         outVariable("name", 1),
         varUsedLater(true),
@@ -326,12 +325,6 @@ class EnumerateCollectionExecutorTestProduce
         random(false),
         infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
               projections, coveringIndexAttributePositions, useRawPointers, random) {
-    // fakedQuery = _server.createFakeQuery(true, "return 1");
-    // engine =std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    // fakedQuery->setEngine(engine.release());
-    // vocbase.createCollection(json->slice());
-    // aqlCollection = aqlCollection("UnitTestCollection", &vocbase,
-    // arangodb::AccessMode::Type::READ); fakedQuery->setEngine(engine);
   }
 
   auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
@@ -385,6 +378,7 @@ class EnumerateCollectionExecutorTestProduce
   }
 };
 
+// PARTLY DISABLED because we need to be able to compare real documents (currently not possible)
 TEST_P(EnumerateCollectionExecutorTestProduce, produce_all_documents) {
   auto [split] = GetParam();
 
@@ -418,11 +412,13 @@ TEST_P(EnumerateCollectionExecutorTestProduce, produce_all_documents) {
       .run(makeInfos());
 }
 
-/*
-TEST_P(EnumerateCollectionExecutorTestProduce, produce_5_documents) {
+// DISABLED because we need to be able to compare real documents (currently not possible)
+TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
   auto [split] = GetParam();
 
-  insertDocuments(10);
+  uint64_t numberOfDocumentsToInsert = 10;
+  std::vector<std::string> queryResults;
+  auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
   ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
@@ -433,13 +429,16 @@ TEST_P(EnumerateCollectionExecutorTestProduce, produce_5_documents) {
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::HASMORE)
       .run(makeInfos());
-}*/
+}
 
-/*
-TEST_P(EnumerateCollectionExecutorTestProduce, skip_5_documents_default) {
+
+// DISABLED because we need to be able to compare real documents (currently not possible)
+TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default) {
   auto [split] = GetParam();
 
-  insertDocuments(10);
+  uint64_t numberOfDocumentsToInsert = 10;
+  std::vector<std::string> queryResults;
+  auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
   ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name":
@@ -449,7 +448,6 @@ AqlCall::Infinity{}, AqlCall::Infinity{}, false}) .expectSkipped(5) .expectOutpu
       .expectedState(ExecutionState::DONE)
       .run(makeInfos());
 }
-*/
 
 template <size_t... vs>
 const EnumerateCollectionSplitType splitIntoBlocks =
@@ -457,10 +455,9 @@ const EnumerateCollectionSplitType splitIntoBlocks =
 template <size_t step>
 const EnumerateCollectionSplitType splitStep = EnumerateCollectionSplitType{step};
 
-/*INSTANTIATE_TEST_CASE_P(EnumerateCollectionExecutor, EnumerateCollectionExecutorTestProduce,
+INSTANTIATE_TEST_CASE_P(EnumerateCollectionExecutor, EnumerateCollectionExecutorTestProduce,
                         ::testing::Values(splitIntoBlocks<2, 3>,
                                           splitIntoBlocks<3, 4>, splitStep<2>));
-*/
 
 }  // namespace aql
 }  // namespace tests
