@@ -24,6 +24,7 @@
 #ifndef ARANGOD_GRAPH_SINGLE_SERVER_EDGE_CURSOR_H
 #define ARANGOD_GRAPH_SINGLE_SERVER_EDGE_CURSOR_H 1
 
+#include <memory>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -53,7 +54,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
  private:
   BaseOptions const* _opts;
   transaction::Methods* _trx;
-  std::vector<std::vector<OperationCursor*>> _cursors;
+  std::vector<std::vector<std::unique_ptr<OperationCursor>>> _cursors;
   size_t _currentCursor;
   size_t _currentSubCursor;
   std::vector<LocalDocumentId> _cache;
@@ -69,14 +70,14 @@ class SingleServerEdgeCursor final : public EdgeCursor {
 
   void readAll(EdgeCursor::Callback const& callback) override;
 
-  std::vector<std::vector<OperationCursor*>>& getCursors() { return _cursors; }
+  std::vector<std::vector<std::unique_ptr<OperationCursor>>>& getCursors() { return _cursors; }
   
   /// @brief number of HTTP requests performed. always 0 in single server
   size_t httpRequests() const override { return 0; }
 
  private:
   // returns false if cursor can not be further advanced
-  bool advanceCursor(OperationCursor*& cursor, std::vector<OperationCursor*>& cursorSet);
+  bool advanceCursor(OperationCursor*& cursor, std::vector<std::unique_ptr<OperationCursor>>*& cursorSet);
 
   void getDocAndRunCallback(OperationCursor*, EdgeCursor::Callback const& callback);
 };

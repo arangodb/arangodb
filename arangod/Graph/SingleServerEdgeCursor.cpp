@@ -57,13 +57,7 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions const* opts,
   }
 }
 
-SingleServerEdgeCursor::~SingleServerEdgeCursor() {
-  for (auto& it : _cursors) {
-    for (auto& it2 : it) {
-      delete it2;
-    }
-  }
-}
+SingleServerEdgeCursor::~SingleServerEdgeCursor() = default;
 
 #ifdef USE_ENTERPRISE
 static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
@@ -107,19 +101,19 @@ void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, EdgeC
 }
 
 bool SingleServerEdgeCursor::advanceCursor(OperationCursor*& cursor,
-                                           std::vector<OperationCursor*>& cursorSet) {
+                                           std::vector<std::unique_ptr<OperationCursor>>*& cursorSet) {
   ++_currentSubCursor;
-  if (_currentSubCursor >= cursorSet.size()) {
+  if (_currentSubCursor >= cursorSet->size()) {
     ++_currentCursor;
     _currentSubCursor = 0;
     if (_currentCursor == _cursors.size()) {
       // We are done, all cursors exhausted.
       return false;
     }
-    cursorSet = _cursors[_currentCursor];
+    cursorSet = &_cursors[_currentCursor];
   }
 
-  cursor = cursorSet[_currentSubCursor];
+  cursor = (*cursorSet)[_currentSubCursor].get();
   // If we switch the cursor. We have to clear the cache.
   _cache.clear();
   return true;
@@ -137,22 +131,21 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // There is still something in the cache
   if (_cachePos < _cache.size()) {
     // get the collection
-    auto cur = _cursors[_currentCursor][_currentSubCursor];
-    getDocAndRunCallback(cur, callback);
+    getDocAndRunCallback(_cursors[_currentCursor][_currentSubCursor].get(), callback);
     return true;
   }
 
   // We need to refill the cache.
   _cachePos = 0;
-  auto cursorSet = _cursors[_currentCursor];
+  auto* cursorSet = &_cursors[_currentCursor];
 
   // get current cursor
-  auto cursor = cursorSet[_currentSubCursor];
+  auto cursor = (*cursorSet)[_currentSubCursor].get();
 
   // NOTE: We cannot clear the cache,
   // because the cursor expect's it to be filled.
   do {
-    if (cursorSet.empty() || !cursor->hasMore()) {
+    if (cursorSet->empty() || !cursor->hasMore()) {
       if (!advanceCursor(cursor, cursorSet)) {
         return false;
       }

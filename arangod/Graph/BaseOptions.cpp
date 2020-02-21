@@ -418,13 +418,13 @@ std::unique_ptr<EdgeCursor> BaseOptions::buildCursorLocal(arangodb::velocypack::
       TEMPORARILY_UNLOCK_NODE(idNode);
       idNode->setStringValue(vid.data(), vid.length());
     }
-    std::vector<OperationCursor*> csrs;
+    std::vector<std::unique_ptr<OperationCursor>> csrs;
     csrs.reserve(info.idxHandles.size());
     IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
       // the emplace_back cannot throw here, as we reserved enough space before
       csrs.emplace_back(
-          new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
+          std::make_unique<OperationCursor>(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
     }
     opCursors.emplace_back(std::move(csrs));
   }
