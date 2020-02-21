@@ -247,7 +247,7 @@ var waitForResult = function (config, id) {
       try {
         var progress = applier.state().state.progress;
         var msg = progress.time + ': ' + progress.message;
-        // internal.print('still synchronizing... last received status: ' + msg);
+        internal.print('still synchronizing... last received status: ' + msg);
       } catch (err) {}
     }
   }

@@ -258,6 +258,8 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
+  static std::string const RevisionCount;
+  static std::string const RevisionHash;
 
   // generic attribute names
   static std::string const AttrCoordinator;

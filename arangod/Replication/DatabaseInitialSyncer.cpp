@@ -182,16 +182,6 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
     return res;
   };
 
-  std::function<Result(VPackSlice)> insertDoc = [&](VPackSlice doc) -> Result {
-    return physical->insert(&trx, doc, mdr, options,
-                            /*lock*/ false, nullptr, nullptr);
-  };
-
-  std::function<Result(VPackSlice)> replaceDoc = [&](VPackSlice doc) -> Result {
-    return physical->replace(&trx, doc, mdr, options,
-                             /*lock*/ false, previous);
-  };
-
   std::size_t current = 0;
   auto guard = arangodb::scopeGuard(
       [&current, &stats]() -> void { stats.numDocsRequested += current; });
@@ -258,14 +248,10 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                           ": document revision is invalid");
       }
 
-      // arangodb::LocalDocumentId const existingId = physical->lookupKey(&trx, keySlice);
-      bool useReplace = false; /*existingId.isSet() &&
-                         existingId.id() > TRI_ExtractRevisionId(masterDoc);*/
-      std::function<Result(VPackSlice)>& putDoc = useReplace ? replaceDoc : insertDoc;
-
       TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
 
-      Result res = putDoc(masterDoc);
+      Result res = physical->insert(&trx, masterDoc, mdr, options,
+                                    /*lock*/ false, nullptr, nullptr);
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
@@ -276,7 +262,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
             return res;
           }
           options.indexOperationMode = arangodb::Index::OperationMode::normal;
-          res = putDoc(masterDoc);
+          res = physical->insert(&trx, masterDoc, mdr, options,
+                                 /*lock*/ false, nullptr, nullptr);
           options.indexOperationMode = arangodb::Index::OperationMode::internal;
           if (res.fail()) {
             return res;
@@ -290,9 +277,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
         }
       }
 
-      if (!useReplace) {
-        ++stats.numDocsInserted;
-      }
+      ++stats.numDocsInserted;
     }
     current += docs.length();
   }

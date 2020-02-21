@@ -493,11 +493,11 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       // Documents are stored as follows:
       // Key: 8-byte object ID of collection + 8-byte document revision ID
       _internals.reserve(4 * sizeof(uint64_t));
-      uint64ToPersistent(_internals.buffer(), first);
-      uint64ToPersistent(_internals.buffer(), second);
+      uint64ToPersistent(_internals.buffer(), first);   // objectid
+      uint64ToPersistent(_internals.buffer(), second);  // min revision
       _internals.separate();
-      uint64ToPersistent(_internals.buffer(), first);
-      uint64ToPersistent(_internals.buffer(), third);
+      uint64ToPersistent(_internals.buffer(), first);  // objectid
+      uint64ToPersistent(_internals.buffer(), third);  // max revision
       break;
     }
     case RocksDBEntryType::GeoIndexValue: {

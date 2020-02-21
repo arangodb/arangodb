@@ -41,7 +41,9 @@ template <std::size_t const BranchingBits = 3,  // 8 children per internal node,
           >
 class MerkleTree {
  protected:
-  static constexpr std::size_t CacheLineSize = 64;
+  static constexpr std::size_t CacheLineSize =
+      64;  // TODO replace with std::hardware_constructive_interference_size
+           // once supported by all necessary compilers
   static constexpr std::size_t BranchingFactor = static_cast<std::size_t>(1) << BranchingBits;
 
   struct Node {
@@ -71,7 +73,6 @@ class MerkleTree {
   static constexpr std::size_t nodeCountAtDepth(std::size_t maxDepth);
   static constexpr std::size_t nodeCountUpToDepth(std::size_t maxDepth);
   static constexpr std::size_t allocationSize(std::size_t maxDepth);
-  static constexpr bool isPowerOf2(std::size_t n);
   static constexpr std::size_t log2ceil(std::size_t n);
   static constexpr std::size_t minimumFactorFor(std::size_t current, std::size_t target);
 

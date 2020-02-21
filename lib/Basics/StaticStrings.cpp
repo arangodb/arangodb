@@ -279,6 +279,8 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
+std::string const StaticStrings::RevisionCount("count");
+std::string const StaticStrings::RevisionHash("hash");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");

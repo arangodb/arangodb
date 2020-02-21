@@ -250,6 +250,11 @@ inline T atoi_zero(char const* p, char const* e) noexcept {
   return valid ? result : 0;
 }
 
+template <typename T>
+constexpr std::enable_if_t<std::is_integral<T>::value, bool> isPowerOf2(T n) {
+  return n > 0 && (n & (n - 1)) == 0;
+}
+
 }  // namespace NumberUtils
 }  // namespace arangodb
 

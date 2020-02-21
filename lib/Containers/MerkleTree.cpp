@@ -42,6 +42,7 @@
 
 #include "MerkleTree.h"
 
+#include "Basics/NumberUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
 
@@ -88,11 +89,6 @@ constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::allocationSize(std
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
-constexpr bool MerkleTree<BranchingBits, LockStripes>::isPowerOf2(std::size_t n) {
-  return n > 0 && (n & (n - 1)) == 0;
-}
-
-template <std::size_t const BranchingBits, std::size_t const LockStripes>
 constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::log2ceil(std::size_t n) {
   if (n > (std::numeric_limits<std::size_t>::max() / 2)) {
     return 8 * sizeof(std::size_t) - 1;
@@ -125,7 +121,7 @@ constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::minimumFactorFor(
     throw std::invalid_argument("Was expecting target >= current.");
   }
 
-  if (!isPowerOf2(current)) {
+  if (!NumberUtils::isPowerOf2(current)) {
     throw std::invalid_argument("Was expecting current to be power of 2.");
   }
 
@@ -137,7 +133,7 @@ constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::minimumFactorFor(
   std::size_t rawFactor = target / current;
   std::size_t correctedFactor = static_cast<std::size_t>(1)
                                 << log2ceil(rawFactor + 1);  // force power of 2
-  TRI_ASSERT(isPowerOf2(correctedFactor));
+  TRI_ASSERT(NumberUtils::isPowerOf2(correctedFactor));
   TRI_ASSERT(target >= (current * correctedFactor / 2));
   return correctedFactor;
 }
@@ -162,6 +158,9 @@ class TestMinimumFactorFor : public MerkleTree<3, 64> {
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
 std::size_t MerkleTree<BranchingBits, LockStripes>::defaultRange(std::size_t maxDepth) {
+  // start with 64 revisions per leaf; this is arbitrary, but the key is we want
+  // to start with a relatively fine-grained tree so we can differentiate well,
+  // but we don't want to go so small that we have to resize immediately
   return nodeCountAtDepth(maxDepth) * 64;
 }
 
@@ -184,12 +183,13 @@ MerkleTree<BranchingBits, LockStripes>::fromBuffer(std::string_view buffer) {
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
-MerkleTree<BranchingBits, LockStripes>::MerkleTree(std::size_t maxDepth,
-                                                   std::size_t rangeMin, std::size_t rangeMax)
-    : _buffer(new uint8_t[allocationSize(maxDepth)]) {
+MerkleTree<BranchingBits, LockStripes>::MerkleTree(std::size_t maxDepth, std::size_t rangeMin,
+                                                   std::size_t rangeMax) {
   if (maxDepth < 2) {
     throw std::invalid_argument("Must specify a maxDepth >= 2.");
   }
+  _buffer.reset(new uint8_t[allocationSize(maxDepth)]);
+
   if (rangeMax == 0) {
     rangeMax = rangeMin + defaultRange(maxDepth);
   }

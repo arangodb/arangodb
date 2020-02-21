@@ -3100,55 +3100,57 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     TRI_voc_rid_t resumeNext = ctx.resume;
     VPackSlice range = body.at(current);
 
-    TRI_ASSERT(response.isOpenObject());
-    response.add(VPackValue("ranges"));
-    response.openArray();
-    TRI_ASSERT(response.isOpenArray());
-    bool subOpen = false;
-    while (total < limit && current < body.length()) {
-      if (!it.hasMore() || it.revision() <= range.at(0).getNumber<std::size_t>() ||
-          it.revision() > range.at(1).getNumber<std::size_t>() ||
-          (!subOpen && it.revision() <= range.at(1).getNumber<std::size_t>())) {
-        auto target = std::max(ctx.resume, range.at(0).getNumber<std::size_t>());
-        if (it.hasMore() && it.revision() < target) {
-          it.seek(target);
+    {
+      TRI_ASSERT(response.isOpenObject());
+      VPackArrayBuilder rangesGuard(&response, "ranges");
+      TRI_ASSERT(response.isOpenArray());
+      bool subOpen = false;
+      while (total < limit && current < body.length()) {
+        if (!it.hasMore() || it.revision() <= range.at(0).getNumber<std::size_t>() ||
+            it.revision() > range.at(1).getNumber<std::size_t>() ||
+            (!subOpen && it.revision() <= range.at(1).getNumber<std::size_t>())) {
+          auto target = std::max(ctx.resume, range.at(0).getNumber<std::size_t>());
+          if (it.hasMore() && it.revision() < target) {
+            it.seek(target);
+          }
+          TRI_ASSERT(!subOpen);
+          response.openArray();
+          subOpen = true;
+          resumeNext = std::max(ctx.resume + 1, range.at(0).getNumber<std::size_t>());
         }
-        TRI_ASSERT(!subOpen);
-        response.openArray();
-        subOpen = true;
-        resumeNext = std::max(ctx.resume + 1, range.at(0).getNumber<std::size_t>());
-      }
 
-      if (it.hasMore() && it.revision() >= range.at(0).getNumber<std::size_t>() &&
-          it.revision() <= range.at(1).getNumber<std::size_t>()) {
-        response.add(VPackValue(it.revision()));
-        ++total;
-        resumeNext = it.revision() + 1;
-        it.next();
-      }
+        if (it.hasMore() && it.revision() >= range.at(0).getNumber<std::size_t>() &&
+            it.revision() <= range.at(1).getNumber<std::size_t>()) {
+          response.add(VPackValue(it.revision()));
+          ++total;
+          resumeNext = it.revision() + 1;
+          it.next();
+        }
 
-      if (!it.hasMore() || it.revision() > range.at(1).getNumber<std::size_t>()) {
+        if (!it.hasMore() || it.revision() > range.at(1).getNumber<std::size_t>()) {
+          TRI_ASSERT(response.isOpenArray());
+          TRI_ASSERT(subOpen);
+          subOpen = false;
+          response.close();
+          TRI_ASSERT(response.isOpenArray());
+          resumeNext = range.at(1).getNumber<std::size_t>() + 1;
+          ++current;
+          if (current < body.length()) {
+            range = body.at(current);
+          }
+        }
+      }
+      if (subOpen) {
         TRI_ASSERT(response.isOpenArray());
-        TRI_ASSERT(subOpen);
-        subOpen = false;
         response.close();
+        subOpen = false;
         TRI_ASSERT(response.isOpenArray());
-        resumeNext = range.at(1).getNumber<std::size_t>() + 1;
-        ++current;
-        if (current < body.length()) {
-          range = body.at(current);
-        }
       }
-    }
-    if (subOpen) {
+      TRI_ASSERT(!subOpen);
       TRI_ASSERT(response.isOpenArray());
-      response.close();
-      subOpen = false;
-      TRI_ASSERT(response.isOpenArray());
+      // exit scope closes "ranges"
     }
-    TRI_ASSERT(!subOpen);
-    TRI_ASSERT(response.isOpenArray());
-    response.close();  // "ranges"
+
     TRI_ASSERT(response.isOpenObject());
 
     if (body.length() > 0 &&

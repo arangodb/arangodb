@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <type_traits>
 
 #include "Basics/Common.h"
 
@@ -40,7 +41,7 @@ uint64_t TRI_FnvHashString(char const*);
 
 /// @brief computes a FNV hash for POD types
 template <typename T>
-uint64_t TRI_FnvHashPod(T input) {
+std::enable_if_t<std::is_pod_v<T>, uint64_t> TRI_FnvHashPod(T input) {
   return TRI_FnvHashPointer(&input, sizeof(T));
 }
 

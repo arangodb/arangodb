@@ -76,6 +76,12 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ~RestReplicationHandler();
 
  public:
+  static std::string const Revisions;
+  static std::string const Tree;
+  static std::string const Ranges;
+  static std::string const Documents;
+
+ protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
@@ -88,10 +94,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const Barrier;
   static std::string const Inventory;
   static std::string const Keys;
-  static std::string const Revisions;
-  static std::string const Tree;
-  static std::string const Ranges;
-  static std::string const Documents;
   static std::string const Dump;
   static std::string const RestoreCollection;
   static std::string const RestoreIndexes;

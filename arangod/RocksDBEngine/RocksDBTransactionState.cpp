@@ -240,9 +240,6 @@ void RocksDBTransactionState::commitCollections(rocksdb::SequenceNumber lastWrit
     // we need this in case of an intermediate commit. The number of
     // initial documents is adjusted and numInserts / removes is set to 0
     // index estimator updates are buffered
-    /*TRI_IF_FAILURE("RocksDBCommitCounts") {
-      continue;
-    }*/
     coll->commitCounts(id(), lastWritten);
   }
 }
@@ -281,7 +278,6 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     // this is most likely the fill index case
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto& trxColl : _collections) {
-      //TRI_IF_FAILURE("RocksDBCommitCounts") { continue; }
       auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
       TRI_ASSERT(!rcoll->hasOperations());
       TRI_ASSERT(rcoll->stealTrackedOperations().empty());
