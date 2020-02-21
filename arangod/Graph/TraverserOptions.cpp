@@ -44,6 +44,25 @@ using namespace arangodb::transaction;
 using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+arangodb::velocypack::StringRef getEdgeDestination(arangodb::velocypack::Slice edge,
+                                                   arangodb::velocypack::StringRef origin) {
+  if (edge.isString()) {
+    return edge.stringRef();
+  }
+
+  TRI_ASSERT(edge.isObject());
+  auto from = edge.get(arangodb::StaticStrings::FromString);
+  TRI_ASSERT(from.isString());
+  if (from.stringRef() == origin) {
+    auto to = edge.get(arangodb::StaticStrings::ToString);
+    TRI_ASSERT(to.isString());
+    return to.stringRef();
+  }
+  return from.stringRef();
+}
+}  // namespace
+
 TraverserOptions::TraverserOptions(aql::Query* query)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
@@ -568,6 +587,22 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
     vertex = vertex.resolveExternal();
   }
   return evaluateExpression(expression, vertex);
+}
+
+bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
+                                                    velocypack::StringRef sourceVertex) {
+  if (!vertexCollections.empty()) {
+    auto destination = ::getEdgeDestination(edge, sourceVertex);
+    auto collection = transaction::helpers::extractCollectionFromId(destination);
+    if (std::find(vertexCollections.begin(), vertexCollections.end(),
+                  std::string_view(collection.data(), collection.size())) ==
+        vertexCollections.end()) {
+      // collection not found
+      return false;
+    }
+  }
+
+  return true;
 }
 
 EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
