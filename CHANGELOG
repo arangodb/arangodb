@@ -1,6 +1,10 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Honor `cacheEnabled` attribute when updating the properties of a collection
+  in case of the cluster. Previously, this attribute was ignored in the cluster,
+  but it shouldn't have been.
+
 * Fixed issue #11137: http-proxy can't pass delete method req.body to foxx.
 
 * Fixed a memory leak in ModificationExecutors.
