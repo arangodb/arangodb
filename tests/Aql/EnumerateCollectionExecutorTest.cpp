@@ -281,7 +281,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
 
 // This is only to get a split-type. The Type is independent of actual template parameters
 using EnumerateCollectionTestHelper =
-    ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>;
+    ExecutorTestHelper<1, 1>;
 using EnumerateCollectionSplitType = EnumerateCollectionTestHelper::SplitType;
 using EnumerateCollectionInputParam = std::tuple<EnumerateCollectionSplitType>;
 
@@ -389,7 +389,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, produce_all_documents) {
                 ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked
 
-  ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
+  ExecutorTestHelper<1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -409,7 +409,8 @@ TEST_P(EnumerateCollectionExecutorTestProduce, produce_all_documents) {
                               {R"(null)"},
                               {R"(null)"}})*/
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos());
+      .setExecBlock<EnumerateCollectionExecutor>(std::move(makeInfos()))
+      .run();
 }
 
 // DISABLED because we need to be able to compare real documents (currently not possible)
@@ -420,7 +421,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
   std::vector<std::string> queryResults;
   auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
-  ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
+  ExecutorTestHelper<1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
       // .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)
@@ -428,7 +429,8 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
       .expectSkipped(0)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::HASMORE)
-      .run(makeInfos());
+      .setExecBlock<EnumerateCollectionExecutor>(std::move(makeInfos()))
+      .run();
 }
 
 
@@ -440,13 +442,14 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default
   std::vector<std::string> queryResults;
   auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
-  ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
+  ExecutorTestHelper<1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name":
 "UnitTestCollection" })"}}}) .setInputSplitType(split) .setCall(AqlCall{5,
 AqlCall::Infinity{}, AqlCall::Infinity{}, false}) .expectSkipped(5) .expectOutput({0},
 {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos());
+      .setExecBlock<EnumerateCollectionExecutor>(std::move(makeInfos()))
+      .run();
 }
 
 template <size_t... vs>
