@@ -53,7 +53,7 @@ void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex)
 
 bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
                               arangodb::velocypack::Slice edge,
-                              velocypack::StringRef sourceVertex, size_t depth,
+                              arangodb::velocypack::StringRef sourceVertex, size_t depth,
                               size_t cursorId) {
   if (_opts->hasEdgeFilter(depth, cursorId)) {
     VPackSlice e = edge;
