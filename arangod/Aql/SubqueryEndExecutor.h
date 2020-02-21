@@ -99,7 +99,15 @@ class SubqueryEndExecutor {
   // where we have to execute the subquery)
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
-  [[nodiscard]] auto stealValue(AqlValue& result) -> AqlValueGuard;
+
+  /**
+   * @brief Consume the given shadow row and write the aggregated value to it
+   *
+   * @param shadowRow The shadow row
+   * @param output Output block
+   */
+  auto consumeShadowRow(ShadowAqlItemRow shadowRow, OutputAqlItemRow& output) -> void;
+
   [[nodiscard]] auto isModificationSubquery() const noexcept -> bool;
 
  private:

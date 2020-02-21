@@ -119,10 +119,11 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   return {input.upstreamState(), NoStats{}, 1, AqlCall{}};
 }
 
-auto SubqueryEndExecutor::stealValue(AqlValue& result) -> AqlValueGuard {
-  // TODO: meh
-  TRI_DEFER(_accumulator.reset());
-  return _accumulator.stealValue(result);
+auto SubqueryEndExecutor::consumeShadowRow(ShadowAqlItemRow shadowRow,
+                                           OutputAqlItemRow& output) -> void {
+  AqlValue value;
+  AqlValueGuard guard = _accumulator.stealValue(value);
+  output.consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
 }
 
 auto SubqueryEndExecutor::isModificationSubquery() const noexcept -> bool {

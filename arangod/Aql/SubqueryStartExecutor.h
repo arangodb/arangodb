@@ -69,7 +69,7 @@ class SubqueryStartExecutor {
 
   // Produce a shadow row *if* we have either skipped or output a datarow
   // previously
-  auto produceShadowRow(OutputAqlItemRow& output) -> void;
+  auto produceShadowRow(OutputAqlItemRow& output) -> bool;
 
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 

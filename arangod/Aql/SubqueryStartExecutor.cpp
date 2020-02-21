@@ -69,13 +69,16 @@ auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall
   return {ExecutorState::DONE, NoStats{}, 1, AqlCall{}};
 }
 
-auto SubqueryStartExecutor::produceShadowRow(OutputAqlItemRow& output) -> void {
-  // TRI_ASSERT(!output.isFull());
+auto SubqueryStartExecutor::produceShadowRow(OutputAqlItemRow& output) -> bool {
+  TRI_ASSERT(!output.isFull());
   if (_inputRow.isInitialized()) {
     output.createShadowRow(_inputRow);
+    output.advanceRow();
     // We do not advanceRow here to make cleaner code in ExecutionBlockImpl
     _inputRow = InputAqlItemRow(CreateInvalidInputRowHint{});
+    return true;
   }
+  return false;
 }
 
 // TODO: remove me

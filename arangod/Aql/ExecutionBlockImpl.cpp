@@ -1146,67 +1146,139 @@ template <>
 auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding() -> ExecState {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
-  TRI_ASSERT(_outputItemRow->allRowsUsed());
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  TRI_ASSERT(!_outputItemRow->allRowsUsed());
+  if (_lastRange.hasDataRow()) {
+    // If we have a dataRow, the executor needs to write it's output.
+    // If we get woken up by a dataRow during forwarding of ShadowRows
+    // This will return false, and if so we need to call produce instead.
+    auto didWrite = _executor.produceShadowRow(*_outputItemRow);
+    if (didWrite) {
+      // Consume the row
+      std::ignore = _lastRange.nextDataRow();
+      if (_lastRange.hasShadowRow()) {
+        // Forward the ShadowRows
+        return ExecState::SHADOWROWS;
+      }
+      // If we have more input,
+      // For now we need to return
+      // here and cannot start another subquery.
+      // We do not know what to do with the next DataRow.
+      return ExecState::DONE;
+    } else {
+      // Woken up after shadowRow forwarding
+      // Need to call the Executor
+      return ExecState::CHECKCALL;
+    }
+  } else {
+    // Need to forward the ShadowRows
+    auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+    TRI_ASSERT(shadowRow.isInitialized());
+    _outputItemRow->increaseShadowRowDepth(shadowRow);
+    TRI_ASSERT(_outputItemRow->produced());
+    _outputItemRow->advanceRow();
+    if (_lastRange.hasShadowRow()) {
+      return ExecState::SHADOWROWS;
+    }
+    // If we do not have more shadowRows
+    // we need to return.
+    return ExecState::DONE;
+  }
 }
 
 template <>
 auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding() -> ExecState {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
-  TRI_ASSERT(_outputItemRow->allRowsUsed());
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  TRI_ASSERT(!_outputItemRow->allRowsUsed());
+  if (!_lastRange.hasShadowRow()) {
+    // We got back without a ShadowRow in the LastRange
+    // Let client call again
+    return ExecState::DONE;
+  }
+  auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+  TRI_ASSERT(shadowRow.isInitialized());
+  if (shadowRow.isRelevant()) {
+    // We need to consume the row, and write the Aggregate to it.
+    _executor.consumeShadowRow(shadowRow, *_outputItemRow);
+  } else {
+    _outputItemRow->decreaseShadowRowDepth(shadowRow);
+  }
+
+  TRI_ASSERT(_outputItemRow->produced());
+  _outputItemRow->advanceRow();
+
+  if (state == ExecutorState::DONE) {
+    // We have consumed everything, we are
+    // Done with this query
+    return ExecState::DONE;
+  } else if (_lastRange.hasDataRow()) {
+    // Multiple concatenated Subqueries
+    // This case is disallowed for now, as we do not know the
+    // look-ahead call
+    TRI_ASSERT(false);
+    // If we would know we could now go into a continue with next subquery
+    // state.
+    return ExecState::DONE;
+  } else if (_lastRange.hasShadowRow()) {
+    // We still have shadowRows, we
+    // need to forward them
+    return ExecState::SHADOWROWS;
+  } else {
+    // End of input, we are done for now
+    // Need to call again
+    return ExecState::DONE;
+  }
 }
 
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
-  TRI_ASSERT(_outputItemRow->allRowsUsed());
-  if (_lastRange.hasShadowRow()) {
-    auto const& [state, shadowRow] = _lastRange.nextShadowRow();
-    TRI_ASSERT(shadowRow.isInitialized());
-
-    _outputItemRow->copyRow(shadowRow);
-
-    if (shadowRow.isRelevant()) {
-      LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
-      // We found a relevant shadow Row.
-      // We need to reset the Executor
-      // cppcheck-suppress unreadVariable
-      constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
-      InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
-    }
-
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-
-    if (_outputItemRow->allRowsUsed()) {
-      // output full.
-      // TODO LIMIT has modified this place
-      return ExecState::DONE;
-    } else if (state == ExecutorState::DONE) {
-      // We have consumed everything, we are
-      // Done with this query
-      return ExecState::DONE;
-    } else if (_lastRange.hasDataRow()) {
-      // Multiple concatenated Subqueries
-      // This case is disallowed for now, as we do not know the
-      // look-ahead call
-      TRI_ASSERT(false);
-      // If we would know we could now go into a continue with next subquery
-      // state.
-      return ExecState::DONE;
-    } else {
-      // We are either on a shadowRow or have consumed the input.
-      TRI_ASSERT(_lastRange.hasShadowRow() ||
-                 (!_lastRange.hasDataRow() && _lastRange.upstreamHasMore()));
-      // We need to consume more ShadowRows
-      return ExecState::SHADOWROWS;
-    }
+  TRI_ASSERT(!_outputItemRow->allRowsUsed());
+  if (!_lastRange.hasShadowRow()) {
+    // We got back without a ShadowRow in the LastRange
+    // Let client call again
+    return ExecState::DONE;
   }
-  // We got back without a ShadowRow in the LastRange
-  return ExecState::DONE;
+
+  auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+  TRI_ASSERT(shadowRow.isInitialized());
+
+  _outputItemRow->copyRow(shadowRow);
+
+  if (shadowRow.isRelevant()) {
+    LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
+    // We found a relevant shadow Row.
+    // We need to reset the Executor
+    // cppcheck-suppress unreadVariable
+    constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
+    InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+  }
+
+  TRI_ASSERT(_outputItemRow->produced());
+  _outputItemRow->advanceRow();
+
+  if (state == ExecutorState::DONE) {
+    // We have consumed everything, we are
+    // Done with this query
+    return ExecState::DONE;
+  } else if (_lastRange.hasDataRow()) {
+    // Multiple concatenated Subqueries
+    // This case is disallowed for now, as we do not know the
+    // look-ahead call
+    TRI_ASSERT(false);
+    // If we would know we could now go into a continue with next subquery
+    // state.
+    return ExecState::DONE;
+  } else if (_lastRange.hasShadowRow()) {
+    // We still have shadowRows, we
+    // need to forward them
+    return ExecState::SHADOWROWS;
+  } else {
+    // End of input, we are done for now
+    // Need to call again
+    return ExecState::DONE;
+  }
 }
 
 /**
@@ -1467,6 +1539,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
                 _outputItemRow->allRowsUsed()) {
               // We have a block with data, but no more place for a shadow row.
               _execState = ExecState::DONE;
+            } else if (!_lastRange.hasShadowRow() && !_lastRange.hasDataRow()) {
+              _execState = ExecState::DONE;
             } else {
               _execState = ExecState::SHADOWROWS;
             }
@@ -1547,104 +1621,31 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::SHADOWROWS: {
+          // We only get Called with something in the input.
+          TRI_ASSERT(_lastRange.hasShadowRow() || _lastRange.hasDataRow());
           LOG_QUERY("7c63c", DEBUG)
               << printTypeInfo() << " (sub-)query completed. Move ShadowRows.";
 
-          // TODO: Make sure we have space.
+          // TODO: Check if we can have the situation that we are between two shadow rows here.
+          // E.g. LastRow is releveant shadowRow. NextRow is non-relevant shadowRow.
+          // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
+          // an empty input. Only exception might be COLLECT COUNT.
+
+          if (outputIsFull()) {
+            // We need to be able to write data
+            // But maybe the existing block is full here
+            // Then we need to wake up again here.
+            returnToState = ExecState::SHADOWROWS;
+            _execState = ExecState::DONE;
+            break;
+          }
+          ensureOutputBlock(std::move(clientCall));
+
           TRI_ASSERT(!_outputItemRow->allRowsUsed());
 
           // This may write one or more rows.
           _execState = shadowRowForwarding();
           clientCall = _outputItemRow->getClientCall();
-
-          // TODO: Check if there is a situation where we are at this point, but at the end of a block
-          // Or if we would not recognize this beforehand
-          // TODO: Check if we can have the situation that we are between two shadow rows here.
-          // E.g. LastRow is releveant shadowRow. NextRow is non-relevant shadowRow.
-          // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
-          // an empty input. Only exception might be COLLECT COUNT.
-#if 0
-          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-            // On the first call the SubqueryStartExecutor needs to
-            // produce a new shadowRow, this is indicated by _lastRange
-            // pointing on a dataRow
-            if (_lastRange.hasDataRow()) {
-            ensureOutputBlock(std::move(clientCall));
-            _executor.produceShadowRow(*_outputItemRow);
-            // If there is now still a data row we need to go back into the
-
-
-            } else {
-                          // Now it needs to check if there are shad
-            }
-
-
-          }
-#endif
-          if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-          }
-          // If we are a SubqueryStartExecutor instance, produceRows and
-          // skipRowsRange handle the data rows, but not the shadow rows; We
-          // stored whether we produced or skipped a data row in the
-          // SubqueryStartExecutor and produce the appropriate shadow row here.
-          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-            ensureOutputBlock(std::move(clientCall));
-            _executor.produceShadowRow(*_outputItemRow);
-          }
-
-          if (_lastRange.hasShadowRow()) {
-            if (outputIsFull()) {
-              // We need to be able to write data
-              // But maybe the existing block is full here
-              // Then we need to wake up again here.
-              returnToState = ExecState::SHADOWROWS;
-              _execState = ExecState::DONE;
-              break;
-            }
-            auto const& [state, shadowRow] = _lastRange.nextShadowRow();
-            TRI_ASSERT(shadowRow.isInitialized());
-            ensureOutputBlock(std::move(clientCall));
-            TRI_ASSERT(_outputItemRow);
-            TRI_ASSERT(_outputItemRow->isInitialized());
-
-            // Subquery start has to increase shadowrow depth for all shadow
-            // rows that are passed through
-            if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-              _outputItemRow->increaseShadowRowDepth(shadowRow);
-            } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-              // if SubqueryEnd, then we consume shadow row here
-              if (shadowRow.isRelevant()) {
-                AqlValue value;
-                AqlValueGuard guard = _executor.stealValue(value);
-                _outputItemRow->consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
-              } else {
-                _outputItemRow->decreaseShadowRowDepth(shadowRow);
-              }
-            } else {
-              _outputItemRow->copyRow(shadowRow);
-
-              if (shadowRow.isRelevant()) {
-                LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
-                // We found a relevant shadow Row.
-                // We need to reset the Executor
-                // cppcheck-suppress unreadVariable
-                constexpr bool customInit =
-                    hasInitializeCursor<decltype(_executor)>::value;
-                InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
-              }
-            }
-
-            TRI_ASSERT(_outputItemRow->produced());
-            _outputItemRow->advanceRow();
-            clientCall = _outputItemRow->getClientCall();
-            if (_outputItemRow->allRowsUsed()) {
-              _execState = ExecState::DONE;
-            } else if (state == ExecutorState::DONE) {
-              _execState = ExecState::DONE;
-            }
-          } else {
-            _execState = ExecState::DONE;
-          }
           break;
         }
         default:
