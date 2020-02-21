@@ -331,13 +331,14 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
 
 TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
   IdExecutorInfos infos{1, {0}, {}};
-  ExecutorTestHelper<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(*fakedQuery)
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(infos))
       .setInputValueList(1, 2, 3, 4, 5, 6)
       .setCall(AqlCall{0, AqlCall::Infinity{}, 2, false})
       .expectOutput({0}, {{1}, {2}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .run(std::move(infos));
+      .run();
 }
 
 /**

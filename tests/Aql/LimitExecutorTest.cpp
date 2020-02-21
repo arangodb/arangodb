@@ -371,8 +371,8 @@ TEST_P(LimitExecutorTest, testSuite) {
   expectedStats += expectedLimitStats;
 
   // fakedQuery->queryOptions().profile = PROFILE_LEVEL_TRACE_2;
-  ExecutorTestHelper<LimitExecutor>{*fakedQuery}
-      .setTesteeNodeType(ExecutionNode::LIMIT)
+  ExecutorTestHelper<>{*fakedQuery}
+      .setExecBlock<LimitExecutor>(std::move(infos), ExecutionNode::LIMIT)
       .setInputFromRowNum(numInputRows)
       .setInputSplitType(inputLengths)
       .setCall(clientCall)
@@ -381,7 +381,7 @@ TEST_P(LimitExecutorTest, testSuite) {
       .expectOutput({0}, expectedOutput)
       .expectSkipped(expectedSkipped)
       .expectedState(expectedState)
-      .run(std::move(infos), true);
+      .run(true);
 }
 
 auto printTestCase =
