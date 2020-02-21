@@ -222,6 +222,7 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
         _cursor->skipAll(skipped);
         stats.incrScanned(skipped);
         _documentProducingFunctionContext.getAndResetNumScanned();
+        TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
       }
       _cursorHasMore = _cursor->hasMore();
       call.didSkip(skipped);
