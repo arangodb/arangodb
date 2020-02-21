@@ -136,7 +136,10 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 template <typename Executor>
 constexpr bool isNewStyleExecutor =
     is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, HashedCollectExecutor, IndexExecutor,
+                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor, EnumerateCollectionExecutor,
+                // TODO: re-enable after new subquery end & start are implemented
+                // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
+                HashedCollectExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                 TestLambdaExecutor,
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
@@ -1075,7 +1078,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
   static_assert(useExecutor ==
-                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, HashedCollectExecutor, IndexExecutor,
+                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
+                                 HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                                  TestLambdaSkipExecutor,
 #endif
