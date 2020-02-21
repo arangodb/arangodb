@@ -31,6 +31,13 @@
 #include <velocypack/velocypack-aliases.h>
 #include <string>
 
+#include <tao/json/forward.hpp>
+
+namespace tao::json {
+   template< template< typename... > class Traits >
+   class basic_schema;
+}
+
 namespace arangodb {
 
 enum class ValidationLevel {
@@ -62,6 +69,9 @@ struct ValidatorAQL : public ValidatorBase {
   bool validateDerived(VPackSlice slice) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
   std::string const type() const override;
+private:
+  std::shared_ptr<tao::json::basic_schema<tao::json::traits>> _schema;
+  VPackBuilder _builder;
 };
 
 struct ValidatorBool : public ValidatorBase {

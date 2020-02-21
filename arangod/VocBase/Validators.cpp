@@ -25,6 +25,8 @@
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
 
+#include <validation/validation.hpp>
+
 namespace arangodb {
 
 std::string const&  to_string(ValidationLevel level) {
@@ -127,10 +129,17 @@ std::string const ValidatorBool::type() const {
 
 /////////////////////////////////////////////////////////////////////////////
 
-ValidatorAQL::ValidatorAQL(VPackSlice params) : ValidatorBase(params) {}
-bool ValidatorAQL::validateDerived(VPackSlice slice) const { return true; }
+ValidatorAQL::ValidatorAQL(VPackSlice params) : ValidatorBase(params) {
+  auto taoValue = validation::slice_to_value(params);
+  _schema = std::make_shared<tao::json::schema>(taoValue);
+  _builder.add(params);
+}
+bool ValidatorAQL::validateDerived(VPackSlice slice) const {
+  auto taoValue = validation::slice_to_value(slice);
+  return validation::validate(taoValue, *_schema);
+}
 void ValidatorAQL::toVelocyPackDerived(VPackBuilder& b) const {
-  b.add(StaticStrings::ValidatorParameterRule, VPackValue(std::string("test")));
+  b.add(StaticStrings::ValidatorParameterRule, _builder.slice());
 }
 std::string const ValidatorAQL::type() const {
   return StaticStrings::ValidatorTypeAQL;

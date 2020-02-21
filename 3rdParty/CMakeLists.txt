@@ -20,10 +20,6 @@ if (${IPO_ENABLED})
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
 endif ()
 
-set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build test programs"    FORCE)
-set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build example programs" FORCE)
-add_subdirectory(taocpp-json)
-
 ################################################################################
 ## ZLIB
 ################################################################################
@@ -239,3 +235,9 @@ target_include_directories(fuerte SYSTEM PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
+
+
+set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build test programs"    FORCE)
+set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build example programs" FORCE)
+add_subdirectory(taocpp-json EXCLUDE_FROM_ALL)
+add_subdirectory(json-schema-validation EXCLUDE_FROM_ALL)
