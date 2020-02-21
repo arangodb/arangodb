@@ -640,7 +640,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
   } else if (AqlCall::IsGetSomeCall(myCall)) {
     auto const [state, block] = getSome(myCall.getLimit());
     // We do not need to count as softLimit will be overwritten, and hard cannot be set.
-    if (stack.empty() && myCall.hasHardLimit() && block != nullptr) {
+    if (stack.empty() && myCall.hasHardLimit() && !myCall.needsFullCount() && block != nullptr) {
       // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
       myCall.didProduce(block->size());
       if (myCall.getLimit() == 0) {
