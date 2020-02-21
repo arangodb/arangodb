@@ -57,7 +57,7 @@ class SubqueryStartNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
-  bool isModificationNode();
+  bool isModificationSubqueryNode();
 
  private:
   /// @brief This is only required for Explain output.

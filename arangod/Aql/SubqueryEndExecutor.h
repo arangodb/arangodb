@@ -134,8 +134,6 @@ class SubqueryEndExecutor {
   SubqueryEndExecutorInfos& _infos;
 
   Accumulator _accumulator;
-
-  State _state{State::ACCUMULATE_DATA_ROWS};
 };
 }  // namespace aql
 }  // namespace arangodb
