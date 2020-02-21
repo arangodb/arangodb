@@ -159,110 +159,14 @@ EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 
 std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRows(
     OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  EnumerateCollectionStats stats{};
-  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
-  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
-  _documentProducingFunctionContext.setOutputRow(&output);
-
-  while (true) {
-    if (!_cursorHasMore) {
-      std::tie(_state, _currentRow) = _fetcher.fetchRow();
-
-      if (_state == ExecutionState::WAITING) {
-        return {_state, stats};
-      }
-
-      if (!_currentRow) {
-        TRI_ASSERT(_state == ExecutionState::DONE);
-        return {_state, stats};
-      }
-      _cursor->reset();
-      _cursorHasMore = _cursor->hasMore();
-      continue;
-    }
-
-    TRI_ASSERT(_currentRow.isInitialized());
-
-    TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    if (_infos.getProduceResult()) {
-      // properly build up results by fetching the actual documents
-      // using nextDocument()
-      _cursorHasMore =
-          _cursor->nextDocument(_documentProducer, output.numRowsLeft() /*atMost*/);
-    } else {
-      // performance optimization: we do not need the documents at all,
-      // so just call next()
-      TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
-      _cursorHasMore =
-          _cursor->next(getNullCallback<false>(_documentProducingFunctionContext),
-                        output.numRowsLeft() /*atMost*/);
-    }
-
-    stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
-    stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
-
-    if (_state == ExecutionState::DONE && !_cursorHasMore) {
-      return {_state, stats};
-    }
-    return {ExecutionState::HASMORE, stats};
-  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollectionExecutor::skipRows(
     size_t const toSkip) {
-  EnumerateCollectionStats stats{};
-  TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (!_cursorHasMore) {
-    std::tie(_state, _currentRow) = _fetcher.fetchRow();
-
-    if (_state == ExecutionState::WAITING) {
-      return std::make_tuple(_state, stats, 0);  // tuple, cannot use initializer list due to build failure
-    }
-
-    if (!_currentRow) {
-      TRI_ASSERT(_state == ExecutionState::DONE);
-      return std::make_tuple(_state, stats, 0);  // tuple, cannot use initializer list due to build failure
-    }
-
-    _cursor->reset();
-    _cursorHasMore = _cursor->hasMore();
-  }
-
-  TRI_ASSERT(_currentRow.isInitialized());
-  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
-  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
-
-  uint64_t actuallySkipped = 0;
-  if (_infos.getFilter() == nullptr) {
-    _cursor->skip(toSkip, actuallySkipped);
-    stats.incrScanned(actuallySkipped);
-    _documentProducingFunctionContext.getAndResetNumScanned();
-  } else {
-    _cursor->nextDocument(_documentSkipper, toSkip);
-    size_t filtered = _documentProducingFunctionContext.getAndResetNumFiltered();
-    size_t scanned = _documentProducingFunctionContext.getAndResetNumScanned();
-    TRI_ASSERT(scanned >= filtered);
-    stats.incrFiltered(filtered);
-    stats.incrScanned(scanned);
-    actuallySkipped = scanned - filtered;
-  }
-  _cursorHasMore = _cursor->hasMore();
-
-  if (_state == ExecutionState::DONE && !_cursorHasMore) {
-    return std::make_tuple(ExecutionState::DONE, stats,
-                           actuallySkipped);  // tuple, cannot use initializer list due to build failure
-  }
-
-  return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped);  // tuple, cannot use initializer list due to build failure
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
