@@ -285,6 +285,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
   [[nodiscard]] auto nextState(AqlCall const& call) const -> ExecState;
 
+  // Executor is done, we need to handle ShadowRows of subqueries.
+  // In most executors they are simply copied, in subquery executors
+  // there needs to be actions applied here.
+  [[nodsicard]] auto shadowRowForwarding() -> ExecState;
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this

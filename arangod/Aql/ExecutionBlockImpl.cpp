@@ -1121,6 +1121,71 @@ ExecutionBlockImpl<Executor>::executeSkipRowsRange(AqlItemBlockInputRange& input
   return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
 }
 
+template <>
+auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding() -> ExecState {
+  TRI_ASSERT(_outputItemRow);
+  TRI_ASSERT(_outputItemRow->isInitialized());
+  TRI_ASSERT(_outputItemRow->allRowsUsed());
+}
+
+template <>
+auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding() -> ExecState {
+  TRI_ASSERT(_outputItemRow);
+  TRI_ASSERT(_outputItemRow->isInitialized());
+  TRI_ASSERT(_outputItemRow->allRowsUsed());
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
+  TRI_ASSERT(_outputItemRow);
+  TRI_ASSERT(_outputItemRow->isInitialized());
+  TRI_ASSERT(_outputItemRow->allRowsUsed());
+  if (_lastRange.hasShadowRow()) {
+    auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+    TRI_ASSERT(shadowRow.isInitialized());
+
+    _outputItemRow->copyRow(shadowRow);
+
+    if (shadowRow.isRelevant()) {
+      LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
+      // We found a relevant shadow Row.
+      // We need to reset the Executor
+      // cppcheck-suppress unreadVariable
+      constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
+      InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+    }
+
+    TRI_ASSERT(_outputItemRow->produced());
+    _outputItemRow->advanceRow();
+
+    if (_outputItemRow->allRowsUsed()) {
+      // output full.
+      // TODO LIMIT has modified this place
+      return ExecState::DONE;
+    } else if (state == ExecutorState::DONE) {
+      // We have consumed everything, we are
+      // Done with this query
+      return ExecState::DONE;
+    } else if (_lastRange.hasDataRow()) {
+      // Multiple concatenated Subqueries
+      // This case is disallowed for now, as we do not know the
+      // look-ahead call
+      TRI_ASSERT(false);
+      // If we would know we could now go into a continue with next subquery
+      // state.
+      return ExecState::DONE;
+    } else {
+      // We are either on a shadowRow or have consumed the input.
+      TRI_ASSERT(_lastRange.hasShadowRow() ||
+                 (!_lastRange.hasDataRow() && _lastRange.upstreamHasMore()));
+      // We need to consume more ShadowRows
+      return ExecState::SHADOWROWS;
+    }
+  }
+  // We got back without a ShadowRow in the LastRange
+  return ExecState::DONE;
+}
+
 /**
  * @brief This is the central function of an executor, and it acts like a
  * coroutine: It can be called multiple times and keeps state across
@@ -1386,13 +1451,40 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         case ExecState::SHADOWROWS: {
           LOG_QUERY("7c63c", DEBUG)
               << printTypeInfo() << " (sub-)query completed. Move ShadowRows.";
+
+          // TODO: Make sure we have space.
+          TRI_ASSERT(!_outputItemRow->allRowsUsed());
+
+          // This may write one or more rows.
+          _execState = shadowRowForwarding();
+          clientCall = _outputItemRow->getClientCall();
+
           // TODO: Check if there is a situation where we are at this point, but at the end of a block
           // Or if we would not recognize this beforehand
           // TODO: Check if we can have the situation that we are between two shadow rows here.
           // E.g. LastRow is releveant shadowRow. NextRow is non-relevant shadowRow.
           // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
           // an empty input. Only exception might be COLLECT COUNT.
+#if 0
+          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            // On the first call the SubqueryStartExecutor needs to
+            // produce a new shadowRow, this is indicated by _lastRange
+            // pointing on a dataRow
+            if (_lastRange.hasDataRow()) {
+            ensureOutputBlock(std::move(clientCall));
+            _executor.produceShadowRow(*_outputItemRow);
+            // If there is now still a data row we need to go back into the
 
+
+            } else {
+                          // Now it needs to check if there are shad
+            }
+
+
+          }
+#endif
+          if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+          }
           // If we are a SubqueryStartExecutor instance, produceRows and
           // skipRowsRange handle the data rows, but not the shadow rows; We
           // stored whether we produced or skipped a data row in the
