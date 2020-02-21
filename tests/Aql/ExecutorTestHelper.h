@@ -491,7 +491,7 @@ struct ExecutorTestHelper {
   arangodb::aql::Query& _query;
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;
   Pipeline _pipeline;
-  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
+  std::vector<std::unique_ptr<MockTypedNode>> _execNodes;
 };
 
 enum class ExecutorCall {
