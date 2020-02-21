@@ -26,21 +26,26 @@
 #include "gtest/gtest.h"
 
 #include "AqlItemBlockHelper.h"
+#include "MockTypedNode.h"
 #include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
+#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Logger/LogMacros.h"
 
+#include <numeric>
 #include <tuple>
 
 namespace arangodb {
@@ -215,6 +220,15 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto setInputFromRowNum(size_t rows) -> ExecutorTestHelper& {
+    static_assert(inputColumns == 1);
+    _input.clear();
+    for (auto i = size_t{0}; i < rows; ++i) {
+      _input.emplace_back(RowBuilder<1>{i});
+    }
+    return *this;
+  }
+
   auto setInputSplit(std::vector<std::size_t> const& list) -> ExecutorTestHelper& {
     _inputSplit = list;
     return *this;
@@ -234,6 +248,17 @@ struct ExecutorTestHelper {
   auto setOutputSplit(T&& list) -> ExecutorTestHelper& {
     ASSERT_FALSE(true);
     _outputSplit = std::forward<T>(list);
+    return *this;
+  }
+
+  auto setTesteeNodeType(ExecutionNode::NodeType nodeType) -> ExecutorTestHelper& {
+    _testeeNodeType = nodeType;
+    return *this;
+  }
+
+  auto setWaitingBehaviour(WaitingExecutionBlockMock::WaitingBehaviour waitingBehaviour)
+      -> ExecutorTestHelper& {
+    _waitingBehaviour = waitingBehaviour;
     return *this;
   }
 
@@ -268,19 +293,32 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  /**
+   * @brief Set the Execution Block object
+   *
+   * @tparam E The executor
+   * @param infos to build the executor
+   * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
+   * @return ExecutorTestHelper&
+   */
   template <typename E>
-  auto setExecBlock(typename E::Infos infos) -> ExecutorTestHelper& {
+  auto setExecBlock(typename E::Infos infos,
+                    ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+      -> ExecutorTestHelper& {
     auto& testeeNode = _execNodes.emplace_back(std::move(
-        std::make_unique<SingletonNode>(_query.plan(), _execNodes.size())));
-    setPipeline(Pipeline{std::make_unique<ExecutionBlockImpl<E>>(_query.engine(),
-                                                      testeeNode.get(), std::move(infos))});
+        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
+    setPipeline(Pipeline{
+        std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
+                                                std::move(infos))});
     return *this;
   }
 
   template <typename E>
-  auto createExecBlock(typename E::Infos infos) -> ExecBlock {
-    auto& testeeNode = _execNodes.emplace_back(std::move(
-        std::make_unique<SingletonNode>(_query.plan(), _execNodes.size())));
+  auto createExecBlock(typename E::Infos infos,
+                       ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+      -> ExecBlock {
+    auto& testeeNode = _execNodes.emplace_back(
+        std::move(std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
     return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
                                                    std::move(infos));
   }
@@ -310,20 +348,48 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto run() -> void {
+  auto run(bool const loop = false) -> void {
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
 
     auto inputBlock = generateInputRanges(itemBlockManager);
 
+    auto skippedTotal = size_t{0};
+    auto finalState = ExecutionState::HASMORE;
+
     TRI_ASSERT(!_pipeline.empty());
     _pipeline.get().back()->addDependency(inputBlock.get());
 
-    AqlCallStack stack{_call};
-    auto const [state, skipped, result] = _pipeline.get().front()->execute(stack);
-    EXPECT_EQ(skipped, _expectedSkip);
+    BlockCollector allResults{&itemBlockManager};
 
-    EXPECT_EQ(state, _expectedState);
+    if (!loop) {
+      AqlCallStack stack{_call};
+      auto const [state, skipped, result] = _pipeline.get().front()->execute(stack);
+      skippedTotal = skipped;
+      finalState = state;
+      if (result != nullptr) {
+        allResults.add(result);
+      }
+    } else {
+      auto call = _call;
+      do {
+        AqlCallStack stack{call};
+        auto const [state, skipped, result] = _pipeline.get().front()->execute(stack);
+        finalState = state;
+        skippedTotal += skipped;
+        if (result != nullptr) {
+          allResults.add(result);
+        }
+        call = _call;
+        call.didSkip(skippedTotal);
+        call.didProduce(allResults.totalSize());
+      } while (finalState != ExecutionState::DONE &&
+               (!call.hasSoftLimit() || (call.getLimit() + call.getOffset()) > 0));
+    }
+
+    EXPECT_EQ(skippedTotal, _expectedSkip);
+    EXPECT_EQ(finalState, _expectedState);
+    SharedAqlItemBlockPtr result = allResults.steal();
     if (result == nullptr) {
       // Empty output, possible if we skip all
       EXPECT_EQ(_output.size(), 0)
@@ -366,6 +432,8 @@ struct ExecutorTestHelper {
     for (auto const& value : _input) {
       matrix.push_back(value);
 
+      TRI_ASSERT(!_inputSplit.valueless_by_exception());
+
       bool openNewBlock =
           std::visit(overload{[&](VectorSizeT& list) {
                                 if (*iter != *end && matrix.size() == **iter) {
@@ -397,9 +465,10 @@ struct ExecutorTestHelper {
       blockDeque.emplace_back(nullptr);
     }
 
-    return std::make_unique<WaitingExecutionBlockMock>(
-        _query.engine(), _dummyNode.get(), std::move(blockDeque),
-        WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+    return std::make_unique<WaitingExecutionBlockMock>(_query.engine(),
+                                                       _dummyNode.get(),
+                                                       std::move(blockDeque),
+                                                       _waitingBehaviour);
   }
 
   AqlCall _call;
@@ -410,6 +479,9 @@ struct ExecutorTestHelper {
   ExecutionState _expectedState;
   ExecutionStats _expectedStats;
   bool _testStats;
+  ExecutionNode::NodeType _testeeNodeType{ExecutionNode::MAX_NODE_TYPE_VALUE};
+  WaitingExecutionBlockMock::WaitingBehaviour _waitingBehaviour =
+      WaitingExecutionBlockMock::NEVER;
   bool _unorderedOutput;
   bool _appendEmptyBlock;
   std::size_t _unorderedSkippedRows;
@@ -420,7 +492,7 @@ struct ExecutorTestHelper {
   arangodb::aql::Query& _query;
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;
   Pipeline _pipeline;
-  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
+  std::vector<std::unique_ptr<MockTypedNode>> _execNodes;
 };
 
 enum class ExecutorCall {

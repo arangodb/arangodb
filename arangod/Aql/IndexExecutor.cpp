@@ -484,7 +484,8 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
       case Type::Document:
         TRI_ASSERT(_documentSkipper != nullptr);
         _cursor->nextDocument(_documentSkipper, toSkip);
-        break;;
+        break;
+        ;
     }
     skipped = _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
   } else {
@@ -735,7 +736,9 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
       bool more = getCursor().readIndex(output);
       TRI_ASSERT(more == getCursor().hasMore());
 
-      LOG_DEVEL_IDX << "IndexExecutor::produceRows::innerLoop output.numRowsWritten() == " << output.numRowsWritten();
+      LOG_DEVEL_IDX
+          << "IndexExecutor::produceRows::innerLoop output.numRowsWritten() == "
+          << output.numRowsWritten();
       // NOTE: more => output.isFull() does not hold, if we do uniqness checks.
       // The index iterator does still count skipped rows for limit.
       // Nevertheless loop here, the cursor has more so we will retigger
@@ -744,19 +747,15 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
       // Or the cursor is done, so we need to advance
     }
 
-
     stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
     stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
   }
 
-
-  bool reportDone = _state == ExecutorState::DONE && !_input.isInitialized();
-
   AqlCall upstreamCall;
   upstreamCall.fullCount = clientCall.needsFullCount();
 
-  LOG_DEVEL_IDX << "IndexExecutor::produceRows reporting state " << (reportDone ? ExecutorState::DONE : ExecutorState::HASMORE);
-  return {reportDone ? ExecutorState::DONE : ExecutorState::HASMORE, stats, upstreamCall};
+  LOG_DEVEL_IDX << "IndexExecutor::produceRows reporting state " << returnState();
+  return {returnState(), stats, upstreamCall};
 }
 
 auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
@@ -775,21 +774,22 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
   IndexStats stats{};
 
   while (clientCall.needSkipMore()) {
-    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipped " << _skipped
-                  << " " << clientCall.getOffset();
+    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipped " << _skipped << " "
+                  << clientCall.getOffset();
     // get an input row first, if necessary
     if (!_input.isInitialized()) {
       std::tie(_state, _input) = inputRange.peekDataRow();
-      LOG_DEVEL_IDX
-          << "IndexExecutor::skipRowsRange input not initialized, peek next row: " << _state
-          << " " << std::boolalpha << _input.isInitialized();
+      LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange input not initialized, "
+                       "peek next row: "
+                    << _state << " " << std::boolalpha << _input.isInitialized();
 
       if (_input.isInitialized()) {
         LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange initIndexes";
         initIndexes(_input);
         if (!advanceCursor()) {
-          LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange failed to advanceCursor "
-                           "after init";
+          LOG_DEVEL_IDX
+              << "IndexExecutor::skipRowsRange failed to advanceCursor "
+                 "after init";
           std::ignore = inputRange.nextDataRow();
           _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
           // just to validate that after continue we get into retry mode
@@ -809,9 +809,14 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
       continue;
     }
 
-    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipIndex("
-                  << clientCall.getOffset() << ")";
-    size_t skippedNow = getCursor().skipIndex(clientCall.getOffset());
+    auto toSkip = clientCall.getOffset();
+    if (toSkip == 0) {
+      TRI_ASSERT(clientCall.needsFullCount());
+      toSkip = ExecutionBlock::SkipAllSize();
+    }
+    TRI_ASSERT(toSkip > 0);
+    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipIndex(" << toSkip << ")";
+    size_t skippedNow = getCursor().skipIndex(toSkip);
     LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipIndex(...) == " << skippedNow;
 
     stats.incrScanned(skippedNow);
@@ -823,9 +828,18 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
   _skipped = 0;
 
   AqlCall upstreamCall;
-  upstreamCall.fullCount = clientCall.needsFullCount();
 
+  LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange returning " << returnState()
+                << " " << skipped << " " << upstreamCall;
+  return {returnState(), stats, skipped, upstreamCall};
+}
 
-  LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange returning " << _state << " " << skipped << " " << upstreamCall;
-  return {_state, stats, skipped, upstreamCall};
+auto IndexExecutor::returnState() const noexcept -> ExecutorState {
+  if (_input.isInitialized()) {
+    // We are still working.
+    // TODO: Potential optimization: We can ask if the cursor has more, or there
+    // are other cursors.
+    return ExecutorState::HASMORE;
+  }
+  return _state;
 }
