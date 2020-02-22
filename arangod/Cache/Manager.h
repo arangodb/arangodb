@@ -75,6 +75,32 @@ class Manager {
  protected:
   typedef std::function<bool(std::function<void()>)> PostFn;
 
+  class ReadLocker {
+    public:
+     explicit ReadLocker(basics::ReadWriteSpinLock& lock);
+     ~ReadLocker();
+    private:
+     basics::ReadWriteSpinLock& _lock;
+  };
+  
+  class WriteLocker {
+    public:
+     explicit WriteLocker(basics::ReadWriteSpinLock& lock);
+     WriteLocker(basics::ReadWriteSpinLock& lock, bool condition);
+     ~WriteLocker();
+    private:
+     basics::ReadWriteSpinLock& _lock;
+     bool _doLock;
+  };
+  
+  class WriteUnlocker {
+    public:
+     explicit WriteUnlocker(basics::ReadWriteSpinLock& lock);
+     ~WriteUnlocker();
+    private:
+     basics::ReadWriteSpinLock& _lock;
+  };
+ 
  public:
   static const uint64_t minSize;
   typedef FrequencyBuffer<uint64_t> AccessStatBuffer;
