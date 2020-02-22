@@ -40,10 +40,7 @@ class Traverser;
 
 class ClusterEdgeCursor : public graph::EdgeCursor {
  public:
-  // Traverser Variant
-  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, uint64_t, graph::BaseOptions const*);
-  // ShortestPath Variant
-  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, bool isBackward, graph::BaseOptions const*);
+  explicit ClusterEdgeCursor(graph::BaseOptions const* opts);
 
   ~ClusterEdgeCursor() = default;
 
@@ -54,7 +51,7 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
   /// @brief number of HTTP requests performed.
   size_t httpRequests() const override { return _httpRequests; }
 
- private:
+ protected:
   std::vector<arangodb::velocypack::Slice> _edgeList;
 
   size_t _position;
@@ -62,6 +59,26 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
   arangodb::graph::ClusterTraverserCache* _cache;
   size_t _httpRequests;
 };
+
+class ClusterTraverserEdgeCursor final : public ClusterEdgeCursor {
+ public:
+
+  explicit ClusterTraverserEdgeCursor(graph::BaseOptions const* opts);
+  
+  void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) override;
+};
+
+class ClusterShortestPathEdgeCursor final : public ClusterEdgeCursor {
+ public:
+
+  explicit ClusterShortestPathEdgeCursor(graph::BaseOptions const* opts, bool backward);
+  
+  void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) override;
+
+ private:
+  bool const _backward;
+};
+
 }  // namespace traverser
 }  // namespace arangodb
 

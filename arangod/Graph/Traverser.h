@@ -57,7 +57,6 @@ class Query;
 
 namespace graph {
 class BreadthFirstEnumerator;
-class NeighborsEnumerator;
 class TraverserCache;
 }  // namespace graph
 
@@ -116,7 +115,6 @@ class TraversalPath {
 class Traverser {
   friend class arangodb::graph::BreadthFirstEnumerator;
   friend class DepthFirstEnumerator;
-  friend class arangodb::graph::NeighborsEnumerator;
 #ifdef USE_ENTERPRISE
   friend class SmartDepthFirstPathEnumerator;
   friend class SmartBreadthFirstPathEnumerator;

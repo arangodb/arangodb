@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "BaseOptions.h"
 #include "Graph/EdgeCursor.h"
 
 #include <velocypack/StringRef.h>
@@ -37,6 +38,10 @@ namespace arangodb {
 class LocalDocumentId;
 struct OperationCursor;
 class LogicalCollection;
+
+namespace aql {
+struct Variable;
+}
 
 namespace transaction {
 class Methods;
@@ -54,15 +59,21 @@ class SingleServerEdgeCursor final : public EdgeCursor {
  private:
   BaseOptions const* _opts;
   transaction::Methods* _trx;
+  aql::Variable const* _tmpVar;
+  // TODO: make this a flat vector
   std::vector<std::vector<std::unique_ptr<OperationCursor>>> _cursors;
   size_t _currentCursor;
   size_t _currentSubCursor;
   std::vector<LocalDocumentId> _cache;
   size_t _cachePos;
   std::vector<size_t> const* _internalCursorMapping;
+  std::vector<BaseOptions::LookupInfo> const& _lookupInfo;
 
  public:
-  explicit SingleServerEdgeCursor(BaseOptions const* options, std::vector<size_t> const* mapping = nullptr);
+  explicit SingleServerEdgeCursor(BaseOptions const* options, 
+                                  aql::Variable const* tmpVar,
+                                  std::vector<size_t> const* mapping,
+                                  std::vector<BaseOptions::LookupInfo> const& lookupInfo);
 
   ~SingleServerEdgeCursor();
 
@@ -70,17 +81,22 @@ class SingleServerEdgeCursor final : public EdgeCursor {
 
   void readAll(EdgeCursor::Callback const& callback) override;
 
-  std::vector<std::vector<std::unique_ptr<OperationCursor>>>& getCursors() { return _cursors; }
-  
   /// @brief number of HTTP requests performed. always 0 in single server
   size_t httpRequests() const override { return 0; }
-
+  
+  void rearm(arangodb::velocypack::StringRef vertex, uint64_t depth) override;
+  
  private:
   // returns false if cursor can not be further advanced
   bool advanceCursor(OperationCursor*& cursor, std::vector<std::unique_ptr<OperationCursor>>*& cursorSet);
 
   void getDocAndRunCallback(OperationCursor*, EdgeCursor::Callback const& callback);
+
+  void buildLookupInfo(arangodb::velocypack::StringRef vertex); 
+
+  void addCursor(BaseOptions::LookupInfo const& info, arangodb::velocypack::StringRef vertex);
 };
+
 }  // namespace graph
 }  // namespace arangodb
 

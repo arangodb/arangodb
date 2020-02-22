@@ -115,13 +115,12 @@ bool BreadthFirstEnumerator::next() {
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const nextVertex = _schreier[nextIdx].vertex;
 
-    auto cursor = _opts->buildCursor(nextVertex, _currentDepth);
-    incHttpRequests(cursor->httpRequests());
+    EdgeCursor* cursor = getCursor(nextVertex, _currentDepth);
     bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
     bool didInsert = false;
 
-    auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice e,
-                        size_t cursorIdx) -> void {
+    cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e,
+                         size_t cursorIdx) -> void {
       if (!keepEdge(eid, e, nextVertex, _currentDepth, cursorIdx)) {
         return;
       }
@@ -153,9 +152,9 @@ bool BreadthFirstEnumerator::next() {
         _schreierIndex++;
         didInsert = true;
       }
-    };
-
-    cursor->readAll(callback);
+    });
+    
+    incHttpRequests(cursor->httpRequests());
 
     if (!shouldReturnPath) {
       _lastReturned = _schreierIndex;
@@ -320,4 +319,13 @@ bool BreadthFirstEnumerator::shouldPrune() {
     }
   }
   return false;
+}
+    
+EdgeCursor* BreadthFirstEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
+  if (currentDepth >= _cursors.size()) {
+    _cursors.emplace_back(_opts->buildCursor(currentDepth));
+  }
+  EdgeCursor* cursor = _cursors.at(currentDepth).get();
+  cursor->rearm(nextVertex, currentDepth);
+  return cursor;
 }

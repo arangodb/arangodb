@@ -71,7 +71,9 @@ struct ShortestPathOptions : public BaseOptions {
 
   arangodb::velocypack::Slice getStart() const;
   arangodb::velocypack::Slice getEnd() const;
-
+  
+  std::unique_ptr<EdgeCursor> buildCursor(bool backward);
+  
   /// @brief  Test if we have to use a weight attribute
   bool useWeight() const;
 
@@ -92,11 +94,7 @@ struct ShortestPathOptions : public BaseOptions {
 
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;
-
-  std::unique_ptr<EdgeCursor> buildCursor(arangodb::velocypack::StringRef vid) const;
-
-  std::unique_ptr<EdgeCursor> buildReverseCursor(arangodb::velocypack::StringRef vid) const;
-
+  
   void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
 
   void isQueryKilledCallback() const;

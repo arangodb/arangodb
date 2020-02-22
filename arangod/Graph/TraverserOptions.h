@@ -50,6 +50,10 @@ class TraversalNode;
 struct Variable;
 }  // namespace aql
 
+namespace graph {
+class EdgeCursor;
+}
+
 namespace traverser {
 
 class ClusterTraverser;
@@ -129,9 +133,9 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
 
-  std::unique_ptr<graph::EdgeCursor> buildCursor(arangodb::velocypack::StringRef vid, uint64_t depth) const;
-
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
+  
+  std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
   double estimateCost(size_t& nrItems) const override;
 

@@ -131,7 +131,9 @@ class DepthFirstEnumerator final : public PathEnumerator {
   /// @brief The vector of EdgeCursors to walk through.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::unique_ptr<graph::EdgeCursor>> _edgeCursors;
+  std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
+
+  size_t _activeCursors;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Flag if we need to prune the next path
@@ -157,6 +159,8 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
  private:
   bool shouldPrune();
+  
+  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
 
   velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result);
 };

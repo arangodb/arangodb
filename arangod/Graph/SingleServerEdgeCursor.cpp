@@ -43,14 +43,20 @@ using namespace arangodb::graph;
 ////////////////////////////////////////////////////////////////////////////////
 
 SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions const* opts,
-                                               std::vector<size_t> const* mapping)
+                                               aql::Variable const* tmpVar,
+                                               std::vector<size_t> const* mapping,
+                                               std::vector<BaseOptions::LookupInfo> const& lookupInfo)
     : _opts(opts),
       _trx(opts->trx()),
+      _tmpVar(tmpVar),
       _currentCursor(0),
       _currentSubCursor(0),
       _cachePos(0),
-      _internalCursorMapping(mapping) {
+      _internalCursorMapping(mapping),
+      _lookupInfo(lookupInfo) {
   _cache.reserve(1000);
+  TRI_ASSERT(_opts->cache() != nullptr);
+
   if (_opts->cache() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "no cache present for single server edge cursor");
@@ -102,6 +108,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, EdgeC
 
 bool SingleServerEdgeCursor::advanceCursor(OperationCursor*& cursor,
                                            std::vector<std::unique_ptr<OperationCursor>>*& cursorSet) {
+  TRI_ASSERT(!_cursors.empty());
   ++_currentSubCursor;
   if (_currentSubCursor >= cursorSet->size()) {
     ++_currentCursor;
@@ -123,6 +130,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // fills callback with next EdgeDocumentToken and Slice that contains the
   // ohter side of the edge (we are standing on a node and want to iterate all
   // connected edges
+  TRI_ASSERT(!_cursors.empty());
 
   if (_currentCursor == _cursors.size()) {
     return false;
@@ -201,6 +209,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
 }
 
 void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
+  TRI_ASSERT(!_cursors.empty());
   size_t cursorId = 0;
   for (_currentCursor = 0; _currentCursor < _cursors.size(); ++_currentCursor) {
     if (_internalCursorMapping != nullptr) {
@@ -249,5 +258,97 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
         cursor->all(cb);
       }
     }
+  }
+}
+  
+void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint64_t /*depth*/) {
+  _currentCursor = 0;
+  _currentSubCursor = 0;
+  _cache.clear();
+  _cachePos = 0;
+
+  if (_cursors.empty()) {
+    buildLookupInfo(vertex);
+    return;
+  }
+
+  size_t i = 0;
+  for (auto& info : _lookupInfo) {
+    auto& node = info.indexCondition;
+    TRI_ASSERT(node->numMembers() > 0);
+    if (info.conditionNeedUpdate) {
+      // We have to inject _from/_to iff the condition needs it
+      auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
+      TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+      TRI_ASSERT(dirCmp->numMembers() == 2);
+
+      auto idNode = dirCmp->getMemberUnchecked(1);
+      TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+      TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+      // must edit node in place; TODO replace node?
+      TEMPORARILY_UNLOCK_NODE(idNode);
+      idNode->setStringValue(vertex.data(), vertex.length());
+    }
+
+    auto& csrs = _cursors[i++];
+    IndexIteratorOptions opts;
+    size_t j = 0;
+    for (auto const& it : info.idxHandles) {
+      auto* cursor = csrs[j].get();
+      IndexIterator* idxIterator = cursor->indexIterator();
+      if (idxIterator->canRearm()) {
+        idxIterator->rearm(node, _tmpVar, opts);
+        cursor->reset();
+      } else {
+        csrs[j] = std::make_unique<OperationCursor>(_trx->indexScanForCondition(it, node, _tmpVar, opts));
+      }
+      ++j;
+    }
+  }
+}
+
+void SingleServerEdgeCursor::buildLookupInfo(arangodb::velocypack::StringRef vertex) { 
+  TRI_ASSERT(_cursors.empty());
+  _cursors.reserve(_lookupInfo.size());
+    
+  if (_internalCursorMapping == nullptr) {
+    for (auto& info : _lookupInfo) {
+      addCursor(info, vertex);
+    }
+  } else {
+    for (auto& index : *_internalCursorMapping) {
+      TRI_ASSERT(index < _lookupInfo.size());
+      auto& info = _lookupInfo[index];
+      addCursor(info, vertex);
+    }
+  }
+  TRI_ASSERT(_internalCursorMapping == nullptr || _internalCursorMapping->size() == _cursors.size());
+}
+
+void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info, arangodb::velocypack::StringRef vertex) {
+  auto& node = info.indexCondition;
+  TRI_ASSERT(node->numMembers() > 0);
+  if (info.conditionNeedUpdate) {
+    // We have to inject _from/_to iff the condition needs it
+    auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
+    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+    TRI_ASSERT(dirCmp->numMembers() == 2);
+
+    auto idNode = dirCmp->getMemberUnchecked(1);
+    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+    // must edit node in place; TODO replace node?
+    TEMPORARILY_UNLOCK_NODE(idNode);
+    idNode->setStringValue(vertex.data(), vertex.length());
+  }
+  
+  IndexIteratorOptions opts;
+
+  _cursors.emplace_back();
+  auto& csrs = _cursors.back();
+  csrs.reserve(info.idxHandles.size());
+  for (auto const& it : info.idxHandles) {
+    csrs.emplace_back(
+        std::make_unique<OperationCursor>(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
   }
 }

@@ -31,6 +31,7 @@
 #include "Basics/tryEmplaceHelper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
+#include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/SingleServerTraverser.h"
 #include "Indexes/Index.h"
 
@@ -605,16 +606,19 @@ bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
   return true;
 }
 
-std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
-    arangodb::velocypack::StringRef vid, uint64_t depth) const {
+std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(uint64_t depth) {
+  ensureCache();
+
   if (_isCoordinator) {
-    return std::make_unique<ClusterEdgeCursor>(vid, depth, this);
+    return std::make_unique<ClusterTraverserEdgeCursor>(this);
   }
+  
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
-    return buildCursorLocal(vid, specific->second);
+    return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr, specific->second);
   }
-  return buildCursorLocal(vid, _baseLookupInfos);
+
+  return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr, _baseLookupInfos);
 }
 
 void TraverserOptions::linkTraverser(ClusterTraverser* trav) {

@@ -27,6 +27,9 @@
 #include "Basics/Common.h"
 #include "Graph/PathEnumerator.h"
 
+#include <memory>
+#include <vector>
+
 namespace arangodb {
 
 namespace traverser {
@@ -35,6 +38,7 @@ struct TraverserOptions;
 }  // namespace traverser
 
 namespace graph {
+class EdgeCursor;
 
 class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator {
  private:
@@ -89,6 +93,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   /// @brief position in _toSearch. If this is >= _toSearch.size() we are done
   ///        with this depth.
   size_t _toSearchPos;
+
+  std::vector<std::unique_ptr<EdgeCursor>> _cursors;
 
  public:
   BreadthFirstEnumerator(arangodb::traverser::Traverser* traverser,
@@ -155,6 +161,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
 
   bool shouldPrune();
+
+  EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
 };
 }  // namespace graph
 }  // namespace arangodb

@@ -30,6 +30,8 @@
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
+using namespace arangodb;
+
 using PathEnumerator = arangodb::traverser::PathEnumerator;
 using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
 using Traverser = arangodb::traverser::Traverser;
@@ -70,7 +72,9 @@ bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
 }
 
 DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : PathEnumerator(traverser, opts), _pruneNext(false) {}
+    : PathEnumerator(traverser, opts), 
+      _activeCursors(0),
+      _pruneNext(false) {}
 
 DepthFirstEnumerator::~DepthFirstEnumerator() = default;
 
@@ -99,10 +103,9 @@ bool DepthFirstEnumerator::next() {
     if (_enumeratedPath.edges.size() < _opts->maxDepth && !_pruneNext) {
       // We are not done with this path, so
       // we reserve the cursor for next depth
-      auto cursor = _opts->buildCursor(arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()),
-                                       _enumeratedPath.edges.size());
+      graph::EdgeCursor* cursor = getCursor(arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()), _enumeratedPath.edges.size());
       incHttpRequests(cursor->httpRequests());
-      _edgeCursors.emplace_back(std::move(cursor));
+      ++_activeCursors;
     } else {
       if (!_enumeratedPath.edges.empty()) {
         // This path is at the end. cut the last step
@@ -164,14 +167,13 @@ bool DepthFirstEnumerator::next() {
 
         _enumeratedPath.edges.push_back(std::move(eid));
         foundPath = true;
-        return;
       }
       // Vertex Invalid. Do neither insert edge nor vertex
     };
 
-    while (!_edgeCursors.empty()) {
-      TRI_ASSERT(_edgeCursors.size() == _enumeratedPath.edges.size() + 1);
-      auto& cursor = _edgeCursors.back();
+    while (_activeCursors > 0) {
+      TRI_ASSERT(_activeCursors == _enumeratedPath.edges.size() + 1);
+      auto& cursor = _cursors[_activeCursors - 1];
 
       if (cursor->next(callback)) {
         if (foundPath) {
@@ -186,7 +188,8 @@ bool DepthFirstEnumerator::next() {
         }
       } else {
         // cursor is empty.
-        _edgeCursors.pop_back();
+        TRI_ASSERT(_activeCursors > 0);
+        --_activeCursors;
         if (!_enumeratedPath.edges.empty()) {
           _enumeratedPath.edges.pop_back();
           _enumeratedPath.vertices.pop_back();
@@ -194,7 +197,7 @@ bool DepthFirstEnumerator::next() {
       }
     }
 
-    if (_edgeCursors.empty()) {
+    if (_activeCursors == 0) {
       // If we get here all cursors are exhausted.
       _enumeratedPath.edges.clear();
       _enumeratedPath.vertices.clear();
@@ -268,4 +271,13 @@ bool DepthFirstEnumerator::shouldPrune() {
     }
   }
   return false;
+}
+
+graph::EdgeCursor* DepthFirstEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
+  if (currentDepth >= _cursors.size()) {
+    _cursors.emplace_back(_opts->buildCursor(currentDepth));
+  }
+  graph::EdgeCursor* cursor = _cursors.at(currentDepth).get();
+  cursor->rearm(nextVertex, currentDepth);
+  return cursor;
 }

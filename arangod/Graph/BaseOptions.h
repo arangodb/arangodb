@@ -55,7 +55,7 @@ class SingleServerEdgeCursor;
 class TraverserCache;
 
 struct BaseOptions {
- protected:
+  public:
   struct LookupInfo {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
@@ -123,8 +123,6 @@ struct BaseOptions {
 
   aql::Query* query() const;
 
-  TraverserCache* cache() const;
-
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
 
@@ -136,6 +134,8 @@ struct BaseOptions {
   virtual double estimateCost(size_t& nrItems) const = 0;
 
   TraverserCache* cache();
+  TraverserCache* cache() const;
+  void ensureCache();
 
   void activateCache(bool enableDocumentCache,
                      std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
@@ -157,10 +157,7 @@ struct BaseOptions {
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
                               std::string const& collectionName,
                               std::string const& attributeName, aql::AstNode* condition);
-
-  std::unique_ptr<EdgeCursor> buildCursorLocal(arangodb::velocypack::StringRef vid,
-                                               std::vector<LookupInfo> const&) const;
-
+  
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
