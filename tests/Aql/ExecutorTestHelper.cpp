@@ -90,10 +90,18 @@ auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
   }
 
   for (size_t row = 0; row < (std::min)(actual->size(), expected->size()); ++row) {
+    // Compare registers
     for (RegisterId reg = 0; reg < outRegs; ++reg) {
       RegisterId actualRegister =
           onlyCompareRegisters ? onlyCompareRegisters->at(reg) : reg;
       ValidateAqlValuesAreEqual(actual, row, actualRegister, expected, row, reg);
+    }
+    // Compare shadowRows
+    EXPECT_EQ(actual->isShadowRow(row), expected->isShadowRow(row));
+    if (actual->isShadowRow(row) && expected->isShadowRow(row)) {
+      ShadowAqlItemRow actualShadowRow{actual, row};
+      ShadowAqlItemRow expectedShadowRow{expected, row};
+      EXPECT_EQ(actualShadowRow.getDepth(), expectedShadowRow.getDepth());
     }
   }
 }
@@ -112,6 +120,13 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
     std::optional<std::vector<RegisterId>> const& onlyCompareRegisters) -> void {
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
+  EXPECT_FALSE(actual->hasShadowRows())
+      << "unordered validation does not support shadowRows yet. If you need "
+         "this please implement!";
+  EXPECT_FALSE(expected->hasShadowRows())
+      << "unordered validation does not support shadowRows yet. If you need "
+         "this please implement!";
+
   EXPECT_EQ(actual->size() + numRowsNotContained, expected->size());
 
   RegisterId outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
@@ -159,6 +174,16 @@ AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase()
     : fakedQuery{_server->createFakeQuery(enableQueryTrace)} {
   auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
   fakedQuery->setEngine(engine.release());
+  if constexpr (enableQueryTrace) {
+    Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
+  }
+}
+
+template <bool enableQueryTrace>
+AqlExecutorTestCase<enableQueryTrace>::~AqlExecutorTestCase() {
+  if constexpr (enableQueryTrace) {
+    Logger::QUERIES.setLogLevel(LogLevel::INFO);
+  }
 }
 
 template <bool enableQueryTrace>

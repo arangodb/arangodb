@@ -111,7 +111,7 @@ class AqlExecutorTestCase : public ::testing::Test {
 
  protected:
   AqlExecutorTestCase();
-  virtual ~AqlExecutorTestCase() = default;
+  virtual ~AqlExecutorTestCase();
 
   /**
    * @brief Creates and manages a ExecutionNode.
@@ -267,9 +267,12 @@ struct ExecutorTestHelper {
   }
 
   auto expectOutput(std::array<RegisterId, outputColumns> const& regs,
-                    MatrixBuilder<outputColumns> const& out) -> ExecutorTestHelper& {
+                    MatrixBuilder<outputColumns> const& out,
+                    std::vector<std::pair<size_t, uint64_t>> const& shadowRows = {})
+      -> ExecutorTestHelper& {
     _outputRegisters = regs;
     _output = out;
+    _outputShadowRows = shadowRows;
     return *this;
   }
 
@@ -400,7 +403,7 @@ struct ExecutorTestHelper {
           << "Executor does not yield output, although it is expected";
     } else {
       SharedAqlItemBlockPtr expectedOutputBlock =
-          buildBlock<outputColumns>(itemBlockManager, std::move(_output));
+          buildBlock<outputColumns>(itemBlockManager, std::move(_output), _outputShadowRows);
       std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
                                            _outputRegisters.end());
       if (_unorderedOutput) {
@@ -479,6 +482,7 @@ struct ExecutorTestHelper {
   AqlCallStack _callStack{AqlCall{}};
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
+  std::vector<std::pair<size_t, uint64_t>> _outputShadowRows{};
   std::array<RegisterId, outputColumns> _outputRegisters;
   std::size_t _expectedSkip;
   ExecutionState _expectedState;
