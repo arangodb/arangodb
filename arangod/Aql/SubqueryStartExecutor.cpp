@@ -40,8 +40,11 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
 
 auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  // We must not have a row pending to be written as a
-  // shadow row
+  if (_inputRow.isInitialized()) {
+    // We have not been able to report the ShadowRow.
+    // Simply return DONE to trigger Impl to fetch shadow row instead.
+    return {ExecutorState::DONE, NoStats{}, AqlCall{}};
+  }
   TRI_ASSERT(!_inputRow.isInitialized());
   TRI_ASSERT(!output.isFull());
   if (input.hasDataRow()) {

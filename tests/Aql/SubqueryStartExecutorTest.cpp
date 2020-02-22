@@ -53,16 +53,6 @@ ExecutorInfos MakeBaseInfos(RegisterId numRegs) {
   }
   return ExecutorInfos(emptyRegisterList, emptyRegisterList, numRegs, numRegs, {}, toKeep);
 }
-
-void TestShadowRow(SharedAqlItemBlockPtr const& block, size_t row, bool isRelevant) {
-  EXPECT_TRUE(block->isShadowRow(row));
-  // We do this additional if, in order to allow the outer test loop to continue
-  // even if we do not have a shadow row.
-  if (block->isShadowRow(row)) {
-    ShadowAqlItemRow shadow{block, row};
-    EXPECT_EQ(shadow.isRelevant(), isRelevant) << "Testing row " << row;
-  }
-}
 }  // namespace
 
 class SubqueryStartExecutorTest : public AqlExecutorTestCase<true> {
@@ -111,78 +101,79 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
       .run();
 }
 
-TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_single_pass) {
-  auto infos = MakeBaseInfos(1);
-  SubqueryStartExecutor testee(fetcher, infos);
+// NOTE: The following two tests exclude each other.
+// Right now we can only support 1 ShadowRow per request, we cannot do a look-ahead of
+// calls. As soon as we can this test needs to re removed, and the one blow needs to be activated.
+TEST_F(SubqueryStartExecutorTest,
+       adds_only_one_shadowrow_even_if_more_input_is_available_in_single_pass) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::HASMORE)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run();
+}
 
-  NoStats stats{};
-  auto state = ExecutorState::HASMORE;
+// NOTE: This test and the one right above do exclude each other.
+// This is the behaviour we would like to have eventually
+// As soon as we can support Call look-aheads we need to enable this test.
+// and it needs to pass then
+TEST_F(SubqueryStartExecutorTest, DISABLED_adds_a_shadowrow_after_every_input_line_in_single_pass) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}},
+                    {{1, 0}, {3, 0}, {5, 0}})
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run();
+}
 
-  auto inputBlock =
-      buildBlock<1>(itemBlockManager,
-                    MatrixBuilder<1>{{{{{R"("a")"}}}, {{{R"("b")"}}}, {{R"("c")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
-
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(1000, 1);
-  OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-
-  std::tie(state, stats, call) = testee.produceRows(input, output);
-
-  EXPECT_EQ(state, ExecutorState::DONE);
-  EXPECT_FALSE(output.produced());
-  EXPECT_EQ(output.numRowsWritten(), 6);
-
-  block = output.stealBlock();
-  EXPECT_FALSE(block->isShadowRow(0));
-  TestShadowRow(block, 1, true);
-  EXPECT_FALSE(block->isShadowRow(2));
-  TestShadowRow(block, 3, true);
-  EXPECT_FALSE(block->isShadowRow(4));
-  TestShadowRow(block, 5, true);
+// NOTE: As soon as the single_pass test is enabled this test is superflous.
+// It will be identical to the one above
+TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}},
+                    {{1, 0}, {3, 0}, {5, 0}})
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run(true);
 }
 
 TEST_F(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
-  auto infos = MakeBaseInfos(1);
-  auto inputBlock =
-      buildBlock<1>(itemBlockManager,
-                    MatrixBuilder<1>{{{{{R"("a")"}}}, {{{R"("b")"}}}, {{R"("c")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  // NOTE: This test relies on batchSizes beeing handled correctly and we do not over-allocate memory
+  // Also it tests, that ShadowRows go into place accounting of the output block (count as 1 line)
 
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(3, 1);
-  OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-
-  SubqueryStartExecutor testee(fetcher, infos);
-
-  NoStats stats{};
-  auto state = ExecutorState::HASMORE;
-  {
-    std::tie(state, stats, call) = testee.produceRows(input, output);
-
-    EXPECT_EQ(state, ExecutorState::HASMORE);
-    EXPECT_FALSE(output.produced());
-    EXPECT_EQ(output.numRowsWritten(), 3);
-
-    block = output.stealBlock();
-    EXPECT_FALSE(block->isShadowRow(0));
-    TestShadowRow(block, 1, true);
-    EXPECT_FALSE(block->isShadowRow(2));
+  // NOTE: Reduce batch size to 1, to enforce a too small output block
+  ExecutionBlock::setDefaultBatchSize(1);
+  TRI_DEFER(ExecutionBlock::setDefaultBatchSize(ExecutionBlock::DefaultBatchSize);) {
+    // First test: Validate that the shadowRow is not written
+    // We only do a single call here
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::HASMORE)
+        .expectOutput({0}, {{R"("a")"}}, {})
+        .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+        .run();
   }
   {
-    SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(3, 1);
-    OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear()};
-
-    std::tie(state, stats, call) = testee.produceRows(input, output);
-
-    EXPECT_EQ(state, ExecutorState::DONE);
-    EXPECT_FALSE(output.produced());
-    EXPECT_EQ(output.numRowsWritten(), 3);
-
-    block = output.stealBlock();
-    TestShadowRow(block, 0, true);
-    EXPECT_FALSE(block->isShadowRow(1));
-    TestShadowRow(block, 2, true);
+    // Second test: Validate that the shadowRow is eventually written
+    // if we call often enough
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::DONE)
+        .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
+        .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+        .run(true);
   }
 }
