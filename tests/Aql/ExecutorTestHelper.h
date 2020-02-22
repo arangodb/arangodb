@@ -203,8 +203,13 @@ struct ExecutorTestHelper {
         _query(query),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
+  auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
+    _callStack = stack;
+    return *this;
+  }
+
   auto setCall(AqlCall c) -> ExecutorTestHelper& {
-    _call = c;
+    _callStack = AqlCallStack{c};
     return *this;
   }
 
@@ -362,28 +367,28 @@ struct ExecutorTestHelper {
     BlockCollector allResults{&itemBlockManager};
 
     if (!loop) {
-      AqlCallStack stack{_call};
-      auto const [state, skipped, result] = _pipeline.get().front()->execute(stack);
+      auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
       skippedTotal = skipped;
       finalState = state;
       if (result != nullptr) {
         allResults.add(result);
       }
     } else {
-      auto call = _call;
       do {
-        AqlCallStack stack{call};
-        auto const [state, skipped, result] = _pipeline.get().front()->execute(stack);
+        auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
         finalState = state;
+        auto call = _callStack.popCall();
         skippedTotal += skipped;
+        call.didSkip(skipped);
         if (result != nullptr) {
+          call.didProduce(result->size());
           allResults.add(result);
         }
-        call = _call;
-        call.didSkip(skippedTotal);
-        call.didProduce(allResults.totalSize());
+        _callStack.pushCall(std::move(call));
+
       } while (finalState != ExecutionState::DONE &&
-               (!call.hasSoftLimit() || (call.getLimit() + call.getOffset()) > 0));
+               (!_callStack.peek().hasSoftLimit() ||
+                (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
     }
 
     EXPECT_EQ(skippedTotal, _expectedSkip);
@@ -470,7 +475,8 @@ struct ExecutorTestHelper {
                                                        _waitingBehaviour);
   }
 
-  AqlCall _call;
+  // Default initialize with a fetchAll call.
+  AqlCallStack _callStack{AqlCall{}};
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
   std::array<RegisterId, outputColumns> _outputRegisters;
