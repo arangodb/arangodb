@@ -20,8 +20,10 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
+
+#include "ExecutorTestHelper.h"
+#include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockHelper.h"
@@ -63,13 +65,17 @@ void TestShadowRow(SharedAqlItemBlockPtr const& block, size_t row, bool isReleva
 }
 }  // namespace
 
-class SubqueryStartExecutorTest : public ::testing::Test {
+class SubqueryStartExecutorTest : public AqlExecutorTestCase<> {
  protected:
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher{
       itemBlockManager, VPackParser::fromJson("[]")->steal(), false};
   AqlCall call{};
+
+  auto queryStack(AqlCall fromSubqueryEnd, AqlCall insideSubquery) const -> AqlCallStack {
+    AqlCallStack stack(fromSubqueryEnd);
+    stack.pushCall(std::move(insideSubquery));
+    return stack;
+  }
 };
 
 TEST_F(SubqueryStartExecutorTest, check_properties) {
@@ -84,24 +90,14 @@ TEST_F(SubqueryStartExecutorTest, check_properties) {
 }
 
 TEST_F(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
-  auto infos = MakeBaseInfos(1);
-
-  SubqueryStartExecutor testee(fetcher, infos);
-
-  NoStats stats{};
-  auto state = ExecutorState::HASMORE;
-
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE};
-
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(1000, 1);
-  OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-
-  std::tie(state, stats, call) = testee.produceRows(input, output);
-
-  EXPECT_EQ(state, ExecutorState::DONE);
-  EXPECT_FALSE(output.produced());
-  EXPECT_EQ(output.numRowsWritten(), 0);
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {})
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run();
 }
 
 TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
