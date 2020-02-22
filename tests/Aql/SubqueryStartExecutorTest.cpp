@@ -65,7 +65,7 @@ void TestShadowRow(SharedAqlItemBlockPtr const& block, size_t row, bool isReleva
 }
 }  // namespace
 
-class SubqueryStartExecutorTest : public AqlExecutorTestCase<> {
+class SubqueryStartExecutorTest : public AqlExecutorTestCase<true> {
  protected:
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher{
       itemBlockManager, VPackParser::fromJson("[]")->steal(), false};
@@ -101,29 +101,14 @@ TEST_F(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
 }
 
 TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(1000, 1);
-
-  auto infos = MakeBaseInfos(1);
-  SubqueryStartExecutor testee(fetcher, infos);
-
-  NoStats stats{};
-  auto state = ExecutorState::HASMORE;
-
-  auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{R"("a")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
-
-  OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-
-  std::tie(state, stats, call) = testee.produceRows(input, output);
-
-  EXPECT_EQ(state, ExecutorState::DONE);
-  EXPECT_FALSE(output.produced());
-  EXPECT_EQ(output.numRowsWritten(), 2);
-
-  block = output.stealBlock();
-  EXPECT_FALSE(block->isShadowRow(0));
-  TestShadowRow(block, 1, true);
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run();
 }
 
 TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_single_pass) {

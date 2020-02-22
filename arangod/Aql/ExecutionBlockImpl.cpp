@@ -1151,10 +1151,8 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding() -> ExecSta
     // If we have a dataRow, the executor needs to write it's output.
     // If we get woken up by a dataRow during forwarding of ShadowRows
     // This will return false, and if so we need to call produce instead.
-    auto didWrite = _executor.produceShadowRow(*_outputItemRow);
+    auto didWrite = _executor.produceShadowRow(_lastRange, *_outputItemRow);
     if (didWrite) {
-      // Consume the row
-      std::ignore = _lastRange.nextDataRow();
       if (_lastRange.hasShadowRow()) {
         // Forward the ShadowRows
         return ExecState::SHADOWROWS;
@@ -1288,7 +1286,6 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
  * EXECUTOR => Call executeSkipRowsRange, but do not report what has been skipped.
  *             (This instance is used to make sure Modifications are performed, or stats are correct)
  * FETCHER => Do not bother the Executor, drop all from input, without further reporting
- *
  */
 enum class FastForwardVariant { FULLCOUNT, EXECUTOR, FETCHER };
 
@@ -1313,6 +1310,10 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
                                                       AqlCall& clientCall)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
   TRI_ASSERT(isNewStyleExecutor<Executor>);
+  if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+    // Do not fastForward anything, the Subquery start will handle it by itself
+    return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}};
+  }
   auto type = fastForwardType(clientCall, _executor);
   switch (type) {
     case FastForwardVariant::FULLCOUNT:
@@ -1593,10 +1594,18 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             }
           }
           std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
-          // As the stack is copied into the fetcher, we need to pop off our call again.
-          // If we use other datastructures or moving we may hand over ownership of the stack here
-          // instead and no popCall is necessary.
-          stack.popCall();
+
+          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            // Do not pop the call, we did not put it on.
+            // However we need it for accounting later.
+          } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+          } else {
+            // As the stack is copied into the fetcher, we need to pop off our call again.
+            // If we use other datastructures or moving we may hand over ownership of the stack here
+            // instead and no popCall is necessary.
+            stack.popCall();
+          }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           TRI_ASSERT(subqueryLevelBefore == stack.subqueryLevel());
 #endif
