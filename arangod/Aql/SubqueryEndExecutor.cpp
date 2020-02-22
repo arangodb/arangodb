@@ -87,6 +87,11 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
 
 auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  // We can not account for skipped rows here.
+  // If we get this we have invalid logic either in the upstream
+  // produced by this Executor
+  // or in the reporting by the Executor data is requested from
+  TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state{ExecutorState::HASMORE};
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
 
@@ -106,6 +111,11 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
 
 auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  // We can not account for skipped rows here.
+  // If we get this we have invalid logic either in the upstream
+  // produced by this Executor
+  // or in the reporting by the Executor data is requested from
+  TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state;
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
 
