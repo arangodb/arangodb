@@ -290,14 +290,16 @@ bool BreadthFirstEnumerator::shouldPrune() {
   if (!_opts->usesPrune()) {
     return false;
   }
+  
+  transaction::BuilderLeaser pathBuilder(_opts->trx());
 
   // evaluator->evaluate() might access these, so they have to live long enough.
-  // To make that perfectly clear, I added a scope.
-  transaction::BuilderLeaser pathBuilder(_opts->trx());
   aql::AqlValue vertex, edge;
   aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
   
   auto* evaluator = _opts->getPruneEvaluator();
+  TRI_ASSERT(evaluator != nullptr);
+
   if (evaluator->needsVertex()) {
     // Note: vertexToAqlValue() copies the original vertex into the AqlValue.
     // This could be avoided with a function that just returns the slice,
