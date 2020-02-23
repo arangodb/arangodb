@@ -96,6 +96,10 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   std::vector<std::unique_ptr<EdgeCursor>> _cursors;
 
+  /// @brief helper vector that is used temporarily when building the path
+  /// output
+  std::vector<size_t> _tempPathHelper;
+
  public:
   BreadthFirstEnumerator(arangodb::traverser::Traverser* traverser,
                          arangodb::traverser::TraverserOptions* opts);
@@ -114,15 +118,6 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
 
  private:
-  inline size_t getDepth(size_t index) const {
-    size_t depth = 0;
-    while (index != 0) {
-      ++depth;
-      index = _schreier[index].sourceIdx;
-    }
-    return depth;
-  }
-
   /**
    * @brief Helper function to validate if the path contains the given
    *        vertex.

@@ -215,23 +215,19 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
   if (_enumeratedPath.edges.empty()) {
     return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
   }
-  // FIXME: add some asserts back into this
-  // TRI_ASSERT(_enumeratedPath.edges.back() != nullptr);
   return _opts->cache()->fetchEdgeAqlResult(_enumeratedPath.edges.back());
 }
 
 VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result) {
   result.clear();
   result.openObject();
-  result.add(VPackValue("edges"));
-  result.openArray();
+  result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
   for (auto const& it : _enumeratedPath.edges) {
     // TRI_ASSERT(it != nullptr);
     _opts->cache()->insertEdgeIntoResult(it, result);
   }
   result.close();
-  result.add(VPackValue("vertices"));
-  result.openArray();
+  result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
   for (auto const& it : _enumeratedPath.vertices) {
     _traverser->addVertexToVelocyPack(VPackStringRef(it), result);
   }
@@ -247,30 +243,29 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(VPackBuilder& resul
 
 bool DepthFirstEnumerator::shouldPrune() {
   // We need to call prune here
-  if (_opts->usesPrune()) {
-    // evaluator->evaluate() might access these, so they have to live long
-    // enough. To make that perfectly clear, I added a scope.
-    transaction::BuilderLeaser pathBuilder(_opts->trx());
-    aql::AqlValue vertex, edge;
-    aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
-    {
-      aql::PruneExpressionEvaluator* evaluator = _opts->getPruneEvaluator();
-      if (evaluator->needsVertex()) {
-        vertex = lastVertexToAqlValue();
-        evaluator->injectVertex(vertex.slice());
-      }
-      if (evaluator->needsEdge()) {
-        edge = lastEdgeToAqlValue();
-        evaluator->injectEdge(edge.slice());
-      }
-      if (evaluator->needsPath()) {
-        VPackSlice path = pathToSlice(*pathBuilder.get());
-        evaluator->injectPath(path);
-      }
-      return evaluator->evaluate();
-    }
+  if (!_opts->usesPrune()) {
+    return false;
   }
-  return false;
+  // evaluator->evaluate() might access these, so they have to live long
+  // enough. To make that perfectly clear, I added a scope.
+  transaction::BuilderLeaser pathBuilder(_opts->trx());
+  aql::AqlValue vertex, edge;
+  aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+  
+  aql::PruneExpressionEvaluator* evaluator = _opts->getPruneEvaluator();
+  if (evaluator->needsVertex()) {
+    vertex = lastVertexToAqlValue();
+    evaluator->injectVertex(vertex.slice());
+  }
+  if (evaluator->needsEdge()) {
+    edge = lastEdgeToAqlValue();
+    evaluator->injectEdge(edge.slice());
+  }
+  if (evaluator->needsPath()) {
+    VPackSlice path = pathToSlice(*pathBuilder.get());
+    evaluator->injectPath(path);
+  }
+  return evaluator->evaluate();
 }
 
 graph::EdgeCursor* DepthFirstEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {

@@ -1022,13 +1022,6 @@ Result LogicalCollection::read(transaction::Methods* trx,
   return getPhysical()->read(trx, key, result, lock);
 }
 
-Result LogicalCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::Slice const& key,
-                               ManagedDocumentResult& result, bool lock) {
-  TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
-  return getPhysical()->read(trx, key, result, lock);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a truncate operation (note: currently this only clears
 /// the read-cache

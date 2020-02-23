@@ -144,10 +144,7 @@ Traverser::~Traverser() = default;
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
                                                            arangodb::velocypack::StringRef vid,
                                                            uint64_t depth, size_t cursorId) {
-  if (!_opts->evaluateEdgeExpression(e, vid, depth, cursorId)) {
-    return false;
-  }
-  return true;
+  return _opts->evaluateEdgeExpression(e, vid, depth, cursorId);
 }
 
 bool arangodb::traverser::Traverser::vertexMatchesConditions(arangodb::velocypack::StringRef v,
