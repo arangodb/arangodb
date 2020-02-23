@@ -173,6 +173,22 @@ struct Pipeline {
   std::deque<ExecBlock> const& get() const { return _pipeline; };
   std::deque<ExecBlock>& get() { return _pipeline; };
 
+  Pipeline& addDependency(ExecBlock&& dependency) {
+    if (!empty()) {
+      _pipeline.back()->addDependency(dependency.get());
+    }
+    _pipeline.emplace_back(std::move(dependency));
+    return *this;
+  }
+
+  Pipeline& addConsumer(ExecBlock&& consumer) {
+    if (!empty()) {
+      consumer->addDependency(_pipeline.front().get());
+    }
+    _pipeline.emplace_front(std::move(consumer));
+    return *this;
+  }
+
  private:
   PipelineStorage _pipeline;
 };
