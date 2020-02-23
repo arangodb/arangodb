@@ -58,20 +58,26 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
 
 auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  // We must not have a row pending to be written as a
-  // shadow row
-  TRI_ASSERT(!_inputRow.isInitialized());
-
-  if (call.shouldSkip() && input.hasDataRow()) {
-    std::tie(_upstreamState, _inputRow) = input.nextDataRow();
-    call.didSkip(1);
+  TRI_ASSERT(call.shouldSkip());
+  if (_inputRow.isInitialized()) {
+    // We have not been able to report the ShadowRow.
+    // Simply return DONE to trigger Impl to fetch shadow row instead.
+    return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}};
   }
-  return {ExecutorState::DONE, NoStats{}, 1, AqlCall{}};
+
+  if (input.hasDataRow()) {
+    // Do not consume the row.
+    // It needs to be reported in Produce.
+    std::tie(_upstreamState, _inputRow) = input.peekDataRow();
+    call.didSkip(1);
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}};
+  }
+  return {input.upstreamState(), NoStats{}, 0, AqlCall{}};
 }
 
 auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
                                              OutputAqlItemRow& output) -> bool {
-  TRI_ASSERT(!output.isFull());
+  TRI_ASSERT(!output.allRowsUsed());
   if (_inputRow.isInitialized()) {
     // Actually consume the input row now.
     auto const [upstreamState, inputRow] = input.nextDataRow();
