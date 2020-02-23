@@ -1311,6 +1311,12 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
   TRI_ASSERT(isNewStyleExecutor<Executor>);
   if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+    if (clientCall.needsFullCount() && clientCall.getOffset() == 0 &&
+        clientCall.getLimit() == 0) {
+      // We can savely call skipRows.
+      // It will not report anything if the row is already consumed
+      return executeSkipRowsRange(_lastRange, clientCall);
+    }
     // Do not fastForward anything, the Subquery start will handle it by itself
     return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}};
   }
