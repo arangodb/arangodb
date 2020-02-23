@@ -64,6 +64,7 @@
 
 #include "files.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ScopeGuard.h"
@@ -1088,7 +1089,7 @@ bool TRI_ProcessFile(char const* filename,
 
   auto guard = scopeGuard([&fd, &result]() {
     TRI_CLOSE(fd);
-    TRI_AnnihilateStringBuffer(&result);
+    TRI_DestroyStringBuffer(&result);
   });
 
   int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
@@ -2664,5 +2665,41 @@ bool TRI_GETENV(char const* which, std::string& value) {
   value = v;
   return true;
 #endif
+}
+
+TRI_SHA256Functor::TRI_SHA256Functor()
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    : _context(EVP_MD_CTX_new()) {
+#else
+    : _context(EVP_MD_CTX_create()) {
+#endif
+  if (_context == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  if (EVP_DigestInit_ex(_context, EVP_sha256(), nullptr) == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    EVP_MD_CTX_free(_context);
+#else
+    EVP_MD_CTX_destroy(_context);
+#endif
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to initialize SHA256 processor");
+  }
+}
+
+TRI_SHA256Functor::~TRI_SHA256Functor() {
+  EVP_MD_CTX_free(_context);
+}
+
+bool TRI_SHA256Functor::operator()(char const* data, size_t size) noexcept {
+  return EVP_DigestUpdate(_context, static_cast<void const*>(data), size) == 1;
+}
+
+std::string TRI_SHA256Functor::finalize() {
+  unsigned char hash[EVP_MAX_MD_SIZE];
+  unsigned int lengthOfHash = 0;
+  if (EVP_DigestFinal_ex(_context, hash, &lengthOfHash) == 0) {
+    TRI_ASSERT(false);
+  }
+  return arangodb::basics::StringUtils::encodeHex(reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
 }
 

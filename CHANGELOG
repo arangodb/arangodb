@@ -1,6 +1,9 @@
 devel
 -----
 
+* Use OpenSSL's EVP interface for SHA256 instead of the deprecated low-level
+  API.
+
 * Honor `cacheEnabled` attribute when updating the properties of a collection
   in case of the cluster. Previously, this attribute was ignored in the cluster,
   but it shouldn't have been.
