@@ -369,7 +369,8 @@ std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(si
   if (!_fetcherDone) {
     ExecutionState state;
     size_t expectedRows;
-    std::tie(state, expectedRows) = _fetcher.preFetchNumberOfRows(atMost);
+    std::tie(state, expectedRows) =
+        _fetcher.preFetchNumberOfRows(ExecutionBlock::DefaultBatchSize);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(expectedRows == 0);
       return {state, 0};
