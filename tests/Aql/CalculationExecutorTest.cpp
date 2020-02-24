@@ -250,7 +250,7 @@ TEST_F(CalculationExecutorTest, test_produce_datarange) {
   SharedAqlItemBlockPtr inBlock =
       buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}});
 
-  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   EXPECT_EQ(output.numRowsWritten(), 0);
@@ -283,7 +283,7 @@ TEST_F(CalculationExecutorTest, test_produce_datarange_need_more) {
   SharedAqlItemBlockPtr inBlock =
       buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}});
 
-  AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::HASMORE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(),
                           infos.registersToClear(),
@@ -329,7 +329,7 @@ TEST_F(CalculationExecutorTest, DISABLED_test_produce_datarange_has_more) { // T
   SharedAqlItemBlockPtr inBlock =
       buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}, {R"(3)"}, {R"(4)"}});
 
-  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   EXPECT_EQ(output.numRowsWritten(), 0);
