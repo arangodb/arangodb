@@ -434,14 +434,12 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
 }
 
 std::shared_ptr<Action> MaintenanceFeature::createAction(std::shared_ptr<ActionDescription> const& description) {
-  // write lock via _actionRegistryLock is assumed held
-  std::shared_ptr<Action> newAction;
-
   // name should already be verified as existing ... but trust no one
   std::string name = description->get(NAME);
 
   // call factory
-  newAction = std::make_shared<Action>(*this, *description);
+  // write lock via _actionRegistryLock is assumed held
+  std::shared_ptr<Action> newAction = std::make_shared<Action>(*this, *description);
 
   // if a new action constructed successfully
   if (!newAction->ok()) {
