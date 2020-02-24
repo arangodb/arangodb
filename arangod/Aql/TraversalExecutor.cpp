@@ -212,21 +212,26 @@ auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
 auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   TraversalStats stats;
+  ExecutorState state{ExecutorState::HASMORE};
 
   while (true) {
     if (_traverser.hasMore()) {
       TRI_ASSERT(_inputRow.isInitialized());
       doOutput(output);
+
       if (output.isFull()) {
         if (_traverser.hasMore()) {
-          return {ExecutorState::HASMORE, stats, AqlCall{}};
+          state = ExecutorState::HASMORE;
+          break;
         } else {
-          return {input.upstreamState(), stats, AqlCall{}};
+          state = input.upstreamState();
+          break;
         }
       }
     } else {
       if (!initTraverser(input)) {
-        return {input.upstreamState(), stats, AqlCall{}};
+        state = input.upstreamState();
+        break;
       }
       TRI_ASSERT(_inputRow.isInitialized());
     }
@@ -235,23 +240,29 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItem
   stats.addFiltered(_traverser.getAndResetFilteredPaths());
   stats.addScannedIndex(_traverser.getAndResetReadDocuments());
   stats.addHttpRequests(_traverser.getAndResetHttpRequests());
-  return {ExecutorState::DONE, stats, AqlCall{}};
+
+  return {state, stats, AqlCall{}};
 }
 
 auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  TraversalStats stats{};
   auto skipped = size_t{0};
 
   while (true) {
     skipped += doSkip(call);
 
+    stats.addFiltered(_traverser.getAndResetFilteredPaths());
+    stats.addScannedIndex(_traverser.getAndResetReadDocuments());
+    stats.addHttpRequests(_traverser.getAndResetHttpRequests());
+
     if (!_traverser.hasMore()) {
       if (!initTraverser(input)) {
-        return {input.upstreamState(), skipped, AqlCall{}};
+        return {input.upstreamState(), stats, skipped, AqlCall{}};
       }
     } else {
       TRI_ASSERT(call.getOffset() == 0);
-      return {ExecutorState::HASMORE, skipped, AqlCall{}};
+      return {ExecutorState::HASMORE, stats, skipped, AqlCall{}};
     }
   }
 }
