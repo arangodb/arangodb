@@ -777,23 +777,19 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 network::Headers getForwardableRequestHeaders(arangodb::GeneralRequest* request) {
-  std::unordered_map<std::string, std::string> const& headers = request->headers();
-  std::unordered_map<std::string, std::string>::const_iterator it = headers.begin();
-
   network::Headers result;
 
-  while (it != headers.end()) {
-    std::string const& key = (*it).first;
+  for (auto const& it : request->headers()) {
+    std::string const& key = it.first;
 
     // ignore the following headers
     if (key != "x-arango-async" && key != "authorization" &&
         key != "content-length" && key != "connection" && key != "expect" &&
         key != "host" && key != "origin" && key != StaticStrings::HLCHeader &&
         key != StaticStrings::ErrorCodes &&
-        key.substr(0, 14) != "access-control") {
-      result.try_emplace(key, (*it).second);
+        key.compare(0, 14, "access-control", 14) != 0) {
+      result.try_emplace(key, it.second);
     }
-    ++it;
   }
 
   result["content-length"] = StringUtils::itoa(request->contentLength());

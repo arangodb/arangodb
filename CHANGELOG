@@ -1,6 +1,16 @@
 devel
 -----
 
+* Honor `cacheEnabled` attribute when updating the properties of a collection
+  in case of the cluster. Previously, this attribute was ignored in the cluster,
+  but it shouldn't have been.
+
+* Fixed issue #11137: http-proxy can't pass delete method req.body to foxx.
+
+* Disable "collect-in-cluster" AQL optimizer rule in case a LIMIT node is
+  between the COLLECT and the source data. In this case it is not safe to apply
+  the distributed collect, as it may alter the results.
+
 * Rebuild UI.
 
 * Fix arangorestore:

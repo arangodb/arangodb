@@ -180,6 +180,20 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
                 "due to unpredictable results. Use 'path' "
                 "or 'none' instead");
           }
+        } else if (name == "vertexCollections") {
+          if (value->isStringValue()) {
+            options->vertexCollections.emplace_back(value->getStringValue(),
+                                                    value->getStringLength());
+          } else if (value->isArray()) {
+            for (size_t j = 0; j < value->numMembers(); j++) {
+              AstNode const* member = value->getMember(j);
+              if (member->type == AstNodeType::NODE_TYPE_VALUE &&
+                  member->value.type == AstNodeValueType::VALUE_TYPE_STRING) {
+                options->vertexCollections.emplace_back(member->getStringValue(),
+                                                        member->getStringLength());
+              }
+            }
+          }
         }
       }
     }
