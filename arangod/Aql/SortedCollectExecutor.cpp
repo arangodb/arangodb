@@ -375,7 +375,8 @@ std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(si
       TRI_ASSERT(expectedRows == 0);
       return {state, 0};
     }
-    return {ExecutionState::HASMORE, expectedRows + 1};
+    auto rowsAvailable = std::min(expectedRows + 1, atMost);
+    return {ExecutionState::HASMORE, rowsAvailable};
   }
   // The fetcher will NOT send anything any more
   // We will at most return the current oepn group
