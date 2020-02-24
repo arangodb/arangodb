@@ -38,6 +38,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
@@ -125,11 +126,11 @@ class AqlExecutorTestCase : public ::testing::Test {
   auto manager() const -> AqlItemBlockManager&;
 
  private:
-  static inline std::unique_ptr<mocks::MockAqlServer> _server;
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
  protected:
   // available variables
+  static inline std::unique_ptr<mocks::MockAqlServer> _server;
   ResourceMonitor monitor{};
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
