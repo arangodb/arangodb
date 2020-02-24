@@ -129,7 +129,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
 
   SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
 
-  AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
@@ -148,7 +148,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
 
   SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
 
-  AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   AqlCall skipCall{1000, AqlCall::Infinity{}, AqlCall::Infinity{}, false};
@@ -188,7 +188,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
   SCOPED_TRACE(insertQueryC);
   AssertQueryHasResult(vocbase, insertQueryC, VPackSlice::emptyArraySlice());
 
-  AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
@@ -230,7 +230,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
   SCOPED_TRACE(insertQueryC);
   AssertQueryHasResult(vocbase, insertQueryC, VPackSlice::emptyArraySlice());
    */
-  AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
