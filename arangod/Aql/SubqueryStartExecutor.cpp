@@ -36,6 +36,7 @@ SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos) {}
 
 std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)

@@ -83,6 +83,7 @@ SubqueryEndExecutor::~SubqueryEndExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
