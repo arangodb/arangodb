@@ -70,7 +70,7 @@ class SubqueryEndNode : public ExecutionNode {
   }
 
   void replaceOutVariable(Variable const* var);
-  bool isModificationSubquery() const;
+  bool isModificationNode() const override;
 
  private:
   Variable const* _inVariable;

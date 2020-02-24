@@ -103,7 +103,7 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                  getRegisterPlan()->nrRegs[getDepth()],
                                  getRegsToClear(), calcRegsToKeep(), vpackOptions,
-                                 inReg, outReg, isModificationSubquery());
+                                 inReg, outReg, isModificationNode());
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
                                                                    std::move(infos));
@@ -121,7 +121,7 @@ ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies
     }
   }
   auto c = std::make_unique<SubqueryEndNode>(plan, _id, inVariable, outVariable,
-                                             isModificationSubquery());
+                                             isModificationNode());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -159,6 +159,6 @@ bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
   }
 }
 
-bool SubqueryEndNode::isModificationSubquery() const {
+bool SubqueryEndNode::isModificationNode() const {
   return _isModificationSubquery;
 }
