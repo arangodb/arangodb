@@ -1,6 +1,16 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Fix arangorestore:
+  If a smartGraphAttribute value was changed after document creation,
+  the _key of the document becomes inconsistent with the smartGraphAttribute
+  entry. However, the sharding of documents stays intact.
+
+  When restoring data from a dump that contains a document with inconsistent
+  _key and smartGraphAttribute this would cause an error and the document
+  would not be inserted. This is fixed by ignoring this inconsistency in
+  the case of restore.
+
 * Honor `cacheEnabled` attribute when updating the properties of a collection
   in case of the cluster. Previously, this attribute was ignored in the cluster,
   but it shouldn't have been.
