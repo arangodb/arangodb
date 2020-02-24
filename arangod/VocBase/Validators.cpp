@@ -21,6 +21,12 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <Logger/LogMacros.h>
+#include <tao/json/jaxn/to_string.hpp>
+static bool debug = false;
+#endif
+
 #include "Validators.h"
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
@@ -76,7 +82,7 @@ ValidatorBase::ValidatorBase(VPackSlice params)
   }
 }
 
-bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert) const {
+bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert, VPackOptions const* options) const {
   // This function performs the validation depending on operation (Insert /
   // Update / Replace) and requested validation level (None / Insert / New /
   // Strict / Moderate).
@@ -86,7 +92,7 @@ bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert
   }
 
   if (isInsert) {
-    return this->validateDerived(newDoc);
+    return this->validateDerived(newDoc, options);
   }
 
   /* update replace case */
@@ -97,13 +103,13 @@ bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert
 
   if (this->_level == ValidationLevel::Strict) {
     // Changed document must be good!
-    return validateDerived(newDoc);
+    return validateDerived(newDoc, options);
   }
 
   TRI_ASSERT(this->_level == ValidationLevel::Moderate);
   // Changed document must be good IIF the unmodified
   // document passed validation.
-  return (this->validateDerived(newDoc) || !this->validateDerived(oldDoc));
+  return (this->validateDerived(newDoc, options) || !this->validateDerived(oldDoc, options));
 }
 
 void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
@@ -119,7 +125,7 @@ void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
 ValidatorBool::ValidatorBool(VPackSlice params) : ValidatorBase(params) {
   _result = params.get(StaticStrings::ValidatorParameterRule).getBool();
 }
-bool ValidatorBool::validateDerived(VPackSlice slice) const { return _result; }
+bool ValidatorBool::validateDerived(VPackSlice slice, VPackOptions const* options) const { return _result; }
 void ValidatorBool::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidatorParameterRule, VPackValue(_result));
 }
@@ -129,20 +135,31 @@ std::string const ValidatorBool::type() const {
 
 /////////////////////////////////////////////////////////////////////////////
 
-ValidatorAQL::ValidatorAQL(VPackSlice params) : ValidatorBase(params) {
-  auto taoValue = validation::slice_to_value(params);
-  _schema = std::make_shared<tao::json::schema>(taoValue);
-  _builder.add(params);
+ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(params) {
+  auto rule = params.get(StaticStrings::ValidatorParameterRule);
+  VPackBuilder ruleBuilder;
+  {
+    VPackObjectBuilder guard(&ruleBuilder);
+    ruleBuilder.add(VPackValue("properties"));
+    ruleBuilder.add(rule);
+  }
+
+  auto taoRuleValue = validation::slice_to_value(ruleBuilder.slice());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_DEVEL_IF(debug) << tao::json::jaxn::to_string(taoRuleValue,2);
+#endif
+  _schema = std::make_shared<tao::json::schema>(taoRuleValue);
+  _builder.add(rule);
 }
-bool ValidatorAQL::validateDerived(VPackSlice slice) const {
-  auto taoValue = validation::slice_to_value(slice);
+bool ValidatorJsonSchema::validateDerived(VPackSlice slice, VPackOptions const* options) const {
+  auto taoValue = validation::slice_to_value(slice, false /*ignore_special*/, options);
   return validation::validate(taoValue, *_schema);
 }
-void ValidatorAQL::toVelocyPackDerived(VPackBuilder& b) const {
+void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidatorParameterRule, _builder.slice());
 }
-std::string const ValidatorAQL::type() const {
-  return StaticStrings::ValidatorTypeAQL;
+std::string const ValidatorJsonSchema::type() const {
+  return StaticStrings::ValidatorTypeJsonSchema;
 }
 
 }  // namespace arangodb

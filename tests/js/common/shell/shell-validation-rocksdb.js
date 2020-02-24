@@ -31,7 +31,6 @@ var jsunity = require("jsunity");
 
 const internal = require("internal");
 const db = internal.db;
-const print = internal.print;
 const arangodb = require("@arangodb");
 const ERRORS = arangodb.errors;
 
@@ -40,6 +39,13 @@ const isCluster = internal.isCluster();
 let sleepInCluster = () => {
   if(isCluster){
     internal.sleep(2);
+  }
+};
+
+const debug = false;
+const print = (x) => {
+  if(debug) {
+    internal.print;
   }
 };
 
@@ -58,10 +64,10 @@ function ValidationBasicsSuite () {
         //description : "This rule always fails"
     },
     {
-        type : "aql",
-        level : "new",
-        rule : "RETURN TRUE",
-        message : "Another tautology rule!",
+        level : "none",
+        type : "json",
+        rule : { array : { type : "array", items : { type : "number", maximum : 6 }}},
+        message : "Failed json validation"
     }
   ];
 
@@ -72,6 +78,7 @@ function ValidationBasicsSuite () {
   var testCollection;
   var validatorsTrueOnly;
   var validatorsFalseOnly;
+  var validatorsJson;
 
   return {
 
@@ -91,6 +98,11 @@ function ValidationBasicsSuite () {
         level : "moderate",
         rule : false,
         message : "Oh no what a nightmare!",
+      } ];
+      validatorsJson = [ {
+        level : "strict",
+        rule : { array : { type : "array", items : { type : "number", maximum : 6 }}},
+        message : "Json-Schema validation failed"
       } ];
     },
 
@@ -318,6 +330,23 @@ function ValidationBasicsSuite () {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
 
+    },
+    // json  ////////////////////////////////////////////////////////////////////////////////////////////
+    testJson : () => {
+      const v =  validatorsJson;
+      const v0 =  v[0];
+      v0.level = "strict";
+      testCollection.properties({"validators" : v });
+      sleepInCluster();
+      print(testCollection.properties());
+
+      let  doc = testCollection.insert({"array" : [1, 2, 3] }, skipOptions);
+      try {
+        testCollection.insert({"array" : "hund"});
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
     },
 ////////////////////////////////////////////////////////////////////////////////
   }; // return

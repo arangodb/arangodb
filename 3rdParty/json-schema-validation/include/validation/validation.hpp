@@ -9,10 +9,11 @@
 #include <tao/json/contrib/schema.hpp>
 
 namespace arangodb::validation {
-bool validate(tao::json::value const& doc, tao::json::schema const& schema); // first step
-bool validate(VPackSlice const doc, tao::json::schema const& schema);        // final
+bool validate(tao::json::value const& doc, tao::json::schema const& schema);               // first step
+bool validate(VPackSlice const doc, VPackOptions const*, tao::json::schema const& schema); // final
 
 tao::json::value slice_to_value(VPackSlice const& doc,
+                                bool ingore_special = false,
                                 VPackOptions const* options = &VPackOptions::Defaults,
                                 VPackSlice const* = nullptr);
 std::unique_ptr<VPackBuilder> value_to_builder(tao::json::value const& doc);

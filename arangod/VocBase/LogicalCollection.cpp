@@ -278,12 +278,12 @@ Result LogicalCollection::updateValidators(VPackSlice validatorArray) {
       std::unique_ptr<ValidatorBase> validator;
       auto typeSlice = validatorSlice.get(StaticStrings::ValidatorParameterType);
       if(typeSlice.isNone()) {
-        validator = std::make_unique<ValidatorAQL>(validatorSlice);
+        validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
       } else if (typeSlice.isString()) {
         auto type = typeSlice.copyString();
         std::transform(type.begin(),type.end(),type.begin(),[](unsigned char c){ return std::tolower(c); });
-        if (type == StaticStrings::ValidatorTypeAQL) {
-          validator = std::make_unique<ValidatorAQL>(validatorSlice);
+        if (type == StaticStrings::ValidatorTypeJsonSchema) {
+          validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
         } else if (type == StaticStrings::ValidatorTypeBool) {
           validator = std::make_unique<ValidatorBool>(validatorSlice);
         } else {
@@ -1136,22 +1136,22 @@ void LogicalCollection::validatorsToVelocyPack(VPackBuilder& b) const {
   }
 }
 
-Result LogicalCollection::validate(VPackSlice s) const {
+Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(s, VPackSlice::noneSlice(), true)) {
+    if(!validator->validate(s, VPackSlice::noneSlice(), true, options)) {
       return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
     }
   }
   return {};
 }
 
-Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc) const {
+Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const* options) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(modifiedDoc, oldDoc, false)) {
+    if(!validator->validate(modifiedDoc, oldDoc, false, options)) {
       return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
     }
   }

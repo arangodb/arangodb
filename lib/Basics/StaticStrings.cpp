@@ -308,4 +308,5 @@ std::string const StaticStrings::ValidatorParameterType("type");
 std::string const StaticStrings::ValidatorParameterRule("rule");
 
 std::string const StaticStrings::ValidatorTypeAQL("aql");
+std::string const StaticStrings::ValidatorTypeJsonSchema("json");
 std::string const StaticStrings::ValidatorTypeBool("bool");

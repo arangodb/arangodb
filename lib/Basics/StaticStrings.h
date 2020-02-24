@@ -283,6 +283,7 @@ class StaticStrings {
   static std::string const ValidatorParameterType;
   static std::string const ValidatorParameterRule;
 
+  static std::string const ValidatorTypeJsonSchema;
   static std::string const ValidatorTypeAQL;
   static std::string const ValidatorTypeBool;
 };
