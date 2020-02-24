@@ -8,6 +8,14 @@ devel
   that queries with a very small amount of data might suffer from this
   modification, most queries will benefit however.  
 
+* Use OpenSSL's EVP interface for SHA256 instead of the deprecated low-level
+  message digest APIs.
+
+* Prevent startup error "specifiy either '--server.jwt-secret-keyfile' or 
+  '--server.jwt-secret-folder' but not both." from occurring when specifying the
+  JWT secret keyfile option.
+
+
 * Honor `cacheEnabled` attribute when updating the properties of a collection
   in case of the cluster. Previously, this attribute was ignored in the cluster,
   but it shouldn't have been.
