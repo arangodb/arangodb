@@ -1168,10 +1168,11 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
     if (tid != 0) {
       headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid));
     }
-
+    
+    reqOpts.param("collection", p.first);
     futures.emplace_back(
         network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
-                                  "/_api/index/selectivity?collection=" + StringUtils::urlEncode(p.first),
+                                  "/_api/index/selectivity",
                                   VPackBufferUInt8(), reqOpts, std::move(headers)));
   }
 
@@ -3073,9 +3074,9 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     return result;
   }
   
-  // no need to keep connections to shut-down servers
+  // no need to keep connections to shut-down servers, they auto close when unused
   if (pool) {
-    pool->shutdownConnections();
+    pool->drainConnections();
   }
   
   auto startTime = std::chrono::steady_clock::now();
@@ -3796,6 +3797,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       });
 
+      // we have to reset the timeout, otherwise the code below will exit too soon
+      end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000 * timeout));
+
       // send the locks
       result = hotbackupAsyncLockDBServersTransactions(pool, backupId, dbServers, lockWait, lockJobIds);
       if (result.fail()) {
@@ -3806,6 +3810,11 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       transaction::Manager* mgr = transaction::ManagerFeature::manager();
 
       while (!lockJobIds.empty()) {
+        if (steady_clock::now() > end) {
+          return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
+                                  "hot backup timeout before locking phase");
+        }
+
         // kill all transactions
         result = mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
         if (result.fail()) {
@@ -3844,6 +3853,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     BackupMeta meta(backupId, "", timeStamp, 0, 0, static_cast<unsigned int>(dbServers.size()), "", !gotLocks);   // Temporary
+    std::vector<std::string> dummy;
     result = hotBackupDBServers(pool, backupId, timeStamp, dbServers, agency->slice(),
                                 /* force */ !gotLocks, meta);
     if (!result.ok()) {
@@ -3853,7 +3863,6 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
                    std::string("failed to hot backup on all db servers: ") +
                        result.errorMessage());
       LOG_TOPIC("6b333", ERR, Logger::BACKUP) << result.errorMessage();
-      std::vector<std::string> dummy;
       removeLocalBackups(pool, backupId, dbServers, dummy);
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
@@ -3865,11 +3874,13 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     auto agencyCheck = std::make_shared<VPackBuilder>();
     result = ci.agencyPlan(agencyCheck);
     if (!result.ok()) {
+      if (!allowInconsistent) {
+        removeLocalBackups(pool, backupId, dbServers, dummy);
+      }
       ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump post backup: ") +
-                       result.errorMessage() +
-                       " backup's consistency is not guaranteed");
+                       result.errorMessage() + " backup's intergrity is not guaranteed");
       LOG_TOPIC("d4229", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
@@ -3878,14 +3889,18 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     try {
       if (!Helper::equal(agency->slice()[0].get(versionPath),
                          agencyCheck->slice()[0].get(versionPath), false)) {
+        if (!allowInconsistent) {
+          removeLocalBackups(pool, backupId, dbServers, dummy);
+        }
         result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                      "data definition of cluster was changed during hot "
-                     "backup: backup's consistency is not guaranteed");
+                     "backup: backup's integrity is not guaranteed");
         LOG_TOPIC("0ad21", ERR, Logger::BACKUP) << result.errorMessage();
         events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
         return result;
       }
     } catch (std::exception const& e) {
+      removeLocalBackups(pool, backupId, dbServers, dummy);
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("invalid agency state: ") + e.what());
       LOG_TOPIC("037eb", ERR, Logger::BACKUP) << result.errorMessage();

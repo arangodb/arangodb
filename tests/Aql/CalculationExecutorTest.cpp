@@ -25,12 +25,14 @@
 
 #include "gtest/gtest.h"
 
+#include "Aql/AqlCall.h"
+#include "AqlItemBlockHelper.h"
+#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/CalculationExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -67,13 +69,10 @@ namespace aql {
 // CalculationExecutor<CalculationType::V8Condition> and
 // CalculationExecutor<CalculationType::Reference>!
 
-class CalculationExecutorTest : public ::testing::Test {
+class CalculationExecutorTest : public AqlExecutorTestCase<true> {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
-  mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
   Ast ast;
   AstNode* one;
   Variable var;
@@ -87,8 +86,6 @@ class CalculationExecutorTest : public ::testing::Test {
 
   CalculationExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        server(),
-        fakedQuery(server.createFakeQuery()),
         ast(fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
         var("a", 0),
@@ -109,7 +106,8 @@ class CalculationExecutorTest : public ::testing::Test {
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, input.steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -126,7 +124,8 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, input.steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -147,7 +146,8 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, input->steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
@@ -191,7 +191,8 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, input->steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
@@ -234,6 +235,126 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_wait
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_FALSE(row.produced());
+}
+
+TEST_F(CalculationExecutorTest, test_produce_datarange) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  EXPECT_EQ(output.numRowsWritten(), 0);
+  auto const [state, stats, call] = testee.produceRows(input, output);
+  EXPECT_EQ(output.numRowsWritten(), 3);
+
+  EXPECT_EQ(state, ExecutorState::DONE);
+  // verify calculation
+  {
+    AqlValue value;
+    auto block = output.stealBlock();
+    for (std::size_t index = 0; index < 3; index++) {
+      value = block->getValue(index, outRegID);
+      ASSERT_TRUE(value.isNumber());
+      ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
+    }
+  }
+}
+
+TEST_F(CalculationExecutorTest, test_produce_datarange_need_more) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(),
+                          infos.registersToClear(),
+                              AqlCall{0, 3, AqlCall::Infinity{}, false});
+
+  auto myCall = output.getClientCall();
+  EXPECT_EQ(myCall.getLimit(), 3);
+  EXPECT_EQ(output.numRowsWritten(), 0);
+
+  auto const [state, stats, outputCall] = testee.produceRows(input, output);
+  EXPECT_EQ(output.numRowsWritten(), 3);
+
+  EXPECT_EQ(state, ExecutorState::HASMORE);
+  // verify calculation
+  {
+    AqlValue value;
+    auto block = output.stealBlock();
+    for (std::size_t index = 0; index < 3; index++) {
+      value = block->getValue(index, outRegID);
+      ASSERT_TRUE(value.isNumber());
+      ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
+    }
+  }
+  // Test the Call we send to upstream
+  EXPECT_EQ(outputCall.offset, 0);
+  EXPECT_FALSE(outputCall.hasHardLimit());
+  // Avoid overfetching. I do not have a strong requirement on this
+  // test, however this is what we do right now.
+  EXPECT_EQ(outputCall.getLimit(), 0);
+  EXPECT_FALSE(outputCall.fullCount);
+}
+
+TEST_F(CalculationExecutorTest, DISABLED_test_produce_datarange_has_more) { // TODO: fix and re-enable after this executor newStyle is active
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}, {R"(3)"}, {R"(4)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  EXPECT_EQ(output.numRowsWritten(), 0);
+  AqlCall myCall{0, 3, AqlCall::Infinity{}, false};
+  output.setCall(std::move(myCall));
+
+  auto const [state, stats, call] = testee.produceRows(input, output);
+  EXPECT_EQ(output.numRowsWritten(), 3);
+
+  EXPECT_EQ(state, ExecutorState::HASMORE);
+  EXPECT_TRUE(input.hasDataRow());
+  // We still have two values in block: 3 and 4
+  {
+    // pop 3
+    auto const [state, row] = input.nextDataRow();
+    EXPECT_EQ(state, ExecutorState::HASMORE);
+    EXPECT_EQ(row.getValue(0).toInt64(), 3);
+  }
+  {
+    // pop 4
+    auto const [state, row] = input.nextDataRow();
+    EXPECT_EQ(state, ExecutorState::DONE);
+    EXPECT_EQ(row.getValue(0).toInt64(), 4);
+  }
+  EXPECT_FALSE(input.hasDataRow());
 }
 
 }  // namespace aql

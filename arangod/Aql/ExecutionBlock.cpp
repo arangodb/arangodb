@@ -46,6 +46,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+#define LOG_QUERY(logId, level)            \
+  LOG_TOPIC(logId, level, Logger::QUERIES) \
+      << "[query#" << this->_engine->getQuery()->id() << "] "
+
 namespace {
 
 std::string const doneString = "DONE";
@@ -335,28 +339,38 @@ void ExecutionBlock::traceExecuteEnd(
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
-      LOG_TOPIC("60bbc", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "execute done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << " state=" << stateToString(state)
-          << " skipped=" << skipped << " produced=" << items;
+      LOG_QUERY("60bbc", INFO) << "execute done " << printBlockInfo()
+                               << " state=" << stateToString(state)
+                               << " skipped=" << skipped << " produced=" << items;
 
       if (_profile >= PROFILE_LEVEL_TRACE_2) {
         if (block == nullptr) {
-          LOG_TOPIC("9b3f4", INFO, Logger::QUERIES)
-              << "[query#" << queryId << "] "
+          LOG_QUERY("9b3f4", INFO)
               << "execute type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
           auto const options = trxVpackOptions();
           block->toSimpleVPack(options, builder);
-          LOG_TOPIC("f12f9", INFO, Logger::QUERIES)
-              << "[query#" << queryId << "] "
+          LOG_QUERY("f12f9", INFO)
               << "execute type=" << node->getTypeString()
               << " result: " << VPackDumper::toString(builder.slice(), options);
         }
       }
     }
   }
+}
+
+auto ExecutionBlock::printTypeInfo() const -> std::string const {
+  std::stringstream stream;
+  ExecutionNode const* node = getPlanNode();
+  stream << "type=" << node->getTypeString();
+  ;
+  return stream.str();
+}
+
+auto ExecutionBlock::printBlockInfo() const -> std::string const {
+  std::stringstream stream;
+  ExecutionNode const* node = getPlanNode();
+  stream << printTypeInfo() << " this=" << (uintptr_t)this << " id=" << node->id();
+  return stream.str();
 }

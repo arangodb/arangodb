@@ -85,16 +85,20 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
     return {state, 0, AqlItemBlockInputRange{ExecutorState::HASMORE}};
   }
   if (block == nullptr) {
-    return {state, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
+    if (state == ExecutionState::HASMORE) {
+      return {state, skipped, AqlItemBlockInputRange{ExecutorState::HASMORE, skipped}};
+    }
+    return {state, skipped, AqlItemBlockInputRange{ExecutorState::DONE, skipped}};
   }
 
   auto [start, end] = block->getRelevantRange();
   if (state == ExecutionState::HASMORE) {
     TRI_ASSERT(block != nullptr);
     return {state, skipped,
-            AqlItemBlockInputRange{ExecutorState::HASMORE, block, start, end}};
+            AqlItemBlockInputRange{ExecutorState::HASMORE, skipped, block, start}};
   }
-  return {state, skipped, AqlItemBlockInputRange{ExecutorState::DONE, block, start, end}};
+  return {state, skipped,
+          AqlItemBlockInputRange{ExecutorState::DONE, skipped, block, start}};
 }
 
 template <BlockPassthrough passBlocksThrough>
@@ -277,6 +281,12 @@ bool SingleRowFetcher<blockPassthrough>::isAtShadowRow() const {
 template std::pair<ExecutionState, SharedAqlItemBlockPtr>
 SingleRowFetcher<BlockPassthrough::Enable>::fetchBlockForPassthrough<BlockPassthrough::Enable, void>(size_t atMost);
 #endif
+
+//@deprecated
+template <BlockPassthrough blockPassthrough>
+auto SingleRowFetcher<blockPassthrough>::useStack(AqlCallStack const& stack) -> void {
+  _dependencyProxy->useStack(stack);
+}
 
 template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Disable>;
 template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Enable>;

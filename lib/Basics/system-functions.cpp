@@ -128,29 +128,8 @@ time_t TRI_timegm(struct tm* tm) {
 #ifdef _WIN32
   return _mkgmtime(tm);
 #else
-#ifdef __sun
-  // This should work, but who knows? ti is any valid time_t value, since
-  // it is produced by mktime. Therefore gmtime_r and localtime_r compute
-  // two different split up time values gm and lo, which differ by the
-  // currently configured offset of local time and UTC. Note that DST
-  // will be factored into the lo result but not into gm, including the
-  // lo.tm_isdst field! Then we apply mktime to both gm and lo, and,
-  // whatever the currently configured offset of local time and UTC is,
-  // it will be expressed in time_t units by (mktime(&gm) - mktime(&lo)).
-  // Therefore, this is the correct fix for the result of mktime(tm)
-  // to actually interpret tm as universal time. Note that we set tm.isdst
-  // to 0 to make mktime behave exactly as for gm.
-  tm.isdst = 0;
-  time_t ti = mktime(tm);
-  struct tm gm;
-  gmtime_r(&ti, &gm);
-  struct tm lo;
-  localtime_r(&ti, &lo);
-  return ti - (mktime(&gm) - mktime(&lo));
-#else
   // Linux, OSX and BSD variants:
   return timegm(tm);
-#endif
 #endif
 }
 

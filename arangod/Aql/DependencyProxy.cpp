@@ -34,9 +34,48 @@ using namespace arangodb::aql;
 template <BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
-  // TODO: Test this, especially if upstreamBlock is done etc.
-  // We do not modify any local state here.
-  return upstreamBlock().execute(stack);
+  ExecutionState state = ExecutionState::HASMORE;
+  size_t skipped = 0;
+  SharedAqlItemBlockPtr block = nullptr;
+  do {
+    // Note: upstreamBlock will return next dependency
+    // if we need to loop here
+    if (!_distributeId.empty()) {
+      // We are in the cluster case.
+      // we have to ask executeForShard
+      auto upstreamWithClient = dynamic_cast<BlocksWithClients*>(&upstreamBlock());
+      TRI_ASSERT(upstreamWithClient != nullptr);
+      if (upstreamWithClient == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                       "Invalid state reached, we try to "
+                                       "request sharded data from a block "
+                                       "that is not able to provide it.");
+      }
+      std::tie(state, skipped, block) =
+          upstreamWithClient->executeForClient(stack, _distributeId);
+    } else {
+      std::tie(state, skipped, block) = upstreamBlock().execute(stack);
+    }
+    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(block == nullptr);
+      TRI_ASSERT(skipped == 0);
+      break;
+    }
+
+    if (skipped == 0 && block == nullptr) {
+      // We're not waiting and didn't get any input, so we have to be done.
+      TRI_ASSERT(state == ExecutionState::DONE);
+      if (!advanceDependency()) {
+        break;
+      }
+    }
+
+  } while (skipped == 0 && block == nullptr);
+
+  return {state, skipped, block};
 }
 
 template <BlockPassthrough blockPassthrough>
@@ -44,18 +83,29 @@ ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {
   TRI_ASSERT(atMost > 0);
   ExecutionState state;
   SharedAqlItemBlockPtr block;
+
+  // Temporary.
+  // Just do a copy of the stack here to not mess with it.
+  AqlCallStack stack = _injectedStack;
+  stack.pushCall(AqlCall::SimulateGetSome(atMost));
+  // Also temporary, will not be used here.
+  size_t skipped = 0;
   do {
     // Note: upstreamBlock will return next dependency
     // if we need to loop here
     if (_distributeId.empty()) {
-      std::tie(state, block) = upstreamBlock().getSome(atMost);
+      std::tie(state, skipped, block) = upstreamBlock().execute(stack);
     } else {
       auto upstreamWithClient = dynamic_cast<BlocksWithClients*>(&upstreamBlock());
-      std::tie(state, block) = upstreamWithClient->getSomeForShard(atMost, _distributeId);
+      std::tie(state, skipped, block) =
+          upstreamWithClient->executeForClient(stack, _distributeId);
     }
     TRI_IF_FAILURE("ExecutionBlock::getBlock") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    // Cannot do skipping here
+    // Temporary!
+    TRI_ASSERT(skipped == 0);
 
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(block == nullptr);
@@ -124,13 +174,22 @@ DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, si
   TRI_ASSERT(atMost > 0);
   ExecutionState state;
   SharedAqlItemBlockPtr block;
+
+  // Temporary.
+  // Just do a copy of the stack here to not mess with it.
+  AqlCallStack stack = _injectedStack;
+  stack.pushCall(AqlCall::SimulateGetSome(atMost));
+  // Also temporary, will not be used here.
+  size_t skipped = 0;
+
   if (_distributeId.empty()) {
-    std::tie(state, block) = upstream.getSome(atMost);
+    std::tie(state, skipped, block) = upstream.execute(stack);
   } else {
     auto upstreamWithClient = dynamic_cast<BlocksWithClients*>(&upstream);
-    std::tie(state, block) = upstreamWithClient->getSomeForShard(atMost, _distributeId);
+    std::tie(state, skipped, block) =
+        upstreamWithClient->executeForClient(stack, _distributeId);
   }
-
+  TRI_ASSERT(skipped == 0);
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -167,14 +226,31 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSomeFor
 
   ExecutionState state = ExecutionState::HASMORE;
 
+  // Temporary.
+  // Just do a copy of the stack here to not mess with it.
+  AqlCallStack stack = _injectedStack;
+  stack.pushCall(AqlCall::SimulateSkipSome(atMost));
+  // Also temporary, will not be used here.
+  SharedAqlItemBlockPtr block;
+
   while (state == ExecutionState::HASMORE && _skipped < atMost) {
     size_t skippedNow;
     TRI_ASSERT(_skipped <= atMost);
-    std::tie(state, skippedNow) = upstream.skipSome(atMost - _skipped);
+    {
+      // Make sure we call with the correct offset
+      // This is just a temporary dance until execute is implemented everywhere.
+      auto tmpCall = stack.popCall();
+      tmpCall.offset = atMost - _skipped;
+      stack.pushCall(std::move(tmpCall));
+    }
+    std::tie(state, skippedNow, block) = upstream.execute(stack);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(skippedNow == 0);
       return {state, 0};
     }
+    // Temporary.
+    // If we return a block here it will be lost
+    TRI_ASSERT(block == nullptr);
 
     _skipped += skippedNow;
     TRI_ASSERT(_skipped <= atMost);
@@ -196,17 +272,31 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
   TRI_ASSERT(_skipped <= toSkip);
   ExecutionState state = ExecutionState::HASMORE;
 
+  // Temporary.
+  // Just do a copy of the stack here to not mess with it.
+  AqlCallStack stack = _injectedStack;
+  stack.pushCall(AqlCall::SimulateSkipSome(toSkip));
+  // Also temporary, will not be used here.
+  SharedAqlItemBlockPtr block;
+
   while (_skipped < toSkip) {
     size_t skippedNow;
     // Note: upstreamBlock will return next dependency
     // if we need to loop here
     TRI_ASSERT(_skipped <= toSkip);
+    {
+      // Make sure we call with the correct offset
+      // This is just a temporary dance until execute is implemented everywhere.
+      auto tmpCall = stack.popCall();
+      tmpCall.offset = toSkip - _skipped;
+      stack.pushCall(std::move(tmpCall));
+    }
     if (_distributeId.empty()) {
-      std::tie(state, skippedNow) = upstreamBlock().skipSome(toSkip - _skipped);
+      std::tie(state, skippedNow, block) = upstreamBlock().execute(stack);
     } else {
       auto upstreamWithClient = dynamic_cast<BlocksWithClients*>(&upstreamBlock());
-      std::tie(state, skippedNow) =
-          upstreamWithClient->skipSomeForShard(toSkip - _skipped, _distributeId);
+      std::tie(state, skippedNow, block) =
+          upstreamWithClient->executeForClient(stack, _distributeId);
     }
 
     TRI_ASSERT(skippedNow <= toSkip - _skipped);
@@ -215,6 +305,10 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
       TRI_ASSERT(skippedNow == 0);
       return {state, 0};
     }
+
+    // Temporary.
+    // If we return a block here it will be lost
+    TRI_ASSERT(block == nullptr);
 
     _skipped += skippedNow;
 
@@ -264,8 +358,7 @@ template <BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
     std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-    RegisterId nrInputRegisters,
-    velocypack::Options const* const options)
+    RegisterId nrInputRegisters, velocypack::Options const* const options)
     : _dependencies(dependencies),
       _itemBlockManager(itemBlockManager),
       _inputRegisters(std::move(inputRegisters)),
@@ -275,7 +368,12 @@ DependencyProxy<blockPassthrough>::DependencyProxy(
       _blockPassThroughQueue(),
       _currentDependency(0),
       _skipped(0),
-      _vpackOptions(options) {}
+      _vpackOptions(options),
+      _injectedStack(AqlCall{}) {
+  // Make the default stack usable, for tests only.
+  // This needs to be removed soon.
+  _injectedStack.popCall();
+}
 
 template <BlockPassthrough blockPassthrough>
 RegisterId DependencyProxy<blockPassthrough>::getNrInputRegisters() const {

@@ -37,6 +37,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -346,6 +347,13 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
 
+  // remove the shadow row indices pointing to now invalid rows.
+  _shadowRowIndexes.erase(_shadowRowIndexes.lower_bound(nrItems),
+                          _shadowRowIndexes.end());
+
+  // adjust the size of the block
+  _nrItems = nrItems;
+
   for (size_t i = numEntries(); i < _data.size(); ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
@@ -367,13 +375,6 @@ void AqlItemBlock::shrink(size_t nrItems) {
     }
     a.erase();
   }
-
-  // remove the shadow row indices pointing to now invalid rows.
-  _shadowRowIndexes.erase(_shadowRowIndexes.lower_bound(nrItems),
-                          _shadowRowIndexes.end());
-
-  // adjust the size of the block
-  _nrItems = nrItems;
 }
 
 void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
@@ -447,20 +448,58 @@ void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear)
 SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to);
   TRI_ASSERT(to <= _nrItems);
+  return slice({{from, to}});
+}
+
+/**
+ * @brief Slice multiple ranges out of this AqlItemBlock.
+ *        This does a deep copy of all entries
+ *
+ * @param ranges list of ranges from(included) -> to(excluded)
+ *        Every range needs to be valid from[i] < to[i]
+ *        And every range needs to be within the block to[i] <= size()
+ *        The list is required to be ordered to[i] <= from[i+1]
+ *
+ * @return SharedAqlItemBlockPtr A block where all the slices are contained in the order of the list
+ */
+auto AqlItemBlock::slice(std::vector<std::pair<size_t, size_t>> const& ranges) const
+    -> SharedAqlItemBlockPtr {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Analyze correctness of ranges
+  TRI_ASSERT(!ranges.empty());
+  for (size_t i = 0; i < ranges.size(); ++i) {
+    auto const& [from, to] = ranges[i];
+    // Range is valid
+    TRI_ASSERT(from < to);
+    TRI_ASSERT(to <= _nrItems);
+    if (i > 0) {
+      // List is ordered
+      TRI_ASSERT(ranges[i - 1].second <= from);
+    }
+  }
+#endif
+  size_t numRows = 0;
+  for (auto const& [from, to] : ranges) {
+    numRows += to - from;
+  }
 
   std::unordered_set<AqlValue> cache;
-  cache.reserve((to - from) * _nrRegs / 4 + 1);
+  cache.reserve(numRows * _nrRegs / 4 + 1);
 
-  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
-
-  for (size_t row = from; row < to; row++) {
-    // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
-    for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue const& a(_data[getAddress(row, col)]);
-      ::CopyValueOver(cache, a, row - from, col, res);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(numRows, _nrRegs)};
+  size_t targetRow = 0;
+  for (auto const& [from, to] : ranges) {
+    for (size_t row = from; row < to; row++, targetRow++) {
+      // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
+      for (RegisterId col = 0; col < _nrRegs; col++) {
+        AqlValue const& a(_data[getAddress(row, col)]);
+        ::CopyValueOver(cache, a, targetRow, col, res);
+      }
+      res->copySubQueryDepthFromOtherBlock(targetRow, *this, row);
     }
-    res->copySubQueryDepthFromOtherBlock(row - from, *this, row);
   }
+
+  TRI_ASSERT(res->size() == numRows);
 
   return res;
 }
@@ -726,15 +765,23 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
 
 void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const* options,
                                     arangodb::velocypack::Builder& builder) const {
-  VPackArrayBuilder rowBuilder{&builder};
+  {
+    VPackArrayBuilder rowBuilder{&builder};
 
-  if (isShadowRow(row)) {
-    getShadowRowDepth(row).toVelocyPack(options, *rowBuilder, false);
-  } else {
-    AqlValue{AqlValueHintNull{}}.toVelocyPack(options, *rowBuilder, false);
-  }
-  for (RegisterId reg = 0; reg < getNrRegs(); ++reg) {
-    getValueReference(row, reg).toVelocyPack(options, *rowBuilder, false);
+    if (isShadowRow(row)) {
+      getShadowRowDepth(row).toVelocyPack(options, builder, false);
+    } else {
+      builder.add(VPackSlice::nullSlice());
+    }
+    RegisterId const n = getNrRegs();
+    for (RegisterId reg = 0; reg < n; ++reg) {
+      AqlValue const& ref = getValueReference(row, reg);
+      if (ref.isEmpty()) {
+        builder.add(VPackSlice::noneSlice());
+      } else {
+        ref.toVelocyPack(options, builder, false);
+      }
+    }
   }
 }
 
@@ -745,9 +792,10 @@ void AqlItemBlock::toSimpleVPack(velocypack::Options const* options,
   block->add("nrRegs", VPackValue(getNrRegs()));
   block->add(VPackValue("matrix"));
   {
-    VPackArrayBuilder matrixBuilder{block.builder};
-    for (size_t row = 0; row < size(); ++row) {
-      rowToSimpleVPack(row, options, *matrixBuilder.builder);
+    size_t const n = size();
+    VPackArrayBuilder matrixBuilder{&builder};
+    for (size_t row = 0; row < n; ++row) {
+      rowToSimpleVPack(row, options, builder);
     }
   }
 }
@@ -908,7 +956,7 @@ RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
 
 size_t AqlItemBlock::size() const noexcept { return _nrItems; }
 
-std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() {
+std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
   // NOTE:
   // Right now we can only support a range of datarows, that ends
   // In a range of ShadowRows.

@@ -206,6 +206,9 @@ H2CommTask<T>::~H2CommTask() noexcept {
   while (_responses.pop(res)) {
     delete res;
   }
+  
+  LOG_TOPIC("dc6bb", DEBUG, Logger::REQUESTS)
+      << "<http2> closing connection \"" << (void*)this << "\"";
 }
 
 namespace {
@@ -271,7 +274,6 @@ void H2CommTask<T>::initNgHttp2Session() {
   nghttp2_session_callbacks_set_on_frame_not_send_callback(callbacks, H2CommTask<T>::on_frame_not_send);
   nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(callbacks, on_invalid_frame_recv);
   nghttp2_session_callbacks_set_error_callback2(callbacks, on_error_callback);
-  
   nghttp2_session_callbacks_set_data_source_read_length_callback(callbacks, data_source_read_length_callback);
 
   rv = nghttp2_session_server_new(&_session, callbacks, /*args*/ this);
@@ -451,8 +453,6 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
                                              req->messageId(), nullptr);
   resp->setContentType(req->contentTypeResponse());
-  resp->setContentTypeRequested(req->contentTypeResponse());
-
   this->executeRequest(std::move(req), std::move(resp));
 }
 
@@ -471,6 +471,10 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
   if (stat) {
     stat->release();
+  }
+  
+  if (this->_stopped.load(std::memory_order_acquire)) {
+    return;
   }
 
    // and give some request information
@@ -495,7 +499,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
                     [self(this->shared_from_this()), mid(res->messageId())] {
         auto& me = static_cast<H2CommTask<T>&>(*self);
         nghttp2_submit_rst_stream(me._session, NGHTTP2_FLAG_NONE,
-                                  static_cast<int32_t>(mid), NGHTTP2_INTERNAL_ERROR);
+                                  static_cast<int32_t>(mid), NGHTTP2_ENHANCE_YOUR_CALM);
       });
       return;
     }
@@ -520,6 +524,9 @@ void H2CommTask<T>::queueHttp2Responses() {
       return;
     }
     strm->response = std::move(guard);
+
+    // will add CORS headers if necessary
+    this->finishExecution(*strm->response, strm->origin);
 
     auto& res = *response;
     // we need a continuous block of memory for headers
@@ -571,7 +578,7 @@ void H2CommTask<T>::queueHttp2Responses() {
     nghttp2_data_provider *prd_ptr = nullptr, prd;
 
     std::string len;
-    if (!res.isHeadResponse() &&
+    if (res.generateBody() &&
         ::expectResponseBody(static_cast<int>(res.responseCode()))) {
       len = std::to_string(res.bodySize());
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,

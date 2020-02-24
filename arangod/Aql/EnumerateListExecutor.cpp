@@ -25,6 +25,8 @@
 
 #include "EnumerateListExecutor.h"
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -45,7 +47,7 @@ void throwArrayExpectedException(AqlValue const& value) {
               " as operand to FOR loop; you provided a value of type '") +
           value.getTypeString() + std::string("'"));
 }
-} // namespace
+}  // namespace
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister,
@@ -70,84 +72,142 @@ RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
 }
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
-    : _infos(infos),
-      _fetcher(fetcher),
-      _currentRow{CreateInvalidInputRowHint{}},
-      _rowState(ExecutionState::HASMORE),
-      _inputArrayPosition(0),
-      _inputArrayLength(0) {}
+    : _infos(infos), _currentRow{CreateInvalidInputRowHint{}}, _inputArrayPosition(0), _inputArrayLength(0) {}
 
 std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlItemRow& output) {
-  while (true) {
-    // HIT in first run, because pos and length are initiliazed
-    // both with 0
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
 
-    if (_inputArrayPosition == _inputArrayLength) {
-      // we need to set position back to zero
-      // because we finished iterating over existing array
-      // element and need to refetch another row
-      // _inputArrayPosition = 0;
-      if (_rowState == ExecutionState::DONE) {
-        return {_rowState, NoStats{}};
-      }
-      initialize();
-      std::tie(_rowState, _currentRow) = _fetcher.fetchRow();
-      if (_rowState == ExecutionState::WAITING) {
-        return {_rowState, NoStats{}};
-      }
+void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
+  if (_currentRow) {
+    std::ignore = inputRange.nextDataRow();
+  }
+  std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
+  if (!_currentRow) {
+    return;
+  }
+
+  // fetch new row, put it in local state
+  AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
+
+  // store the length into a local variable
+  // so we don't need to calculate length every time
+  if (inputList.isDocvec()) {
+    _inputArrayLength = inputList.docvecSize();
+  } else {
+    if (!inputList.isArray()) {
+      throwArrayExpectedException(inputList);
     }
+    _inputArrayLength = inputList.length();
+  }
 
-    if (!_currentRow.isInitialized()) {
-      TRI_ASSERT(_rowState == ExecutionState::DONE);
-      return {_rowState, NoStats{}};
-    }
+  _inputArrayPosition = 0;
+}
 
-    AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
+void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
+  bool mustDestroy;
+  AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
+  AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
+  AqlValueGuard guard(innerValue, mustDestroy);
 
-    if (_inputArrayPosition == 0) {
-      // store the length into a local variable
-      // so we don't need to calculate length every time
-      if (inputList.isDocvec()) {
-        _inputArrayLength = inputList.docvecSize();
-      } else {
-        if (!inputList.isArray()) {
-          throwArrayExpectedException(inputList);
-        }
-        _inputArrayLength = inputList.length();
-      }
-    }
+  TRI_IF_FAILURE("EnumerateListBlock::getSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
-    if (_inputArrayLength == 0) {
+  output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
+  output.advanceRow();
+
+  // set position to +1 for next iteration after new fetchRow
+  _inputArrayPosition++;
+}
+
+size_t EnumerateListExecutor::skipArrayElement(size_t toSkip) {
+  size_t skipped = 0;
+
+  if (toSkip <= _inputArrayLength - _inputArrayPosition) {
+    // if we're skipping less or exact the amount of elements we can skip with toSkip
+    _inputArrayPosition += toSkip;
+    skipped = toSkip;
+  } else if (toSkip > _inputArrayLength - _inputArrayPosition) {
+    // we can only skip the max amount of values we've in our array
+    skipped = _inputArrayLength - _inputArrayPosition;
+    _inputArrayPosition = _inputArrayLength;
+  }
+  return skipped;
+}
+
+std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  AqlCall upstreamCall{};
+  upstreamCall.fullCount = output.getClientCall().fullCount;
+
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    if (_inputArrayLength == _inputArrayPosition) {
+      // we reached either the end of an array
+      // or are in our first loop iteration
+      initializeNewRow(inputRange);
       continue;
-    } else if (_inputArrayLength == _inputArrayPosition) {
-      // we reached the end, forget all state
-      initialize();
+    }
 
-      if (_rowState == ExecutionState::HASMORE) {
-        continue;
+    TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
+    processArrayElement(output);
+  }
+
+  if (_inputArrayLength == _inputArrayPosition) {
+    // we reached either the end of an array
+    // or are in our first loop iteration
+    initializeNewRow(inputRange);
+  }
+
+  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+}
+
+std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  AqlCall upstreamCall{};
+
+  if (!inputRange.hasDataRow()) {
+    return {inputRange.upstreamState(), NoStats{}, 0, upstreamCall};
+  }
+
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  size_t skipped = 0;
+  bool offsetPhase = (call.getOffset() > 0);
+
+  while (inputRange.hasDataRow() && call.shouldSkip()) {
+    if (_inputArrayLength == _inputArrayPosition) {
+      // we reached either the end of an array
+      // or are in our first loop iteration
+      initializeNewRow(inputRange);
+      continue;
+    }
+    // auto const& [state, input] = inputRange.peekDataRow();
+
+    TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
+    // if offset is > 0, we're in offset skip phase
+    if (offsetPhase) {
+      if (skipped < call.getOffset()) {
+        // we still need to skip offset entries
+        skipped += skipArrayElement(call.getOffset() - skipped);
       } else {
-        return {_rowState, NoStats{}};
+        // we skipped enough in our offset phase
+        break;
       }
     } else {
-      bool mustDestroy;
-      AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
-      AqlValueGuard guard(innerValue, mustDestroy);
-
-      TRI_IF_FAILURE("EnumerateListBlock::getSome") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
-
-      // set position to +1 for next iteration after new fetchRow
-      _inputArrayPosition++;
-
-      if (_inputArrayPosition < _inputArrayLength || _rowState == ExecutionState::HASMORE) {
-        return {ExecutionState::HASMORE, NoStats{}};
-      }
-      return {ExecutionState::DONE, NoStats{}};
+      // fullCount phase - skippen bis zum ende
+      skipped += skipArrayElement(_inputArrayLength - _inputArrayPosition);
     }
   }
+  call.didSkip(skipped);
+
+  upstreamCall.softLimit = call.getOffset();
+  if (_inputArrayPosition < _inputArrayLength) {
+    // fullCount will always skip the complete array
+    TRI_ASSERT(offsetPhase);
+    return {ExecutorState::HASMORE, NoStats{}, skipped, upstreamCall};
+  }
+  return {inputRange.upstreamState(), NoStats{}, skipped, upstreamCall};
 }
 
 void EnumerateListExecutor::initialize() {

@@ -64,7 +64,7 @@ std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shut
 }
 
 std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::getSome(size_t atMost) {
-  if (!_hasWaited) {
+  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     _hasWaited = true;
     if (_returnedDone) {
       return {ExecutionState::DONE, nullptr};
@@ -91,7 +91,7 @@ std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecution
 
 std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
-  if (!_hasWaited) {
+  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     _hasWaited = true;
     return traceSkipSomeEnd(ExecutionState::WAITING, 0);
   }
@@ -125,18 +125,39 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
     stack.pop();
   }
   auto myCall = stack.popCall();
+
+  TRI_ASSERT(!(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0}));
+  TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.fullCount));
+  TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.hasHardLimit()));
+
   if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
-    // If we orderd waiting check on _hasWaited and wait if not
+    // If we ordered waiting check on _hasWaited and wait if not
     _hasWaited = true;
     return {ExecutionState::WAITING, 0, nullptr};
   }
   if (_variant == WaitingBehaviour::ALWAYS) {
-    // If we allways wait, reset.
+    // If we always wait, reset.
     _hasWaited = false;
   }
   size_t skipped = 0;
   SharedAqlItemBlockPtr result = nullptr;
+  if (!_data.empty() && _data.front() == nullptr) {
+    dropBlock();
+  }
   while (!_data.empty()) {
+    if (_data.front() == nullptr) {
+      if ((skipped > 0 || result != nullptr) &&
+          !(myCall.hasHardLimit() && myCall.getLimit() == 0)) {
+        // This is a specific break point return now.
+        // Sorry we can only return one block.
+        // This means we have prepared the first block.
+        // But still need more data.
+        return {ExecutionState::HASMORE, skipped, result};
+      } else {
+        dropBlock();
+        continue;
+      }
+    }
     if (_data.front()->size() <= _inflight) {
       dropBlock();
       continue;
@@ -189,10 +210,12 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
           dropBlock();
         }
       }
-      if (_data.empty()) {
-        return {ExecutionState::DONE, skipped, result};
-      } else {
+      if (!_data.empty()) {
         return {ExecutionState::HASMORE, skipped, result};
+      } else if (result != nullptr && result->size() < myCall.hardLimit) {
+        return {ExecutionState::HASMORE, skipped, result};
+      } else {
+        return {ExecutionState::DONE, skipped, result};
       }
     }
   }

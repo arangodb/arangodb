@@ -58,19 +58,15 @@ using namespace arangodb::basics;
 static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
-#if !defined(ARANGODB_HAVE_GETTID) && !defined(_WIN32)
-
+#ifndef _WIN32
 namespace {
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
 }
-
 #endif
 
 /// @brief static started with access to the private variables
 void Thread::startThread(void* arg) {
-#if defined(ARANGODB_HAVE_GETTID)
-  LOCAL_THREAD_NUMBER = (uint64_t)gettid();
-#elif defined(_WIN32)
+#ifdef _WIN32
   LOCAL_THREAD_NUMBER = (uint64_t)GetCurrentThreadId();
 #else
   LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);

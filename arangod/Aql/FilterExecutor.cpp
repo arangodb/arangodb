@@ -28,7 +28,6 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlockInputRange.h"
-#include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -102,28 +101,35 @@ std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t at
 }
 
 // TODO Remove me, we are using the getSome skip variant here.
-std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  size_t skipped = 0;
-  while (inputRange.hasDataRow() && skipped < call.getOffset()) {
+auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  FilterStats stats{};
+  while (inputRange.hasDataRow() && call.needSkipMore()) {
     auto const [unused, input] = inputRange.nextDataRow();
     if (!input) {
       TRI_ASSERT(!inputRange.hasDataRow());
       break;
     }
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
-      skipped++;
+      call.didSkip(1);
+    } else {
+      stats.incrFiltered();
     }
   }
-  call.didSkip(skipped);
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = call.getOffset();
-  return {inputRange.upstreamState(), skipped, upstreamCall};
+  if (call.needSkipMore() && call.getLimit() == 0) {
+    // FullCount case, we need to skip more, but limit is reached.
+    upstreamCall.softLimit = ExecutionBlock::SkipAllSize();
+  } else {
+    upstreamCall.softLimit = call.getOffset();
+  }
+
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
 }
 
-std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
-    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
   TRI_IF_FAILURE("FilterExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
