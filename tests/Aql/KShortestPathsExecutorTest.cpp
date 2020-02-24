@@ -208,8 +208,7 @@ class KShortestPathsExecutorTest
               std::move(parameters._source), std::move(parameters._target)),
         finder(static_cast<FakeKShortestPathsFinder&>(infos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
-        input(AqlItemBlockInputRange(ExecutorState::DONE, inputBlock, 0,
-                                     inputBlock->size())),
+        input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
         testee(fetcher, infos),
@@ -312,6 +311,7 @@ class KShortestPathsExecutorTest
   void TestExecutor(KShortestPathsExecutorInfos& infos, AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
+    auto stats = NoStats{};
     auto ourCall = AqlCall{parameters._call};
     auto skippedInitial = size_t{0};
     auto skippedFullCount = size_t{0};
@@ -319,7 +319,7 @@ class KShortestPathsExecutorTest
     auto outputs = std::vector<SharedAqlItemBlockPtr>{};
 
     if (ourCall.getOffset() > 0) {
-      std::tie(state, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, stats, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
     }
 
     while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
@@ -337,7 +337,7 @@ class KShortestPathsExecutorTest
     }
 
     if (ourCall.needsFullCount()) {
-      std::tie(state, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, stats, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
     }
 
     ValidateCalledWith();
