@@ -29,6 +29,7 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Meta/static_assert_size.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -52,7 +53,8 @@ SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slic
     : ExecutionNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _isModificationSubquery(base.get("isModificationSubquery").getBoolean()) {}
+      _isModificationSubquery(basics::VelocyPackHelper::getBooleanValue(
+          base, "isModificationSubquery", false)) {}
 
 SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
                                  Variable const* outVariable, bool isModificationSubquery)
@@ -75,6 +77,8 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.add(VPackValue("inVariable"));
     _inVariable->toVelocyPack(nodes);
   }
+
+  nodes.add("isModificationSubquery", VPackValue(isModificationNode()));
 
   nodes.close();
 }
