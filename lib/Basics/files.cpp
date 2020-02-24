@@ -2687,7 +2687,11 @@ TRI_SHA256Functor::TRI_SHA256Functor()
 }
 
 TRI_SHA256Functor::~TRI_SHA256Functor() {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   EVP_MD_CTX_free(_context);
+#else
+    EVP_MD_CTX_destroy(_context);
+#endif
 }
 
 bool TRI_SHA256Functor::operator()(char const* data, size_t size) noexcept {
