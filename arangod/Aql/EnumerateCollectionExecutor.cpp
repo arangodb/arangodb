@@ -170,7 +170,7 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
 }
 
 uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
-                                                   EnumerateCollectionStats& stats) {
+                                                  EnumerateCollectionStats& stats) {
   uint64_t actuallySkipped = 0;
 
   if (_infos.getFilter() == nullptr) {
@@ -219,16 +219,19 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
         }
       } else {
         // fullCount phase
-        _cursor->skipAll(skipped);
-        stats.incrScanned(skipped);
-        _documentProducingFunctionContext.getAndResetNumScanned();
-        TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+        if (_infos.getFilter() == nullptr) {
+          _cursor->skipAll(skipped);
+          stats.incrScanned(skipped);
+          TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == skipped);
+        } else {
+          // We need to call this to do the Accounting of FILTERED correctly.
+          skipped += skipEntries(ExecutionBlock::SkipAllSize(), stats);
+        }
       }
       _cursorHasMore = _cursor->hasMore();
       call.didSkip(skipped);
     }
   }
-
   if (_cursorHasMore) {
     return {ExecutorState::HASMORE, stats, call.getSkipCount(), upstreamCall};
   }
@@ -267,7 +270,6 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
   _documentProducingFunctionContext.setOutputRow(&output);
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-
     if (!_cursorHasMore) {
       initializeNewRow(inputRange);
     }
@@ -296,7 +298,6 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-
   if (!_cursorHasMore) {
     initializeNewRow(inputRange);
   }
