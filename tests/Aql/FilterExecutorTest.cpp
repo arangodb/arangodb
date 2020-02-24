@@ -363,7 +363,7 @@ TEST_F(FilterExecutorTest, test_produce_datarange) {
       buildBlock<1>(itemBlockManager,
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
-  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
 
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
@@ -388,7 +388,7 @@ TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
       buildBlock<1>(itemBlockManager,
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
   size_t hardLimit = 1000;
-  AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::HASMORE, 0, inBlock, 0};
   AqlCall limitedCall{};
   limitedCall.hardLimit = hardLimit;
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
@@ -420,7 +420,7 @@ TEST_F(FilterExecutorTest, test_skip_datarange_need_more) {
       buildBlock<1>(itemBlockManager,
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
-  AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::HASMORE, 0, inBlock, 0};
   AqlCall clientCall;
   clientCall.offset = 1000;
 
@@ -453,7 +453,7 @@ TEST_F(FilterExecutorTest, test_produce_datarange_has_more) {
       buildBlock<1>(itemBlockManager,
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
-  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
   block.reset(new AqlItemBlock(itemBlockManager, 2, 1));
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
@@ -492,7 +492,7 @@ TEST_F(FilterExecutorTest, test_skip_datarange_has_more) {
       buildBlock<1>(itemBlockManager,
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
-  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
   AqlCall clientCall;
   clientCall.offset = 2;
   auto const [state, stats, skipped, call] = testee.skipRowsRange(input, clientCall);

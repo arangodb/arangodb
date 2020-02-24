@@ -451,9 +451,11 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
             clientCall.didSkip(1);
           }
         } else {
-          LOG_DEVEL_SC << "skipping final group";
-          clientCall.didSkip(1);
-          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+          if (_currentGroup.isValid()) {
+            LOG_DEVEL_SC << "skipping final group";
+            clientCall.didSkip(1);
+            _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+          }
         }
         break;
       } else if (!input.isInitialized()) {
@@ -467,5 +469,5 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
   LOG_DEVEL_SC << " skipped rows: " << clientCall.getSkipCount();
   LOG_DEVEL_SC << "reporting state: " << inputRange.upstreamState();
 
-  return {inputRange.upstreamState(), Stats{}, clientCall.getSkipCount(), AqlCall{}};
+  return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(), AqlCall{}};
 }
