@@ -428,85 +428,9 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
 template <typename Impl, typename Traits>
 std::pair<ExecutionState, typename IResearchViewExecutorBase<Impl, Traits>::Stats>
 IResearchViewExecutorBase<Impl, Traits>::produceRows(OutputAqlItemRow& output) {
-  IResearchViewStats stats{};
-  bool documentWritten = false;
-
-  while (!documentWritten) {
-    if (!_inputRow.isInitialized()) {
-      if (_upstreamState == ExecutionState::DONE) {
-        // There will be no more rows, stop fetching.
-        return {ExecutionState::DONE, stats};
-      }
-
-      std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
-
-      if (_upstreamState == ExecutionState::WAITING) {
-        return {_upstreamState, stats};
-      }
-
-      if (!_inputRow.isInitialized()) {
-        return {ExecutionState::DONE, stats};
-      }
-
-      // reset must be called exactly after we've got a new and valid input row.
-      static_cast<Impl&>(*this).reset();
-    }
-
-    ReadContext ctx(infos().getOutputRegister(), _inputRow, output);
-    documentWritten = next(ctx);
-
-    if (documentWritten) {
-      stats.incrScanned();
-    } else {
-      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-      // no document written, repeat.
-    }
-  }
-
-  return {ExecutionState::HASMORE, stats};
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
-
-/*
-template <typename Impl, typename Traits>
-std::tuple<ExecutorState, typename IResearchViewExecutorBase<Impl, Traits>::Stats, AqlCall>
-IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inputRange,
-                                                     OutputAqlItemRow& output) {
-  IResearchViewStats stats{};
-  AqlCall upstreamCall{};
-  upstreamCall.fullCount = output.getClientCall().fullCount;
-
-  while (inputRange.hasDataRow() && !output.isFull()) {
-    LOG_DEVEL << "loop begin";
-
-    std::tie(_inputRowState, _inputRow) = inputRange.peekDataRow();
-    if (!_inputRow) {
-      LOG_DEVEL << "return done";
-      return {ExecutorState::DONE, stats, upstreamCall};
-    }
-
-    // reset must be called exactly after we've got a new and valid input row.
-    TRI_ASSERT(_inputRow.isInitialized());
-    static_cast<Impl&>(*this).reset();
-
-    ReadContext ctx(infos().getOutputRegister(), _inputRow, output);
-    bool documentWritten = next(ctx);
-
-    if (documentWritten) {
-      LOG_DEVEL << "advance output row";
-      stats.incrScanned();
-      output.advanceRow();
-    } else {
-      LOG_DEVEL << "invalidate";
-      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-      std::ignore = inputRange.nextDataRow();
-      // no document written, repeat.
-    }
-    LOG_DEVEL << "loop end";
-  }
-
-  LOG_DEVEL << "return upstream: " << inputRange.upstreamState();
-  return {inputRange.upstreamState(), stats, upstreamCall};
-}*/
 
 template <typename Impl, typename Traits>
 std::tuple<ExecutorState, typename IResearchViewExecutorBase<Impl, Traits>::Stats, AqlCall>
@@ -521,31 +445,23 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
 
     while (!documentWritten) {
       if (!_inputRow.isInitialized()) {
-        LOG_DEVEL << "not initialized, peeking";
         std::tie(_inputRowState, _inputRow) = inputRange.peekDataRow();
 
         if (!_inputRow.isInitialized()) {
-          LOG_DEVEL << "returned done";
           return {ExecutorState::DONE, stats, upstreamCall};
         }
 
         // reset must be called exactly after we've got a new and valid input row.
-        LOG_DEVEL << "reset";
-        LOG_DEVEL << "is initialized: " << _inputRow.isInitialized();
         static_cast<Impl&>(*this).reset();
-        LOG_DEVEL << "after reset";
       }
 
       ReadContext ctx(infos().getOutputRegister(), _inputRow, output);
       documentWritten = next(ctx);
-      LOG_DEVEL << "documentWritten: " << std::boolalpha << documentWritten;
 
       if (documentWritten) {
         stats.incrScanned();
         output.advanceRow();
-        LOG_DEVEL << "advance row";
       } else {
-        LOG_DEVEL << "force refetch";
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
         std::ignore = inputRange.nextDataRow();
         // no document written, repeat.
@@ -553,53 +469,14 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
     }
   }
 
-  LOG_DEVEL << "return upstream: " << inputRange.upstreamState();
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
 template <typename Impl, typename Traits>
 std::tuple<ExecutionState, typename IResearchViewExecutorBase<Impl, Traits>::Stats, size_t>
 IResearchViewExecutorBase<Impl, Traits>::skipRows(size_t toSkip) {
-  TRI_ASSERT(_indexReadBuffer.empty());
-  IResearchViewStats stats{};
-  size_t skipped = 0;
-
-  auto& impl = static_cast<Impl&>(*this);
-
-  if (!_inputRow.isInitialized()) {
-    if (_upstreamState == ExecutionState::DONE) {
-      // There will be no more rows, stop fetching.
-      return std::make_tuple(ExecutionState::DONE, stats,
-                             0);  // tupple, cannot use initializer list due to build failure
-    }
-
-    std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
-
-    if (_upstreamState == ExecutionState::WAITING) {
-      return std::make_tuple(_upstreamState, stats, 0);  // tupple, cannot use initializer list due to build failure
-    }
-
-    if (!_inputRow.isInitialized()) {
-      return std::make_tuple(ExecutionState::DONE, stats,
-                             0);  // tupple, cannot use initializer list due to build failure
-    }
-
-    // reset must be called exactly after we've got a new and valid input row.
-    impl.reset();
-  }
-
-  TRI_ASSERT(_inputRow.isInitialized());
-
-  skipped = static_cast<Impl&>(*this).skip(toSkip);
-  TRI_ASSERT(_indexReadBuffer.empty());
-  stats.incrScanned(skipped);
-
-  if (skipped < toSkip) {
-    _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  }
-
-  return std::make_tuple(ExecutionState::HASMORE, stats,
-                         skipped);  // tupple, cannot use initializer list due to build failure
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template <typename Impl, typename Traits>
@@ -635,73 +512,24 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
         break;
       }
 
-      // trigger refetch of new input row
     } else {
       // skip all - fullCount phase
-      skipped = static_cast<Impl&>(*this).skip(ExecutionBlock::DefaultBatchSize); // TODO check or implement "skip all"
+      skipped = static_cast<Impl&>(*this).skipAll();
     }
     TRI_ASSERT(_indexReadBuffer.empty());
     call.didSkip(skipped);
     stats.incrScanned(skipped);
 
-    if (skipped < call.getOffset() || (!offsetPhase && skipped == ExecutionBlock::DefaultBatchSize)) {
+    if (skipped < call.getOffset() || !offsetPhase) {
+      // trigger refetch of new input row
       std::ignore = inputRange.nextDataRow();
       _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
     }
   }
 
-  upstreamCall.softLimit = call.getOffset();  // TODO check
+  upstreamCall.softLimit = call.getOffset();
   return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
 }
-
-/*
-template <typename Impl, typename Traits>
-std::tuple<ExecutorState, typename IResearchViewExecutorBase<Impl, Traits>::Stats, size_t, AqlCall>
-IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                                       AqlCall& call) {
-  LOG_DEVEL << "SKIP ROWS RANGE START";
-  TRI_ASSERT(_indexReadBuffer.empty());
-  IResearchViewStats stats{};
-  bool offsetPhase = (call.getOffset() > 0);
-
-  while (inputRange.hasDataRow() && call.shouldSkip()) {
-    size_t skipped = 0;
-
-    auto& impl = static_cast<Impl&>(*this);
-    std::tie(_inputRowState, _inputRow) = inputRange.peekDataRow();
-    if (!_inputRow) {
-      break;
-    }
-
-    // reset must be called exactly after we've got a new and valid input row.
-    TRI_ASSERT(_inputRow.isInitialized());
-    impl.reset();
-
-    if (offsetPhase) {
-      if (skipped < call.getOffset()) {
-        skipped = static_cast<Impl&>(*this).skip(call.getOffset());
-      } else {
-        // we skipped enough in our offset phase
-        break;
-      }
-    } else {
-      skipped = static_cast<Impl&>(*this).skip(ExecutionBlock::DefaultBatchSize); // TODO check or implement "skip all"
-    }
-    TRI_ASSERT(_indexReadBuffer.empty());
-
-    if (skipped == 0) {
-      // we were not able to skip any document.
-      // fetch new row, if possible
-      std::ignore = inputRange.nextDataRow();
-    } else {
-      stats.incrScanned(skipped);
-    }
-  }
-
-  AqlCall upstreamCall{};
-  upstreamCall.softLimit = call.getOffset();  // TODO check
-  return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
-}*/
 
 template <typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx) {
@@ -1256,6 +1084,39 @@ size_t IResearchViewExecutor<ordered, materializeType>::skip(size_t limit) {
     _doc = nullptr;
   }
 
+  saveCollection();
+
+  return toSkip - limit;
+}
+
+template <bool ordered, MaterializeType materializeType>
+size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  TRI_ASSERT(this->_filter);
+
+  size_t skipped = 0;
+
+  for (size_t count = this->_reader->size(); _readerOffset < count;) {
+    if (!_itr && !resetIterator()) {
+      continue;
+    }
+
+    while (_itr->next()) {
+      skipped++;
+    }
+
+    ++_readerOffset;
+    _itr.reset();
+    _doc = nullptr;
+  }
+
+  saveCollection();
+
+  return skipped;
+}
+
+template <bool ordered, MaterializeType materializeType>
+void IResearchViewExecutor<ordered, materializeType>::saveCollection() {
   // We're in the middle of a reader, save the collection in case produceRows()
   // needs it.
   if (_itr) {
@@ -1282,8 +1143,6 @@ size_t IResearchViewExecutor<ordered, materializeType>::skip(size_t limit) {
     this->_indexReadBuffer.reset();
     _collection = collection.get();
   }
-
-  return toSkip - limit;
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -1546,6 +1405,20 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skip(size_t limit) 
   }
 
   return toSkip - limit;
+}
+
+template <bool ordered, MaterializeType materializeType>
+size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  TRI_ASSERT(this->_filter != nullptr);
+
+  size_t skipped = 0;
+
+  while (_heap_it.next()) {
+    skipped++;
+  }
+
+  return skipped;
 }
 
 template <bool ordered, MaterializeType materializeType>

@@ -357,6 +357,9 @@ class IResearchViewExecutor
   using IndexReadBufferEntry = typename Base::IndexReadBufferEntry;
 
   size_t skip(size_t toSkip);
+  size_t skipAll();
+
+  void saveCollection();
 
   void evaluateScores(ReadContext const& ctx);
 
@@ -458,6 +461,7 @@ class IResearchViewMergeExecutor
 
   void reset();
   size_t skip(size_t toSkip);
+  size_t skipAll();
 
  private:
   std::vector<Segment> _segments;
