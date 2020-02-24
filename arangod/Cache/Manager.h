@@ -93,14 +93,6 @@ class Manager {
      bool _doLock;
   };
   
-  class WriteUnlocker {
-    public:
-     explicit WriteUnlocker(basics::ReadWriteSpinLock& lock);
-     ~WriteUnlocker();
-    private:
-     basics::ReadWriteSpinLock& _lock;
-  };
- 
  public:
   static const uint64_t minSize;
   typedef FrequencyBuffer<uint64_t> AccessStatBuffer;

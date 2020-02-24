@@ -43,7 +43,7 @@ ReadWriteSpinLock& ReadWriteSpinLock::operator=(ReadWriteSpinLock&& other) noexc
   return *this;
 }
 
-bool ReadWriteSpinLock::tryWriteLock() noexcept {
+bool ReadWriteSpinLock::tryLockWrite() noexcept {
   // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire write lock as long as no readers or writers are active,
@@ -56,8 +56,8 @@ bool ReadWriteSpinLock::tryWriteLock() noexcept {
   return false;
 }
 
-void ReadWriteSpinLock::writeLock() noexcept {
-  if (tryWriteLock()) {
+void ReadWriteSpinLock::lockWrite() noexcept {
+  if (tryLockWrite()) {
     return;
   }
 
@@ -78,7 +78,7 @@ void ReadWriteSpinLock::writeLock() noexcept {
 }
 
 bool ReadWriteSpinLock::writeLock(uint64_t maxAttempts) noexcept {
-  if (tryWriteLock()) {
+  if (tryLockWrite()) {
     return true;
   }
 
@@ -104,7 +104,7 @@ bool ReadWriteSpinLock::writeLock(uint64_t maxAttempts) noexcept {
   return false;
 }
 
-bool ReadWriteSpinLock::tryReadLock() noexcept {
+bool ReadWriteSpinLock::tryLockRead() noexcept {
   // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire read lock as long as no writers are active or queued
@@ -116,9 +116,9 @@ bool ReadWriteSpinLock::tryReadLock() noexcept {
   return false;
 }
 
-void ReadWriteSpinLock::readLock() noexcept {
+void ReadWriteSpinLock::lockRead() noexcept {
   for (;;) {
-    if (tryReadLock()) {
+    if (tryLockRead()) {
       return;
     }
     cpu_relax();
@@ -128,7 +128,7 @@ void ReadWriteSpinLock::readLock() noexcept {
 bool ReadWriteSpinLock::readLock(uint64_t maxAttempts) noexcept {
   uint64_t attempts = 0;
   while (attempts++ < maxAttempts) {
-    if (tryReadLock()) {
+    if (tryLockRead()) {
       return true;
     }
     cpu_relax();
@@ -136,13 +136,11 @@ bool ReadWriteSpinLock::readLock(uint64_t maxAttempts) noexcept {
   return false;
 }
 
-void ReadWriteSpinLock::readUnlock() noexcept { unlockRead(); }
 void ReadWriteSpinLock::unlockRead() noexcept {
   TRI_ASSERT(isReadLocked());
   _state.fetch_sub(READER_INC, std::memory_order_release);
 }
 
-void ReadWriteSpinLock::writeUnlock() noexcept { unlockWrite(); }
 void ReadWriteSpinLock::unlockWrite() noexcept {
   TRI_ASSERT(isWriteLocked());
   _state.fetch_sub(WRITE_LOCK, std::memory_order_release);

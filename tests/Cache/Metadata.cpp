@@ -59,7 +59,7 @@ TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly)
   uint64_t overhead = 80;
   Metadata metadata(1024, 0, 0, 2048 + overhead);
 
-  metadata.writeLock();
+  metadata.lockWrite();
 
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
@@ -89,14 +89,14 @@ TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly)
   ASSERT_FALSE(metadata.adjustLimits(2049, 2049));
   ASSERT_EQ(metadata.allocatedSize, 1024 + overhead);
 
-  metadata.writeUnlock();
+  metadata.unlockWrite();
 }
 
 TEST(CacheMetadataTest, verify_table_methods_work_correctly) {
   uint64_t overhead = 80;
   Metadata metadata(1024, 0, 512, 2048 + overhead);
 
-  metadata.writeLock();
+  metadata.lockWrite();
 
   ASSERT_FALSE(metadata.migrationAllowed(1024));
   ASSERT_EQ(2048 + overhead, metadata.adjustDeserved(2048 + overhead));
@@ -112,5 +112,5 @@ TEST(CacheMetadataTest, verify_table_methods_work_correctly) {
   ASSERT_EQ(metadata.tableSize, 512);
   ASSERT_EQ(metadata.allocatedSize, 1536 + overhead);
 
-  metadata.writeUnlock();
+  metadata.unlockWrite();
 }

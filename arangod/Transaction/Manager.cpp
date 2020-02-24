@@ -116,7 +116,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
                                   bool isReadOnlyTransaction) {
   if (!isReadOnlyTransaction) {
-    _rwLock.readLock();
+    _rwLock.lockRead();
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -524,12 +524,12 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
             TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
             "not allowed to write lock an AQL transaction");
       }
-      if (mtrx.rwlock.tryWriteLock()) {
+      if (mtrx.rwlock.tryLockWrite()) {
         state = mtrx.state;
         break;
       }
     } else {
-      if (mtrx.rwlock.tryReadLock()) {
+      if (mtrx.rwlock.tryLockRead()) {
         state = mtrx.state;
         break;
       }

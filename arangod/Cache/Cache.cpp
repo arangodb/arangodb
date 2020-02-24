@@ -83,9 +83,9 @@ uint64_t Cache::size() const {
     return 0;
   }
 
-  _metadata.readLock();
+  _metadata.lockRead();
   uint64_t size = _metadata.allocatedSize;
-  _metadata.readUnlock();
+  _metadata.unlockRead();
 
   return size;
 }
@@ -95,9 +95,9 @@ uint64_t Cache::usageLimit() const {
     return 0;
   }
 
-  _metadata.readLock();
+  _metadata.lockRead();
   uint64_t limit = _metadata.softUsageLimit;
-  _metadata.readUnlock();
+  _metadata.unlockRead();
 
   return limit;
 }
@@ -107,9 +107,9 @@ uint64_t Cache::usage() const {
     return false;
   }
 
-  _metadata.readLock();
+  _metadata.lockRead();
   uint64_t usage = _metadata.usage;
-  _metadata.readUnlock();
+  _metadata.unlockRead();
 
   return usage;
 }
@@ -170,9 +170,9 @@ bool Cache::isResizing() {
     return false;
   }
 
-  _metadata.readLock();
+  _metadata.lockRead();
   bool resizing = _metadata.isResizing();
-  _metadata.readUnlock();
+  _metadata.unlockRead();
 
   return resizing;
 }
@@ -182,9 +182,9 @@ bool Cache::isMigrating() {
     return false;
   }
 
-  _metadata.readLock();
+  _metadata.lockRead();
   bool migrating = _metadata.isMigrating();
-  _metadata.readUnlock();
+  _metadata.unlockRead();
 
   return migrating;
 }
@@ -194,9 +194,9 @@ bool Cache::isBusy() {
     return false;
   }
 
-  _metadata.readLock();
+  _metadata.lockRead();
   bool busy = _metadata.isResizing() || _metadata.isMigrating();
-  _metadata.readUnlock();
+  _metadata.unlockRead();
 
   return busy;
 }
@@ -217,15 +217,15 @@ void Cache::requestGrow() {
   if (_taskLock.writeLock(Cache::triesSlow)) {
     if (std::chrono::steady_clock::now().time_since_epoch().count() >
         _resizeRequestTime.load()) {
-      _metadata.readLock();
+      _metadata.lockRead();
       bool ok = !_metadata.isResizing();
-      _metadata.readUnlock();
+      _metadata.unlockRead();
       if (ok) {
         auto result = _manager->requestGrow(this);
         _resizeRequestTime.store(result.second.time_since_epoch().count());
       }
     }
-    _taskLock.writeUnlock();
+    _taskLock.unlockWrite();
   }
 }
 
@@ -242,15 +242,15 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
       cache::Table* table = _table.load(std::memory_order_relaxed);
       TRI_ASSERT(table != nullptr);
 
-      _metadata.readLock();
+      _metadata.lockRead();
       bool ok = !_metadata.isMigrating() && (requestedLogSize != table->logSize());
-      _metadata.readUnlock();
+      _metadata.unlockRead();
       if (ok) {
         auto result = _manager->requestMigrate(this, requestedLogSize);
         _migrateRequestTime.store(result.second.time_since_epoch().count());
       }
     }
-    _taskLock.writeUnlock();
+    _taskLock.unlockWrite();
   }
 }
 
@@ -263,10 +263,10 @@ void Cache::freeValue(CachedValue* value) {
 }
 
 bool Cache::reclaimMemory(uint64_t size) {
-  _metadata.readLock();
+  _metadata.lockRead();
   _metadata.adjustUsageIfAllowed(-static_cast<int64_t>(size));
   bool underLimit = (_metadata.softUsageLimit >= _metadata.usage);
-  _metadata.readUnlock();
+  _metadata.unlockRead();
 
   return underLimit;
 }
@@ -329,23 +329,23 @@ std::shared_ptr<Table> Cache::table() const {
   return std::atomic_load(&_tableShrdPtr);
 }
 void Cache::shutdown() {
-  _taskLock.writeLock();
+  _taskLock.lockWrite();
   auto handle = shared_from_this();  // hold onto self-reference to prevent
                                      // pre-mature shared_ptr destruction
   TRI_ASSERT(handle.get() == this);
   if (!_shutdown.exchange(true)) {
-    _metadata.readLock();
     while (true) {
-      if (!_metadata.isMigrating() && !_metadata.isResizing()) {
+      _metadata.lockRead();
+      bool canContinue = (!_metadata.isMigrating() && !_metadata.isResizing());
+      _metadata.unlockRead();
+
+      if (canContinue) {
         break;
       }
-      _metadata.readUnlock();
-      _taskLock.writeUnlock();
+      _taskLock.unlockWrite();
       std::this_thread::sleep_for(std::chrono::microseconds(10));
-      _taskLock.writeLock();
-      _metadata.readLock();
+      _taskLock.lockWrite();
     }
-    _metadata.readUnlock();
 
     cache::Table* table = _table.load(std::memory_order_relaxed);
     if (table != nullptr) {
@@ -358,14 +358,14 @@ void Cache::shutdown() {
     }
 
     _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
-    _metadata.writeLock();
+    _metadata.lockWrite();
     _metadata.changeTable(0);
-    _metadata.writeUnlock();
+    _metadata.unlockWrite();
     _manager->unregisterCache(_id);
     _table.store(nullptr, std::memory_order_relaxed);
   }
 
-  _taskLock.writeUnlock();
+  _taskLock.unlockWrite();
 }
 
 bool Cache::canResize() {
@@ -374,11 +374,11 @@ bool Cache::canResize() {
   }
 
   bool allowed = true;
-  _metadata.readLock();
+  _metadata.lockRead();
   if (_metadata.isResizing() || _metadata.isMigrating()) {
     allowed = false;
   }
-  _metadata.readUnlock();
+  _metadata.unlockRead();
 
   return allowed;
 }
@@ -389,11 +389,11 @@ bool Cache::canMigrate() {
   }
 
   bool allowed = true;
-  _metadata.readLock();
+  _metadata.lockRead();
   if (_metadata.isMigrating()) {
     allowed = false;
   }
-  _metadata.readUnlock();
+  _metadata.unlockRead();
 
   return allowed;
 }
@@ -446,22 +446,22 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   }
 
   // swap tables
-  _taskLock.writeLock();
+  _taskLock.lockWrite();
   _table.store(newTable.get(), std::memory_order_relaxed);
   std::shared_ptr<Table> oldTable = std::atomic_exchange(&_tableShrdPtr, newTable);
   std::shared_ptr<Table> confirm =
       oldTable->setAuxiliary(std::shared_ptr<Table>(nullptr));
-  _taskLock.writeUnlock();
+  _taskLock.unlockWrite();
 
   // clear out old table and release it
   oldTable->clear();
   _manager->reclaimTable(oldTable);
 
   // unmarking migrating flag
-  _metadata.writeLock();
+  _metadata.lockWrite();
   _metadata.changeTable(table->memoryUsage());
   _metadata.toggleMigrating();
-  _metadata.writeUnlock();
+  _metadata.unlockWrite();
 
   return true;
 }

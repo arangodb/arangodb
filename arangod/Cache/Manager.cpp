@@ -59,11 +59,11 @@ const std::chrono::milliseconds Manager::rebalancingGracePeriod(10);
 
 Manager::ReadLocker::ReadLocker(arangodb::basics::ReadWriteSpinLock& lock)
     : _lock(lock) {
-  _lock.readLock();
+  _lock.lockRead();
 }
 
 Manager::ReadLocker::~ReadLocker() {
-  _lock.readUnlock();
+  _lock.unlockRead();
 }
   
 Manager::WriteLocker::WriteLocker(arangodb::basics::ReadWriteSpinLock& lock)
@@ -72,23 +72,16 @@ Manager::WriteLocker::WriteLocker(arangodb::basics::ReadWriteSpinLock& lock)
 Manager::WriteLocker::WriteLocker(arangodb::basics::ReadWriteSpinLock& lock, bool condition) 
     : _lock(lock), _doLock(condition) {
   if (_doLock) {
-    _lock.writeLock();
+    _lock.lockWrite();
   }
 }
 
 Manager::WriteLocker::~WriteLocker() {
   if (_doLock) {
-    _lock.writeUnlock();
+    _lock.unlockWrite();
   }
 }
 
-Manager::WriteUnlocker::WriteUnlocker(arangodb::basics::ReadWriteSpinLock& lock)
-    : _lock(lock) {}
-
-Manager::WriteUnlocker::~WriteUnlocker() {
-  _lock.writeUnlock();
-}
-  
 Manager::Manager(PostFn schedulerPost, uint64_t globalLimit, bool enableWindowedStats)
     : _lock(),
       _shutdown(false),
@@ -209,9 +202,9 @@ void Manager::shutdown() {
     }
     while (!_caches.empty()) {
       std::shared_ptr<Cache> cache = _caches.begin()->second;
-      _lock.writeUnlock();
+      _lock.unlockWrite();
       cache->shutdown();
-      _lock.writeLock();
+      _lock.lockWrite();
     }
     freeUnusedTables();
     _shutdown = true;
@@ -353,10 +346,10 @@ void Manager::unregisterCache(uint64_t id) {
   }
   std::shared_ptr<Cache>& cache = it->second;
   Metadata* metadata = cache->metadata();
-  metadata->readLock();
+  metadata->lockRead();
   _globalAllocation -= metadata->allocatedSize;
   TRI_ASSERT(_globalAllocation >= _fixedAllocation);
-  metadata->readUnlock();
+  metadata->unlockRead();
   _caches.erase(id);
 }
 
@@ -366,35 +359,40 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(Cache* cache) {
 
   bool ok = _lock.writeLock(Manager::triesSlow);
   if (ok) {
-    WriteUnlocker wr(_lock);
-    if (isOperational() && !globalProcessRunning()) {
-      Metadata* metadata = cache->metadata();
-      metadata->writeLock();
+    try {
+      if (isOperational() && !globalProcessRunning()) {
+        Metadata* metadata = cache->metadata();
+        metadata->lockWrite();
 
-      allowed = !metadata->isResizing() && !metadata->isMigrating();
-      if (allowed) {
-        if (metadata->allocatedSize >= metadata->deservedSize &&
-            pastRebalancingGracePeriod()) {
-          uint64_t increase = std::min(metadata->hardUsageLimit / 2,
-                                       metadata->maxSize - metadata->allocatedSize);
-          if (increase > 0 && increaseAllowed(increase)) {
-            uint64_t newLimit = metadata->allocatedSize + increase;
-            metadata->adjustDeserved(newLimit);
-          } else {
-            allowed = false;
+        allowed = !metadata->isResizing() && !metadata->isMigrating();
+        if (allowed) {
+          if (metadata->allocatedSize >= metadata->deservedSize &&
+              pastRebalancingGracePeriod()) {
+            uint64_t increase = std::min(metadata->hardUsageLimit / 2,
+                                         metadata->maxSize - metadata->allocatedSize);
+            if (increase > 0 && increaseAllowed(increase)) {
+              uint64_t newLimit = metadata->allocatedSize + increase;
+              metadata->adjustDeserved(newLimit);
+            } else {
+              allowed = false;
+            }
+          }
+
+          if (allowed) {
+            nextRequest = std::chrono::steady_clock::now();
+            resizeCache(TaskEnvironment::none, cache,
+                        metadata->newLimit());  // unlocks metadata
           }
         }
 
-        if (allowed) {
-          nextRequest = std::chrono::steady_clock::now();
-          resizeCache(TaskEnvironment::none, cache,
-                      metadata->newLimit());  // unlocks metadata
+        if (!allowed) {
+          metadata->unlockWrite();
         }
       }
-
-      if (!allowed) {
-        metadata->writeUnlock();
-      }
+      _lock.unlockWrite();
+    } catch (...) {
+      _lock.unlockWrite();
+      throw;
     }
   }
 
@@ -407,48 +405,53 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(Cache* cache, uint3
 
   bool ok = _lock.writeLock(Manager::triesSlow);
   if (ok) {
-    WriteUnlocker wr(_lock);
-    if (isOperational() && !globalProcessRunning()) {
-      Metadata* metadata = cache->metadata();
-      metadata->writeLock();
+    try {
+      if (isOperational() && !globalProcessRunning()) {
+        Metadata* metadata = cache->metadata();
+        metadata->lockWrite();
 
-      allowed = !metadata->isMigrating();
-      if (allowed) {
-        if (metadata->tableSize < Table::allocationSize(requestedLogSize)) {
-          uint64_t increase = Table::allocationSize(requestedLogSize) - metadata->tableSize;
-          if ((metadata->allocatedSize + increase >= metadata->deservedSize) &&
-              pastRebalancingGracePeriod()) {
-            if (increaseAllowed(increase)) {
-              uint64_t newLimit = metadata->allocatedSize + increase;
-              uint64_t granted = metadata->adjustDeserved(newLimit);
-              if (granted < newLimit) {
+        allowed = !metadata->isMigrating();
+        if (allowed) {
+          if (metadata->tableSize < Table::allocationSize(requestedLogSize)) {
+            uint64_t increase = Table::allocationSize(requestedLogSize) - metadata->tableSize;
+            if ((metadata->allocatedSize + increase >= metadata->deservedSize) &&
+                pastRebalancingGracePeriod()) {
+              if (increaseAllowed(increase)) {
+                uint64_t newLimit = metadata->allocatedSize + increase;
+                uint64_t granted = metadata->adjustDeserved(newLimit);
+                if (granted < newLimit) {
+                  allowed = false;
+                }
+              } else {
                 allowed = false;
               }
-            } else {
-              allowed = false;
             }
           }
         }
-      }
 
-      if (allowed) {
-        // first find out if cache is allowed to migrate
-        allowed = metadata->migrationAllowed(Table::allocationSize(requestedLogSize));
-      }
-      if (allowed) {
-        // now find out if we can lease the table
-        std::shared_ptr<Table> table = leaseTable(requestedLogSize);
-        allowed = (table != nullptr);
         if (allowed) {
-          nextRequest = std::chrono::steady_clock::now();
-          migrateCache(TaskEnvironment::none, cache,
-                       table);  // unlocks metadata
+          // first find out if cache is allowed to migrate
+          allowed = metadata->migrationAllowed(Table::allocationSize(requestedLogSize));
+        }
+        if (allowed) {
+          // now find out if we can lease the table
+          std::shared_ptr<Table> table = leaseTable(requestedLogSize);
+          allowed = (table != nullptr);
+          if (allowed) {
+            nextRequest = std::chrono::steady_clock::now();
+            migrateCache(TaskEnvironment::none, cache,
+                         table);  // unlocks metadata
+          }
+        }
+
+        if (!allowed) {
+          metadata->unlockWrite();
         }
       }
-
-      if (!allowed) {
-        metadata->writeUnlock();
-      }
+      _lock.unlockWrite();
+    } catch (...) {
+      _lock.unlockWrite();
+      throw;
     }
   }
 
@@ -566,7 +569,7 @@ int Manager::rebalance(bool onlyCalculate) {
     }
 #endif
     Metadata* metadata = cache->metadata();
-    metadata->writeLock();
+    metadata->lockWrite();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
     if (newDeserved < fixed) {
@@ -576,7 +579,7 @@ int Manager::rebalance(bool onlyCalculate) {
     }
 #endif
     metadata->adjustDeserved(newDeserved);
-    metadata->writeUnlock();
+    metadata->unlockWrite();
   }
 
   if (!onlyCalculate) {
@@ -603,13 +606,13 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
     }
 
     Metadata* metadata = cache->metadata();
-    metadata->writeLock();
+    metadata->lockWrite();
 
     if (metadata->allocatedSize > metadata->deservedSize) {
       resizeCache(environment, cache.get(),
                   metadata->newLimit());  // unlocks metadata
     } else {
-      metadata->writeUnlock();
+      metadata->unlockWrite();
     }
   }
 }
@@ -649,7 +652,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment, Cache* cache, ui
     uint64_t oldLimit = metadata->hardUsageLimit;
     bool success = metadata->adjustLimits(newLimit, newLimit);
     TRI_ASSERT(success);
-    metadata->writeUnlock();
+    metadata->unlockWrite();
     _globalAllocation -= oldLimit;
     _globalAllocation += newLimit;
     TRI_ASSERT(_globalAllocation >= _fixedAllocation);
@@ -660,16 +663,16 @@ void Manager::resizeCache(Manager::TaskEnvironment environment, Cache* cache, ui
   TRI_ASSERT(success);
   TRI_ASSERT(!metadata->isResizing());
   metadata->toggleResizing();
-  metadata->writeUnlock();
+  metadata->unlockWrite();
 
   auto task =
       std::make_shared<FreeMemoryTask>(environment, this, cache->shared_from_this());
   bool dispatched = task->dispatch();
   if (!dispatched) {
     // TODO: decide what to do if we don't have an io_service
-    metadata->writeLock();
+    metadata->lockWrite();
     metadata->toggleResizing();
-    metadata->writeUnlock();
+    metadata->unlockWrite();
   }
 }
 
@@ -681,17 +684,17 @@ void Manager::migrateCache(Manager::TaskEnvironment environment, Cache* cache,
 
   TRI_ASSERT(!metadata->isMigrating());
   metadata->toggleMigrating();
-  metadata->writeUnlock();
+  metadata->unlockWrite();
 
   auto task = std::make_shared<MigrateTask>(environment, this,
                                             cache->shared_from_this(), table);
   bool dispatched = task->dispatch();
   if (!dispatched) {
     // TODO: decide what to do if we don't have an io_service
-    metadata->writeLock();
+    metadata->lockWrite();
     reclaimTable(table, true);
     metadata->toggleMigrating();
-    metadata->writeUnlock();
+    metadata->unlockWrite();
   }
 }
 

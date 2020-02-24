@@ -149,7 +149,7 @@ std::pair<void*, Table*> Table::fetchAndLockBucket(uint32_t hash, uint64_t maxTr
         source = nullptr;
       }
     }
-    _lock.readUnlock();
+    _lock.unlockRead();
   }
 
   return std::make_pair(bucket, source);
@@ -158,7 +158,7 @@ std::pair<void*, Table*> Table::fetchAndLockBucket(uint32_t hash, uint64_t maxTr
 std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> const& table) {
   std::shared_ptr<Table> result = table;
   if (table.get() != this) {
-    _lock.writeLock();
+    _lock.lockWrite();
     if (table == nullptr) {
       result = _auxiliary;
       _auxiliary = table;
@@ -166,7 +166,7 @@ std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> const& table) 
       _auxiliary = table;
       result.reset();
     }
-    _lock.writeUnlock();
+    _lock.unlockWrite();
   }
   return result;
 }
@@ -187,7 +187,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(uint32_t index) {
   uint32_t mask;
   uint32_t shift;
 
-  _lock.readLock();
+  _lock.lockRead();
   std::shared_ptr<Table> source = _auxiliary->shared_from_this();
   TRI_ASSERT(_auxiliary.get() != nullptr);
   if (_logSize > _auxiliary->_logSize) {
@@ -203,7 +203,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(uint32_t index) {
     mask = (static_cast<uint32_t>(size - 1) << _auxiliary->_shift);
     shift = _auxiliary->_shift;
   }
-  _lock.readUnlock();
+  _lock.unlockRead();
 
   return std::make_unique<Subtable>(source, base, size, mask, shift);
 }
@@ -226,22 +226,22 @@ void Table::clear() {
 }
 
 void Table::disable() {
-  _lock.writeLock();
+  _lock.lockWrite();
   _disabled = true;
-  _lock.writeUnlock();
+  _lock.unlockWrite();
 }
 
 void Table::enable() {
-  _lock.writeLock();
+  _lock.lockWrite();
   _disabled = false;
-  _lock.writeUnlock();
+  _lock.unlockWrite();
 }
 
 bool Table::isEnabled(uint64_t maxTries) {
   bool ok = _lock.readLock(maxTries);
   if (ok) {
     ok = !_disabled;
-    _lock.readUnlock();
+    _lock.unlockRead();
   }
   return ok;
 }
@@ -261,7 +261,7 @@ void Table::signalEvictions() {
   bool ok = _lock.writeLock(triesGuarantee);
   if (ok) {
     _evictions = true;
-    _lock.writeUnlock();
+    _lock.unlockWrite();
   }
 }
 
@@ -271,7 +271,7 @@ uint32_t Table::idealSize() {
   if (ok) {
     forceGrowth = _evictions;
     _evictions = false;
-    _lock.writeUnlock();
+    _lock.unlockWrite();
   }
   if (forceGrowth) {
     return logSize() + 1;

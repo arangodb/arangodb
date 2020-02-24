@@ -99,9 +99,9 @@ Result PlainCache::insert(CachedValue* value) {
       change -= static_cast<int64_t>(candidate->size());
     }
 
-    _metadata.readLock();  // special case
+    _metadata.lockRead();  // special case
     allowed = _metadata.adjustUsageIfAllowed(change);
-    _metadata.readUnlock();
+    _metadata.unlockRead();
 
     if (allowed) {
       bool eviction = false;
@@ -149,10 +149,10 @@ Result PlainCache::remove(void const* key, uint32_t keySize) {
   if (candidate != nullptr) {
     int64_t change = -static_cast<int64_t>(candidate->size());
 
-    _metadata.readLock();  // special case
+    _metadata.lockRead();  // special case
     bool allowed = _metadata.adjustUsageIfAllowed(change);
     TRI_ASSERT(allowed);
-    _metadata.readUnlock();
+    _metadata.unlockRead();
 
     freeValue(candidate);
     maybeMigrate = source->slotEmptied();
@@ -327,9 +327,9 @@ Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
-        metadata->readLock();  // special case
+        metadata->lockRead();  // special case
         metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
-        metadata->readUnlock();
+        metadata->unlockRead();
       }
     }
     bucket->clear();

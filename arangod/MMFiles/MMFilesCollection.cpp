@@ -1590,22 +1590,22 @@ size_t MMFilesCollection::memory() const {
 }
 
 /// @brief disallow compaction of the collection
-void MMFilesCollection::preventCompaction() { _compactionLock.readLock(); }
+void MMFilesCollection::preventCompaction() { _compactionLock.lockRead(); }
 
 /// @brief try disallowing compaction of the collection
 bool MMFilesCollection::tryPreventCompaction() {
-  return _compactionLock.tryReadLock();
+  return _compactionLock.tryLockRead();
 }
 
 /// @brief re-allow compaction of the collection
 void MMFilesCollection::allowCompaction() { _compactionLock.unlock(); }
 
 /// @brief exclusively lock the collection for compaction
-void MMFilesCollection::lockForCompaction() { _compactionLock.writeLock(); }
+void MMFilesCollection::lockForCompaction() { _compactionLock.lockWrite(); }
 
 /// @brief try to exclusively lock the collection for compaction
 bool MMFilesCollection::tryLockForCompaction() {
-  return _compactionLock.tryWriteLock();
+  return _compactionLock.tryLockWrite();
 }
 
 /// @brief signal that compaction is finished

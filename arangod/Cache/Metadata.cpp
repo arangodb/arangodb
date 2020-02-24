@@ -93,22 +93,22 @@ Metadata& Metadata::operator=(Metadata&& other) noexcept {
   return *this;
 }
 
-void Metadata::readLock() const noexcept {
-  _lock.readLock();
+void Metadata::lockRead() const noexcept {
+  _lock.lockRead();
 }
 
-void Metadata::writeLock() const noexcept {
-  _lock.writeLock();
+void Metadata::lockWrite() const noexcept {
+  _lock.lockWrite();
 }
 
-void Metadata::readUnlock() const noexcept {
+void Metadata::unlockRead() const noexcept {
   TRI_ASSERT(isLocked());
-  _lock.readUnlock();
+  _lock.unlockRead();
 }
 
-void Metadata::writeUnlock() const noexcept {
+void Metadata::unlockWrite() const noexcept {
   TRI_ASSERT(isWriteLocked());
-  _lock.writeUnlock();
+  _lock.unlockWrite();
 }
 
 bool Metadata::isLocked() const noexcept {

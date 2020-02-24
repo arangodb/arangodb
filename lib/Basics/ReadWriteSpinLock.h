@@ -38,18 +38,16 @@ class ReadWriteSpinLock {
 
   ReadWriteSpinLock& operator=(ReadWriteSpinLock&& other) noexcept;
 
-  [[nodiscard]] bool tryWriteLock() noexcept;
-  void writeLock() noexcept;
+  [[nodiscard]] bool tryLockWrite() noexcept;
+  void lockWrite() noexcept;
   [[nodiscard]] bool writeLock(uint64_t maxAttempts) noexcept;
 
-  [[nodiscard]] bool tryReadLock() noexcept;
-  void readLock() noexcept;
+  [[nodiscard]] bool tryLockRead() noexcept;
+  void lockRead() noexcept;
   [[nodiscard]] bool readLock(uint64_t maxAttempts) noexcept;
 
-  void readUnlock() noexcept;
   void unlockRead() noexcept;
 
-  void writeUnlock() noexcept;
   void unlockWrite() noexcept;
 
   [[nodiscard]] bool isLocked() const noexcept;

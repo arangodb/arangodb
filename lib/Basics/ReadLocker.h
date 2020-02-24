@@ -129,7 +129,7 @@ class ReadLocker {
 
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
-    if (_readWriteLock->tryReadLock()) {
+    if (_readWriteLock->tryLockRead()) {
       _isLocked = true;
     }
     return _isLocked;
@@ -138,7 +138,7 @@ class ReadLocker {
   /// @brief acquire the read lock, blocking
   void lock() {
     TRI_ASSERT(!_isLocked);
-    _readWriteLock->readLock();
+    _readWriteLock->lockRead();
     _isLocked = true;
   }
 
