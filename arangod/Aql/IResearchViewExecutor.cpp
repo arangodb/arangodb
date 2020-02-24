@@ -641,6 +641,7 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
       skipped = static_cast<Impl&>(*this).skip(ExecutionBlock::DefaultBatchSize); // TODO check or implement "skip all"
     }
     TRI_ASSERT(_indexReadBuffer.empty());
+    call.didSkip(skipped);
     stats.incrScanned(skipped);
 
     if (skipped < call.getOffset() || (!offsetPhase && skipped == ExecutionBlock::DefaultBatchSize)) {
