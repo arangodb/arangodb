@@ -325,8 +325,7 @@ class IResearchViewExecutorBase {
   Fetcher& _fetcher;
   InputAqlItemRow _inputRow;      // Remove me after refactor is done
   ExecutionState _upstreamState;  // Remove me after refactor is done
-  ExecutorState _currentRowState;
-  InputAqlItemRow _currentRow;
+  ExecutorState _inputRowState;
   IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;
   irs::bytes_ref _pk;  // temporary store for pk buffer before decoding it
   irs::attribute_view _filterCtx;  // filter context
