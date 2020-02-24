@@ -73,7 +73,7 @@ using PathSequence = std::vector<Path>;
 class FakeKShortestPathsFinder : public KShortestPathsFinder {
  public:
   FakeKShortestPathsFinder(ShortestPathOptions& options, PathSequence const& kpaths)
-      : KShortestPathsFinder(options), _kpaths(kpaths), _pathAvailable(false) {}
+      : KShortestPathsFinder(options), _kpaths(kpaths), _traversalDone(true) {}
   ~FakeKShortestPathsFinder() = default;
 
   auto gotoNextPath() -> bool {
@@ -101,24 +101,27 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     EXPECT_NE(_source, _target);
 
     _finder = _kpaths.begin();
-    _pathAvailable = gotoNextPath();
     return true;
   }
 
   bool getNextPathAql(Builder& builder) override {
-    _pathsProduced.emplace_back(*_finder);
-    // fill builder with something sensible?
-    builder.openArray();
-    for (auto&& v : *_finder) {
-      builder.add(VPackValue(v));
+    _traversalDone = !gotoNextPath();
+
+    if (_traversalDone) {
+      return false;
+    } else {
+      _pathsProduced.emplace_back(*_finder);
+      // fill builder with something sensible?
+      builder.openArray();
+      for (auto&& v : *_finder) {
+        builder.add(VPackValue(v));
+      }
+      builder.close();
+
+      // HACK
+      _finder++;
+      return true;
     }
-    builder.close();
-
-    // HACK
-    _finder++;
-    _pathAvailable = gotoNextPath();
-
-    return _pathAvailable;
   }
 
   bool skipPath() override {
@@ -126,7 +129,7 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     return getNextPathAql(builder);
   }
 
-  bool isPathAvailable() const override { return _pathAvailable; }
+  bool isDone() const override { return _traversalDone; }
 
   PathSequence& getPathsProduced() noexcept { return _pathsProduced; }
   std::vector<std::pair<std::string, std::string>> getCalledWith() noexcept {
@@ -138,7 +141,7 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
   PathSequence const& _kpaths;
   std::string _source;
   std::string _target;
-  bool _pathAvailable;
+  bool _traversalDone;
   PathSequence::const_iterator _finder;
   PathSequence _pathsProduced;
   std::vector<std::pair<std::string, std::string>> _calledWith;
@@ -319,7 +322,8 @@ class KShortestPathsExecutorTest
     auto outputs = std::vector<SharedAqlItemBlockPtr>{};
 
     if (ourCall.getOffset() > 0) {
-      std::tie(state, stats, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, stats, skippedInitial, std::ignore) =
+          testee.skipRowsRange(input, ourCall);
     }
 
     while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
@@ -337,7 +341,8 @@ class KShortestPathsExecutorTest
     }
 
     if (ourCall.needsFullCount()) {
-      std::tie(state, stats, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, stats, skippedFullCount, std::ignore) =
+          testee.skipRowsRange(input, ourCall);
     }
 
     ValidateCalledWith();

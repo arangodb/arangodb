@@ -162,7 +162,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     Ball() {}
     Ball(VertexRef const& center, Direction direction)
         : _center(center), _direction(direction), _closest(0) {
-      _frontier.insert(center , std::make_unique<DijkstraInfo>(center));
+      _frontier.insert(center, std::make_unique<DijkstraInfo>(center));
     }
     ~Ball() = default;
     const VertexRef center() const { return _center; };
@@ -221,7 +221,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   // initialise k Shortest Paths
   TEST_VIRTUAL bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
-                                            arangodb::velocypack::Slice const& end);
+                                                 arangodb::velocypack::Slice const& end);
 
   // get the next available path as AQL value.
   TEST_VIRTUAL bool getNextPathAql(arangodb::velocypack::Builder& builder);
@@ -232,7 +232,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // get the next available path as a Path
   bool getNextPath(Path& path);
   TEST_VIRTUAL bool skipPath();
-  TEST_VIRTUAL bool isPathAvailable() const { return _pathAvailable; }
+  TEST_VIRTUAL bool isDone() const { return _traversalDone; }
 
  private:
   // Compute the first shortest path
@@ -258,7 +258,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
                        VertexRef& join, std::optional<double>& currentBest);
 
  private:
-  bool _pathAvailable;
+  bool _traversalDone;
 
   VertexRef _start;
   VertexRef _end;

@@ -163,16 +163,15 @@ auto KShortestPathsExecutor::produceRows(OutputAqlItemRow& output)
 auto KShortestPathsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   while (true) {
-    if (_finder.isPathAvailable()) {
-      doOutputPath(output);
-      if (output.isFull()) {
-        if (_finder.isPathAvailable()) {
-          return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
-        } else {
-          return {input.upstreamState(), NoStats{}, AqlCall{}};
-        }
+    doOutputPath(output);
+
+    if (output.isFull()) {
+      if (_finder.isDone()) {
+        return {input.upstreamState(), NoStats{}, AqlCall{}};
+      } else {
+        return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
       }
-    } else {
+    } else if (_finder.isDone()) {
       if (!fetchPaths(input)) {
         TRI_ASSERT(!input.hasDataRow());
         return {input.upstreamState(), NoStats{}, AqlCall{}};
@@ -186,11 +185,10 @@ auto KShortestPathsExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCal
   auto stats = NoStats{};
   auto skipped = size_t{0};
 
-  while (call.shouldSkip()) {
-    if (_finder.isPathAvailable()) {
+  while (call.shouldSkip() && !_finder.isDone()) {
+    if (_finder.skipPath()) {
       skipped++;
       call.didSkip(1);
-      _finder.skipPath();
     } else {
       if (!fetchPaths(input)) {
         TRI_ASSERT(!input.hasDataRow());
@@ -200,15 +198,15 @@ auto KShortestPathsExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCal
   }
 
   //
-  if (_finder.isPathAvailable()) {
-    return {ExecutorState::HASMORE, stats, skipped, AqlCall{}};
-  } else {
+  if (_finder.isDone()) {
     return {input.upstreamState(), stats, skipped, AqlCall{}};
+  } else {
+    return {ExecutorState::HASMORE, stats, skipped, AqlCall{}};
   }
 }
 
 auto KShortestPathsExecutor::fetchPaths(AqlItemBlockInputRange& input) -> bool {
-  TRI_ASSERT(!_finder.isPathAvailable());
+  TRI_ASSERT(_finder.isDone());
   while (input.hasDataRow()) {
     auto source = VPackSlice{};
     auto target = VPackSlice{};
@@ -226,12 +224,15 @@ auto KShortestPathsExecutor::fetchPaths(AqlItemBlockInputRange& input) -> bool {
 }
 
 auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
-  while (!output.isFull() && _finder.isPathAvailable()) {
+  while (!output.isFull() && !_finder.isDone()) {
     auto tmp = transaction::BuilderLeaser{_finder.options().trx()};
     tmp->clear();
-    _finder.getNextPathAql(*tmp.builder());
-    output.cloneValueInto(_infos.getOutputRegister(), _inputRow, AqlValue(*tmp.builder()));
-    output.advanceRow();
+
+    if (_finder.getNextPathAql(*tmp.builder())) {
+      output.cloneValueInto(_infos.getOutputRegister(), _inputRow,
+                            AqlValue(*tmp.builder()));
+      output.advanceRow();
+    }
   }
 }
 

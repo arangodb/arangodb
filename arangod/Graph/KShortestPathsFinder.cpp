@@ -43,7 +43,7 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _pathAvailable(false) {}
+    : ShortestPathFinder(options), _traversalDone(true) {}
 
 KShortestPathsFinder::~KShortestPathsFinder() = default;
 
@@ -55,13 +55,12 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
 
-  _pathAvailable = true;
+  _traversalDone = false;
+
   _shortestPaths.clear();
   _candidatePaths.clear();
 
-  TRI_IF_FAILURE("TraversalOOMInitialize") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
+  TRI_IF_FAILURE("Travefalse") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 
   return true;
 }
@@ -340,38 +339,37 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
 }
 
 bool KShortestPathsFinder::getNextPath(Path& result) {
-  bool available = false;
   result.clear();
 
-  // TODO: this looks a bit ugly
+  // This is for the first time that getNextPath is called
   if (_shortestPaths.empty()) {
     if (_start == _end) {
       TRI_ASSERT(!_start.empty());
       result._vertices.emplace_back(_start);
       result._weight = 0;
-      available = true;
     } else {
-      available = computeShortestPath(_start, _end, {}, {}, result);
+      // Compute the first shortest path (i.e. the shortest path
+      // between _start and _end!)
+      computeShortestPath(_start, _end, {}, {}, result);
       result._branchpoint = 0;
     }
   } else {
-    if (_start == _end) {
-      available = false;
-    } else {
-      available = computeNextShortestPath(result);
-    }
+    // We must not have _start == _end here, because we handle _start == _end
+    computeNextShortestPath(result);
   }
 
-  if (available) {
+  if (result.length() > 0) {
     _shortestPaths.emplace_back(result);
     _options.fetchVerticesCoordinator(result._vertices);
 
     TRI_IF_FAILURE("TraversalOOMPath") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+  } else {
+    // If we did not find a path, traversal is done.
+    _traversalDone = true;
   }
-  _pathAvailable = available;
-  return available;
+  return !_traversalDone;
 }
 
 bool KShortestPathsFinder::getNextPathShortestPathResult(ShortestPathResult& result) {
