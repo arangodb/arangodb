@@ -33,11 +33,13 @@ namespace aql {
 class AqlCallStack {
  public:
   // Initial
-  AqlCallStack(AqlCall call);
+  explicit AqlCallStack(AqlCall call);
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCall call);
   // Used to pass between blocks
   AqlCallStack(AqlCallStack const& other);
+
+  AqlCallStack& operator=(AqlCallStack const& other) = default;
 
   // Quick test is this CallStack is of local relevance, or it is sufficient to pass it through
   bool isRelevant() const;
@@ -70,6 +72,16 @@ class AqlCallStack {
   // Increase the subquery by one, not placing another call on the stack
   // This is used to bypass all executors until we reach the next subquery start.
   void increaseSubqueryDepth();
+
+  // TODO: Remove me again, only used to fake DONE
+  // @deprecated
+  auto empty() const noexcept -> bool {
+    return _operations.empty() && _depth == 0;
+  }
+
+  auto subqueryLevel() const noexcept -> size_t {
+    return _operations.size() + _depth;
+  }
 
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from main query)

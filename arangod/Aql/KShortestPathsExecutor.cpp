@@ -182,7 +182,8 @@ auto KShortestPathsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAq
 }
 
 auto KShortestPathsExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  auto stats = NoStats{};
   auto skipped = size_t{0};
 
   while (call.shouldSkip()) {
@@ -193,16 +194,16 @@ auto KShortestPathsExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCal
     } else {
       if (!fetchPaths(input)) {
         TRI_ASSERT(!input.hasDataRow());
-        return {input.upstreamState(), skipped, AqlCall{}};
+        return {input.upstreamState(), stats, skipped, AqlCall{}};
       }
     }
   }
 
   //
   if (_finder.isPathAvailable()) {
-    return {ExecutorState::HASMORE, skipped, AqlCall{}};
+    return {ExecutorState::HASMORE, stats, skipped, AqlCall{}};
   } else {
-    return {input.upstreamState(), skipped, AqlCall{}};
+    return {input.upstreamState(), stats, skipped, AqlCall{}};
   }
 }
 

@@ -21,13 +21,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CalculationExecutor.h"
+#include <Logger/LogMacros.h>
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallStack.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
@@ -86,6 +89,8 @@ std::vector<RegisterId> const& CalculationExecutorInfos::getExpInRegs() const no
 template <CalculationType calculationType>
 std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
 CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
+  // TRI_ASSERT(false);
+  // THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   ExecutionState state;
   InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::tie(state, row) = _fetcher.fetchRow();
@@ -123,6 +128,44 @@ CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
              state == ExecutionState::HASMORE);
 
   return {state, NoStats{}};
+}
+
+template <CalculationType calculationType>
+std::tuple<ExecutorState, typename CalculationExecutor<calculationType>::Stats, AqlCall>
+CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputRange,
+                                                  OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("CalculationExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  ExecutorState state = ExecutorState::HASMORE;
+  InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+
+  while (inputRange.hasDataRow()) {
+    // This executor is passthrough. it has enough place to write.
+    TRI_ASSERT(!output.isFull());
+    std::tie(state, input) = inputRange.nextDataRow(); 
+    TRI_ASSERT(input.isInitialized());
+
+    doEvaluation(input, output);
+    output.advanceRow();
+
+    // _hasEnteredContext implies the query has entered the context, but not
+    // the other way round because it may be owned by exterior.
+    TRI_ASSERT(!_hasEnteredContext || _infos.getQuery().hasEnteredContext());
+
+    // The following only affects V8Conditions. If we should exit the V8 context
+    // between blocks, because we might have to wait for client or upstream, then
+    //   hasEnteredContext => state == HASMORE,
+    // as we only leave the context open when there are rows left in the current
+    // block.
+    // Note that _infos.getQuery().hasEnteredContext() may be true, even if
+    // _hasEnteredContext is false, if (and only if) the query context is owned
+    // by exterior.
+    TRI_ASSERT(!shouldExitContextBetweenBlocks() || !_hasEnteredContext ||
+               state == ExecutorState::HASMORE);
+  }
+
+  return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
 }
 
 template <CalculationType calculationType>

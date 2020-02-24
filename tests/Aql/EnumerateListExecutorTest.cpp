@@ -81,7 +81,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
                                        {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
 
-  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
@@ -115,7 +115,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
                                        {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
 
-  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
@@ -133,7 +133,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
 }
 
 // new framework tests
-using EnumerateListTestHelper = ExecutorTestHelper<EnumerateListExecutor, 1, 1>;
+using EnumerateListTestHelper = ExecutorTestHelper<1, 1>;
 using EnumerateListSplitType = EnumerateListTestHelper::SplitType;
 
 class EnumerateListExecutorTestProduce
@@ -173,28 +173,30 @@ class EnumerateListExecutorTestProduce
 TEST_P(EnumerateListExecutorTestProduce, empty_array_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor, 1, 1>(*fakedQuery)
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([])"}}})
       .setInputSplitType(split)
       .expectOutput({}, {})
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos());
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, invalid_value_1) {
   auto [split] = GetParam();
 
   try {
-    ExecutorTestHelper<EnumerateListExecutor, 1, 1>(*fakedQuery)
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<EnumerateListExecutor>(makeInfos())
         .setInputValue({{1}})
         .setInputSplitType(split)
         .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
         .expectOutput({}, {})
         .expectSkipped(0)
         .expectedState(ExecutionState::DONE)
-        .run(makeInfos());
+        .run();
     FAIL();
   } catch (const arangodb::basics::Exception& e) {
     ASSERT_EQ(e.code(), 1563);
@@ -204,85 +206,92 @@ TEST_P(EnumerateListExecutorTestProduce, invalid_value_1) {
 TEST_P(EnumerateListExecutorTestProduce, default_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor, 1, 1>(*fakedQuery)
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 1, 2])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
       .expectOutput({1}, {{1}, {1}, {2}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos());
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, offset_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{5, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
       .expectOutput({1}, {{6}, {7}, {8}, {9}, {10}})
       .expectSkipped(5)
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos());
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, offset_2) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{3, AqlCall::Infinity{}, 2, false})
       .expectOutput({1}, {{4}, {5}})
       .expectSkipped(3)
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos());
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, offset_3) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{7, AqlCall::Infinity{}, 3, false})
       .expectOutput({1}, {{8}, {9}, {10}})
       .expectSkipped(7)
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos());
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, offset_4) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{5, AqlCall::Infinity{}, 2, true})
       .expectOutput({1}, {{6}, {7}})
       .expectSkipped(8)
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos());
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, offset_5) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{7, AqlCall::Infinity{}, 3, true})
       .expectOutput({1}, {{8}, {9}, {10}})
       .expectSkipped(7)
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos());
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, default_multiple_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor, 4, 5>(*fakedQuery)
+  ExecutorTestHelper<4, 5>(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({{1, 2, 3, R"([1, 2, 3])"}})
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -291,13 +300,14 @@ TEST_P(EnumerateListExecutorTestProduce, default_multiple_1) {
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, default_multiple_2) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor, 4, 5>(*fakedQuery)
+  ExecutorTestHelper<4, 5>(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
@@ -310,13 +320,14 @@ TEST_P(EnumerateListExecutorTestProduce, default_multiple_2) {
                                        RowBuilder<5>{1, 2, 3, R"([4, 5, 6])", 6}}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor, 4, 5>(*fakedQuery)
+  ExecutorTestHelper<4, 5>(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
@@ -326,13 +337,14 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
       .expectSkipped(0)
       .expectedState(ExecutionState::HASMORE)  // hasmore because of softLimit
-      .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor, 4, 5>(*fakedQuery)
+  ExecutorTestHelper<4, 5>(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
@@ -342,13 +354,14 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard) {
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)  // done because of hardLimit
-      .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
+      .run();
 }
 
 TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard_fullcount) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<EnumerateListExecutor, 4, 5>(*fakedQuery)
+  ExecutorTestHelper<4, 5>(*fakedQuery)
+      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
@@ -358,7 +371,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard_fullcou
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
       .expectSkipped(3)  // skipped amount of 3 in the fullCount phase
       .expectedState(ExecutionState::DONE)
-      .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
+      .run();
 }
 
 template <size_t... vs>
