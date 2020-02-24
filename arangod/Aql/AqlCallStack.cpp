@@ -81,8 +81,6 @@ void AqlCallStack::pop() {
     // We have one element to pop
     TRI_ASSERT(!_operations.empty());
     _operations.pop();
-    // We can never pop the main query, so one element needs to stay
-    TRI_ASSERT(!_operations.empty());
   } else {
     _depth--;
   }

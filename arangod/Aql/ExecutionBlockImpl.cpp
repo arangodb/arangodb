@@ -1419,8 +1419,67 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.fullCount));
     TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.hasHardLimit()));
 
+    // We can only have returned the following internal states
+    TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
+               _execState == ExecState::UPSTREAM);
+    // Skip can only be > 0 if we are in upstream cases.
+    TRI_ASSERT(_skipped == 0 || _execState == ExecState::UPSTREAM);
+
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
       // TODO: implement forwarding of SKIP properly, by forwarding the call.
+
+      while (clientCall.needSkipMore()) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        size_t subqueryDepthBefore = stack.subqueryLevel();
+#endif
+        if (!_infos.isModificationSubquery()) {
+          // We need to bypass skipping
+          // However we cannot call PRODUCE now, so bypass only SKIP
+          // and/or FULLCOUNT
+          AqlCall byPassCall{};
+          byPassCall.offset = clientCall.offset;
+          if (clientCall.getLimit() == 0 && clientCall.hasHardLimit()) {
+            byPassCall.hardLimit = 0;
+            byPassCall.fullCount = clientCall.fullCount;
+          } else {
+            byPassCall.softLimit = 0;
+          }
+          TRI_ASSERT(byPassCall.getLimit() == 0);
+          TRI_ASSERT(byPassCall.needSkipMore());
+          stack.pushCall(std::move(byPassCall));
+          // Increase the subquery depth to trigger plain call forwarding
+
+          stack.increaseSubqueryDepth();
+          size_t skippedLocal = 0;
+          std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
+          TRI_ASSERT(!_lastRange.hasDataRow());
+          if (_upstreamState == ExecutionState::WAITING) {
+            TRI_ASSERT(skippedLocal == 0);
+            TRI_ASSERT(_lastRange.skippedInFlight() == 0);
+            return {_upstreamState, 0, nullptr};
+          }
+          // Report what we have skipped.
+          TRI_ASSERT(skippedLocal == _lastRange.skippedInFlight());
+          _skipped = skippedLocal;
+          std::ignore = _lastRange.skip(skippedLocal);
+          // account for skipped rows.
+          clientCall.didSkip(_skipped);
+          TRI_ASSERT(!stack.isRelevant());
+          // Reduce depth by 1
+          stack.pop();
+          TRI_ASSERT(stack.isRelevant());
+          // Pop of the byPassCall.
+          stack.pop();
+        } else {
+          // TODO: Implement me.
+          TRI_ASSERT(false);
+        }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        TRI_ASSERT(subqueryDepthBefore == stack.subqueryLevel());
+#endif
+      }
+
       TRI_ASSERT(!clientCall.needSkipMore());
 
       // In subqeryEndExecutor we actually manage two calls.
@@ -1432,12 +1491,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       // FOr now use a fetchUnlimited Call always
       clientCall = AqlCall{};
     }
-
-    // We can only have returned the following internal states
-    TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
-               _execState == ExecState::UPSTREAM);
-    // Skip can only be > 0 if we are in upstream cases.
-    TRI_ASSERT(_skipped == 0 || _execState == ExecState::UPSTREAM);
     if (_execState == ExecState::UPSTREAM) {
       // We have been in waiting state.
       // We may have local work on the original call.

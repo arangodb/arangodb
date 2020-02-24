@@ -323,14 +323,15 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery) {
 };
 
 // We need to implement call forwarding first
-TEST_F(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip) {
+TEST_F(SplicedSubqueryIntegrationTest, single_subquery_skip) {
   auto call = AqlCall{5};
   auto pipeline = createSubquery();
-  executorTestHelper.setPipeline(std::move(pipeline))
+  ExecutorTestHelper<1, 2>{*fakedQuery}
+      .setPipeline(std::move(pipeline))
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
       .setCall(call)
-      .expectOutput({1}, {{5}, {7}, {1}})
+      .expectOutput({0, 1}, {{5, R"([5])"}, {7, R"([7])"}, {1, R"([1])"}})
       .expectSkipped(5)
       .expectedState(ExecutionState::DONE)
       .run();
