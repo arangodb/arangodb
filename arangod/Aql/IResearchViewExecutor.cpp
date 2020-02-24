@@ -473,6 +473,8 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
                                                      OutputAqlItemRow& output) {
   IResearchViewStats stats{};
   bool fetchNew = true;
+  AqlCall upstreamCall{};
+  upstreamCall.fullCount = output.getClientCall().fullCount;
 
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool documentWritten = false;
@@ -480,9 +482,15 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
     while (!documentWritten) {
       if (fetchNew) {
         fetchNew = false;
-        std::tie(_currentRowState, _currentRow) = inputRange.nextDataRow();
+        std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
+        if (!_currentRow) {
+          return {ExecutorState::DONE, stats, upstreamCall};
+          // documentWritten = true; // break
+          // break;
+        }
 
         // reset must be called exactly after we've got a new and valid input row.
+        TRI_ASSERT(_currentRow.isInitialized());
         static_cast<Impl&>(*this).reset();
       }
 
@@ -491,15 +499,15 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
 
       if (documentWritten) {
         stats.incrScanned();
+        output.advanceRow();
       } else {
         fetchNew = true;
+        std::ignore = inputRange.nextDataRow();
         // no document written, repeat.
       }
     }
   }
 
-  AqlCall upstreamCall{};
-  upstreamCall.fullCount = output.getClientCall().fullCount;
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
@@ -560,12 +568,14 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
     size_t skipped = 0;
 
     auto& impl = static_cast<Impl&>(*this);
-    std::tie(_currentRowState, _currentRow) = inputRange.nextDataRow();
+    std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
+    if (!_currentRow) {
+      break;
+    }
 
     // reset must be called exactly after we've got a new and valid input row.
-    impl.reset();
-
     TRI_ASSERT(_currentRow.isInitialized());
+    impl.reset();
 
     if (offsetPhase) {
       if (skipped < call.getOffset()) {
@@ -575,10 +585,17 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
         break;
       }
     } else {
-      skipped = static_cast<Impl&>(*this).skip(ExecutionBlock::DefaultBatchSize); // TODO check "skip all"
+      skipped = static_cast<Impl&>(*this).skip(ExecutionBlock::DefaultBatchSize); // TODO check or implement "skip all"
     }
     TRI_ASSERT(_indexReadBuffer.empty());
-    stats.incrScanned(skipped);
+
+    if (skipped == 0) {
+      // we were not able to skip any document.
+      // fetch new row, if possible
+      std::ignore= inputRange.nextDataRow();
+    } else {
+      stats.incrScanned(skipped);
+    }
   }
 
   AqlCall upstreamCall{};
