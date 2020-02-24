@@ -69,7 +69,8 @@ using RegisterSet = std::unordered_set<RegisterId>;
 using LambdaExePassThrough = TestLambdaExecutor;
 using LambdaExe = TestLambdaSkipExecutor;
 
-class SplicedSubqueryIntegrationTest : public AqlExecutorTestCase<false> {
+class SplicedSubqueryIntegrationTest
+    : public AqlExecutorTestCaseWithParam<SubqueryExecutorParamType, false> {
  protected:
   ExecutorTestHelper<1, 1> executorTestHelper;
 
@@ -282,18 +283,28 @@ class SplicedSubqueryIntegrationTest : public AqlExecutorTestCase<false> {
       return {input.upstreamState(), stats, call};
     };
   }
-  /*  auto getSplit() -> SubqueryExecutorSplitType {
-      auto [split] = GetParam();
-      return split;
-      } */
+  auto getSplit() -> SubqueryExecutorSplitType {
+    auto [split] = GetParam();
+    return split;
+  }
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
+template <size_t... vs>
+const SubqueryExecutorSplitType splitIntoBlocks =
+    SubqueryExecutorSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const SubqueryExecutorSplitType splitStep = SubqueryExecutorSplitType{step};
+
+INSTANTIATE_TEST_CASE_P(SplicedSubqueryIntegrationTest, SplicedSubqueryIntegrationTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<2>, splitStep<1>));
+
+TEST_P(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
   auto call = AqlCall{};
   auto pipeline = createSubquery();
   executorTestHelper.setPipeline(std::move(pipeline))
       .setInputValueList()
-      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({1}, {})
       .expectSkipped(0)
@@ -301,13 +312,13 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
       .run();
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, single_subquery) {
+TEST_P(SplicedSubqueryIntegrationTest, single_subquery) {
   auto call = AqlCall{};
   auto pipeline = createSubquery();
   ExecutorTestHelper<1, 2>{*fakedQuery}
       .setPipeline(std::move(pipeline))
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
-      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0, 1}, {{1, R"([1])"},
                              {2, R"([2])"},
@@ -322,14 +333,13 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery) {
       .run();
 };
 
-// We need to implement call forwarding first
-TEST_F(SplicedSubqueryIntegrationTest, single_subquery_skip) {
+TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_and_produce) {
   auto call = AqlCall{5};
   auto pipeline = createSubquery();
   ExecutorTestHelper<1, 2>{*fakedQuery}
       .setPipeline(std::move(pipeline))
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
-      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0, 1}, {{5, R"([5])"}, {7, R"([7])"}, {1, R"([1])"}})
       .expectSkipped(5)
@@ -337,12 +347,54 @@ TEST_F(SplicedSubqueryIntegrationTest, single_subquery_skip) {
       .run();
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
+TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_all) {
+  auto call = AqlCall{20};
+  auto pipeline = createSubquery();
+  ExecutorTestHelper<1, 2>{*fakedQuery}
+      .setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, {})
+      .expectSkipped(8)
+      .expectedState(ExecutionState::DONE)
+      .run();
+};
+
+TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_fullcount) {
+  auto call = AqlCall{0, true, 0, AqlCall::LimitType::HARD};
+  auto pipeline = createSubquery();
+  ExecutorTestHelper<1, 2>{*fakedQuery}
+      .setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, {})
+      .expectSkipped(8)
+      .expectedState(ExecutionState::DONE)
+      .run();
+};
+
+TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_produce_count) {
+  auto call = AqlCall{2, true, 2, AqlCall::LimitType::HARD};
+  auto pipeline = createSubquery();
+  ExecutorTestHelper<1, 2>{*fakedQuery}
+      .setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, {{5, R"([5])"}, {2, R"([2])"}})
+      .expectSkipped(6)
+      .expectedState(ExecutionState::DONE)
+      .run();
+};
+
+TEST_P(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
   auto call = AqlCall{};
   auto pipeline = createSubquery(createSubquery());
   executorTestHelper.setPipeline(std::move(pipeline))
       .setInputValueList()
-      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0}, {})
       .expectSkipped(0)
@@ -350,12 +402,12 @@ TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
       .run();
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries) {
+TEST_P(SplicedSubqueryIntegrationTest, two_nested_subqueries) {
   auto call = AqlCall{};
   auto pipeline = createSubquery(createSubquery());
   executorTestHelper.setPipeline(std::move(pipeline))
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
-      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
@@ -363,12 +415,12 @@ TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries) {
       .run();
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, two_sequential_subqueries) {
+TEST_P(SplicedSubqueryIntegrationTest, two_sequential_subqueries) {
   auto call = AqlCall{};
   auto pipeline = concatPipelines(createSubquery(), createSubquery());
   executorTestHelper.setPipeline(std::move(pipeline))
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
-      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
@@ -376,13 +428,13 @@ TEST_F(SplicedSubqueryIntegrationTest, two_sequential_subqueries) {
       .run();
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
+TEST_P(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
   auto call = AqlCall{};
   auto pipeline = createSubquery(createDoNothingPipeline());
 
   executorTestHelper.setPipeline(std::move(pipeline))
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
-      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
@@ -390,13 +442,13 @@ TEST_F(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
       .run();
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, DISABLED_check_call_passes_subquery) {
+TEST_P(SplicedSubqueryIntegrationTest, DISABLED_check_call_passes_subquery) {
   auto call = AqlCall{10};
   auto pipeline = concatPipelines(createCallAssertPipeline(call), createSubquery());
 
   executorTestHelper.setPipeline(std::move(pipeline))
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
-      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0}, {})
       .expectSkipped(8)
@@ -404,13 +456,13 @@ TEST_F(SplicedSubqueryIntegrationTest, DISABLED_check_call_passes_subquery) {
       .run();
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, DISABLED_check_skipping_subquery) {
+TEST_P(SplicedSubqueryIntegrationTest, DISABLED_check_skipping_subquery) {
   auto call = AqlCall{10};
   auto pipeline = createSubquery(createAssertPipeline());
 
   executorTestHelper.setPipeline(std::move(pipeline))
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
-      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0}, {})
       .expectSkipped(0)

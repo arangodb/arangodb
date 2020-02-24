@@ -1426,60 +1426,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     TRI_ASSERT(_skipped == 0 || _execState == ExecState::UPSTREAM);
 
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-      // TODO: implement forwarding of SKIP properly, by forwarding the call.
-
-      while (clientCall.needSkipMore()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        size_t subqueryDepthBefore = stack.subqueryLevel();
-#endif
-        if (!_infos.isModificationSubquery()) {
-          // We need to bypass skipping
-          // However we cannot call PRODUCE now, so bypass only SKIP
-          // and/or FULLCOUNT
-          AqlCall byPassCall{};
-          byPassCall.offset = clientCall.offset;
-          if (clientCall.getLimit() == 0 && clientCall.hasHardLimit()) {
-            byPassCall.hardLimit = 0;
-            byPassCall.fullCount = clientCall.fullCount;
-          } else {
-            byPassCall.softLimit = 0;
-          }
-          TRI_ASSERT(byPassCall.getLimit() == 0);
-          TRI_ASSERT(byPassCall.needSkipMore());
-          stack.pushCall(std::move(byPassCall));
-          // Increase the subquery depth to trigger plain call forwarding
-
-          stack.increaseSubqueryDepth();
-          size_t skippedLocal = 0;
-          std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
-          TRI_ASSERT(!_lastRange.hasDataRow());
-          if (_upstreamState == ExecutionState::WAITING) {
-            TRI_ASSERT(skippedLocal == 0);
-            TRI_ASSERT(_lastRange.skippedInFlight() == 0);
-            return {_upstreamState, 0, nullptr};
-          }
-          // Report what we have skipped.
-          TRI_ASSERT(skippedLocal == _lastRange.skippedInFlight());
-          _skipped = skippedLocal;
-          std::ignore = _lastRange.skip(skippedLocal);
-          // account for skipped rows.
-          clientCall.didSkip(_skipped);
-          TRI_ASSERT(!stack.isRelevant());
-          // Reduce depth by 1
-          stack.pop();
-          TRI_ASSERT(stack.isRelevant());
-          // Pop of the byPassCall.
-          stack.pop();
-        } else {
-          // TODO: Implement me.
-          TRI_ASSERT(false);
-        }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        TRI_ASSERT(subqueryDepthBefore == stack.subqueryLevel());
-#endif
-      }
-
+      // TODO: implement forwarding of SKIP properly:
+      // We need to modify the execute API to instead return a vector of skipped
+      // values.
+      // Then we can simply push a skip on the Stack here and let it forward.
+      // In case of a modifaction we need to NOT forward a skip, but instead do
+      // a limit := limit + offset call and a hardLimit 0 call on top of the stack.
       TRI_ASSERT(!clientCall.needSkipMore());
 
       // In subqeryEndExecutor we actually manage two calls.
