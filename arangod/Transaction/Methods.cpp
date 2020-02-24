@@ -2563,7 +2563,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
   TRI_ASSERT(collinfo != nullptr);
   auto& cache = collinfo->countCache();
 
-  int64_t documents = CountCache::NotPopulated;
+  uint64_t documents = CountCache::NotPopulated;
   if (type == transaction::CountType::ForceCache) {
     // always return from the cache, regardless what's in it
     documents = cache.get();
@@ -2591,7 +2591,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
             counts.emplace_back(std::move(key), value);
           }
 
-          int64_t total = 0;
+          uint64_t total = 0;
           OperationResult opRes = buildCountResult(counts, type, total);
           cache.store(total);
           return opRes;
@@ -2599,7 +2599,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
   }
 
   // cache hit!
-  TRI_ASSERT(documents >= 0);
+  TRI_ASSERT(documents != CountCache::NotPopulated);
   TRI_ASSERT(type != transaction::CountType::Detailed);
 
   // return number from cache

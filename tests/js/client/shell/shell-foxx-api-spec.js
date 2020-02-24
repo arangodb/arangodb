@@ -15,7 +15,7 @@ const arango = require('@arangodb').arango;
 const errors = arangodb.errors;
 const db = arangodb.db;
 const aql = arangodb.aql;
-var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
+var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 
 
 function loadFoxxIntoZip(path) {

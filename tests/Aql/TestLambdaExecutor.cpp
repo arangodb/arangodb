@@ -117,6 +117,6 @@ auto TestLambdaSkipExecutor::produceRows(AqlItemBlockInputRange& input, OutputAq
 }
 
 auto TestLambdaSkipExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   return _infos.getSkipLambda()(input, call);
 }

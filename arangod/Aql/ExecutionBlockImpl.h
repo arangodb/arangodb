@@ -37,6 +37,9 @@
 
 namespace arangodb::aql {
 
+template <class Fetcher>
+class IdExecutor;
+
 struct AqlCall;
 class AqlItemBlock;
 class ExecutionEngine;
@@ -196,6 +199,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
+  template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<ConstFetcher>>>>
+  auto injectConstantBlock(SharedAqlItemBlockPtr block) -> void;
+
   [[nodiscard]] Infos const& infos() const;
 
   /// @brief shutdown, will be called exactly once for the whole query
@@ -224,8 +230,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
   // execute a skipRowsRange call
-  std::tuple<ExecutorState, size_t, AqlCall> executeSkipRowsRange(AqlItemBlockInputRange& input,
-                                                                  AqlCall& call);
+  std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> executeSkipRowsRange(
+      AqlItemBlockInputRange& input, AqlCall& call);
 
   /**
    * @brief Inner getSome() part, without the tracing calls.

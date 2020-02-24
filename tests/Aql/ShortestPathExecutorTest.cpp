@@ -430,7 +430,8 @@ class ShortestPathExecutorTest
 
     // If an offset is requested, skip
     if (ourCall.getOffset() > 0) {
-      std::tie(state, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, std::ignore, skippedInitial, std::ignore) =
+          testee.skipRowsRange(input, ourCall);
     }
 
     // Produce rows
@@ -453,7 +454,8 @@ class ShortestPathExecutorTest
       // Emulate being called with a full count
       ourCall.hardLimit = 0;
       ourCall.softLimit = 0;
-      std::tie(state, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, std::ignore, skippedFullCount, std::ignore) =
+          testee.skipRowsRange(input, ourCall);
     }
 
     ValidateCalledWith();
@@ -531,7 +533,7 @@ PathSequence const someOtherPaths = {pathBetween("vertex/a", "vertex/target", 10
 
 auto sources = testing::Values(constSource, regSource, brokenSource);
 auto targets = testing::Values(constTarget, regTarget, brokenTarget);
-auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
+static auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
 auto paths = testing::Values(noPath, onePath, threePaths, somePaths);
 auto calls =
     testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},

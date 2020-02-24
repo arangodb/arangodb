@@ -82,26 +82,11 @@ EOF
   fi
 fi
 
-if test ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/SERVER" -a ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"; then
-    STORAGE_ENGINE=$(
-        /usr/bin/osascript <<-EOF
-set issueList to {"auto", "rocksdb", "mmfiles"}
-set selectedIssue to {choose from list issueList}
-return selectedIssue
-EOF
-                  )
-
-    if test "$STORAGE_ENGINE" == "false"; then
-        STORAGE_ENGINE=auto
-    fi
-
-    sed -i -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;" "${ARANGOD_CONF}"
-else
+if test -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/SERVER" -a -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"; then
+    rm -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/LOCK" # FIXME
     if "${ROOTDIR}/arangod" -c "${ARANGOD_CONF}" --database.check-version true; then
-        rm -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/LOCK" # FIXME
         echo "database doesn't need an upgrade."
     else
-        rm -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/LOCK" # FIXME
         UPGRADE_DB=$(/usr/bin/osascript<<END
 tell application "System Events"
 activate

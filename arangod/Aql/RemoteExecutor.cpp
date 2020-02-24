@@ -431,7 +431,22 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::execute(
     AqlCallStack stack) {
-  TRI_ASSERT(false);
+  // Use the old getSome/SkipSome API.
+  // TODO needs execute implementation instead
+  auto myCall = stack.popCall();
+  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall));
+  if (AqlCall::IsSkipSomeCall(myCall)) {
+    auto const [state, skipped] = skipSome(myCall.getOffset());
+    if (state != ExecutionState::WAITING) {
+      myCall.didSkip(skipped);
+    }
+    return {state, skipped, nullptr};
+  } else if (AqlCall::IsGetSomeCall(myCall)) {
+    auto const [state, block] = getSome(myCall.getLimit());
+    // We do not need to count as softLimit will be overwritten, and hard cannot be set.
+    return {state, 0, block};
+  }
+  // Should never get here!
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -460,8 +475,8 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
   } else {
     VPackSlice slice = response->slice();
     if (slice.isObject()) {
-      VPackSlice err = slice.get(StaticStrings::Error);
-      if (err.isBool() && err.getBool()) {
+      VPackSlice errSlice = slice.get(StaticStrings::Error);
+      if (errSlice.isBool() && errSlice.getBool()) {
         res = VelocyPackHelper::getNumericValue(slice, StaticStrings::ErrorNum, res);
         VPackStringRef ref =
             VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
@@ -502,8 +517,13 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   // Later, we probably want to set these sensibly:
   req->timeout(kDefaultTimeOutSecs);
   if (!_ownName.empty()) {
-    req->header.addMeta("Shard-Id", _ownName);
+    req->header.addMeta("x-shard-id", _ownName);
+    req->header.addMeta("shard-id", _ownName);  // deprecated in 3.7, remove later
   }
+  
+  LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
+      << "request to '" << _server
+      << "' '" << fuerte::to_string(type) << " " << req->header.path << "'";
 
   network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
 
