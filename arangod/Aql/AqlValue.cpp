@@ -1135,11 +1135,14 @@ AqlValue AqlValue::CreateFromBlocks(transaction::Methods* trx,
   std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
   VPackBuilder builder(buffer);
   builder.openArray();
+    
+  std::vector<RegisterId> registers;
 
   for (auto const& current : src) {
+    registers.clear();
+
     RegisterId const n = current->getNrRegs();
 
-    std::vector<RegisterId> registers;
     for (RegisterId j = 0; j < n; ++j) {
       // temporaries don't have a name and won't be included
       if (!variableNames[j].empty()) {
