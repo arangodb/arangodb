@@ -57,7 +57,7 @@ const uint64_t Manager::minCacheAllocation =
     Manager::cacheRecordOverhead;
 const std::chrono::milliseconds Manager::rebalancingGracePeriod(10);
 
-Manager::ReadLocker::ReadLocker(basics::ReadWriteSpinLock& lock)
+Manager::ReadLocker::ReadLocker(arangodb::basics::ReadWriteSpinLock& lock)
     : _lock(lock) {
   _lock.readLock();
 }
@@ -66,10 +66,10 @@ Manager::ReadLocker::~ReadLocker() {
   _lock.readUnlock();
 }
   
-Manager::WriteLocker::WriteLocker(basics::ReadWriteSpinLock& lock)
+Manager::WriteLocker::WriteLocker(arangodb::basics::ReadWriteSpinLock& lock)
     : WriteLocker(lock, true) {}
 
-Manager::WriteLocker::WriteLocker(basics::ReadWriteSpinLock& lock, bool condition) 
+Manager::WriteLocker::WriteLocker(arangodb::basics::ReadWriteSpinLock& lock, bool condition) 
     : _lock(lock), _doLock(condition) {
   if (_doLock) {
     _lock.writeLock();
@@ -82,7 +82,7 @@ Manager::WriteLocker::~WriteLocker() {
   }
 }
 
-Manager::WriteUnlocker::WriteUnlocker(basics::ReadWriteSpinLock& lock)
+Manager::WriteUnlocker::WriteUnlocker(arangodb::basics::ReadWriteSpinLock& lock)
     : _lock(lock) {}
 
 Manager::WriteUnlocker::~WriteUnlocker() {
