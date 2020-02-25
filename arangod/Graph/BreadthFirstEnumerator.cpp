@@ -124,15 +124,10 @@ bool BreadthFirstEnumerator::next() {
 
       auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice e,
                           size_t cursorIdx) -> void {
-        if (_opts->hasEdgeFilter(_currentDepth, cursorIdx)) {
-          VPackSlice edge = e;
-          if (edge.isString()) {
-            edge = _opts->cache()->lookupToken(eid);
-          }
-          if (!_traverser->edgeMatchesConditions(edge, nextVertex, _currentDepth, cursorIdx)) {
-            return;
-          }
+        if (!keepEdge(eid, e, nextVertex, _currentDepth, cursorIdx)) {
+          return;
         }
+
         if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
           if (pathContainsEdge(nextIdx, eid)) {
             // This edge is on the path.

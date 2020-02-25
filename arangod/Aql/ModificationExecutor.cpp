@@ -58,10 +58,21 @@ ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type)
 
 ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type,
                                AqlValue const& oldValue, AqlValue const& newValue)
-    : _inputRow(std::move(inputRow)), _type(type), _oldValue(oldValue), _newValue(newValue) {}
+    : _inputRow(std::move(inputRow)),
+      _type(type),
+      _oldValue(oldValue),
+      _oldValueGuard(std::in_place, _oldValue.value(), true),
+      _newValue(newValue),
+      _newValueGuard(std::in_place, _newValue.value(), true) {}
+
 ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type,
                                AqlValue const& oldValue, AqlValue const& newValue)
-    : _inputRow(std::move(inputRow)), _type(type), _oldValue(oldValue), _newValue(newValue) {}
+    : _inputRow(std::move(inputRow)),
+      _type(type),
+      _oldValue(oldValue),
+      _oldValueGuard(std::in_place, _oldValue.value(), true),
+      _newValue(newValue),
+      _newValueGuard(std::in_place, _newValue.value(), true) {}
 
 InputAqlItemRow ModifierOutput::getInputRow() const { return _inputRow; }
 ModifierOutput::Type ModifierOutput::getType() const { return _type; }
