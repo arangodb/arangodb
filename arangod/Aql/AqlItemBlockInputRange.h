@@ -61,6 +61,8 @@ class AqlItemBlockInputRange {
 
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
+  ExecutorState skipAllRemainingDataRows();
+
   // Subtract up to this many rows from the local `_skipped` state; return
   // the number actually skipped. Does not skip data rows.
   [[nodiscard]] auto skip(std::size_t) noexcept -> std::size_t;
