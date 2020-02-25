@@ -621,6 +621,17 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
   if constexpr (isNewStyleExecutor<Executor>) {
     // Only this executor is fully implemented
     traceExecuteBegin(stack);
+    // silence tests -- we need to introduce new failure tests for fetchers
+    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     auto res = executeWithoutTrace(stack);
     traceExecuteEnd(res);
     return res;

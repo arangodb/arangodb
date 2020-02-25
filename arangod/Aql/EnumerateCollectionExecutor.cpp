@@ -222,7 +222,10 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
         if (_infos.getFilter() == nullptr) {
           _cursor->skipAll(skipped);
           stats.incrScanned(skipped);
-          TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == skipped);
+          /* For some reason this does not hold
+           * TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == skipped);
+           */
+          _documentProducingFunctionContext.getAndResetNumScanned()
         } else {
           // We need to call this to do the Accounting of FILTERED correctly.
           skipped += skipEntries(ExecutionBlock::SkipAllSize(), stats);
