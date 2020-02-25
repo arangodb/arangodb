@@ -399,41 +399,7 @@ bool RestAqlHandler::killQuery(std::string const& idString) {
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
-// this is using the part of the cursor API with side effects.
-// <operation>: can be "lock" or "getSome" or "skip" or "initializeCursor" or
-// "shutdown".
-// The body must be a Json with the following attributes:
-// For the "getSome" operation one has to give:
-//   "atMost": must be a positive integer, the cursor returns never
-//             more than "atMost" items. The result is the JSON representation
-//             of an AqlItemBlock.
-//             If "atMost" is not given it defaults to
-//             ExecutionBlock::DefaultBatchSize.
-// For the "skipSome" operation one has to give:
-//   "atMost": must be a positive integer, the cursor skips never
-//             more than "atMost" items. The result is a JSON object with a
-//             single attribute "skipped" containing the number of
-//             skipped items.
-//             If "atMost" is not given it defaults to
-//             ExecutionBlock::DefaultBatchSize.
-// For the "skip" operation one should give:
-//   "number": must be a positive integer, the cursor skips as many items,
-//             possibly exhausting the cursor.
-//             The result is a JSON with the attributes "error" (boolean),
-//             "errorMessage" (if applicable) and "done" (boolean)
-//             to indicate whether or not the cursor is exhausted.
-//             If "number" is not given it defaults to 1.
-// For the "initializeCursor" operation, one has to bind the following
-// attributes:
-//   "items": This is a serialized AqlItemBlock with usually only one row
-//            and the correct number of columns.
-//   "pos":   The number of the row in "items" to take, usually 0.
-// For the "shutdown" and "lock" operations no additional arguments are
-// required and an empty JSON object in the body is OK.
-// All operations allow to set the HTTP header "x-shard-id:". If this is
-// set, then the root block of the stored query must be a ScatterBlock
-// and the shard ID is given as an additional argument to the ScatterBlock's
-// special API.
+// see comment in header for details
 RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string const& idString) {
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
