@@ -40,13 +40,15 @@ class AqlItemBlockInputMatrix {
 
   AqlItemBlockInputMatrix(ExecutorState state, std::size_t skipped, AqlItemMatrix* aqlItemMatrix);
 
+  std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
+  bool hasShadowRow() const noexcept;
+  bool hasDataRow() const noexcept;
+
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
-  std::pair<ExecutorState, AqlItemMatrix const*> getMatrix() const noexcept;
+  std::pair<ExecutorState, AqlItemMatrix const*> getMatrix() noexcept;
 
   ExecutorState upstreamState() const noexcept;
   bool upstreamHasMore() const noexcept;
-
-  // TODO: check how to implement
 
   ExecutorState skipAllRemainingDataRows();
 
@@ -57,8 +59,6 @@ class AqlItemBlockInputMatrix {
   [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;
 
  private:
-
- private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   ExecutorState _finalState{ExecutorState::HASMORE};
   // How many rows were skipped upstream
@@ -67,6 +67,7 @@ class AqlItemBlockInputMatrix {
 
   // if isRelevant is set to false, we're only having a single data block
   bool _isRelevant;
+  ShadowAqlItemRow _shadowRow{CreateInvalidShadowRowHint{}};
 };
 
 }  // namespace arangodb::aql

@@ -48,9 +48,11 @@ SharedAqlItemBlockPtr AqlItemBlockInputMatrix::getBlock() const noexcept {
   return _block;
 }
 
-std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatrix() const noexcept {
-  TRI_ASSERT(_isRelevant && _aqlItemMatrix);
-  TRI_ASSERT(_finalState == ExecutorState::DONE);
+std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatrix() noexcept {
+  TRI_ASSERT(_isRelevant && _aqlItemMatrix && _block == nullptr);
+  TRI_ASSERT(!_shadowRow.isInitialized());
+
+  // matrix needs to be set to "read by executor", so IMPL does know how to continue
   return {_finalState, _aqlItemMatrix};
 }
 
@@ -62,11 +64,32 @@ bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
   return upstreamState() == ExecutorState::HASMORE;
 }
 
+bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
+  return (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
+}
+
+std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
+  auto tmpShadowRow = _shadowRow;
+
+  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
+    // next row will be a shadow row
+    _shadowRow = _aqlItemMatrix->popShadowRow();
+  } else {
+    _shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint()};
+  }
+  return {_finalState, tmpShadowRow};
+}
+
+bool AqlItemBlockInputMatrix::hasShadowRow() const noexcept {
+  return _shadowRow.isInitialized();
+}
+
 ExecutorState AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
-  _aqlItemMatrix->popShadowRow();
+  _shadowRow = _aqlItemMatrix->popShadowRow();
   return ExecutorState::DONE;
 }
 
+// TODO: check remove skip, + remove skipped (always 0)
 auto AqlItemBlockInputMatrix::skip(std::size_t const toSkip) noexcept -> std::size_t {
   auto const skipCount = std::min(_skipped, toSkip);
   _skipped -= skipCount;
