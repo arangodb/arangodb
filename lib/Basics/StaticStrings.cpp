@@ -56,6 +56,7 @@ std::string const StaticStrings::ReturnNewString("returnNew");
 std::string const StaticStrings::ReturnOldString("returnOld");
 std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
+std::string const StaticStrings::SkipDocumentValidation("skipDocumentValidation");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
 std::string const StaticStrings::Group("group");
@@ -238,6 +239,7 @@ std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::Satellite("satellite");
 std::string const StaticStrings::WriteConcern("writeConcern");
+std::string const StaticStrings::Validators("validators");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
@@ -295,3 +297,17 @@ std::string const StaticStrings::BackupSearchToDeleteName(
 std::string const StaticStrings::SerializationFormat("serializationFormat");
 std::string const StaticStrings::AqlRemoteExecute("execute");
 std::string const StaticStrings::AqlRemoteCallStack("callStack");
+
+// validation
+std::string const StaticStrings::ValidatorLevelNone("none");
+std::string const StaticStrings::ValidatorLevelNew("new");
+std::string const StaticStrings::ValidatorLevelModerate("moderate");
+std::string const StaticStrings::ValidatorLevelStrict("strict");
+
+std::string const StaticStrings::ValidatorParameterMessage("message");
+std::string const StaticStrings::ValidatorParameterLevel("level");
+std::string const StaticStrings::ValidatorParameterType("type");
+std::string const StaticStrings::ValidatorParameterRule("rule");
+
+std::string const StaticStrings::ValidatorTypeAQL("aql");
+std::string const StaticStrings::ValidatorTypeBool("bool");

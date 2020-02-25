@@ -143,8 +143,7 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const*
     : _binaryName(TRI_BinaryName(argv[0])),
       _binaryPath(TRI_LocateBinaryPath(argv[0])),
       _runRoot(TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), installDirectory)),
-      _ret(EXIT_FAILURE),
-      _useEventLog(true) {
+      _ret(EXIT_FAILURE) {
 #ifndef _WIN32
 #ifndef __APPLE__
 #ifndef __GLIBC__
@@ -157,15 +156,6 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const*
 #endif
 #endif
 #endif
-
-  static char const* serverName = "arangod";
-  if (_binaryName.size() < strlen(serverName) ||
-      _binaryName.substr(_binaryName.size() - strlen(serverName)) != serverName) {
-    // turn off event-logging for all binaries except arangod
-    // the reason is that all other tools are client tools that will directly
-    // print all errors so the user can handle them
-    _useEventLog = false;
-  }
 
   ADB_WindowsEntryFunction();
 

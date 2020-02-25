@@ -26,15 +26,28 @@
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 
+#ifdef __linux__
+#include <sys/prctl.h>
+#endif
+
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
-EventLoopService::EventLoopService(unsigned int threadCount)
+EventLoopService::EventLoopService(unsigned int threadCount, char const* name)
   : _lastUsed(0), _sslContext(nullptr) {
   for (unsigned i = 0; i < threadCount; i++) {
     _ioContexts.emplace_back(std::make_shared<asio_ns::io_context>(1));
     _guards.emplace_back(asio_ns::make_work_guard(*_ioContexts.back()));
     asio_ns::io_context* ctx = _ioContexts.back().get();
-    _threads.emplace_back([ctx]() { ctx->run(); });
+    _threads.emplace_back([ctx, name]() { 
+#ifdef __linux__
+      // set name of threadpool thread, so threads can be distinguished from each other
+      if (name != nullptr && *name != '\0') {
+        prctl(PR_SET_NAME, name, 0, 0, 0);
+      }
+#endif
+      ctx->run(); 
+    });
+
   }
 }
 
@@ -61,7 +74,7 @@ void EventLoopService::stop() {
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   std::for_each(_ioContexts.begin(), _ioContexts.end(), [](auto& c) { c->stop(); });
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  std::for_each(_threads.begin(), _threads.end(), [](auto& t) { if(t.joinable()) { t.join(); } });
+  std::for_each(_threads.begin(), _threads.end(), [](auto& t) { if (t.joinable()) { t.join(); } });
 }
   
 }}}  // namespace arangodb::fuerte::v1
