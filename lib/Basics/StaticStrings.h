@@ -268,7 +268,11 @@ class StaticStrings {
   static std::string const UpgradeEnvName;
   static std::string const BackupToDeleteName;
   static std::string const BackupSearchToDeleteName;
+
+  // aql api strings
   static std::string const SerializationFormat;
+  static std::string const AqlRemoteExecute;
+  static std::string const AqlRemoteCallStack;
 };
 }  // namespace arangodb
 
