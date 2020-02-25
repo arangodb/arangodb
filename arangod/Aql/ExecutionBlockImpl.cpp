@@ -154,6 +154,16 @@ constexpr bool isNewStyleExecutor = is_one_of_v<
     IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
     IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
     IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+    IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+    IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
+    IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
+    IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+    IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+    IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>,
+    IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>,
+    IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
+    IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+    IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
     ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
 
 template <class Executor>
@@ -1105,6 +1115,16 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
               IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
               IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
+              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
+              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>,
+              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>,
+              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
+              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
               EnumerateListExecutor, SortedCollectExecutor, LimitExecutor>),
       "Unexpected executor for SkipVariants::EXECUTOR");
 
