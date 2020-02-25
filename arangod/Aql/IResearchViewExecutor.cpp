@@ -485,7 +485,7 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
                                                        AqlCall& call) {
   TRI_ASSERT(_indexReadBuffer.empty());
   IResearchViewStats stats{};
-  bool offsetPhase = (call.getOffset() > 0);
+  const bool offsetPhase = (call.getOffset() > 0);
   size_t skipped = 0;
 
   AqlCall upstreamCall{};
