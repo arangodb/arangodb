@@ -173,6 +173,7 @@ std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
 std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputAqlItemRow& output) {
   // TODO: Remove me!
   TRI_ASSERT(false);
+  return {ExecutionState::DONE, TraversalStats{}};
 }
 
 auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
