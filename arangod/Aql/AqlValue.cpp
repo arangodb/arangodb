@@ -1126,68 +1126,6 @@ VPackSlice AqlValue::slice() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
 }
 
-/// @brief create an AqlValue from a vector of AqlItemBlock*s
-AqlValue AqlValue::CreateFromBlocks(transaction::Methods* trx,
-                                    std::vector<AqlItemBlock*> const& src,
-                                    std::vector<std::string> const& variableNames) {
-  bool shouldDelete = true;
-  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
-  VPackBuilder builder(buffer);
-  builder.openArray();
-    
-  std::vector<RegisterId> registers;
-
-  for (auto const& current : src) {
-    registers.clear();
-
-    RegisterId const n = current->getNrRegs();
-
-    for (RegisterId j = 0; j < n; ++j) {
-      // temporaries don't have a name and won't be included
-      if (!variableNames[j].empty()) {
-        registers.emplace_back(j);
-      }
-    }
-
-    for (size_t i = 0; i < current->size(); ++i) {
-      builder.openObject();
-
-      // only enumerate the registers that are left
-      for (auto const& reg : registers) {
-        builder.add(VPackValue(variableNames[reg]));
-        current->getValueReference(i, reg).toVelocyPack(trx, builder, false);
-      }
-
-      builder.close();
-    }
-  }
-
-  builder.close();
-  return AqlValue(buffer.get(), shouldDelete);
-}
-
-/// @brief create an AqlValue from a vector of AqlItemBlock*s
-AqlValue AqlValue::CreateFromBlocks(transaction::Methods* trx,
-                                    std::vector<AqlItemBlock*> const& src,
-                                    arangodb::aql::RegisterId expressionRegister) {
-  bool shouldDelete = true;
-  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
-  VPackBuilder builder(buffer);
-
-  builder.openArray();
-
-  for (auto const& current : src) {
-    for (size_t i = 0; i < current->size(); ++i) {
-      current->getValueReference(i, expressionRegister).toVelocyPack(trx, builder, false);
-    }
-  }
-
-  builder.close();
-  return AqlValue(buffer.get(), shouldDelete);
-}
-
 /// @brief comparison for AqlValue objects
 int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
