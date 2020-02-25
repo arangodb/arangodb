@@ -42,7 +42,7 @@ uint32_t log2(uint32_t value) noexcept {
   return (8 * sizeof(unsigned long)) - static_cast<uint32_t>(__builtin_clzl(static_cast<unsigned long>(value))) - 1;
 #elif defined(_MSC_VER)
   unsigned long index;
-  _BitScanReverse(&idx, static_cast<unsigned long>(value));
+  _BitScanReverse(&index, static_cast<unsigned long>(value));
   return static_cast<uint32_t>(index);
 #else
   static_assert(false, "no known way of computing log2");
