@@ -27,6 +27,12 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/VelocyPackHelper.h"
 
+#ifdef _MSC_VER
+#include <intrin.h>
+
+#pragma intrinsic(_BitScanReverse64)
+#endif
+
 using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -43,36 +49,27 @@ AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
 SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
-  // LOG_TOPIC("47298", TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of "
-  // << nrItems << " x " << nrRegs;
   size_t const targetSize = nrItems * (nrRegs + 1);
 
   AqlItemBlock* block = nullptr;
   size_t i = Bucket::getId(targetSize);
 
   int tries = 0;
-  while (tries++ < 2) {
+  do {
     TRI_ASSERT(i < numBuckets);
     if (!_buckets[i].empty()) {
       block = _buckets[i].pop();
       TRI_ASSERT(block != nullptr);
       TRI_ASSERT(block->numEntries() == 0);
       block->rescale(nrItems, nrRegs);
-      // LOG_TOPIC("7157d", TRACE, arangodb::Logger::FIXME) << "returned cached
-      // AqlItemBlock with dimensions " << block->size() << " x " <<
-      // block->getNrRegs();
       break;
     }
     // try next (bigger) bucket
-    if (++i >= numBuckets) {
-      break;
-    }
-  }
+    ++i;
+  } while (i < numBuckets && ++tries < 3);
 
   if (block == nullptr) {
     block = new AqlItemBlock(*this, nrItems, nrRegs);
-    // LOG_TOPIC("eb998", TRACE, arangodb::Logger::FIXME) << "created AqlItemBlock with
-    // dimensions " << block->size() << " x " << block->getNrRegs();
   }
 
   TRI_ASSERT(block != nullptr);
@@ -89,9 +86,6 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, Register
 void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->getRefCount() == 0);
-
-  // LOG_TOPIC("93865", TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of
-  // dimensions " << block->size() << " x " << block->getNrRegs();
 
   size_t const targetSize = block->capacity();
   size_t const i = Bucket::getId(targetSize);
@@ -145,6 +139,12 @@ void AqlItemBlockManager::deleteBlock(AqlItemBlock* block) {
 }
 #endif
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+size_t AqlItemBlockManager::getBucketId(size_t targetSize) noexcept {
+  return Bucket::getId(targetSize);
+}
+#endif
+
 AqlItemBlockManager::Bucket::Bucket() : numItems(0) {
   for (size_t i = 0; i < numBlocksPerBucket; ++i) {
     blocks[i] = nullptr;
@@ -185,35 +185,20 @@ size_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
   if (targetSize <= 1) {
     return 0;
   }
-  if (targetSize <= 10) {
-    return 1;
+
+  if (ADB_UNLIKELY(targetSize >= (1ULL << numBuckets))) {
+    return (numBuckets - 1);
   }
-  if (targetSize <= 20) {
-    return 2;
-  }
-  if (targetSize <= 40) {
-    return 3;
-  }
-  if (targetSize <= 100) {
-    return 4;
-  }
-  if (targetSize <= 200) {
-    return 5;
-  }
-  if (targetSize <= 400) {
-    return 6;
-  }
-  if (targetSize <= 1000) {
-    return 7;
-  }
-  if (targetSize <= 2000) {
-    return 8;
-  }
-  if (targetSize <= 4000) {
-    return 9;
-  }
-  if (targetSize <= 10000) {
-    return 10;
-  }
-  return 11;
+#if (defined(__GNUC__) || defined(__clang__))
+  size_t value = (8 * sizeof(unsigned long)) - static_cast<size_t>(__builtin_clzl(static_cast<unsigned long>(targetSize))) - 1;
+#elif defined(_MSC_VER)
+  unsigned long index;
+  _BitScanReverse64(&idx, static_cast<__int64>(targetSize));
+  size_t value = static_cast<size_t>(index);
+#else
+  static_assert(false, "no known way of computing clz");
+#endif
+
+  TRI_ASSERT(value < numBuckets);
+  return value;
 }

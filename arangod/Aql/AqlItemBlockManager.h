@@ -68,6 +68,8 @@ class AqlItemBlockManager {
   // Only used for the mocks in the catch tests. Other code should always use
   // SharedAqlItemBlockPtr which in turn call returnBlock()!
   static void deleteBlock(AqlItemBlock* block);
+
+  static size_t getBucketId(size_t targetSize) noexcept;
 #endif
 
 #ifndef ARANGODB_USE_GOOGLE_TESTS
