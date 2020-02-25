@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+
 #include "v8-utils.h"
 
 #include "Basics/Common.h"
@@ -44,7 +46,6 @@
 #include <unicode/unistr.h>
 #include <unicode/unorm2.h>
 #include <unicode/utypes.h>
-#include <chrono>
 #include <fstream>
 #include <functional>
 #include <iostream>

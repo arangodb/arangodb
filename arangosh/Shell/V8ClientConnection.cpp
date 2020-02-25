@@ -22,6 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono> // make sure we have this!
 #include "V8ClientConnection.h"
 
 #include <boost/algorithm/string.hpp>
