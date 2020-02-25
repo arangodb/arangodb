@@ -164,7 +164,7 @@ constexpr bool isNewStyleExecutor = is_one_of_v<
     IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
     IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
     IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-    ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
+    TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1097,11 +1097,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(
-      useExecutor ==
-          (is_one_of_v<
-              Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
-
+  static_assert(useExecutor ==
+                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, KShortestPathsExecutor,
+                                 ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
@@ -1125,7 +1123,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
               IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
               IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-              EnumerateListExecutor, SortedCollectExecutor, LimitExecutor>),
+              TraversalExecutor, EnumerateListExecutor, SortedCollectExecutor, LimitExecutor>),
       "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
