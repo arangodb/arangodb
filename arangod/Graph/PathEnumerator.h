@@ -88,7 +88,10 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _httpRequests;
-  
+
+  bool keepEdge(graph::EdgeDocumentToken& eid, velocypack::Slice edge,
+                velocypack::StringRef sourceVertex, size_t depth, size_t cursorId);
+
  public:
   PathEnumerator(Traverser* traverser, TraverserOptions* opts);
 

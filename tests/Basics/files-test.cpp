@@ -462,7 +462,7 @@ TEST_F(CFilesTest, tst_processFile) {
   good = TRI_ProcessFile(filename->c_str(), shaReader);
 
   EXPECT_TRUE(good);
-  EXPECT_TRUE(sha.final().compare("9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f")==0);
+  EXPECT_TRUE(sha.finalize().compare("9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f") == 0);
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;

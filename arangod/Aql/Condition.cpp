@@ -618,7 +618,7 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
 
   size_t itemsInIndex;
   if (!collectionName.empty() && collectionName[0] == '_' &&
-      collectionName.substr(0, 11) == "_statistics") {
+      collectionName.compare(0, 11, "_statistics", 11) == 0) {
     // use hard-coded number of items in index, because we are dealing with
     // the statistics collection here. this saves a roundtrip to the DB servers
     // for statistics queries that do not need a fully accurate collection count

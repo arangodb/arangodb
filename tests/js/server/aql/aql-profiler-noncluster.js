@@ -410,6 +410,33 @@ function ahuacatlProfilerTestSuite () {
       );
     },
 
+    testLimitCollectCombination: function () {
+      const query = `
+            FOR x IN 1..@rows
+              COLLECT AGGREGATE total = SUM(x)
+              LIMIT 0, 1
+              RETURN total
+      `;
+      const prepare = () => {};
+      const bind = (rows) => ({rows});
+      const genNodeList = (rows, batches) => {
+        return [
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: CalculationBlock, calls: 1, items: 1},
+          {type: EnumerateListBlock, calls: batches, items: rows},
+          {type: SortedCollectBlock, calls: 1, items: 1},
+          {type: LimitBlock, calls: 1, items: 1},
+          {type: ReturnBlock, calls: 1, items: 1}
+        ];
+      };
+
+      profHelper.runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
+
+
+    }
+
   };
 }
 
