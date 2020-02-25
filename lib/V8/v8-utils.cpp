@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
+#ifndef __cpp_lib_chrono
+// Work around broken mac compiler
+#define __cpp_lib_chrono 1
+#endif
 
 #include "v8-utils.h"
 

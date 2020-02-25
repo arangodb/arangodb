@@ -23,6 +23,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono> // make sure we have this!
+#ifndef __cpp_lib_chrono
+// Work around broken mac compiler
+#define __cpp_lib_chrono 1
+#endif
 #include "V8ClientConnection.h"
 
 #include <boost/algorithm/string.hpp>
