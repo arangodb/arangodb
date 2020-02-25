@@ -201,7 +201,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER &&
       (!result.touched("console") ||
        !*(options->get<BooleanParameter>("console")->ptr))) {
-    // specifiying --console requires JavaScript, so we can only turn it off
+    // specifying --console requires JavaScript, so we can only turn it off
     // if not specified
     _enableJS = false;
   }

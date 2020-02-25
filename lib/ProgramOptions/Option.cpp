@@ -159,7 +159,7 @@ std::string Option::stripPrefix(std::string const& name) {
 
 // strip the "-" from a string
 std::string Option::stripShorthand(std::string const& name) {
-  size_t pos = name.find("-");
+  size_t pos = name.find('-');
   if (pos == 0) {
     // strip initial "-"
     return name.substr(1);
@@ -172,7 +172,7 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
   std::string section;
   name = stripPrefix(name);
   // split at "."
-  size_t pos = name.find(".");
+  size_t pos = name.find('.');
   if (pos == std::string::npos) {
     // global option
     section = "";

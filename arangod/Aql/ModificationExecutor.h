@@ -140,8 +140,10 @@ class ModifierOutput {
  protected:
   InputAqlItemRow const _inputRow;
   Type const _type;
-  std::optional<AqlValue> const _oldValue;
-  std::optional<AqlValue> const _newValue;
+  std::optional<AqlValue> _oldValue;
+  std::optional<AqlValueGuard> _oldValueGuard;
+  std::optional<AqlValue> _newValue;
+  std::optional<AqlValueGuard> _newValueGuard;
 };
 
 template <typename FetcherType, typename ModifierType>

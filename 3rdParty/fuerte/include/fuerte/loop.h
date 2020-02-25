@@ -49,8 +49,8 @@ typedef asio_ns::executor_work_guard<asio_ns::io_context::executor_type>
 class EventLoopService {
  public:
   // Initialize an EventLoopService with a given number of threads
-  //  and a given number of io_context
-  explicit EventLoopService(unsigned int threadCount = 1);
+  //  and a given number of io_contexts
+  explicit EventLoopService(unsigned int threadCount = 1, char const* name = "");
   virtual ~EventLoopService();
 
   // Prevent copying
