@@ -1106,7 +1106,7 @@ template <class T>
 struct dependent_false : std::false_type {};
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(AqlItemBlockInputRange& inputRange,
+auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRange& inputRange,
                                                         AqlCall& call)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
   if constexpr (isNewStyleExecutor<Executor>) {
@@ -1166,7 +1166,7 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& inputRange,
+auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRange& inputRange,
                                                       AqlCall& clientCall)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
   TRI_ASSERT(isNewStyleExecutor<Executor>);
@@ -1184,10 +1184,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
     }
     case FastForwardVariant::FETCHER: {
       LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
-      while (inputRange.hasDataRow()) {
-        auto [state, row] = inputRange.nextDataRow();
-        TRI_ASSERT(row.isInitialized());
-      }
+      std::ignore = inputRange.skipAllRemainingDataRows(); // TODO: check if we need the state
       AqlCall call{};
       call.hardLimit = 0;
       return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call};
