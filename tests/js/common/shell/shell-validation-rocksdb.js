@@ -66,7 +66,10 @@ function ValidationBasicsSuite () {
     {
         level : "none",
         type : "json",
-        rule : { array : { type : "array", items : { type : "number", maximum : 6 }}},
+        rule : { zahlen : { type : "array",
+                            items : { type : "number", maximum : 6 }
+                          }
+               },
         message : "Failed json validation"
     }
   ];
@@ -101,7 +104,7 @@ function ValidationBasicsSuite () {
       } ];
       validatorsJson = [ {
         level : "strict",
-        rule : { array : { type : "array", items : { type : "number", maximum : 6 }}},
+        rule : { zahlen : { type : "array", items : { type : "number", maximum : 6 }}},
         message : "Json-Schema validation failed"
       } ];
     },
@@ -340,9 +343,9 @@ function ValidationBasicsSuite () {
       sleepInCluster();
       print(testCollection.properties());
 
-      let  doc = testCollection.insert({"array" : [1, 2, 3] }, skipOptions);
+      let  doc = testCollection.insert({"zahlen" : [1, 2, 3] }, skipOptions);
       try {
-        testCollection.insert({"array" : "hund"});
+        testCollection.insert({"zahlen" : "hund"});
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
