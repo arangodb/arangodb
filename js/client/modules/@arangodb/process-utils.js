@@ -708,6 +708,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       instanceInfo.exitStatus.hasOwnProperty('signal') &&
       ((instanceInfo.exitStatus.signal === 11) ||
        (instanceInfo.exitStatus.signal === 6) ||
+       (instanceInfo.exitStatus.signal === 4) || // mac sometimes SIG_ILLs...
        // Windows sometimes has random numbers in signal...
        (platform.substr(0, 3) === 'win')
       )
