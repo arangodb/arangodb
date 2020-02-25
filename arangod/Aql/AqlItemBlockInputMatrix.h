@@ -46,39 +46,20 @@ class AqlItemBlockInputMatrix {
   ExecutorState upstreamState() const noexcept;
   bool upstreamHasMore() const noexcept;
 
-  bool hasDataRow() const noexcept;
-
-  bool hasShadowRow() const noexcept;
-
   // TODO: check how to implement
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
-  // std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
-  // std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow() const;
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRow() const;
 
   ExecutorState skipAllRemainingDataRows();
 
   // Subtract up to this many rows from the local `_skipped` state; return
   // the number actually skipped. Does not skip data rows.
   [[nodiscard]] auto skip(std::size_t) noexcept -> std::size_t;
-
   [[nodiscard]] auto skipAll() noexcept -> std::size_t;
-
   [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;
 
  private:
-  bool isIndexValid(std::size_t index) const noexcept;
-
-  bool isShadowRowAtIndex(std::size_t index) const noexcept;
-
-  enum LookAhead { NOW, NEXT };
-  enum RowType { DATA, SHADOW };
-  template <LookAhead doPeek, RowType type>
-  ExecutorState nextState() const noexcept;
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
-  std::size_t _rowIndex{};
   ExecutorState _finalState{ExecutorState::HASMORE};
   // How many rows were skipped upstream
   std::size_t _skipped{};

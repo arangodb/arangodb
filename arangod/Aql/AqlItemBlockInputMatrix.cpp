@@ -31,9 +31,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, std::size_t skipped)
-    : _finalState{state}, _skipped{skipped}, _isRelevant{false} {
-  TRI_ASSERT(!hasDataRow());
-}
+    : _finalState{state}, _skipped{skipped}, _isRelevant{false} {}
 
 // only used for block passthrough
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const& block)
@@ -56,86 +54,17 @@ std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatri
   return {_finalState, _aqlItemMatrix};
 }
 
-bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
-  return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
-}
-
 ExecutorState AqlItemBlockInputMatrix::upstreamState() const noexcept {
-  return nextState<LookAhead::NOW, RowType::DATA>();
+  return _finalState;
 }
 
 bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
   return upstreamState() == ExecutorState::HASMORE;
 }
 
-bool AqlItemBlockInputMatrix::hasShadowRow() const noexcept {
-  return isIndexValid(_rowIndex) && isShadowRowAtIndex(_rowIndex);
-}
-
-bool AqlItemBlockInputMatrix::isIndexValid(std::size_t index) const noexcept {
-  return _block != nullptr && index < _block->size();
-}
-
-bool AqlItemBlockInputMatrix::isShadowRowAtIndex(std::size_t index) const noexcept {
-  TRI_ASSERT(isIndexValid(index));
-  return _block->isShadowRow(index);
-}
-
-std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::peekShadowRow() const {
-  if (hasShadowRow()) {
-    return std::make_pair(nextState<LookAhead::NEXT, RowType::SHADOW>(),
-                          ShadowAqlItemRow{_block, _rowIndex});
-  }
-  return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(),
-                        ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
-}
-
 ExecutorState AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
   _aqlItemMatrix->popShadowRow();
   return ExecutorState::DONE;
-}
-
-std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
-  auto res = peekShadowRow();
-  if (res.second.isInitialized()) {
-    // Advance the current row.
-    _rowIndex++;
-  }
-  return res;
-}
-
-template <AqlItemBlockInputMatrix::LookAhead doPeek, AqlItemBlockInputMatrix::RowType type>
-ExecutorState AqlItemBlockInputMatrix::nextState() const noexcept {
-  size_t testRowIndex = _rowIndex;
-  if constexpr (LookAhead::NEXT == doPeek) {
-    // Look ahead one
-    testRowIndex++;
-  }
-  if (!isIndexValid(testRowIndex)) {
-    return _finalState;
-  }
-
-  bool isShadowRow = isShadowRowAtIndex(testRowIndex);
-
-  if constexpr (RowType::DATA == type) {
-    // We Return HASMORE, if the next row is a data row
-    if (!isShadowRow) {
-      return ExecutorState::HASMORE;
-    }
-    return ExecutorState::DONE;
-  } else {
-    static_assert(RowType::SHADOW == type);
-    // We Return HASMORE, if the next shadow row is NOT relevant.
-    // So we can directly fetch the next shadow row without informing
-    // the executor about an empty subquery.
-    if (isShadowRow) {
-      ShadowAqlItemRow nextRow{_block, testRowIndex};
-      if (!nextRow.isRelevant()) {
-        return ExecutorState::HASMORE;
-      }
-    }
-    return ExecutorState::DONE;
-  }
 }
 
 auto AqlItemBlockInputMatrix::skip(std::size_t const toSkip) noexcept -> std::size_t {
