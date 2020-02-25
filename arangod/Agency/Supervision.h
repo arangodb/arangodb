@@ -173,6 +173,10 @@ class Supervision : public arangodb::CriticalThread {
   // @brief
   void cleanupFinishedAndFailedJobs();
 
+  // @brief these servers have gone for too long without any responsibility
+  //        and this are safely removable and so they are
+  void cleanupExpiredServers(Node const&, Node const&);
+
   void workJobs();
 
   /// @brief Get unique ids from agency

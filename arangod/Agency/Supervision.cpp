@@ -345,7 +345,7 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord&
     // if the current foxxmaster server failed => reset the value to ""
     if (snapshot.hasAsString(foxxmaster).first == serverID) {
       VPackBuilder create;
-      {
+       {
         VPackArrayBuilder tx(&create);
         {
           VPackObjectBuilder d(&create);
@@ -850,6 +850,10 @@ void Supervision::run() {
           updateSnapshot();
           LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
+          if (_agent->leaderFor() > 55) {
+            cleanupExpiredServers(*_snapshot, _transient);
+          }
+
           if (!(*_snapshot).has("Supervision/Maintenance")) {
             reportStatus("Normal");
 
@@ -1008,18 +1012,132 @@ void Supervision::handleShutdown() {
   }
 }
 
-std::unordered_map<ServerID, uint64_t> serverCleanUp(Node const& snapshot) {
-  std::unordered_map<ServerID, uint64_t> plannedServers;
-  for (auto const& serverId : snapshot("/arango/Plan/DBServers").children()) {
-    plannedServers.emplace(std::pair<ServerID, uint64_t>{serverId.first, 0});
+
+struct ServerLists {
+  std::unordered_map<ServerID, uint64_t> dbservers;
+  std::unordered_map<ServerID, uint64_t> coordinators;
+};
+
+//  Get all planned servers
+//  If heartbeat in transient too old or missing
+//    If heartbeat in snapshot older than 1 day
+//      Remove coordinator everywhere
+//      Remove DB server everywhere, if not leader of a shard
+
+std::unordered_map<ServerID, uint64_t> deletionCandidates (
+  Node const& snapshot, Node const& transient, std::string const& type) {
+  using namespace std::chrono;
+  std::unordered_map<ServerID, uint64_t> serverList;
+  std::string const planPath = "/Plan/" + type;
+  if (snapshot.has(planPath) && !snapshot(planPath).children().empty()) {
+    for (auto const& serverId : snapshot(planPath).children()) {
+      auto const& transientHeartbeat =
+        transient.hasAsNode("/Supervision/Health/" + serverId.first);
+      try {
+        // We have a transient heartbeat younger than a day
+        if (transientHeartbeat.second) {
+          auto const t = stringToTimepoint(
+            transientHeartbeat.first("Timestamp").getString());
+          if (t > system_clock::now() - hours(24)) {
+            continue;
+          }
+        }
+        auto const& persistentHeartbeat =
+          snapshot.hasAsNode("/Supervision/Health/" + serverId.first);
+        if (persistentHeartbeat.second) {
+          auto const t = stringToTimepoint(
+            persistentHeartbeat.first("Timestamp").getString());
+          if (t > system_clock::now() - hours(24)) {
+            continue;
+          }
+        }
+      } catch (std::exception const& e) {
+        LOG_TOPIC("21a9e", DEBUG, Logger::SUPERVISION)
+          << "Failing to analyse " << serverId << " as deletion candidate " << e.what();
+      }
+
+      // We are still here?
+      serverList.emplace(std::pair<ServerID, uint64_t>{serverId.first, 0});
+    }
   }
-  return plannedServers;
+
+
+  // Clear shard DB servers from the deletion candidates
+  if (type == "DBServers") {
+    if (!serverList.empty()) { // we need to go through all shard leaders :(
+      for (auto const& database : snapshot("Plan/Collections").children()) {
+        for (auto const& collection : database.second->children()) {
+          for (auto const& shard : (*collection.second)("shards").children()) {
+            Slice const servers = (*shard.second).getArray();
+            if (servers.length() > 0) {
+              try {
+                for (auto const& server : VPackArrayIterator(servers)) {
+                  if (serverList.find(server.copyString()) != serverList.end()) {
+                    serverList.erase(server.copyString());
+                  }
+                }
+              } catch (std::exception const& e) {
+                // TODO: this needs a little attention
+                LOG_TOPIC("720a5", DEBUG, Logger::SUPERVISION) << e.what();
+              }
+            } else {
+              return serverList;
+            }
+          }
+        }
+      }
+    }
+  }
+  return serverList;
+}
+
+void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transient) {
+
+  auto servers = deletionCandidates(snapshot, transient, "DBServers");
+
+  VPackBuilder del;
+  { VPackObjectBuilder d(&del);
+    del.add("op", VPackValue("delete")); }
+
+  VPackBuilder trxs;
+  { VPackArrayBuilder ta(&trxs);
+    { VPackObjectBuilder ts(&trxs);
+      for (auto const& i : servers) {
+        trxs.add("/Supervision/Health/" + i.first, del.slice());
+        trxs.add("/Plan/DBServers/" + i.first, del.slice());
+        trxs.add("/Current/DBServers/" + i.first, del.slice());
+        trxs.add("/Target/MapUniqueToShortID/" + i.first, del.slice());
+        trxs.add("/Current/ServersKnown/" + i.first, del.slice());
+        trxs.add("/Current/ServersRegistered/" + i.first, del.slice());
+      }}}
+
+  if (servers.size() > 0) {
+    singleWriteTransaction(_agent, trxs, false);
+  }
+
+  trxs.clear();
+  servers = deletionCandidates(snapshot, transient, "Coordinators");
+    { VPackArrayBuilder ta(&trxs);
+      { VPackObjectBuilder ts(&trxs);
+        for (auto const& i : servers) {
+        trxs.add("/Supervision/Health/" + i.first, del.slice());
+        trxs.add("/Plan/Coordinators/" + i.first, del.slice());
+        trxs.add("/Current/Coordinators/" + i.first, del.slice());
+        trxs.add("/Target/MapUniqueToShortID/" + i.first, del.slice());
+        trxs.add("/Current/ServersKnown/" + i.first, del.slice());
+        trxs.add("/Current/ServersRegistered/" + i.first, del.slice());
+      }}}
+
+  if (servers.size() > 0) {
+    singleWriteTransaction(_agent, trxs, false);
+  }
+
 }
 
 void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
                                          uint64_t& jobId) {
   std::unordered_set<std::string> failedServers;
-  
+
   // Search for failed server
   //  Could also use `Target/FailedServers`
   auto const& health = snapshot.hasAsChildren(healthPrefix);
