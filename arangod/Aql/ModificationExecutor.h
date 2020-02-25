@@ -39,6 +39,16 @@
 
 namespace arangodb {
 namespace aql {
+
+struct AqlCall;
+class AqlItemBlockInputRange;
+class InputAqlItemRow;
+class OutputAqlItemRow;
+class ExecutorInfos;
+class FilterStats;
+template <BlockPassthrough>
+class SingleRowFetcher;
+
 //
 // ModificationExecutor is the "base" class for the Insert, Remove,
 // UpdateReplace and Upsert executors.
@@ -161,8 +171,14 @@ class ModificationExecutor {
 
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+
  protected:
-  std::pair<ExecutionState, Stats> doCollect(size_t maxOutputs);
+  void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
   void doOutput(OutputAqlItemRow& output, Stats& stats);
 
   // The state that was returned on the last call to produceRows. For us

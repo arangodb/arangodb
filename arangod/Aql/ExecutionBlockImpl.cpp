@@ -144,7 +144,15 @@ constexpr bool isNewStyleExecutor =
                 TestLambdaExecutor,
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-                ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
+                ShortestPathExecutor, EnumerateListExecutor, LimitExecutor,
+                // ModificationExecutor<AllRowsFetcher, InsertModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+                // ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+                // ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+                //  ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1077,14 +1085,22 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor ==
-                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-                                 HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+  static_assert(
+      useExecutor ==
+          (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                                 TestLambdaSkipExecutor,
+                       TestLambdaSkipExecutor,
 #endif
-                                 EnumerateListExecutor, SortedCollectExecutor, LimitExecutor>),
-                "Unexpected executor for SkipVariants::EXECUTOR");
+                       EnumerateListExecutor, SortedCollectExecutor, LimitExecutor,
+                       //           ModificationExecutor<AllRowsFetcher, InsertModifier>,
+                       ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+                       //                       ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+                       ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+                       //                       ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+                       ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+                       //                       ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+                       ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>),
+      "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(
@@ -1159,7 +1175,15 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
   }
   // TODO: We only need to do this is the executor actually require to call.
   // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (is_one_of_v<Executor, LimitExecutor>) {
+  if constexpr (is_one_of_v<Executor, LimitExecutor,
+                            // ModificationExecutor<AllRowsFetcher, InsertModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+                            // ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+                            // ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+                            //  ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>) {
     return FastForwardVariant::EXECUTOR;
   }
   return FastForwardVariant::FETCHER;
