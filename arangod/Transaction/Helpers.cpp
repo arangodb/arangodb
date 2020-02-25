@@ -237,6 +237,7 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
+  TRI_ASSERT(slice.isObject());
 
   if (slice.isEmptyObject()) {
     return VPackSlice();
@@ -369,6 +370,15 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
 
   // fall back to regular lookup
   return slice.get(StaticStrings::RevString);
+}
+
+velocypack::StringRef transaction::helpers::extractCollectionFromId(velocypack::StringRef id) {
+  std::size_t index = id.find('/');
+  if (index == std::string::npos) {
+    // can't find the '/' to split, bail out with only logical response
+    return id;
+  }
+  return velocypack::StringRef(id.data(), index);
 }
 
 OperationResult transaction::helpers::buildCountResult(

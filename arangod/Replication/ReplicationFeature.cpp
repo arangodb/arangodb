@@ -276,7 +276,7 @@ static void writeError(int code, GeneralResponse* response) {
 
   VPackOptions options(VPackOptions::Defaults);
   options.escapeUnicode = true;
-  response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
+  response->setPayload(std::move(buffer), VPackOptions::Defaults);
 }
 
 /// @brief set the x-arango-endpoint header
