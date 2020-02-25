@@ -76,7 +76,7 @@ class CountCollectExecutorTest
       inputRegisterSet->emplace(r);
     }
     auto outputRegisterSet = make_shared_unordered_set({outputRegister});
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+    auto toKeepRegisterSet = std::unordered_set<RegisterId>{};
 
     return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet,
                                       inputRegisterSet->size(),
@@ -252,7 +252,6 @@ TEST_P(CountCollectExecutorTest, count_in_subquery) {
                                                                ExecutionNode::SUBQUERY_END));
 
   helper.setPipeline(std::move(pipe))
-      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
