@@ -71,29 +71,48 @@ SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fet
 template <typename Modifier>
 std::pair<ExecutionState, typename SingleRemoteModificationExecutor<Modifier>::Stats>
 SingleRemoteModificationExecutor<Modifier>::produceRows(OutputAqlItemRow& output) {
-  Stats stats;
-  InputAqlItemRow input = InputAqlItemRow(CreateInvalidInputRowHint{});
-
-  if (_upstreamState == ExecutionState::DONE) {
-    return {_upstreamState, std::move(stats)};
-  }
-
-  std::tie(_upstreamState, input) = _fetcher.fetchRow();
-
-  if (input.isInitialized()) {
-    TRI_ASSERT(_upstreamState == ExecutionState::HASMORE ||
-               _upstreamState == ExecutionState::DONE);
-    doSingleRemoteModificationOperation(input, output, stats);
-  } else {
-    TRI_ASSERT(_upstreamState == ExecutionState::WAITING ||
-               _upstreamState == ExecutionState::DONE);
-  }
-  return {_upstreamState, std::move(stats)};
+  TRI_ASSERT(false);
+  return {ExecutionState::DONE, Stats{}};
 }
 
 template <typename Modifier>
-bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOperation(
-    InputAqlItemRow& input, OutputAqlItemRow& output, Stats& stats) {
+[[nodiscard]] auto SingleRemoteModificationExecutor<Modifier>::produceRows(
+    AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, typename SingleRemoteModificationExecutor<Modifier>::Stats, AqlCall> {
+  auto stats = Stats{};
+
+  if (input.hasDataRow()) {
+    auto [state, row] = input.nextDataRow();
+    auto result = doSingleRemoteModificationOperation(row, stats);
+    doSingleRemoteModificationOutput(row, output, result);
+  }
+
+  return {input.upstreamState(), stats, AqlCall{}};
+}
+
+template <typename Modifier>
+[[nodiscard]] auto SingleRemoteModificationExecutor<Modifier>::skipRowsRange(
+    AqlItemBlockInputRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, typename SingleRemoteModificationExecutor<Modifier>::Stats, size_t, AqlCall> {
+  auto stats = Stats{};
+
+  if (input.hasDataRow()) {
+    auto [state, row] = input.nextDataRow();
+    auto result = doSingleRemoteModificationOperation(row, stats);
+    if (result.ok()) {
+      call.didSkip(1);
+      return {input.upstreamState(), stats, 1, AqlCall{}};
+    }
+  }
+  return {input.upstreamState(), stats, 0, AqlCall{}};
+}
+
+template <typename Modifier>
+auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOperation(
+    InputAqlItemRow& input, Stats& stats) -> OperationResult {
+  OperationResult result;
+  OperationOptions& options = _info._options;
+
   _info._options.silent = false;
   _info._options.returnOld = _info._options.returnOld ||
                              _info._outputRegisterId != RegisterPlan::MaxRegisterId;
@@ -105,8 +124,6 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   const bool isReplace = std::is_same<Modifier, Replace>::value;
 
   int possibleWrites = 0;  // TODO - get real statistic values!
-
-  OperationOptions& options = _info._options;
 
   if (_info._key.empty() && _info._input1RegisterId == RegisterPlan::MaxRegisterId) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
@@ -127,7 +144,6 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     inSlice = mergedBuilder->slice();
   }
 
-  OperationResult result;
   if (isIndex) {
     result = _info._trx->document(_info._aqlCollection->name(), inSlice, _info._options);
   } else if (isInsert) {
@@ -163,18 +179,25 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
       // document not there is not an error in this situation.
       // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so
       // don't throw an excetpion.
-      return false;
+      return result;
     } else if (!_info._ignoreErrors) {  // TODO remove if
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
 
     if (isIndex) {
-      return false;
+      return result;
     }
   }
 
   stats.addWritesExecuted(possibleWrites);
   stats.incrScannedIndex();
+  return result;
+}
+
+template <typename Modifier>
+auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOutput(
+    InputAqlItemRow& input, OutputAqlItemRow& output, OperationResult& result) -> void {
+  OperationOptions& options = _info._options;
 
   if (!(_info._outputRegisterId != RegisterPlan::MaxRegisterId ||
         _info._outputOldRegisterId != RegisterPlan::MaxRegisterId ||
@@ -182,7 +205,7 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     if (_info._hasParent) {
       output.copyRow(input);
     }
-    return _info._hasParent;
+    return;  //  _info._hasParent;
   }
 
   // Fill itemblock
@@ -239,8 +262,6 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   TRI_IF_FAILURE("SingleRemoteModificationOperationBlock::moreDocuments") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  return true;
 }
 
 template struct ::arangodb::aql::SingleRemoteModificationExecutor<IndexTag>;
