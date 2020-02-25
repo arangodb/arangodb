@@ -1110,8 +1110,6 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
     _doc = nullptr;
   }
 
-  saveCollection();
-
   return skipped;
 }
 
