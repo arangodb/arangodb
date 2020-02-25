@@ -144,7 +144,7 @@ constexpr bool isNewStyleExecutor =
                 TestLambdaExecutor,
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-                TraversalExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
+                TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1078,8 +1078,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
   static_assert(useExecutor ==
-                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-                                 HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, KShortestPathsExecutor,
+                                 ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                                  TestLambdaSkipExecutor,
 #endif
