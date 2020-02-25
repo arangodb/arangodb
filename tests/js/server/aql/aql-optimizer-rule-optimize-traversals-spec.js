@@ -114,12 +114,12 @@ describe('Rule optimize-traversals', () => {
 
   it('should remove unused variables', () => {
     const queries = [
-      [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN 1`, true, [ true, false, false ] ],
+      [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN 1`, true, [ false, false, false ] ],
       [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v, e]`, true, [ true, true, false ] ],
       [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v, p]`, true, [ true, false, true ] ],
       [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [e, p]`, false, [ true, true, true ] ],
       [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v]`, true, [ true, false, false ] ],
-      [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [e]`, true, [ true, true, false ] ],
+      [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [e]`, true, [ false, true, false ] ],
       [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [p]`, true, [ true, false, true ] ],
       [ `FOR v, e IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v, e]`, false, [ true, true, false ] ],
       [ `FOR v, e IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v]`, true, [ true, false, false ] ],

@@ -627,7 +627,7 @@ Variable const* GraphNode::vertexOutVariable() const {
 }
 
 bool GraphNode::usesVertexOutVariable() const {
-  return _vertexOutVariable != nullptr;
+  return _vertexOutVariable != nullptr && _options->produceVertices();
 }
 
 void GraphNode::setVertexOutput(Variable const* outVar) {
