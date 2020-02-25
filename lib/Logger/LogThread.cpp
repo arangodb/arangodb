@@ -75,21 +75,33 @@ void LogThread::wakeup() noexcept {
 bool LogThread::hasMessages() const noexcept { return !_messages.empty(); }
 
 void LogThread::run() {
+  constexpr uint64_t initialWaitTime = 25 * 1000;
+  constexpr uint64_t maxWaitTime = 100 * 1000;
+
+  uint64_t waitTime = initialWaitTime;
   while (!isStopping() && Logger::_active.load()) {
-    processPendingMessages();
+    bool worked = processPendingMessages();
+    if (worked) {
+      waitTime = initialWaitTime;
+    } else {
+      waitTime *= 2;
+      waitTime = std::min(maxWaitTime, waitTime);
+    }
 
     // cppcheck-suppress redundantPointerOp
     CONDITION_LOCKER(guard, _condition);
-    guard.wait(25 * 1000);
+    guard.wait(waitTime);
   }
 
   processPendingMessages();
 }
 
-void LogThread::processPendingMessages() {
+bool LogThread::processPendingMessages() {
+  bool worked = false;
   LogMessage* msg = nullptr;
 
   while (_messages.pop(msg)) {
+    worked = true;
     TRI_ASSERT(msg != nullptr);
     try {
       LogAppender::log(*msg);
@@ -98,4 +110,5 @@ void LogThread::processPendingMessages() {
 
     delete msg;
   }
+  return worked;
 }

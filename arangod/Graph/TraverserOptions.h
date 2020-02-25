@@ -82,6 +82,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   UniquenessLevel uniqueEdges;
 
+  std::vector<std::string> vertexCollections;
+
   explicit TraverserOptions(aql::Query* query);
 
   TraverserOptions(aql::Query* query, arangodb::velocypack::Slice const& definition);
@@ -115,11 +117,15 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool hasEdgeFilter(int64_t, size_t) const;
 
+  bool hasVertexCollectionRestrictions() const;
+
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
                               arangodb::velocypack::StringRef vertexId,
                               uint64_t, size_t);
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
+
+  bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
 
   graph::EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid, uint64_t);
 
