@@ -52,10 +52,12 @@ struct LogBuffer {
 
 class LogBufferFeature final : public application_features::ApplicationFeature {
  public:
-  static constexpr uint32_t BufferSize = 4096;
+  static constexpr uint32_t BufferSize = 2048;
   
   explicit LogBufferFeature(application_features::ApplicationServer& server);
   ~LogBufferFeature() = default;
+
+  void prepare() override;
 
   /// @brief return all buffered log entries
   std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel);
