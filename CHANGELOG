@@ -1,6 +1,13 @@
 devel
 -----
 
+* In some cases with a COLLECT LIMIT situation on a small limit the collect
+  does more calls to upstream than without a limit to provide the same
+  result. We improved this situation and made sure that LIMIT does
+  not cause the COLLECT to fetch too few input rows. There is a chance
+  that queries with a very small amount of data might suffer from this
+  modification, most queries will benefit however.  
+
 * Use OpenSSL's EVP interface for SHA256 instead of the deprecated low-level
   message digest APIs.
 
