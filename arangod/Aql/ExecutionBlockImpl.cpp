@@ -134,25 +134,25 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
 template <typename Executor>
-constexpr bool isNewStyleExecutor =
-    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor, EnumerateCollectionExecutor,
-                // TODO: re-enable after new subquery end & start are implemented
-                // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
-                HashedCollectExecutor,
+constexpr bool isNewStyleExecutor = is_one_of_v<
+    Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
+    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor, EnumerateCollectionExecutor,
+    // TODO: re-enable after new subquery end & start are implemented
+    // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
+    HashedCollectExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                TestLambdaExecutor,
-                TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
+    TestLambdaExecutor,
+    TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-                ShortestPathExecutor, EnumerateListExecutor, LimitExecutor,
-                // ModificationExecutor<AllRowsFetcher, InsertModifier>,
-                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
-                // ModificationExecutor<AllRowsFetcher, RemoveModifier>,
-                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
-                // ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
-                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-                //  ModificationExecutor<AllRowsFetcher, UpsertModifier>,
-                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
+    TraversalExecutor, KShortestPathsExecutor, hortestPathExecutor, EnumerateListExecutor, LimitExecutor,
+    // ModificationExecutor<AllRowsFetcher, InsertModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+    // ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+    // ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+    //  ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1087,11 +1087,12 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 
   static_assert(
       useExecutor ==
-          (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+          (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, KShortestPathsExecutor,
+                       ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                        TestLambdaSkipExecutor,
 #endif
-                       EnumerateListExecutor, SortedCollectExecutor, LimitExecutor,
+                       TraversalExecutor, EnumerateListExecutor, SortedCollectExecutor, LimitExecutor,
                        //           ModificationExecutor<AllRowsFetcher, InsertModifier>,
                        ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
                        //                       ModificationExecutor<AllRowsFetcher, RemoveModifier>,
@@ -1194,7 +1195,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
                                                       AqlCall& clientCall)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
   TRI_ASSERT(isNewStyleExecutor<Executor>);
-  auto type = fastForwardType(clientCall, _executor);
+  auto type = fastForwardType(clientCall, _executor) > ;
   switch (type) {
     case FastForwardVariant::FULLCOUNT:
     case FastForwardVariant::EXECUTOR: {
