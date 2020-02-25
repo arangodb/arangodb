@@ -130,7 +130,7 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const& filename) {
     if (good) {
       std::string newfile = filename.substr(0, filename.size() - 4);
       newfile += ".sha.";
-      newfile += sha.final();
+      newfile += sha.finalize();
       newfile += ".hash";
       LOG_TOPIC("80257", DEBUG, arangodb::Logger::ENGINES) << "shaCalcFile: done "
         << filename << " result: " << newfile;

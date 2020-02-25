@@ -82,14 +82,16 @@ void VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   }
 
   // Add item to send queue
+  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   if (!_writeQueue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(q > 0);
     item->invokeOnError(Error::QueueCapacityExceeded);
     return;
   }
   item.release();  // queue owns this now
 
-  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   FUERTE_LOG_VSTTRACE << "queued item: this=" << this << "\n";
 
   // _state.load() after queuing request, to prevent race with connect

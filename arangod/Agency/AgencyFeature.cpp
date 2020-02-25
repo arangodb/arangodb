@@ -277,7 +277,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
        std::type_index(typeid(FrontendFeature))});
 
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
-    // specifiying --console requires JavaScript, so we can only turn it off
+    // specifying --console requires JavaScript, so we can only turn it off
     // if not specified
 
     // console mode inactive. so we can turn off V8
