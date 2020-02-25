@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
 #define ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
 
+#include <type_traits>
+
 namespace arangodb {
 namespace aql {
 
