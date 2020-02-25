@@ -162,21 +162,21 @@ auto KShortestPathsExecutor::produceRows(OutputAqlItemRow& output)
 
 auto KShortestPathsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  while (true) {
-    doOutputPath(output);
-
-    if (output.isFull()) {
-      if (_finder.isDone()) {
-        return {input.upstreamState(), NoStats{}, AqlCall{}};
-      } else {
-        return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
-      }
-    } else if (_finder.isDone()) {
+  while (!output.isFull()) {
+    if (_finder.isDone()) {
       if (!fetchPaths(input)) {
         TRI_ASSERT(!input.hasDataRow());
         return {input.upstreamState(), NoStats{}, AqlCall{}};
       }
+    } else {
+      doOutputPath(output);
     }
+  }
+
+  if (_finder.isDone()) {
+    return {input.upstreamState(), NoStats{}, AqlCall{}};
+  } else {
+    return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
   }
 }
 
@@ -185,19 +185,23 @@ auto KShortestPathsExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCal
   auto stats = NoStats{};
   auto skipped = size_t{0};
 
-  while (call.shouldSkip() && !_finder.isDone()) {
-    if (_finder.skipPath()) {
-      skipped++;
-      call.didSkip(1);
-    } else {
+  while (call.shouldSkip()) {
+    // _finder.isDone() == true means that there is currently no path available
+    // from the _finder, we can try calling fetchPaths to make one available,
+    // but if that fails too, we must be DONE
+    if (_finder.isDone()) {
       if (!fetchPaths(input)) {
         TRI_ASSERT(!input.hasDataRow());
         return {input.upstreamState(), stats, skipped, AqlCall{}};
       }
+    } else {
+      if (_finder.skipPath()) {
+        skipped++;
+        call.didSkip(1);
+      }
     }
   }
 
-  //
   if (_finder.isDone()) {
     return {input.upstreamState(), stats, skipped, AqlCall{}};
   } else {
@@ -224,15 +228,12 @@ auto KShortestPathsExecutor::fetchPaths(AqlItemBlockInputRange& input) -> bool {
 }
 
 auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
-  while (!output.isFull() && !_finder.isDone()) {
-    auto tmp = transaction::BuilderLeaser{_finder.options().trx()};
-    tmp->clear();
+  auto tmp = transaction::BuilderLeaser{_finder.options().trx()};
+  tmp->clear();
 
-    if (_finder.getNextPathAql(*tmp.builder())) {
-      output.cloneValueInto(_infos.getOutputRegister(), _inputRow,
-                            AqlValue(*tmp.builder()));
-      output.advanceRow();
-    }
+  if (_finder.getNextPathAql(*tmp.builder())) {
+    output.cloneValueInto(_infos.getOutputRegister(), _inputRow, AqlValue(*tmp.builder()));
+    output.advanceRow();
   }
 }
 
