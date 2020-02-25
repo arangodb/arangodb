@@ -20,141 +20,247 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/CountCollectExecutor.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
-#include "Aql/Stats.h"
+#include "ExecutorTestHelper.h"
+#include "TestLambdaExecutor.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#include "Aql/CountCollectExecutor.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
+#include "Aql/SubqueryEndExecutor.h"
+#include "Aql/SubqueryStartExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+using LambdaExe = TestLambdaSkipExecutor;
 
 namespace arangodb {
 namespace tests {
 namespace aql {
 
-class CountCollectExecutorTest : public ::testing::Test {
- protected:
-  ExecutionState state;
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-  RegisterId nrOutputReg = 2;
-  SharedAqlItemBlockPtr block;
-  std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
+using CountCollectTestHelper = ExecutorTestHelper<1, 1>;
+using CountCollectSplitType = CountCollectTestHelper::SplitType;
+using CountCollectParamType = std::tuple<CountCollectSplitType>;
 
-  CountCollectExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        nrOutputReg(2),
-        block(new AqlItemBlock(itemBlockManager, 1000, nrOutputReg)),
-        outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{1})) {}
+class CountCollectExecutorTest
+    : public AqlExecutorTestCaseWithParam<CountCollectParamType, false> {
+ protected:
+  auto MakeInfos(RegisterId outReg) -> CountCollectExecutorInfos {
+    return CountCollectExecutorInfos{
+        outReg, outReg /*inputRegisters*/, outReg + 1 /*outputRegisters*/, {}, {}};
+  }
+  auto GetSplit() -> CountCollectSplitType {
+    auto const& [split] = GetParam();
+    return split;
+  }
+
+  auto MakeSubqueryStartInfos() -> SubqueryStartExecutor::Infos {
+    auto inputRegisterSet = make_shared_unordered_set({0});
+    auto outputRegisterSet = make_shared_unordered_set({});
+
+    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+
+    return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet,
+                                        inputRegisterSet->size(),
+                                        inputRegisterSet->size() +
+                                            outputRegisterSet->size(),
+                                        {}, toKeepRegisterSet);
+  }
+
+  auto MakeSubqueryEndInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
+    auto const outputRegister = RegisterId{inputRegister + 1};
+    auto inputRegisterSet = make_shared_unordered_set({});
+    for (RegisterId r = 0; r <= inputRegister; ++r) {
+      inputRegisterSet->emplace(r);
+    }
+    auto outputRegisterSet = make_shared_unordered_set({outputRegister});
+    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+
+    return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet,
+                                      inputRegisterSet->size(),
+                                      inputRegisterSet->size() +
+                                          outputRegisterSet->size(),
+                                      {}, toKeepRegisterSet, nullptr,
+                                      inputRegister, outputRegister, false);
+  }
+
+  auto MakeRemoveAllLinesInfos() -> LambdaExe::Infos {
+    auto numRegs = size_t{1};
+
+    auto inRegisterList = make_shared_unordered_set({});
+    auto outRegisterList = make_shared_unordered_set({});
+
+    std::unordered_set<RegisterId> toKeep;
+
+    for (RegisterId r = 0; r < numRegs; ++r) {
+      toKeep.emplace(r);
+    }
+
+    ProduceCall prod = [](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+        -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+      EXPECT_TRUE(false) << "Should never be called";
+      return {ExecutorState::DONE, NoStats{}, AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
+    };
+
+    SkipCall skip = [](AqlItemBlockInputRange& input, AqlCall& call)
+        -> std::tuple<ExecutorState, LambdaExe::Stats, size_t, AqlCall> {
+      std::ignore = input.skipAll();
+      return {input.upstreamState(), NoStats{}, 0,
+              AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
+    };
+
+    return LambdaExe::Infos(inRegisterList, outRegisterList, numRegs, numRegs,
+                            {}, toKeep, prod, skip);
+  }
 };
 
-TEST_F(CountCollectExecutorTest, there_are_no_rows_upstream_the_producer_doesnt_wait) {
-  CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
-  CountCollectExecutor testee(fetcher, infos);
-  NoStats stats{};
+template <size_t... vs>
+const CountCollectSplitType splitIntoBlocks =
+    CountCollectSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const CountCollectSplitType splitStep = CountCollectSplitType{step};
 
-  OutputAqlItemRow result{std::move(block), outputRegisters,
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(result.produced());
+INSTANTIATE_TEST_CASE_P(CountCollectExecutor, CountCollectExecutorTest,
+                        ::testing::Values(CountCollectSplitType{std::monostate()},
+                                          splitStep<1>, splitIntoBlocks<2, 3>,
+                                          splitStep<2>));
 
-  auto block = result.stealBlock();
-  AqlValue x = block->getValue(0, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.toInt64(), 0);
-
-  ASSERT_EQ(0, fetcher.totalSkipped());
+TEST_P(CountCollectExecutorTest, empty_input) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({1}, {{0}})
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
 }
 
-TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits) {
-  CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
-  CountCollectExecutor testee(fetcher, infos);
-  NoStats stats{};
-
-  OutputAqlItemRow result{std::move(block), outputRegisters,
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(result.produced());
-
-  auto block = result.stealBlock();
-  AqlValue x = block->getValue(0, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.toInt64(), 0);
-
-  ASSERT_EQ(0, fetcher.totalSkipped());
+TEST_P(CountCollectExecutorTest, count_input) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({{0}, {1}, {2}, {3}})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({1}, {{4}})
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
 }
 
-TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doesnt_wait) {
-  CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
-  auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
-  CountCollectExecutor testee(fetcher, infos);
-  NoStats stats{};
-
-  OutputAqlItemRow result{std::move(block), outputRegisters,
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(result.produced());
-
-  auto block = result.stealBlock();
-  AqlValue x = block->getValue(0, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.toInt64(), 3);
-
-  ASSERT_EQ(3, fetcher.totalSkipped());
+TEST_P(CountCollectExecutorTest, empty_input_skip) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({1}, {})
+      .expectSkipped(1)
+      .setCall(AqlCall{10})
+      .run();
 }
 
-TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
-  CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
-  auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
-  CountCollectExecutor testee(fetcher, infos);
-  NoStats stats{};
-  OutputAqlItemRow result{std::move(block), outputRegisters,
-                          infos.registersToKeep(), infos.registersToClear()};
+TEST_P(CountCollectExecutorTest, count_input_skip) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({{0}, {1}, {2}, {3}})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({1}, {})
+      .expectSkipped(1)
+      .setCall(AqlCall{10})
+      .run();
+}
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
+TEST_P(CountCollectExecutorTest, empty_input_fullCount) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({1}, {})
+      .expectSkipped(1)
+      .setCall(AqlCall{0, true, 0, AqlCall::LimitType::HARD})
+      .run();
+}
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
+TEST_P(CountCollectExecutorTest, count_input_fullCount) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({{0}, {1}, {2}, {3}})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({1}, {})
+      .expectSkipped(1)
+      .setCall(AqlCall{0, true, 0, AqlCall::LimitType::HARD})
+      .run();
+}
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
+TEST_P(CountCollectExecutorTest, count_input_softlimit) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({{0}, {1}, {2}, {3}})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({1}, {{4}})
+      .expectSkipped(0)
+      .setCall(AqlCall{0, false, 1, AqlCall::LimitType::SOFT})
+      .run();
+}
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(result.produced());
+TEST_P(CountCollectExecutorTest, count_in_empty_subquery) {
+  ExecutorTestHelper<1, 1> helper(*fakedQuery);
 
-  auto block = result.stealBlock();
-  AqlValue x = block->getValue(0, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.toInt64(), 3);
+  Pipeline pipe{};
+  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeSubqueryStartInfos(),
+                                                                 ExecutionNode::SUBQUERY_START))
+      .addConsumer(helper.createExecBlock<LambdaExe>(MakeRemoveAllLinesInfos(),
+                                                     ExecutionNode::FILTER))
+      .addConsumer(helper.createExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT))
+      .addConsumer(helper.createExecBlock<SubqueryEndExecutor>(MakeSubqueryEndInfos(1),
+                                                               ExecutionNode::SUBQUERY_END));
 
-  ASSERT_EQ(3, fetcher.totalSkipped());
+  helper.setPipeline(std::move(pipe))
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({{0}, {1}, {2}, {3}})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({2}, {{R"([0])"}, {R"([0])"}, {R"([0])"}, {R"([0])"}})
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
+}
+
+TEST_P(CountCollectExecutorTest, count_in_subquery) {
+  ExecutorTestHelper<1, 1> helper(*fakedQuery);
+
+  Pipeline pipe{};
+  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeSubqueryStartInfos(),
+                                                                 ExecutionNode::SUBQUERY_START))
+      .addConsumer(helper.createExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT))
+      .addConsumer(helper.createExecBlock<SubqueryEndExecutor>(MakeSubqueryEndInfos(1),
+                                                               ExecutionNode::SUBQUERY_END));
+
+  helper.setPipeline(std::move(pipe))
+      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({{0}, {1}, {2}, {3}})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({2}, {{R"([1])"}, {R"([1])"}, {R"([1])"}, {R"([1])"}})
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
 }
 
 }  // namespace aql
