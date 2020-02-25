@@ -25,13 +25,8 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/VelocyPackHelper.h"
-
-#ifdef _MSC_VER
-#include <intrin.h>
-
-#pragma intrinsic(_BitScanReverse64)
-#endif
 
 using namespace arangodb::aql;
 
@@ -52,7 +47,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, Register
   size_t const targetSize = nrItems * (nrRegs + 1);
 
   AqlItemBlock* block = nullptr;
-  size_t i = Bucket::getId(targetSize);
+  uint32_t i = Bucket::getId(targetSize);
 
   int tries = 0;
   do {
@@ -88,7 +83,7 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block->getRefCount() == 0);
 
   size_t const targetSize = block->capacity();
-  size_t const i = Bucket::getId(targetSize);
+  uint32_t const i = Bucket::getId(targetSize);
   TRI_ASSERT(i < numBuckets);
 
   // Destroying the block releases the AqlValues. Which in turn may hold DocVecs
@@ -140,7 +135,7 @@ void AqlItemBlockManager::deleteBlock(AqlItemBlock* block) {
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-size_t AqlItemBlockManager::getBucketId(size_t targetSize) noexcept {
+uint32_t AqlItemBlockManager::getBucketId(size_t targetSize) noexcept {
   return Bucket::getId(targetSize);
 }
 #endif
@@ -181,7 +176,7 @@ void AqlItemBlockManager::Bucket::push(AqlItemBlock* block) noexcept {
   TRI_ASSERT(numItems <= numBlocksPerBucket);
 }
 
-size_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
+uint32_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
   if (targetSize <= 1) {
     return 0;
   }
@@ -189,16 +184,8 @@ size_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
   if (ADB_UNLIKELY(targetSize >= (1ULL << numBuckets))) {
     return (numBuckets - 1);
   }
-#if (defined(__GNUC__) || defined(__clang__))
-  size_t value = (8 * sizeof(unsigned long)) - static_cast<size_t>(__builtin_clzl(static_cast<unsigned long>(targetSize))) - 1;
-#elif defined(_MSC_VER)
-  unsigned long index;
-  _BitScanReverse64(&idx, static_cast<__int64>(targetSize));
-  size_t value = static_cast<size_t>(index);
-#else
-  static_assert(false, "no known way of computing clz");
-#endif
-
+  
+  uint32_t value = arangodb::NumberUtils::log2(static_cast<uint32_t>(targetSize));
   TRI_ASSERT(value < numBuckets);
   return value;
 }
