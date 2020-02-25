@@ -34,6 +34,8 @@ enum class SerializationFormat {
   SHADOWROWS = 1
 };
 
+using SerializationFormatType = std::underlying_type_t<SerializationFormat>;
+
 }  // namespace aql
 }  // namespace arangodb
 #endif
