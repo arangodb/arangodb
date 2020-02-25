@@ -248,19 +248,19 @@ bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args) {
   return true;
 }
 
-double getMaxTimeoutConnectionToBeDead(double timeout) {
+double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds) {
   auto when = connectionToBeDeadAt.load();
   if (when == 0.0) {
-    return timeout;
+    return timeoutSeconds;
   }
   auto now = TRI_microtime();
-  auto delta = now - when;
-  if (delta > timeout) {
-    return timeout;
+  auto delta = when - now;
+  if (delta > timeoutSeconds) {
+    return timeoutSeconds;
   }
   return delta;
 }
-#define ARANGODB_SHELL_V8CLIENT_CONNECTION_H 1
+
 std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout) {
   using namespace std::chrono;
 
@@ -280,7 +280,6 @@ std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseco
   return delta;
 
 }
-#undef ARANGODB_SHELL_V8CLIENT_CONNECTION_H
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads/execute a file into/in the current context
@@ -891,7 +890,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                                               options, "timeout"));
       }
     }
-    timeout = getMaxTimeoutConnectionToBeDead(timeout);
+    timeout = getMaxTimeoutConnectionToBeDeadS(timeout);
 
     // return body as a buffer?
     if (TRI_HasProperty(context, isolate, options, "returnBodyAsBuffer")) {
