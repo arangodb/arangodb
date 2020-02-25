@@ -669,7 +669,7 @@ std::string extractCollectionName(transaction::Methods* trx,
     VPackSlice slice = materializer.slice(value, true);
     VPackSlice id = slice;
 
-    if (slice.isObject() && slice.hasKey(StaticStrings::IdString)) {
+    if (slice.isObject()) {
       id = slice.get(StaticStrings::IdString);
     }
     if (id.isString()) {
@@ -683,7 +683,8 @@ std::string extractCollectionName(transaction::Methods* trx,
     size_t pos = identifier.find('/');
 
     if (pos != std::string::npos) {
-      return identifier.substr(0, pos);
+      // this is superior to  identifier.substr(0, pos)
+      identifier.resize(pos);
     }
 
     return identifier;
@@ -875,16 +876,20 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
     searchBuilder->add(VPackValue(identifier));
   } else {
     if (collectionName.empty()) {
-      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
+      char const* p = identifier.data() + pos + 1;
+      size_t l = identifier.size() - pos - 1;
+      searchBuilder->add(VPackValuePair(p, l, VPackValueType::String));
       collectionName = identifier.substr(0, pos);
-    } else if (identifier.substr(0, pos) != collectionName) {
+    } else if (identifier.compare(0, pos, collectionName) != 0) {
       // Requesting an _id that cannot be stored in this collection
       if (ignoreError) {
         return;
       }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     } else {
-      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
+      char const* p = identifier.data() + pos + 1;
+      size_t l = identifier.size() - pos - 1;
+      searchBuilder->add(VPackValuePair(p, l, VPackValueType::String));
     }
   }
 

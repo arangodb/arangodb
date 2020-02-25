@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse */
+/*global assertEqual, assertNotUndefined, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -142,91 +142,31 @@ function CollectionCacheSuite () {
       // hit 25% 
       for(let i = 0; i < 2500; i++) {
         let doc = c.document(String(i));
-        assertTrue(doc !== undefined);
+        assertNotUndefined(doc);
       }
 
       f = c.figures();
       assertTrue(f.cacheInUse, f);
       assertTrue(f.cacheSize > 0);
-      assertTrue(f.cacheUsage > 0);
-      assertEqual(f.cacheLifeTimeHitRate, 0);
-
-      idxs = c.getIndexes(true);
-      idxs.forEach(function(idx, i) {
-        if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheSize > 0);
-          assertTrue(idx.figures.cacheUsage > 0);
-          assertEqual(idx.figures.cacheLifeTimeHitRate, 0);
-        }
-      });
 
       // hit same 25% 
       for(let i = 0; i < 2500; i++) {
         let doc = c.document(String(i));
-        assertTrue(doc !== undefined);
+        assertNotUndefined(doc);
       }
 
       // no new documents were hit
-      let f2 = c.figures();
-      assertTrue(f2.cacheInUse);
-      // anyway, the cache usage may be different, because there is
-      // no guarantee any document makes it into the cache
-      assertEqual(f.cacheSize, f2.cacheSize);
-      /*
-      assertTrue(Math.abs(f.cacheUsage - f2.cacheUsage) < 2048, 
-                 Math.abs(f.cacheUsage - f2.cacheUsage));
-      // first no hits, second time all hits ~= 50% hit-rate
-      assertTrue(Math.abs(f2.cacheLifeTimeHitRate - 50) < 11, f2.cacheLifeTimeHitRate);
-      */
-      let idxs2 = c.getIndexes(true);
-      idxs2.forEach(function(idx, i) {
-        if (idx.figures.cacheInUse) {
-          // unsafe assumption
-          // assertEqual(idx.figures.cacheSize, idxs[i].figures.cacheSize);
-          
-          assertTrue(Math.abs(idx.figures.cacheUsage - idxs[i].figures.cacheUsage) < 2048, 
-                     Math.abs(idx.figures.cacheUsage - idxs[i].figures.cacheUsage));
-          assertTrue(Math.abs(idx.figures.cacheLifeTimeHitRate - 50) < 11);
-        }
-      });
+      f = c.figures();
+      assertTrue(f.cacheInUse);
 
       // hit different 25% 
       for(let i = 5000; i < 7500; i++) {
         let doc = c.document(String(i));
-        assertTrue(doc !== undefined);
+        assertNotUndefined(doc);
       }
 
-      let f3 = c.figures();
-      assertTrue(f3.cacheInUse);
-      assertTrue(f2.cacheSize <= f3.cacheSize);
-      assertTrue(f2.cacheUsage < f3.cacheUsage);
-      assertTrue(f3.cacheLifeTimeHitRate < f2.cacheLifeTimeHitRate);
-
-      idxs = c.getIndexes(true);
-      idxs.forEach(function(idx, i) {
-        if (idx.figures.cacheInUse) {
-          assertTrue(idxs2[i].figures.cacheSize < idx.figures.cacheSize);
-          assertTrue(idxs2[i].figures.cacheUsage < idx.figures.cacheUsage);
-          assertTrue(idx.figures.cacheLifeTimeHitRate < idxs2[i].figures.cacheLifeTimeHitRate);
-        }
-      });
-
-/* Unloading doesn't have a deterministic effect in rocksdb.
-      c.unload(); // should destroy cache
-      f = c.figures(); // will load collection
-      assertTrue(f.cacheSize > 0);
-      assertEqual(f.cacheUsage, 0);
-      assertEqual(f.cacheLifeTimeHitRate, 0);
-
-      idxs = c.getIndexes(true);
-      idxs.forEach(function(idx, i) {
-        if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheSize > 0);
-          assertEqual(idx.figures.cacheUsage, 0);
-          assertEqual(idx.figures.cacheLifeTimeHitRate, 0);
-        }
-      });
-*/
+      f = c.figures();
+      assertTrue(f.cacheInUse);
     }
   };
 }
