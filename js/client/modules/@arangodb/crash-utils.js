@@ -40,6 +40,7 @@ const abortSignal = 6;
 const platform = internal.platform;
 
 const RED = internal.COLORS.COLOR_RED;
+const GREEN = internal.COLORS.COLOR_GREEN;
 const RESET = internal.COLORS.COLOR_RESET;
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -257,8 +258,22 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     } else if (matchVarTmp.exec(cp) !== null) {
       options.coreDirectory = cp.replace('%e', '*').replace('%t', '*').replace('%p', instanceInfo.pid);
     } else {
-      print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '"' + RESET);
-      return;
+      let found = false;
+      options.coreDirectory = cp.replace('%e', '.*').replace('%t', '.*').replace('%p', instanceInfo.pid).trim();
+      if (options.coreDirectory.search('/') < 0) {
+        let rx = new RegExp(options.coreDirectory);
+        fs.list('.').forEach((file) => {
+          if (file.match(rx) != null) {
+            options.coreDirectory = file;
+            print(GREEN + `Found ${file} - starting analysis` + RESET);
+            found = true;
+          }
+        });
+      }
+      if (!found) {
+        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '"' + RESET);
+        return;
+      }
     }
   }
 
