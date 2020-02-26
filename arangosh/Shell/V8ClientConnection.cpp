@@ -24,7 +24,7 @@
 
 #include <chrono> // make sure we have this!
 #ifndef __cpp_lib_chrono
-// Work around broken mac compiler
+// this macro is a c++20 feature... 
 #define __cpp_lib_chrono 1
 #endif
 #include "V8ClientConnection.h"

@@ -231,7 +231,7 @@ static void JS_SetConnectionsToBeDeadIn(v8::FunctionCallbackInfo<v8::Value> cons
   auto when = connectionToBeDeadAt.load();
   auto now = TRI_microtime();
 
-  double n = TRI_ObjectToDouble(isolate, args[0]);
+  auto n = TRI_ObjectToUInt64(isolate, args[0], false);
   setConnectionToBeDeadInMS(n);
 
   TRI_V8_RETURN_BOOL((when != 0.0) && (now - when > 0.0) );
