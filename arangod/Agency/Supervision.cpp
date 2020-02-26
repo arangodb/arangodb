@@ -710,7 +710,7 @@ bool Supervision::updateSnapshot() {
     _agent->executeLockedRead([&]() {
       logs = _agent->logs(_lastUpdateIndex + 1);
     });
-    if (logs.size() > 1) {
+    if (logs.size() > 0) {
       _lastUpdateIndex = _spearhead.applyTransactions(logs);
       _snapshot = _spearhead.node(_agencyPrefix);
     }
@@ -865,7 +865,6 @@ void Supervision::run() {
 
               if (_agent->leaderFor() > 120) {
                 cleanupExpiredServers(*_snapshot, _transient);
-
               }
 
               try {
