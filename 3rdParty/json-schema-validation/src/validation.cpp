@@ -3,6 +3,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <validation/events_from_slice.hpp>
 #include <validation/validation.hpp>
 
 #if __has_include("Basics/VelocyPackHelper")
@@ -25,10 +26,10 @@ class VelocyPackHelper {
 namespace {
 using namespace arangodb;
 using namespace arangodb::validation;
-tao::json::value slice_object_to_value(VPackSlice const& slice,
-                                       bool ignore_special,
-                                       VPackOptions const* options,
-                                       VPackSlice const* base) {
+[[nodiscard]] tao::json::value slice_object_to_value(VPackSlice const& slice,
+                                                     bool ignore_special,
+                                                     VPackOptions const* options,
+                                                     VPackSlice const* base) {
     assert(slice.isObject());
     tao::json::value rv;
     rv.prepare_object();
@@ -85,10 +86,10 @@ tao::json::value slice_object_to_value(VPackSlice const& slice,
     return rv;
 }
 
-tao::json::value slice_array_to_value(VPackSlice const& slice,
-                                      bool ignore_special,
-                                      VPackOptions const* options,
-                                      VPackSlice const* base) {
+[[nodiscard]] tao::json::value slice_array_to_value(VPackSlice const& slice,
+                                                    bool ignore_special,
+                                                    VPackOptions const* options,
+                                                    VPackSlice const* base) {
     assert(slice.isArray());
     VPackArrayIterator it(slice);
     tao::json::value rv;
@@ -103,12 +104,22 @@ tao::json::value slice_array_to_value(VPackSlice const& slice,
 
     return rv;
 }
+
+template<template<typename...> class Traits>
+[[nodiscard]] bool validate(const tao::json::basic_schema<Traits>& schema,
+                            VPackSlice const& v,
+                            VPackOptions const* options = &VPackOptions::Defaults) {
+    const auto c = schema.consumer();
+    tao::json::events::from_value<Traits>(*c, v, options);
+    return c->finalize();
+}
+
 } // namespace
 
 namespace arangodb::validation {
-bool validate(VPackSlice const, VPackOptions const*, tao::json::schema const&) {
-    // todo: implement validation on slice (use event interface)
-    throw std::runtime_error("not implemented");
+
+bool validate(VPackSlice const doc, VPackOptions const* options, tao::json::schema const& schema) {
+    return ::validate(schema, doc, options);
 }
 
 bool validate(tao::json::value const& doc, tao::json::schema const& schema) {

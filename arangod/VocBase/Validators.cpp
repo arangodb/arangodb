@@ -152,8 +152,7 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
   _builder.add(rule);
 }
 bool ValidatorJsonSchema::validateDerived(VPackSlice slice, VPackOptions const* options) const {
-  auto taoValue = validation::slice_to_value(slice, false /*ignore_special*/, options);
-  return validation::validate(taoValue, *_schema);
+  return validation::validate(slice, options, *_schema);
 }
 void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidatorParameterRule, _builder.slice());
