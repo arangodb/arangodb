@@ -1965,7 +1965,7 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleStringIdentity("name"));
-    phrase.push_back("quick");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "quick");
 
     // implicit (by default)
     assertFilterSuccess(
@@ -2046,8 +2046,11 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("name", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
 
     assertFilterSuccess(
         vocbase(),
@@ -2143,8 +2146,11 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expectedAccumulated;
     auto& phraseAccumulated = expectedAccumulated.add<irs::by_phrase>();
     phraseAccumulated.field(mangleString("name", "test_analyzer"));
-    phraseAccumulated.push_back("q").push_back("u", 7).push_back("i", 3).push_back("c", 4).push_back(
-      "k",5);
+    phraseAccumulated.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u", 7)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i", 3)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c", 4)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k", 5);
     assertFilterSuccess(
       vocbase(),
       "FOR d IN myView FILTER ANALYZER(phrase(d.name, "
@@ -2204,8 +2210,11 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("a.b.c.e[4].f[5].g[3].g.a", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
 
     assertFilterSuccess(
         vocbase(),
@@ -2306,8 +2315,11 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("[42]", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
 
     assertFilterSuccess(
         vocbase(),
@@ -2341,8 +2353,11 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("name", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
 
     assertFilterSuccess(
         vocbase(),
@@ -2546,10 +2561,16 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("name", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
-    phrase.push_back("b").push_back("r").push_back("o").push_back("w").push_back(
-        "n");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "b")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "r")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "w")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "n");
 
     assertFilterSuccess(
         vocbase(),
@@ -2657,10 +2678,17 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("name", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-      "k").push_back("0");
-    phrase.push_back("b").push_back("r").push_back("o").push_back("w").push_back(
-      "n");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "0");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "b")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "r")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "w")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "n");
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER AnaLYZER(phrase(d.name, [ 'quick', '0', "
@@ -2677,10 +2705,16 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("obj.name", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
-    phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back(
-        "n");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "b", 5)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "r")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "w")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "n");
 
     assertFilterSuccess(
         vocbase(),
@@ -2810,10 +2844,16 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("obj.name", "test_analyzer")).boost(3.0f);
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
-    phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back(
-        "n");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "b", 5)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "r")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "w")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "n");
 
     assertFilterSuccess(
         vocbase(),
@@ -2853,10 +2893,16 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("obj[3].name[1]", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
-    phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back(
-        "n");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "b", 5)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "r")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "w")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "n");
 
     assertFilterSuccess(
         vocbase(),
@@ -2986,10 +3032,16 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("[5].obj.name[100]", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
-    phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back(
-        "n");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "b", 5)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "r")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "w")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "n");
 
     assertFilterSuccess(
         vocbase(),
@@ -3119,13 +3171,24 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
-    phrase.push_back("b", 3).push_back("r").push_back("o").push_back("w").push_back(
-        "n");
-    phrase.push_back("f", 2).push_back("o").push_back("x");
-    phrase.push_back("j").push_back("u").push_back("m").push_back("p").push_back(
-        "s");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "b", 3)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "r")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "w")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "n");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "f", 2)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "x");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "j")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "m")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "p")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "s");
 
     assertFilterSuccess(
         vocbase(),
@@ -3435,13 +3498,24 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-        "k");
-    phrase.push_back("b", 3).push_back("r").push_back("o").push_back("w").push_back(
-        "n");
-    phrase.push_back("f", 2).push_back("o").push_back("x");
-    phrase.push_back("j").push_back("u").push_back("m").push_back("p").push_back(
-        "s");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "b", 3)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "r")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "w")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "n");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "f", 2)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "x");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "j")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "m")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "p")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "s");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
@@ -3599,13 +3673,24 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
-    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
-      "k");
-    phrase.push_back("b", 3).push_back("r").push_back("o").push_back("w").push_back(
-      "n");
-    phrase.push_back("f").push_back("o").push_back("x");
-    phrase.push_back("j").push_back("u").push_back("m").push_back("p").push_back(
-      "s");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "q")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "i")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "c")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "k");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "b", 3)
+        .push_back(irs::by_phrase::info_t::simple_term{}, "r")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "w")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "n");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "f")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "o")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "x");
+    phrase.push_back(irs::by_phrase::info_t::simple_term{}, "j")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "u")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "m")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "p")
+        .push_back(irs::by_phrase::info_t::simple_term{}, "s");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
