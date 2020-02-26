@@ -66,8 +66,8 @@ namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
     : NetworkFeature(server, network::ConnectionPool::Config{}) {
-      this->_numIOThreads = 2; // override default
-    }
+  this->_numIOThreads = 2; // override default
+}
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
@@ -120,7 +120,6 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 }
 
 void NetworkFeature::prepare() {
-  
   ClusterInfo* ci = nullptr;
   if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
      ci = &server().getFeature<ClusterFeature>().clusterInfo();
@@ -132,6 +131,8 @@ void NetworkFeature::prepare() {
   config.idleConnectionMilli = _idleTtlMilli;
   config.verifyHosts = _verifyHosts;
   config.clusterInfo = ci;
+  config.name = "ClusterComm";
+
   if (_protocol == "http") {
     config.protocol = fuerte::ProtocolType::Http;
   } else if (_protocol == "http2" || _protocol == "h2") {

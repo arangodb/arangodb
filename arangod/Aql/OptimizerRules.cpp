@@ -75,12 +75,20 @@
 namespace {
 
 bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
-                                arangodb::aql::CalculationNode const* node,
+                                arangodb::aql::ExecutionNode const* node,
                                 ::arangodb::containers::HashSet<arangodb::aql::Variable const*>& vars) {
   using EN = arangodb::aql::ExecutionNode;
 
-  vars.clear();
-  arangodb::aql::Ast::getReferencedVariables(node->expression()->node(), vars);
+  if (node->getType() == EN::CALCULATION) {
+    auto nn = EN::castTo<arangodb::aql::CalculationNode const*>(node);
+    vars.clear();
+    arangodb::aql::Ast::getReferencedVariables(nn->expression()->node(), vars);
+  } else if (node->getType() == EN::SUBQUERY) {
+    auto nn = EN::castTo<arangodb::aql::SubqueryNode const*>(node);
+    vars.clear();
+    nn->getVariablesUsedHere(vars);
+  }
+
   for (auto const& it : vars) {
     auto setter = plan->getVarSetBy(it->id);
     if (setter == nullptr) {
@@ -1685,7 +1693,7 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
                                              OptimizerRule const& rule) {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::CALCULATION, true);
+  plan->findNodesOfType(nodes, {EN::CALCULATION, EN::SUBQUERY}, true);
 
   std::vector<ExecutionNode*> stack;
   ::arangodb::containers::HashSet<Variable const*> vars;
@@ -1693,15 +1701,26 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto nn = ExecutionNode::castTo<CalculationNode*>(n);
-    if (!nn->expression()->isDeterministic()) {
-      // we will only move expressions down that cannot throw and that are
-      // deterministic
-      continue;
-    }
-
     // this is the variable that the calculation will set
-    auto variable = nn->outVariable();
+    Variable const* variable = nullptr;
+
+    if (n->getType() == EN::CALCULATION) {
+      auto nn = ExecutionNode::castTo<CalculationNode*>(n);
+      if (!nn->expression()->isDeterministic()) {
+        // we will only move expressions down that cannot throw and that are
+        // deterministic
+        continue;
+      }
+      variable = nn->outVariable();
+    } else if (n->getType() == EN::SUBQUERY) {
+      auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
+      if (!nn->isDeterministic() || nn->isModificationNode()) {
+        // we will only move subqueries down that are deterministic and are not
+        // modification subqueries
+        continue;
+      }
+      variable = nn->outVariable();
+    }
 
     stack.clear();
     n->parents(stack);
@@ -1745,7 +1764,7 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
           // however, if our calculation uses any data from a
           // collection/index/view, it probably makes sense to not move it,
           // because the result set may be huge
-          if (::accessesCollectionVariable(plan.get(), nn, vars)) {
+          if (::accessesCollectionVariable(plan.get(), n, vars)) {
             break;
           }
         }
@@ -7258,12 +7277,13 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
         ExecutionNode* filterParent = current->getFirstParent();
         TRI_ASSERT(filterParent != nullptr);
         plan->unlinkNode(current);
-        current = filterParent;
-
+          
         if (!current->isVarUsedLater(cn->outVariable())) {
           // also remove the calculation node
           plan->unlinkNode(cn);
         }
+        
+        current = filterParent;
         modified = true;
       } else if (current->getType() == EN::CALCULATION) {
         // store all calculations we found

@@ -130,9 +130,9 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (!_jwtSecretKeyfileProgramOption.empty() && !_jwtSecretKeyfileProgramOption.empty()) {
+  if (!_jwtSecretKeyfileProgramOption.empty() && !_jwtSecretFolderProgramOption.empty()) {
     LOG_TOPIC("d3515", FATAL, Logger::STARTUP)
-        << "specifiy either '--server.jwt-"
+        << "please specify either '--server.jwt-"
            "secret-keyfile' or '--server.jwt-secret-folder' but not both.";
     FATAL_ERROR_EXIT();
   }

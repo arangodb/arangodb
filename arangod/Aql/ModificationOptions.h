@@ -40,6 +40,7 @@ struct ModificationOptions {
   ModificationOptions()
       : ignoreErrors(false),
         waitForSync(false),
+        validate(true),
         nullMeansRemove(false),
         mergeObjects(true),
         ignoreDocumentNotFound(false),
@@ -55,6 +56,7 @@ struct ModificationOptions {
 
   bool ignoreErrors;
   bool waitForSync;
+  bool validate;
   bool nullMeansRemove;
   bool mergeObjects;
   bool ignoreDocumentNotFound;
