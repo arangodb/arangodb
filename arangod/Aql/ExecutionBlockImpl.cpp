@@ -134,17 +134,20 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
 template <typename Executor>
-constexpr bool isNewStyleExecutor =
-    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor, EnumerateCollectionExecutor,
-                // TODO: re-enable after new subquery end & start are implemented
-                // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
-                HashedCollectExecutor,
+constexpr bool isNewStyleExecutor = is_one_of_v<
+    Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
+    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor, EnumerateCollectionExecutor,
+    // TODO: re-enable after new subquery end & start are implemented
+    // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
+    HashedCollectExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                TestLambdaExecutor,
-                TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
+    TestLambdaExecutor,
+    TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-                TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
+    TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor,
+    SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
+    SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
+    SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1077,14 +1080,18 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor ==
-                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, KShortestPathsExecutor,
-                                 ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+  static_assert(
+      useExecutor ==
+          (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, KShortestPathsExecutor,
+                       ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                                 TestLambdaSkipExecutor,
+                       TestLambdaSkipExecutor,
 #endif
-                                 TraversalExecutor, EnumerateListExecutor, SortedCollectExecutor, LimitExecutor>),
-                "Unexpected executor for SkipVariants::EXECUTOR");
+                       TraversalExecutor, EnumerateListExecutor, SortedCollectExecutor, LimitExecutor,
+                       SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
+                       SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
+                       SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>>),
+      "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(
