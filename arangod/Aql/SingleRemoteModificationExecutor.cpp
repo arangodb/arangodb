@@ -84,7 +84,9 @@ template <typename Modifier>
   if (input.hasDataRow()) {
     auto [state, row] = input.nextDataRow();
     auto result = doSingleRemoteModificationOperation(row, stats);
-    doSingleRemoteModificationOutput(row, output, result);
+    if (result.ok()) {
+      doSingleRemoteModificationOutput(row, output, result);
+    }
   }
 
   return {input.upstreamState(), stats, AqlCall{}};
