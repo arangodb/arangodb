@@ -126,7 +126,7 @@ uint32_t Table::logSize() const { return _logSize; }
 std::pair<void*, Table*> Table::fetchAndLockBucket(uint32_t hash, uint64_t maxTries) {
   GenericBucket* bucket = nullptr;
   Table* source = nullptr;
-  bool ok = _lock.readLock(maxTries);
+  bool ok = _lock.lockRead(maxTries);
   if (ok) {
     ok = !_disabled;
     if (ok) {
@@ -238,7 +238,7 @@ void Table::enable() {
 }
 
 bool Table::isEnabled(uint64_t maxTries) {
-  bool ok = _lock.readLock(maxTries);
+  bool ok = _lock.lockRead(maxTries);
   if (ok) {
     ok = !_disabled;
     _lock.unlockRead();
@@ -258,7 +258,7 @@ bool Table::slotEmptied() {
 }
 
 void Table::signalEvictions() {
-  bool ok = _lock.writeLock(triesGuarantee);
+  bool ok = _lock.lockWrite(triesGuarantee);
   if (ok) {
     _evictions = true;
     _lock.unlockWrite();
@@ -266,7 +266,7 @@ void Table::signalEvictions() {
 }
 
 uint32_t Table::idealSize() {
-  bool ok = _lock.writeLock(triesGuarantee);
+  bool ok = _lock.lockWrite(triesGuarantee);
   bool forceGrowth = false;
   if (ok) {
     forceGrowth = _evictions;

@@ -214,7 +214,7 @@ void Cache::requestGrow() {
     return;
   }
 
-  if (_taskLock.writeLock(Cache::triesSlow)) {
+  if (_taskLock.lockWrite(Cache::triesSlow)) {
     if (std::chrono::steady_clock::now().time_since_epoch().count() >
         _resizeRequestTime.load()) {
       _metadata.lockRead();
@@ -236,7 +236,7 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
     return;
   }
 
-  if (_taskLock.writeLock(Cache::triesGuarantee)) {
+  if (_taskLock.lockWrite(Cache::triesGuarantee)) {
     if (std::chrono::steady_clock::now().time_since_epoch().count() >
         _migrateRequestTime.load()) {
       cache::Table* table = _table.load(std::memory_order_relaxed);

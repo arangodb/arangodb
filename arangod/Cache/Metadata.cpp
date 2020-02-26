@@ -107,7 +107,7 @@ void Metadata::unlockRead() const noexcept {
 }
 
 void Metadata::unlockWrite() const noexcept {
-  TRI_ASSERT(isWriteLocked());
+  TRI_ASSERT(isLockedWrite());
   _lock.unlockWrite();
 }
 
@@ -115,8 +115,8 @@ bool Metadata::isLocked() const noexcept {
   return _lock.isLocked();
 }
 
-bool Metadata::isWriteLocked() const noexcept {
-  return _lock.isWriteLocked();
+bool Metadata::isLockedWrite() const noexcept {
+  return _lock.isLockedWrite();
 }
 
 bool Metadata::adjustUsageIfAllowed(int64_t usageChange) noexcept {
@@ -142,7 +142,7 @@ bool Metadata::adjustUsageIfAllowed(int64_t usageChange) noexcept {
 }
 
 bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) noexcept {
-  TRI_ASSERT(isWriteLocked());
+  TRI_ASSERT(isLockedWrite());
   uint64_t fixed = tableSize + fixedSize + Manager::cacheRecordOverhead;
   auto approve = [&]() -> bool {
     softUsageLimit = softLimit;
@@ -184,7 +184,7 @@ bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) noexcept {
 }
 
 uint64_t Metadata::adjustDeserved(uint64_t deserved) noexcept {
-  TRI_ASSERT(isWriteLocked());
+  TRI_ASSERT(isLockedWrite());
   deservedSize = std::min(deserved, maxSize);
   return deservedSize;
 }
@@ -204,7 +204,7 @@ bool Metadata::migrationAllowed(uint64_t newTableSize) noexcept {
 }
 
 void Metadata::changeTable(uint64_t newTableSize) noexcept {
-  TRI_ASSERT(isWriteLocked());
+  TRI_ASSERT(isLockedWrite());
   tableSize = newTableSize;
   allocatedSize = hardUsageLimit + fixedSize + tableSize + Manager::cacheRecordOverhead;
 }
