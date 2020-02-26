@@ -113,7 +113,7 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow
   return res;
 }
 
-ExecutorState AqlItemBlockInputRange::skipAllRemainingDataRows() {
+void AqlItemBlockInputRange::skipAllRemainingDataRows() {
   ExecutorState state;
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
@@ -121,8 +121,6 @@ ExecutorState AqlItemBlockInputRange::skipAllRemainingDataRows() {
     std::tie(state, row) = nextDataRow();
     TRI_ASSERT(row.isInitialized());
   }
-
-  return state;
 }
 
 template <AqlItemBlockInputRange::LookAhead doPeek, AqlItemBlockInputRange::RowType type>
