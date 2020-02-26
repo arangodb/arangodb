@@ -4,6 +4,43 @@ v3.6.2 (XXXX-XX-XX)
 * Clear backups from DB servers and agency, when plan unchanged not
   met and not allowing for inconsistency.
 
+* Fix arangorestore:
+  If a smartGraphAttribute value was changed after document creation,
+  the _key of the document becomes inconsistent with the smartGraphAttribute
+  entry. However, the sharding of documents stays intact.
+
+  When restoring data from a dump that contains a document with inconsistent
+  _key and smartGraphAttribute this would cause an error and the document
+  would not be inserted. This is fixed by ignoring this inconsistency in
+  the case of restore.
+
+* Honor `cacheEnabled` attribute when updating the properties of a collection
+  in case of the cluster. Previously, this attribute was ignored in the cluster,
+  but it shouldn't have been.
+
+* Fixed issue #11137: http-proxy can't pass delete method req.body to foxx.
+
+* Fixed a memory leak in ModificationExecutors.
+
+* Updated rclone to 1.51.1.
+
+* Fixed queries having the following structure
+
+      FOR doc IN collection
+        FILTER doc.nonIndexedAttribute     // expression
+        FOR sub IN doc.nonIndexedAttribute // same expression
+
+  For such queries, the FILTER was moved into the first FOR loop for early
+  pruning. Afterwards, the leftover CalculationNode that evaluated 
+  `doc.nonIndexedAttribute` was removed. This was wrong however, because
+  the same expression was reused in the second FOR loop. There was code 
+  considering this, but due to a bug it did not work if the expression in
+  the FILTER was reused in the directly following node.
+
+* Updated arangosync to 0.7.3.
+
+* Updated ArangoDB Starter to 0.14.14.
+
 * Fixed handling of `geometry` attributes in query editor of the web UI.
 
   Previously, document attributes named `geometry` were treated in a special

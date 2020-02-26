@@ -803,8 +803,17 @@ function dumpTestEnterpriseSuite () {
       assertEqual(props.cleanupIntervalStep, 456);
       assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
       assertEqual(props.consolidationPolicy.type, "bytes_accum");
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test whether the test collection has been restored
+////////////////////////////////////////////////////////////////////////////////
+    testSmartGraphAttribute : function () {
+      assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray().length, 1);
+      let doc = db.UnitTestRestoreSmartGraphRegressionVertices.toArray()[0];
+      assertEqual(doc.cheesyness, "bread");
+      assertTrue(doc._key.startsWith("cheese:"));
+    },
   };
 
 }
@@ -815,4 +824,3 @@ if (isEnterprise) {
 }
 
 return jsunity.done();
-
