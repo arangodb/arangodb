@@ -441,7 +441,7 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
   builder.openArray();
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
-      if (!vertex.isString()) {
+      if (!v.isString()) {
         continue;
       }
       TRI_ASSERT(v.isString());
