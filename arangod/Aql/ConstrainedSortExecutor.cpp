@@ -202,24 +202,7 @@ auto ConstrainedSortExecutor::produceRows(AqlItemBlockInputRange& input, OutputA
     return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
   };
 
-  // For compatibility Reasons we cannot yet actviate this assert:
-  // We can as soon as we move to the version after 3.7
-  // TRI_ASSERT(call.getLimit() + call.getOffset() == _rows.size() - _returnNext);
-
-  while (!output.isFull()) {
-    if (ADB_UNLIKELY(doneProducing())) {
-      // We should never get here, as the following LIMIT block should never fetch
-      // more than our limit. It may only skip after that.
-      // But note that this means that this block breaks with usual AQL behaviour!
-      // From this point on (i.e. doneProducing()), this block may only skip, not produce.
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
-                                     "Overfetch during constrained heap sort. "
-                                     "Please report this error! Try "
-                                     "turning off the sort-limit optimizer "
-                                     "rule to get your query working.");
-    }
-
+  while (!output.isFull() && !doneProducing()) {
     // Now our heap is full and sorted, we just need to return it line by line
     TRI_ASSERT(_returnNext < _rows.size());
     auto const heapRowPosition = _rows[_returnNext];
@@ -246,9 +229,6 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
     // Unlimited, no offset call.
     return {ExecutorState::HASMORE, NoStats{}, 0, upstreamCall};
   };
-  // For compatibility Reasons we cannot yet actviate this assert:
-  // We can as soon as we move to the version after 3.7
-  // TRI_ASSERT(call.getLimit() + call.getOffset() == _rows.size() - _returnNext);
 
   while (!doneProducing()) {
     if (call.getOffset() > 0) {
