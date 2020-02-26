@@ -30,18 +30,19 @@
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
-#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include "AqlItemBlockHelper.h"
 #include "search/sort.hpp"
 
 #include <velocypack/Builder.h>
@@ -107,17 +108,17 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
   // EnumerateListExecutor::produceRows().
   NoStats stats{};
 
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
+  SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
+  AqlItemBlockInputMatrix inputMatrix{inBlock}; //TODO: re-add upstreamState
+
+  OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+  {
+    auto const [state, stats, call] = testee.produceRows(inputMatrix, output);
+    ASSERT_EQ(state, ExecutorState::DONE);
+    ASSERT_FALSE(output.produced());
+  }
 }
-
 
 TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   SortExecutorInfos infos(std::move(sortRegisters),
