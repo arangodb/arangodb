@@ -511,7 +511,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
           &engine, this, std::move(infos));
     } else {
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                            calcRegsToKeep(), getRegsToClear());
+                            calcRegsToKeep(), getRegsToClear(), false);
 
       return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
                                                                           std::move(infos));

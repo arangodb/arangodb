@@ -727,7 +727,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
 
     bool const returnInheritedResults = !arangodb::ServerState::isDBServer(role);
     if (returnInheritedResults) {
-      auto returnNode = dynamic_cast<ExecutionBlockImpl<IdExecutor<void>>*>(root);
+      auto returnNode =
+          dynamic_cast<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>*>(
+              root);
       TRI_ASSERT(returnNode != nullptr);
       engine->resultRegister(returnNode->getOutputRegisterId());
     } else {

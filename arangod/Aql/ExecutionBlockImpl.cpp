@@ -1096,15 +1096,16 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor ==
-                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-                                 HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+  static_assert(
+      useExecutor ==
+          (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
+                       IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
+                       IdExecutor<ConstFetcher>, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                                 TestLambdaSkipExecutor,
+                       TestLambdaSkipExecutor,
 #endif
-                                 EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor,
-                                 SortedCollectExecutor, LimitExecutor>),
-                "Unexpected executor for SkipVariants::EXECUTOR");
+                       EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor, LimitExecutor>),
+      "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(
@@ -1786,6 +1787,13 @@ template <class Executor>
 auto ExecutionBlockImpl<Executor>::outputIsFull() const noexcept -> bool {
   return _outputItemRow != nullptr && _outputItemRow->isInitialized() &&
          _outputItemRow->allRowsUsed();
+}
+
+template <>
+template <>
+RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const
+    noexcept {
+  return _infos.getOutputRegister();
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
