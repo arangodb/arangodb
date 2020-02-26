@@ -139,7 +139,7 @@ constexpr bool isNewStyleExecutor =
                 IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor, EnumerateCollectionExecutor,
                 // TODO: re-enable after new subquery end & start are implemented
                 // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
-                HashedCollectExecutor,
+                HashedCollectExecutor, ConstrainedSortExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                 TestLambdaExecutor,
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
@@ -1079,7 +1079,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 
   static_assert(useExecutor ==
                     (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, KShortestPathsExecutor,
-                                 ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+                                 ReturnExecutor, HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor, ConstrainedSortExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                                  TestLambdaSkipExecutor,
 #endif
