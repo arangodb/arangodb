@@ -125,6 +125,8 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
 
 bool AqlItemMatrix::empty() const noexcept { return _blocks.empty(); }
 
+void AqlItemMatrix::clear() { return _blocks.clear(); }
+
 RegisterId AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
 
 uint64_t AqlItemMatrix::size() const noexcept { return _size; }
@@ -157,8 +159,10 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
     // Let us stop on the first
     _lastShadowRow = *blockPtr->getShadowRowIndexes().begin();
     _size += _lastShadowRow;
+    LOG_DEVEL << "added size shadow row: " << _size;
   } else {
     _size += blockPtr->size();
+    LOG_DEVEL << "added size else row: " << _size;
   }
 
   // Move block into _blocks
@@ -188,12 +192,14 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
     // We move always forward
     TRI_ASSERT(_lastShadowRow > lastSize);
     _size = _lastShadowRow - lastSize - 1;
+    LOG_DEVEL << "added size shadow minus row: " << _size;
   } else {
     _lastShadowRow = InvalidRowIndex;
     TRI_ASSERT(!stoppedOnShadowRow());
     // lastSize a 0 based index. size is a counter.
     TRI_ASSERT(blockPtr->size() > lastSize);
     _size = blockPtr->size() - lastSize - 1;
+    LOG_DEVEL << "added size else minus row: " << _size;
   }
   // Remove all but the last
   _blocks.erase(_blocks.begin(), _blocks.end() - 1);
@@ -207,4 +213,6 @@ ShadowAqlItemRow AqlItemMatrix::peekShadowRow() const {
 }
 
 AqlItemMatrix::AqlItemMatrix(RegisterId nrRegs)
-    : _size(0), _nrRegs(nrRegs), _lastShadowRow(InvalidRowIndex) {}
+    : _size(0), _nrRegs(nrRegs), _lastShadowRow(InvalidRowIndex) {
+  LOG_DEVEL << "set size to zero";
+}
