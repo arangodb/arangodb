@@ -396,7 +396,7 @@ void appendTerms(irs::by_phrase& filter, irs::string_ref const& value,
 
   // add tokens
   while (stream.next()) {
-    filter.push_back(token.value(), firstOffset);
+    filter.push_back(irs::by_phrase::info_t::simple_term{}, token.value(), firstOffset);
     firstOffset = 0;
   }
 }
@@ -2040,6 +2040,225 @@ arangodb::Result fromFuncMinMatch(
   return {};
 }
 
+typedef std::function<
+  arangodb::Result(irs::by_phrase*,
+                   arangodb::aql::AstNode const&,
+                   size_t)
+> ConversionPhraseHandler;
+
+arangodb::Result oneArgumentfromFuncPhrase(arangodb::aql::AstNode const& array,
+                                           irs::string_ref& value) {
+  constexpr size_t numOfArguments = 1;
+  TRI_ASSERT(array.isArray());
+  if (array.numMembers() != numOfArguments) {
+    return {TRI_ERROR_BAD_PARAMETER, "array arguments count must be "s
+          .append(std::to_string(numOfArguments))};
+  }
+  constexpr size_t i = 0;
+  auto const& elem = *array.getMember(i);
+  if (arangodb::aql::NODE_TYPE_VALUE == elem.type) {
+    if (elem.isValueType(arangodb::aql::VALUE_TYPE_STRING)) {
+      auto const val = elem.getStringRef();
+      value = irs::string_ref(val.data(), val.size());
+    } else {
+      return {TRI_ERROR_BAD_PARAMETER, "array["s
+            .append(std::to_string(i))
+            .append("] argument must be a string")};
+    }
+  } else {
+    return {TRI_ERROR_BAD_PARAMETER, "array argument must be a string"};
+  }
+  return {};
+}
+
+// {<STARTS_WITH>: '[' <term> ']'}
+arangodb::Result fromFuncPhraseStartsWith(irs::by_phrase* filter,
+                                          arangodb::aql::AstNode const& array,
+                                          size_t firstOffset) {
+  irs::string_ref value;
+  auto res = oneArgumentfromFuncPhrase(array, value);
+  if (res.fail()) {
+    return res;
+  }
+  if (filter) {
+    filter->push_back(irs::by_phrase::info_t::prefix_term{}, value, firstOffset);
+  }
+  return {};
+}
+
+// {<WILDCARD>: '[' <term> ']'}
+arangodb::Result fromFuncPhraseLike(irs::by_phrase* filter,
+                                    arangodb::aql::AstNode const& array,
+                                    size_t firstOffset) {
+  irs::string_ref value;
+  auto res = oneArgumentfromFuncPhrase(array, value);
+  if (res.fail()) {
+    return res;
+  }
+  if (filter) {
+    filter->push_back(irs::by_phrase::info_t::wildcard_term{}, value, firstOffset);
+  }
+  return {};
+}
+
+// {<LEVENSHTEIN_MATCH>: '[' <term>, <max_distance> [, <with_transpositions> ] ']'}
+arangodb::Result fromFuncPhraseLevenshteinMatch(irs::by_phrase* filter,
+                                                arangodb::aql::AstNode const& array,
+                                                size_t firstOffset) {
+  constexpr size_t minNumOfArguments = 1;
+  constexpr size_t maxNumOfArguments = 3;
+  TRI_ASSERT(array.isArray());
+  auto const numMembers = array.numMembers();
+  if (numMembers < minNumOfArguments || maxNumOfArguments < numMembers) {
+    return {TRI_ERROR_BAD_PARAMETER, "array arguments count must be between "s
+          .append(std::to_string(minNumOfArguments)).append(" and ")
+          .append(std::to_string(maxNumOfArguments))
+    };
+  }
+
+  size_t i = 0;
+  irs::string_ref value;
+  auto const& elem = *array.getMember(i);
+  if (arangodb::aql::NODE_TYPE_VALUE == elem.type) {
+    if (elem.isValueType(arangodb::aql::VALUE_TYPE_STRING)) {
+      auto const val = elem.getStringRef();
+      value = irs::string_ref(val.data(), val.size());
+    } else {
+      return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+            .append("] argument must be a string")};
+    }
+  } else {
+    return {TRI_ERROR_BAD_PARAMETER,"array["s.append(std::to_string(i))
+          .append("] argument must be a string")};
+  }
+
+  int64_t maxDistance = 0;
+  auto withTranspositions = false;
+
+  if (numMembers > minNumOfArguments) {
+    auto const& md = *array.getMember(++i);
+    if (arangodb::aql::NODE_TYPE_VALUE == md.type) {
+      if (md.isValueType(arangodb::aql::VALUE_TYPE_INT) ||
+          md.isValueType(arangodb::aql::VALUE_TYPE_DOUBLE)) {
+        maxDistance = md.getIntValue();
+        if (maxDistance < 0) {
+          return {
+            TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+                .append("] argument (Levenshtein distance) must be a non-negative number")
+          };
+        }
+      } else {
+        return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+              .append("] argument (Levenshtein distance) must be a non-negative number")};
+      }
+    } else {
+      return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+            .append("] argument (Levenshtein distance) must be a non-negative number")};
+    }
+
+    if (maxNumOfArguments == numMembers) {
+      auto const& target = *array.getMember(++i);
+      if (arangodb::aql::NODE_TYPE_VALUE == target.type) {
+        if (target.isValueType(arangodb::aql::VALUE_TYPE_BOOL)) {
+          withTranspositions = elem.getBoolValue();
+        } else {
+          return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+                .append("] argument (Damerau-Levenshtein distance) must be a boolean value")};
+        }
+      } else {
+        return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+              .append("] argument (Damerau-Levenshtein distance) must be a boolean value")};
+      }
+    }
+
+    if (!withTranspositions && maxDistance > MAX_LEVENSHTEIN_DISTANCE) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+            "array["s.append(std::to_string(1))
+            .append("] argument (Levenshtein distance) must be a number in range [0, ")
+            .append(std::to_string(MAX_LEVENSHTEIN_DISTANCE)).append("]")
+      };
+    } else if (withTranspositions && maxDistance > MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+            "array["s.append(std::to_string(2))
+            .append("] argument (Damerau-Levenshtein distance) must be a number in range [0, ")
+            .append(std::to_string(MAX_DAMERAU_LEVENSHTEIN_DISTANCE)).append("]")
+      };
+    }
+  }
+
+  if (filter) {
+    filter->push_back(
+          irs::by_phrase::info_t::levenshtein_term{{128}, // FIXME make configurable
+                                                   static_cast<irs::byte_type>(maxDistance),
+                                                   &arangodb::iresearch::getParametricDescription,
+                                                   withTranspositions}, value, firstOffset);
+  }
+  return {};
+}
+
+// {<TERMS>: '[' <term0> [, <term1>, ...] ']'}
+arangodb::Result fromFuncPhraseTerms(irs::by_phrase* filter,
+                                     arangodb::aql::AstNode const& array,
+                                     size_t firstOffset) {
+  constexpr size_t minNumOfArguments = 1;
+  TRI_ASSERT(array.isArray());
+  auto numMembers = array.numMembers();
+  if (numMembers < minNumOfArguments) {
+    return {TRI_ERROR_BAD_PARAMETER, "array arguments count must be >= "s
+          .append(std::to_string(minNumOfArguments))};
+  }
+  std::vector<irs::string_ref> values;
+  values.reserve(numMembers);
+  for (size_t i = 0; i < numMembers; ++i) {
+    auto const& elem = *array.getMember(i);
+    if (arangodb::aql::NODE_TYPE_VALUE == elem.type) {
+      if (elem.isValueType(arangodb::aql::VALUE_TYPE_STRING)) {
+        auto const val = elem.getStringRef();
+        values.emplace_back(irs::string_ref(val.data(), val.size()));
+      } else {
+        return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+              .append("] argument must be a string")};
+      }
+    } else {
+      return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+            .append("] argument must be a string")};
+    }
+  }
+  if (filter) {
+    filter->push_back(irs::by_phrase::info_t::select_term{}, values, firstOffset);
+  }
+  return {};
+}
+
+std::map<std::string, ConversionPhraseHandler> const FCallSystemConversionPhraseHandlers {
+  {"STARTS_WITH", fromFuncPhraseStartsWith},
+  {"WILDCARD", fromFuncPhraseLike}, // 'LIKE' is a key word
+  {"LEVENSHTEIN_MATCH", fromFuncPhraseLevenshteinMatch},
+  {"TERMS", fromFuncPhraseTerms}
+};
+
+// {<STARTS_WITH>|<WILDCARD>|<LEVENSHTEIN_MATCH>|<TERMS>: '[' <term> [, ...] ']'}
+arangodb::Result processPhraseArgObjectType(irs::by_phrase* filter,
+                                            arangodb::aql::AstNode const& object,
+                                            size_t firstOffset) {
+  TRI_ASSERT(object.isObject() && object.numMembers() == 1);
+  auto const& objectElem = *object.getMember(0);
+  std::string name = objectElem.getStringValue();
+  arangodb::basics::StringUtils::toupperInPlace(name);
+  auto const entry = FCallSystemConversionPhraseHandlers.find(name);
+  if (FCallSystemConversionPhraseHandlers.cend() == entry) {
+    return {TRI_ERROR_BAD_PARAMETER, "unknown '"s.append(objectElem.getStringValue()).append("'")};
+  }
+  TRI_ASSERT(objectElem.numMembers() == 1);
+  auto const& elem = *objectElem.getMember(0);
+  if (!elem.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER, "'"s.append(name).append("' arguments must be in an array")};
+  }
+  return entry->second(filter, elem, firstOffset);
+}
+
 arangodb::Result processPhraseArgs(
     char const* funcName,
     irs::by_phrase* phrase,
@@ -2050,7 +2269,7 @@ arangodb::Result processPhraseArgs(
     irs::analysis::analyzer::ptr& analyzer,
     size_t offset,
     bool allowDefaultOffset,
-    bool allowRecursion) {
+    bool isInArray) {
   irs::string_ref value;
   bool expectingOffset = false;
   for (size_t idx = valueArgsBegin; idx < valueArgsEnd; ++idx) {
@@ -2058,30 +2277,68 @@ arangodb::Result processPhraseArgs(
     if (!currentArg) {
       return error::invalidArgument(funcName, idx);
     }
-    if (currentArg->isArray() && (!expectingOffset || allowDefaultOffset)) {
-      if (0 == currentArg->numMembers()) {
-        expectingOffset = true;
-        // do not reset offset here as we should accumulate it
-        continue; // just skip empty arrays. This is not error anymore as this case may arise while working with autocomplete
-      }
-      // array arg is processed with possible default 0 offsets - to be easily compatible with TOKENS function
-      // No array recursion allowed. This could be allowed, but just looks tangled.
-      // Anyone interested coud use FLATTEN  to explicitly require processing all recurring arrays as one array
-      if (allowRecursion) {
-        auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, *currentArg, 0, currentArg->numMembers(), analyzer, offset, true, false);
-        if (subRes.fail()) {
-          return subRes;
+    if (currentArg->isArray()) {
+      // '[' <term0> [, <term1>, ...] ']'
+      if (isInArray) {
+        auto res = fromFuncPhraseTerms(phrase, *currentArg, offset);
+        if (res.fail()) {
+          return {res.errorNumber(), "'"s.append(funcName).append("' AQL function: ").append(res.errorMessage())
+                .append(" at position ").append(std::to_string(idx))};
         }
         expectingOffset = true;
         offset = 0;
         continue;
       }
+      if (!expectingOffset || allowDefaultOffset) {
+        if (0 == currentArg->numMembers()) {
+          expectingOffset = true;
+          // do not reset offset here as we should accumulate it
+          continue; // just skip empty arrays. This is not error anymore as this case may arise while working with autocomplete
+        }
+        // array arg is processed with possible default 0 offsets - to be easily compatible with TOKENS function
+        if (!isInArray) {
+          auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, *currentArg, 0, currentArg->numMembers(), analyzer, offset, true, true);
+          if (subRes.fail()) {
+            return subRes;
+          }
+          expectingOffset = true;
+          offset = 0;
+          continue;
+        }
 
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        "'"s.append(funcName).append("' AQL function: recursive arrays not allowed at position ")
-            .append(std::to_string(idx))
-      };
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append(funcName).append("' AQL function: recursive arrays not allowed at position ")
+              .append(std::to_string(idx))
+        };
+      }
+    }
+    if (currentArg->isObject()) {
+      switch (currentArg->numMembers()) {
+      case 0:
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append(funcName).append("' AQL function: an empty object at position ")
+              .append(std::to_string(idx))
+        };
+      case 1: {
+        auto res = processPhraseArgObjectType(phrase, *currentArg, offset);
+        if (res.fail()) {
+          return {res.errorNumber(), "'"s.append(funcName).append("' AQL function: ").append(res.errorMessage())
+                .append(" at position ").append(std::to_string(idx))};
+        }
+        break;
+      }
+      default:
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append(funcName).append("' AQL function: an object contains too many arguments at position ")
+              .append(std::to_string(idx))
+        };
+      }
+      offset = 0;
+      expectingOffset = true;
+      continue;
     }
     ScopedAqlValue currentValue(*currentArg);
     if (phrase || currentValue.isConstant()) {
@@ -2223,7 +2480,7 @@ arangodb::Result fromFuncPhrase(
   }
   // on top level we require explicit offsets - to be backward compatible and be able to distinguish last argument as analyzer or value
   // Also we allow recursion inside array to support older syntax (one array arg) and add ability to pass several arrays as args
-  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, true);
+  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, false);
 }
 
 // STARTS_WITH(<attribute>, <prefix>, [<scoring-limit>])
