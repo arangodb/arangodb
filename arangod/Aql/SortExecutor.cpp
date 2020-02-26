@@ -122,41 +122,8 @@ SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
 SortExecutor::~SortExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {
-  ExecutionState state;
-  if (_input == nullptr) {
-    // We need to get data
-    std::tie(state, _input) = _fetcher.fetchAllRows();
-    if (state == ExecutionState::WAITING) {
-      return {state, NoStats{}};
-    }
-    // If the execution state was not waiting it is guaranteed that we get a
-    // matrix. Maybe empty still
-    TRI_ASSERT(_input != nullptr);
-    if (_input == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    // After allRows the dependency has to be done
-    TRI_ASSERT(state == ExecutionState::DONE);
-
-    // Execute the sort
-    doSorting();
-  }
-  // If we get here we have an input matrix
-  // And we have a list of sorted indexes.
-  TRI_ASSERT(_input != nullptr);
-  TRI_ASSERT(_sortedIndexes.size() == _input->size());
-  if (_returnNext >= _sortedIndexes.size()) {
-    // Bail out if called too often,
-    // Bail out on no elements
-    return {ExecutionState::DONE, NoStats{}};
-  }
-  InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
-  output.copyRow(inRow);
-  _returnNext++;
-  if (_returnNext >= _sortedIndexes.size()) {
-    return {ExecutionState::DONE, NoStats{}};
-  }
-  return {ExecutionState::HASMORE, NoStats{}};
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 void SortExecutor::initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix) {
@@ -188,26 +155,54 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     AqlItemBlockInputMatrix& inputMatrix, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
 
+  LOG_DEVEL << "new executor: " << this;
+
+  //if (inputMatrix.upstreamState() == ExecutorState::HASMORE) {
+  if (!inputMatrix.hasDataRow()) {
+    // If our inputMatrix does not contain all upstream rows
+    LOG_DEVEL << "hasmore produce";
+    return {inputMatrix.upstreamState(), NoStats{}, upstreamCall};
+  }
+
   if (_input == nullptr) {
+    LOG_DEVEL << "produce init - we have no input";
     initializeInputMatrix(inputMatrix);
   }
 
+  LOG_DEVEL << "next is : " << _returnNext;
+  LOG_DEVEL << "sorted is: " << _sortedIndexes.size();
   if (_returnNext >= _sortedIndexes.size()) {
     // Bail out if called too often,
     // Bail out on no elements
+    LOG_DEVEL << "produce done 1";
+    inputMatrix.skipAllRemainingDataRows();
     return {ExecutorState::DONE, NoStats{}, upstreamCall};
   }
 
   while (_returnNext < _sortedIndexes.size() && !output.isFull()) {
+    LOG_DEVEL << "hardlimit? : " << std::boolalpha << output.getClientCall().hasHardLimit();
+    LOG_DEVEL << "value: " << output.getClientCall().hardLimit;
     InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
     output.copyRow(inRow);
     output.advanceRow();
+    LOG_DEVEL << "written a row";
     _returnNext++;
   }
 
-  if (_returnNext >= _sortedIndexes.size()) {
+  // TODO: Dear Reviewer, is that the way it needs to be done or would it be enough to passthrough
+  // the hardLimit via. e.g. upstreamCall.hardLimit = limit; ?
+  if (output.getClientCall().hasHardLimit() && output.getClientCall().hardLimit == 0) {
+    LOG_DEVEL << "set to done due hardlimit";
+    inputMatrix.skipAllRemainingDataRows();
     return {ExecutorState::DONE, NoStats{}, upstreamCall};
   }
+
+  if (_returnNext >= _sortedIndexes.size()) {
+    LOG_DEVEL << "produce done 2";
+    inputMatrix.skipAllRemainingDataRows();
+    return {ExecutorState::DONE, NoStats{}, upstreamCall};
+  }
+  LOG_DEVEL << "produce hasmore";
   return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
 }
 
@@ -230,14 +225,24 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     AqlItemBlockInputMatrix& inputMatrix, AqlCall& call) {
   AqlCall upstreamCall{};
   size_t skipped = 0;
+  LOG_DEVEL << "== CALLED SKIP ROWS RANGE ==";
+
+  if (inputMatrix.upstreamState() == ExecutorState::HASMORE) {
+    // If our inputMatrix does not contain all upstream rows
+    LOG_DEVEL << "returned has more";
+    return {ExecutorState::HASMORE, NoStats{}, skipped, upstreamCall};
+  }
 
   if (_input == nullptr) {
+    LOG_DEVEL << "init matrix";
     initializeInputMatrix(inputMatrix);
   }
 
   if (_returnNext >= _sortedIndexes.size()) {
     // Bail out if called too often,
     // Bail out on no elements
+    LOG_DEVEL << "returned done";
+    inputMatrix.skipAllRemainingDataRows();
     return {ExecutorState::DONE, NoStats{}, skipped, upstreamCall};
   }
 
@@ -246,11 +251,15 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     _returnNext++;
     skipped++;
   }
+  LOG_DEVEL << "skiped: " << skipped;
   call.didSkip(skipped);
 
   if (_returnNext >= _sortedIndexes.size()) {
+    LOG_DEVEL << "returned done 2";
+    inputMatrix.skipAllRemainingDataRows();
     return {ExecutorState::DONE, NoStats{}, skipped, upstreamCall};
   }
+  LOG_DEVEL << "returned hasmore";
   return {ExecutorState::HASMORE, NoStats{}, skipped, upstreamCall};
 }
 
