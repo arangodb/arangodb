@@ -34,11 +34,11 @@ class ShadowAqlItemRow;
 
 class AqlItemBlockInputMatrix {
  public:
-  explicit AqlItemBlockInputMatrix(ExecutorState state, std::size_t skipped = 0);
+  explicit AqlItemBlockInputMatrix(ExecutorState state);
 
   AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const&);
 
-  AqlItemBlockInputMatrix(ExecutorState state, std::size_t skipped, AqlItemMatrix* aqlItemMatrix);
+  AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix);
 
   std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
   bool hasShadowRow() const noexcept;
@@ -50,24 +50,30 @@ class AqlItemBlockInputMatrix {
   ExecutorState upstreamState() const noexcept;
   bool upstreamHasMore() const noexcept;
 
-  ExecutorState skipAllRemainingDataRows();
+  void skipAllRemainingDataRows();
+
+  // Method to mark the current _aqlItemMatrix as all read.
+  // Needs to be set by the executors after they're done producing rows.
+  void setAllRowsProduced(bool flag) {
+    _allRowsProduced = flag;
+  }
 
   // Subtract up to this many rows from the local `_skipped` state; return
   // the number actually skipped. Does not skip data rows.
+  /*
   [[nodiscard]] auto skip(std::size_t) noexcept -> std::size_t;
   [[nodiscard]] auto skipAll() noexcept -> std::size_t;
-  [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;
+  [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;*/
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   ExecutorState _finalState{ExecutorState::HASMORE};
-  // How many rows were skipped upstream
-  std::size_t _skipped{};
-  AqlItemMatrix* _aqlItemMatrix;
 
-  // if isRelevant is set to false, we're only having a single data block
-  bool _isRelevant;
+  // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and usable
+  // DataRange object available to work with.
+  AqlItemMatrix* _aqlItemMatrix;
   ShadowAqlItemRow _shadowRow{CreateInvalidShadowRowHint{}};
+  bool _allRowsProduced = false;
 };
 
 }  // namespace arangodb::aql

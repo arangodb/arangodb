@@ -23,6 +23,7 @@
 #include "AqlItemBlockInputMatrix.h"
 #include "Aql/ShadowAqlItemRow.h"
 
+#include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 #include <numeric>
@@ -30,26 +31,33 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, std::size_t skipped)
-    : _finalState{state}, _skipped{skipped}, _isRelevant{false} {}
+AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
+    : _finalState{state}, _aqlItemMatrix{nullptr} {
+  TRI_ASSERT(_aqlItemMatrix == nullptr);
+  TRI_ASSERT(!hasDataRow());
+}
 
 // only used for block passthrough
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const& block)
-    : _block{block}, _aqlItemMatrix{nullptr}, _isRelevant{false} {}
+    : _block{block}, _aqlItemMatrix{nullptr} {
+  TRI_ASSERT(_aqlItemMatrix == nullptr);
+  TRI_ASSERT(!hasDataRow());
+}
 
-AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, std::size_t skipped,
-                                                 AqlItemMatrix* aqlItemMatrix)
-    : _finalState{state}, _skipped{skipped}, _aqlItemMatrix{aqlItemMatrix}, _isRelevant{true} {
+AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix)
+    : _finalState{state}, _aqlItemMatrix{aqlItemMatrix} {
+  LOG_DEVEL << "ussed is relevant true";
   TRI_ASSERT(_block == nullptr);
 }
 
 SharedAqlItemBlockPtr AqlItemBlockInputMatrix::getBlock() const noexcept {
-  TRI_ASSERT(!_isRelevant && _aqlItemMatrix == nullptr);
+  TRI_ASSERT(_aqlItemMatrix == nullptr);
   return _block;
 }
 
 std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatrix() noexcept {
-  TRI_ASSERT(_isRelevant && _aqlItemMatrix && _block == nullptr);
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
+  TRI_ASSERT(_block == nullptr);
   TRI_ASSERT(!_shadowRow.isInitialized());
 
   // matrix needs to be set to "read by executor", so IMPL does know how to continue
@@ -65,6 +73,13 @@ bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
 }
 
 bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
+  LOG_DEVEL << "shadowRow iniit: " << std::boolalpha << _shadowRow.isInitialized();
+  if (_aqlItemMatrix == nullptr) {
+    LOG_DEVEL << "WE DO NOT HAVE ANY AQLITEMMATRIX";
+    return false;
+  }
+  LOG_DEVEL << "size: " << _aqlItemMatrix->size();
+  LOG_DEVEL << "will return: " << std::boolalpha << (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
   return (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
 }
 
@@ -77,6 +92,10 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRo
   } else {
     _shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint()};
   }
+
+  if (!_aqlItemMatrix->empty()) {
+    return {ExecutorState::HASMORE, tmpShadowRow};
+  }
   return {_finalState, tmpShadowRow};
 }
 
@@ -84,16 +103,21 @@ bool AqlItemBlockInputMatrix::hasShadowRow() const noexcept {
   return _shadowRow.isInitialized();
 }
 
-ExecutorState AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
-  _shadowRow = _aqlItemMatrix->popShadowRow();
-  return ExecutorState::DONE;
+void AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
+  TRI_ASSERT(!_shadowRow.isInitialized());
+
+  if (_aqlItemMatrix->stoppedOnShadowRow()) {
+    _shadowRow = _aqlItemMatrix->popShadowRow();
+  } else {
+    _aqlItemMatrix->clear();
+  }
 }
 
+/*
 // TODO: check remove skip, + remove skipped (always 0)
-auto AqlItemBlockInputMatrix::skip(std::size_t const toSkip) noexcept -> std::size_t {
-  auto const skipCount = std::min(_skipped, toSkip);
-  _skipped -= skipCount;
-  return skipCount;
+auto AqlItemBlockInputMatrix::skip(std::size_t const toSkip) noexcept ->
+std::size_t { auto const skipCount = std::min(_skipped, toSkip); _skipped -=
+skipCount; return skipCount;
 }
 
 auto AqlItemBlockInputMatrix::skippedInFlight() const noexcept -> std::size_t {
@@ -104,4 +128,4 @@ auto AqlItemBlockInputMatrix::skipAll() noexcept -> std::size_t {
   auto const skipped = _skipped;
   _skipped = 0;
   return skipped;
-}
+}*/
