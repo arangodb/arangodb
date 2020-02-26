@@ -29,11 +29,34 @@
 #include <cstddef>
 #include <variant>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
+
 struct AqlCall {
+  // TODO We currently have softLimit and hardLimit, where both can be a number
+  //      or Infinity - but not both may be non-infinite at the same time.
+  //      In addition, a soft limit does only make sense together with a hard
+  //      limit.
+  //      The data structures and APIs should reflect that. E.g.:
+  //      Infinity | SoftLimit { count : Int } | HardLimit { count : Int, fullCount : Bool }
+  //      On a less important case, softLimit = 0 and offset = 0 do not occur together,
+  //      but it's probably not worth implementing that in terms of data structures.
   class Infinity {};
   using Limit = std::variant<size_t, Infinity>;
+
+  AqlCall() = default;
+  // Replacements for struct initialization
+  explicit AqlCall(size_t offset, Limit softLimit = Infinity{},
+                   Limit hardLimit = Infinity{}, bool fullCount = false)
+      : offset{offset}, softLimit{softLimit}, hardLimit{hardLimit}, fullCount{fullCount} {}
+
+  enum class LimitType { SOFT, HARD };
+  AqlCall(size_t offset, bool fullCount, Infinity)
+      : offset{offset}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fullCount} {}
+  AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
+      : offset{offset},
+        softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},
+        hardLimit{limitType == LimitType::HARD ? Limit{limit} : Limit{Infinity{}}},
+        fullCount{fullCount} {}
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateSkipSome(std::size_t toSkip) {
@@ -57,16 +80,32 @@ struct AqlCall {
 
   // TODO Remove me, this will not be necessary later
   static bool IsSkipSomeCall(AqlCall const& call) {
-    return !call.hasHardLimit() && call.getOffset() > 0;
+    return call.getOffset() > 0;
   }
 
   // TODO Remove me, this will not be necessary later
   static bool IsGetSomeCall(AqlCall const& call) {
-    return !call.hasHardLimit() && call.getLimit() > 0 && call.getOffset() == 0;
+    return call.getLimit() > 0 && call.getOffset() == 0;
+  }
+
+  // TODO Remove me, this will not be necessary later
+  static bool IsFullCountCall(AqlCall const& call) {
+    return call.hasHardLimit() && call.getLimit() == 0 &&
+           call.getOffset() == 0 && call.needsFullCount();
+  }
+
+  static bool IsFastForwardCall(AqlCall const& call) {
+    return call.hasHardLimit() && call.getLimit() == 0 &&
+           call.getOffset() == 0 && !call.needsFullCount();
   }
 
   std::size_t offset{0};
   // TODO: The defaultBatchSize function could move into this file instead
+  // TODO We must guarantee that at most one of those is not Infinity.
+  //      To do that, we should replace softLimit and hardLimit with
+  //        Limit limit;
+  //        bool isHardLimit;
+  //      .
   Limit softLimit{Infinity{}};
   Limit hardLimit{Infinity{}};
   bool fullCount{false};
@@ -74,6 +113,9 @@ struct AqlCall {
 
   std::size_t getOffset() const { return offset; }
 
+  // TODO I think this should return the actual limit without regards to the batch size,
+  //      so we can use it to calculate upstream calls. The batch size should be applied
+  //      when allocating blocks only!
   std::size_t getLimit() const {
     return clampToLimit(ExecutionBlock::DefaultBatchSize);
   }
@@ -126,18 +168,14 @@ struct AqlCall {
     return !std::holds_alternative<AqlCall::Infinity>(hardLimit);
   }
 
+  bool hasSoftLimit() const {
+    return !std::holds_alternative<AqlCall::Infinity>(softLimit);
+  }
+
   bool needsFullCount() const { return fullCount; }
 
   bool shouldSkip() const {
-    if (getOffset() > 0) {
-      // Still need to skip.
-      return true;
-    }
-    if (getLimit() > 0) {
-      // Still need to produce.
-      return false;
-    }
-    return needsFullCount();
+    return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
   }
 };
 
@@ -148,10 +186,7 @@ constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
   if (std::holds_alternative<AqlCall::Infinity>(b)) {
     return true;
   }
-  if (std::get<size_t>(a) < std::get<size_t>(b)) {
-    return true;
-  }
-  return false;
+  return std::get<size_t>(a) < std::get<size_t>(b);
 }
 
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
@@ -204,12 +239,11 @@ inline std::ostream& operator<<(std::ostream& out,
 }
 
 inline std::ostream& operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) {
-  return out << "skip: " << call.getOffset() << " softLimit: " << call.softLimit
-             << " hardLimit: " << call.hardLimit
-             << " fullCount: " << std::boolalpha << call.fullCount;
+  return out << "{ skip: " << call.getOffset() << ", softLimit: " << call.softLimit
+             << ", hardLimit: " << call.hardLimit
+             << ", fullCount: " << std::boolalpha << call.fullCount << " }";
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif

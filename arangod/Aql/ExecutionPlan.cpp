@@ -151,7 +151,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
     size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = optionsNode->getMember(i);
+      auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -180,10 +180,25 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
                 "due to unpredictable results. Use 'path' "
                 "or 'none' instead");
           }
+        } else if (name == "vertexCollections") {
+          if (value->isStringValue()) {
+            options->vertexCollections.emplace_back(value->getStringValue(),
+                                                    value->getStringLength());
+          } else if (value->isArray()) {
+            for (size_t j = 0; j < value->numMembers(); j++) {
+              AstNode const* member = value->getMember(j);
+              if (member->type == AstNodeType::NODE_TYPE_VALUE &&
+                  member->value.type == AstNodeValueType::VALUE_TYPE_STRING) {
+                options->vertexCollections.emplace_back(member->getStringValue(),
+                                                        member->getStringLength());
+              }
+            }
+          }
         }
       }
     }
   }
+
   if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
       !options->useBreadthFirst) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -191,9 +206,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
                                    "supported, with bfs: true due to "
                                    "unpredictable results.");
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+
+  return options;
 }
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Query* query,
@@ -204,7 +218,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -221,9 +235,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
       }
     }
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+  
+  return options;
 }
 
 std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
@@ -724,6 +737,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 
         if (name == "waitForSync") {
           options.waitForSync = value->isTrue();
+        } else if (name == StaticStrings::SkipDocumentValidation) {
+          options.validate = ! value->isTrue();
         } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
         } else if (name == "keepNull") {
@@ -751,6 +766,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
       }
     }
   }
+
   return options;
 }
 

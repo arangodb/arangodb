@@ -61,7 +61,7 @@ class ClusterTraverser final : public Traverser {
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  bool getSingleVertex(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef const sourceVertexId,
+  bool getSingleVertex(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef sourceVertexId,
                        uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -85,6 +85,9 @@ class ClusterTraverser final : public Traverser {
 
  private:
   void fetchVertices();
+
+  /// @brief build the (single) path enumerator of this traverser
+  void createEnumerator();
 
   std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> _vertices;
 

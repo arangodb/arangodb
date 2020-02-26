@@ -78,8 +78,8 @@ class GeneralConnection : public fuerte::Connection {
  
  private:
   // Connect with a given number of retries
-  void tryConnect(unsigned retries, std::chrono::steady_clock::time_point start);
-
+  void tryConnect(unsigned retries, std::chrono::steady_clock::time_point start,
+                  asio_ns::error_code const& ec);
 
  protected:
   /// @brief io context to use

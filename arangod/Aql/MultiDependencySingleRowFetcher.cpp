@@ -290,7 +290,8 @@ bool MultiDependencySingleRowFetcher::isLastRowInBlock(
 
 bool MultiDependencySingleRowFetcher::noMoreDataRows(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
-  return (isDone(info) && !indexIsValid(info)) || (indexIsValid(info) && isAtShadowRow(info));
+  return (isDone(info) && !indexIsValid(info)) ||
+         (indexIsValid(info) && isAtShadowRow(info));
 }
 
 std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRowsForDependency(
@@ -353,4 +354,9 @@ bool MultiDependencySingleRowFetcher::fetchBlockIfNecessary(size_t const depende
     depInfo._rowIndex = 0;
   }
   return true;
+}
+
+//@deprecated
+auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> void {
+  _dependencyProxy->useStack(stack);
 }

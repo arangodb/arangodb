@@ -287,8 +287,7 @@ class ShortestPathExecutorTest
               std::move(parameters._source), std::move(parameters._target)),
         finder(static_cast<FakePathFinder&>(infos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
-        input(AqlItemBlockInputRange(ExecutorState::DONE, inputBlock, 0,
-                                     inputBlock->size())),
+        input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
         testee(fetcher, infos) {
@@ -430,7 +429,7 @@ class ShortestPathExecutorTest
 
     // If an offset is requested, skip
     if (ourCall.getOffset() > 0) {
-      std::tie(state, std::ignore, skippedInitial, std::ignore) =
+      std::tie(state, std::ignore /* stats */, skippedInitial, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
 
@@ -454,7 +453,7 @@ class ShortestPathExecutorTest
       // Emulate being called with a full count
       ourCall.hardLimit = 0;
       ourCall.softLimit = 0;
-      std::tie(state, std::ignore, skippedFullCount, std::ignore) =
+      std::tie(state, std::ignore /* stats */, skippedFullCount, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
 
@@ -487,6 +486,8 @@ class ShortestPathExecutorTest
 
 TEST_P(ShortestPathExecutorTest, the_test) { TestExecutor(); }
 
+// Namespace conflict with the other shortest path executor
+namespace {
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
     regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
@@ -546,7 +547,7 @@ auto blockSizes = testing::Values(size_t{5}, 1000);
 INSTANTIATE_TEST_CASE_P(ShortestPathExecutorTestInstance, ShortestPathExecutorTest,
                         testing::Combine(sources, targets, inputs, paths, calls,
                                          variants, blockSizes));
-
+}  // namespace
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

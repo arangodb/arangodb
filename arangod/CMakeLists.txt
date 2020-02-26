@@ -296,6 +296,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/KShortestPathsNode.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
+  Aql/LimitStats.cpp
   Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorHelpers.cpp
@@ -394,6 +395,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
   VocBase/ticks.cpp
+  VocBase/Validators.cpp
   VocBase/vocbase.cpp
   VocBase/VocbaseInfo.cpp
 )

@@ -138,6 +138,9 @@ class SingleRowFetcher {
   [[nodiscard]] bool isAtShadowRow() const;
 #endif
 
+  //@deprecated
+  auto useStack(AqlCallStack const& stack) -> void;
+
  private:
   DependencyProxy<blockPassthrough>* _dependencyProxy;
 
