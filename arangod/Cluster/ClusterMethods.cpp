@@ -4167,8 +4167,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     auto agencyCheck = std::make_shared<VPackBuilder>();
     result = ci->agencyPlan(agencyCheck);
     if (!result.ok()) {
-      if (!allowInconsistent) {
-        removeLocalBackups(pool, backupId, dbServers, dummy);
+      if (!force) {
+        removeLocalBackups(backupId, dbServers, dummy);
       }
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
@@ -4182,8 +4182,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     try {
       if (!basics::VelocyPackHelper::equal(agency->slice()[0].get(versionPath),
                                            agencyCheck->slice()[0].get(versionPath), false)) {
-        if (!allowInconsistent) {
-          removeLocalBackups(pool, backupId, dbServers, dummy);
+        if (!force) {
+          removeLocalBackups(backupId, dbServers, dummy);
         }
         result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                      "data definition of cluster was changed during hot "
