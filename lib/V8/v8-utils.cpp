@@ -23,7 +23,7 @@
 
 #include <chrono>
 #ifndef __cpp_lib_chrono
-// Work around broken mac compiler
+// this macro is a c++20 feature... 
 #define __cpp_lib_chrono 1
 #endif
 
@@ -253,7 +253,7 @@ bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args) {
   return true;
 }
 
-double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds) {
+uint64_t getMaxTimeoutConnectionToBeDeadS(uint64_t timeoutSeconds) {
   auto when = connectionToBeDeadAt.load();
   if (when == 0.0) {
     return timeoutSeconds;
@@ -263,7 +263,7 @@ double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds) {
   if (delta > timeoutSeconds) {
     return timeoutSeconds;
   }
-  return delta;
+  return static_cast<uint64_t>(delta);
 }
 
 std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout) {
