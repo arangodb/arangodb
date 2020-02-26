@@ -3874,7 +3874,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     result = ci.agencyPlan(agencyCheck);
     if (!result.ok()) {
       if (!allowInconsistent) {
-        removeLocalBackups(pool, backupId, dbServers, dummy);
+        removeLocalBackups(backupId, dbServers, dummy);
       }
       ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
@@ -3889,7 +3889,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       if (!Helper::equal(agency->slice()[0].get(versionPath),
                          agencyCheck->slice()[0].get(versionPath), false)) {
         if (!allowInconsistent) {
-          removeLocalBackups(pool, backupId, dbServers, dummy);
+          removeLocalBackups(backupId, dbServers, dummy);
         }
         result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                      "data definition of cluster was changed during hot "
@@ -3899,7 +3899,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         return result;
       }
     } catch (std::exception const& e) {
-      removeLocalBackups(pool, backupId, dbServers, dummy);
+      removeLocalBackups(backupId, dbServers, dummy);
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("invalid agency state: ") + e.what());
       LOG_TOPIC("037eb", ERR, Logger::BACKUP) << result.errorMessage();
