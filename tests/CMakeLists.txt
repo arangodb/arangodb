@@ -50,6 +50,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/IdExecutorTest.cpp
   Aql/IndexNodeTest.cpp
   Aql/InsertExecutorTest.cpp
+  Aql/KShortestPathsExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
   Aql/MultiDepFetcherHelper.cpp

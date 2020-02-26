@@ -55,16 +55,35 @@ ExecutorInfos MakeBaseInfos(RegisterId numRegs) {
 }
 }  // namespace
 
-class SubqueryStartExecutorTest : public AqlExecutorTestCase<false> {
+// We need to be backwards compatible, with version 3.6
+// There we do not get a fullStack, but only a single entry.
+// We have a compatibility mode Stack for this version
+// These tests can be removed again in the branch for the version
+// after 3.7.*
+enum CompatibilityMode { VERSION36, VERSION37 };
+class SubqueryStartExecutorTest
+    : public AqlExecutorTestCaseWithParam<CompatibilityMode, false> {
  protected:
+  auto GetCompatMode() const -> CompatibilityMode {
+    auto const mode = GetParam();
+    return mode;
+  }
+
   auto queryStack(AqlCall fromSubqueryEnd, AqlCall insideSubquery) const -> AqlCallStack {
+    if (GetCompatMode() == CompatibilityMode::VERSION36) {
+      return AqlCallStack{insideSubquery, true};
+    }
     AqlCallStack stack(fromSubqueryEnd);
     stack.pushCall(std::move(insideSubquery));
     return stack;
   }
 };
 
-TEST_F(SubqueryStartExecutorTest, check_properties) {
+INSTANTIATE_TEST_CASE_P(SubqueryStartExecutorTest, SubqueryStartExecutorTest,
+                        ::testing::Values(CompatibilityMode::VERSION36,
+                                          CompatibilityMode::VERSION37));
+
+TEST_P(SubqueryStartExecutorTest, check_properties) {
   EXPECT_TRUE(SubqueryStartExecutor::Properties::preservesOrder)
       << "The block has no effect on ordering of elements, it adds additional "
          "rows only.";
@@ -75,7 +94,7 @@ TEST_F(SubqueryStartExecutorTest, check_properties) {
          "input. (Might be less if input contains shadowRows";
 }
 
-TEST_F(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
+TEST_P(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
       .setInputValue({})
@@ -87,7 +106,7 @@ TEST_F(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
       .run();
 }
 
-TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
+TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
       .setInputValue({{R"("a")"}})
@@ -102,7 +121,7 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
 // NOTE: The following two tests exclude each other.
 // Right now we can only support 1 ShadowRow per request, we cannot do a look-ahead of
 // calls. As soon as we can this test needs to re removed, and the one blow needs to be activated.
-TEST_F(SubqueryStartExecutorTest,
+TEST_P(SubqueryStartExecutorTest,
        adds_only_one_shadowrow_even_if_more_input_is_available_in_single_pass) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
@@ -119,7 +138,7 @@ TEST_F(SubqueryStartExecutorTest,
 // This is the behaviour we would like to have eventually
 // As soon as we can support Call look-aheads we need to enable this test.
 // and it needs to pass then
-TEST_F(SubqueryStartExecutorTest, DISABLED_adds_a_shadowrow_after_every_input_line_in_single_pass) {
+TEST_P(SubqueryStartExecutorTest, DISABLED_adds_a_shadowrow_after_every_input_line_in_single_pass) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
       .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
@@ -134,7 +153,7 @@ TEST_F(SubqueryStartExecutorTest, DISABLED_adds_a_shadowrow_after_every_input_li
 
 // NOTE: As soon as the single_pass test is enabled this test is superflous.
 // It will be identical to the one above
-TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line) {
+TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
       .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
@@ -147,7 +166,7 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line) {
       .run(true);
 }
 
-TEST_F(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
+TEST_P(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
   // NOTE: This test relies on batchSizes beeing handled correctly and we do not over-allocate memory
   // Also it tests, that ShadowRows go into place accounting of the output block (count as 1 line)
 
@@ -182,7 +201,7 @@ TEST_F(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
   }
 }
 
-TEST_F(SubqueryStartExecutorTest, skip_in_subquery) {
+TEST_P(SubqueryStartExecutorTest, skip_in_subquery) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
       .setInputValue({{R"("a")"}})
@@ -194,7 +213,7 @@ TEST_F(SubqueryStartExecutorTest, skip_in_subquery) {
       .run();
 }
 
-TEST_F(SubqueryStartExecutorTest, fullCount_in_subquery) {
+TEST_P(SubqueryStartExecutorTest, fullCount_in_subquery) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
       .setInputValue({{R"("a")"}})
@@ -206,7 +225,7 @@ TEST_F(SubqueryStartExecutorTest, fullCount_in_subquery) {
       .run();
 }
 
-TEST_F(SubqueryStartExecutorTest, shadow_row_forwarding) {
+TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
   ExecutorTestHelper<1, 1> helper(*fakedQuery);
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
   stack.pushCall(AqlCall{});
@@ -225,7 +244,7 @@ TEST_F(SubqueryStartExecutorTest, shadow_row_forwarding) {
       .run();
 }
 
-TEST_F(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call) {
+TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call) {
   ExecutorTestHelper<1, 1> helper(*fakedQuery);
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
   stack.pushCall(AqlCall{});
@@ -244,7 +263,7 @@ TEST_F(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call)
       .run();
 }
 
-TEST_F(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_requests) {
+TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_requests) {
   ExecutorTestHelper<1, 1> helper(*fakedQuery);
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
   stack.pushCall(AqlCall{});
@@ -266,7 +285,7 @@ TEST_F(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_request
       .run(true);
 }
 
-TEST_F(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_space) {
+TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_space) {
   // NOTE: This test relies on batchSizes beeing handled correctly and we do not over-allocate memory
   // Also it tests, that ShadowRows go into place accounting of the output block (count as 1 line)
 

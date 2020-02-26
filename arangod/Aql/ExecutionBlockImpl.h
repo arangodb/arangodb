@@ -37,6 +37,9 @@
 
 namespace arangodb::aql {
 
+template <BlockPassthrough passThrough>
+class SingleRowFetcher;
+
 template <class Fetcher>
 class IdExecutor;
 
@@ -220,6 +223,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///        2. size_t: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+
+  template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
+  [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
 
  private:
   /**

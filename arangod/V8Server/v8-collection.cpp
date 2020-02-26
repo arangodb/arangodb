@@ -1258,6 +1258,11 @@ static void parseReplaceAndUpdateOptions(v8::Isolate* isolate,
       options.waitForSync =
           TRI_ObjectToBoolean(isolate, optionsObject->Get(context, WaitForSyncKey).FromMaybe(v8::Local<v8::Value>()));
     }
+    TRI_GET_GLOBAL_STRING(SkipDocumentValidationKey);
+    if (TRI_HasProperty(context, isolate, optionsObject, SkipDocumentValidationKey)) {
+      options.validate =
+          !TRI_ObjectToBoolean(isolate, optionsObject->Get(context, SkipDocumentValidationKey).FromMaybe(v8::Local<v8::Value>()));
+    }
     TRI_GET_GLOBAL_STRING(SilentKey);
     if (TRI_HasProperty(context, isolate, optionsObject, SilentKey)) {
       options.silent = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, SilentKey).FromMaybe(v8::Local<v8::Value>()));
@@ -1894,6 +1899,12 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     if (TRI_HasProperty(context, isolate, optionsObject, WaitForSyncKey)) {
       options.waitForSync =
           TRI_ObjectToBoolean(isolate, optionsObject->Get(context, WaitForSyncKey).FromMaybe(v8::Local<v8::Value>()));
+    }
+
+    TRI_GET_GLOBAL_STRING(SkipDocumentValidationKey);
+    if (TRI_HasProperty(context, isolate, optionsObject, SkipDocumentValidationKey)) {
+      options.validate =
+          !TRI_ObjectToBoolean(isolate, optionsObject->Get(context, SkipDocumentValidationKey).FromMaybe(v8::Local<v8::Value>()));
     }
 
     TRI_GET_GLOBAL_STRING(OverwriteKey);
