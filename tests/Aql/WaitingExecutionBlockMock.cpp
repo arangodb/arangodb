@@ -28,6 +28,8 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/QueryOptions.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;

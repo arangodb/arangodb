@@ -131,7 +131,11 @@ DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
   // We only get shared ptrs to const data. so we need to copy here...
   IdExecutorInfos infos{scatterInfos.numberOfInputRegisters(),
                         *scatterInfos.registersToKeep(),
-                        *scatterInfos.registersToClear(), "", false};
+                        *scatterInfos.registersToClear(),
+                        false,
+                        0,
+                        "",
+                        false};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
   _executor =
       std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, node,

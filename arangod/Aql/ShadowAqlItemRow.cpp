@@ -23,8 +23,8 @@
 #include "ShadowAqlItemRow.h"
 
 #include "Basics/VelocyPackHelper.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
