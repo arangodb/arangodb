@@ -1094,7 +1094,6 @@ std::unordered_map<ServerID, uint64_t> deletionCandidates (
 
 void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transient) {
 
-  LOG_DEVEL << __FILE__ << __LINE__;
   auto servers = deletionCandidates(snapshot, transient, "DBServers");
   auto const& currentDatabases = snapshot("Current/Databases");
   LOG_DEVEL << servers.size();
@@ -1108,7 +1107,6 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
     { VPackObjectBuilder ts(&trxs);
       for (auto const& server : servers) {
         auto const serverName = server.first;
-        LOG_DEVEL << serverName;
         trxs.add("/Supervision/Health/" + serverName, del.slice());
         trxs.add("/Plan/DBServers/" + serverName, del.slice());
         trxs.add("/Current/DBServers/" + serverName, del.slice());
@@ -1130,7 +1128,6 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
       { VPackObjectBuilder ts(&trxs);
         for (auto const& server : servers) {
         auto const serverName = server.first;
-        LOG_DEVEL << serverName;
         trxs.add("/Supervision/Health/" + serverName, del.slice());
         trxs.add("/Plan/Coordinators/" + serverName, del.slice());
         trxs.add("/Current/Coordinators/" + serverName, del.slice());
