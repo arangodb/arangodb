@@ -1185,7 +1185,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
     }
     case FastForwardVariant::FETCHER: {
       LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
-      std::ignore = inputRange.skipAllRemainingDataRows();  // TODO: check if we need the state
+      inputRange.skipAllRemainingDataRows();
       AqlCall call{};
       call.hardLimit = 0;
       return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call};
@@ -1368,6 +1368,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             _execState = ExecState::DONE;
             break;
           } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
+            LOG_DEVEL << "NEXT ASSERT";
+            LOG_DEVEL << "limit is: " << clientCall.getLimit();
+            LOG_DEVEL << "do we have a datarow left: " << std::boolalpha << _lastRange.hasDataRow();
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
             _upstreamRequest = call;
@@ -1457,6 +1460,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // an empty input. Only exception might be COLLECT COUNT.
           if (_lastRange.hasShadowRow()) {
             if (outputIsFull()) {
+              LOG_DEVEL << " => impl: output is full";
               // We need to be able to write data
               // But maybe the existing block is full here
               // Then we need to wake up again here.
@@ -1464,6 +1468,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               _execState = ExecState::DONE;
               break;
             }
+            LOG_DEVEL << " => impl: next shadow row";
             auto const& [state, shadowRow] = _lastRange.nextShadowRow();
             TRI_ASSERT(shadowRow.isInitialized());
             ensureOutputBlock(std::move(clientCall));
@@ -1516,6 +1521,16 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     if (localExecutorState == ExecutorState::HASMORE ||
         _lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE
+      LOG_DEVEL << " == IMPL == ";
+      LOG_DEVEL << "Local executor state is : " << localExecutorState;
+      LOG_DEVEL << "lastRange hasDataRow: " << _lastRange.hasDataRow();
+      LOG_DEVEL << "lastRange hasShadowRow: " << _lastRange.hasShadowRow();
+      LOG_DEVEL << "Skipped is : " << skipped;
+      LOG_DEVEL << "nullptr? " << std::boolalpha << (outputBlock == nullptr);
+      if (outputBlock != nullptr) {
+        LOG_DEVEL << "entries: " << outputBlock->numEntries();
+      }
+      LOG_DEVEL << " == IMPL == ";
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
     }
