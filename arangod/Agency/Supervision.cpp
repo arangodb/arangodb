@@ -850,10 +850,6 @@ void Supervision::run() {
           updateSnapshot();
           LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
-          if (_agent->leaderFor() > 55) {
-            cleanupExpiredServers(*_snapshot, _transient);
-          }
-
           if (!(*_snapshot).has("Supervision/Maintenance")) {
             reportStatus("Normal");
 
@@ -866,6 +862,12 @@ void Supervision::run() {
             if (_agent->leaderFor() > 55 || earlyBird()) {
               // 55 seconds is less than a minute, which fits to the
               // 60 seconds timeout in /_admin/cluster/health
+
+              if (_agent->leaderFor() > 120) {
+                cleanupExpiredServers(*_snapshot, _transient);
+
+              }
+
               try {
                 LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION) << "Begin doChecks";
                 doChecks();
@@ -1093,7 +1095,10 @@ std::unordered_map<ServerID, uint64_t> deletionCandidates (
 
 void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transient) {
 
+  LOG_DEVEL << __FILE__ << __LINE__;
   auto servers = deletionCandidates(snapshot, transient, "DBServers");
+  auto const& currentDatabases = snapshot("Current/Databases");
+  LOG_DEVEL << servers.size();
 
   VPackBuilder del;
   { VPackObjectBuilder d(&del);
@@ -1102,13 +1107,18 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
   VPackBuilder trxs;
   { VPackArrayBuilder ta(&trxs);
     { VPackObjectBuilder ts(&trxs);
-      for (auto const& i : servers) {
-        trxs.add("/Supervision/Health/" + i.first, del.slice());
-        trxs.add("/Plan/DBServers/" + i.first, del.slice());
-        trxs.add("/Current/DBServers/" + i.first, del.slice());
-        trxs.add("/Target/MapUniqueToShortID/" + i.first, del.slice());
-        trxs.add("/Current/ServersKnown/" + i.first, del.slice());
-        trxs.add("/Current/ServersRegistered/" + i.first, del.slice());
+      for (auto const& server : servers) {
+        auto const serverName = server.first;
+        LOG_DEVEL << serverName;
+        trxs.add("/Supervision/Health/" + serverName, del.slice());
+        trxs.add("/Plan/DBServers/" + serverName, del.slice());
+        trxs.add("/Current/DBServers/" + serverName, del.slice());
+        trxs.add("/Target/MapUniqueToShortID/" + serverName, del.slice());
+        trxs.add("/Current/ServersKnown/" + serverName, del.slice());
+        trxs.add("/Current/ServersRegistered/" + serverName, del.slice());
+        for (auto const& j : currentDatabases.children()) {
+          trxs.add("/Current/Databases/" + j.first + "/" + serverName, del.slice());
+        }
       }}}
 
   if (servers.size() > 0) {
@@ -1119,13 +1129,15 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
   servers = deletionCandidates(snapshot, transient, "Coordinators");
     { VPackArrayBuilder ta(&trxs);
       { VPackObjectBuilder ts(&trxs);
-        for (auto const& i : servers) {
-        trxs.add("/Supervision/Health/" + i.first, del.slice());
-        trxs.add("/Plan/Coordinators/" + i.first, del.slice());
-        trxs.add("/Current/Coordinators/" + i.first, del.slice());
-        trxs.add("/Target/MapUniqueToShortID/" + i.first, del.slice());
-        trxs.add("/Current/ServersKnown/" + i.first, del.slice());
-        trxs.add("/Current/ServersRegistered/" + i.first, del.slice());
+        for (auto const& server : servers) {
+        auto const serverName = server.first;
+        LOG_DEVEL << serverName;
+        trxs.add("/Supervision/Health/" + serverName, del.slice());
+        trxs.add("/Plan/Coordinators/" + serverName, del.slice());
+        trxs.add("/Current/Coordinators/" + serverName, del.slice());
+        trxs.add("/Target/MapUniqueToShortID/" + serverName, del.slice());
+        trxs.add("/Current/ServersKnown/" + serverName, del.slice());
+        trxs.add("/Current/ServersRegistered/" + serverName, del.slice());
       }}}
 
   if (servers.size() > 0) {
