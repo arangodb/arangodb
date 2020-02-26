@@ -108,7 +108,7 @@ static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
 ////////////////////////////////////////////////////////////////////////////////
 void setConnectionToBeDeadInMS(uint64_t timeout);
 bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args);
-uint64_t getMaxTimeoutConnectionToBeDeadS(uint64_t timeoutSeconds);
+double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds);
 // You will only see this function if you #include <chrono>
 #ifdef __cpp_lib_chrono
 std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout);

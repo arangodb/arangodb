@@ -253,7 +253,7 @@ bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args) {
   return true;
 }
 
-uint64_t getMaxTimeoutConnectionToBeDeadS(uint64_t timeoutSeconds) {
+double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds) {
   auto when = connectionToBeDeadAt.load();
   if (when == 0.0) {
     return timeoutSeconds;
