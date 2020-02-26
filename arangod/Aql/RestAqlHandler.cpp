@@ -26,6 +26,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
@@ -600,6 +601,82 @@ Query* RestAqlHandler::findQuery(std::string const& idString) {
   return q;
 }
 
+class AqlExecuteCall {
+ public:
+  // Deserializing factory
+  auto fromVelocyPack(VPackSlice slice) -> ResultT<AqlExecuteCall>;
+
+ private:
+  AqlExecuteCall(AqlCallStack&& callStack) : _callStack(std::move(callStack)) {}
+
+  AqlCallStack _callStack;
+};
+
+// TODO Use the deserializer when available
+auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecuteCall> {
+  if (ADB_UNLIKELY(!slice.isObject())) {
+    using namespace std::string_literals;
+    return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                  "When deserializating AqlExecuteCall: Expected object, got "s +
+                      slice.typeName());
+  }
+
+  auto expectedPropertiesFound = std::map<std::string_view, bool>{};
+  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteCallStack, false);
+
+  auto callStack = std::optional<AqlCallStack>{};
+
+  for (auto const it : VPackObjectIterator(slice)) {
+    auto const keySlice = it.key;
+    if (ADB_UNLIKELY(!keySlice.isString())) {
+      return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+          "When deserializating AqlExecuteCall: Key is not a string");
+    }
+    auto const key = keySlice.stringView();
+
+    if (auto propIt = expectedPropertiesFound.find(key);
+        ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
+      if (ADB_UNLIKELY(propIt->second)) {
+        return Result(
+            TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+            "When deserializating AqlExecuteCall: Encountered duplicate key");
+      }
+      propIt->second = true;
+    }
+
+    if (key == StaticStrings::AqlRemoteCallStack) {
+      auto maybeCallStack = AqlCallStack::fromVelocyPack(it.value);
+      if (ADB_UNLIKELY(maybeCallStack.fail())) {
+        auto message = std::string{"When deserializating AqlExecuteCall: failed to deserialize "};
+        message += StaticStrings::AqlRemoteCallStack;
+        message += ": ";
+        message += maybeCallStack.errorMessage();
+        return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, std::move(message));
+      }
+
+      callStack = maybeCallStack.get();
+    } else {
+      LOG_TOPIC("404b0", WARN, Logger::AQL)
+          << "When deserializating AqlExecuteCall: Encountered unexpected key " << key;
+      // If you run into this assertion during rolling upgrades after adding a
+      // new attribute, remove it in the older version.
+      TRI_ASSERT(false);
+    }
+  }
+
+  for (auto const& it : expectedPropertiesFound) {
+    if (ADB_UNLIKELY(!it.second)) {
+      auto message = std::string{"When deserializating AqlExecuteCall: missing key "};
+      message += it.first;
+      return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, std::move(message));
+    }
+  }
+
+  TRI_ASSERT(callStack.has_value());
+
+  return {AqlExecuteCall{std::move(callStack).value()}};
+}
+
 // handle for useQuery
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
@@ -636,7 +713,10 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   VPackBuilder answerBuilder(answerBuffer);
   answerBuilder.openObject(/*unindexed*/ true);
 
-  if (operation == "getSome") {
+  if (operation == StaticStrings::AqlRemoteExecute) {
+    // TODO implement
+    TRI_ASSERT(false);
+  } else if (operation == "getSome") {
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }

@@ -25,9 +25,14 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Basics/overload.h"
+#include "Cluster/ResultT.h"
 
 #include <cstddef>
 #include <variant>
+
+namespace arangodb::velocypack {
+class Slice;
+}
 
 namespace arangodb::aql {
 
@@ -41,7 +46,7 @@ struct AqlCall {
   //      On a less important case, softLimit = 0 and offset = 0 do not occur together,
   //      but it's probably not worth implementing that in terms of data structures.
   class Infinity {};
-  using Limit = std::variant<size_t, Infinity>;
+  using Limit = std::variant<std::size_t, Infinity>;
 
   AqlCall() = default;
   // Replacements for struct initialization
@@ -57,6 +62,8 @@ struct AqlCall {
         softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},
         hardLimit{limitType == LimitType::HARD ? Limit{limit} : Limit{Infinity{}}},
         fullCount{fullCount} {}
+
+  static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCall>;
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateSkipSome(std::size_t toSkip) {

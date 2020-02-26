@@ -24,10 +24,14 @@
 #define ARANGOD_AQL_AQL_CALLSTACK_H 1
 
 #include "Aql/AqlCall.h"
+#include "Cluster/ResultT.h"
 
 #include <stack>
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 namespace aql {
 
 class AqlCallStack {
@@ -40,6 +44,8 @@ class AqlCallStack {
   AqlCallStack(AqlCallStack const& other);
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;
+
+  static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallStack>;
 
   // Quick test is this CallStack is of local relevance, or it is sufficient to pass it through
   bool isRelevant() const;
@@ -84,6 +90,9 @@ class AqlCallStack {
   }
 
  private:
+  explicit AqlCallStack(std::stack<AqlCall>&& operations);
+
+ private:
   // The list of operations, stacked by depth (e.g. bottom element is from main query)
   std::stack<AqlCall> _operations;
 
@@ -91,7 +100,7 @@ class AqlCallStack {
   // as they have been skipped.
   // In most cases this will be zero.
   // However if we skip a subquery that has a nested subquery this depth will be 1 in the nested subquery.
-  size_t _depth;
+  size_t _depth{0};
 };
 
 }  // namespace aql

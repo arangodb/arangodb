@@ -70,6 +70,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //   "callStack": an array of objects, each with the following attributes:
   //     "offset": a non-negative integer
   //     "limit": either a non-negative integer, or the string "infinity"
+  //     "limitType: string or null, either "soft" or "hard"; set iff limit is not infinity
   //     "fullCount": a boolean
   //   The result is an object with the attributes
   //     "error": boolean
