@@ -166,7 +166,9 @@ constexpr bool isNewStyleExecutor = is_one_of_v<
     IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
     IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
     SubqueryStartExecutor, SubqueryEndExecutor, TraversalExecutor, KShortestPathsExecutor,
-    ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
+    ShortestPathExecutor, EnumerateListExecutor, LimitExecutor, SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
+    SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
+    SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1147,7 +1149,11 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
               IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
               TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor,
-              SubqueryEndExecutor, SortedCollectExecutor, LimitExecutor>),
+              SubqueryEndExecutor, SortedCollectExecutor, LimitExecutor,
+              SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
+              SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
+              SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>>),
+
       "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
