@@ -37,6 +37,9 @@
 
 namespace arangodb::aql {
 
+template <BlockPassthrough passThrough>
+class SingleRowFetcher;
+
 template <class Fetcher>
 class IdExecutor;
 
@@ -221,6 +224,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///        3. SharedAqlItemBlockPtr: The next data block.
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 
+  template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
+  [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
+
  private:
   /**
    * @brief Inner execute() part, without the tracing calls.
@@ -285,6 +291,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Compute the next state based on the given call.
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
   [[nodiscard]] auto nextState(AqlCall const& call) const -> ExecState;
+
+  // Executor is done, we need to handle ShadowRows of subqueries.
+  // In most executors they are simply copied, in subquery executors
+  // there needs to be actions applied here.
+  [[nodiscard]] auto shadowRowForwarding() -> ExecState;
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 

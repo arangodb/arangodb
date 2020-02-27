@@ -50,6 +50,9 @@ std::ostream& operator<<(std::ostream& ostream, ExecutorState state) {
     case ExecutorState::HASMORE:
       ostream << "HASMORE";
       break;
+    default:
+      ostream << " WAT WAT WAT";
+      break;
   }
   return ostream;
 }
