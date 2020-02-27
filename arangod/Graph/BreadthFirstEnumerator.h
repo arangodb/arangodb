@@ -94,8 +94,6 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   ///        with this depth.
   size_t _toSearchPos;
 
-  std::vector<std::unique_ptr<EdgeCursor>> _cursors;
-
   /// @brief helper vector that is used temporarily when building the path
   /// output
   std::vector<size_t> _tempPathHelper;
@@ -156,8 +154,6 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
 
   bool shouldPrune();
-
-  EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
 };
 }  // namespace graph
 }  // namespace arangodb

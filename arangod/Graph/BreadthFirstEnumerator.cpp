@@ -320,12 +320,3 @@ bool BreadthFirstEnumerator::shouldPrune() {
   }
   return evaluator->evaluate();
 }
-    
-EdgeCursor* BreadthFirstEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
-  if (currentDepth >= _cursors.size()) {
-    _cursors.emplace_back(_opts->buildCursor(currentDepth));
-  }
-  EdgeCursor* cursor = _cursors.at(currentDepth).get();
-  cursor->rearm(nextVertex, currentDepth);
-  return cursor;
-}

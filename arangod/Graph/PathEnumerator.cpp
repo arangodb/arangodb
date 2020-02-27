@@ -43,6 +43,8 @@ PathEnumerator::PathEnumerator(Traverser* traverser, TraverserOptions* opts)
       _opts(opts),
       _httpRequests(0) {}
 
+PathEnumerator::~PathEnumerator() = default;
+
 void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   _enumeratedPath.edges.clear();
   _enumeratedPath.vertices.clear();
@@ -69,6 +71,15 @@ bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
   }
 
   return _opts->destinationCollectionAllowed(edge, sourceVertex);
+}
+
+graph::EdgeCursor* PathEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
+  if (currentDepth >= _cursors.size()) {
+    _cursors.emplace_back(_opts->buildCursor(currentDepth));
+  }
+  graph::EdgeCursor* cursor = _cursors.at(currentDepth).get();
+  cursor->rearm(nextVertex, currentDepth);
+  return cursor;
 }
 
 DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, TraverserOptions* opts)
@@ -271,11 +282,3 @@ bool DepthFirstEnumerator::shouldPrune() {
   return evaluator->evaluate();
 }
 
-graph::EdgeCursor* DepthFirstEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
-  if (currentDepth >= _cursors.size()) {
-    _cursors.emplace_back(_opts->buildCursor(currentDepth));
-  }
-  graph::EdgeCursor* cursor = _cursors.at(currentDepth).get();
-  cursor->rearm(nextVertex, currentDepth);
-  return cursor;
-}

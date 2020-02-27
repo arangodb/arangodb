@@ -165,6 +165,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
   Graph/KShortestPathsFinder.cpp
+  Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
