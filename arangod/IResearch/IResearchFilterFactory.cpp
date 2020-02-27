@@ -2105,7 +2105,7 @@ arangodb::Result fromFuncPhraseLike(irs::by_phrase* filter,
 arangodb::Result fromFuncPhraseLevenshteinMatch(irs::by_phrase* filter,
                                                 arangodb::aql::AstNode const& array,
                                                 size_t firstOffset) {
-  constexpr size_t minNumOfArguments = 1;
+  constexpr size_t minNumOfArguments = 2;
   constexpr size_t maxNumOfArguments = 3;
   TRI_ASSERT(array.isArray());
   auto const numMembers = array.numMembers();
@@ -2135,57 +2135,55 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(irs::by_phrase* filter,
   int64_t maxDistance = 0;
   auto withTranspositions = false;
 
-  if (numMembers > minNumOfArguments) {
-    auto const& md = *array.getMember(++i);
-    if (arangodb::aql::NODE_TYPE_VALUE == md.type) {
-      if (md.isValueType(arangodb::aql::VALUE_TYPE_INT) ||
-          md.isValueType(arangodb::aql::VALUE_TYPE_DOUBLE)) {
-        maxDistance = md.getIntValue();
-        if (maxDistance < 0) {
-          return {
-            TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
-                .append("] argument (Levenshtein distance) must be a non-negative number")
-          };
-        }
-      } else {
-        return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
-              .append("] argument (Levenshtein distance) must be a non-negative number")};
+  auto const& md = *array.getMember(++i);
+  if (arangodb::aql::NODE_TYPE_VALUE == md.type) {
+    if (md.isValueType(arangodb::aql::VALUE_TYPE_INT) ||
+        md.isValueType(arangodb::aql::VALUE_TYPE_DOUBLE)) {
+      maxDistance = md.getIntValue();
+      if (maxDistance < 0) {
+        return {
+          TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+              .append("] argument (Levenshtein distance) must be a non-negative number")
+        };
       }
     } else {
       return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
             .append("] argument (Levenshtein distance) must be a non-negative number")};
     }
+  } else {
+    return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+          .append("] argument (Levenshtein distance) must be a non-negative number")};
+  }
 
-    if (maxNumOfArguments == numMembers) {
-      auto const& target = *array.getMember(++i);
-      if (arangodb::aql::NODE_TYPE_VALUE == target.type) {
-        if (target.isValueType(arangodb::aql::VALUE_TYPE_BOOL)) {
-          withTranspositions = elem.getBoolValue();
-        } else {
-          return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
-                .append("] argument (Damerau-Levenshtein distance) must be a boolean value")};
-        }
+  if (maxNumOfArguments == numMembers) {
+    auto const& target = *array.getMember(++i);
+    if (arangodb::aql::NODE_TYPE_VALUE == target.type) {
+      if (target.isValueType(arangodb::aql::VALUE_TYPE_BOOL)) {
+        withTranspositions = target.getBoolValue();
       } else {
         return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
               .append("] argument (Damerau-Levenshtein distance) must be a boolean value")};
       }
+    } else {
+      return {TRI_ERROR_BAD_PARAMETER, "array["s.append(std::to_string(i))
+            .append("] argument (Damerau-Levenshtein distance) must be a boolean value")};
     }
+  }
 
-    if (!withTranspositions && maxDistance > MAX_LEVENSHTEIN_DISTANCE) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-            "array["s.append(std::to_string(1))
-            .append("] argument (Levenshtein distance) must be a number in range [0, ")
-            .append(std::to_string(MAX_LEVENSHTEIN_DISTANCE)).append("]")
-      };
-    } else if (withTranspositions && maxDistance > MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-            "array["s.append(std::to_string(2))
-            .append("] argument (Damerau-Levenshtein distance) must be a number in range [0, ")
-            .append(std::to_string(MAX_DAMERAU_LEVENSHTEIN_DISTANCE)).append("]")
-      };
-    }
+  if (!withTranspositions && maxDistance > MAX_LEVENSHTEIN_DISTANCE) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+          "array["s.append(std::to_string(1))
+          .append("] argument (Levenshtein distance) must be a number in range [0, ")
+          .append(std::to_string(MAX_LEVENSHTEIN_DISTANCE)).append("]")
+    };
+  } else if (withTranspositions && maxDistance > MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+          "array["s.append(std::to_string(2))
+          .append("] argument (Damerau-Levenshtein distance) must be a number in range [0, ")
+          .append(std::to_string(MAX_DAMERAU_LEVENSHTEIN_DISTANCE)).append("]")
+    };
   }
 
   if (filter) {
