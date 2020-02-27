@@ -58,16 +58,16 @@ class IRESEARCH_API by_ngram_similarity : public filter {
 
   virtual size_t hash() const noexcept override;
 
-  double threshold() const noexcept { return threshold_; }
+  float_t threshold() const noexcept { return threshold_; }
 
-  by_ngram_similarity& threshold(double d) {
+  by_ngram_similarity& threshold(float_t d) noexcept {
     assert(d >= 0.);
     assert(d <= 1.);
-    threshold_ = d;
+    threshold_ = std::max(0.f, std::min(1.f, d));
     return *this;
   }
   
-  by_ngram_similarity& field(std::string fld) {
+  by_ngram_similarity& field(std::string fld) noexcept {
     fld_ = std::move(fld); 
     return *this;
   }
@@ -94,15 +94,15 @@ class IRESEARCH_API by_ngram_similarity : public filter {
     return *this;
   }
 
-  iterator begin() { return ngrams_.begin(); }
-  iterator end() { return ngrams_.end(); }
+  iterator begin() noexcept { return ngrams_.begin(); }
+  iterator end() noexcept { return ngrams_.end(); }
 
-  const_iterator begin() const { return ngrams_.begin(); }
-  const_iterator end() const { return ngrams_.end(); }
+  const_iterator begin() const noexcept { return ngrams_.begin(); }
+  const_iterator end() const noexcept { return ngrams_.end(); }
 
-  bool empty() const { return ngrams_.empty(); }
-  size_t size() const { return ngrams_.size(); }
-  void clear() { ngrams_.clear(); }
+  bool empty() const noexcept { return ngrams_.empty(); }
+  size_t size() const noexcept { return ngrams_.size(); }
+  void clear() noexcept { ngrams_.clear(); }
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept override;
@@ -111,7 +111,7 @@ class IRESEARCH_API by_ngram_similarity : public filter {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   terms_t ngrams_;
   std::string fld_;
-  double_t threshold_{1.};
+  float_t threshold_{1.f};
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
 }; // by_ngram_similarity

@@ -259,15 +259,15 @@ struct score_ctx : public irs::score_ctx {
       const tfidf::idf& idf,
       const frequency* freq,
       const filter_boost* fb = nullptr) noexcept
-    : idf_(boost * idf.value),
-      freq_(freq ? freq : &EMPTY_FREQ),
-      filter_boost_(fb) {
+    : freq_(freq ? freq : &EMPTY_FREQ),
+      filter_boost_(fb),
+      idf_(boost * idf.value) {
     assert(freq_);
   }
-
-  float_t idf_; // precomputed : boost * idf
+    
   const frequency* freq_;
   const filter_boost* filter_boost_;
+  float_t idf_; // precomputed : boost * idf
 }; // score_ctx
 
 struct norm_score_ctx final : public score_ctx {

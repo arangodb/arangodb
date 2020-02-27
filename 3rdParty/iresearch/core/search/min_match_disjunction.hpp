@@ -47,7 +47,7 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
   struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
       : score_iterator_adapter<DocIterator>(std::move(it)) {
-      est = cost::extract(this->it->attributes(), cost::MAX); // !!! why not zero as in sorting by cost below ?
+      est = cost::extract(this->it->attributes(), cost::MAX);
     }
 
     cost_iterator_adapter(cost_iterator_adapter&& rhs) noexcept
@@ -81,35 +81,28 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
     // sort subnodes in ascending order by their cost
-    //std::sort(
-    //  itrs_.begin(), itrs_.end(),
-    //  [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
-    //    return cost::extract(lhs->attributes(), 0) < cost::extract(rhs->attributes(), 0); // !!! why not use cost_iterator_adapter.est ???
-    //});
+    std::sort(
+      itrs_.begin(), itrs_.end(),
+      [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
+        return cost::extract(lhs->attributes(), 0) < cost::extract(rhs->attributes(), 0);
+    });
 
     // make 'document' attribute accessible from outside
     attrs_.emplace(doc_);
-
-
-    // prepare external heap
-    heap_.resize(itrs_.size());
-    std::iota(heap_.begin(), heap_.end(), size_t(0));
-    std::sort(
-      heap_.begin(), heap_.end(),
-      [this](const size_t& lhs, const size_t& rhs) {
-        return cost::extract(itrs_[lhs]->attributes(), 0) < cost::extract(itrs_[rhs]->attributes(), 0); // !!! why not use cost_iterator_adapter.est ???
-      });
 
     // estimate disjunction
     estimate([this](){
       return std::accumulate(
         // estimate only first min_match_count_ subnodes
-        heap_.begin(), heap_.end(), cost::cost_t(0),
-        [this](cost::cost_t lhs, const size_t& rhs) {
-          return lhs + cost::extract(itrs_[rhs]->attributes(), 0); // !!! why not use cost_iterator_adapter.est ???
+        itrs_.begin(), itrs_.end(), cost::cost_t(0),
+        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+          return lhs + cost::extract(rhs->attributes(), 0);
         });
       });
 
+    // prepare external heap
+    heap_.resize(itrs_.size());
+    std::iota(heap_.begin(), heap_.end(), size_t(0));
     scores_vals_.resize(itrs_.size());
     // prepare score
     prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
@@ -246,30 +239,18 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief calculates total count of matched iterators. This value could be
+  ///        greater than required min_match. All matched iterators points
+  ///        to current matched document after this call.
+  /// @returns total matched iterators count
+  //////////////////////////////////////////////////////////////////////////////
   size_t count_matched() {
     push_valid_to_lead();
     return lead_;
   }
 
- protected:
-  doc_iterators_t itrs_; // sub iterators
-  size_t min_match_count_; // minimum number of hits
-  document doc_; // current doc
-  size_t lead_; // number of iterators in lead group
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns the first iterator in the lead group
-  //////////////////////////////////////////////////////////////////////////////
-  inline std::vector<size_t>::iterator lead() {
-    return heap_.end() - lead_;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns the iterator right after the lead group
-  //////////////////////////////////////////////////////////////////////////////
-  inline std::vector<size_t>::iterator lead_end() {
-    return heap_.end();
-  }
-
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief push all valid iterators to lead
   //////////////////////////////////////////////////////////////////////////////
@@ -292,7 +273,6 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     }
   }
 
- private:
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
@@ -422,6 +402,13 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @returns the first iterator in the lead group
+  //////////////////////////////////////////////////////////////////////////////
+  inline std::vector<size_t>::iterator lead() {
+    return heap_.end() - lead_;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief adds iterator to the lead group
   //////////////////////////////////////////////////////////////////////////////
   inline void add_lead() {
@@ -446,8 +433,12 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
+  doc_iterators_t itrs_; // sub iterators
   std::vector<size_t> heap_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
+  size_t min_match_count_; // minimum number of hits
+  size_t lead_; // number of iterators in lead group
+  document doc_; // current doc
   const order::prepared* ord_;
 }; // min_match_disjunction
 

@@ -1988,7 +1988,7 @@ arangodb::Result fromFuncMinMatch(
 
   auto const lastArg = argc - 1;
   ScopedAqlValue minMatchCountValue;
-  int64_t minMatchCount= 0;
+  int64_t minMatchCount = 0;
 
   auto rv = evaluateArg<decltype(minMatchCount), true>(
         minMatchCount, minMatchCountValue, funcName, args, lastArg, filter, ctx);
@@ -2279,12 +2279,11 @@ arangodb::Result fromFuncNgramMatch(
       .append("' AQL function: threshold must be between 0 and 1")
     };
   }
-  
+
   TRI_ASSERT(filterCtx.analyzer);
   auto analyzerPool = filterCtx.analyzer;
   // 4th optional argument defines an analyzer
   if (argc > 3) {
-    
       auto rv = extractAnalyzerFromArg(analyzerPool, funcName, filter, args, 3, ctx);
 
       if (rv.fail()) {
@@ -2305,7 +2304,6 @@ arangodb::Result fromFuncNgramMatch(
       return { TRI_ERROR_BAD_PARAMETER, message };
     }
 
-    
     TRI_ASSERT(analyzerPool._pool);
     auto analyzer = analyzerPool._pool->get();
 

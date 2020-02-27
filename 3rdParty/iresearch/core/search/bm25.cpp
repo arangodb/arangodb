@@ -306,16 +306,16 @@ struct score_ctx : public irs::score_ctx {
       const bm25::stats& stats,
       const frequency* freq,
       const filter_boost* fb = nullptr) noexcept
-    : freq_(freq ? freq : &EMPTY_FREQ),
+    : freq_(freq ? freq : &EMPTY_FREQ), filter_boost_(fb),
       num_(boost * (k + 1) * stats.idf),
-      norm_const_(k), filter_boost_(fb) {
+      norm_const_(k)  {
     assert(freq_);
   }
 
   const frequency* freq_; // document frequency
+  const filter_boost* filter_boost_;
   float_t num_; // partially precomputed numerator : boost * (k + 1) * idf
   float_t norm_const_; // 'k' factor
-  const filter_boost* filter_boost_;
 }; // score_ctx
 
 struct norm_score_ctx final : public score_ctx {

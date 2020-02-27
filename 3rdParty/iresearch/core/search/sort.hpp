@@ -905,7 +905,7 @@ class IRESEARCH_API order final {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class filter_boost
-/// @brief represents addition to score from filter specific to particular 
+/// @brief represents an addition to score from filter specific to a particular 
 ///        document. May vary from document to document.
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
