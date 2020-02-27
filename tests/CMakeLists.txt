@@ -69,6 +69,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortLimit-test.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
+  Aql/SubqueryExecutorTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
