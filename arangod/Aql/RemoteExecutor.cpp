@@ -30,7 +30,6 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/RecursiveLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -41,11 +40,9 @@
 #include "Rest/CommonDefines.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "VocBase/vocbase.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
-
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -61,7 +58,8 @@ constexpr std::chrono::seconds kDefaultTimeOutSecs(3600);
 
 ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, RemoteNode const* node, ExecutorInfos&& infos,
-    std::string const& server, std::string const& ownName, std::string const& queryId)
+    std::string const& server, std::string const& ownName,
+    std::string const& queryId, Api const api)
     : ExecutionBlock(engine, node),
       _infos(std::move(infos)),
       _query(*engine->getQuery()),
@@ -72,7 +70,8 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _lastError(TRI_ERROR_NO_ERROR),
       _lastTicket(0),
       _requestInFlight(false),
-      _hasTriggeredShutdown(false) {
+      _hasTriggeredShutdown(false),
+      _apiToUse(api) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
              (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
@@ -429,25 +428,51 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::execute(
-    AqlCallStack stack) {
+auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
   // Use the old getSome/SkipSome API.
-  // TODO needs execute implementation instead
   auto myCall = stack.popCall();
   TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall));
   if (AqlCall::IsSkipSomeCall(myCall)) {
-    auto const [state, skipped] = skipSome(myCall.getOffset());
+    auto const [state, skipped] = skipSomeWithoutTrace(myCall.getOffset());
     if (state != ExecutionState::WAITING) {
       myCall.didSkip(skipped);
     }
     return {state, skipped, nullptr};
   } else if (AqlCall::IsGetSomeCall(myCall)) {
-    auto const [state, block] = getSome(myCall.getLimit());
+    auto const [state, block] = getSomeWithoutTrace(myCall.getLimit());
     // We do not need to count as softLimit will be overwritten, and hard cannot be set.
     return {state, 0, block};
   }
   // Should never get here!
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+}
+
+auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  traceExecuteBegin(stack);
+  auto res = executeWithoutTrace(stack);
+  return traceExecuteEnd(res);
+}
+
+auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
+-> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  if (ADB_UNLIKELY(api() == Api::GET_SOME)) {
+    return executeViaOldApi(stack);
+  }
+  TRI_ASSERT(api() == Api::EXECUTE);
+  return executeViaNewApi(stack);
+}
+
+auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack stack)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  // TODO implement
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto ExecutionBlockImpl<RemoteExecutor>::api() const noexcept -> Api {
+  return _apiToUse;
 }
 
 namespace {

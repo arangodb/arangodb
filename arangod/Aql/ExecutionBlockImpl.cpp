@@ -636,8 +636,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
     }
 
     auto res = executeWithoutTrace(stack);
-    traceExecuteEnd(res);
-    return res;
+    return traceExecuteEnd(res);
   }
 
   // Fall back to getSome/skipSome
