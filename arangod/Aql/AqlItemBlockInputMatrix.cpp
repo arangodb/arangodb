@@ -65,6 +65,9 @@ std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatri
 }
 
 ExecutorState AqlItemBlockInputMatrix::upstreamState() const noexcept {
+  if (hasDataRow() || hasShadowRow()) {
+    return ExecutorState::DONE;
+  }
   return _finalState;
 }
 
