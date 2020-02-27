@@ -60,7 +60,6 @@ class AqlItemBlockInputMatrix {
   // DataRange object available to work with.
   AqlItemMatrix* _aqlItemMatrix;
   ShadowAqlItemRow _shadowRow{CreateInvalidShadowRowHint{}};
-  bool _allRowsProduced = false;
 };
 
 }  // namespace arangodb::aql

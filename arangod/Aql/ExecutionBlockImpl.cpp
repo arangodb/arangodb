@@ -1117,6 +1117,32 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 template <class T>
 struct dependent_false : std::false_type {};
 
+/**
+ * @brief Define the variant of FastForward behaviour
+ *
+ * FULLCOUNT => Call executeSkipRowsRange and report what has been skipped.
+ * EXECUTOR => Call executeSkipRowsRange, but do not report what has been skipped.
+ *             (This instance is used to make sure Modifications are performed, or stats are correct)
+ * FETCHER => Do not bother the Executor, drop all from input, without further reporting
+ */
+enum class FastForwardVariant { FULLCOUNT, EXECUTOR, FETCHER };
+
+template <class Executor>
+static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwardVariant {
+  if (call.needsFullCount() && call.getOffset() == 0 && call.getLimit() == 0) {
+    // Only start fullCount after the original call is fulfilled. Otherwise
+    // do fast-forward variant
+    TRI_ASSERT(call.hasHardLimit());
+    return FastForwardVariant::FULLCOUNT;
+  }
+  // TODO: We only need to do this is the executor actually require to call.
+  // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
+  if constexpr (is_one_of_v<Executor, LimitExecutor>) {
+    return FastForwardVariant::EXECUTOR;
+  }
+  return FastForwardVariant::FETCHER;
+}
+
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRange& inputRange,
                                                         AqlCall& call)
@@ -1126,9 +1152,9 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
       // If the executor has a method skipRowsRange, to skip outputs.
       // Every non-passthrough executor needs to implement this.
-      // TRI_ASSERT(!_executorReturnedDone); // TODO: We're running into issues when we're activating that assert. Why that?!
-      auto res =  _executor.skipRowsRange(inputRange, call);
-      LOG_DEVEL << "skip returned state is: " << std::get<ExecutorState>(res);
+      TRI_ASSERT(!_executorReturnedDone || fastForwardType(call, _executor) ==
+                                               FastForwardVariant::EXECUTOR);
+      auto res = _executor.skipRowsRange(inputRange, call);
       _executorReturnedDone = std::get<ExecutorState>(res) == ExecutorState::DONE;
       return res;
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
@@ -1295,32 +1321,6 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
     // Need to call again
     return ExecState::DONE;
   }
-}
-
-/**
- * @brief Define the variant of FastForward behaviour
- *
- * FULLCOUNT => Call executeSkipRowsRange and report what has been skipped.
- * EXECUTOR => Call executeSkipRowsRange, but do not report what has been skipped.
- *             (This instance is used to make sure Modifications are performed, or stats are correct)
- * FETCHER => Do not bother the Executor, drop all from input, without further reporting
- */
-enum class FastForwardVariant { FULLCOUNT, EXECUTOR, FETCHER };
-
-template <class Executor>
-static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwardVariant {
-  if (call.needsFullCount() && call.getOffset() == 0 && call.getLimit() == 0) {
-    // Only start fullCount after the original call is fulfilled. Otherwise
-    // do fast-forward variant
-    TRI_ASSERT(call.hasHardLimit());
-    return FastForwardVariant::FULLCOUNT;
-  }
-  // TODO: We only need to do this is the executor actually require to call.
-  // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (is_one_of_v<Executor, LimitExecutor>) {
-    return FastForwardVariant::EXECUTOR;
-  }
-  return FastForwardVariant::FETCHER;
 }
 
 template <class Executor>
@@ -1550,8 +1550,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           auto const [state, stats, call] =
               _executor.produceRows(_lastRange, *_outputItemRow);
           _executorReturnedDone = state == ExecutorState::DONE;
-          LOG_DEVEL << "state?: " << state;
-          LOG_DEVEL << "done?: " << _executorReturnedDone;
           _engine->_stats += stats;
           localExecutorState = state;
 
@@ -1732,18 +1730,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     if (localExecutorState == ExecutorState::HASMORE ||
         _lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE
-      /*
-      LOG_DEVEL << " == IMPL == ";
-      LOG_DEVEL << "Local executor state is : " << localExecutorState;
-      LOG_DEVEL << "lastRange hasDataRow: " << _lastRange.hasDataRow();
-      LOG_DEVEL << "lastRange hasShadowRow: " << _lastRange.hasShadowRow();
-      LOG_DEVEL << "Skipped is : " << skipped;
-      LOG_DEVEL << "nullptr? " << std::boolalpha << (outputBlock == nullptr);
-      if (outputBlock != nullptr) {
-        LOG_DEVEL << "rows: " << outputBlock->size();
-      }
-      LOG_DEVEL << " == IMPL == ";
-       */
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
     }
@@ -1761,7 +1747,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
 template <class Executor>
 void ExecutionBlockImpl<Executor>::resetExecutor() {
-  LOG_DEVEL << "did reset the executor";
   // cppcheck-suppress unreadVariable
   constexpr bool customInit = hasInitializeCursor<Executor>::value;
   // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
