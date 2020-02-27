@@ -1335,6 +1335,8 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       // It will not report anything if the row is already consumed
       return executeSkipRowsRange(_lastRange, clientCall);
     }
+    // TODO: do we need to take care of _executorReturnedDone here as well?
+    // _executorReturnedDone = true; // TODO: This one is not helping :(
     // Do not fastForward anything, the Subquery start will handle it by itself
     return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}};
   }
@@ -1355,6 +1357,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       inputRange.skipAllRemainingDataRows();
       AqlCall call{};
       call.hardLimit = 0;
+      // TODO check: _executorReturnedDone
       return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call};
     }
   }
