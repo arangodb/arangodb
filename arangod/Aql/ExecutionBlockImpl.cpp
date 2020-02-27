@@ -1455,7 +1455,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // TODO: Check if there is a situation where we are at this point, but at the end of a block
           // Or if we would not recognize this beforehand
           // TODO: Check if we can have the situation that we are between two shadow rows here.
-          // E.g. LastRow is releveant shadowRow. NextRow is non-relevant shadowRow.
+          // E.g. LastRow is relevant shadowRow. NextRow is non-relevant shadowRow.
           // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
           // an empty input. Only exception might be COLLECT COUNT.
           if (_lastRange.hasShadowRow()) {
@@ -1528,7 +1528,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       LOG_DEVEL << "Skipped is : " << skipped;
       LOG_DEVEL << "nullptr? " << std::boolalpha << (outputBlock == nullptr);
       if (outputBlock != nullptr) {
-        LOG_DEVEL << "entries: " << outputBlock->numEntries();
+        LOG_DEVEL << "rows: " << outputBlock->size();
       }
       LOG_DEVEL << " == IMPL == ";
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
