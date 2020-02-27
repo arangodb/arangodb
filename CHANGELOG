@@ -1,6 +1,45 @@
 devel
 -----
 
+* Added traversal options `vertexCollections` and `edgeCollections` to restrict
+  traversal to certain vertex or edge collections.
+
+  The use case for `vertexCollections` is to not follow any edges that will point
+  to other than the specified vertex collections, e.g.
+
+      FOR v, e, p IN 1..3 OUTBOUND 'products/123' components 
+        OPTIONS { vertexCollections: [ "bolts", "screws" ] }
+
+  The traversal's start vertex is always considered valid, regardless of whether
+  it is present in the `vertexCollections` option.
+
+  The use case for `edgeCollections` is to not take into consideration any edges
+  from edge collections other than the specified ones, e.g.
+      
+      FOR v, e, p IN 1..3 OUTBOUND 'products/123' GRAPH 'components' 
+        OPTIONS { edgeCollections: [ "productsToBotls", "productsToScrews" ] }
+
+  This is mostly useful in the context of named graphs, when the named graph
+  contains many edge collections. Not restricting the edge collections for the
+  traversal will make the traversal search for edges in all edge collections of
+  the graph, which can be expensive. In case it is known that only certain edges
+  from the named graph are needed, the `edgeCollections` option can be a handy
+  performance optimization.
+
+* In some cases with a COLLECT LIMIT situation on a small limit the collect
+  does more calls to upstream than without a limit to provide the same
+  result. We improved this situation and made sure that LIMIT does
+  not cause the COLLECT to fetch too few input rows. There is a chance
+  that queries with a very small amount of data might suffer from this
+  modification, most queries will benefit however.  
+
+* Use OpenSSL's EVP interface for SHA256 instead of the deprecated low-level
+  message digest APIs.
+
+* Prevent startup error "specifiy either '--server.jwt-secret-keyfile' or 
+  '--server.jwt-secret-folder' but not both." from occurring when specifying the
+  JWT secret keyfile option.
+
 * Honor `cacheEnabled` attribute when updating the properties of a collection
   in case of the cluster. Previously, this attribute was ignored in the cluster,
   but it shouldn't have been.
