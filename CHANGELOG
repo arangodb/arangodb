@@ -7,12 +7,12 @@ devel
     This can save lots of calls to the memory management subsystem.
   - Unnecessary checks have been removed from the cursors, by ensuring some
     invariants.
-  - Vertex lookup needs to perform slightly less work.
+  - Each vertex lookup needs to perform slightly less work.
 
-  The traversal speedups observed by these changes were around 8 to 10% for
+  The traversal speedups observed by these changes alone were around 8 to 10% for
   single-server traversals and traversals in OneShard setups. Cluster traversals
-  will also benefit, but to a lesser extent. This is because the network roundtrips 
-  have a higher share of the total query execution times there.
+  will also benefit from these changes, but to a lesser extent. This is because the 
+  network roundtrips have a higher share of the total query execution times there.
 
 * Traversal performance can also be improved by not fetching the visited vertices
   from the storage engine in case the traversal query does not refer to them. 
