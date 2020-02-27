@@ -146,7 +146,7 @@ constexpr bool isNewStyleExecutor =
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
                 SubqueryStartExecutor, SubqueryEndExecutor, TraversalExecutor, KShortestPathsExecutor,
-                ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
+                ShortestPathExecutor, EnumerateListExecutor, LimitExecutor, NoResultsExecutor>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1105,8 +1105,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                        TestLambdaSkipExecutor,
 #endif
-                       TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor,
-                       SubqueryEndExecutor, SortedCollectExecutor, LimitExecutor>),
+                       TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor,
+                       SortedCollectExecutor, LimitExecutor, NoResultsExecutor>),
       "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
