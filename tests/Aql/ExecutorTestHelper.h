@@ -112,7 +112,7 @@ class AqlExecutorTestCase : public ::testing::Test {
 
  protected:
   AqlExecutorTestCase();
-  virtual ~AqlExecutorTestCase() = default;
+  virtual ~AqlExecutorTestCase();
 
   /**
    * @brief Creates and manages a ExecutionNode.
@@ -174,6 +174,22 @@ struct Pipeline {
   std::deque<ExecBlock> const& get() const { return _pipeline; };
   std::deque<ExecBlock>& get() { return _pipeline; };
 
+  Pipeline& addDependency(ExecBlock&& dependency) {
+    if (!empty()) {
+      _pipeline.back()->addDependency(dependency.get());
+    }
+    _pipeline.emplace_back(std::move(dependency));
+    return *this;
+  }
+
+  Pipeline& addConsumer(ExecBlock&& consumer) {
+    if (!empty()) {
+      consumer->addDependency(_pipeline.front().get());
+    }
+    _pipeline.emplace_front(std::move(consumer));
+    return *this;
+  }
+
  private:
   PipelineStorage _pipeline;
 };
@@ -204,8 +220,13 @@ struct ExecutorTestHelper {
         _query(query),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
+  auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
+    _callStack = stack;
+    return *this;
+  }
+
   auto setCall(AqlCall c) -> ExecutorTestHelper& {
-    _call = c;
+    _callStack = AqlCallStack{c};
     return *this;
   }
 
@@ -263,9 +284,12 @@ struct ExecutorTestHelper {
   }
 
   auto expectOutput(std::array<RegisterId, outputColumns> const& regs,
-                    MatrixBuilder<outputColumns> const& out) -> ExecutorTestHelper& {
+                    MatrixBuilder<outputColumns> const& out,
+                    std::vector<std::pair<size_t, uint64_t>> const& shadowRows = {})
+      -> ExecutorTestHelper& {
     _outputRegisters = regs;
     _output = out;
+    _outputShadowRows = shadowRows;
     return *this;
   }
 
@@ -317,8 +341,8 @@ struct ExecutorTestHelper {
   auto createExecBlock(typename E::Infos infos,
                        ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecBlock {
-    auto& testeeNode = _execNodes.emplace_back(
-        std::move(std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
+    auto& testeeNode = _execNodes.emplace_back(std::move(
+        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
     return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
                                                    std::move(infos));
   }
@@ -363,28 +387,28 @@ struct ExecutorTestHelper {
     BlockCollector allResults{&itemBlockManager};
 
     if (!loop) {
-      AqlCallStack stack{_call};
-      auto const [state, skipped, result] = _pipeline.get().front()->execute(stack);
+      auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
       skippedTotal = skipped;
       finalState = state;
       if (result != nullptr) {
         allResults.add(result);
       }
     } else {
-      auto call = _call;
       do {
-        AqlCallStack stack{call};
-        auto const [state, skipped, result] = _pipeline.get().front()->execute(stack);
+        auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
         finalState = state;
+        auto call = _callStack.popCall();
         skippedTotal += skipped;
+        call.didSkip(skipped);
         if (result != nullptr) {
+          call.didProduce(result->size());
           allResults.add(result);
         }
-        call = _call;
-        call.didSkip(skippedTotal);
-        call.didProduce(allResults.totalSize());
+        _callStack.pushCall(std::move(call));
+
       } while (finalState != ExecutionState::DONE &&
-               (!call.hasSoftLimit() || (call.getLimit() + call.getOffset()) > 0));
+               (!_callStack.peek().hasSoftLimit() ||
+                (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
     }
 
     EXPECT_EQ(skippedTotal, _expectedSkip);
@@ -396,7 +420,7 @@ struct ExecutorTestHelper {
           << "Executor does not yield output, although it is expected";
     } else {
       SharedAqlItemBlockPtr expectedOutputBlock =
-          buildBlock<outputColumns>(itemBlockManager, std::move(_output));
+          buildBlock<outputColumns>(itemBlockManager, std::move(_output), _outputShadowRows);
       std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
                                            _outputRegisters.end());
       if (_unorderedOutput) {
@@ -471,9 +495,11 @@ struct ExecutorTestHelper {
                                                        _waitingBehaviour);
   }
 
-  AqlCall _call;
+  // Default initialize with a fetchAll call.
+  AqlCallStack _callStack{AqlCall{}};
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
+  std::vector<std::pair<size_t, uint64_t>> _outputShadowRows{};
   std::array<RegisterId, outputColumns> _outputRegisters;
   std::size_t _expectedSkip;
   ExecutionState _expectedState;

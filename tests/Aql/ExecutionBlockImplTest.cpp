@@ -674,7 +674,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
    */
   std::unique_ptr<ExecutionBlock> createSingleton() {
     auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-        fakedQuery->engine(), generateNodeDummy(), IdExecutorInfos{0, {}, {}});
+        fakedQuery->engine(), generateNodeDummy(), IdExecutorInfos{0, {}, {}, false});
     InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
     auto const [state, result] = res->initializeCursor(inputRow);
     EXPECT_EQ(state, ExecutionState::DONE);

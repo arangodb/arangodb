@@ -1280,7 +1280,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     }
   }
 
-  IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear());
+  IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear(), false);
 
   return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this,
                                                                         std::move(infos));
@@ -2165,8 +2165,11 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
   if (returnInheritedResults) {
-    return std::make_unique<ExecutionBlockImpl<IdExecutor<void>>>(&engine, this,
-                                                                  inputRegister, _count);
+    // TODO Check for keep and clear registers.
+    // As we are passthrough i think they do not matter
+    IdExecutorInfos infos(numberInputRegisters, {}, {}, _count, inputRegister);
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+        &engine, this, std::move(infos));
   } else {
     TRI_ASSERT(!returnInheritedResults);
     // The Return Executor only writes to register 0.

@@ -50,6 +50,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/IdExecutorTest.cpp
   Aql/IndexNodeTest.cpp
   Aql/InsertExecutorTest.cpp
+  Aql/KShortestPathsExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
   Aql/MultiDepFetcherHelper.cpp
@@ -67,6 +68,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
+  Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp

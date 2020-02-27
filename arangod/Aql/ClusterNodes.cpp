@@ -128,7 +128,8 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : DistributeConsumerNode(plan, base),
       _vocbase(&(plan->getAst()->query()->vocbase())),
       _server(base.get("server").copyString()),
-      _queryId(base.get("queryId").copyString()) {
+      _queryId(base.get("queryId").copyString()),
+      _apiToUse(getApiProperty(base, StaticStrings::AqlRemoteApi)) {
   // Backwards compatibility (3.4.x)(3.5.0) and earlier, coordinator might send ownName.
   arangodb::velocypack::StringRef tmpId(getDistributeId());
   tmpId = VelocyPackHelper::getStringRef(base, "ownName", tmpId);
@@ -183,6 +184,7 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
   nodes.add("queryId", VPackValue(_queryId));
+  nodes.add(StaticStrings::AqlRemoteApi, apiToVpack(_apiToUse));
 
   // And close it:
   nodes.close();
@@ -201,6 +203,22 @@ CostEstimate RemoteNode::estimateCost() const {
   estimate.estimatedNrItems = 1;
   estimate.estimatedCost = 1.0;
   return estimate;
+}
+
+auto RemoteNode::api() const noexcept -> Api {
+  return _apiToUse;
+}
+
+auto RemoteNode::apiToVpack(Api const api) -> velocypack::Value {
+  return VPackValue(static_cast<std::underlying_type_t<Api>>(api));
+}
+
+auto RemoteNode::getApiProperty(VPackSlice slice, std::string const& key)
+    -> RemoteNode::Api {
+  using ApiType = std::underlying_type_t<Api>;
+  // Default to GET_SOME
+  return static_cast<Api>(
+      VelocyPackHelper::getNumericValue<ApiType>(slice, key, static_cast<ApiType>(Api::GET_SOME)));
 }
 
 /// @brief construct a scatter node
@@ -511,7 +529,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
           &engine, this, std::move(infos));
     } else {
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                            calcRegsToKeep(), getRegsToClear());
+                            calcRegsToKeep(), getRegsToClear(), false);
 
       return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
                                                                           std::move(infos));
