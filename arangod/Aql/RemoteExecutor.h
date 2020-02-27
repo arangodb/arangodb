@@ -27,10 +27,11 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 
+#include <fuerte/message.h>
+
 #include <mutex>
 
 namespace arangodb::fuerte { inline namespace v1 {
-class Response;
 enum class RestVerb;
 }}
 
