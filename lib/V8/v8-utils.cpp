@@ -263,7 +263,7 @@ double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds) {
   if (delta > timeoutSeconds) {
     return timeoutSeconds;
   }
-  return static_cast<uint64_t>(delta);
+  return delta;
 }
 
 std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout) {
