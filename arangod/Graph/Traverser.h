@@ -57,6 +57,7 @@ class Query;
 
 namespace graph {
 class BreadthFirstEnumerator;
+class NeighborsEnumerator;
 class TraverserCache;
 }  // namespace graph
 
@@ -115,6 +116,7 @@ class TraversalPath {
 class Traverser {
   friend class arangodb::graph::BreadthFirstEnumerator;
   friend class DepthFirstEnumerator;
+  friend class arangodb::graph::NeighborsEnumerator;
 #ifdef USE_ENTERPRISE
   friend class SmartDepthFirstPathEnumerator;
   friend class SmartBreadthFirstPathEnumerator;
@@ -274,6 +276,16 @@ class Traverser {
   
   size_t getAndResetHttpRequests();
 
+  /// @brief whether we can use the optimized neighbors enumerator
+  bool useOptimizedNeighborsEnumerator() const {
+    return _useOptimizedNeighborsEnumerator;
+  }
+  
+  /// @brief turn on usage of the optimized neighbors enumerator
+  void useOptimizedNeighborsEnumerator(bool value) {
+    _useOptimizedNeighborsEnumerator = value;
+  }
+
   TraverserOptions* options() { return _opts; }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -310,6 +322,9 @@ class Traverser {
 
   /// @brief indicator if this traversal is done
   bool _done;
+
+  /// @brief indicator if we can use the optimized neighbors enumerator
+  bool _useOptimizedNeighborsEnumerator;
   
   /// @brief options for traversal
   TraverserOptions* _opts;

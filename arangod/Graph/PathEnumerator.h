@@ -95,7 +95,7 @@ class PathEnumerator {
  public:
   PathEnumerator(Traverser* traverser, TraverserOptions* opts);
 
-  virtual ~PathEnumerator() = default;
+  virtual ~PathEnumerator();
   
   /// @brief set start vertex and reset
   /// note that the caller *must* guarantee that the string data pointed to by
@@ -122,17 +122,17 @@ class PathEnumerator {
   }
   
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
+ 
+ protected:
+  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
+  
+  /// @brief The vector of EdgeCursors to walk through.
+  std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
 };
 
 // cppcheck-suppress noConstructor
 class DepthFirstEnumerator final : public PathEnumerator {
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The vector of EdgeCursors to walk through.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
-
   size_t _activeCursors;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -160,8 +160,6 @@ class DepthFirstEnumerator final : public PathEnumerator {
  private:
   bool shouldPrune();
   
-  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
-
   velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result);
 };
 }  // namespace traverser

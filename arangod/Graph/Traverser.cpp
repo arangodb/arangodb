@@ -131,6 +131,7 @@ void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const&
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::Methods* trx)
     : _trx(trx),
       _done(true),
+      _useOptimizedNeighborsEnumerator(false),
       _opts(opts) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
