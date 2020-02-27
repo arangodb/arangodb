@@ -1,6 +1,41 @@
 devel
 -----
 
+* Improved graph traversal performance via some internal code refactoring:
+
+  - Traversal cursors are reused instead of recreated from scratch, if possible.
+    This can save lots of calls to the memory management subsystem.
+  - Unnecessary checks have been removed from the cursors, by ensuring some
+    invariants.
+  - Vertex lookup needs to perform slightly less work.
+
+  The traversal speedups observed by these changes were around 8 to 10% for
+  single-server traversals and traversals in OneShard setups. Cluster traversals
+  will also benefit, but to a lesser extent. This is because the network roundtrips 
+  have a higher share of the total query execution times there.
+
+* The existing optimizer rule "move-calculations-down" is now able to also move
+  unrelated subqueries beyond SORT and LIMIT instructions, which can help avoid the
+  execution of subqueries for which the results are later discarded.
+  For example, in the query
+
+      FOR doc IN collection1
+        LET sub1 = FIRST(FOR sub IN collection2 FILTER sub.ref == doc._key RETURN sub)
+        LET sub2 = FIRST(FOR sub IN collection3 FILTER sub.ref == doc._key RETURN sub)
+        SORT sub1
+        LIMIT 10
+        RETURN { doc, sub1, sub2 }
+
+  the execution of the `sub2` subquery can be delayed to after the SORT and LIMIT,
+  turning it into
+      
+      FOR doc IN collection1
+        LET sub1 = FIRST(FOR sub IN collection2 FILTER sub.ref == doc._key RETURN sub)
+        SORT sub1
+        LIMIT 10
+        LET sub2 = FIRST(FOR sub IN collection3 FILTER sub.ref == doc._key RETURN sub)
+        RETURN { doc, sub1, sub2 }
+
 * In some cases with a COLLECT LIMIT situation on a small limit the collect
   does more calls to upstream than without a limit to provide the same
   result. We improved this situation and made sure that LIMIT does
