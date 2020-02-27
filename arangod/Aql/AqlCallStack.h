@@ -80,8 +80,7 @@ class AqlCallStack {
   void increaseSubqueryDepth();
 
   // TODO: Remove me again, only used to fake DONE
-  // @deprecated
-  auto empty() const noexcept -> bool {
+  [[deprecated]] auto empty() const noexcept -> bool {
     return _operations.empty() && _depth == 0;
   }
 
@@ -108,7 +107,7 @@ class AqlCallStack {
   // and not 3.6.* -> 3.8.* we can savely remove
   // this flag and all it's side effects on the
   // version after 3.7.
-  bool _compatibilityMode3_6;
+  bool _compatibilityMode3_6{false};
 };
 
 }  // namespace aql
