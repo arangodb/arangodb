@@ -134,13 +134,12 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
 template <typename Executor>
-constexpr bool isNewStyleExecutor =
-    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor,
-                DistinctCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
-                // TODO: re-enable after new subquery end & start are implemented
-                // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
-                HashedCollectExecutor,
+constexpr bool isNewStyleExecutor = is_one_of_v<
+    Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
+    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, DistinctCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+    // TODO: re-enable after new subquery end & start are implemented
+    // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
+    HashedCollectExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     TestLambdaExecutor,
     TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
@@ -1239,6 +1238,9 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding() -> ExecSta
     // If we get woken up by a dataRow during forwarding of ShadowRows
     // This will return false, and if so we need to call produce instead.
     auto didWrite = _executor.produceShadowRow(_lastRange, *_outputItemRow);
+    // The Subquery Start returns DONE after every row.
+    // This needs to be resetted as soon as a shadowRow has been produced
+    _executorReturnedDone = false;
     if (didWrite) {
       if (_lastRange.hasShadowRow()) {
         // Forward the ShadowRows
@@ -1261,6 +1263,7 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding() -> ExecSta
     _outputItemRow->increaseShadowRowDepth(shadowRow);
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
+
     if (_lastRange.hasShadowRow()) {
       return ExecState::SHADOWROWS;
     }
@@ -1287,6 +1290,9 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding() -> ExecState
     // We need to consume the row, and write the Aggregate to it.
     _executor.consumeShadowRow(shadowRow, *_outputItemRow);
     didConsume = true;
+    // we need to reset the ExecutorHasReturnedDone, it will
+    // return done after every subquery is fully collected.
+    _executorReturnedDone = false;
   } else {
     _outputItemRow->decreaseShadowRowDepth(shadowRow);
   }
@@ -1383,8 +1389,6 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       // It will not report anything if the row is already consumed
       return executeSkipRowsRange(_lastRange, clientCall);
     }
-    // TODO: do we need to take care of _executorReturnedDone here as well?
-    // _executorReturnedDone = true; // TODO: This one is not helping :(
     // Do not fastForward anything, the Subquery start will handle it by itself
     return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}};
   }
