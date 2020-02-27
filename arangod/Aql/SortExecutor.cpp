@@ -155,7 +155,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     AqlItemBlockInputMatrix& inputMatrix, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
 
-  //if (inputMatrix.upstreamState() == ExecutorState::HASMORE) {
+  // if (inputMatrix.upstreamState() == ExecutorState::HASMORE) {
   if (!inputMatrix.hasDataRow()) {
     // If our inputMatrix does not contain all upstream rows
     return {inputMatrix.upstreamState(), NoStats{}, upstreamCall};
@@ -176,12 +176,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     output.copyRow(inRow);
     output.advanceRow();
     _returnNext++;
-  }
-
-  // TODO: Dear Reviewer, is that the way it needs to be done or would it be enough to passthrough
-  // the hardLimit via. e.g. upstreamCall.hardLimit = limit; ?
-  if (output.getClientCall().hasHardLimit() && output.getClientCall().hardLimit == 0) {
-    return {ExecutorState::DONE, NoStats{}, upstreamCall};
   }
 
   if (_returnNext >= _sortedIndexes.size()) {
@@ -208,11 +202,10 @@ void SortExecutor::doSorting() {
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     AqlItemBlockInputMatrix& inputMatrix, AqlCall& call) {
   AqlCall upstreamCall{};
-  size_t skipped = 0;
 
   if (inputMatrix.upstreamState() == ExecutorState::HASMORE) {
     // If our inputMatrix does not contain all upstream rows
-    return {ExecutorState::HASMORE, NoStats{}, skipped, upstreamCall};
+    return {ExecutorState::HASMORE, NoStats{}, 0, upstreamCall};
   }
 
   if (_input == nullptr) {
@@ -222,20 +215,19 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   if (_returnNext >= _sortedIndexes.size()) {
     // Bail out if called too often,
     // Bail out on no elements
-    return {ExecutorState::DONE, NoStats{}, skipped, upstreamCall};
+    return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
   }
 
   while (_returnNext < _sortedIndexes.size() && call.shouldSkip()) {
     InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
     _returnNext++;
-    skipped++;
+    call.didSkip(1);
   }
-  call.didSkip(skipped);
 
   if (_returnNext >= _sortedIndexes.size()) {
-    return {ExecutorState::DONE, NoStats{}, skipped, upstreamCall};
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), upstreamCall};
   }
-  return {ExecutorState::HASMORE, NoStats{}, skipped, upstreamCall};
+  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
 std::pair<ExecutionState, size_t> SortExecutor::expectedNumberOfRows(size_t atMost) const {
