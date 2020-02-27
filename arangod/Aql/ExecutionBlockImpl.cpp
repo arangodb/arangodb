@@ -1199,8 +1199,6 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
       // If the executor has a method skipRowsRange, to skip outputs.
       // Every non-passthrough executor needs to implement this.
-      TRI_ASSERT(!_executorReturnedDone || fastForwardType(call, _executor) ==
-                                               FastForwardVariant::EXECUTOR);
       auto res = _executor.skipRowsRange(inputRange, call);
       _executorReturnedDone = std::get<ExecutorState>(res) == ExecutorState::DONE;
       return res;
@@ -1645,11 +1643,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           localExecutorState = state;
 
           if (state == ExecutorState::DONE) {
-            if (_outputItemRow && _outputItemRow->isInitialized() &&
-                _outputItemRow->allRowsUsed()) {
-              // We have a block with data, but no more place for a shadow row.
-              _execState = ExecState::DONE;
-            } else if (!_lastRange.hasShadowRow() && !_lastRange.hasDataRow()) {
+            if (!_lastRange.hasShadowRow() && !_lastRange.hasDataRow()) {
               _execState = ExecState::DONE;
             } else {
               _execState = ExecState::SHADOWROWS;
