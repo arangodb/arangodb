@@ -441,7 +441,7 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
 
     while (!documentWritten) {
       if (!_inputRow.isInitialized()) {
-        std::tie(std::ignore, _inputRow) = inputRange.peekDataRow();
+        std::tie(std::ignore, _inputRow) = inputRange.peekDataRowAndState();
 
         if (!_inputRow.isInitialized()) {
           return {ExecutorState::DONE, stats, upstreamCall};
@@ -485,7 +485,7 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
   while (inputRange.hasDataRow() && call.shouldSkip()) {
     if (!_inputRow.isInitialized()) {
       auto rowState = ExecutorState::HASMORE;
-      std::tie(rowState, _inputRow) = inputRange.peekDataRow();
+      std::tie(rowState, _inputRow) = inputRange.peekDataRowAndState();
 
       if (!_inputRow.isInitialized()) {
         TRI_ASSERT(rowState == ExecutorState::DONE);
