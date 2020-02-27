@@ -2081,7 +2081,8 @@ arangodb::Result fromFuncPhraseStartsWith(irs::by_phrase* filter,
     return res;
   }
   if (filter) {
-    filter->push_back(irs::by_phrase::info_t::prefix_term{}, value, firstOffset);
+    // 128 - FIXME make configurable
+    filter->push_back(irs::by_phrase::info_t::prefix_term{{128}}, value, firstOffset);
   }
   return {};
 }
@@ -2096,7 +2097,8 @@ arangodb::Result fromFuncPhraseLike(irs::by_phrase* filter,
     return res;
   }
   if (filter) {
-    filter->push_back(irs::by_phrase::info_t::wildcard_term{}, value, firstOffset);
+    // 128 - FIXME make configurable
+    filter->push_back(irs::by_phrase::info_t::wildcard_term{{128}}, value, firstOffset);
   }
   return {};
 }
