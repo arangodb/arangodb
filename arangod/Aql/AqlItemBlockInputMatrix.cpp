@@ -116,6 +116,13 @@ bool AqlItemBlockInputMatrix::hasShadowRow() const noexcept {
 }
 
 void AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
+  if (_aqlItemMatrix == nullptr) {
+    // Have not been initialized.
+    // We need to be called before.
+    TRI_ASSERT(!hasShadowRow());
+    TRI_ASSERT(!hasDataRow());
+    return;
+  }
   TRI_ASSERT(!_shadowRow.isInitialized());
 
   if (_aqlItemMatrix->stoppedOnShadowRow()) {
