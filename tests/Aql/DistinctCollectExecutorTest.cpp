@@ -32,9 +32,10 @@
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "ExecutorTestHelper.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -50,31 +51,64 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-class DistinctCollectExecutorTest : public ::testing::Test {
+using DistinctCollectTestHelper = ExecutorTestHelper<1, 1>;
+using DistinctCollectSplitType = DistinctCollectTestHelper::SplitType;
+
+class DistinctCollectExecutorTest
+    : public AqlExecutorTestCaseWithParam<std::tuple<DistinctCollectSplitType>> {
  protected:
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-  mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
   arangodb::transaction::Methods* trx;
 
   std::unordered_set<RegisterId> const regToClear;
   std::unordered_set<RegisterId> const regToKeep;
-  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
-  std::unordered_set<RegisterId> readableInputRegisters;
-  std::unordered_set<RegisterId> writeableOutputRegisters;
+  std::unordered_set<RegisterId> readableInputRegisters = {0};
+  std::unordered_set<RegisterId> writeableOutputRegisters = {1};
 
   SharedAqlItemBlockPtr block;
   VPackBuilder input;
   NoStats stats;
 
+  DistinctCollectExecutorInfos infos;
+
   DistinctCollectExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        fakedQuery(server.createFakeQuery()),
-        trx(fakedQuery->trx()) {}
+      : trx(fakedQuery->trx()),
+        infos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
+              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+              std::make_pair<RegisterId, RegisterId>(1, 0), trx) {}
 };
+
+TEST_P(DistinctCollectExecutorTest, split_1) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<DistinctCollectExecutor>(std::move(infos))
+      .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
+      .setInputSplitType(split)
+      .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
+      .expectOutputValueList(3, 4)
+      .expectSkipped(3)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_P(DistinctCollectExecutorTest, split_2) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<DistinctCollectExecutor>(std::move(infos))
+      .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
+      .setInputSplitType(split)
+      .setCall(AqlCall{0, AqlCall::Infinity{}, 2, true})
+      .expectOutputValueList(1, 2)
+      .expectSkipped(3)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+#if 0
 
 TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_doesnt_wait) {
   DistinctCollectExecutorInfos infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear,
@@ -347,7 +381,17 @@ TEST_F(DistinctCollectExecutorTest,
   ASSERT_TRUE(y.isNumber());
   ASSERT_EQ(y.toInt64(), 3);
 }
+#endif
 
+template <size_t... vs>
+const DistinctCollectSplitType splitIntoBlocks =
+    DistinctCollectSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const DistinctCollectSplitType splitStep = DistinctCollectSplitType{step};
+
+INSTANTIATE_TEST_CASE_P(DistinctCollectExecutor, DistinctCollectExecutorTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>,
+                                          splitIntoBlocks<3, 4>, splitStep<2>, splitStep<1>));
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
