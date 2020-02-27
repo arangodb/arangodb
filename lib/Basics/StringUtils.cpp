@@ -989,24 +989,23 @@ std::string soundex(std::string const& str) {
   return soundex(str.data(), str.size());
 }
 
-unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
+unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size_t l2) {
   // convert input strings to vectors of (multi-byte) character numbers
-  std::vector<uint32_t> vect1 = characterCodes(str1);
-  std::vector<uint32_t> vect2 = characterCodes(str2);
+  std::vector<uint32_t> vect1 = characterCodes(s1, l1);
+  std::vector<uint32_t> vect2 = characterCodes(s2, l2);
 
   // calculate levenshtein distance on vectors of character numbers
   return static_cast<unsigned int>(::levenshteinDistance(vect1, vect2));
 }
 
-std::vector<uint32_t> characterCodes(std::string const& str) {
-  char const* s = str.data();
-  char const* e = s + str.size();
+std::vector<uint32_t> characterCodes(char const* s, size_t length) {
+  char const* e = s + length;
 
   std::vector<uint32_t> charNums;
   // be conservative, and reserve space for one number of input
   // string byte. this may be too much, but it avoids later
   // reallocation of the vector
-  charNums.reserve(str.size());
+  charNums.reserve(length);
 
   while (s < e) {
     // note: consume advances the *s* pointer by one byte
@@ -1046,6 +1045,14 @@ std::vector<uint32_t> characterCodes(std::string const& str) {
   }
 
   return charNums;
+}
+
+std::vector<uint32_t> characterCodes(std::string const& str) {
+  return characterCodes(str.data(), str.size());
+}
+
+unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
+  return levenshteinDistance(str1.data(), str1.size(), str2.data(), str2.size());
 }
 
 // .............................................................................
