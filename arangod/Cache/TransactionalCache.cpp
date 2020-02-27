@@ -313,7 +313,7 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
 
     // now actually migrate any relevant blacklist terms
     if (source.isFullyBlacklisted()) {
-      targets->applyToAllBuckets<TransactionalBucket>([&term](TransactionalBucket& bucket) -> bool {
+      targets->applyToAllBuckets<TransactionalBucket>([](TransactionalBucket& bucket) -> bool {
         if (!bucket.isFullyBlacklisted()) {
           bucket._state.toggleFlag(BucketState::Flag::blacklisted);
         }

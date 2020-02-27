@@ -113,7 +113,6 @@ Table::BucketLocker::BucketLocker(void* bucket, Table* source, std::uint64_t max
       _locked(this->bucket<Table::GenericBucket>().lock(maxAttempts)) {}
 
 Table::BucketLocker::BucketLocker(BucketLocker&& other) noexcept {
-  release();
   steal(std::move(other));
 }
 

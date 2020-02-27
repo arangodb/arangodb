@@ -164,19 +164,16 @@ TEST_F(CacheTableMigrationTest, check_subtable_apply_all_works) {
 
   auto subtable = small->auxiliaryBuckets(indexSmall);
   ASSERT_NE(subtable.get(), nullptr);
-  subtable->applyToAllBuckets([](void* ptr) -> bool {
-    PlainBucket* bucket = reinterpret_cast<PlainBucket*>(ptr);
-    return bucket->lock(-1);
-  });
+  subtable->applyToAllBuckets<PlainBucket>(
+      [](PlainBucket& bucket) -> bool { return bucket.lock(-1); });
   for (std::uint32_t i = 0; i < 4; i++) {
     std::uint32_t indexLarge = indexLargeBase + i;
     std::uint32_t hash = indexLarge << (32 - large->logSize());
     auto bucket = reinterpret_cast<PlainBucket*>(subtable->fetchBucket(hash));
     ASSERT_TRUE(bucket->isLocked());
   }
-  subtable->applyToAllBuckets([](void* ptr) -> bool {
-    PlainBucket* bucket = reinterpret_cast<PlainBucket*>(ptr);
-    bucket->unlock();
+  subtable->applyToAllBuckets<PlainBucket>([](PlainBucket& bucket) -> bool {
+    bucket.unlock();
     return true;
   });
 }

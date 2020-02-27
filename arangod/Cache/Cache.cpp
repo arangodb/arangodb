@@ -439,7 +439,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
 
   // unmarking migrating flag
   {
-    SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+    SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
     _metadata.changeTable(table->memoryUsage());
     _metadata.toggleMigrating();
   }
