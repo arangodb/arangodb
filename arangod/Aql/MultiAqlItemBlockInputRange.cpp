@@ -36,9 +36,10 @@ MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
   _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
 }
 
-// auto MultiAqlItemBlockInputRange::resize(ExecutorState state, size_t skipped, size_t nrInputRanges) -> void {
-//   _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
-// }
+auto MultiAqlItemBlockInputRange::resize(ExecutorState state, size_t skipped,
+                                         size_t nrInputRanges) -> void {
+  _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
+}
 
 auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
     noexcept -> ExecutorState {
@@ -59,13 +60,16 @@ auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
   return _inputs.at(dependency).nextDataRow();
 }
 
+// We have a shadow row, iff all our inputs have o
 auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
-  TRI_ASSERT(false);
-  // TODO implement
-  size_t const dependency = 0;
-  return _inputs.at(dependency).hasShadowRow();
+  return std::all_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.hasShadowRow();
+                     });
 }
 
+// TODO: * It doesn't matter which shadow row we peek, they should all be the same
+//       * assert that all dependencies are on a shadow row?
 auto MultiAqlItemBlockInputRange::peekShadowRow(size_t const dependency) const
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
   return _inputs.at(dependency).peekShadowRow();
@@ -73,10 +77,23 @@ auto MultiAqlItemBlockInputRange::peekShadowRow(size_t const dependency) const
 
 auto MultiAqlItemBlockInputRange::nextShadowRow(size_t const dependency)
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
-  return _inputs.at(dependency).nextShadowRow();
+  // Need to consume all shadow rows simultaneously.
+  // TODO: Assert we're on the correct shadow row for all upstreams
+  auto state = ExecutorState::HASMORE;
+  auto shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint()};
+
+  for (auto& i : _inputs) {
+    std::tie(state, shadowRow) = i.nextShadowRow();
+  }
+  return {state, shadowRow};
 }
 
 auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const
     noexcept -> SharedAqlItemBlockPtr {
   return _inputs.at(dependency).getBlock();
+}
+
+auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
+                                                AqlItemBlockInputRange& range) -> void {
+  _inputs.at(dependency) = range;
 }

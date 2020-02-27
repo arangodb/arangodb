@@ -361,8 +361,27 @@ auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> voi
   _dependencyProxy->useStack(stack);
 }
 
-auto MultiDependencySingleRowFetcher::execute(AqlCallStack& stack, size_t const dependency)
-    -> std::tuple<ExecutionState, size_t, DataRange> {
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, 0, MultiAqlItemBlockInputRange{ExecutorState::DONE, 0}};
+auto MultiDependencySingleRowFetcher::executeForDependency(AqlCallStack& stack,
+                                                           size_t const dependency)
+    -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange> {
+  auto [state, skipped, block] = _dependencyProxy->executeForDependency(stack, dependency);
+
+  if (state == ExecutionState::WAITING) {
+    return {state, 0, AqlItemBlockInputRange{ExecutorState::HASMORE}};
+  }
+  if (block == nullptr) {
+    if (state == ExecutionState::HASMORE) {
+      return {state, skipped, AqlItemBlockInputRange{ExecutorState::HASMORE, skipped}};
+    }
+    return {state, skipped, AqlItemBlockInputRange{ExecutorState::DONE, skipped}};
+  }
+
+  auto [start, end] = block->getRelevantRange();
+  if (state == ExecutionState::HASMORE) {
+    TRI_ASSERT(block != nullptr);
+    return {state, skipped,
+            AqlItemBlockInputRange{ExecutorState::DONE, skipped, block, start}};
+  }
+  return {state, skipped,
+          AqlItemBlockInputRange{ExecutorState::DONE, skipped, block, start}};
 }

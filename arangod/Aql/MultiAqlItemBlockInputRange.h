@@ -69,6 +69,8 @@ class MultiAqlItemBlockInputRange {
 
   auto getBlock(size_t const dependency = 0) const noexcept -> SharedAqlItemBlockPtr;
 
+  auto setDependency(size_t const dependency, AqlItemBlockInputRange& range) -> void;
+
  private:
   bool isIndexValid(std::size_t index) const noexcept;
 

@@ -134,8 +134,8 @@ class MultiDependencySingleRowFetcher {
   //@deprecated
   auto useStack(AqlCallStack const& stack) -> void;
 
-  auto execute(AqlCallStack& stack, size_t const dependency)
-      -> std::tuple<ExecutionState, size_t, DataRange>;
+  auto executeForDependency(AqlCallStack& stack, size_t const dependency)
+      -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange>;
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
