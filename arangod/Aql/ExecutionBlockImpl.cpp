@@ -1571,9 +1571,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
           if (state == ExecutorState::DONE) {
             _execState = ExecState::FASTFORWARD;
-          } else if (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable &&
+          } else if ((Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable ||
+                      clientCall.getLimit() > 0) &&
                      outputIsFull()) {
             // In pass through variant we need to stop whenever the block is full.
+            // In all other branches only if the client Still needs more data.
             _execState = ExecState::DONE;
             break;
           } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
