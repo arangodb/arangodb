@@ -96,7 +96,7 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
                                         arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter functions EXISTS, IN_RANGE, PHRASE, NGRAM_SIMILAR "
+      "ArangoSearch filter functions EXISTS, IN_RANGE, PHRASE, NGRAM_MATCH "
       " are designed to be used only within a corresponding SEARCH statement "
       "of ArangoSearch view."
       " Please ensure function signature is correct.");
