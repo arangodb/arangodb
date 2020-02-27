@@ -37,7 +37,7 @@ namespace aql {
 class AqlCallStack {
  public:
   // Initial
-  explicit AqlCallStack(AqlCall call);
+  explicit AqlCallStack(AqlCall call, bool compatibilityMode3_6 = false);
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCall call);
   // Used to pass between blocks
@@ -101,6 +101,14 @@ class AqlCallStack {
   // In most cases this will be zero.
   // However if we skip a subquery that has a nested subquery this depth will be 1 in the nested subquery.
   size_t _depth{0};
+
+  // This flag will be set if and only if
+  // we are called with the 3.6 and earlier API
+  // As we only support upgrades between 3.6.* -> 3.7.*
+  // and not 3.6.* -> 3.8.* we can savely remove
+  // this flag and all it's side effects on the
+  // version after 3.7.
+  bool _compatibilityMode3_6;
 };
 
 }  // namespace aql

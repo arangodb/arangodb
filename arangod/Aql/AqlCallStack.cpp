@@ -33,7 +33,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlCallStack::AqlCallStack(AqlCall call) : _operations{{std::move(call)}} {}
+AqlCallStack::AqlCallStack(AqlCall call, bool compatibilityMode3_6)
+    : _operations{{std::move(call)}},
+      _compatibilityMode3_6(compatibilityMode3_6) {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCall call)
     : _operations{other._operations} {
@@ -41,10 +43,13 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCall call)
   // Alothers need to use passThrough constructor
   TRI_ASSERT(other._depth == 0);
   _operations.push(std::move(call));
+  _compatibilityMode3_6 = other._compatibilityMode3_6;
 }
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other)
-    : _operations{other._operations}, _depth(other._depth) {}
+    : _operations{other._operations},
+      _depth(other._depth),
+      _compatibilityMode3_6(other._compatibilityMode3_6) {}
 
 AqlCallStack::AqlCallStack(std::stack<AqlCall>&& operations)
     : _operations(std::move(operations)) {}
@@ -53,7 +58,18 @@ bool AqlCallStack::isRelevant() const { return _depth == 0; }
 
 AqlCall AqlCallStack::popCall() {
   TRI_ASSERT(isRelevant());
-  TRI_ASSERT(!_operations.empty());
+  TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
+  if (_compatibilityMode3_6 && _operations.empty()) {
+    // This is only for compatibility with 3.6
+    // there we do not have the stack beeing passed-through
+    // in AQL, we only have a single call.
+    // We can only get into this state in the abscence of
+    // LIMIT => we always do an unlimted softLimit call
+    // to the upwards subquery.
+    // => Simply put another fetchAll Call on the stack.
+    // This code is to be removed in the next version after 3.7
+    _operations.push(AqlCall{});
+  }
   auto call = _operations.top();
   _operations.pop();
   return call;
@@ -85,10 +101,7 @@ void AqlCallStack::stackUpMissingCalls() {
 void AqlCallStack::pop() {
   if (isRelevant()) {
     // We have one element to pop
-    TRI_ASSERT(!_operations.empty());
-    _operations.pop();
-    // We can never pop the main query, so one element needs to stay
-    TRI_ASSERT(!_operations.empty());
+    std::ignore = popCall();
   } else {
     _depth--;
   }

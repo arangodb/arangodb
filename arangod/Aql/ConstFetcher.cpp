@@ -176,7 +176,8 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     // No data to be returned
     // Block is dropped.
     resultBlock = nullptr;
-    return {ExecutionState::DONE, call.getSkipCount(), DataRange{ExecutorState::DONE}};
+    return {ExecutionState::DONE, call.getSkipCount(),
+            DataRange{ExecutorState::DONE, call.getSkipCount()}};
   }
 
   // Slowest path need to slice, this unfortunately requires copy of data
