@@ -134,13 +134,13 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
 template <typename Executor>
-constexpr bool isNewStyleExecutor = is_one_of_v<
-    Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor, EnumerateCollectionExecutor,
-    /*
-                    CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>,
-                    CalculationExecutor<CalculationType::V8Condition>,*/
-    HashedCollectExecutor,
+constexpr bool isNewStyleExecutor =
+    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
+                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor,
+                DistinctCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+                // TODO: re-enable after new subquery end & start are implemented
+                // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
+                HashedCollectExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     TestLambdaExecutor,
     TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
@@ -1115,7 +1115,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, KShortestPathsExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
-              HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+              HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
@@ -1151,13 +1151,13 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       !std::is_same<Executor, LimitExecutor>::value || useFetcher,
       "LimitExecutor needs to implement skipRows() to work correctly");
 
-  if (useExecutor) {
+  static_assert(useExecutor || useFetcher, "no skipping variant available");
+
+  if constexpr (useExecutor) {
     return SkipRowsRangeVariant::EXECUTOR;
-  } else if (useFetcher) {
-    return SkipRowsRangeVariant::FETCHER;
   } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    static_assert(useFetcher);
+    return SkipRowsRangeVariant::FETCHER;
   }
 }
 
