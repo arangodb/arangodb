@@ -59,8 +59,9 @@ std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatri
   TRI_ASSERT(_block == nullptr);
   TRI_ASSERT(!_shadowRow.isInitialized());
 
-  // matrix needs to be set to "read by executor", so IMPL does know how to continue
-  return {_finalState, _aqlItemMatrix};
+  // We are always done. This InputMatrix
+  // guarantees that we have all data in our hand at once.
+  return {ExecutorState::DONE, _aqlItemMatrix};
 }
 
 ExecutorState AqlItemBlockInputMatrix::upstreamState() const noexcept {
@@ -81,7 +82,8 @@ bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
   auto tmpShadowRow = _shadowRow;
 
-  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow() && !_aqlItemMatrix->peekShadowRow().isRelevant()) {
+  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow() &&
+      !_aqlItemMatrix->peekShadowRow().isRelevant()) {
     // next row will be a shadow row
     _shadowRow = _aqlItemMatrix->popShadowRow();
   } else {
@@ -92,7 +94,8 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRo
   if (_shadowRow.isInitialized()) {
     TRI_ASSERT(!_shadowRow.isRelevant());
     state = ExecutorState::HASMORE;
-  } else if (_aqlItemMatrix->stoppedOnShadowRow() && _aqlItemMatrix->peekShadowRow().isRelevant()) {
+  } else if (_aqlItemMatrix->stoppedOnShadowRow() &&
+             _aqlItemMatrix->peekShadowRow().isRelevant()) {
     state = ExecutorState::DONE;
   } else {
     state = _finalState;
@@ -120,4 +123,3 @@ void AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
     _aqlItemMatrix->clear();
   }
 }
-
