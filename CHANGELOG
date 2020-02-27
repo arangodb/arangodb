@@ -1,10 +1,100 @@
 devel
 -----
 
-
 * `--cluster.agency-prefix` marked as obsolete. Did never work and is not supported.
 
 * Removed old AgencyComm.
+
+* Added traversal options `vertexCollections` and `edgeCollections` to restrict
+  traversal to certain vertex or edge collections.
+
+  The use case for `vertexCollections` is to not follow any edges that will point
+  to other than the specified vertex collections, e.g.
+
+      FOR v, e, p IN 1..3 OUTBOUND 'products/123' components 
+        OPTIONS { vertexCollections: [ "bolts", "screws" ] }
+
+  The traversal's start vertex is always considered valid, regardless of whether
+  it is present in the `vertexCollections` option.
+
+  The use case for `edgeCollections` is to not take into consideration any edges
+  from edge collections other than the specified ones, e.g.
+      
+      FOR v, e, p IN 1..3 OUTBOUND 'products/123' GRAPH 'components' 
+        OPTIONS { edgeCollections: [ "productsToBotls", "productsToScrews" ] }
+
+  This is mostly useful in the context of named graphs, when the named graph
+  contains many edge collections. Not restricting the edge collections for the
+  traversal will make the traversal search for edges in all edge collections of
+  the graph, which can be expensive. In case it is known that only certain edges
+  from the named graph are needed, the `edgeCollections` option can be a handy
+  performance optimization.
+
+* In some cases with a COLLECT LIMIT situation on a small limit the collect
+  does more calls to upstream than without a limit to provide the same
+  result. We improved this situation and made sure that LIMIT does
+  not cause the COLLECT to fetch too few input rows. There is a chance
+  that queries with a very small amount of data might suffer from this
+  modification, most queries will benefit however.  
+
+* Use OpenSSL's EVP interface for SHA256 instead of the deprecated low-level
+  message digest APIs.
+
+* Prevent startup error "specifiy either '--server.jwt-secret-keyfile' or 
+  '--server.jwt-secret-folder' but not both." from occurring when specifying the
+  JWT secret keyfile option.
+
+* Honor `cacheEnabled` attribute when updating the properties of a collection
+  in case of the cluster. Previously, this attribute was ignored in the cluster,
+  but it shouldn't have been.
+
+* Fixed issue #11137: http-proxy can't pass delete method req.body to foxx.
+
+* Disable "collect-in-cluster" AQL optimizer rule in case a LIMIT node is
+  between the COLLECT and the source data. In this case it is not safe to apply
+  the distributed collect, as it may alter the results.
+
+* Rebuild UI.
+
+* Fix arangorestore:
+
+  If a smartGraphAttribute value was changed after document creation,
+  the _key of the document becomes inconsistent with the smartGraphAttribute
+  entry. However, the sharding of documents stays intact.
+
+  When restoring data from a dump that contains a document with inconsistent
+  _key and smartGraphAttribute this would cause an error and the document
+  would not be inserted. This is fixed by ignoring this inconsistency in
+  the case of restore.
+
+* Updated rclone to 1.51.1.
+
+* Fixed a memory leak in ModificationExecutors.
+
+* Updated arangosync to 0.7.3.
+
+* Updated ArangoDB Starter to 0.14.14.
+
+* Fixed handling of `geometry` attributes in query editor of the web UI.
+
+  Previously, document attributes named `geometry` were treated in a special
+  way, assuming they were JSON objects. In case a document contained a
+	`geometry` attribute that had a non-object value (e.g. `null`) the web UI
+	threw a JavaScript exception and would not display AQL query results properly.
+
+* Disable "collect-in-cluster" AQL optimizer rule in case a LIMIT node is between
+  the COLLECT and the source data. In this case it is not safe to apply the
+  distributed collect, as it may alter the results.
+
+* Fixed internal issue #4932: COLLECT WITH COUNT together with FILTER yields
+  zero.
+
+  This bugfix fixes an issue when skipping over documents in an index scan 
+  using a covering index and also at the same time using an early-pruning filter.
+
+  In this case wrong document data may have been injected into the filter 
+  condition for filtering, with the filter wrongfully deciding which documents
+  to filter out.
 
 * Added crash handler for Linux builds that taps into the following signals:
   * SIGSEGV (segmentation violation)
@@ -15,6 +105,8 @@ devel
   In case the arangod process catches one these signals, the crash handler
   tries to log a message and a backtrace into the installation's logfile before
   terminating the process.
+
+* Removed dependency on libcurl library.
 
 * Remove storage engine selection from package installers. The default storage
   engine for new installations is now RocksDB. The MMFiles storage engine cannot

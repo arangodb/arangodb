@@ -1365,6 +1365,7 @@ static std::vector<std::shared_ptr<AsyncRequest>> _requests;
 static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const& args,
                                       fuerte::RestVerb& reqType,
                                       std::string& destination,
+                                      std::string& dbname,
                                       std::string& path, VPackBufferUInt8& body,
                                       std::unordered_map<std::string, std::string>& headerFields,
                                       CoordTransactionID& coordTransactionID, double& timeout,
@@ -1389,11 +1390,8 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
   }
 
   destination = TRI_ObjectToString(isolate, args[1]);
-
-  std::string dbname = TRI_ObjectToString(isolate, args[2]);
-
+  dbname = TRI_ObjectToString(isolate, args[2]);
   path = TRI_ObjectToString(isolate, args[3]);
-  path = "/_db/" + dbname + path;
 
   body.clear();
   if (!args[4]->IsUndefined()) {
@@ -1572,6 +1570,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   fuerte::RestVerb reqType;
   std::string destination;
+  std::string dbname;
   std::string path;
   VPackBufferUInt8 body;
   std::unordered_map<std::string, std::string> headerFields;
@@ -1579,10 +1578,11 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   double timeout = 0.0;
   double initTimeout = -1.0;
 
-  PrepareClusterCommRequest(args, reqType, destination, path, body, headerFields,
+  PrepareClusterCommRequest(args, reqType, destination, dbname, path, body, headerFields,
                             coordTransactionID, timeout, initTimeout);
   
   network::RequestOptions reqOpts;
+  reqOpts.database = dbname;
   reqOpts.retryNotFound = false;
   reqOpts.timeout = network::Timeout(timeout);
   reqOpts.skipScheduler = true;
