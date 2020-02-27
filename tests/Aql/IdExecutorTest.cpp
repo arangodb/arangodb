@@ -47,36 +47,113 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 
-using TestParam = std::tuple<std::vector<int>,  // The input data
-                             ExecutorState,     // The upstream state
-                             AqlCall,           // The client Call,
+using TestParam = std::tuple<size_t,         // The input data 0 -> number
+                             ExecutorState,  // The upstream state
+                             AqlCall,        // The client Call,
+                             bool,  // flag to decide if we need to do couting
                              OutputAqlItemRow::CopyRowBehavior  // How the data is handled within outputRow
                              >;
 
 class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
  protected:
-  IdExecutorTestCombiner() {}
-
   auto prepareInputRange() -> AqlItemBlockInputRange {
-    auto const& [input, upstreamState, clientCall, copyBehaviour] = GetParam();
-    if (input.empty()) {
+    auto input = getInput();
+    if (input == 0) {
       // no input
-      return AqlItemBlockInputRange{upstreamState};
+      return AqlItemBlockInputRange{getUpstreamState()};
     }
     MatrixBuilder<1> matrix;
-    for (auto const& it : input) {
-      matrix.emplace_back(RowBuilder<1>{{it}});
+    for (int i = 0; i < static_cast<int>(input); ++i) {
+      matrix.emplace_back(RowBuilder<1>{i});
     }
     SharedAqlItemBlockPtr block = buildBlock<1>(manager(), std::move(matrix));
-    TRI_ASSERT(clientCall.getSkipCount() == 0);
-    return AqlItemBlockInputRange{upstreamState, 0, block, 0};
+    TRI_ASSERT(getCall().getSkipCount() == 0);
+    return AqlItemBlockInputRange{getUpstreamState(), 0, block, 0};
+  }
+
+  auto doCount() -> bool {
+    auto const& [a, b, c, doCount, d] = GetParam();
+    return doCount;
+  }
+
+  auto makeInfos() -> IdExecutorInfos {
+    return IdExecutorInfos{1, {0}, {}, doCount()};
+  }
+
+  auto getInput() -> size_t {
+    auto const& [input, a, b, c, d] = GetParam();
+    return input;
+  }
+
+  auto getCall() -> AqlCall {
+    auto const& [a, b, call, c, d] = GetParam();
+    return call;
+  }
+
+  auto getUpstreamState() -> ExecutorState {
+    auto const& [a, state, b, c, d] = GetParam();
+    return state;
+  }
+
+  auto getExpectedState() -> ExecutionState {
+    auto call = getCall();
+    auto available = getInput();
+    if (call.needsFullCount() || call.getOffset() + call.getLimit() >= available) {
+      // We will fetch all
+      return ExecutionState::DONE;
+    }
+    if (getUpstreamState() == ExecutorState::DONE) {
+      return ExecutionState::DONE;
+    }
+    return ExecutionState::HASMORE;
+  }
+
+  auto getSkip() -> size_t {
+    size_t skip = 0;
+    size_t available = getInput();
+    auto call = getCall();
+    if (call.getOffset() > 0) {
+      skip = std::min(skip, available);
+      available -= skip;
+    }
+    if (call.hasHardLimit() && call.needsFullCount()) {
+      // Take away the rows that will be produced
+      // add the leftOver to skip
+      available -= std::min(available, call.getLimit());
+      skip += available;
+    }
+    return skip;
+  }
+
+  auto getOutput() -> MatrixBuilder<1> {
+    MatrixBuilder<1> res;
+    auto call = getCall();
+    int available = std::min(getInput(), call.getOffset() + call.getLimit());
+    for (int i = call.getOffset(); i < available; ++i) {
+      res.emplace_back(RowBuilder<1>{i});
+    }
+    return res;
+  }
+
+  auto getStats() -> ExecutionStats {
+    ExecutionStats stats;
+
+    if (doCount()) {
+      auto available = getInput();
+      auto call = getCall();
+      available -= std::min(available, call.getOffset());
+      available = std::min(available, call.getLimit());
+      stats.count = available;
+    }
+
+    return stats;
   }
 
   auto prepareOutputRow(SharedAqlItemBlockPtr input) -> OutputAqlItemRow {
     auto toWrite = make_shared_unordered_set({});
     auto toKeep = make_shared_unordered_set({0});
     auto toClear = make_shared_unordered_set();
-    auto const& [unused, upstreamState, clientCall, copyBehaviour] = GetParam();
+    auto const& [unused, upstreamState, clientCall, unused2, copyBehaviour] = GetParam();
     AqlCall callCopy = clientCall;
     if (copyBehaviour == OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows) {
       // For passthrough we reuse the block
@@ -94,66 +171,63 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
     return OutputAqlItemRow(outBlock, toWrite, toKeep, toClear,
                             std::move(callCopy), copyBehaviour);
   }
-
-  // After Execute is done these fetchers shall be removed,
-  // the Executor does not need it anymore!
-  // However the template is still required.
-  template <class Fetcher>
-  auto runTest(Fetcher& fetcher) -> void {
-    auto const& [input, upstreamState, clientCall, copyBehaviour] = GetParam();
-
-    auto inputRange = prepareInputRange();
-    auto outputRow = prepareOutputRow(inputRange.getBlock());
-
-    // If the input is empty, all rows(none) are used, otherwise they are not.
-    EXPECT_EQ(outputRow.allRowsUsed(), input.empty());
-    IdExecutorInfos infos{1, {0}, {}};
-
-    IdExecutor<Fetcher> testee{fetcher, infos};
-
-    auto const [state, stats, call] = testee.produceRows(inputRange, outputRow);
-    EXPECT_EQ(state, upstreamState);
-    // Stats are NoStats, no checks here.
-
-    // We can never forward any offset.
-    EXPECT_EQ(call.getOffset(), 0);
-
-    // The limits need to be reduced by input size.
-    EXPECT_EQ(call.softLimit + input.size(), clientCall.softLimit);
-    EXPECT_EQ(call.hardLimit + input.size(), clientCall.hardLimit);
-
-    // We can forward fullCount if it is there.
-    EXPECT_EQ(call.needsFullCount(), clientCall.needsFullCount());
-
-    // This internally actually asserts that all input rows are "copied".
-    EXPECT_TRUE(outputRow.allRowsUsed());
-    auto result = outputRow.stealBlock();
-    if (!input.empty()) {
-      ASSERT_NE(result, nullptr);
-      ASSERT_EQ(result->size(), input.size());
-      for (size_t i = 0; i < input.size(); ++i) {
-        auto val = result->getValueReference(i, 0);
-        ASSERT_TRUE(val.isNumber());
-        EXPECT_EQ(val.toInt64(), input.at(i));
-      }
-    } else {
-      EXPECT_EQ(result, nullptr);
-    }
-  }
 };
 
 TEST_P(IdExecutorTestCombiner, test_produce_datarange_constFetcher) {
+  auto input = getInput();
+  auto upstreamState = getUpstreamState();
+  auto clientCall = getCall();
+  auto inputRange = prepareInputRange();
+  auto outputRow = prepareOutputRow(inputRange.getBlock());
+
+  // If the input is empty, all rows(none) are used, otherwise they are not.
+  EXPECT_EQ(outputRow.allRowsUsed(), input == 0);
+  IdExecutorInfos infos{1, {0}, {}, doCount()};
   std::shared_ptr<VPackBuilder> fakeFetcherInput{VPackParser::fromJson("[ ]")};
   ConstFetcher cFetcher = ConstFetcherHelper{manager(), fakeFetcherInput->buffer()};
-  runTest(cFetcher);
+  IdExecutor<ConstFetcher> testee{cFetcher, infos};
+
+  auto const [state, stats, call] = testee.produceRows(inputRange, outputRow);
+  EXPECT_EQ(state, upstreamState);
+  // Stats are NoStats, no checks here.
+
+  // We can never forward any offset.
+  EXPECT_EQ(call.getOffset(), 0);
+
+  // The limits need to be reduced by input size.
+  EXPECT_EQ(call.softLimit + input, clientCall.softLimit);
+  EXPECT_EQ(call.hardLimit + input, clientCall.hardLimit);
+
+  // We can forward fullCount if it is there.
+  EXPECT_EQ(call.needsFullCount(), clientCall.needsFullCount());
+
+  // This internally actually asserts that all input rows are "copied".
+  EXPECT_TRUE(outputRow.allRowsUsed());
+  auto result = outputRow.stealBlock();
+  if (input > 0) {
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(result->size(), input);
+    for (size_t i = 0; i < input; ++i) {
+      auto val = result->getValueReference(i, 0);
+      ASSERT_TRUE(val.isNumber());
+      EXPECT_EQ(val.toInt64(), i);
+    }
+  } else {
+    EXPECT_EQ(result, nullptr);
+  }
 }
 
 TEST_P(IdExecutorTestCombiner, test_produce_datarange_singleRowFetcher) {
-  std::shared_ptr<VPackBuilder> fakeFetcherInput{VPackParser::fromJson("[ ]")};
-  SingleRowFetcher<::arangodb::aql::BlockPassthrough::Enable> srFetcher =
-      SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable>{
-          manager(), fakeFetcherInput->buffer(), false};
-  runTest(srFetcher);
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<IdExecutor<SingleRowFetcher<::arangodb::aql::BlockPassthrough::Enable>>>(
+          makeInfos(), ExecutionNode::SINGLETON)
+      .setInputFromRowNum(getInput())
+      .setCall(getCall())
+      .expectedState(getExpectedState())
+      .expectSkipped(getSkip())
+      .expectOutput({0}, getOutput())
+      .expectedStats(getStats())
+      .run();
 }
 
 /**
@@ -182,8 +256,8 @@ TEST_P(IdExecutorTestCombiner, test_produce_datarange_singleRowFetcher) {
  *   DoCopy  << This is to assert that copying is performaed
  */
 
-static auto inputs = testing::Values(std::vector<int>{},  // Test empty input
-                                     std::vector<int>{1, 2, 3}  // Test input data
+static auto inputs = testing::Values(0,  // Test empty input
+                                     3   // Test input data
 );
 
 auto upstreamStates = testing::Values(ExecutorState::HASMORE, ExecutorState::DONE);
@@ -201,13 +275,14 @@ auto copyBehaviours = testing::Values(OutputAqlItemRow::CopyRowBehavior::CopyInp
 );
 
 INSTANTIATE_TEST_CASE_P(IdExecutorTest, IdExecutorTestCombiner,
-                        ::testing::Combine(inputs, upstreamStates, clientCalls, copyBehaviours));
+                        ::testing::Combine(inputs, upstreamStates, clientCalls,
+                                           ::testing::Bool(), copyBehaviours));
 
 class IdExecutionBlockTest : public AqlExecutorTestCase<> {};
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
-  IdExecutorInfos infos{1, {0}, {}};
+  IdExecutorInfos infos{1, {0}, {}, false};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
                                                       generateNodeDummy(),
                                                       std::move(infos)};
@@ -249,7 +324,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
-  IdExecutorInfos infos{1, {0}, {}};
+  IdExecutorInfos infos{1, {0}, {}, false};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
                                                       generateNodeDummy(),
                                                       std::move(infos)};
@@ -289,7 +364,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
-  IdExecutorInfos infos{1, {0}, {}};
+  IdExecutorInfos infos{1, {0}, {}, false};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
                                                       generateNodeDummy(),
                                                       std::move(infos)};
@@ -330,7 +405,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
 }
 
 TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
-  IdExecutorInfos infos{1, {0}, {}};
+  IdExecutorInfos infos{1, {0}, {}, false};
   ExecutorTestHelper(*fakedQuery)
       .setExecBlock<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(infos))
       .setInputValueList(1, 2, 3, 4, 5, 6)
@@ -351,7 +426,7 @@ TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
 class BlockOverloadTest : public AqlExecutorTestCaseWithParam<bool> {
  protected:
   auto getTestee() -> ExecutionBlockImpl<IdExecutor<ConstFetcher>> {
-    IdExecutorInfos infos{1, {0}, {}};
+    IdExecutorInfos infos{1, {0}, {}, false};
     return ExecutionBlockImpl<IdExecutor<ConstFetcher>>{fakedQuery->engine(),
                                                         generateNodeDummy(),
                                                         std::move(infos)};
