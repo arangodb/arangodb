@@ -38,17 +38,18 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class IdExecutorInfos;
 class SharedAqlItemBlockPtr;
+class AqlCall;
 
 /**
-* @brief Produces all rows from its dependencies, which may be more than one,
-* in some unspecified order. It is, purposefully, strictly synchronous, and
-* always waits for an answer before requesting the next row(s). This is as
-* opposed to the ParallelUnsortedGather, which already starts fetching the next
-* dependenci(es) while waiting for an answer.
-*
-* The actual implementation fetches all available rows from the first
-* dependency, then from the second, and so forth. But that is not guaranteed.
-*/
+ * @brief Produces all rows from its dependencies, which may be more than one,
+ * in some unspecified order. It is, purposefully, strictly synchronous, and
+ * always waits for an answer before requesting the next row(s). This is as
+ * opposed to the ParallelUnsortedGather, which already starts fetching the next
+ * dependenci(es) while waiting for an answer.
+ *
+ * The actual implementation fetches all available rows from the first
+ * dependency, then from the second, and so forth. But that is not guaranteed.
+ */
 class UnsortedGatherExecutor {
  public:
   struct Properties {
@@ -81,6 +82,12 @@ class UnsortedGatherExecutor {
       -> std::pair<ExecutionState, Stats>;
 
   [[nodiscard]] auto skipRows(size_t atMost) -> std::tuple<ExecutionState, NoStats, size_t>;
+
+  // TODO: This should really be the DataRange of the fetcher?
+  [[nodiscard]] auto produceRows(typename Fetcher::DataRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall, size_t>;
+  [[nodiscard]] auto skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t>;
 
  private:
   [[nodiscard]] auto numDependencies() const

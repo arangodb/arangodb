@@ -23,10 +23,10 @@
 #ifndef ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 #define ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 
-#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/MultiAqlItemBlockInputRange.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
@@ -85,7 +85,7 @@ class MultiDependencySingleRowFetcher {
   };
 
  public:
-  using DataRange = AqlItemBlockInputRange;
+  using DataRange = MultiAqlItemBlockInputRange;
   explicit MultiDependencySingleRowFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~MultiDependencySingleRowFetcher() = default;
 
@@ -133,6 +133,9 @@ class MultiDependencySingleRowFetcher {
 
   //@deprecated
   auto useStack(AqlCallStack const& stack) -> void;
+
+  auto execute(AqlCallStack& stack, size_t const dependency)
+      -> std::tuple<ExecutionState, size_t, DataRange>;
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;

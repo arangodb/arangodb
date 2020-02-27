@@ -360,3 +360,9 @@ bool MultiDependencySingleRowFetcher::fetchBlockIfNecessary(size_t const depende
 auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> void {
   _dependencyProxy->useStack(stack);
 }
+
+auto MultiDependencySingleRowFetcher::execute(AqlCallStack& stack, size_t const dependency)
+    -> std::tuple<ExecutionState, size_t, DataRange> {
+  TRI_ASSERT(false);
+  return {ExecutionState::DONE, 0, MultiAqlItemBlockInputRange{ExecutorState::DONE, 0}};
+}

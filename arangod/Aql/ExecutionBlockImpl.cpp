@@ -144,7 +144,8 @@ constexpr bool isNewStyleExecutor =
                 TestLambdaExecutor,
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-                TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor>;
+                TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor,
+                EnumerateListExecutor, LimitExecutor, UnsortedGatherExecutor>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -164,6 +165,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _execState{ExecState::CHECKCALL},
       _upstreamRequest{},
       _clientRequest{},
+      _requestedDependency{},
       _hasUsedDataRangeBlock{false} {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
@@ -1083,7 +1085,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                                  TestLambdaSkipExecutor,
 #endif
-                                 TraversalExecutor, EnumerateListExecutor, SortedCollectExecutor, LimitExecutor>),
+                                 TraversalExecutor, EnumerateListExecutor, SortedCollectExecutor, LimitExecutor, UnsortedGatherExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -1106,15 +1108,53 @@ template <class T>
 struct dependent_false : std::false_type {};
 
 template <class Executor>
+auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t const dependency)
+    -> std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> {
+  // Silence compiler about unused dependency
+  (void)dependency;
+  if constexpr (isNewStyleExecutor<Executor>) {
+    if constexpr (is_one_of_v<Fetcher, MultiDependencySingleRowFetcher>) {
+      return _rowFetcher.execute(stack, dependency);
+    } else {
+      return _rowFetcher.execute(stack);
+    }
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRange& input,
+                                                      OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> {
+  if constexpr (isNewStyleExecutor<Executor>) {
+    if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor>) {
+      return _executor.produceRows(input, output);
+    } else {
+      auto [state, stats, call] = _executor.produceRows(input, output);
+      return {state, stats, call, 0};
+    }
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
+template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRange& inputRange,
                                                         AqlCall& call)
-    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t> {
   if constexpr (isNewStyleExecutor<Executor>) {
     call.skippedRows = 0;
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
-      // If the executor has a method skipRowsRange, to skip outputs.
-      // Every non-passthrough executor needs to implement this.
-      return _executor.skipRowsRange(inputRange, call);
+      if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor>) {
+        // If the executor has a method skipRowsRange, to skip outputs.
+        // Every non-passthrough executor needs to implement this.
+        return _executor.skipRowsRange(inputRange, call);
+      } else {
+        auto [state, stats, skipped, localCall] =
+            _executor.skipRowsRange(inputRange, call);
+        return {state, stats, skipped, localCall, 0};
+      }
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
       // If we know that every input row produces exactly one output row (this
       // is a property of the executor), then we can just let the fetcher skip
@@ -1124,18 +1164,18 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
       static_assert(
           std::is_same_v<typename Executor::Stats, NoStats>,
           "Executors with custom statistics must implement skipRowsRange.");
-      return {inputRange.upstreamState(), NoStats{}, 0, call};
+      return {inputRange.upstreamState(), NoStats{}, 0, call, 0};
     } else {
       static_assert(dependent_false<Executor>::value,
                     "This value of SkipRowsRangeVariant is not supported");
-      return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
+      return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call, 0);
     }
   } else {
     TRI_ASSERT(false);
-    return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
+    return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call, 0);
   }
   // Compiler is unhappy without this.
-  return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
+  return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call, 0);
 }
 
 /**
@@ -1168,19 +1208,21 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRange& inputRange,
                                                       AqlCall& clientCall)
-    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t> {
   TRI_ASSERT(isNewStyleExecutor<Executor>);
   auto type = fastForwardType(clientCall, _executor);
   switch (type) {
     case FastForwardVariant::FULLCOUNT:
     case FastForwardVariant::EXECUTOR: {
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
-      auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
+      auto [state, stats, skippedLocal, call, dependency] =
+          executeSkipRowsRange(_lastRange, clientCall);
+      _requestedDependency = dependency;
       if (type == FastForwardVariant::EXECUTOR) {
         // We do not report the skip
         skippedLocal = 0;
       }
-      return {state, stats, skippedLocal, call};
+      return {state, stats, skippedLocal, call, dependency};
     }
     case FastForwardVariant::FETCHER: {
       LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
@@ -1190,7 +1232,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       }
       AqlCall call{};
       call.hardLimit = 0;
-      return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call};
+      return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call, 0};
     }
   }
   // Unreachable
@@ -1251,7 +1293,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       // However we need to maintain the upstream state.
       size_t skippedLocal = 0;
       typename Fetcher::DataRange bypassedRange{ExecutorState::HASMORE};
-      std::tie(_upstreamState, skippedLocal, bypassedRange) = _rowFetcher.execute(stack);
+      std::tie(_upstreamState, skippedLocal, bypassedRange) =
+          executeFetcher(stack, _requestedDependency);
       return {_upstreamState, skippedLocal, bypassedRange.getBlock()};
     }
     AqlCall clientCall = stack.popCall();
@@ -1298,15 +1341,15 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               clientCall.getLimit() == 0 && clientCall.needsFullCount();
 #endif
           LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
-          auto [state, stats, skippedLocal, call] =
+          auto [state, stats, skippedLocal, call, dependency] =
               executeSkipRowsRange(_lastRange, clientCall);
+          _requestedDependency = dependency;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           // Assertion: We did skip 'skippedLocal' documents here.
-          // This means that they have to be removed from clientCall.getOffset()
-          // This has to be done by the Executor calling call.didSkip()
-          // accordingly.
-          // The LIMIT executor with a LIMIT of 0 can also bypass fullCount
-          // here, even if callLimit > 0
+          // This means that they have to be removed from
+          // clientCall.getOffset() This has to be done by the Executor
+          // calling call.didSkip() accordingly. The LIMIT executor with a
+          // LIMIT of 0 can also bypass fullCount here, even if callLimit > 0
           if (canPassFullcount || std::is_same_v<Executor, LimitExecutor>) {
             // In this case we can first skip. But straight after continue with fullCount, so we might skip more
             TRI_ASSERT(clientCall.getOffset() + skippedLocal >= offsetBefore);
@@ -1354,8 +1397,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(_outputItemRow);
 
           // Execute getSome
-          auto const [state, stats, call] =
-              _executor.produceRows(_lastRange, *_outputItemRow);
+          auto const [state, stats, call, dependency] =
+              executeProduceRows(_lastRange, *_outputItemRow);
+          // TODO: Check
+          _requestedDependency = dependency;
           _engine->_stats += stats;
           localExecutorState = state;
 
@@ -1383,7 +1428,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         case ExecState::FASTFORWARD: {
           LOG_QUERY("96e2c", DEBUG)
               << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
-          auto [state, stats, skippedLocal, call] =
+          auto [state, stats, skippedLocal, call, dependency] =
               executeFastForward(_lastRange, clientCall);
 
           _skipped += skippedLocal;
@@ -1420,7 +1465,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           size_t subqueryLevelBefore = stack.subqueryLevel();
 #endif
           stack.pushCall(std::move(callCopy));
-          std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
+          std::tie(_upstreamState, skippedLocal, _lastRange) =
+              executeFetcher(stack, _requestedDependency);
           // As the stack is copied into the fetcher, we need to pop off our call again.
           // If we use other datastructures or moving we may hand over ownership of the stack here
           // instead and no popCall is necessary.

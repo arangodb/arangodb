@@ -39,3 +39,44 @@ MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
 // auto MultiAqlItemBlockInputRange::resize(ExecutorState state, size_t skipped, size_t nrInputRanges) -> void {
 //   _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
 // }
+
+auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
+    noexcept -> ExecutorState {
+  return _inputs.at(dependency).upstreamState();
+}
+
+auto MultiAqlItemBlockInputRange::hasDataRow(size_t const dependency) const noexcept -> bool {
+  return _inputs.at(dependency).hasDataRow();
+}
+
+auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
+    -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+  return _inputs.at(dependency).peekDataRow();
+}
+
+auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
+    -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+  return _inputs.at(dependency).nextDataRow();
+}
+
+auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
+  TRI_ASSERT(false);
+  // TODO implement
+  size_t const dependency = 0;
+  return _inputs.at(dependency).hasShadowRow();
+}
+
+auto MultiAqlItemBlockInputRange::peekShadowRow(size_t const dependency) const
+    -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
+  return _inputs.at(dependency).peekShadowRow();
+}
+
+auto MultiAqlItemBlockInputRange::nextShadowRow(size_t const dependency)
+    -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
+  return _inputs.at(dependency).nextShadowRow();
+}
+
+auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const
+    noexcept -> SharedAqlItemBlockPtr {
+  return _inputs.at(dependency).getBlock();
+}

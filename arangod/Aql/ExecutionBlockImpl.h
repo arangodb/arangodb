@@ -227,12 +227,18 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    */
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
+  std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> executeFetcher(
+      AqlCallStack& stack, size_t const dependency);
+
+  std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> executeProduceRows(
+      typename Fetcher::DataRange& input, OutputAqlItemRow& output);
+
   // execute a skipRowsRange call
-  std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> executeSkipRowsRange(
+  std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t> executeSkipRowsRange(
       typename Fetcher::DataRange& input, AqlCall& call);
 
   auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
-      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall>;
+      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t>;
 
   /**
    * @brief Inner getSome() part, without the tracing calls.
@@ -325,6 +331,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   AqlCall _upstreamRequest;
 
   AqlCall _clientRequest;
+
+  size_t _requestedDependency;
 
   // Only used in passthrough variant.
   // We track if we have reference the range's block

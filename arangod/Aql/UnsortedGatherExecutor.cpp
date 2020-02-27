@@ -23,6 +23,7 @@
 #include "UnsortedGatherExecutor.h"
 
 #include "Aql/IdExecutor.h"  // for IdExecutorInfos
+#include "Aql/MultiAqlItemBlockInputRange.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
@@ -31,10 +32,34 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+struct Dependency {
+  Dependency() : _number{0} {};
+
+  size_t _number;
+};
+
 UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
     : _fetcher(fetcher) {}
 
 UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
+
+auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
+                                         OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
+  while (!output.isFull() && input.hasDataRow(currentDependency())) {
+    auto [state, inputRow] = input.nextDataRow(currentDependency());
+    if (state == ExecutorState::DONE) {
+      advanceDependency();
+    }
+  }
+
+  return {input.upstreamState(currentDependency()), Stats{}, AqlCall{}, currentDependency()};
+}
+
+auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
+  return {ExecutorState::DONE, Stats{}, 0, AqlCall{}, currentDependency()};
+}
 
 auto UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output)
     -> std::pair<ExecutionState, Stats> {
