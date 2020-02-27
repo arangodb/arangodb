@@ -1,6 +1,9 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Clear backups from DB servers and agency, when plan unchanged not
+  met and not allowing for inconsistency.
+
 * Fix arangorestore:
   If a smartGraphAttribute value was changed after document creation,
   the _key of the document becomes inconsistent with the smartGraphAttribute
