@@ -369,12 +369,14 @@ std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(si
   if (!_fetcherDone) {
     ExecutionState state;
     size_t expectedRows;
-    std::tie(state, expectedRows) = _fetcher.preFetchNumberOfRows(atMost);
+    std::tie(state, expectedRows) =
+        _fetcher.preFetchNumberOfRows(ExecutionBlock::DefaultBatchSize);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(expectedRows == 0);
       return {state, 0};
     }
-    return {ExecutionState::HASMORE, expectedRows + 1};
+    auto rowsAvailable = std::min(expectedRows + 1, atMost);
+    return {ExecutionState::HASMORE, rowsAvailable};
   }
   // The fetcher will NOT send anything any more
   // We will at most return the current oepn group

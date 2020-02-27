@@ -34,6 +34,7 @@ struct OperationOptions {
       : recoveryData(nullptr),
         indexOperationMode(Index::OperationMode::normal),
         waitForSync(false),
+        validate(true),
         keepNull(true),
         mergeObjects(true),
         silent(false),
@@ -54,6 +55,7 @@ struct OperationOptions {
        << "{ recoveryData : " << ops.recoveryData
        << ", indexOperationMode : " << ops.indexOperationMode
        << ", waitForSync : " << ops.waitForSync
+       << ", validate : " << ops.validate
        << ", keepNull : " << ops.keepNull
        << ", mergeObjects : " << ops.mergeObjects
        << ", silent : " << ops.silent
@@ -76,6 +78,9 @@ struct OperationOptions {
 
   // wait until the operation has been synced
   bool waitForSync;
+
+  // apply document vaidators if there are any available
+  bool validate;
 
   // keep null values on update (=true) or remove them (=false). only used for
   // update operations
