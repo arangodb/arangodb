@@ -95,6 +95,46 @@ class AqlItemBlockTest : public ::testing::Test {
   }
 };
 
+TEST_F(AqlItemBlockTest, test_get_block_id) {
+  EXPECT_EQ(itemBlockManager.getBucketId(0), 0);
+  EXPECT_EQ(itemBlockManager.getBucketId(1), 0);
+  EXPECT_EQ(itemBlockManager.getBucketId(2), 1);
+  EXPECT_EQ(itemBlockManager.getBucketId(3), 1);
+  EXPECT_EQ(itemBlockManager.getBucketId(4), 2);
+  EXPECT_EQ(itemBlockManager.getBucketId(5), 2);
+  EXPECT_EQ(itemBlockManager.getBucketId(6), 2);
+  EXPECT_EQ(itemBlockManager.getBucketId(7), 2);
+  EXPECT_EQ(itemBlockManager.getBucketId(8), 3);
+  EXPECT_EQ(itemBlockManager.getBucketId(9), 3);
+  EXPECT_EQ(itemBlockManager.getBucketId(10), 3);
+  EXPECT_EQ(itemBlockManager.getBucketId(15), 3);
+  EXPECT_EQ(itemBlockManager.getBucketId(16), 4);
+  EXPECT_EQ(itemBlockManager.getBucketId(31), 4);
+  EXPECT_EQ(itemBlockManager.getBucketId(32), 5);
+  EXPECT_EQ(itemBlockManager.getBucketId(63), 5);
+  EXPECT_EQ(itemBlockManager.getBucketId(64), 6);
+  EXPECT_EQ(itemBlockManager.getBucketId(100), 6);
+  EXPECT_EQ(itemBlockManager.getBucketId(127), 6);
+  EXPECT_EQ(itemBlockManager.getBucketId(128), 7);
+  EXPECT_EQ(itemBlockManager.getBucketId(255), 7);
+  EXPECT_EQ(itemBlockManager.getBucketId(256), 8);
+  EXPECT_EQ(itemBlockManager.getBucketId(511), 8);
+  EXPECT_EQ(itemBlockManager.getBucketId(512), 9);
+  EXPECT_EQ(itemBlockManager.getBucketId(1000), 9);
+  EXPECT_EQ(itemBlockManager.getBucketId(1023), 9);
+  EXPECT_EQ(itemBlockManager.getBucketId(1024), 10);
+  EXPECT_EQ(itemBlockManager.getBucketId(2048), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(4095), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(4096), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(4097), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(5000), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(8192), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(10000), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(100000), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(1000000), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(10000000), 11);
+}
+
 TEST_F(AqlItemBlockTest, test_read_values_reference) {
   auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
   EXPECT_EQ(block->getValueReference(0, 0).toInt64(), 1);

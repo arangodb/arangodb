@@ -28,10 +28,9 @@
 /// @author Copyright 2020, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db, indexId;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const db = require("@arangodb").db;
 
 const vc1Name = "v1";
 const vc2Name = "v2";
