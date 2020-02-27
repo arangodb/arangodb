@@ -805,6 +805,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
     result.toVelocyPack(answerBuilder,
                         _query->trx()->transactionContextPtr()->getVPackOptions());
+    answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   } else if (operation == "getSome") {
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

@@ -73,8 +73,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //     "limitType: string or null, either "soft" or "hard"; set iff limit is not infinity
   //     "fullCount": a boolean
   //   The result is an object with the attributes
-  //     "error": boolean
-  //     "errorMessage": (only if "error" is true) string
+  //     "code": integer, error code.
+  //        If there was no error:
   //     "state": string, either "hasMore" or "done"
   //     "skipped": non-negative integer
   //     "result": serialized AqlItemBlock, or null when no rows are returned.
