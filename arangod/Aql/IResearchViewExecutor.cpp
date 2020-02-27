@@ -404,11 +404,9 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::assert
 
 template <typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
-    IResearchViewExecutorBase::Fetcher& fetcher, IResearchViewExecutorBase::Infos& infos)
+    IResearchViewExecutorBase::Fetcher&, IResearchViewExecutorBase::Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
-      _upstreamState(ExecutionState::HASMORE),  // TODO: Remove me after refactor
       _indexReadBuffer(_infos.getNumScoreRegisters()),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
       _ctx(&infos.getQuery(), infos.numberOfOutputRegisters(),
@@ -416,8 +414,6 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
       _execCtx(*infos.getQuery().trx(), _ctx),
-      _inflight(0),
-      _hasMore(true),  // has more data initially
       _isInitialized(false) {
   TRI_ASSERT(infos.getQuery().trx() != nullptr);
 
@@ -445,7 +441,7 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
 
     while (!documentWritten) {
       if (!_inputRow.isInitialized()) {
-        std::tie(_inputRowState, _inputRow) = inputRange.peekDataRow();
+        std::tie(std::ignore, _inputRow) = inputRange.peekDataRow();
 
         if (!_inputRow.isInitialized()) {
           return {ExecutorState::DONE, stats, upstreamCall};
@@ -488,10 +484,11 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
 
   while (inputRange.hasDataRow() && call.shouldSkip()) {
     if (!_inputRow.isInitialized()) {
-      std::tie(_inputRowState, _inputRow) = inputRange.peekDataRow();
+      auto rowState = ExecutorState::HASMORE;
+      std::tie(rowState, _inputRow) = inputRange.peekDataRow();
 
       if (!_inputRow.isInitialized()) {
-        TRI_ASSERT(_inputRowState == ExecutorState::DONE);
+        TRI_ASSERT(rowState == ExecutorState::DONE);
         break;
       }
 

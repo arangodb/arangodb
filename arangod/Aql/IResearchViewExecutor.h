@@ -322,10 +322,7 @@ class IResearchViewExecutorBase {
 
  protected:
   Infos const& _infos;
-  Fetcher& _fetcher;
-  InputAqlItemRow _inputRow;      // Remove me after refactor is done
-  ExecutionState _upstreamState;  // Remove me after refactor is done
-  ExecutorState _inputRowState;
+  InputAqlItemRow _inputRow;
   IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;
   irs::bytes_ref _pk;  // temporary store for pk buffer before decoding it
   irs::attribute_view _filterCtx;  // filter context
@@ -334,8 +331,6 @@ class IResearchViewExecutorBase {
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
-  size_t _inflight;  // The number of documents inflight if we hit a WAITING state.
-  bool _hasMore;
   bool _isInitialized;
 };  // IResearchViewExecutorBase
 
