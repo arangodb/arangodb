@@ -77,7 +77,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //     "errorMessage": (only if "error" is true) string
   //     "state": string, either "hasMore" or "done"
   //     "skipped": non-negative integer
-  //     "result": serialized AqlItemBlock
+  //     "result": serialized AqlItemBlock, or null when no rows are returned.
   // For the "getSome" operation one has to give:
   //   "atMost": must be a positive integer, the cursor returns never
   //             more than "atMost" items. Defaults to
