@@ -215,8 +215,10 @@ You now will get log entries with the contents being passed between the blocks.
 The Linux and MacOS builds of the arangod execuable contain a built-in crash handler. 
 The crash handler is supposed to log basic crash information to the ArangoDB logfile in 
 case the arangod process receives one of the signals SIGSEGV, SIGBUS, SIGILL, SIGFPE or 
-SIGABRT. By design, it cannot kick in in case the operating system sends a SIGKILL signal 
-to the arangod process in case of OOM (out of memory).
+SIGABRT. 
+
+By design, it cannot kick in in case the operating system sends a SIGKILL signal to the 
+arangod process in case of OOM (out of memory).
 
 If possible, the crash handler will also write a backtrace to the logfile, so the crash 
 location can be found later. This however will only work if there is no heap corruption.
@@ -247,8 +249,8 @@ addr2line -e /path/to/arangod +0x2036398
 When invoking addr2line, it is absolutely necessary to use the exact same executable
 as when the crash happened. Otherwise the offsets will not match and invoking addr2line
 will only produce garbage.
-In case a release build is used, it may also be useful to install debug symbols first.
-Otherwise, addr2line will likely resolve offsets to just `??:?`.
+In case a release build is used, it will be useful to install debug symbols first.
+Otherwise, addr2line will likely resolve offsets to just `??:?`, which will not help.
 
 ### Core Dumps
 
