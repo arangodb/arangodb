@@ -41,6 +41,7 @@ class AqlItemBlockInputMatrix {
   AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix);
 
   std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
+  ShadowAqlItemRow peekShadowRow() const;
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
 
@@ -49,21 +50,7 @@ class AqlItemBlockInputMatrix {
 
   ExecutorState upstreamState() const noexcept;
   bool upstreamHasMore() const noexcept;
-
   void skipAllRemainingDataRows();
-
-  // Method to mark the current _aqlItemMatrix as all read.
-  // Needs to be set by the executors after they're done producing rows.
-  void setAllRowsProduced(bool flag) {
-    _allRowsProduced = flag;
-  }
-
-  // Subtract up to this many rows from the local `_skipped` state; return
-  // the number actually skipped. Does not skip data rows.
-  /*
-  [[nodiscard]] auto skip(std::size_t) noexcept -> std::size_t;
-  [[nodiscard]] auto skipAll() noexcept -> std::size_t;
-  [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;*/
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};

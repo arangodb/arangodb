@@ -694,7 +694,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
     LOG_DEVEL_IDX << "IndexExecutor::produceRows output.numRowsLeft() == "
                   << output.numRowsLeft();
     if (!_input.isInitialized()) {
-      std::tie(_state, _input) = inputRange.peekDataRow();
+      std::tie(_state, _input) = inputRange.peekDataRowAndState();
       LOG_DEVEL_IDX
           << "IndexExecutor::produceRows input not initialized, peek next row: " << _state
           << " " << std::boolalpha << _input.isInitialized();
@@ -778,7 +778,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
                   << clientCall.getOffset();
     // get an input row first, if necessary
     if (!_input.isInitialized()) {
-      std::tie(_state, _input) = inputRange.peekDataRow();
+      std::tie(_state, _input) = inputRange.peekDataRowAndState();
       LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange input not initialized, "
                        "peek next row: "
                     << _state << " " << std::boolalpha << _input.isInitialized();

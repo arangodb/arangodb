@@ -587,19 +587,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
-  constexpr bool customInit = hasInitializeCursor<Executor>::value;
-  // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
-  // implemented, so assert this implementation is used.
-  static_assert(!std::is_same<Executor, EnumerateCollectionExecutor>::value || customInit,
-                "EnumerateCollectionExecutor is expected to implement a custom "
-                "initializeCursor method!");
-  static_assert(!std::is_same<Executor, IndexExecutor>::value || customInit,
-                "IndexExecutor is expected to implement a custom "
-                "initializeCursor method!");
-  static_assert(!std::is_same<Executor, DistinctCollectExecutor>::value || customInit,
-                "DistinctCollectExecutor is expected to implement a custom "
-                "initializeCursor method!");
-  InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+  resetExecutor();
 
   // // use this with c++17 instead of specialization below
   // if constexpr (std::is_same_v<Executor, IdExecutor>) {
@@ -708,9 +696,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
 
   _rowFetcher.injectBlock(block);
 
-  // cppcheck-suppress unreadVariable
-  constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
-  InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+  resetExecutor();
 }
 
 // TODO -- remove this specialization when cpp 17 becomes available
@@ -1035,6 +1021,9 @@ void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
 // This cannot return upstream call or shadowrows.
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::nextState(AqlCall const& call) const -> ExecState {
+  if (_executorReturnedDone) {
+    return ExecState::FASTFORWARD;
+  }
   if (call.getOffset() > 0) {
     // First skip
     return ExecState::SKIP;
@@ -1137,7 +1126,11 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
       // If the executor has a method skipRowsRange, to skip outputs.
       // Every non-passthrough executor needs to implement this.
-      return _executor.skipRowsRange(inputRange, call);
+      // TRI_ASSERT(!_executorReturnedDone); // TODO: We're running into issues when we're activating that assert. Why that?!
+      auto res =  _executor.skipRowsRange(inputRange, call);
+      LOG_DEVEL << "skip returned state is: " << std::get<ExecutorState>(res);
+      _executorReturnedDone = std::get<ExecutorState>(res) == ExecutorState::DONE;
+      return res;
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
       // If we know that every input row produces exactly one output row (this
       // is a property of the executor), then we can just let the fetcher skip
@@ -1147,6 +1140,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
       static_assert(
           std::is_same_v<typename Executor::Stats, NoStats>,
           "Executors with custom statistics must implement skipRowsRange.");
+      // TODO Set _executorReturnedDone?
       return {inputRange.upstreamState(), NoStats{}, 0, call};
     } else {
       static_assert(dependent_false<Executor>::value,
@@ -1274,9 +1268,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
     LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
     // We found a relevant shadow Row.
     // We need to reset the Executor
-    // cppcheck-suppress unreadVariable
-    constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
-    InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+    resetExecutor();
   }
 
   TRI_ASSERT(_outputItemRow->produced());
@@ -1552,10 +1544,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             ensureOutputBlock(std::move(clientCall));
           }
           TRI_ASSERT(_outputItemRow);
+          TRI_ASSERT(!_executorReturnedDone);
 
           // Execute getSome
           auto const [state, stats, call] =
               _executor.produceRows(_lastRange, *_outputItemRow);
+          _executorReturnedDone = state == ExecutorState::DONE;
+          LOG_DEVEL << "state?: " << state;
+          LOG_DEVEL << "done?: " << _executorReturnedDone;
           _engine->_stats += stats;
           localExecutorState = state;
 
@@ -1575,10 +1571,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             _execState = ExecState::DONE;
             break;
           } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
-            LOG_DEVEL << "NEXT ASSERT";
-            LOG_DEVEL << "limit is: " << clientCall.getLimit();
-            LOG_DEVEL << "do we have a datarow left: " << std::boolalpha
-                      << _lastRange.hasDataRow();
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
             _upstreamRequest = call;
@@ -1671,7 +1663,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // We skipped through passthrough, so count that a skip was solved.
             clientCall.didSkip(skippedLocal);
           }
-          _execState = ExecState::CHECKCALL;
+          if (_lastRange.hasShadowRow() && !_lastRange.peekShadowRow().isRelevant()) {
+            _execState = ExecState::SHADOWROWS;
+          } else {
+            _execState = ExecState::CHECKCALL;
+          }
           break;
         }
         case ExecState::SHADOWROWS: {
@@ -1736,6 +1732,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     if (localExecutorState == ExecutorState::HASMORE ||
         _lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE
+      /*
       LOG_DEVEL << " == IMPL == ";
       LOG_DEVEL << "Local executor state is : " << localExecutorState;
       LOG_DEVEL << "lastRange hasDataRow: " << _lastRange.hasDataRow();
@@ -1746,6 +1743,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         LOG_DEVEL << "rows: " << outputBlock->size();
       }
       LOG_DEVEL << " == IMPL == ";
+       */
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
     }
@@ -1761,12 +1759,24 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   }
 }
 
-/// @brief reset all internal states after processing a shadow row.
 template <class Executor>
-void ExecutionBlockImpl<Executor>::resetAfterShadowRow() {
+void ExecutionBlockImpl<Executor>::resetExecutor() {
+  LOG_DEVEL << "did reset the executor";
   // cppcheck-suppress unreadVariable
-  constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
+  constexpr bool customInit = hasInitializeCursor<Executor>::value;
+  // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
+  // implemented, so assert this implementation is used.
+  static_assert(!std::is_same<Executor, EnumerateCollectionExecutor>::value || customInit,
+                "EnumerateCollectionExecutor is expected to implement a custom "
+                "initializeCursor method!");
+  static_assert(!std::is_same<Executor, IndexExecutor>::value || customInit,
+                "IndexExecutor is expected to implement a custom "
+                "initializeCursor method!");
+  static_assert(!std::is_same<Executor, DistinctCollectExecutor>::value || customInit,
+                "DistinctCollectExecutor is expected to implement a custom "
+                "initializeCursor method!");
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+  _executorReturnedDone = false;
 }
 
 template <class Executor>
@@ -1792,7 +1802,7 @@ ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
   } else {
     if (_state != InternalState::DONE) {
       _state = InternalState::FETCH_DATA;
-      resetAfterShadowRow();
+      resetExecutor();
     }
   }
   return state;

@@ -125,7 +125,10 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
 
 bool AqlItemMatrix::empty() const noexcept { return _blocks.empty(); }
 
-void AqlItemMatrix::clear() { return _blocks.clear(); }
+void AqlItemMatrix::clear() {
+  _blocks.clear();
+  _size = 0;
+}
 
 RegisterId AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
 

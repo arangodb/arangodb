@@ -61,10 +61,8 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
 }
 
 std::tuple<ExecutionState, size_t, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack& stack) {
-  LOG_DEVEL << "------ USING ALL ROWS FETCHER EXEUTE ----- ";
 
   if (!stack.isRelevant()) {
-    LOG_DEVEL << " == NOT RELEVANT == ";
     auto [state, skipped, block] = _dependencyProxy->execute(stack);
     return {state, skipped, AqlItemBlockInputMatrix{block}};
   }
@@ -73,7 +71,7 @@ std::tuple<ExecutionState, size_t, AqlItemBlockInputMatrix> AllRowsFetcher::exec
   TRI_ASSERT(!stack.peek().hasHardLimit());
   TRI_ASSERT(!stack.peek().hasSoftLimit());
 
-  if (_aqlItemMatrix == nullptr) {  // TODO: move that to the constructor
+  if (_aqlItemMatrix == nullptr) {
     _aqlItemMatrix = std::make_unique<AqlItemMatrix>(getNrInputRegisters());
   }
 
@@ -85,7 +83,6 @@ std::tuple<ExecutionState, size_t, AqlItemBlockInputMatrix> AllRowsFetcher::exec
     // we will either build a complete fetched AqlItemBlockInputMatrix or return an empty one
     if (state == ExecutionState::WAITING) {
       // On waiting we have nothing to return
-      LOG_DEVEL << "state waiting";
       return {state, 0, AqlItemBlockInputMatrix{ExecutorState::HASMORE}};
     }
 
@@ -97,11 +94,9 @@ std::tuple<ExecutionState, size_t, AqlItemBlockInputMatrix> AllRowsFetcher::exec
     // If we find a ShadowRow or ExecutionState == Done, we're done fetching.
     if (_aqlItemMatrix->stoppedOnShadowRow() || state == ExecutionState::DONE) {
       if (state == ExecutionState::HASMORE) {
-        LOG_DEVEL << "state waiting hasmore";
         return {state, 0,
                 AqlItemBlockInputMatrix{ExecutorState::HASMORE, _aqlItemMatrix.get()}};
       }
-      LOG_DEVEL << "state waiting done";
       return {state, 0,
               AqlItemBlockInputMatrix{ExecutorState::DONE, _aqlItemMatrix.get()}};
     }

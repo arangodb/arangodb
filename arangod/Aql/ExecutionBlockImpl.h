@@ -276,8 +276,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /// @brief request an AqlItemBlock from the memory manager
   [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
-  void resetAfterShadowRow();
-
   [[nodiscard]] ExecutionState fetchShadowRowInternal();
 
   // Allocate an output block and install a call in it
@@ -298,6 +296,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] auto shadowRowForwarding() -> ExecState;
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
+
+  // TODO implement
+  [[nodiscard]] auto callProduceRows(DataRange&, OutputAqlItemRow&) -> std::tuple<ExecutorState, ExecutorStats, AqlCall>;
+
+  void resetExecutor();
 
  private:
   /**
@@ -342,6 +345,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // into an output block.
   // If so we are not allowed to reuse it.
   bool _hasUsedDataRangeBlock;
+
+  bool _executorReturnedDone = false;
 };
 
 }  // namespace arangodb::aql

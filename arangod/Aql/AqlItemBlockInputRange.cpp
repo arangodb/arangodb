@@ -57,7 +57,7 @@ bool AqlItemBlockInputRange::hasDataRow() const noexcept {
   return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }
 
-std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow() const {
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRowAndState() const {
   if (hasDataRow()) {
     return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
                           InputAqlItemRow{_block, _rowIndex});
@@ -67,7 +67,7 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow() 
 }
 
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow() {
-  auto res = peekDataRow();
+  auto res = peekDataRowAndState();
   if (res.second) {
     ++_rowIndex;
   }
@@ -95,7 +95,14 @@ bool AqlItemBlockInputRange::isShadowRowAtIndex(std::size_t index) const noexcep
   return _block->isShadowRow(index);
 }
 
-std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRow() const {
+arangodb::aql::ShadowAqlItemRow AqlItemBlockInputRange::peekShadowRow() const {
+  if (hasShadowRow()) {
+    return ShadowAqlItemRow{_block, _rowIndex};
+  }
+  return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+}
+
+std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRowAndState() const {
   if (hasShadowRow()) {
     return std::make_pair(nextState<LookAhead::NEXT, RowType::SHADOW>(),
                           ShadowAqlItemRow{_block, _rowIndex});
@@ -105,7 +112,7 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRow
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow() {
-  auto res = peekShadowRow();
+  auto res = peekShadowRowAndState();
   if (res.second.isInitialized()) {
     // Advance the current row.
     _rowIndex++;

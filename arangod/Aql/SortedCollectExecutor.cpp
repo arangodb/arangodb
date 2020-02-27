@@ -313,7 +313,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   bool pendingGroup = false;
 
   while (!output.isFull()) {
-    auto [state, input] = inputRange.peekDataRow();
+    auto [state, input] = inputRange.peekDataRowAndState();
 
     LOG_DEVEL_SC << "SortedCollectExecutor::produceRows " << state << " "
                  << input.isInitialized();
@@ -408,7 +408,7 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
     LOG_DEVEL_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
 
     {
-      auto [state, input] = inputRange.peekDataRow();
+      auto [state, input] = inputRange.peekDataRowAndState();
 
       LOG_DEVEL_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
                    << std::boolalpha << input.isInitialized();

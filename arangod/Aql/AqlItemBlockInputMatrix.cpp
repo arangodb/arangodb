@@ -46,7 +46,6 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlo
 
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix)
     : _finalState{state}, _aqlItemMatrix{aqlItemMatrix} {
-  LOG_DEVEL << "ussed is relevant true";
   TRI_ASSERT(_block == nullptr);
 }
 
@@ -73,30 +72,37 @@ bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
 }
 
 bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
-  LOG_DEVEL << "shadowRow iniit: " << std::boolalpha << _shadowRow.isInitialized();
   if (_aqlItemMatrix == nullptr) {
-    LOG_DEVEL << "WE DO NOT HAVE ANY AQLITEMMATRIX";
     return false;
   }
-  LOG_DEVEL << "size: " << _aqlItemMatrix->size();
-  LOG_DEVEL << "will return: " << std::boolalpha << (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
   return (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
   auto tmpShadowRow = _shadowRow;
 
-  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
+  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow() && !_aqlItemMatrix->peekShadowRow().isRelevant()) {
     // next row will be a shadow row
     _shadowRow = _aqlItemMatrix->popShadowRow();
   } else {
     _shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint()};
   }
 
-  if (!_aqlItemMatrix->empty()) {
-    return {ExecutorState::HASMORE, tmpShadowRow};
+  auto state = ExecutorState::HASMORE;
+  if (_shadowRow.isInitialized()) {
+    TRI_ASSERT(!_shadowRow.isRelevant());
+    state = ExecutorState::HASMORE;
+  } else if (_aqlItemMatrix->stoppedOnShadowRow() && _aqlItemMatrix->peekShadowRow().isRelevant()) {
+    state = ExecutorState::DONE;
+  } else {
+    state = _finalState;
   }
-  return {_finalState, tmpShadowRow};
+
+  return {state, tmpShadowRow};
+}
+
+ShadowAqlItemRow AqlItemBlockInputMatrix::peekShadowRow() const {
+  return _shadowRow;
 }
 
 bool AqlItemBlockInputMatrix::hasShadowRow() const noexcept {
@@ -108,24 +114,10 @@ void AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
 
   if (_aqlItemMatrix->stoppedOnShadowRow()) {
     _shadowRow = _aqlItemMatrix->popShadowRow();
+    TRI_ASSERT(_shadowRow.isRelevant());
   } else {
+    TRI_ASSERT(_finalState == ExecutorState::DONE);
     _aqlItemMatrix->clear();
   }
 }
 
-/*
-// TODO: check remove skip, + remove skipped (always 0)
-auto AqlItemBlockInputMatrix::skip(std::size_t const toSkip) noexcept ->
-std::size_t { auto const skipCount = std::min(_skipped, toSkip); _skipped -=
-skipCount; return skipCount;
-}
-
-auto AqlItemBlockInputMatrix::skippedInFlight() const noexcept -> std::size_t {
-  return _skipped;
-}
-
-auto AqlItemBlockInputMatrix::skipAll() noexcept -> std::size_t {
-  auto const skipped = _skipped;
-  _skipped = 0;
-  return skipped;
-}*/
