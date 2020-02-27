@@ -659,7 +659,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
 
       callStack = maybeCallStack.get();
     } else {
-      LOG_TOPIC("404b0", WARN, Logger::AQL)
+      LOG_TOPIC("0dd42", WARN, Logger::AQL)
           << "When deserializating AqlExecuteCall: Encountered unexpected key " << key;
       // If you run into this assertion during rolling upgrades after adding a
       // new attribute, remove it in the older version.
