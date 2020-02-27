@@ -42,6 +42,8 @@ The following conditions need to hold true, we need to add c++ tests for this.
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 

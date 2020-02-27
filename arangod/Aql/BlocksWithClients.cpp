@@ -285,7 +285,7 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
-  AqlCallStack stack(AqlCall::SimulateGetSome(atMost));
+  AqlCallStack stack(AqlCall::SimulateGetSome(atMost), true);
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(skipped == 0);
   return {state, block};
@@ -296,7 +296,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>
 template <class Executor>
 std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
-  AqlCallStack stack(AqlCall::SimulateSkipSome(atMost));
+  AqlCallStack stack(AqlCall::SimulateSkipSome(atMost), true);
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(block == nullptr);
   return {state, skipped};

@@ -574,7 +574,13 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
       return {res.first, nullptr};
     }
   }
-  return _root->getSome((std::min)(atMost, ExecutionBlock::DefaultBatchSize));
+  // we use a backwards compatible stack here.
+  // This will always continue with a fetch-all on underlying subqueries (if any)
+  AqlCallStack compatibilityStack{AqlCall::SimulateGetSome(atMost), true};
+  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  // We cannot trigger a skip operation from here
+  TRI_ASSERT(skipped == 0);
+  return {state, block};
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
@@ -587,7 +593,15 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
       return {res.first, 0};
     }
   }
-  return _root->skipSome(atMost);
+
+  // we use a backwards compatible stack here.
+  // This will always continue with a fetch-all on underlying subqueries (if any)
+  AqlCallStack compatibilityStack{AqlCall::SimulateSkipSome(atMost), true};
+  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  // We cannot be triggered within a subquery from earlier versions.
+  // Also we cannot produce anything ourselfes here.
+  TRI_ASSERT(block == nullptr);
+  return {state, skipped};
 }
 
 Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
@@ -713,7 +727,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
 
     bool const returnInheritedResults = !arangodb::ServerState::isDBServer(role);
     if (returnInheritedResults) {
-      auto returnNode = dynamic_cast<ExecutionBlockImpl<IdExecutor<void>>*>(root);
+      auto returnNode =
+          dynamic_cast<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>*>(
+              root);
       TRI_ASSERT(returnNode != nullptr);
       engine->resultRegister(returnNode->getOutputRegisterId());
     } else {
