@@ -484,11 +484,6 @@ std::tuple<ExecutorState, typename IResearchViewExecutorBase<Impl, Traits>::Stat
 IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                                        AqlCall& call) {
   TRI_ASSERT(_indexReadBuffer.empty());
-  IResearchViewStats stats{};
-  const bool offsetPhase = (call.getOffset() > 0);
-  size_t skipped = 0;
-
-  AqlCall upstreamCall{};
   auto& impl = static_cast<Impl&>(*this);
 
   while (inputRange.hasDataRow() && call.shouldSkip()) {
@@ -496,38 +491,37 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
       std::tie(_inputRowState, _inputRow) = inputRange.peekDataRow();
 
       if (!_inputRow.isInitialized()) {
-        return {ExecutorState::DONE, stats, call.getSkipCount(), upstreamCall};
+        TRI_ASSERT(_inputRowState == ExecutorState::DONE);
+        break;
       }
 
       // reset must be called exactly after we've got a new and valid input row.
       impl.reset();
     }
     TRI_ASSERT(_inputRow.isInitialized());
-
-    if (offsetPhase) {
-      if (skipped < call.getOffset()) {
-        skipped = static_cast<Impl&>(*this).skip(call.getOffset());
-      } else {
-        // we skipped enough in our offset phase
-        break;
-      }
-
+    if (call.getOffset() > 0) {
+      // OffsetPhase need to skip atMost offset
+      call.didSkip(impl.skip(call.getOffset()));
     } else {
+      TRI_ASSERT(call.getLimit() == 0 && call.hasHardLimit());
       // skip all - fullCount phase
-      skipped = static_cast<Impl&>(*this).skipAll();
+      call.didSkip(impl.skipAll());
     }
     TRI_ASSERT(_indexReadBuffer.empty());
-    call.didSkip(skipped);
-    stats.incrScanned(skipped);
 
-    if (skipped < call.getOffset() || !offsetPhase) {
+    if (call.shouldSkip()) {
+      // We still need to fetch more
       // trigger refetch of new input row
       std::ignore = inputRange.nextDataRow();
       _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
     }
   }
 
-  upstreamCall.softLimit = call.getOffset();
+  IResearchViewStats stats{};
+  stats.incrScanned(call.getSkipCount());
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = call.getOffset() + std::min(call.softLimit, call.hardLimit);
   return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
 }
 
