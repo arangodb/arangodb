@@ -48,6 +48,10 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
   while (!output.isFull() && input.hasDataRow(currentDependency())) {
     auto [state, inputRow] = input.nextDataRow(currentDependency());
+    output.copyRow(inputRow);
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
+
     if (state == ExecutorState::DONE) {
       advanceDependency();
     }
@@ -58,7 +62,20 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
 
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
-  return {ExecutorState::DONE, Stats{}, 0, AqlCall{}, currentDependency()};
+  auto skipped = size_t{0};
+  while (call.needSkipMore() && input.hasDataRow(currentDependency())) {
+    auto [state, inputRow] = input.nextDataRow(currentDependency());
+
+    call.didSkip(1);
+    skipped++;
+
+    if (state == ExecutorState::DONE) {
+      advanceDependency();
+    }
+  }
+
+  return {input.upstreamState(currentDependency()), Stats{}, skipped, AqlCall{},
+          currentDependency()};
 }
 
 auto UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output)
