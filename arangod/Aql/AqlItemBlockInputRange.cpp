@@ -57,6 +57,7 @@ bool AqlItemBlockInputRange::hasDataRow() const noexcept {
   return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }
 
+// TODO: Implement peekDataRow (without state). e.g. IResearchViewExecutor does not need the state!
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRowAndState() const {
   if (hasDataRow()) {
     return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
