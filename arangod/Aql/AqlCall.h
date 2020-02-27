@@ -39,7 +39,7 @@ namespace arangodb::aql {
 struct AqlCall {
   // TODO We currently have softLimit and hardLimit, where both can be a number
   //      or Infinity - but not both may be non-infinite at the same time.
-  //      In addition, a soft limit does only make sense together with a hard
+  //      In addition, fullCount does only make sense together with a hard
   //      limit.
   //      The data structures and APIs should reflect that. E.g.:
   //      Infinity | SoftLimit { count : Int } | HardLimit { count : Int, fullCount : Bool }
