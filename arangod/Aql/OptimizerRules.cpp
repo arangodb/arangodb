@@ -5776,6 +5776,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   // variables from them
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
+    auto* options = static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
 
     std::vector<Variable const*> pruneVars;
     traversal->getPruneVariables(pruneVars);
@@ -5798,7 +5799,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
           (!n->isVarUsedLater(outVariable) &&
            std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end())) {
         // both traversal vertex and path outVariables not used later
-        traversal->options()->setProduceVertices(false);
+        options->setProduceVertices(false);
         modified = true;
       }
     }
@@ -5818,6 +5819,23 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
+    }
+  
+    // check if we can make use of the optimized neighbors enumerator
+    if (!ServerState::instance()->isCoordinator()) {
+      if (traversal->vertexOutVariable() != nullptr &&
+          traversal->edgeOutVariable() == nullptr &&
+          traversal->pathOutVariable() == nullptr &&
+          options->useBreadthFirst &&
+          options->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL &&
+          !options->usesPrune() &&
+          !options->hasDepthLookupInfo()) {
+        // this is possible in case *only* vertices are produced (no edges, no path),
+        // the traversal is breadth-first, the vertex uniqueness level is set to "global", 
+        // there is no pruning and there are no depth-specific filters
+        options->useNeighbors = true;
+        modified = true;
+      }
     }
   }
 

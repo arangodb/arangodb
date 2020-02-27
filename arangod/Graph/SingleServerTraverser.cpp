@@ -84,10 +84,13 @@ void SingleServerTraverser::createEnumerator() {
 
   if (_opts->useBreadthFirst) {
     // breadth-first enumerator
-    _enumerator.reset(new BreadthFirstEnumerator(this, _opts));
-  } else if (_useOptimizedNeighborsEnumerator) {
-    // optimized neighbors enumerator
-    _enumerator.reset(new NeighborsEnumerator(this, _opts));
+    if (_opts->useNeighbors) {
+      // optimized neighbors enumerator
+      _enumerator.reset(new NeighborsEnumerator(this, _opts));
+    } else {
+      // default breadth-first enumerator
+      _enumerator.reset(new BreadthFirstEnumerator(this, _opts));
+    }
   } else {
     // normal, depth-first enumerator
     _enumerator.reset(new DepthFirstEnumerator(this, _opts));

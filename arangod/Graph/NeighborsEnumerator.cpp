@@ -36,7 +36,12 @@ using namespace arangodb::traverser;
 
 NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, TraverserOptions* opts)
     : PathEnumerator(traverser, opts), 
-      _searchDepth(0) {}
+      _searchDepth(0) {
+      
+  TRI_ASSERT(opts->useBreadthFirst);
+  TRI_ASSERT(opts->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL);
+  TRI_ASSERT(!opts->hasDepthLookupInfo());
+}
 
 void NeighborsEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   PathEnumerator::setStartVertex(startVertex);

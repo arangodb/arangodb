@@ -177,7 +177,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_BAD_PARAMETER,
                 "uniqueEdges: 'global' is not supported, "
-                "due to unpredictable results. Use 'path' "
+                "due to otherwise unpredictable results. Use 'path' "
                 "or 'none' instead");
           }
         } else if (name == "vertexCollections") {
@@ -204,7 +204,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueVertices: 'global' is only "
                                    "supported, with bfs: true due to "
-                                   "unpredictable results.");
+                                   "otherwise unpredictable results.");
   }
 
   return options;
