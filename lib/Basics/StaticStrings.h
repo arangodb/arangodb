@@ -282,6 +282,11 @@ class StaticStrings {
   static std::string const AqlRemoteFullCount;
   static std::string const AqlRemoteOffset;
   static std::string const AqlRemoteInfinity;
+  static std::string const AqlRemoteBlock;
+  static std::string const AqlRemoteSkipped;
+  static std::string const AqlRemoteState;
+  static std::string const AqlRemoteStateDone;
+  static std::string const AqlRemoteStateHasmore;
 
   // validation
   static std::string const ValidatorLevelNone;
