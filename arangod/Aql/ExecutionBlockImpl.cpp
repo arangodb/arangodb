@@ -1400,6 +1400,13 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
         // We do not report the skip
         skippedLocal = 0;
       }
+      if constexpr (std::is_same_v<DataRange, AqlItemBlockInputMatrix>) {
+        // The executor will have used all Rows.
+        // However we need to drop them from the input
+        // here.
+        inputRange.skipAllRemainingDataRows();
+      }
+
       return {state, stats, skippedLocal, call};
     }
     case FastForwardVariant::FETCHER: {
@@ -1407,7 +1414,6 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       inputRange.skipAllRemainingDataRows();
       AqlCall call{};
       call.hardLimit = 0;
-      // TODO check: _executorReturnedDone
       return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call};
     }
   }
