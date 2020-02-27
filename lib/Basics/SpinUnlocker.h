@@ -21,8 +21,8 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_SPIN_LOCKER_H
-#define ARANGO_SPIN_LOCKER_H 1
+#ifndef ARANGO_SPIN_UNLOCKER_H
+#define ARANGO_SPIN_UNLOCKER_H 1
 
 #include <atomic>
 #include <cstdint>
@@ -31,68 +31,42 @@
 
 namespace arangodb::basics {
 
-class SpinLocker {
+class SpinUnlocker {
  public:
   enum class Mode : std::uint8_t { Read, Write };
   enum class Effort { Try, Succeed };
 
  public:
-  SpinLocker(Mode mode, ReadWriteSpinLock& lock, bool doLock = true,
-             Effort effort = Effort::Succeed)
-      : _lock(lock), _mode(mode), _locked(false) {
-    if (doLock) {      
-      if (effort == Effort::Succeed) {
-        if (_mode == Mode::Read) {
-          _lock.lockRead();
-        } else {
-          _lock.lockWrite();
-        }
-        _locked = true;
-      } else {
-        if (_mode == Mode::Read) {
-          _locked = _lock.tryLockRead();
-        } else {
-          _locked = _lock.tryLockWrite();
-        }
-      }
-    }
-  }
-
-  SpinLocker(Mode mode, ReadWriteSpinLock& lock, std::size_t maxAttempts)
-      : _lock(lock), _mode(mode), _locked(false) {
+  SpinUnlocker(Mode mode, ReadWriteSpinLock& lock)
+      : _lock(lock), _mode(mode), _locked(true) {
     if (_mode == Mode::Read) {
-      _locked = _lock.lockRead(maxAttempts);
+      _lock.unlockRead();
     } else {
-      _locked = _lock.lockWrite(maxAttempts);
+      _lock.unlockWrite();
     }
+    _locked = false;
   }
 
-  ~SpinLocker() {
-    release();
-  }
+  ~SpinUnlocker() { acquire(); }
 
-  SpinLocker(SpinLocker&& other)
-    : _lock(other._lock), _mode(other._mode), _locked(other._locked) {
-    other._locked = false;
-  }
-
-  // no move assignment (no reference assignment)
-  SpinLocker& operator=(SpinLocker&& other) = delete;
+  // no move
+  SpinUnlocker(SpinUnlocker&&) = delete;
+  SpinUnlocker& operator=(SpinUnlocker&&) = delete;
 
   // no copy
-  SpinLocker(SpinLocker const&) = delete;
-  SpinLocker& operator=(SpinLocker const&) = delete;
+  SpinUnlocker(SpinUnlocker const&) = delete;
+  SpinUnlocker& operator=(SpinUnlocker const&) = delete;
 
   bool isLocked() const { return _locked; }
 
-  void release() {
-    if (_locked) {
+  void acquire() {
+    if (!_locked) {
       if (_mode == Mode::Read) {
-        _lock.unlockRead();
+        _lock.lockRead();
       } else {
-        _lock.unlockWrite();
+        _lock.lockWrite();
       }
-      _locked = false;
+      _locked = true;
     }
   }
 
