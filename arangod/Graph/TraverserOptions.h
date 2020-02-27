@@ -84,6 +84,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool useBreadthFirst;
 
+  bool useNeighbors;
+
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
@@ -118,6 +120,8 @@ struct TraverserOptions : public graph::BaseOptions {
   void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth);
+  
+  bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 
   bool vertexHasFilter(uint64_t) const;
 

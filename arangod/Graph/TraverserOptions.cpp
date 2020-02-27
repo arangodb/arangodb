@@ -71,6 +71,7 @@ TraverserOptions::TraverserOptions(aql::Query* query)
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
+      useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
       vertexCollections() {}
@@ -82,6 +83,7 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
+      useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
       vertexCollections() {
@@ -97,6 +99,10 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
   TRI_ASSERT(minDepth <= maxDepth);
   useBreadthFirst = VPackHelper::getBooleanValue(obj, "bfs", false);
+  useNeighbors = VPackHelper::getBooleanValue(obj, "neighbors", false);
+
+  TRI_ASSERT(!useNeighbors || useBreadthFirst);
+  
   std::string tmp = VPackHelper::getStringValue(obj, "uniqueVertices", "");
   if (tmp == "path") {
     uniqueVertices = TraverserOptions::UniquenessLevel::PATH;
@@ -105,7 +111,7 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "uniqueVertices: 'global' is only "
                                      "supported, with bfs: true due to "
-                                     "unpredictable results.");
+                                     "otherwise unpredictable results.");
     }
     uniqueVertices = TraverserOptions::UniquenessLevel::GLOBAL;
   } else {
@@ -118,7 +124,7 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
   } else if (tmp == "global") {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueEdges: 'global' is not supported, "
-                                   "due to unpredictable results. Use 'path' "
+                                   "due to otherwise unpredictable results. Use 'path' "
                                    "or 'none' instead");
   } else {
     uniqueEdges = TraverserOptions::UniquenessLevel::PATH;
@@ -156,6 +162,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
+      useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
       vertexCollections() {
@@ -186,6 +193,12 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
                                    "The options require a bfs");
   }
   useBreadthFirst = read.getBool();
+  
+  read = info.get("neighbors");
+  if (read.isBoolean()) {
+    useNeighbors = read.getBool();
+  }
+  TRI_ASSERT(!useNeighbors || useBreadthFirst);
 
   read = info.get("uniqueVertices");
   if (!read.isInteger()) {
@@ -319,6 +332,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& 
       minDepth(other.minDepth),
       maxDepth(other.maxDepth),
       useBreadthFirst(other.useBreadthFirst),
+      useNeighbors(other.useNeighbors),
       uniqueVertices(other.uniqueVertices),
       uniqueEdges(other.uniqueEdges),
       vertexCollections(other.vertexCollections) {
@@ -346,6 +360,7 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("bfs", VPackValue(useBreadthFirst));
+  builder.add("neighbors", VPackValue(useNeighbors));
 
   switch (uniqueVertices) {
     case TraverserOptions::UniquenessLevel::NONE:
@@ -416,6 +431,7 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
   result.add("bfs", VPackValue(useBreadthFirst));
+  result.add("neighbors", VPackValue(useNeighbors));
 
   result.add(VPackValue("uniqueVertices"));
   switch (uniqueVertices) {
