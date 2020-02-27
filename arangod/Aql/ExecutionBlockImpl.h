@@ -229,9 +229,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   // execute a skipRowsRange call
   std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> executeSkipRowsRange(
-      AqlItemBlockInputRange& input, AqlCall& call);
+      typename Fetcher::DataRange& input, AqlCall& call);
 
-  auto executeFastForward(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+  auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
       -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall>;
 
   /**

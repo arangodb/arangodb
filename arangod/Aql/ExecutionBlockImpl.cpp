@@ -1106,7 +1106,7 @@ template <class T>
 struct dependent_false : std::false_type {};
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(AqlItemBlockInputRange& inputRange,
+auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRange& inputRange,
                                                         AqlCall& call)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
   if constexpr (isNewStyleExecutor<Executor>) {
@@ -1166,7 +1166,7 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& inputRange,
+auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRange& inputRange,
                                                       AqlCall& clientCall)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
   TRI_ASSERT(isNewStyleExecutor<Executor>);
