@@ -2227,7 +2227,7 @@ arangodb::Result fromFuncPhrase(
   return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, true);
 }
 
-// NGRAM_SIMILAR (attribute, target, threshold)
+// NGRAM_MATCH (attribute, target, threshold [, <analyzer>])
 arangodb::Result fromFuncNgramMatch(
     char const* funcName,
     irs::boolean_filter* filter, QueryContext const& ctx,
