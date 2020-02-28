@@ -23,10 +23,8 @@
 
 #include "RestAqlHandler.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/AqlCallStack.h"
+#include "Aql/AqlExecuteResult.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
@@ -47,7 +45,9 @@
 #include "Logger/Logger.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "VocBase/ticks.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -678,61 +678,6 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
   TRI_ASSERT(callStack.has_value());
 
   return {AqlExecuteCall{std::move(callStack).value()}};
-}
-
-class AqlExecuteResult {
- public:
-  AqlExecuteResult(ExecutionState state, std::size_t skipped, SharedAqlItemBlockPtr&& block)
-      : _state(state), _skipped(skipped), _block(std::move(block)) {}
-
-  void toVelocyPack(VPackBuilder&, VPackOptions const*);
-
-  [[nodiscard]] auto state() const noexcept -> ExecutionState;
-  [[nodiscard]] auto skipped() const noexcept -> std::size_t;
-  [[nodiscard]] auto block() const noexcept -> SharedAqlItemBlockPtr const&;
-
- private:
-  ExecutionState _state = ExecutionState::HASMORE;
-  std::size_t _skipped = 0;
-  SharedAqlItemBlockPtr _block = nullptr;
-};
-
-auto AqlExecuteResult::state() const noexcept -> ExecutionState {
-  return _state;
-}
-
-auto AqlExecuteResult::skipped() const noexcept -> std::size_t {
-  return _skipped;
-}
-
-auto AqlExecuteResult::block() const noexcept -> SharedAqlItemBlockPtr const& {
-  return _block;
-}
-
-void AqlExecuteResult::toVelocyPack(VPackBuilder& builder, VPackOptions const* const options) {
-  using namespace velocypack;
-  auto const stateToValue = [](ExecutionState state) -> Value {
-    switch (state) {
-      case ExecutionState::DONE:
-        return Value(StaticStrings::AqlRemoteStateDone);
-      case ExecutionState::HASMORE:
-        return Value(StaticStrings::AqlRemoteStateHasmore);
-      case ExecutionState::WAITING:
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL_AQL,
-            "Unexpected state WAITING, must not be serialized.");
-    }
-    THROW_ARANGO_EXCEPTION_MESSAGE( TRI_ERROR_INTERNAL_AQL, "Unhandled state");
-  };
-
-  builder.add(StaticStrings::AqlRemoteState, stateToValue(state()));
-  builder.add(StaticStrings::AqlRemoteSkipped, Value(skipped()));
-  if (block() != nullptr) {
-    ObjectBuilder guard(&builder, StaticStrings::AqlRemoteBlock);
-    block()->toVelocyPack(options, builder);
-  } else {
-    builder.add(StaticStrings::AqlRemoteBlock, Value(ValueType::Null));
-  }
 }
 
 // handle for useQuery

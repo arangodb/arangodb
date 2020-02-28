@@ -220,6 +220,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AllRowsFetcher.cpp
   Aql/AqlCall.cpp
   Aql/AqlCallStack.cpp
+  Aql/AqlExecuteResult.cpp
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockInputRange.cpp
