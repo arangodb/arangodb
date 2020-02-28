@@ -20,13 +20,44 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Builder.h>
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallStack.h"
+#include "Aql/AqlExecuteResult.h"
+#include "Aql/AqlItemBlockManager.h"
+
+#include "AqlItemBlockHelper.h"
+
 #include "gtest/gtest.h"
 
-#include "Aql/AqlCall.h"
+#include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+namespace arangodb::aql {
+
+auto operator==(AqlCallStack const& leftC, AqlCallStack const& rightC) -> bool {
+  auto left = leftC;
+  auto right = rightC;
+
+  while (!left.empty() && !right.empty()) {
+    auto const l = left.popCall();
+    auto const r = right.popCall();
+    if (!(l == r)) {
+      return false;
+    }
+  }
+
+  return left.empty() && right.empty();
+}
+
+auto operator==(AqlExecuteResult const& left, AqlExecuteResult const& right) -> bool {
+  return left.state() == right.state() && left.skipped() == right.skipped() &&
+         left.block() == right.block() &&
+         (left.block() == nullptr || *left.block() == *right.block());
+}
+
+}  // namespace arangodb::aql
 
 namespace arangodb::tests::aql {
 
@@ -76,5 +107,97 @@ TEST_P(DeSerializeAqlCallTest, testSuite) {
 }
 
 INSTANTIATE_TEST_CASE_P(DeSerializeAqlCallTestVariations, DeSerializeAqlCallTest, testingAqlCalls);
+
+class DeSerializeAqlCallStackTest : public ::testing::TestWithParam<AqlCallStack> {
+ public:
+  DeSerializeAqlCallStackTest() = default;
+
+  void SetUp() override {
+    aqlCallStack = GetParam();
+  }
+
+ protected:
+  AqlCallStack aqlCallStack{AqlCall{}};
+};
+
+auto const testingAqlCallStacks = ::testing::ValuesIn(std::array{
+  AqlCallStack{AqlCall{}},
+  AqlCallStack{AqlCall{3, false, AqlCall::Infinity{}}},
+  AqlCallStack{AqlCallStack{AqlCall{}}, AqlCall{3, false, AqlCall::Infinity{}}},
+  AqlCallStack{AqlCallStack{AqlCallStack{AqlCall{1}}, AqlCall{2}}, AqlCall{3}},
+  AqlCallStack{AqlCallStack{AqlCallStack{AqlCall{3}}, AqlCall{2}}, AqlCall{1}},
+});
+
+TEST_P(DeSerializeAqlCallStackTest, testSuite) {
+  auto builder = velocypack::Builder{};
+  aqlCallStack.toVelocyPack(builder);
+
+  ASSERT_TRUE(builder.isClosed());
+
+  auto const maybeDeSerializedCallStack = std::invoke([&]() {
+    try {
+      return AqlCallStack::fromVelocyPack(builder.slice());
+    } catch (std::exception const& ex) {
+      EXPECT_TRUE(false) << ex.what();
+    }
+    return ResultT<AqlCallStack>::error(-1);
+  });
+
+  ASSERT_TRUE(maybeDeSerializedCallStack.ok()) << maybeDeSerializedCallStack.errorMessage();
+
+  auto const deSerializedCallStack = *maybeDeSerializedCallStack;
+
+  ASSERT_EQ(aqlCallStack, deSerializedCallStack);
+}
+
+INSTANTIATE_TEST_CASE_P(DeSerializeAqlCallStackTestVariations, DeSerializeAqlCallStackTest, testingAqlCallStacks);
+
+
+class DeSerializeAqlExecuteResultTest : public ::testing::TestWithParam<AqlExecuteResult> {
+ public:
+  DeSerializeAqlExecuteResultTest() = default;
+
+  void SetUp() override {
+    aqlExecuteResult = GetParam();
+  }
+
+ protected:
+  AqlExecuteResult aqlExecuteResult{ExecutionState::DONE, 0, nullptr};
+};
+
+ResourceMonitor resourceMonitor{};
+AqlItemBlockManager manager{&resourceMonitor, SerializationFormat::SHADOWROWS};
+
+auto const testingAqlExecuteResults = ::testing::ValuesIn(std::array{
+    AqlExecuteResult{ExecutionState::DONE, 0, nullptr},
+    AqlExecuteResult{ExecutionState::HASMORE, 0, nullptr},
+    AqlExecuteResult{ExecutionState::HASMORE, 4, nullptr},
+    AqlExecuteResult{ExecutionState::DONE, 0, buildBlock<1>(manager, {{42}})},
+    AqlExecuteResult{ExecutionState::HASMORE, 3, buildBlock<2>(manager, {{3, 42}, {4, 41}})},
+});
+
+TEST_P(DeSerializeAqlExecuteResultTest, testSuite) {
+  auto builder = velocypack::Builder{};
+  aqlExecuteResult.toVelocyPack(builder, &velocypack::Options::Defaults);
+
+  ASSERT_TRUE(builder.isClosed());
+
+  auto const maybeAqlExecuteResult = std::invoke([&]() {
+    try {
+      return AqlExecuteResult::fromVelocyPack(builder.slice(), manager);
+    } catch (std::exception const& ex) {
+      EXPECT_TRUE(false) << ex.what();
+    }
+    return ResultT<AqlExecuteResult>::error(-1);
+  });
+
+  ASSERT_TRUE(maybeAqlExecuteResult.ok()) << maybeAqlExecuteResult.errorMessage();
+
+  auto const deSerializedAqlExecuteResult = *maybeAqlExecuteResult;
+
+  ASSERT_EQ(aqlExecuteResult, deSerializedAqlExecuteResult);
+}
+
+INSTANTIATE_TEST_CASE_P(DeSerializeAqlExecuteResultTestVariations, DeSerializeAqlExecuteResultTest, testingAqlExecuteResults);
 
 }  // namespace arangodb::tests::aql
