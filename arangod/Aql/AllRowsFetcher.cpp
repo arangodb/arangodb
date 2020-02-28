@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AllRowsFetcher.h"
+#include <Logger/LogMacros.h>
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
@@ -57,6 +58,52 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
   // Unreachable code
   TRI_ASSERT(false);
   return {ExecutionState::DONE, nullptr};
+}
+
+std::tuple<ExecutionState, size_t, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack& stack) {
+  if (!stack.isRelevant()) {
+    auto [state, skipped, block] = _dependencyProxy->execute(stack);
+    return {state, skipped, AqlItemBlockInputMatrix{block}};
+  }
+  TRI_ASSERT(stack.peek().getOffset() == 0);
+  TRI_ASSERT(!stack.peek().needsFullCount());
+  // We allow a 0 hardLimit for bypassing
+  // bot otherwise we do not allow any limit
+  TRI_ASSERT(!stack.peek().hasHardLimit() || stack.peek().getLimit() == 0);
+  TRI_ASSERT(!stack.peek().hasSoftLimit());
+
+  if (_aqlItemMatrix == nullptr) {
+    _aqlItemMatrix = std::make_unique<AqlItemMatrix>(getNrInputRegisters());
+  }
+  // We can only execute More if we are not Stopped yet.
+  TRI_ASSERT(!_aqlItemMatrix->stoppedOnShadowRow());
+  while (true) {
+    auto [state, skipped, block] = _dependencyProxy->execute(stack);
+    TRI_ASSERT(skipped == 0);
+
+    // we will either build a complete fetched AqlItemBlockInputMatrix or return an empty one
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(block == nullptr);
+      // On waiting we have nothing to return
+      return {state, 0, AqlItemBlockInputMatrix{ExecutorState::HASMORE}};
+    }
+    TRI_ASSERT(block != nullptr || state == ExecutionState::DONE);
+
+    if (block != nullptr) {
+      // we need to store the block for later creation of AqlItemBlockInputMatrix
+      _aqlItemMatrix->addBlock(std::move(block));
+    }
+
+    // If we find a ShadowRow or ExecutionState == Done, we're done fetching.
+    if (_aqlItemMatrix->stoppedOnShadowRow() || state == ExecutionState::DONE) {
+      if (state == ExecutionState::HASMORE) {
+        return {state, 0,
+                AqlItemBlockInputMatrix{ExecutorState::HASMORE, _aqlItemMatrix.get()}};
+      }
+      return {state, 0,
+              AqlItemBlockInputMatrix{ExecutorState::DONE, _aqlItemMatrix.get()}};
+    }
+  }
 }
 
 std::pair<ExecutionState, InputAqlItemRow> AllRowsFetcher::fetchRow(size_t atMost) {
