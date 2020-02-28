@@ -1,6 +1,12 @@
 devel
 -----
 
+* Foxx Response#throw will no longer generate incomplete error objects when
+  passed invalid arguments.
+
+* Foxx will now always generate a numeric HTTP status code even if the response
+  status code has been set to a non-numeric value.
+
 * Make arangobench return a proper error message when its initial attempt to 
   create the test collection fails.
 
