@@ -65,6 +65,7 @@ void AqlExecuteResult::toVelocyPack(velocypack::Builder& builder,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Unhandled state");
   };
 
+  builder.openObject();
   builder.add(StaticStrings::AqlRemoteState, stateToValue(state()));
   builder.add(StaticStrings::AqlRemoteSkipped, Value(skipped()));
   if (block() != nullptr) {
@@ -73,6 +74,7 @@ void AqlExecuteResult::toVelocyPack(velocypack::Builder& builder,
   } else {
     builder.add(StaticStrings::AqlRemoteBlock, Value(ValueType::Null));
   }
+  builder.close();
 }
 
 auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice, AqlItemBlockManager& itemBlockManager) -> ResultT<AqlExecuteResult> {

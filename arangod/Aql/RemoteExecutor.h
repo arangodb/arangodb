@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_REMOTE_EXECUTOR_H
 #define ARANGOD_AQL_REMOTE_EXECUTOR_H
 
+#include "Aql/AqlExecuteResult.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
@@ -92,6 +93,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   auto executeViaNewApi(AqlCallStack stack)
       -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
 
+  [[nodiscard]] auto deserializeExecuteCallResultBody(velocypack::Slice) const
+      -> ResultT<AqlExecuteResult>;
   [[nodiscard]] auto serializeExecuteCallBody(AqlCallStack const& callStack) const
       -> velocypack::Buffer<uint8_t>;
 

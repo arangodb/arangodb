@@ -512,11 +512,11 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
 
     VPackSlice responseBody = response->slice();
 
-    TRI_ASSERT(TRI_ERROR_NO_ERROR ==
-               VelocyPackHelper::getNumericValue<int>(responseBody,
-                                                      StaticStrings::Code, -1));
+    auto result = deserializeExecuteCallResultBody(responseBody);
 
-    auto result = AqlExecuteResult::fromVelocyPack(responseBody, _engine->itemBlockManager());
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
 
     return result->asTuple();
   }
@@ -533,6 +533,24 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
   }
 
   return {ExecutionState::WAITING, 0, nullptr};
+}
+
+auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(VPackSlice const slice) const
+    -> ResultT<AqlExecuteResult> {
+  // Errors should have been caught earlier
+  TRI_ASSERT(TRI_ERROR_NO_ERROR ==
+             VelocyPackHelper::getNumericValue<int>(slice, StaticStrings::Code, -1));
+
+  if (ADB_UNLIKELY(!slice.isObject())) {
+    using namespace std::string_literals;
+    return Result{TRI_ERROR_TYPE_ERROR, "When parsing execute result: expected object, got "s + slice.typeName()};
+  }
+
+  if (auto value = slice.get(StaticStrings::AqlRemoteResult); !value.isNone()) {
+    return AqlExecuteResult::fromVelocyPack(slice, _engine->itemBlockManager());
+  }
+
+  return Result{TRI_ERROR_TYPE_ERROR, "When parsing execute result: field result missing"};
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::serializeExecuteCallBody(AqlCallStack const& callStack) const

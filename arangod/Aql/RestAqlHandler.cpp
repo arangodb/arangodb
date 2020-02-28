@@ -748,6 +748,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     }
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
+    answerBuilder.add(VPackValue(StaticStrings::AqlRemoteResult));
     result.toVelocyPack(answerBuilder,
                         _query->trx()->transactionContextPtr()->getVPackOptions());
     answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));

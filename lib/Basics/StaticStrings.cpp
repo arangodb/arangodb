@@ -307,6 +307,7 @@ std::string const StaticStrings::AqlRemoteLimitTypeHard("hard");
 std::string const StaticStrings::AqlRemoteFullCount("fullCount");
 std::string const StaticStrings::AqlRemoteOffset("offset");
 std::string const StaticStrings::AqlRemoteInfinity("infinity");
+std::string const StaticStrings::AqlRemoteResult("result");
 std::string const StaticStrings::AqlRemoteBlock("block");
 std::string const StaticStrings::AqlRemoteSkipped("skipped");
 std::string const StaticStrings::AqlRemoteState("state");
