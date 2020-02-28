@@ -2132,6 +2132,109 @@ arangodb::Result fromFuncPhraseLike(char const* funcName,
   return {};
 }
 
+template<size_t First>
+arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
+                                         QueryContext const& ctx,
+                                         arangodb::aql::AstNode const& args,
+                                         arangodb::aql::AstNode const** field,
+                                         ScopedAqlValue& targetValue,
+                                         irs::string_ref& target,
+                                         size_t& scoringLimit, int64_t& maxDistance,
+                                         bool& withTranspositions,
+                                         std::string const& errorSuffix = std::string()) {
+  if (!args.isDeterministic()) {
+    auto res = error::nondeterministicArgs(funcName);
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+  auto const argc = args.numMembers();
+  constexpr size_t min = 3 - First;
+  constexpr size_t max = 4 - First;
+  if (argc < min || argc > max) {
+    auto res = error::invalidArgsCount<error::Range<min, max>>(funcName);
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+
+  if constexpr (0 == First) {
+    TRI_ASSERT(field);
+    // (0 - First) argument defines a field
+    *field = arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+
+    if (!*field) {
+      return error::invalidAttribute(funcName, 1);
+    }
+  }
+
+  // (1 - First) argument defines a target
+  auto res = evaluateArg(target, targetValue, funcName, args, 1 - First, isFilter, ctx);
+
+  if (res.fail()) {
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+
+  ScopedAqlValue tmpValue; // can reuse value for int64_t and bool
+
+  // (2 - First) argument defines a max distance
+  res = evaluateArg(maxDistance, tmpValue, funcName, args, 2 - First, isFilter, ctx);
+
+  if (res.fail()) {
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+
+  if (maxDistance < 0) {
+    return {
+      TRI_ERROR_BAD_PARAMETER, "'"s.append(funcName)
+          .append("' AQL function: max distance must be a non-negative number")
+          .append(errorSuffix)
+    };
+  }
+
+  // optional (3 - First) argument defines transpositions
+  if (4 - First == argc) {
+    res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3 - First, isFilter, ctx);
+
+    if (res.fail()) {
+      return {
+        res.errorNumber(),
+        res.errorMessage().append(errorSuffix)
+      };
+    }
+  }
+
+  if (!withTranspositions && maxDistance > MAX_LEVENSHTEIN_DISTANCE) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName)
+          .append("' AQL function: max Levenshtein distance must be a number in range [0, ")
+          .append(std::to_string(MAX_LEVENSHTEIN_DISTANCE)).append("]")
+          .append(errorSuffix)
+    };
+  } else if (withTranspositions && maxDistance > MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName)
+          .append("' AQL function: max Damerau-Levenshtein distance must be a number in range [0, ")
+          .append(std::to_string(MAX_DAMERAU_LEVENSHTEIN_DISTANCE)).append("]")
+          .append(errorSuffix)
+    };
+  }
+
+  scoringLimit = 128; // FIXME make configurable
+
+  return {};
+}
+
 // {<LEVENSHTEIN_MATCH>: '[' <term>, <max_distance> [, <with_transpositions> ] ']'}
 arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
                                                 size_t const funcArgumentPosition,
@@ -2142,94 +2245,25 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
                                                 size_t firstOffset) {
   TRI_ASSERT(array.isArray());
 
-  if (!array.isDeterministic()) {
-    auto res = error::nondeterministicArgs(subFuncName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
-  }
-
-  auto const argc = array.numMembers();
-  if (argc < 2 || argc > 3) {
-    auto res = error::invalidArgsCount<error::Range<2, 3>>(subFuncName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
-  }
-
-  // 1st argument defines a target
-  ScopedAqlValue termValue;
-  irs::string_ref term;
-  auto res = evaluateArg(term, termValue, subFuncName, array, 0, filter != nullptr, ctx);
-
-  if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
-  }
-
-  ScopedAqlValue tmpValue; // can reuse value for int64_t and bool
-
-  // 2nd argument defines a max distance
+  ScopedAqlValue targetValue;
+  irs::string_ref target;
+  size_t scoringLimit = 0;
   int64_t maxDistance = 0;
-  res = evaluateArg(maxDistance, tmpValue, subFuncName, array, 1, filter != nullptr, ctx);
-
-  if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
-  }
-
-  if (maxDistance < 0) {
-    return {
-      TRI_ERROR_BAD_PARAMETER, "'"s.append(subFuncName)
-          .append("' AQL function: max distance must be a non-negative number")
-          .append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
-  }
-
-  // optional 3rd argument defines transpositions
   auto withTranspositions = false;
-
-  if (3 == argc) {
-    res = evaluateArg(withTranspositions, tmpValue, subFuncName, array, 2, filter != nullptr, ctx);
-
-    if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-      };
-    }
-  }
-
-  if (!withTranspositions && maxDistance > MAX_LEVENSHTEIN_DISTANCE) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "'"s.append(subFuncName)
-          .append("' AQL function: max Levenshtein distance must be a number in range [0, ")
-          .append(std::to_string(MAX_LEVENSHTEIN_DISTANCE)).append("]")
-          .append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
-  } else if (withTranspositions && maxDistance > MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "'"s.append(subFuncName)
-          .append("' AQL function: max Damerau-Levenshtein distance must be a number in range [0, ")
-          .append(std::to_string(MAX_DAMERAU_LEVENSHTEIN_DISTANCE)).append("]")
-          .append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
+  auto res = getLevenshteinArguments<1>(subFuncName, filter != nullptr, ctx, array, nullptr,
+                                        targetValue, target, scoringLimit, maxDistance,
+                                        withTranspositions,
+                                        getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+  if (res.fail()) {
+    return res;
   }
 
   if (filter) {
     filter->push_back(
-          irs::by_phrase::info_t::levenshtein_term{{128}, // FIXME make configurable
+          irs::by_phrase::info_t::levenshtein_term{{scoringLimit},
                                                    static_cast<irs::byte_type>(maxDistance),
                                                    &arangodb::iresearch::getParametricDescription,
-                                                   withTranspositions}, term, firstOffset);
+                                                   withTranspositions}, target, firstOffset);
   }
   return {};
 }
@@ -2750,79 +2784,18 @@ arangodb::Result fromFuncLevenshteinMatch(
     arangodb::aql::AstNode const& args) {
   TRI_ASSERT(funcName);
 
-  if (!args.isDeterministic()) {
-    return error::nondeterministicArgs(funcName);
-  }
-
-  auto const argc = args.numMembers();
-
-  if (argc < 3 || argc > 4) {
-    return error::invalidArgsCount<error::Range<3, 4>>(funcName);
-  }
-
-  // 1st argument defines a field
-  auto const* field =
-      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
-
-  if (!field) {
-    return error::invalidAttribute(funcName, 1);
-  }
-
-  // 2nd argument defines a target
+  arangodb::aql::AstNode const* field = nullptr;
   ScopedAqlValue targetValue;
   irs::string_ref target;
-  arangodb::Result res = evaluateArg(target, targetValue, funcName, args, 1, filter != nullptr, ctx);
-
-  if (!res.ok()) {
-    return res;
-  }
-
-  ScopedAqlValue tmpValue; // can reuse value for int64_t and bool
-
-  // 3rd argument defines a max distance
+  size_t scoringLimit = 0;
   int64_t maxDistance = 0;
-  res = evaluateArg(maxDistance, tmpValue, funcName, args, 2, filter != nullptr, ctx);
-
-  if (!res.ok()) {
+  auto withTranspositions = false;
+  auto res = getLevenshteinArguments<0>(funcName, filter != nullptr, ctx, args, &field,
+                                        targetValue, target, scoringLimit, maxDistance,
+                                        withTranspositions);
+  if (res.fail()) {
     return res;
   }
-
-  if (maxDistance < 0) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "'"s.append(funcName)
-          .append("' AQL function: max distance must be a positive number")
-    };
-  }
-
-  // optional 4th argument defines transpositions
-  bool withTranspositions = false;
-
-  if (4 == argc) {
-    res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3, filter != nullptr, ctx);
-
-    if (!res.ok()) {
-      return res;
-    }
-  }
-
-  if (!withTranspositions && maxDistance > MAX_LEVENSHTEIN_DISTANCE) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "'"s.append(funcName)
-          .append("' AQL function: max Levenshtein distance must be a number in range [0, ")
-          .append(std::to_string(MAX_LEVENSHTEIN_DISTANCE)).append("]")
-    };
-  } else if (withTranspositions && maxDistance > MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "'"s.append(funcName)
-          .append("' AQL function: max Damerau-Levenshtein distance must be a number in range [0, ")
-          .append(std::to_string(MAX_DAMERAU_LEVENSHTEIN_DISTANCE)).append("]")
-    };
-  }
-
-  const size_t scoringLimit = 128;  // FIXME make configurable
 
   if (filter) {
     std::string name;
