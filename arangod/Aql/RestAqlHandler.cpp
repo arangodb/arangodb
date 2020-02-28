@@ -615,6 +615,14 @@ class AqlExecuteCall {
   AqlCallStack _callStack;
 };
 
+namespace {
+// hack for MSVC
+auto getStringView(velocypack::Slice slice) -> std::string_view {
+  velocypack::StringRef ref = slice.stringRef();
+  return std::string_view(ref.data(), ref.size());
+}
+}
+
 // TODO Use the deserializer when available
 auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecuteCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {
@@ -635,7 +643,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
       return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
           "When deserializating AqlExecuteCall: Key is not a string");
     }
-    auto const key = keySlice.stringView();
+    auto const key = getStringView(keySlice);
 
     if (auto propIt = expectedPropertiesFound.find(key);
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
