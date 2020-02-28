@@ -114,6 +114,7 @@ add_library(arango STATIC
   Basics/ConditionVariable.cpp
   Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
+  Basics/EncodingUtils.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
@@ -122,6 +123,7 @@ add_library(arango STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
+  Basics/NumberUtils.cpp
   Basics/PageSize.cpp
   Basics/PhysicalMemory.cpp
   Basics/ReadWriteLock.cpp
@@ -145,7 +147,6 @@ add_library(arango STATIC
   Basics/csv.cpp
   Basics/datetime.cpp
   Basics/debugging.cpp
-  Basics/EncodingUtils.cpp
   Basics/error.cpp
   Basics/fasthash.cpp
   Basics/files.cpp

@@ -87,6 +87,8 @@ VPackSlice extractToFromDocument(VPackSlice);
 void extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
                                   TRI_voc_rid_t& revisionId);
 
+velocypack::StringRef extractCollectionFromId(velocypack::StringRef id);
+
 /// @brief extract _rev from a database document
 TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
 VPackSlice extractRevSliceFromDocument(VPackSlice slice);
