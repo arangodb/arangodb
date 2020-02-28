@@ -153,7 +153,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
     traceGetSomeRequest(builder.slice(), atMost);
   }
 
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome/",
+  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome",
                               std::move(buffer));
 
   if (!res.ok()) {
@@ -233,7 +233,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
     builder.close();
     traceSkipSomeRequest(builder.slice(), atMost);
   }
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/skipSome/",
+  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/skipSome",
                               std::move(buffer));
 
   if (!res.ok()) {
@@ -321,7 +321,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   traceInitializeCursorRequest(builder.slice());
 
   auto res = sendAsyncRequest(fuerte::RestVerb::Put,
-                              "/_api/aql/initializeCursor/", std::move(buffer));
+                              "/_api/aql/initializeCursor", std::move(buffer));
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -353,7 +353,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
     traceShutdownRequest(builder.slice(), errorCode);
 
-    auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/shutdown/",
+    auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/shutdown",
                                 std::move(buffer));
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -613,7 +613,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   auto req = fuerte::createRequest(type, fuerte::ContentType::VPack);
   req->header.database = _query.vocbase().name();
-  req->header.path = urlPart + _queryId;
+  req->header.path = urlPart + "/" + _queryId;
   req->addVPack(std::move(body));
 
   // Later, we probably want to set these sensibly:

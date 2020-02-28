@@ -81,7 +81,10 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
   };
 
-  auto const readLimitType = [](velocypack::Slice slice) -> ResultT<AqlCall::LimitType> {
+  auto const readLimitType = [](velocypack::Slice slice) -> ResultT<std::optional<AqlCall::LimitType>> {
+    if (slice.isNull()) {
+      return {std::nullopt};
+    }
     if (ADB_UNLIKELY(!slice.isString())) {
       auto message = std::string{
           "When deserializating AqlCall: When reading limitType: "
@@ -91,10 +94,10 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
     auto value = slice.stringView();
     if (value == StaticStrings::AqlRemoteLimitTypeSoft) {
-      return AqlCall::LimitType::SOFT;
+      return {AqlCall::LimitType::SOFT};
     }
     else if (value == StaticStrings::AqlRemoteLimitTypeHard) {
-      return AqlCall::LimitType::HARD;
+      return {AqlCall::LimitType::HARD};
     }
     else {
       auto message = std::string{
@@ -253,10 +256,12 @@ void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
     }
   });
 
+  builder.openObject();
   builder.add(StaticStrings::AqlRemoteLimit, limitValue);
   builder.add(StaticStrings::AqlRemoteLimitType, limitTypeValue);
   builder.add(StaticStrings::AqlRemoteFullCount, Value(fullCount));
   builder.add(StaticStrings::AqlRemoteOffset, Value(offset));
+  builder.close();
 }
 
 auto AqlCall::toString() const -> std::string {

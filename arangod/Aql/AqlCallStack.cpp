@@ -163,7 +163,7 @@ void AqlCallStack::toVelocyPack(velocypack::Builder& builder) const {
   }
 
   builder.openArray();
-  for (auto it = reverseStack.rbegin(); it != reverseStack.rend(); --it) {
+  for (auto it = reverseStack.rbegin(); it != reverseStack.rend(); ++it) {
     auto const& call = *it;
     call.toVelocyPack(builder);
   }
