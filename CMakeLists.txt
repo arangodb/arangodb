@@ -906,8 +906,9 @@ elseif (MSVC)
   if (VERBOSE)
     message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
   endif ()
-
-  set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
+# /Zc:__cplusplus
+#   make MSVC correctly report the C++ version in __cplusplus; without it, it always reports 199711L (i.e. C++98).
+  set(BASE_FLAGS "/wd4996 /Zc:__cplusplus ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")

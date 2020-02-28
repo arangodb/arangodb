@@ -26,6 +26,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
@@ -400,41 +401,7 @@ bool RestAqlHandler::killQuery(std::string const& idString) {
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
-// this is using the part of the cursor API with side effects.
-// <operation>: can be "lock" or "getSome" or "skip" or "initializeCursor" or
-// "shutdown".
-// The body must be a Json with the following attributes:
-// For the "getSome" operation one has to give:
-//   "atMost": must be a positive integer, the cursor returns never
-//             more than "atMost" items. The result is the JSON representation
-//             of an AqlItemBlock.
-//             If "atMost" is not given it defaults to
-//             ExecutionBlock::DefaultBatchSize.
-// For the "skipSome" operation one has to give:
-//   "atMost": must be a positive integer, the cursor skips never
-//             more than "atMost" items. The result is a JSON object with a
-//             single attribute "skipped" containing the number of
-//             skipped items.
-//             If "atMost" is not given it defaults to
-//             ExecutionBlock::DefaultBatchSize.
-// For the "skip" operation one should give:
-//   "number": must be a positive integer, the cursor skips as many items,
-//             possibly exhausting the cursor.
-//             The result is a JSON with the attributes "error" (boolean),
-//             "errorMessage" (if applicable) and "done" (boolean)
-//             to indicate whether or not the cursor is exhausted.
-//             If "number" is not given it defaults to 1.
-// For the "initializeCursor" operation, one has to bind the following
-// attributes:
-//   "items": This is a serialized AqlItemBlock with usually only one row
-//            and the correct number of columns.
-//   "pos":   The number of the row in "items" to take, usually 0.
-// For the "shutdown" and "lock" operations no additional arguments are
-// required and an empty JSON object in the body is OK.
-// All operations allow to set the HTTP header "x-shard-id:". If this is
-// set, then the root block of the stored query must be a ScatterBlock
-// and the shard ID is given as an additional argument to the ScatterBlock's
-// special API.
+// see comment in header for details
 RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string const& idString) {
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
@@ -635,6 +602,139 @@ Query* RestAqlHandler::findQuery(std::string const& idString) {
   return q;
 }
 
+class AqlExecuteCall {
+ public:
+  // Deserializing factory
+  static auto fromVelocyPack(VPackSlice slice) -> ResultT<AqlExecuteCall>;
+
+  auto callStack() const noexcept -> AqlCallStack const& { return _callStack; }
+
+ private:
+  AqlExecuteCall(AqlCallStack&& callStack) : _callStack(std::move(callStack)) {}
+
+  AqlCallStack _callStack;
+};
+
+// TODO Use the deserializer when available
+auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecuteCall> {
+  if (ADB_UNLIKELY(!slice.isObject())) {
+    using namespace std::string_literals;
+    return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                  "When deserializating AqlExecuteCall: Expected object, got "s +
+                      slice.typeName());
+  }
+
+  auto expectedPropertiesFound = std::map<std::string_view, bool>{};
+  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteCallStack, false);
+
+  auto callStack = std::optional<AqlCallStack>{};
+
+  for (auto const it : VPackObjectIterator(slice)) {
+    auto const keySlice = it.key;
+    if (ADB_UNLIKELY(!keySlice.isString())) {
+      return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+          "When deserializating AqlExecuteCall: Key is not a string");
+    }
+    auto const key = keySlice.stringView();
+
+    if (auto propIt = expectedPropertiesFound.find(key);
+        ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
+      if (ADB_UNLIKELY(propIt->second)) {
+        return Result(
+            TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+            "When deserializating AqlExecuteCall: Encountered duplicate key");
+      }
+      propIt->second = true;
+    }
+
+    if (key == StaticStrings::AqlRemoteCallStack) {
+      auto maybeCallStack = AqlCallStack::fromVelocyPack(it.value);
+      if (ADB_UNLIKELY(maybeCallStack.fail())) {
+        auto message = std::string{"When deserializating AqlExecuteCall: failed to deserialize "};
+        message += StaticStrings::AqlRemoteCallStack;
+        message += ": ";
+        message += maybeCallStack.errorMessage();
+        return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, std::move(message));
+      }
+
+      callStack = maybeCallStack.get();
+    } else {
+      LOG_TOPIC("0dd42", WARN, Logger::AQL)
+          << "When deserializating AqlExecuteCall: Encountered unexpected key " << key;
+      // If you run into this assertion during rolling upgrades after adding a
+      // new attribute, remove it in the older version.
+      TRI_ASSERT(false);
+    }
+  }
+
+  for (auto const& it : expectedPropertiesFound) {
+    if (ADB_UNLIKELY(!it.second)) {
+      auto message = std::string{"When deserializating AqlExecuteCall: missing key "};
+      message += it.first;
+      return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, std::move(message));
+    }
+  }
+
+  TRI_ASSERT(callStack.has_value());
+
+  return {AqlExecuteCall{std::move(callStack).value()}};
+}
+
+class AqlExecuteResult {
+ public:
+  AqlExecuteResult(ExecutionState state, std::size_t skipped, SharedAqlItemBlockPtr&& block)
+      : _state(state), _skipped(skipped), _block(std::move(block)) {}
+
+  void toVelocyPack(VPackBuilder&, VPackOptions const*);
+
+  [[nodiscard]] auto state() const noexcept -> ExecutionState;
+  [[nodiscard]] auto skipped() const noexcept -> std::size_t;
+  [[nodiscard]] auto block() const noexcept -> SharedAqlItemBlockPtr const&;
+
+ private:
+  ExecutionState _state = ExecutionState::HASMORE;
+  std::size_t _skipped = 0;
+  SharedAqlItemBlockPtr _block = nullptr;
+};
+
+auto AqlExecuteResult::state() const noexcept -> ExecutionState {
+  return _state;
+}
+
+auto AqlExecuteResult::skipped() const noexcept -> std::size_t {
+  return _skipped;
+}
+
+auto AqlExecuteResult::block() const noexcept -> SharedAqlItemBlockPtr const& {
+  return _block;
+}
+
+void AqlExecuteResult::toVelocyPack(VPackBuilder& builder, VPackOptions const* const options) {
+  using namespace velocypack;
+  auto const stateToValue = [](ExecutionState state) -> Value {
+    switch (state) {
+      case ExecutionState::DONE:
+        return Value(StaticStrings::AqlRemoteStateDone);
+      case ExecutionState::HASMORE:
+        return Value(StaticStrings::AqlRemoteStateHasmore);
+      case ExecutionState::WAITING:
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL_AQL,
+            "Unexpected state WAITING, must not be serialized.");
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE( TRI_ERROR_INTERNAL_AQL, "Unhandled state");
+  };
+
+  builder.add(StaticStrings::AqlRemoteState, stateToValue(state()));
+  builder.add(StaticStrings::AqlRemoteSkipped, Value(skipped()));
+  if (block() != nullptr) {
+    ObjectBuilder guard(&builder, StaticStrings::AqlRemoteBlock);
+    block()->toVelocyPack(options, builder);
+  } else {
+    builder.add(StaticStrings::AqlRemoteBlock, Value(ValueType::Null));
+  }
+}
+
 // handle for useQuery
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
@@ -667,11 +767,46 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
   auto transactionContext = _query->trx()->transactionContext();
 
+  auto const rootNodeType = _query->engine()->root()->getPlanNode()->getType();
+
   VPackBuffer<uint8_t> answerBuffer;
   VPackBuilder answerBuilder(answerBuffer);
   answerBuilder.openObject(/*unindexed*/ true);
 
-  if (operation == "getSome") {
+  if (operation == StaticStrings::AqlRemoteExecute) {
+    auto maybeExecuteCall = AqlExecuteCall::fromVelocyPack(querySlice);
+    if (maybeExecuteCall.fail()) {
+      generateError(std::move(maybeExecuteCall).result());
+      return RestStatus::DONE;
+    }
+    auto& executeCall = maybeExecuteCall.get();
+
+    auto items = SharedAqlItemBlockPtr{};
+    auto skipped = size_t{};
+    auto state = ExecutionState::HASMORE;
+
+    // shardId is set IFF the root node is scatter or distribute
+    TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
+                                   rootNodeType == ExecutionNode::DISTRIBUTE));
+    if (shardId.empty()) {
+      std::tie(state, skipped, items) =
+          _query->engine()->execute(executeCall.callStack());
+      if (state == ExecutionState::WAITING) {
+        return RestStatus::WAITING;
+      }
+    } else {
+      std::tie(state, skipped, items) =
+          _query->engine()->executeForClient(executeCall.callStack(), shardId);
+      if (state == ExecutionState::WAITING) {
+        return RestStatus::WAITING;
+      }
+    }
+
+    auto result = AqlExecuteResult{state, skipped, std::move(items)};
+    result.toVelocyPack(answerBuilder,
+                        _query->trx()->transactionContextPtr()->getVPackOptions());
+    answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
+  } else if (operation == "getSome") {
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -679,14 +814,16 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                                             ExecutionBlock::DefaultBatchSize);
     SharedAqlItemBlockPtr items;
     ExecutionState state;
+
+    // shardId is set IFF the root node is scatter or distribute
+    TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
+                                   rootNodeType == ExecutionNode::DISTRIBUTE));
     if (shardId.empty()) {
       std::tie(state, items) = _query->engine()->getSome(atMost);
       if (state == ExecutionState::WAITING) {
         return RestStatus::WAITING;
       }
     } else {
-      TRI_ASSERT(_query->engine()->root()->getPlanNode()->getType() == ExecutionNode::SCATTER ||
-                 _query->engine()->root()->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
       auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
       if (block == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -718,8 +855,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       }
       skipped = tmpRes.second;
     } else {
-      TRI_ASSERT(_query->engine()->root()->getPlanNode()->getType() == ExecutionNode::SCATTER ||
-                 _query->engine()->root()->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
+      TRI_ASSERT(rootNodeType == ExecutionNode::SCATTER ||
+                 rootNodeType == ExecutionNode::DISTRIBUTE);
 
       auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
       if (block == nullptr) {

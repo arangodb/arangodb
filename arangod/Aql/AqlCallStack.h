@@ -24,10 +24,14 @@
 #define ARANGOD_AQL_AQL_CALLSTACK_H 1
 
 #include "Aql/AqlCall.h"
+#include "Cluster/ResultT.h"
 
 #include <stack>
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 namespace aql {
 
 class AqlCallStack {
@@ -40,6 +44,8 @@ class AqlCallStack {
   AqlCallStack(AqlCallStack const& other);
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;
+
+  static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallStack>;
 
   // Quick test is this CallStack is of local relevance, or it is sufficient to pass it through
   bool isRelevant() const;
@@ -74,14 +80,16 @@ class AqlCallStack {
   void increaseSubqueryDepth();
 
   // TODO: Remove me again, only used to fake DONE
-  // @deprecated
-  auto empty() const noexcept -> bool {
+  [[deprecated]] auto empty() const noexcept -> bool {
     return _operations.empty() && _depth == 0;
   }
 
   auto subqueryLevel() const noexcept -> size_t {
     return _operations.size() + _depth;
   }
+
+ private:
+  explicit AqlCallStack(std::stack<AqlCall>&& operations);
 
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from main query)
@@ -91,7 +99,7 @@ class AqlCallStack {
   // as they have been skipped.
   // In most cases this will be zero.
   // However if we skip a subquery that has a nested subquery this depth will be 1 in the nested subquery.
-  size_t _depth;
+  size_t _depth{0};
 
   // This flag will be set if and only if
   // we are called with the 3.6 and earlier API
@@ -99,7 +107,7 @@ class AqlCallStack {
   // and not 3.6.* -> 3.8.* we can savely remove
   // this flag and all it's side effects on the
   // version after 3.7.
-  bool _compatibilityMode3_6;
+  bool _compatibilityMode3_6{false};
 };
 
 }  // namespace aql
