@@ -75,7 +75,8 @@ std::tuple<ExecutionState, size_t, AqlItemBlockInputMatrix> AllRowsFetcher::exec
   if (_aqlItemMatrix == nullptr) {
     _aqlItemMatrix = std::make_unique<AqlItemMatrix>(getNrInputRegisters());
   }
-
+  // We can only execute More if we are not Stopped yet.
+  TRI_ASSERT(!_aqlItemMatrix->stoppedOnShadowRow());
   while (true) {
     auto [state, skipped, block] = _dependencyProxy->execute(stack);
     TRI_ASSERT(skipped == 0);

@@ -47,6 +47,11 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlo
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix)
     : _finalState{state}, _aqlItemMatrix{aqlItemMatrix} {
   TRI_ASSERT(_block == nullptr);
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
+  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
+    // Fast forward to initialize the _shadowRow
+    skipAllRemainingDataRows();
+  }
 }
 
 SharedAqlItemBlockPtr AqlItemBlockInputMatrix::getBlock() const noexcept {
@@ -123,13 +128,15 @@ void AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
     TRI_ASSERT(!hasDataRow());
     return;
   }
-  TRI_ASSERT(!_shadowRow.isInitialized());
-
-  if (_aqlItemMatrix->stoppedOnShadowRow()) {
-    _shadowRow = _aqlItemMatrix->popShadowRow();
-    TRI_ASSERT(_shadowRow.isRelevant());
-  } else {
-    TRI_ASSERT(_finalState == ExecutorState::DONE);
-    _aqlItemMatrix->clear();
+  if (!hasShadowRow()) {
+    if (_aqlItemMatrix->stoppedOnShadowRow()) {
+      _shadowRow = _aqlItemMatrix->popShadowRow();
+      TRI_ASSERT(_shadowRow.isRelevant());
+    } else {
+      TRI_ASSERT(_finalState == ExecutorState::DONE);
+      _aqlItemMatrix->clear();
+    }
   }
+  // Else we did already skip once.
+  // nothing to do
 }

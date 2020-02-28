@@ -122,7 +122,7 @@ SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
 SortExecutor::~SortExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {
-  // TRI_ASSERT(false);
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
