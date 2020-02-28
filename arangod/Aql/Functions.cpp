@@ -79,8 +79,6 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-#include <date/date.h>
-#include <date/iso_week.h>
 #include <s2/s2loop.h>
 
 #include <unicode/schriter.h>
@@ -94,6 +92,17 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
+
+#ifndef _MSC_VER
+#include <date/date.h>
+#include <date/iso_week.h>
+#else
+#define real_cplusplus __cplusplus
+#define __cplusplus 199711L
+#include <date/date.h>
+#include <date/iso_week.h>
+#define __cplusplus real_cplusplus
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;

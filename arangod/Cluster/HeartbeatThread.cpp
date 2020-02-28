@@ -26,7 +26,6 @@
 #include <map>
 
 #include <Agency/AsyncAgencyComm.h>
-#include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -55,6 +54,15 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "VocBase/vocbase.h"
+
+#ifndef _MSC_VER
+#include <date/date.h>
+#else
+#define real_cplusplus __cplusplus
+#define __cplusplus 199711L
+#include <date/date.h>
+#define __cplusplus real_cplusplus
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;

@@ -24,11 +24,19 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <date/date.h>
 #include <velocypack/StringRef.h>
 
 #include "Basics/datetime.h"
 #include "gtest/gtest.h"
+
+#ifndef _MSC_VER
+#include <date/date.h>
+#else
+#define real_cplusplus __cplusplus
+#define __cplusplus 199711L
+#include <date/date.h>
+#define __cplusplus real_cplusplus
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
