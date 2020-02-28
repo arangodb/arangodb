@@ -23,6 +23,7 @@
 
 #include <iostream>
 
+#include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
@@ -47,6 +48,7 @@
 
 using namespace arangodb;
 using namespace std::chrono;
+using namespace date;
 
 namespace {
 
