@@ -110,7 +110,12 @@ Table::BucketLocker::BucketLocker()
 Table::BucketLocker::BucketLocker(void* bucket, Table* source, std::uint64_t maxAttempts)
     : _bucket(reinterpret_cast<GenericBucket*>(bucket)),
       _source(source),
-      _locked(this->bucket<Table::GenericBucket>().lock(maxAttempts)) {}
+      _locked(this->bucket<Table::GenericBucket>().lock(maxAttempts)) {
+  if (!_locked) {
+    _bucket = nullptr;
+    _source = nullptr;
+  }
+}
 
 Table::BucketLocker::BucketLocker(BucketLocker&& other) noexcept {
   steal(std::move(other));

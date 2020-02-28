@@ -203,7 +203,8 @@ void Cache::requestGrow() {
     return;
   }
 
-  SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock, Cache::triesSlow);
+  SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock,
+                       static_cast<std::size_t>(Cache::triesSlow));
   if (taskGuard.isLocked()) {
     if (std::chrono::steady_clock::now().time_since_epoch().count() >
         _resizeRequestTime.load()) {

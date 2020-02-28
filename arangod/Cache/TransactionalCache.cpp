@@ -150,7 +150,7 @@ Result TransactionalCache::remove(void const* key, std::uint32_t keySize) {
   Table* source;
   {
     Table::BucketLocker guard;
-    std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
+    std::tie(status, guard) = getBucket(hash, Cache::triesSlow, false);
     if (status.fail()) {
       return status;
     }
@@ -188,7 +188,7 @@ Result TransactionalCache::blacklist(void const* key, std::uint32_t keySize) {
   Table* source;
   {
     Table::BucketLocker guard;
-    std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
+    std::tie(status, guard) = getBucket(hash, Cache::triesSlow, false);
     if (status.fail()) {
       return status;
     }
