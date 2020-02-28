@@ -54,7 +54,12 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override;
   RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
-  
+
+  class Route {
+   public:
+    static auto execute() -> const char* { return "/_api/aql/execute"; }
+  };
+
  public:
   // DELETE method for /_api/aql/kill/<queryId>, (internal)
   bool killQuery(std::string const& idString);

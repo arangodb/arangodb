@@ -215,3 +215,9 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
 
   return call;
 }
+
+auto AqlCall::toString() const -> std::string {
+  auto stream = std::stringstream{};
+  stream << *this;
+  return stream.str();
+}

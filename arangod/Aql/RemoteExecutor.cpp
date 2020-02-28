@@ -24,11 +24,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallStack.h"
+#include "Aql/AqlExecuteResult.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RestAqlHandler.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -464,11 +466,76 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
   return executeViaNewApi(stack);
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack stack)
+auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack)
     -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
-  // TODO implement
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  // silence tests -- we need to introduce new failure tests for fetchers
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
+  std::unique_lock<std::mutex> guard(_communicationMutex);
+
+  if (_requestInFlight) {
+    // Already sent a shutdown request, but haven't got an answer yet.
+    return {ExecutionState::WAITING, 0, nullptr};
+  }
+
+  // For every call we simply forward via HTTP
+  if (_lastError.fail()) {
+    TRI_ASSERT(_lastResponse == nullptr);
+    Result res = std::move(_lastError);
+    _lastError.reset();
+    // we were called with an error need to throw it.
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  if (_lastResponse != nullptr) {
+    TRI_ASSERT(_lastError.ok());
+    // We do not have an error but a result, all is good
+    // We have an open result still.
+    auto response = std::move(_lastResponse);
+    // Result is the response which will be a serialized AqlItemBlock
+
+    // both must be reset before return or throw
+    TRI_ASSERT(_lastError.ok() && _lastResponse == nullptr);
+
+    VPackSlice responseBody = response->slice();
+
+    TRI_ASSERT(TRI_ERROR_NO_ERROR ==
+               VelocyPackHelper::getNumericValue<int>(responseBody,
+                                                      StaticStrings::Code, -1));
+
+    auto result = AqlExecuteResult::fromVelocyPack(responseBody);
+
+    return result.asTuple();
+  }
+
+  // We need to send a request here
+  VPackBuffer<uint8_t> buffer;
+  {
+    VPackBuilder builder(buffer);
+    callStack.toVelocyPack(builder);
+    traceExecuteRequest(builder.slice(), callStack);
+  }
+
+  auto res = sendAsyncRequest(fuerte::RestVerb::Put,
+                              RestAqlHandler::Route::execute(), std::move(buffer));
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return {ExecutionState::WAITING, 0, nullptr};
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::api() const noexcept -> Api {
@@ -577,6 +644,12 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   ++_engine->_stats.requests;
 
   return {TRI_ERROR_NO_ERROR};
+}
+
+void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice const slice,
+                                                             AqlCallStack const& callStack) {
+  using namespace std::string_literals;
+  traceRequest("execute", slice, "callStack="s + callStack.toString());
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice const slice,

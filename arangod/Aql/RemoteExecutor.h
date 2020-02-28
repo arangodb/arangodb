@@ -104,6 +104,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   // _communicationMutex *must* be locked for this!
   unsigned generateRequestTicket();
 
+  void traceExecuteRequest(velocypack::Slice slice, AqlCallStack const& callStack);
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceInitializeCursorRequest(velocypack::Slice slice);

@@ -68,3 +68,14 @@ void AqlExecuteResult::toVelocyPack(velocypack::Builder& builder,
     builder.add(StaticStrings::AqlRemoteBlock, Value(ValueType::Null));
   }
 }
+
+auto AqlExecuteResult::fromVelocyPack(velocypack::Slice) -> AqlExecuteResult {
+  // TODO implement
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto AqlExecuteResult::asTuple() const noexcept
+    -> std::tuple<ExecutionState, std::size_t, SharedAqlItemBlockPtr> {
+  return {state(), skipped(), block()};
+}

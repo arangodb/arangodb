@@ -149,3 +149,29 @@ auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice) -> ResultT<AqlC
 
   return AqlCallStack{std::move(stack)};
 }
+
+void AqlCallStack::toVelocyPack(velocypack::Builder& builder) {
+  // TODO implement
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto AqlCallStack::toString() const -> std::string {
+  auto result = std::string{};
+  result += "[";
+  auto ops = _operations;
+  if (!ops.empty()) {
+    auto op = ops.top();
+    ops.pop();
+    result += " ";
+    result += op.toString();
+    while (!ops.empty()) {
+      op = ops.top();
+      ops.pop();
+      result += ", ";
+      result += op.toString();
+    }
+  }
+  result += " ]";
+  return result;
+}

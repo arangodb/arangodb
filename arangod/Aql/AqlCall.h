@@ -65,6 +65,8 @@ struct AqlCall {
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCall>;
 
+  auto toString() const -> std::string;
+
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateSkipSome(std::size_t toSkip) {
     AqlCall call;
