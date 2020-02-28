@@ -2318,8 +2318,7 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
       TRI_ERROR_BAD_PARAMETER,
       "'"s.append(funcName).append("' AQL function: '")
           .append(entry->first.c_str())
-          .append("' arguments must be in an array")
-          .append(" at position '")
+          .append("' arguments must be in an array at position '")
           .append(std::to_string(funcArgumentPosition)).append("'")
     };
   }
