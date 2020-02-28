@@ -2308,7 +2308,7 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
       TRI_ERROR_BAD_PARAMETER,
       "'"s.append(funcName).append("' AQL function: Unknown '")
           .append(objectElem.getStringValue()).append("' at position '")
-          .append(std::to_string(funcArgumentPosition)).append("'")
+          .append(std::to_string(funcArgumentPosition + 1)).append("'")
     };
   }
   TRI_ASSERT(objectElem.numMembers() == 1);
@@ -2319,7 +2319,7 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
       "'"s.append(funcName).append("' AQL function: '")
           .append(entry->first.c_str())
           .append("' arguments must be in an array at position '")
-          .append(std::to_string(funcArgumentPosition)).append("'")
+          .append(std::to_string(funcArgumentPosition + 1)).append("'")
     };
   }
   return entry->second(funcName, funcArgumentPosition, entry->first.c_str(), filter, ctx, elem, firstOffset);
