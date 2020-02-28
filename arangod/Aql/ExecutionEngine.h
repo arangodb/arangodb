@@ -40,6 +40,7 @@
 namespace arangodb {
 class Result;
 namespace aql {
+class AqlCallStack;
 class AqlItemBlock;
 class ExecutionBlock;
 class ExecutionNode;
@@ -95,6 +96,12 @@ class ExecutionEngine {
   /// @brief shutdown, will be called exactly once for the whole query, may
   /// return waiting
   std::pair<ExecutionState, Result> shutdown(int errorCode);
+
+  auto execute(AqlCallStack const& stack)
+      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+
+  auto executeForClient(AqlCallStack const& stack, std::string const& clientId)
+      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
 
   /// @brief getSome
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost);
