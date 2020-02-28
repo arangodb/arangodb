@@ -1204,6 +1204,8 @@ function processQuery(query, explain, planIndex) {
           } else {
             parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
           }
+        } else {
+          parts.push(annotation('/* vertex optimized away */'));
         }
         if (node.hasOwnProperty('edgeOutVariable')) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));

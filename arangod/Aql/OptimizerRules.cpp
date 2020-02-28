@@ -5791,7 +5791,6 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     // out variable can contain the "vertices" sub attribute)
     auto outVariable = traversal->vertexOutVariable();
 
-#ifdef USE_ENTERPRISE
     if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
         std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       outVariable = traversal->pathOutVariable();
@@ -5803,7 +5802,6 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
         modified = true;
       }
     }
-#endif
 
     outVariable = traversal->edgeOutVariable();
     if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
