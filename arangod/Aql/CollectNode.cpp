@@ -372,12 +372,14 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
 
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
+
+      TRI_ASSERT(groupRegisters.size() == 1);
       DistinctCollectExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                          getRegisterPlan()->nrRegs[getDepth()],
                                          getRegsToClear(), calcRegsToKeep(),
                                          std::move(readableInputRegisters),
                                          std::move(writeableOutputRegisters),
-                                         std::move(groupRegisters), trxPtr);
+                                         groupRegisters.front(), trxPtr);
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(&engine, this,
                                                                            std::move(infos));
