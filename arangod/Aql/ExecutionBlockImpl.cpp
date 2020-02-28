@@ -164,8 +164,9 @@ constexpr bool isNewStyleExecutor = is_one_of_v<
     IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
     IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
     IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-    SubqueryStartExecutor, SubqueryEndExecutor, TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor,
-    LimitExecutor, SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
+    SubqueryStartExecutor, SubqueryEndExecutor, TraversalExecutor, KShortestPathsExecutor,
+    NoResultsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor,
+    SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
     SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
     SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>,
     MaterializeExecutor<RegisterId>, MaterializeExecutor<std::string const&>>;
@@ -1149,11 +1150,10 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
               IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
               TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
-              LimitExecutor, SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
+              LimitExecutor, NoResultsExecutor, SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
               SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
               SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>,
               MaterializeExecutor<RegisterId>, MaterializeExecutor<std::string const&>>),
-
       "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
