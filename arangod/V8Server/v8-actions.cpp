@@ -741,6 +741,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             auto obj = b.As<v8::Object>();
             httpResponse->body().appendText(V8Buffer::data(isolate, obj),
                                             V8Buffer::length(isolate, obj));
+            httpResponse->sealBody();
           } else if (autoContent && request->contentTypeResponse() == rest::ContentType::VPACK) {
             // use velocypack
             try {
@@ -753,12 +754,13 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               httpResponse->setPayload(std::move(buffer));
             } catch (...) {
               httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
+              httpResponse->sealBody();
             }
           } else {
             // treat body as a string
             httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
+            httpResponse->sealBody();
           }
-          httpResponse->sealBody();
         }
       } break;
 
