@@ -84,19 +84,19 @@ class Context {
   basics::StringBuffer* leaseStringBuffer(size_t initialSize);
 
   /// @brief return a temporary StringBuffer object
-  void returnStringBuffer(basics::StringBuffer* stringBuffer);
+  void returnStringBuffer(basics::StringBuffer* stringBuffer) noexcept;
   
   /// @brief temporarily lease a std::string
   std::string* leaseString();
 
   /// @brief return a temporary std::string object
-  void returnString(std::string* str);
+  void returnString(std::string* str) noexcept;
 
   /// @brief temporarily lease a Builder object
   arangodb::velocypack::Builder* leaseBuilder();
 
   /// @brief return a temporary Builder object
-  void returnBuilder(arangodb::velocypack::Builder*);
+  void returnBuilder(arangodb::velocypack::Builder*) noexcept;
 
   /// @brief get velocypack options with a custom type handler
   TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();

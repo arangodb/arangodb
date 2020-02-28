@@ -21,42 +21,33 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_VALUE_GROUP_H
-#define ARANGOD_AQL_AQL_VALUE_GROUP_H 1
+#include "NumberUtils.h"
+#include "Basics/debugging.h"
 
-#include "Aql/AqlValue.h"
-#include "Basics/Common.h"
+#ifdef _MSC_VER
+#include <intrin.h>
+
+#pragma intrinsic(_BitScanReverse)
+#endif
 
 namespace arangodb {
-namespace transaction {
-class Methods;
+namespace NumberUtils {
+
+/// @brief calculate the integer log2 value for the given input
+/// the result is undefined when calling this with a value of 0!
+uint32_t log2(uint32_t value) noexcept {
+  TRI_ASSERT(value > 0);
+
+#if (defined(__GNUC__) || defined(__clang__))
+  return (8 * sizeof(unsigned long)) - static_cast<uint32_t>(__builtin_clzl(static_cast<unsigned long>(value))) - 1;
+#elif defined(_MSC_VER)
+  unsigned long index;
+  _BitScanReverse(&index, static_cast<unsigned long>(value));
+  return static_cast<uint32_t>(index);
+#else
+  static_assert(false, "no known way of computing log2");
+#endif
 }
 
-namespace aql {
-
-/// @brief hasher for a vector of AQL values
-struct AqlValueGroupHash {
-  AqlValueGroupHash(transaction::Methods* trx, size_t num);
-
-  size_t operator()(std::vector<AqlValue> const& value) const;
-  size_t operator()(AqlValue const& value) const;
-
-  transaction::Methods* _trx;
-  size_t const _num;
-};
-
-/// @brief comparator for a vector of AQL values
-struct AqlValueGroupEqual {
-  explicit AqlValueGroupEqual(transaction::Methods* trx);
-
-  bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const;
-  bool operator()(AqlValue const& lhs, AqlValue const& rhs) const;
-
-  transaction::Methods* _trx;
-};
-
-
-}  // namespace aql
-}  // namespace arangodb
-
-#endif
+}
+}
