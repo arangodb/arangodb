@@ -1282,8 +1282,11 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 
   IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear(), false);
 
-  return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this,
-                                                                        std::move(infos));
+  auto res =
+      std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this,
+                                                                     std::move(infos));
+  std::ignore = res->initializeCursor(InputAqlItemRow{CreateInvalidInputRowHint{}});
+  return res;
 }
 
 /// @brief toVelocyPack, for SingletonNode
