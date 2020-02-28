@@ -36,6 +36,14 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+// hack for MSVC
+auto getStringView(velocypack::Slice slice) -> std::string_view {
+  velocypack::StringRef ref = slice.stringRef();
+  return std::string_view(ref.data(), ref.size());
+}
+}
+
 auto AqlExecuteResult::state() const noexcept -> ExecutionState {
   return _state;
 }
@@ -101,7 +109,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice, AqlItemBloc
       message += slice.typeName();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
-    auto value = slice.stringView();
+    auto value = getStringView(slice);
     if (value == StaticStrings::AqlRemoteStateDone) {
       return ExecutionState::DONE;
     }
@@ -150,7 +158,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice, AqlItemBloc
       return Result(TRI_ERROR_TYPE_ERROR,
           "When deserializating AqlExecuteResult: Key is not a string");
     }
-    auto const key = keySlice.stringView();
+    auto const key = getStringView(keySlice);
 
     if (auto propIt = expectedPropertiesFound.find(key);
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
