@@ -805,14 +805,14 @@ namespace tao::json
 
          std::vector< std::unique_ptr< events_compare< Traits > > > m_enum;
          std::unique_ptr< events::hash > m_hash;
-         std::set< std::string > m_unique;
-         std::set< std::string > m_keys;
+         std::set< std::string_view > m_unique;
+         std::set< std::string_view > m_keys;
          std::vector< std::size_t > m_count;
          std::vector< std::unique_ptr< schema_consumer > > m_properties;
          std::vector< std::unique_ptr< schema_consumer > > m_all_of;
          std::vector< std::unique_ptr< schema_consumer > > m_any_of;
          std::vector< std::unique_ptr< schema_consumer > > m_one_of;
-         std::map< std::string, std::unique_ptr< schema_consumer > > m_schema_dependencies;
+         std::map< std::string_view, std::unique_ptr< schema_consumer > > m_schema_dependencies;
          std::unique_ptr< schema_consumer > m_not;
          std::unique_ptr< schema_consumer > m_item;
          bool m_match = true;
@@ -1643,7 +1643,7 @@ namespace tao::json
             m_count.push_back( 0 );
          }
 
-         void key( const std::string& v )
+         void key( const std::string_view v )
          {
             if( m_match ) {
                validate_enum( [&]( events_compare< Traits >& c ) { c.key( v ); return ! c.match(); } );
@@ -1670,7 +1670,7 @@ namespace tao::json
                   }
                }
                for( const auto& e : m_node->m_pattern_properties ) {
-                  if( std::regex_search( v, e.first ) ) {
+                  if( std::regex_search( v.begin(), v.end(), e.first ) ) {
                      m_properties.push_back( m_container->consumer( e.second ) );
                   }
                }
@@ -1687,11 +1687,6 @@ namespace tao::json
                   }
                }
             }
-         }
-
-         void key( const std::string_view sv )
-         {
-            key( std::string( sv ) );
          }
 
          void key( const char* v )
