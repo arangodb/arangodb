@@ -138,25 +138,17 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
 template <typename T>
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> arangodb::aql::MaterializeExecutor<T>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  AqlCall upstreamCall{};
-
-  if (!inputRange.hasDataRow()) {
-    return {inputRange.upstreamState(), NoStats{}, 0, upstreamCall};
-  }
-
   size_t skipped = 0;
 
-  while (inputRange.hasDataRow() && call.shouldSkip()) {
-    auto const [unused, input] = inputRange.nextDataRow();
-    if (!input) {
-      TRI_ASSERT(!inputRange.hasDataRow());
-      break;
-    }
-    call.didSkip(1);
+  if (call.getLimit() > 0) {
+    // we can only account for offset
+    skipped = inputRange.skip(call.getOffset());
+  } else {
+    skipped = inputRange.skipAll();
   }
+  call.didSkip(skipped);
 
-  upstreamCall.softLimit = call.getOffset();
-  return {inputRange.upstreamState(), NoStats{}, skipped, upstreamCall};
+  return {inputRange.upstreamState(), NoStats{}, skipped, call};
 }
 
 template <typename T>
