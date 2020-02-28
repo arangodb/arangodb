@@ -297,9 +297,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
-  // TODO implement
-  [[nodiscard]] auto callProduceRows(DataRange&, OutputAqlItemRow&) -> std::tuple<ExecutorState, ExecutorStats, AqlCall>;
-
   void resetExecutor();
 
  private:
