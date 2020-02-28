@@ -54,7 +54,7 @@ class MultiAqlItemBlockInputRange {
 
   bool hasShadowRow() const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRow() const;
+  arangodb::aql::ShadowAqlItemRow peekShadowRow() const;
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
   auto isDone() const -> bool;

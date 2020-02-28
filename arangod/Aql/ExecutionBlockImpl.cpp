@@ -1120,7 +1120,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
-              UnsortedGather, TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor,
+              UnsortedGatherExecutor, TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor,
               SubqueryEndExecutor, SortedCollectExecutor, LimitExecutor, SortExecutor,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
@@ -1477,8 +1477,13 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       call.hardLimit = 0;
 
       // TODO We have to ask all dependencies to go forward to the next shadow row
-      return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call,
-              _requestedDependency};
+      if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+        return {inputRange.upstreamState(_requestedDependency),
+                typename Executor::Stats{}, 0, call, _requestedDependency};
+      } else {
+        return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call,
+                _requestedDependency};
+      }
     }
   }
   // Unreachable

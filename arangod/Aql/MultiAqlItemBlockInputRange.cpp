@@ -104,8 +104,7 @@ auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
 
 // TODO: * It doesn't matter which shadow row we peek, they should all be the same
 //       * assert that all dependencies are on a shadow row?
-auto MultiAqlItemBlockInputRange::peekShadowRow() const
-    -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
+auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::ShadowAqlItemRow {
   TRI_ASSERT(!hasDataRow());
 
   // TODO: Correct?
