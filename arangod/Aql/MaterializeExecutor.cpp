@@ -161,6 +161,8 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
       written = collection->readDocumentWithCallback(
           trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback);
     } while (!written);
+
+    output.advanceRow();
   }
 
   return {inputRange.upstreamState(), NoStats{}, upstreamCall};
@@ -175,11 +177,11 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> arangodb::aql::MaterializeEx
     return {inputRange.upstreamState(), NoStats{}, 0, upstreamCall};
   }
 
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
   size_t skipped = 0;
   // bool offsetPhase = (call.getOffset() > 0);
 
   while (inputRange.hasDataRow() && call.shouldSkip()) {
+    auto const [unused, input] = inputRange.nextDataRow();
     if (!input) {
       TRI_ASSERT(!inputRange.hasDataRow());
       break;
