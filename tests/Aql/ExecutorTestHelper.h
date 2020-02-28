@@ -346,7 +346,7 @@ struct ExecutorTestHelper {
                                                    std::move(infos));
   }
 
-  auto setPipeline(Pipeline&& pipeline) -> ExecutorTestHelper& {
+  auto setPipeline(Pipeline pipeline) -> ExecutorTestHelper& {
     _pipeline = std::move(pipeline);
     return *this;
   }

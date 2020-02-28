@@ -137,6 +137,7 @@ template <typename Executor>
 constexpr bool isNewStyleExecutor = is_one_of_v<
     Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
     IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor, EnumerateCollectionExecutor,
+    SubqueryExecutor<true>, SubqueryExecutor<false>,
     /*
                     CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>,
                     CalculationExecutor<CalculationType::V8Condition>,*/
@@ -1104,9 +1105,11 @@ template <class Executor>
 static SkipRowsRangeVariant constexpr skipRowsType() {
   bool constexpr useFetcher =
       Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable &&
-      !std::is_same<Executor, SubqueryExecutor<true>>::value;
+      !std::is_same_v<Executor, SubqueryExecutor<true>>;
 
   bool constexpr useExecutor = hasSkipRowsRange<Executor>::value;
+
+  static_assert(!std::is_same_v<Executor, SubqueryExecutor<true>> || hasSkipRowsRange<Executor>::value);
 
   // ConstFetcher and SingleRowFetcher<BlockPassthrough::Enable> can skip, but
   // it may not be done for modification subqueries.
@@ -1125,6 +1128,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, KShortestPathsExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
               HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+              SubqueryExecutor<true>,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
@@ -1161,13 +1165,15 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       !std::is_same<Executor, LimitExecutor>::value || useFetcher,
       "LimitExecutor needs to implement skipRows() to work correctly");
 
+  static_assert(useExecutor || useFetcher);
+
   if (useExecutor) {
     return SkipRowsRangeVariant::EXECUTOR;
   } else if (useFetcher) {
     return SkipRowsRangeVariant::FETCHER;
   } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    //TRI_ASSERT(false);
+    //THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 }
 

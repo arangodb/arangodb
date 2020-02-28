@@ -22,6 +22,7 @@
 
 #include "SubqueryExecutor.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -48,11 +49,12 @@ SubqueryExecutorInfos::SubqueryExecutorInfos(SubqueryExecutorInfos&& other) = de
 
 SubqueryExecutorInfos::~SubqueryExecutorInfos() = default;
 
-template<bool isModificationSubquery>
-SubqueryExecutor<isModificationSubquery>::SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& infos)
+template <bool isModificationSubquery>
+SubqueryExecutor<isModificationSubquery>::SubqueryExecutor(Fetcher& fetcher,
+                                                           SubqueryExecutorInfos& infos)
     : _fetcher(fetcher),
       _infos(infos),
-      _state(ExecutionState::HASMORE),
+      _state(ExecutorState::HASMORE),
       _subqueryInitialized(false),
       _shutdownDone(false),
       _shutdownResult(TRI_ERROR_INTERNAL),
@@ -60,7 +62,7 @@ SubqueryExecutor<isModificationSubquery>::SubqueryExecutor(Fetcher& fetcher, Sub
       _subqueryResults(nullptr),
       _input(CreateInvalidInputRowHint{}) {}
 
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
 SubqueryExecutor<isModificationSubquery>::~SubqueryExecutor() = default;
 
 /**
@@ -70,9 +72,10 @@ SubqueryExecutor<isModificationSubquery>::~SubqueryExecutor() = default;
  * If we do not have a subquery ongoing, we fetch a row and we start a new Subquery and ask it for hasMore.
  */
 
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
 std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::produceRows(OutputAqlItemRow& output) {
-  if (_state == ExecutionState::DONE && !_input.isInitialized()) {
+#if 0
+  if (_state == ExecutorState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
     return {_state, NoStats{}};
@@ -144,9 +147,89 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::pro
       _subqueryInitialized = true;
     }
   }
+#endif
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
+auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRange& input,
+                                                           OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  auto getUpstreamCall = [&]() {
+    AqlCall upstreamCall = output.getClientCall();
+    if constexpr (isModificationSubquery) {
+      upstreamCall = AqlCall{};
+    }
+
+    return upstreamCall;
+  };
+
+  if (_state == ExecutorState::DONE && !_input.isInitialized()) {
+    // We have seen DONE upstream, and we have discarded our local reference
+    // to the last input, we will not be able to produce results anymore.
+    return {_state, NoStats{}, getUpstreamCall()};
+  }
+  while (true) {
+    if (_subqueryInitialized) {
+      // Continue in subquery
+
+      // Const case
+      if (_infos.isConst() && !_input.isFirstDataRowInBlock()) {
+        // Simply write
+        writeOutput(output);
+        return {_state, NoStats{}, getUpstreamCall()};
+      }
+
+      // Non const case, or first run in const
+      auto [state, skipped, block] = _subquery.execute(AqlCallStack(AqlCall{}));
+      TRI_ASSERT(skipped == 0);
+      // We get a result
+      if (block != nullptr) {
+        TRI_IF_FAILURE("SubqueryBlock::executeSubquery") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        if (_infos.returnsData()) {
+          TRI_ASSERT(_subqueryResults != nullptr);
+          _subqueryResults->emplace_back(std::move(block));
+        }
+      }
+
+      // Subquery DONE
+      if (state == ExecutionState::DONE) {
+        writeOutput(output);
+        return {_state, NoStats{}, getUpstreamCall()};
+      }
+
+    } else {
+      // init new subquery
+      if (!_input) {
+        std::tie(_state, _input) = input.nextDataRow();
+
+        if (!_input) {
+          // We are done!
+          return {_state, NoStats{}, getUpstreamCall()};
+        }
+      }
+
+      TRI_ASSERT(_input);
+      if (!_infos.isConst() || _input.isFirstDataRowInBlock()) {
+        auto initRes = _subquery.initializeCursor(_input);
+
+        if (initRes.second.fail()) {
+          // Error during initialize cursor
+          THROW_ARANGO_EXCEPTION(initRes.second);
+        }
+        _subqueryResults = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
+      }
+      // on const subquery we can retoggle init as soon as we have new input.
+      _subqueryInitialized = true;
+    }
+  }
+}
+
+template <bool isModificationSubquery>
 void SubqueryExecutor<isModificationSubquery>::writeOutput(OutputAqlItemRow& output) {
   _subqueryInitialized = false;
   TRI_IF_FAILURE("SubqueryBlock::getSome") {
@@ -175,24 +258,26 @@ void SubqueryExecutor<isModificationSubquery>::writeOutput(OutputAqlItemRow& out
   }
   _input = InputAqlItemRow(CreateInvalidInputRowHint{});
   TRI_ASSERT(output.produced());
+  output.advanceRow();
 }
 
 /// @brief shutdown, tell dependency and the subquery
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
 std::pair<ExecutionState, Result> SubqueryExecutor<isModificationSubquery>::shutdown(int errorCode) {
   // Note this shutdown needs to be repeatable.
   // Also note the ordering of this shutdown is different
   // from earlier versions we now shutdown subquery first
+  ExecutionState state = ExecutionState::DONE;
   if (!_shutdownDone) {
     // We take ownership of _state here for shutdown state
-    std::tie(_state, _shutdownResult) = _subquery.shutdown(errorCode);
-    if (_state == ExecutionState::WAITING) {
+    std::tie(state, _shutdownResult) = _subquery.shutdown(errorCode);
+    if (state == ExecutionState::WAITING) {
       TRI_ASSERT(_shutdownResult.ok());
       return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
     }
     _shutdownDone = true;
   }
-  return {_state, _shutdownResult};
+  return {state, _shutdownResult};
 }
 
 template <bool isModificationSubquery>
@@ -202,5 +287,88 @@ SubqueryExecutor<isModificationSubquery>::fetchBlockForPassthrough(size_t atMost
   return {rv.first, {}, std::move(rv.second)};
 }
 
+template <>
+template <bool E, std::enable_if_t<E, int>>
+auto SubqueryExecutor<true>::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  auto getUpstreamCall = [&]() {
+    auto upstreamCall = AqlCall{};
+    return upstreamCall;
+  };
+
+  size_t skipped = 0;
+
+  if (_state == ExecutorState::DONE && !_input.isInitialized()) {
+    // We have seen DONE upstream, and we have discarded our local reference
+    // to the last input, we will not be able to produce results anymore.
+    return {_state, NoStats{}, 0, getUpstreamCall()};
+  }
+  while (true) {
+    if (_subqueryInitialized) {
+      // Continue in subquery
+
+      // Const case
+      if (_infos.isConst() && !_input.isFirstDataRowInBlock()) {
+        // Simply write
+        //writeOutput(output);
+        skipped += 1;
+        call.didSkip(1);
+        return {_state, NoStats{}, skipped, getUpstreamCall()};
+      }
+
+      // Non const case, or first run in const
+      auto [state, skipped, block] = _subquery.execute(AqlCallStack(AqlCall{}));
+      TRI_ASSERT(skipped == 0);
+      // We get a result
+      if (block != nullptr) {
+        TRI_IF_FAILURE("SubqueryBlock::executeSubquery") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        if (_infos.returnsData()) {
+          TRI_ASSERT(_subqueryResults != nullptr);
+          _subqueryResults->emplace_back(std::move(block));
+        }
+      }
+
+      // Subquery DONE
+      if (state == ExecutionState::DONE) {
+        skipped += 1;
+        call.didSkip(1);
+        return {_state, NoStats{}, skipped, getUpstreamCall()};
+      }
+
+    } else {
+      // init new subquery
+      if (!_input) {
+        std::tie(_state, _input) = inputRange.nextDataRow();
+
+        if (!_input) {
+          TRI_ASSERT(_state == ExecutorState::DONE);
+
+          // We are done!
+          return {_state, NoStats{}, skipped, getUpstreamCall()};
+        }
+      }
+
+      TRI_ASSERT(_input);
+      if (!_infos.isConst() || _input.isFirstDataRowInBlock()) {
+        auto initRes = _subquery.initializeCursor(_input);
+
+        if (initRes.second.fail()) {
+          // Error during initialize cursor
+          THROW_ARANGO_EXCEPTION(initRes.second);
+        }
+        _subqueryResults = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
+      }
+      // on const subquery we can retoggle init as soon as we have new input.
+      _subqueryInitialized = true;
+    }
+  }
+}
+
 template class ::arangodb::aql::SubqueryExecutor<true>;
+template auto SubqueryExecutor<true>::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                                    AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 template class ::arangodb::aql::SubqueryExecutor<false>;

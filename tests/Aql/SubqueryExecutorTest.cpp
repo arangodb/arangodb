@@ -41,8 +41,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/SubqueryEndExecutor.h"
-#include "Aql/SubqueryStartExecutor.h"
+#include "Aql/SubqueryExecutor.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -68,14 +67,14 @@ using LambdaExe = TestLambdaSkipExecutor;
 // Which represents the content of the Subquery.
 // Note this cannot be concated with any other pipeline.
 struct SubqueryPipeline : public Pipeline {
-  explicit SubqueryPipeline(ExecBlock&& subquery, ExecBlock&& singleton)
+  explicit SubqueryPipeline(ExecBlock subquery, ExecBlock singleton)
       : Pipeline(std::move(subquery)),
         _subquery(get().front().get() /* == subquery */) {
     // must be of type SubqueryExecutor
     TRI_ASSERT(dynamic_cast<SubqueryExecutor<true>*>(_subquery) != nullptr ||
                dynamic_cast<SubqueryExecutor<false>*>(_subquery) != nullptr);
     // We always need to start with a singleton
-    TRI_ASSERT(dynamic_cast<IdExecutor<ConstFetcher>*>(singleton) != nullptr);
+    TRI_ASSERT(dynamic_cast<IdExecutor<ConstFetcher>*>(singleton.get()) != nullptr);
     _subqueryPipeline.emplace_back(std::move(singleton));
   }
 
@@ -83,8 +82,11 @@ struct SubqueryPipeline : public Pipeline {
     TRI_ASSERT(!_subqueryPipeline.empty());
     consumer->addDependency(_subqueryPipeline.front().get());
     _subqueryPipeline.emplace_front(std::move(consumer));
+
     return *this;
   }
+
+  ExecutionBlock& getSubquery() const { return *_subquery; }
 
  private:
   ExecutionBlock* _subquery;
@@ -99,19 +101,21 @@ class SubqueryExecutorIntegrationTest
   SubqueryExecutorIntegrationTest() : executorTestHelper(*fakedQuery) {}
 
   // returns a new pipeline that contains body as a subquery
-  auto createSubquery(Pipeline&& body) -> Pipeline {
-    auto subqueryEnd = createSubqueryEndExecutionBlock();
-    if (!body.empty()) {
-      subqueryEnd->addDependency(body.get().front().get());
-    }
-    body.get().emplace_front(std::move(subqueryEnd));
+  auto createSubquery(Pipeline body) -> Pipeline {
 
-    auto subqueryStart = createSubqueryStartExecutionBlock();
-    // This exists because we at least added the subqueryEnd
-    body.get().back()->addDependency(subqueryStart.get());
+    /*
+        auto subqueryEnd = createSubqueryEndExecutionBlock();
+        if (!body.empty()) {
+          subqueryEnd->addDependency(body.get().front().get());
+        }
+        body.get().emplace_front(std::move(subqueryEnd));
 
-    body.get().emplace_back(std::move(subqueryStart));
+        auto subqueryStart = createSubqueryStartExecutionBlock();
+        // This exists because we at least added the subqueryEnd
+        body.get().back()->addDependency(subqueryStart.get());
 
+        body.get().emplace_back(std::move(subqueryStart));
+    */
     return std::move(body);
   }
 
@@ -182,7 +186,7 @@ class SubqueryExecutorIntegrationTest
 
     return Pipeline(executorTestHelper.createExecBlock<LambdaExe>(std::move(infos)));
   }
-
+#if 0
   auto createSubqueryStartExecutionBlock() -> ExecBlock {
     // Subquery start executor does not care about input or output registers?
     // TODO: talk about registers & register planning
@@ -224,7 +228,7 @@ class SubqueryExecutorIntegrationTest
     return executorTestHelper.createExecBlock<SubqueryEndExecutor>(std::move(infos),
                                                                    ExecutionNode::SUBQUERY_END);
   }
-
+#endif
   auto createReturnExecutionBlock() -> ExecBlock {
     auto const inputRegister = RegisterId{0};
     auto const outputRegister = RegisterId{0};
@@ -317,9 +321,11 @@ const SubqueryExecutorSplitType splitIntoBlocks =
 template <size_t step>
 const SubqueryExecutorSplitType splitStep = SubqueryExecutorSplitType{step};
 
+/*
 INSTANTIATE_TEST_CASE_P(SubqueryExecutorIntegrationTest, SubqueryExecutorIntegrationTest,
                         ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
                                           splitStep<2>, splitStep<1>));
+*/
 
 TEST_P(SubqueryExecutorIntegrationTest, single_subquery_empty_input) {
   auto call = AqlCall{};
