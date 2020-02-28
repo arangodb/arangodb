@@ -1419,7 +1419,7 @@ class ExecutionBlockImplExecuteIntegrationTest
                                               OutputAqlItemRow& output)
         -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       while (inputRange.hasDataRow() && !output.isFull()) {
-        auto const& [state, input] = inputRange.peekDataRowAndState();
+        auto const& [state, input] = inputRange.peekDataRow();
         EXPECT_TRUE(input.isInitialized());
         while (!output.isFull() && iterator->valid()) {
           output.cloneValueInto(outReg, input, AqlValue{iterator->value()});
@@ -1444,7 +1444,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       while (inputRange.hasDataRow() &&
              (clientCall.getOffset() > 0 ||
               (clientCall.getLimit() == 0 && clientCall.needsFullCount()))) {
-        auto const& [state, input] = inputRange.peekDataRowAndState();
+        auto const& [state, input] = inputRange.peekDataRow();
         EXPECT_TRUE(input.isInitialized());
         while ((clientCall.getOffset() > 0 ||
                 (clientCall.getLimit() == 0 && clientCall.needsFullCount())) &&

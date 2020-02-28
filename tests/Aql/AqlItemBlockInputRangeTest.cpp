@@ -60,7 +60,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     // Test Data rows
     EXPECT_FALSE(testee.hasDataRow());
     {
-      auto const [state, row] = testee.peekDataRowAndState();
+      auto const [state, row] = testee.peekDataRow();
       EXPECT_EQ(GetParam(), state);
       EXPECT_FALSE(row.isInitialized());
     }
@@ -107,7 +107,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     }
     // Validate Data Row API
     {
-      auto [state, row] = testee.peekDataRowAndState();
+      auto [state, row] = testee.peekDataRow();
       EXPECT_EQ(state, expectedState);
       EXPECT_TRUE(row.isInitialized());
       auto val = row.getValue(0);
@@ -139,7 +139,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     auto rowIndexBefore = testee.getRowIndex();
     // Validate that inputRowAPI does not move on
     {
-      auto [state, row] = testee.peekDataRowAndState();
+      auto [state, row] = testee.peekDataRow();
       EXPECT_EQ(state, ExecutorState::DONE);
       EXPECT_FALSE(row.isInitialized());
       ASSERT_EQ(rowIndexBefore, testee.getRowIndex())
@@ -190,7 +190,7 @@ TEST_P(InputRangeTest, empty_does_not_have_more) {
 
 TEST_P(InputRangeTest, empty_peek_is_empty) {
   auto testee = createEmpty();
-  auto const [state, row] = testee.peekDataRowAndState();
+  auto const [state, row] = testee.peekDataRow();
   EXPECT_EQ(GetParam(), state);
   EXPECT_FALSE(row.isInitialized());
 }

@@ -49,7 +49,7 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
   TRI_ASSERT(!_inputRow.isInitialized());
   TRI_ASSERT(!output.isFull());
   if (input.hasDataRow()) {
-    std::tie(_upstreamState, _inputRow) = input.peekDataRowAndState();
+    std::tie(_upstreamState, _inputRow) = input.peekDataRow();
     output.copyRow(_inputRow);
     output.advanceRow();
     return {ExecutorState::DONE, NoStats{}, AqlCall{}};
@@ -69,7 +69,7 @@ auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall
   if (input.hasDataRow()) {
     // Do not consume the row.
     // It needs to be reported in Produce.
-    std::tie(_upstreamState, _inputRow) = input.peekDataRowAndState();
+    std::tie(_upstreamState, _inputRow) = input.peekDataRow();
     call.didSkip(1);
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}};
   }

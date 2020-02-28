@@ -58,7 +58,7 @@ bool AqlItemBlockInputRange::hasDataRow() const noexcept {
 }
 
 // TODO: Implement peekDataRow (without state). e.g. IResearchViewExecutor does not need the state!
-std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRowAndState() const {
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow() const {
   if (hasDataRow()) {
     return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
                           InputAqlItemRow{_block, _rowIndex});
@@ -68,7 +68,7 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRowAnd
 }
 
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow() {
-  auto res = peekDataRowAndState();
+  auto res = peekDataRow();
   if (res.second) {
     ++_rowIndex;
   }

@@ -247,7 +247,7 @@ void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& input
   if (_currentRow) {
     std::ignore = inputRange.nextDataRow();
   }
-  std::tie(_currentRowState, _currentRow) = inputRange.peekDataRowAndState();
+  std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
   if (!_currentRow) {
     return;
   }
