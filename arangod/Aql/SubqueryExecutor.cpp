@@ -344,9 +344,6 @@ auto SubqueryExecutor<true>::skipRowsRange(AqlItemBlockInputRange& inputRange, A
         std::tie(_state, _input) = inputRange.nextDataRow();
 
         if (!_input) {
-          TRI_ASSERT(_state == ExecutorState::DONE);
-
-          // We are done!
           return {_state, NoStats{}, skipped, getUpstreamCall()};
         }
       }
