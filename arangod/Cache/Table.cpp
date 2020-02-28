@@ -212,7 +212,7 @@ std::uint64_t Table::size() const { return _size; }
 std::uint32_t Table::logSize() const { return _logSize; }
 
 Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash, std::uint64_t maxTries) {
-  SpinLocker guard(SpinLocker::Mode::Read, _lock, maxTries);
+  SpinLocker guard(SpinLocker::Mode::Read, _lock, static_cast<std::size_t>(maxTries));
   BucketLocker bucketGuard;
 
   if (guard.isLocked()) {
@@ -311,7 +311,7 @@ void Table::enable() {
 }
 
 bool Table::isEnabled(std::uint64_t maxTries) {
-  SpinLocker guard(SpinLocker::Mode::Read, _lock, maxTries);
+  SpinLocker guard(SpinLocker::Mode::Read, _lock, static_cast<std::size_t>(maxTries));
   return guard.isLocked() && !_disabled;
 }
 
