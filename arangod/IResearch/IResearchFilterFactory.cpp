@@ -2227,7 +2227,8 @@ arangodb::Result fromFuncPhrase(
   return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, true);
 }
 
-// NGRAM_MATCH (attribute, target, threshold [, <analyzer>])
+// NGRAM_MATCH (attribute, target, threshold [, analyzer])
+// NGRAM_MATCH (attribute, target [, analyzer]) // default threshold is set to 0.7
 arangodb::Result fromFuncNgramMatch(
     char const* funcName,
     irs::boolean_filter* filter, QueryContext const& ctx,
