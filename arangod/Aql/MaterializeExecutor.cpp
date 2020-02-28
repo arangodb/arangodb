@@ -92,41 +92,8 @@ arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
 
 template <typename T>
 std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor<T>::produceRows(OutputAqlItemRow& output) {
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-  ExecutionState state;
-  bool written = false;
-  // some micro-optimization
-  auto& callback = _readDocumentContext._callback;
-  auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
-  T collectionSource = _readDocumentContext._infos->collectionSource();
-  auto* trx = _readDocumentContext._infos->trx();
-  do {
-    std::tie(state, input) = _fetcher.fetchRow();
-    if (state == ExecutionState::WAITING) {
-      return {state, NoStats{}};
-    }
-
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, NoStats{}};
-    }
-    arangodb::LogicalCollection const* collection = nullptr;
-    if constexpr (std::is_same<T, std::string const&>::value) {
-      if (_collection == nullptr) {
-        _collection = trx->documentCollection(collectionSource);
-      }
-      collection = _collection;
-    } else {
-      collection = reinterpret_cast<arangodb::LogicalCollection const*>(
-          input.getValue(collectionSource).slice().getUInt());
-    }
-    TRI_ASSERT(collection != nullptr);
-    _readDocumentContext._inputRow = &input;
-    _readDocumentContext._outputRow = &output;
-    written = collection->readDocumentWithCallback(
-        trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback);
-  } while (!written && state != ExecutionState::DONE);
-  return {state, NoStats{}};
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template <typename T>
@@ -195,10 +162,8 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> arangodb::aql::MaterializeEx
 
 template <typename T>
 std::tuple<ExecutionState, NoStats, size_t> arangodb::aql::MaterializeExecutor<T>::skipRows(size_t toSkipRequested) {
-  ExecutionState state;
-  size_t skipped;
-  std::tie(state, skipped) = _fetcher.skipRows(toSkipRequested);
-  return std::make_tuple(state, NoStats{}, skipped);
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template class ::arangodb::aql::MaterializeExecutor<RegisterId>;
