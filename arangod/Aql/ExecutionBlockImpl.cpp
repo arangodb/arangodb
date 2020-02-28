@@ -1201,13 +1201,13 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
   // TODO: We only need to do this is the executor actually require to call.
   // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
   if constexpr (is_one_of_v<Executor, LimitExecutor,
-                            // ModificationExecutor<AllRowsFetcher, InsertModifier>,
+                            ModificationExecutor<AllRowsFetcher, InsertModifier>,
                             ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
-                            // ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+                            ModificationExecutor<AllRowsFetcher, RemoveModifier>,
                             ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
-                            // ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+                            ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
                             ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-                            //  ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+                            ModificationExecutor<AllRowsFetcher, UpsertModifier>,
                             ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>) {
     return FastForwardVariant::EXECUTOR;
   }
