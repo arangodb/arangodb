@@ -29,6 +29,8 @@
 #include "Aql/Stats.h"
 #include "Basics/debugging.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -57,6 +59,7 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     }
   }
 
+  LOG_DEVEL << "going to ask for dependency " << currentDependency();
   return {input.upstreamState(currentDependency()), Stats{}, AqlCall{}, currentDependency()};
 }
 

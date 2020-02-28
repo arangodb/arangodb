@@ -294,6 +294,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
+  [[nodiscard]] auto lastRangeHasDataRow() const -> bool;
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this

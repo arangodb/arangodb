@@ -27,6 +27,8 @@
 #include <velocypack/velocypack-aliases.h>
 #include <numeric>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -36,27 +38,39 @@ MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
   _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
 }
 
-auto MultiAqlItemBlockInputRange::resize(ExecutorState state, size_t skipped,
-                                         size_t nrInputRanges) -> void {
-  _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
+auto MultiAqlItemBlockInputRange::resizeIfNecessary(ExecutorState state, size_t skipped,
+                                                    size_t nrInputRanges) -> void {
+  // We never want to reduce the number of dependencies.
+  TRI_ASSERT(_inputs.size() <= nrInputRanges);
+  if (_inputs.size() < nrInputRanges) {
+    _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
+  }
 }
 
 auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
     noexcept -> ExecutorState {
+  if (dependency >= _inputs.size()) {
+    LOG_DEVEL << "about to crash, because we were asked for: " << dependency
+              << "  but only have " << _inputs.size();
+  }
+  TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).upstreamState();
 }
 
 auto MultiAqlItemBlockInputRange::hasDataRow(size_t const dependency) const noexcept -> bool {
+  TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).hasDataRow();
 }
 
 auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+  TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).peekDataRow();
 }
 
 auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+  TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).nextDataRow();
 }
 
@@ -70,12 +84,13 @@ auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
 
 // TODO: * It doesn't matter which shadow row we peek, they should all be the same
 //       * assert that all dependencies are on a shadow row?
-auto MultiAqlItemBlockInputRange::peekShadowRow(size_t const dependency) const
+auto MultiAqlItemBlockInputRange::peekShadowRow() const
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
-  return _inputs.at(dependency).peekShadowRow();
+  // TODO: Correct?
+  return _inputs.at(0).peekShadowRow();
 }
 
-auto MultiAqlItemBlockInputRange::nextShadowRow(size_t const dependency)
+auto MultiAqlItemBlockInputRange::nextShadowRow()
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
   // Need to consume all shadow rows simultaneously.
   // TODO: Assert we're on the correct shadow row for all upstreams
@@ -90,10 +105,19 @@ auto MultiAqlItemBlockInputRange::nextShadowRow(size_t const dependency)
 
 auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const
     noexcept -> SharedAqlItemBlockPtr {
+  TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).getBlock();
 }
 
 auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
                                                 AqlItemBlockInputRange& range) -> void {
+  TRI_ASSERT(dependency < _inputs.size());
   _inputs.at(dependency) = range;
+}
+
+auto MultiAqlItemBlockInputRange::isDone() const -> bool {
+  return std::all_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.upstreamState() == ExecutorState::DONE;
+                     });
 }

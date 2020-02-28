@@ -1114,11 +1114,20 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
   (void)dependency;
   if constexpr (isNewStyleExecutor<Executor>) {
     if constexpr (is_one_of_v<Fetcher, MultiDependencySingleRowFetcher>) {
-      // TODO
-      // should this really be _range[i] = bla
+      // TODO: This is a hack to guarantee we have enough space in our range
+      //       to fit all inputs, in particular the one executed below
+      TRI_ASSERT(dependency < _dependencies.size());
+      _lastRange.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
+
       auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, stack);
+
       _lastRange.setDependency(dependency, range);
-      return {state, skipped, _lastRange};
+
+      if (_lastRange.isDone()) {
+        return {ExecutionState::DONE, skipped, _lastRange};
+      } else {
+        return {ExecutionState::HASMORE, skipped, _lastRange};
+      }
     } else {
       return _rowFetcher.execute(stack);
     }
@@ -1203,7 +1212,7 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
   }
   // TODO: We only need to do this is the executor actually require to call.
   // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (is_one_of_v<Executor, LimitExecutor>) {
+  if constexpr (is_one_of_v<Executor, LimitExecutor, UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>) {
     return FastForwardVariant::EXECUTOR;
   }
   return FastForwardVariant::FETCHER;
@@ -1230,13 +1239,19 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
     }
     case FastForwardVariant::FETCHER: {
       LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
-      while (inputRange.hasDataRow()) {
-        auto [state, row] = inputRange.nextDataRow();
-        TRI_ASSERT(row.isInitialized());
+      if constexpr (!is_one_of_v<Fetcher, MultiDependencySingleRowFetcher>) {
+        while (inputRange.hasDataRow()) {
+          auto [state, row] = inputRange.nextDataRow();
+          TRI_ASSERT(row.isInitialized());
+        }
+
+        AqlCall call{};
+        call.hardLimit = 0;
+        return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call, 0};
+      } else {
+        // MultiDependencySingleRowFetcher can't fast forward right now
+        TRI_ASSERT(false);
       }
-      AqlCall call{};
-      call.hardLimit = 0;
-      return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call, 0};
     }
   }
   // Unreachable
@@ -1418,7 +1433,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // In pass through variant we need to stop whenever the block is full.
             _execState = ExecState::DONE;
             break;
-          } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
+          } else if (clientCall.getLimit() > 0 && !lastRangeHasDataRow()) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
             _upstreamRequest = call;
@@ -1461,7 +1476,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // HASMORE even if it knew that upstream has no further rows.
           TRI_ASSERT(_upstreamState != ExecutionState::DONE);
           // We need to make sure _lastRange is all used
-          TRI_ASSERT(!_lastRange.hasDataRow());
+          TRI_ASSERT(!lastRangeHasDataRow());
           TRI_ASSERT(!_lastRange.hasShadowRow());
           size_t skippedLocal = 0;
           auto callCopy = _upstreamRequest;
@@ -1565,8 +1580,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     // We return skipped here, reset member
     size_t skipped = _skipped;
     _skipped = 0;
-    if (localExecutorState == ExecutorState::HASMORE ||
-        _lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
+    if (localExecutorState == ExecutorState::HASMORE || lastRangeHasDataRow() ||
+        _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
@@ -1624,6 +1639,15 @@ template <class Executor>
 auto ExecutionBlockImpl<Executor>::outputIsFull() const noexcept -> bool {
   return _outputItemRow != nullptr && _outputItemRow->isInitialized() &&
          _outputItemRow->allRowsUsed();
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const -> bool {
+  if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+    return _lastRange.hasDataRow(_requestedDependency);
+  } else {
+    return _lastRange.hasDataRow();
+  }
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;

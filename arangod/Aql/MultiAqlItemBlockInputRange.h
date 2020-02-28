@@ -43,43 +43,26 @@ class MultiAqlItemBlockInputRange {
                               arangodb::aql::SharedAqlItemBlockPtr&&,
                               std::size_t startIndex) noexcept;
 
-  ExecutorState upstreamState(size_t const dependency = 0) const noexcept;
-  bool upstreamHasMore(size_t const dependency = 0) const noexcept;
+  ExecutorState upstreamState(size_t const dependency) const noexcept;
+  bool upstreamHasMore(size_t const dependency) const noexcept;
 
-  bool hasDataRow(size_t const dependency = 0) const noexcept;
+  bool hasDataRow(size_t const dependency) const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow(size_t const dependency = 0) const;
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(size_t const dependency = 0);
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow(size_t const dependency) const;
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(size_t const dependency);
 
   bool hasShadowRow() const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRow(size_t const dependency = 0) const;
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow(size_t const dependency = 0);
+  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRow() const;
+  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
-  std::size_t getRowIndex(size_t const dependency = 0) const noexcept;
-  // Subtract up to this many rows from the local `_skipped` state; return
-  // the number actually skipped. Does not skip data rows.
-  [[nodiscard]] auto skip(std::size_t) noexcept -> std::size_t;
+  auto isDone() const -> bool;
 
-  [[nodiscard]] auto skipAll() noexcept -> std::size_t;
-
-  [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;
-
-  auto resize(ExecutorState state, size_t skipped, size_t nrInputRanges) -> void;
+  auto resizeIfNecessary(ExecutorState state, size_t skipped, size_t nrInputRanges) -> void;
 
   auto getBlock(size_t const dependency = 0) const noexcept -> SharedAqlItemBlockPtr;
 
   auto setDependency(size_t const dependency, AqlItemBlockInputRange& range) -> void;
-
- private:
-  bool isIndexValid(std::size_t index) const noexcept;
-
-  bool isShadowRowAtIndex(std::size_t index) const noexcept;
-
-  enum LookAhead { NOW, NEXT };
-  enum RowType { DATA, SHADOW };
-  template <LookAhead doPeek, RowType type>
-  ExecutorState nextState() const noexcept;
 
  private:
   ExecutorState _finalState{ExecutorState::HASMORE};
