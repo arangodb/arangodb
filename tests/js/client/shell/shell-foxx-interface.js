@@ -39,7 +39,8 @@ const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'a
 
 const binaryMime = 'image/gif';
 const textMime = 'text/plain';
-const pixelGif = new Buffer('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64');
+const pixelStr = 'R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+const pixelGif = new Buffer(pixelStr, 'base64');
 
 const cmpBuffer = function(a, b) {
   if (a.length !== b.length) {
@@ -84,32 +85,52 @@ function foxxInterfaceSuite () {
     //},
     //testFoxxInterfaceHead: function () {
     //},
-    testFoxxInterfacePostBodyBinary: function () {
-      [
-        'POST_RAW',
-        'PUT_RAW',
-        'PATCH_RAW',
-        'DELETE_RAW'
-      ].forEach((reqMethod) => {
-        let res = arango[reqMethod](binUrl,
-                                    pixelGif,
-                                    {
-                                      'content-type': binaryMime
-                                    });
-        assertEqual(res.code, 200, res.body);
-        assertTrue(res.body instanceof Buffer);
-        
-        let respBody = new Buffer(res.body);
-        assertTrue(cmpBuffer(respBody, pixelGif), "whether the server sent us a proper one pixel gif");
-        assertEqual(res.headers['content-length'], pixelGif.length);
-        assertEqual(res.headers['content-type'], binaryMime);
-        assertEqual(res.headers['test'], 'header');
-        assertEqual(res.headers['request-type'], reqMethod);
-      });
-    },
-    testFoxxInterfaceGetBinary: function () {
-    },
+    //testFoxxInterfacePostBodyBinary: function () {
+    //  [
+    //    'POST_RAW',
+    //    'PUT_RAW',
+    //    'PATCH_RAW',
+    //    'DELETE_RAW'
+    //  ].forEach((reqMethod) => {
+    //    let res = arango[reqMethod](binUrl,
+    //                                pixelGif,
+    //                                {
+    //                                  'content-type': binaryMime
+    //                                });
+    //    assertEqual(res.code, 200, res.body);
+    //    assertTrue(res.body instanceof Buffer);
+    //    
+    //    let respBody = new Buffer(res.body);
+    //    assertTrue(cmpBuffer(respBody, pixelGif), "whether the server sent us a proper one pixel gif");
+    //    assertEqual(res.headers['content-length'], pixelGif.length);
+    //    assertEqual(res.headers['content-type'], binaryMime);
+    //    assertEqual(res.headers['test'], 'header');
+    //    assertEqual(res.headers['request-type'], reqMethod);
+    //  });
+    //},
+    //testFoxxInterfaceGetBinary: function () {
+    //  let res = arango.GET_RAW(binUrl);
+    //  assertEqual(res.code, 200, res.body);
+    //  assertTrue(res.body instanceof Buffer);
+    //  
+    //  let respBody = new Buffer(res.body);
+    //  assertTrue(cmpBuffer(respBody, pixelGif), "whether the server sent us a proper one pixel gif");
+    //  assertEqual(res.headers['content-length'], pixelGif.length);
+    //  assertEqual(res.headers['content-type'], binaryMime);
+    //  assertEqual(res.headers['test'], 'header');
+    //  assertEqual(res.headers['request-type'], 'GET_RAW');
+    //},
     testFoxxInterfaceHeadBinary: function () {
+      let res = arango.HEAD_RAW(binUrl);
+      assertEqual(res.code, 200, res.body);
+      assertTrue(res.body instanceof Buffer);
+      
+      // let respBody = new Buffer(res.body);
+      // assertTrue(cmpBuffer(respBody, pixelGif), "whether the server sent us a proper one pixel gif");
+      assertEqual(res.headers['content-length'], pixelGif.length);
+      assertEqual(res.headers['content-type'], binaryMime);
+      assertEqual(res.headers['test'], 'header');
+      assertEqual(res.headers['request-type'], 'HEAD_RAW');
     },
 
     testFoxxInterfacePostBodyText: function () {

@@ -732,6 +732,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
           // what type is out? always json?
           httpResponse->body().appendText(out);
+          httpResponse->sealBody();
         } else {
           TRI_GET_GLOBAL_STRING(BodyKey);
           v8::Handle<v8::Value> b = res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
@@ -757,6 +758,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // treat body as a string
             httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
           }
+          httpResponse->sealBody();
         }
       } break;
 
@@ -861,6 +863,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         httpResponse->body().appendText(content, length);
         TRI_FreeString(content);
+        httpResponse->sealBody();
       }
       break;
 

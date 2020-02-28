@@ -1,6 +1,6 @@
 
-
-const pixelGif = new Buffer('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64');
+const pixelStr = 'R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+const pixelGif = new Buffer(pixelStr, 'base64');
 const binaryMime = 'image/gif';
 const textMime = 'text/plain';
 const createRouter = require('@arangodb/foxx/router');
@@ -165,11 +165,17 @@ router.patch('/interface-echo-bin', function (req, res) {
 });
 
 router.head('/interface-echo-bin', function (req, res) {
-  res.json(req.headers);
+  res.write(pixelGif);
+  res.set('content-type', binaryMime);
+  res.set('test', 'header');
+  res.set('request-type', 'HEAD_RAW');
 });
 
 router.get('/interface-echo-bin', function (req, res) {
-  res.json(req.headers);
+  res.write(pixelGif);
+  res.set('content-type', binaryMime);
+  res.set('test', 'header');
+  res.set('request-type', 'GET_RAW');
 });
 
 router.post('/interface-echo-str', function (req, res) {
