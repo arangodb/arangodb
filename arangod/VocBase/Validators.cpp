@@ -31,6 +31,7 @@ static bool debug = false;
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
 
+#include <tao/json/contrib/schema.hpp>
 #include <validation/validation.hpp>
 
 namespace arangodb {
