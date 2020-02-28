@@ -72,6 +72,9 @@ devel
   from the named graph are needed, the `edgeCollections` option can be a handy
   performance optimization.
 
+* Make arangobench return a proper error message when its initial attempt to 
+  create the test collection fails.
+
 * In some cases with a COLLECT LIMIT situation on a small limit the collect
   does more calls to upstream than without a limit to provide the same
   result. We improved this situation and made sure that LIMIT does
