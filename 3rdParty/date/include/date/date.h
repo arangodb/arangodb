@@ -30,11 +30,6 @@
 // been invented (that would involve another several millennia of evolution).
 // We did not mean to shout.
 
-#ifdef _MSC_VER
-#define real_cplusplus __cplusplus
-#define __cplusplus 199711L
-#endif
-
 #ifndef HAS_STRING_VIEW
 #  if __cplusplus >= 201703
 #    define HAS_STRING_VIEW 1
@@ -8011,9 +8006,5 @@ operator<<(std::basic_ostream<CharT, Traits>& os,
 # pragma GCC diagnostic pop
 #endif
 
-#ifdef _MSC_VER
-#define __cplusplus real_cplusplus
-#undef real_cplusplus
-#endif
 
 #endif  // DATE_H
