@@ -38,7 +38,7 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class IdExecutorInfos;
 class SharedAqlItemBlockPtr;
-class AqlCall;
+struct AqlCall;
 
 /**
  * @brief Produces all rows from its dependencies, which may be more than one,
