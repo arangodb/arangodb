@@ -79,13 +79,14 @@ std::tuple<ExecutionState, size_t, AqlItemBlockInputMatrix> AllRowsFetcher::exec
   while (true) {
     auto [state, skipped, block] = _dependencyProxy->execute(stack);
     TRI_ASSERT(skipped == 0);
-    TRI_ASSERT(block != nullptr || state == ExecutionState::DONE);
 
     // we will either build a complete fetched AqlItemBlockInputMatrix or return an empty one
     if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(block == nullptr);
       // On waiting we have nothing to return
       return {state, 0, AqlItemBlockInputMatrix{ExecutorState::HASMORE}};
     }
+    TRI_ASSERT(block != nullptr || state == ExecutionState::DONE);
 
     if (block != nullptr) {
       // we need to store the block for later creation of AqlItemBlockInputMatrix
