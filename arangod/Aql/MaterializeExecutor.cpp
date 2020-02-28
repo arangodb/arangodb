@@ -104,32 +104,32 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
 
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
+
     // some micro-optimization
     auto& callback = _readDocumentContext._callback;
     auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
     T collectionSource = _readDocumentContext._infos->collectionSource();
     auto* trx = _readDocumentContext._infos->trx();
-    do {
-      auto const [state, input] = inputRange.nextDataRow();
+    auto const [state, input] = inputRange.nextDataRow();
 
-      arangodb::LogicalCollection const* collection = nullptr;
-      if constexpr (std::is_same<T, std::string const&>::value) {
-        if (_collection == nullptr) {
-          _collection = trx->documentCollection(collectionSource);
-        }
-        collection = _collection;
-      } else {
-        collection = reinterpret_cast<arangodb::LogicalCollection const*>(
-            input.getValue(collectionSource).slice().getUInt());
+    arangodb::LogicalCollection const* collection = nullptr;
+    if constexpr (std::is_same<T, std::string const&>::value) {
+      if (_collection == nullptr) {
+        _collection = trx->documentCollection(collectionSource);
       }
-      TRI_ASSERT(collection != nullptr);
-      _readDocumentContext._inputRow = &input;
-      _readDocumentContext._outputRow = &output;
-      written = collection->readDocumentWithCallback(
-          trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback);
-    } while (!written);
-
-    output.advanceRow();
+      collection = _collection;
+    } else {
+      collection = reinterpret_cast<arangodb::LogicalCollection const*>(
+          input.getValue(collectionSource).slice().getUInt());
+    }
+    TRI_ASSERT(collection != nullptr);
+    _readDocumentContext._inputRow = &input;
+    _readDocumentContext._outputRow = &output;
+    written = collection->readDocumentWithCallback(
+        trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback);
+    if (written) {
+      output.advanceRow();
+    }
   }
 
   return {inputRange.upstreamState(), NoStats{}, upstreamCall};
@@ -145,7 +145,6 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> arangodb::aql::MaterializeEx
   }
 
   size_t skipped = 0;
-  // bool offsetPhase = (call.getOffset() > 0);
 
   while (inputRange.hasDataRow() && call.shouldSkip()) {
     auto const [unused, input] = inputRange.nextDataRow();
