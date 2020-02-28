@@ -4685,9 +4685,13 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
         "invalid agency result while releasing backup lock");
   }
 
+  if (supervisionOff) {
+    return arangodb::Result();
+  }
+
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    result = _agency.getValues("/arango/Supervision/State/Mode");
+    result = _agency.getValues("Supervision/State/Mode");
     if (result.successful()) {
       if (!result.slice().isArray() || result.slice().length() != 1 ||
           !result.slice()[0].hasKey(modepv) || !result.slice()[0].get(modepv).isString()) {
