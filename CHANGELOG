@@ -1,6 +1,9 @@
 devel
 -----
 
+* Make arangobench return a proper error message when its initial attempt to 
+  create the test collection fails.
+
 * Added traversal options `vertexCollections` and `edgeCollections` to restrict
   traversal to certain vertex or edge collections.
 
