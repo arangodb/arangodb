@@ -75,7 +75,7 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
 
   // Generally, we create a hard limit. However, if we get a soft limit from
   // downstream that is lower than our hard limit, we use that instead.
-  bool const useSoftLimit = clientCall.hasSoftLimit() &&
+  bool const useSoftLimit = !clientCall.hasHardLimit() &&
                             clientCall.getLimit() < localLimitMinusDownstreamOffset;
 
   if (useSoftLimit) {
