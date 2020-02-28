@@ -576,10 +576,14 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
 
     nghttp2_data_provider *prd_ptr = nullptr, prd;
-
-    std::string len;
-    if (res.generateBody() &&
-        ::expectResponseBody(static_cast<int>(res.responseCode()))) {
+    if (!res.generateBody() ) {
+      std::string len;
+      len = std::to_string(res.bodySize());
+      nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
+                     len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
+    } else if (res.generateBody() &&
+               ::expectResponseBody(static_cast<int>(res.responseCode()))) {
+      std::string len;
       len = std::to_string(res.bodySize());
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
                      len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
