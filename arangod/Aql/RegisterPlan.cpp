@@ -113,12 +113,13 @@ void RegisterPlan::after(ExecutionNode* en) {
       totalNrRegs++;
       break;
     }
-    case ExecutionNode::INDEX: {
-        auto ep = ExecutionNode::castTo<IndexNode const*>(en);
-        TRI_ASSERT(ep);
 
-        ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
-        break;
+    case ExecutionNode::INDEX: {
+      auto ep = ExecutionNode::castTo<IndexNode const*>(en);
+      TRI_ASSERT(ep);
+
+      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+      break;
     }
 
     case ExecutionNode::ENUMERATE_LIST: {
