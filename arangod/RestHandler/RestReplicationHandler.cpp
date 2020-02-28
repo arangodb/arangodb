@@ -428,7 +428,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       if (len > 1) {
-        std::string subCommand = suffixes[1];
+        std::string const& subCommand = suffixes[1];
         if (type == rest::RequestType::GET && subCommand == Tree) {
           handleCommandRevisionTree();
         } else if (type == rest::RequestType::POST && subCommand == Tree) {
@@ -3070,16 +3070,25 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
   }
   bool badFormat = !body.isArray();
   if (!badFormat) {
-    for (std::size_t i = 0; i < body.length(); ++i) {
-      if (!body.at(i).isArray() || body.at(i).length() != 2 ||
-          !body.at(i).at(0).isNumber() || !body.at(i).at(1).isNumber()) {
+    std::size_t i = 0;
+    VPackSlice previous;
+    for (VPackSlice entry : VPackArrayIterator(body)) {
+      if (!entry.isArray() || entry.length() != 2) {
         badFormat = true;
         break;
       }
-      if (body.at(i).at(0).getNumber<std::size_t>() <= ctx.resume ||
-          (i > 0 && body.at(i - 1).at(1).getNumber<std::size_t>() < ctx.resume)) {
+      VPackSlice first = entry.at(0);
+      VPackSlice second = entry.at(1);
+      if (!first.isNumber() || !second.isNumber()) {
+        badFormat = true;
+        break;
+      }
+      if (first.getNumber<std::size_t>() <= ctx.resume ||
+          (i > 0 && previous.getNumber<std::size_t>() < ctx.resume)) {
         current = std::max(current, i);
       }
+      previous = second;
+      ++i;
     }
   }
   if (badFormat) {
@@ -3182,8 +3191,8 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
   }
   bool badFormat = !body.isArray();
   if (!badFormat) {
-    for (std::size_t i = 0; i < body.length(); ++i) {
-      if (!body.at(i).isNumber()) {
+    for (VPackSlice entry : VPackArrayIterator(body)) {
+      if (!entry.isNumber()) {
         badFormat = true;
         break;
       }
@@ -3200,12 +3209,13 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
 
-  VPackBuilder response;
+  VPackBuffer<std::uint8_t> buffer;
+  VPackBuilder response(buffer);
   {
     VPackArrayBuilder docs(&response);
 
-    for (std::size_t i = 0; i < body.length(); ++i) {
-      TRI_voc_rid_t rev = body.at(i).getNumber<TRI_voc_rid_t>();
+    for (VPackSlice entry : VPackArrayIterator(body)) {
+      TRI_voc_rid_t rev = entry.getNumber<TRI_voc_rid_t>();
       if (it.hasMore() && it.revision() < rev) {
         it.seek(rev);
       }
@@ -3219,18 +3229,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     }
   }
 
-  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-  if (httpResponse == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
-  }
-
-  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
-  basics::StringBuffer& buffer = httpResponse->body();
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-  VPackDumper dumper(&adapter, trxContext->getVPackOptions());
-
-  resetResponse(rest::ResponseCode::OK);
-  dumper.dump(response.slice());
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

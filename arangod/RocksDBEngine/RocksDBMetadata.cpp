@@ -324,29 +324,31 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 4. store the revision tree
-  if (coll.syncByRevision() && rcoll->needToPersistRevisionTree(maxCommitSeq)) {
-    rocksdb::SequenceNumber seq =
-        rcoll->serializeRevisionTree(output, maxCommitSeq, maxWorkTime);
-    appliedSeq = std::min(appliedSeq, seq);
+  if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
+    if (coll.syncByRevision()) {
+      rocksdb::SequenceNumber seq =
+          rcoll->serializeRevisionTree(output, maxCommitSeq, maxWorkTime);
+      appliedSeq = std::min(appliedSeq, seq);
 
-    rocksutils::uint64ToPersistent(output, seq);
+      rocksutils::uint64ToPersistent(output, seq);
 
-    key.constructRevisionTreeValue(rcoll->objectId());
-    rocksdb::Slice value(output);
+      key.constructRevisionTreeValue(rcoll->objectId());
+      rocksdb::Slice value(output);
 
-    rocksdb::Status s = batch.Put(cf, key.string(), value);
-    if (!s.ok()) {
-      LOG_TOPIC("ff234", WARN, Logger::ENGINES)
-          << "writing revision tree failed";
-      return res.reset(rocksutils::convertStatus(s));
-    }
-  } else {
-    key.constructRevisionTreeValue(rcoll->objectId());
-    rocksdb::Status s = batch.Delete(cf, key.string());
-    if (!s.ok() && !s.IsNotFound()) {
-      LOG_TOPIC("ff235", WARN, Logger::ENGINES)
-          << "deleting revision tree failed";
-      return res.reset(rocksutils::convertStatus(s));
+      rocksdb::Status s = batch.Put(cf, key.string(), value);
+      if (!s.ok()) {
+        LOG_TOPIC("ff234", WARN, Logger::ENGINES)
+            << "writing revision tree failed";
+        return res.reset(rocksutils::convertStatus(s));
+      }
+    } else {
+      key.constructRevisionTreeValue(rcoll->objectId());
+      rocksdb::Status s = batch.Delete(cf, key.string());
+      if (!s.ok() && !s.IsNotFound()) {
+        LOG_TOPIC("ff235", WARN, Logger::ENGINES)
+            << "deleting revision tree failed";
+        return res.reset(rocksutils::convertStatus(s));
+      }
     }
   }
 

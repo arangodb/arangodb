@@ -436,7 +436,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
 
 bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const {
   if (!_logicalCollection.syncByRevision()) {
-    return false;
+    return maxCommitSeq < _revisionTreeApplied.load();
   }
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
@@ -460,9 +460,14 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     std::string& output, rocksdb::SequenceNumber commitSeq,
     std::chrono::milliseconds maxWorkTime) {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  auto appliedSeq = applyUpdates(commitSeq, maxWorkTime);
-  output = _revisionTree->serialize();
-  return appliedSeq;
+  if (_logicalCollection.syncByRevision()) {
+    auto appliedSeq = applyUpdates(commitSeq, maxWorkTime);
+    output = _revisionTree->serialize();
+    return appliedSeq;
+  }
+  // mark as don't persist again, tree should be deleted now
+  _revisionTreeApplied.store(std::numeric_limits<rocksdb::SequenceNumber>::max());
+  return commitSeq;
 }
 
 Result RocksDBMetaCollection::rebuildRevisionTree() {

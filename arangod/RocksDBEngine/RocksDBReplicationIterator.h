@@ -39,14 +39,14 @@ class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
   RocksDBRevisionReplicationIterator(LogicalCollection&, rocksdb::Snapshot const*);
   RocksDBRevisionReplicationIterator(LogicalCollection&, transaction::Methods&);
 
-  bool hasMore() const;
-  void reset();
+  virtual bool hasMore() const override;
+  virtual void reset() override;
 
-  TRI_voc_rid_t revision() const;
-  VPackSlice document() const;
+  virtual TRI_voc_rid_t revision() const override;
+  virtual VPackSlice document() const override;
 
-  void next();
-  void seek(TRI_voc_rid_t);
+  virtual void next() override;
+  virtual void seek(TRI_voc_rid_t) override;
 
  private:
   std::unique_ptr<rocksdb::Iterator> _iter;
