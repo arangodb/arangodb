@@ -194,7 +194,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
       LOG_TOPIC("cc6f4", WARN, Logger::AQL)
           << "When deserializating AqlExecuteResult: Encountered unexpected "
              "key "
-          << key;
+          << keySlice.toJson();
       // If you run into this assertion during rolling upgrades after adding a
       // new attribute, remove it in the older version.
       TRI_ASSERT(false);
