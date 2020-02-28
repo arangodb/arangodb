@@ -207,11 +207,11 @@ uint64_t Manager::getActiveTransactionCount() {
   return _nrRunning.load(std::memory_order_relaxed);
 }
 
-Manager::ManagedTrx::ManagedTrx(MetaType t, TransactionState* st)
+Manager::ManagedTrx::ManagedTrx(MetaType t, std::shared_ptr<TransactionState> st)
     : type(t),
       finalStatus(Status::UNDEFINED),
       usedTimeSecs(TRI_microtime()),
-      state(st),
+      state(std::move(st)),
       user(::currentUser()),
       rwlock() {}
 
@@ -233,7 +233,6 @@ Manager::ManagedTrx::~ManagedTrx() {
     return;  // not managed by us
   }
   if (!state->isRunning()) {
-    delete state;
     return;
   }
 
@@ -259,10 +258,11 @@ using namespace arangodb;
 /// @brief register a transaction shard
 /// @brief tid global transaction shard
 /// @param cid the optional transaction ID (use 0 for a single shard trx)
-void Manager::registerAQLTrx(TransactionState* state) {
+void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
   if (_disallowInserts.load(std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
+  TRI_ASSERT(state->isTopLevelTransaction());
 
   TRI_ASSERT(state != nullptr);
   auto const tid = state->id();
@@ -390,7 +390,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   options.maxTransactionSize =
       std::min<size_t>(options.maxTransactionSize, Manager::maxTransactionSize);
 
-  std::unique_ptr<TransactionState> state;
+  std::shared_ptr<TransactionState> state;
   try {
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -480,13 +480,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                        std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
-    bool emplaced = _transactions[bucket]._managed.try_emplace(
-        tid,
-        MetaType::Managed, state.get()
-    ).second;
-    if (emplaced) {
-      state.release();
-    }
+    _transactions[bucket]._managed.try_emplace(tid,MetaType::Managed, std::move(state));
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
@@ -503,7 +497,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 
   size_t const bucket = getBucket(tid);
   int i = 0;
-  TransactionState* state = nullptr;
+  std::shared_ptr<TransactionState> state;
   do {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
@@ -660,7 +654,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
   size_t const bucket = getBucket(tid);
   bool wasExpired = false;
 
-  std::unique_ptr<TransactionState> state;
+  std::shared_ptr<TransactionState> state;
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
@@ -701,8 +695,8 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
       wasExpired = true;
     }
 
-    state.reset(mtrx.state);
-    mtrx.state = nullptr;
+    std::swap(state, mtrx.state);
+    TRI_ASSERT(mtrx.state == nullptr);
     mtrx.type = MetaType::Tombstone;
     mtrx.usedTimeSecs = TRI_microtime();
     mtrx.finalStatus = status;
@@ -731,11 +725,9 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
 
   bool const isCoordinator = state->isCoordinator();
 
-  auto ctx = std::make_shared<ManagedContext>(tid, state.get(), AccessMode::Type::NONE);
-  state.release();  // now owned by ctx
-
   transaction::Options trxOpts;
-  MGMethods trx(ctx, trxOpts);
+  MGMethods trx(std::make_shared<ManagedContext>(tid, std::move(state),
+                                                 AccessMode::Type::NONE), trxOpts);
   TRI_ASSERT(trx.state()->isRunning());
   TRI_ASSERT(trx.state()->nestingLevel() == 1);
   trx.state()->decreaseNesting();

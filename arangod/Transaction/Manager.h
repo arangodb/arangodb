@@ -69,7 +69,7 @@ class Manager final {
   };
 
   struct ManagedTrx {
-    ManagedTrx(MetaType t, TransactionState* st);
+    ManagedTrx(MetaType t, std::shared_ptr<TransactionState> st);
     ~ManagedTrx();
 
     bool expired() const;
@@ -81,9 +81,9 @@ class Manager final {
     /// repeated commit / abort messages
     transaction::Status finalStatus;
     double usedTimeSecs;      /// last time used
-    TransactionState* state;  /// Transaction, may be nullptr
+    std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
     std::string user;         /// user owning the transaction
-    /// cheap usage lock for *state
+    /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
 
@@ -127,7 +127,7 @@ class Manager final {
   }
 
   /// @brief register a AQL transaction
-  void registerAQLTrx(TransactionState*);
+  void registerAQLTrx(std::shared_ptr<TransactionState> const&);
   void unregisterAQLTrx(TRI_voc_tid_t tid) noexcept;
 
   /// @brief create managed transaction

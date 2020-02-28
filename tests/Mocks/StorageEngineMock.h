@@ -217,7 +217,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual std::unique_ptr<arangodb::transaction::ContextData> createTransactionContextData() override;
   virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
       arangodb::transaction::ManagerFeature&) override;
-  virtual std::unique_ptr<arangodb::TransactionState> createTransactionState(
+  virtual std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       arangodb::transaction::Options const& options) override;
   virtual arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,

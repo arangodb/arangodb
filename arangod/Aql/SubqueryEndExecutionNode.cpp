@@ -71,7 +71,7 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  transaction::Methods* trx = _plan->getAst()->query()->trx();
+  transaction::Methods* trx = _plan->getAst()->query()->copyTrx();
   TRI_ASSERT(trx != nullptr);
 
   ExecutionNode const* previousNode = getFirstDependency();

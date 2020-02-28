@@ -263,13 +263,14 @@ std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(DocumentP
 DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
     RegisterId const outputRegister, bool produceResult,
-    Query* query, Expression* filter,
+    Query* query, transaction::Methods* trx, Expression* filter,
     std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool useRawDocumentPointers, bool checkUniqueness)
     : _inputRow(inputRow),
       _outputRow(outputRow),
       _query(query),
+      _trx(trx),
       _filter(filter),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _numScanned(0),
@@ -306,7 +307,7 @@ std::vector<std::pair<ProjectionType, std::string>> const& DocumentProducingFunc
 }
 
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr() const noexcept {
-  return _query->trx();
+  return _trx;
 }
 
 std::vector<size_t> const& DocumentProducingFunctionContext::getCoveringIndexAttributePositions() const

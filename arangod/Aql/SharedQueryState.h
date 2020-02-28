@@ -76,11 +76,38 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   void setWakeupHandler(std::function<bool()> const& cb);
 
   void resetWakeupHandler();
+  
+  /// execute a task in parallel if capacity is there
+  template<typename F>
+  bool asyncExecuteAndWakeup(F&& cb) {
+    unsigned num = _numTasks.fetch_add(1);
+    if (num + 1 < _maxTasks) {
+      _numTasks.fetch_sub(1);
+      try {
+        std::forward<F>(cb)(false);
+      } catch(...) {}
+      return false;
+    }
+    return queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
+      if (self->_valid.load()) {
+        try {
+          cb(true);
+        } catch(...) {}
+        
+        std::lock_guard<std::mutex> guard(self->_mutex);
+        self->execute();
+      }
+      
+      self->_numTasks.fetch_sub(1);
+    });
+  }
 
  private:
   /// execute the _continueCallback. must hold _mutex
   void execute();
   void queueHandler();
+  
+  bool queueAsyncTask(std::function<void()> const&);
 
  private:
   mutable std::mutex _mutex;
@@ -91,11 +118,13 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// in here, which continueAfterPause simply calls.
   std::function<bool()> _wakeupCb;
 
-  uint32_t _numWakeups;
+  unsigned _numWakeups; // number of times
+  unsigned _cbVersion; // increased once callstack is done
   
-  uint32_t _cbVersion;
-
-  bool _valid;
+  // TODO: make configurable
+  const unsigned _maxTasks = 4;
+  std::atomic<unsigned> _numTasks;
+  std::atomic<bool> _valid;
 };
 
 }  // namespace aql

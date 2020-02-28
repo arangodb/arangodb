@@ -160,10 +160,13 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
   // The Key is required to build up the queryId mapping later
   infoBuilder.add(VPackValue(
       arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode) + ":" + server));
-  if (!localExpansions.empty()) {
+  if (!localExpansions.empty()) { // one expansion
+    
     // We have Expansions to permutate, guaranteed they have
     // all identical lengths.
     size_t numberOfShardsToPermutate = localExpansions.begin()->second.size();
+    TRI_ASSERT(numberOfShardsToPermutate > 1);
+    
     std::vector<std::string> distIds{};
     // Reserve the amount of localExpansions,
     distIds.reserve(numberOfShardsToPermutate);
@@ -185,7 +188,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
     nodeAliases.try_emplace(internalGather->id(), std::numeric_limits<size_t>::max());
 
     ScatterNode* internalScatter = nullptr;
-    if (lastIsRemote) {
+    if (lastIsRemote) {  // RemoteBlock talking to coordinator snippet
       TRI_ASSERT(_globalScatter != nullptr);
       TRI_ASSERT(plan == _globalScatter->plan());
       internalScatter =
@@ -230,6 +233,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
         }
       }
 
+      // hook distribute node into stream '0', since that does not happen below
       DistributeConsumerNode* consumer =
           createConsumerNode(plan, internalScatter, distIds[0]);
       nodeAliases.try_emplace(consumer->id(), std::numeric_limits<size_t>::max());
@@ -239,6 +243,21 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
       TRI_ASSERT(secondToLast->hasDependency());
       secondToLast->swapFirstDependency(consumer);
     }
+    
+    
+    bool parallel = internalGather->isParallelizable();
+    TRI_ASSERT(internalScatter == nullptr || !parallel);
+    
+    if (parallel) { // hook in the async executor node
+      TRI_ASSERT(internalScatter == nullptr);
+      auto async = std::make_unique<AsyncNode>(plan, plan->nextId());
+      async->addDependency(_nodes.front());
+      async->setIsInSplicedSubquery(_nodes.front()->isInSplicedSubquery());
+      async->cloneRegisterPlan(_nodes.front());
+      _nodes.insert(_nodes.begin(), async.get());
+      plan->registerNode(async.release());
+    }
+    
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
     internalGather->addDependency(_nodes.front());
@@ -278,6 +297,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
         previous = clone;
       }
       TRI_ASSERT(previous != nullptr);
+      
       // Previous is now the last node, where our internal GATHER needs to be connected to
       internalGather->addDependency(previous);
     }

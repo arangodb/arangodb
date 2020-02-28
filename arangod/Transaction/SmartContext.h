@@ -45,7 +45,7 @@ class SmartContext : public Context {
  public:
 
   SmartContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId,
-               TransactionState* state);
+               std::shared_ptr<TransactionState> state);
     
   /// @brief destroy the context
   ~SmartContext();
@@ -64,30 +64,34 @@ class SmartContext : public Context {
   /// @brief locally persisted transaction ID
   TRI_voc_tid_t generateId() const override final;
   
+  virtual std::shared_ptr<SmartContext> clone() const = 0;
+  
  protected:
   /// @brief ID of the transaction to use
   TRI_voc_tid_t const _globalId;
-  arangodb::TransactionState* _state;
+  std::shared_ptr<arangodb::TransactionState> _state;
 };
   
 /// @brief Acquire a transaction from the Manager
 struct ManagedContext final : public SmartContext {
   
-  ManagedContext(TRI_voc_tid_t globalId, TransactionState* state,
+  ManagedContext(TRI_voc_tid_t globalId, std::shared_ptr<TransactionState> state,
                  AccessMode::Type mode);
   
   ~ManagedContext();
   
   /// @brief get parent transaction (if any)
-  TransactionState* getParentTransaction() const override;
+  std::shared_ptr<TransactionState> getParentTransaction() const override;
 
   /// @brief register the transaction,
-  void registerTransaction(TransactionState*) override {
+  void registerTransaction(std::shared_ptr<TransactionState> const&) override {
     TRI_ASSERT(false);
   }
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
+  
+  std::shared_ptr<SmartContext> clone() const override;
   
 private:
   AccessMode::Type _mode;
@@ -101,13 +105,15 @@ struct AQLStandaloneContext final : public SmartContext {
     : SmartContext(vocbase, globalId, nullptr) {}
 
   /// @brief get parent transaction (if any)
-  TransactionState* getParentTransaction() const override;
+  std::shared_ptr<TransactionState> getParentTransaction() const override;
 
   /// @brief register the transaction,
-  void registerTransaction(TransactionState*) override;
+  void registerTransaction(std::shared_ptr<TransactionState> const&) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
+  
+  std::shared_ptr<SmartContext> clone() const override;
 };
   
 /// Can be used to reuse transaction state between multiple
@@ -118,13 +124,15 @@ struct StandaloneSmartContext final : public SmartContext {
   explicit StandaloneSmartContext(TRI_vocbase_t& vocbase);
   
   /// @brief get parent transaction (if any)
-  TransactionState* getParentTransaction() const override;
+  std::shared_ptr<TransactionState> getParentTransaction() const override;
   
   /// @brief register the transaction,
-  void registerTransaction(TransactionState*) override;
+  void registerTransaction(std::shared_ptr<TransactionState> const&) override;
   
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
+  
+  std::shared_ptr<SmartContext> clone() const override;
 };
 
 }  // namespace transaction

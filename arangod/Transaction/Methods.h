@@ -159,7 +159,8 @@ class Methods {
   TRI_vocbase_t& vocbase() const;
 
   /// @brief return internals of transaction
-  inline TransactionState* state() const { return _state; }
+  inline TransactionState* state() const { return _state.get(); }
+  inline std::shared_ptr<TransactionState> const& stateShrdPtr() const { return _state; }
 
   Result resolveId(char const* handle, size_t length,
                    std::shared_ptr<LogicalCollection>& collection,
@@ -171,8 +172,8 @@ class Methods {
   }
 
   TEST_VIRTUAL inline transaction::Context* transactionContextPtr() const {
-    TRI_ASSERT(_transactionContextPtr != nullptr);
-    return _transactionContextPtr;
+    TRI_ASSERT(_transactionContext != nullptr);
+    return _transactionContext.get();
   }
 
   /// @brief add a transaction hint
@@ -547,13 +548,10 @@ class Methods {
 
  protected:
   /// @brief the state
-  TransactionState* _state;
+  std::shared_ptr<TransactionState> _state;
 
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
-
-  /// @brief pointer to transaction context (faster than shared ptr)
-  transaction::Context* const _transactionContextPtr;
 
  private:
   /// @brief transaction hints

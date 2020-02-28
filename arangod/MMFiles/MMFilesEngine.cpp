@@ -297,9 +297,9 @@ std::unique_ptr<transaction::ContextData> MMFilesEngine::createTransactionContex
   return std::make_unique<MMFilesTransactionContextData>();
 }
 
-std::unique_ptr<TransactionState> MMFilesEngine::createTransactionState(
+std::shared_ptr<TransactionState> MMFilesEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TRI_voc_tick_t tid, transaction::Options const& options) {
-  return std::make_unique<MMFilesTransactionState>(vocbase, tid, options);
+  return std::make_shared<MMFilesTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> MMFilesEngine::createTransactionCollection(

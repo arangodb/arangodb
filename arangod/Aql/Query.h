@@ -254,7 +254,9 @@ class Query {
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
 
   /// @brief return the transaction, if prepared
-  TEST_VIRTUAL inline transaction::Methods* trx() const { return _trx.get(); }
+  TEST_VIRTUAL transaction::Methods* trx() const;
+  
+  transaction::Methods* copyTrx();
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
@@ -307,6 +309,9 @@ class Query {
 
   /// @brief pass-thru a resolver object from the transaction context
   CollectionNameResolver const& resolver();
+  
+  /// @brief create a transaction::Context
+  std::shared_ptr<transaction::Context> transactionContext();
 
  private:
   /// @brief initializes the query
@@ -340,9 +345,6 @@ class Query {
   /// @brief cleanup plan and engine for current query can issue WAITING
   ExecutionState cleanupPlanAndEngine(int errorCode,
                                       velocypack::Builder* statsBuilder = nullptr);
-
-  /// @brief create a transaction::Context
-  std::shared_ptr<transaction::Context> createTransactionContext();
 
  private:
   /// @brief query id
@@ -402,11 +404,14 @@ class Query {
   /// the query has its own transaction object. The transaction object is
   /// created in the prepare method.
   std::shared_ptr<transaction::Methods> _trx;
+  std::vector<std::unique_ptr<transaction::Methods>> _copiedTrx;
   bool _isClonedQuery = false;
 
   /// @brief the ExecutionEngine object, if the query is prepared
   std::unique_ptr<ExecutionEngine> _engine;
 
+  /// @brief warnings collected during execution
+  std::mutex _warningsMutex;
   /// @brief warnings collected during execution
   std::vector<std::pair<int, std::string>> _warnings;
 
@@ -442,7 +447,7 @@ class Query {
 
   /// Options for _resultBuilder. Optimally, its lifetime should be linked to
   /// it, but this is hard to do.
-  std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
+  std::unique_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
 
   /// @brief current state the query is in (used for profiling and error
   /// messages)

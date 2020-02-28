@@ -87,13 +87,13 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
 }
 
 /// @brief get parent transaction (if any)
-TransactionState* transaction::V8Context::getParentTransaction() const {
+std::shared_ptr<TransactionState> transaction::V8Context::getParentTransaction() const {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   return _sharedTransactionContext->_currentTransaction;
 }
 
 /// @brief register the transaction in the context
-void transaction::V8Context::registerTransaction(TransactionState* trx) {
+void transaction::V8Context::registerTransaction(std::shared_ptr<TransactionState> const& trx) {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
   TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
@@ -121,7 +121,7 @@ bool transaction::V8Context::isGlobal() const {
 }
 
 /// @brief return parent transaction state or none
-TransactionState* transaction::V8Context::getParentState() {
+std::shared_ptr<TransactionState> transaction::V8Context::getParentState() {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
       v8::Isolate::GetCurrent()->GetData(V8PlatformFeature::V8_DATA_SLOT));
   if (v8g == nullptr || v8g->_transactionContext == nullptr) {

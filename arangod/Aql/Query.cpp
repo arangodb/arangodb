@@ -99,7 +99,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _sharedState(std::make_shared<SharedQueryState>()) {
   if (_contextOwnedByExterior) {
     // copy transaction options from global state into our local query options
-    TransactionState* state = transaction::V8Context::getParentState();
+    auto state = transaction::V8Context::getParentState();
     if (state != nullptr) {
       _queryOptions.transactionOptions = state->options();
     }
@@ -217,6 +217,7 @@ Query::~Query() {
 
   _ast.reset();
   _graphs.clear();
+  _copiedTrx.clear();
 
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
@@ -230,7 +231,7 @@ void Query::addDataSource(                                  // track DataSource
   _queryDataSources.try_emplace(ds->guid(), ds->name());
 }
 
-/// @brief clone a query
+/// @brief clone a query, used on the coordinator for query snippets
 /// note: as a side-effect, this will also create and start a transaction for
 /// the query
 Query* Query::clone(QueryPart part, bool withPlan) {
@@ -267,7 +268,7 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
   // A daughter transaction which does not
   // actually lock the collections
-  clone->_trx = _trx;  // _trx->clone(_queryOptions.transactionOptions);
+  clone->_trx = _trx;
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
   // hack ensure only the first query commits
   clone->_isClonedQuery = true;
@@ -351,6 +352,8 @@ void Query::registerWarning(int code, char const* details) {
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
   }
+  
+  std::lock_guard<std::mutex> guard(_warningsMutex);
 
   if (_warnings.size() >= _queryOptions.maxWarningCount) {
     return;
@@ -472,7 +475,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
                                              << "Query::prepare"
                                              << " this: " << (uintptr_t)this;
 
-  auto ctx = createTransactionContext();
+  auto ctx = transactionContext();
   std::unique_ptr<ExecutionPlan> plan;
 
   if (!ctx) {
@@ -640,7 +643,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 
         log();
 
-        _resultBuilderOptions = std::make_shared<VPackOptions>(VPackOptions::Defaults);
+        _resultBuilderOptions = std::make_unique<VPackOptions>(VPackOptions::Defaults);
         _resultBuilderOptions->buildUnindexedArrays = true;
         _resultBuilderOptions->buildUnindexedObjects = true;
 
@@ -997,6 +1000,7 @@ ExecutionState Query::finalize(QueryResult& result) {
         << "Query::finalize: before _trx->commit"
         << " this: " << (uintptr_t)this;
 
+    _copiedTrx.clear();
     if (!_isClonedQuery) {
       Result commitResult = _trx->commit();
       if (commitResult.fail()) {
@@ -1102,7 +1106,7 @@ QueryResult Query::explain() {
     init();
     enterState(QueryExecutionState::ValueType::PARSING);
 
-    auto ctx = createTransactionContext();
+    auto ctx = transactionContext();
     Parser parser(this);
     parser.parse();
 
@@ -1179,6 +1183,7 @@ QueryResult Query::explain() {
     }
 
     // technically no need to commit, as we are only explaining here
+    _copiedTrx.clear();
     auto commitResult = _trx->commit();
     if (commitResult.fail()) {
       THROW_ARANGO_EXCEPTION(commitResult);
@@ -1273,7 +1278,7 @@ void Query::enterContext() {
       _preparedV8Context = false;
       auto ctx = static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
       if (ctx != nullptr) {
-        ctx->registerTransaction(_trx->state());
+        ctx->registerTransaction(_trx->stateShrdPtr());
       }
     }
     _preparedV8Context = false;
@@ -1487,6 +1492,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
   }
 
   // If the transaction was not committed, it is automatically aborted
+  _copiedTrx.clear();
   _trx = nullptr;
 
   _plan.reset();
@@ -1494,7 +1500,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
 }
 
 /// @brief create a transaction::Context
-std::shared_ptr<transaction::Context> Query::createTransactionContext() {
+std::shared_ptr<transaction::Context> Query::transactionContext() {
   if (!_transactionContext) {
     if (_contextOwnedByExterior) {
       // we must use v8
@@ -1511,7 +1517,7 @@ std::shared_ptr<transaction::Context> Query::createTransactionContext() {
 
 /// @brief pass-thru a resolver object from the transaction context
 CollectionNameResolver const& Query::resolver() {
-  return createTransactionContext()->resolver();
+  return transactionContext()->resolver();
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs
@@ -1534,4 +1540,38 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
   _graphs.emplace(name, std::move(g.get()));
 
   return graph;
+}
+
+/// @brief return the transaction, if prepared
+transaction::Methods* Query::trx() const {
+  TRI_ASSERT(this->_state != QueryExecutionState::ValueType::EXECUTION);
+  return _trx.get();
+}
+
+#include "Transaction/SmartContext.h"
+
+transaction::Methods* Query::copyTrx() {
+  TRI_ASSERT(this->_state != QueryExecutionState::ValueType::EXECUTION);
+  if (!ServerState::instance()->isDBServer()) {
+    return _trx.get();
+  }
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
+  
+  auto ctx = dynamic_cast<transaction::SmartContext*>(_transactionContext.get());
+  if (ctx == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "not supported in this place");
+  }
+  auto copy = ctx->clone();
+  
+  std::vector<std::string> empty;
+  auto trxCopy = std::make_unique<transaction::Methods>(copy, empty, empty, empty, _queryOptions.transactionOptions);
+  Result res = trxCopy->begin();
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  TRI_ASSERT(!trxCopy->state()->isTopLevelTransaction());
+  _copiedTrx.push_back(std::move(trxCopy));
+  
+  return _copiedTrx.back().get();
 }

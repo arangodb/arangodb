@@ -60,7 +60,7 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   EnumerateCollectionExecutorInfos(
       RegisterId outputRegister, RegisterId nrInputRegisters,
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+      std::unordered_set<RegisterId> registersToKeep, aql::Query* query,
       Collection const* collection, Variable const* outVariable, bool produceResult,
       Expression* filter,
       std::vector<std::string> const& projections,
@@ -71,11 +71,10 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos const&) = delete;
   ~EnumerateCollectionExecutorInfos() = default;
 
-  ExecutionEngine* getEngine();
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
   Query* getQuery() const;
-  transaction::Methods* getTrxPtr() const;
+  transaction::Methods* getTrx() const;
   Expression* getFilter() const;
   std::vector<std::string> const& getProjections() const noexcept;
   bool getProduceResult() const;
@@ -84,7 +83,7 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   RegisterId getOutputRegisterId() const;
 
  private:
-  ExecutionEngine* _engine;
+  aql::Query* _query;
   Collection const* _collection;
   Variable const* _outVariable;
   Expression* _filter;
@@ -129,7 +128,7 @@ class EnumerateCollectionExecutor {
   void initializeCursor();
 
  private:
-  bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
+  bool waitForSatellites(aql::Query* engine, Collection const* collection) const;
 
  private:
   Infos& _infos;

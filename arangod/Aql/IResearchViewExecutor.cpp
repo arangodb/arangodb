@@ -126,6 +126,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _numScoreRegisters(numScoreRegisters),
       _reader(std::move(reader)),
       _query(query),
+      _trx(_query.copyTrx()),
       _scorers(scorers),
       _sort(sort),
       _storedValues(storedValues),
@@ -166,6 +167,8 @@ std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchVie
 }
 
 Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
+
+transaction::Methods* IResearchViewExecutorInfos::trx() const noexcept { return _trx; }
 
 const std::vector<arangodb::iresearch::Scorer>& IResearchViewExecutorInfos::scorers() const
     noexcept {
@@ -412,11 +415,10 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
-      _execCtx(*infos.getQuery().trx(), _ctx),
+      _execCtx(*infos.trx(), _ctx),
       _inflight(0),
       _hasMore(true),  // has more data initially
       _isInitialized(false) {
-  TRI_ASSERT(infos.getQuery().trx() != nullptr);
 
   // add expression execution context
   _filterCtx.emplace(_execCtx);
@@ -576,7 +578,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 
   ExecutionPlan const* plan = &infos().plan();
 
-  QueryContext const queryCtx = {infos().getQuery().trx(), plan, plan->getAst(),
+  QueryContext const queryCtx = {infos().trx(), plan, plan->getAst(),
                                  &_ctx, &infos().outVariable()};
 
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
@@ -683,7 +685,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (!collection.readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback)) {
+    if (!collection.readDocumentWithCallback(infos().trx(), documentId, ctx.callback)) {
       return false;
     }
   } else if ((Traits::MaterializeType & MaterializeType::LateMaterialize) == MaterializeType::LateMaterialize) {

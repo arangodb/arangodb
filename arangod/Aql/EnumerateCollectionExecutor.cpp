@@ -52,7 +52,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+    std::unordered_set<RegisterId> registersToKeep, aql::Query* query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter,
     std::vector<std::string> const& projections, 
@@ -61,7 +61,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
-      _engine(engine),
+      _query(query),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
@@ -70,10 +70,6 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _random(random) {}
-
-ExecutionEngine* EnumerateCollectionExecutorInfos::getEngine() {
-  return _engine;
-}
 
 Collection const* EnumerateCollectionExecutorInfos::getCollection() const {
   return _collection;
@@ -84,11 +80,11 @@ Variable const* EnumerateCollectionExecutorInfos::getOutVariable() const {
 }
 
 Query* EnumerateCollectionExecutorInfos::getQuery() const {
-  return _engine->getQuery();
+  return _query;
 }
 
-transaction::Methods* EnumerateCollectionExecutorInfos::getTrxPtr() const {
-  return _engine->getQuery()->trx();
+transaction::Methods* EnumerateCollectionExecutorInfos::getTrx() const {
+  return _query->copyTrx();
 }
 
 Expression* EnumerateCollectionExecutorInfos::getFilter() const {
@@ -118,7 +114,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _documentProducer(nullptr),
       _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(),
-                                        _infos.getQuery(), _infos.getFilter(),
+                                        _infos.getQuery(), _infos.getTrx(), _infos.getFilter(),
                                         _infos.getProjections(), 
                                         ::emptyAttributePositions,
                                         true, _infos.getUseRawDocumentPointers(), false),
@@ -126,13 +122,13 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _cursorHasMore(false),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   _cursor = std::make_unique<OperationCursor>(
-      _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
+      _infos.getTrx()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
                                          : transaction::Methods::CursorType::ALL)));
 
-  if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
-    double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;
+  if (!waitForSatellites(_infos.getQuery(), _infos.getCollection())) {
+    double maxWait = _infos.getQuery()->queryOptions().satelliteSyncWait;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
                                    "collection " + _infos.getCollection()->name() +
                                        " did not come into sync in time (" +
@@ -262,7 +258,7 @@ void EnumerateCollectionExecutor::initializeCursor() {
 }
 
 #ifndef USE_ENTERPRISE
-bool EnumerateCollectionExecutor::waitForSatellites(ExecutionEngine* engine,
+bool EnumerateCollectionExecutor::waitForSatellites(Query* query,
                                                     Collection const* collection) const {
   return true;
 }

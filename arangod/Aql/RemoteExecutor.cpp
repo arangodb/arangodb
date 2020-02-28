@@ -309,8 +309,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
   builder.openObject(/*unindexed*/ true);
-  input.toVelocyPack(_engine->getQuery()->trx()->transactionContextPtr()->getVPackOptions(),
-                     builder);
+  input.toVelocyPack(_trxVpackOptions, builder);
   builder.close();
 
   builder.close();

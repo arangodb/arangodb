@@ -111,14 +111,14 @@ class MultiDependencyProxyMock
   // additional test methods
   DependencyProxyMock<passBlocksThrough>& getDependencyMock(size_t dependency) {
     TRI_ASSERT(dependency < _dependencyMocks.size());
-    return _dependencyMocks[dependency];
+    return *_dependencyMocks[dependency];
   }
   bool allBlocksFetched() const;
 
   size_t numFetchBlockCalls() const;
 
  private:
-  std::vector<DependencyProxyMock<passBlocksThrough>> _dependencyMocks;
+  std::vector<std::unique_ptr<DependencyProxyMock<passBlocksThrough>>> _dependencyMocks;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
 };
 

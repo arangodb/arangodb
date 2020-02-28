@@ -1522,10 +1522,9 @@ std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransac
   return std::make_unique<arangodb::transaction::Manager>(feature, /*keepData*/ false);
 }
 
-std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
+std::shared_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, arangodb::transaction::Options const& options) {
-  return std::unique_ptr<arangodb::TransactionState>(
-      new TransactionStateMock(vocbase, tid, options));
+  return std::make_shared<TransactionStateMock>(vocbase, tid, options);
 }
 
 arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,

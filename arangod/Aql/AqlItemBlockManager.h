@@ -30,6 +30,7 @@
 
 #include <array>
 #include <cstddef>
+#include <mutex>
 
 namespace arangodb {
 
@@ -90,6 +91,7 @@ class AqlItemBlockManager {
   struct Bucket {
     std::array<AqlItemBlock*, numBlocksPerBucket> blocks;
     size_t numItems;
+    mutable std::mutex _mutex;
 
     Bucket();
     ~Bucket();

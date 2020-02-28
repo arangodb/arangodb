@@ -704,23 +704,22 @@ static bool findRefusal(std::vector<futures::Try<network::Response>> const& resp
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& transactionContext,
                               transaction::Options const& options)
     : _state(nullptr),
-      _transactionContext(transactionContext),
-      _transactionContextPtr(transactionContext.get()) {
-  TRI_ASSERT(_transactionContextPtr != nullptr);
+      _transactionContext(transactionContext) {
+  TRI_ASSERT(transactionContext != nullptr);
 
   // brief initialize the transaction
   // this will first check if the transaction is embedded in a parent
   // transaction. if not, it will create a transaction of its own
   // check in the context if we are running embedded
-  TransactionState* parent = _transactionContextPtr->getParentTransaction();
+  auto parent = _transactionContext->getParentTransaction();
 
   if (parent != nullptr) {  // yes, we are embedded
-    if (!_transactionContextPtr->isEmbeddable()) {
+    if (!_transactionContext->isEmbeddable()) {
       // we are embedded but this is disallowed...
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
     }
 
-    _state = parent;
+    _state = std::move(parent);
     TRI_ASSERT(_state != nullptr);
     _state->increaseNesting();
   } else {  // non-embedded
@@ -728,13 +727,12 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
     _state = engine
-                 ->createTransactionState(_transactionContextPtr->vocbase(),
-                                          _transactionContextPtr->generateId(), options)
-                 .release();
+                 ->createTransactionState(_transactionContext->vocbase(),
+                                          _transactionContext->generateId(), options);
     TRI_ASSERT(_state != nullptr && _state->isTopLevelTransaction());
 
     // register the transaction in the context
-    _transactionContextPtr->registerTransaction(_state);
+    _transactionContext->registerTransaction(_state);
   }
 
   TRI_ASSERT(_state != nullptr);
@@ -774,7 +772,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 transaction::Methods::~Methods() {
   if (_state->isTopLevelTransaction()) {  // _nestingLevel == 0
     // unregister transaction from context
-    _transactionContextPtr->unregisterTransaction();
+    _transactionContext->unregisterTransaction();
 
     if (_state->status() == transaction::Status::RUNNING) {
       // auto abort a running transaction
@@ -790,12 +788,11 @@ transaction::Methods::~Methods() {
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
 
     // store result in context
-    _transactionContextPtr->storeTransactionResult(_state->id(),
-                                                   _state->hasFailedOperations(),
-                                                   _state->wasRegistered(),
-                                                   _state->isReadOnlyTransaction());
+    _transactionContext->storeTransactionResult(_state->id(),
+                                                _state->hasFailedOperations(),
+                                                _state->wasRegistered(),
+                                                _state->isReadOnlyTransaction());
 
-    delete _state;
     _state = nullptr;
   } else {
     _state->decreaseNesting();  // return transaction
@@ -804,7 +801,7 @@ transaction::Methods::~Methods() {
 
 /// @brief return the collection name resolver
 CollectionNameResolver const* transaction::Methods::resolver() const {
-  return &(_transactionContextPtr->resolver());
+  return &(_transactionContext->resolver());
 }
 
 /// @brief return the transaction collection for a document collection
@@ -838,12 +835,12 @@ void transaction::Methods::pinData(TRI_voc_cid_t cid) {
   }
 
   TRI_ASSERT(trxColl->collection() != nullptr);
-  _transactionContextPtr->pinData(trxColl->collection().get());
+  _transactionContext->pinData(trxColl->collection().get());
 }
 
 /// @brief whether or not a ditch has been created for the collection
 bool transaction::Methods::isPinned(TRI_voc_cid_t cid) const {
-  return _transactionContextPtr->isPinned(cid);
+  return _transactionContext->isPinned(cid);
 }
 
 /// @brief extract the _id attribute from a slice, and convert it into a
@@ -858,7 +855,7 @@ void transaction::Methods::buildDocumentIdentity(
     LogicalCollection* collection, VPackBuilder& builder, TRI_voc_cid_t cid,
     arangodb::velocypack::StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
-  StringLeaser leased(_transactionContextPtr);
+  StringLeaser leased(_transactionContext.get());
   std::string& temp(*leased.get());
   temp.reserve(64);
 
@@ -1240,7 +1237,7 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
   TRI_ASSERT(trxColl != nullptr);
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   TRI_ASSERT(collection != nullptr);
-  _transactionContextPtr->pinData(collection.get());  // will throw when it fails
+  _transactionContext->pinData(collection.get());  // will throw when it fails
 
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -2847,7 +2844,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
   TRI_ASSERT(logical != nullptr);
 
   // will throw when it fails
-  _transactionContextPtr->pinData(logical.get());
+  _transactionContext->pinData(logical.get());
 
   std::unique_ptr<IndexIterator> iterator;
   switch (cursorType) {

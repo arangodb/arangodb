@@ -497,7 +497,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   if (_elements.empty()) {
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
-    if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
+    if (/*ServerState::instance()->isCoordinator() &&*/ _parallelism == Parallelism::Parallel) {
       ParallelUnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                                                 calcRegsToKeep(), getRegsToClear());
       return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
@@ -512,9 +512,9 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   }
   
   Parallelism p = _parallelism;
-  if (ServerState::instance()->isDBServer()) {
-    p = Parallelism::Serial; // not supported in v36
-  }
+//  if (ServerState::instance()->isDBServer()) {
+//    p = Parallelism::Serial; // not supported in v36
+//  }
   
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
@@ -523,7 +523,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                    calcRegsToKeep(), std::move(sortRegister),
-                                   _plan->getAst()->query()->trx(), sortMode(),
+                                   _plan->getAst()->query()->copyTrx(), sortMode(),
                                    constrainedSortLimit(), p);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
@@ -662,7 +662,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
       in, outputNew, outputOld, out,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
+      calcRegsToKeep(), _plan->getAst()->query()->copyTrx(), std::move(options),
       _collection, ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,

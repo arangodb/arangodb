@@ -27,6 +27,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -466,7 +467,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-
   trxPtr->pinData(_collection->id());
 
   bool hasV8Expression = false;
@@ -526,7 +526,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            firstOutputRegister,
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                           calcRegsToKeep(), &engine, this->_collection, _outVariable,
+                           calcRegsToKeep(), engine.getQuery(), this->_collection, _outVariable,
                            isProduceResult(),
                            this->_filter.get(), this->projections(),
                            this->coveringIndexAttributePositions(),

@@ -314,7 +314,8 @@ bool RestAqlHandler::registerSnippets(
     }
 
     try {
-      if (needToLock) {
+#warning NECESSARY?
+      /*if (needToLock) {
         // Directly try to lock only the first snippet is required to be locked.
         // For all others locking is pointless
         needToLock = false;
@@ -336,7 +337,7 @@ bool RestAqlHandler::registerSnippets(
         // If we get here we successfully locked the collections.
         // If we bail out up to this point nothing is kept alive.
         // No need to cleanup...
-      }
+      }*/
 
       QueryId qId = query->id();  // not true in general
       TRI_ASSERT(qId > 0);
@@ -639,7 +640,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
   bool found;
   std::string shardId = _request->header("x-shard-id", found);
-  if (!found) {  // deprecated in 3.7, remove later
+  if (!found) {  // simon: deprecated in 3.7, remove later
     shardId = _request->header("shard-id", found);
   }
 
@@ -664,7 +665,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     }
   }
 
-  auto transactionContext = _query->trx()->transactionContext();
+  auto transactionContext = _query->transactionContext();
 
   VPackBuffer<uint8_t> answerBuffer;
   VPackBuilder answerBuilder(answerBuffer);
@@ -704,8 +705,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       // Backwards Compatibility
       answerBuilder.add(StaticStrings::Error, VPackValue(false));
     } else {
-      items->toVelocyPack(_query->trx()->transactionContextPtr()->getVPackOptions(),
-                          answerBuilder);
+      items->toVelocyPack(transactionContext->getVPackOptions(), answerBuilder);
     }
   } else if (operation == "skipSome") {
     auto atMost =

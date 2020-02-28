@@ -28,6 +28,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
+#include "Aql/AsyncExecutor.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
@@ -116,7 +117,10 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::DISTRIBUTE_CONSUMER),
      "DistributeConsumer"},
     {static_cast<int>(ExecutionNode::MATERIALIZE),
-     "MaterializeNode"}};
+     "MaterializeNode"},
+    {static_cast<int>(ExecutionNode::ASYNC),
+    "AsyncNode"}
+};
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -343,6 +347,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new DistributeConsumerNode(plan, slice);
     case MATERIALIZE:
       return createMaterializeNode(plan, slice);
+    case ASYNC:
+      return new AsyncNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -1350,7 +1356,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
       variableToRegisterId(_outVariable),
       getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-      &engine, this->_collection, _outVariable, (this->isVarUsedLater(_outVariable) || this->_filter != nullptr),
+      engine.getQuery(), this->_collection, _outVariable, (this->isVarUsedLater(_outVariable) || this->_filter != nullptr),
       this->_filter.get(), this->projections(), EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));
@@ -2335,6 +2341,68 @@ SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other
   return allEqual;
 }
 
+/// @brief toVelocyPack, for AsyncNode
+void AsyncNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                       std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+
+  // And close it
+  nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> AsyncNode::createBlock(
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+  RegisterId const nrInRegs = nrOutRegs;
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  // Everything that is cleared here could and should have been cleared before
+  TRI_ASSERT(regsToClear.empty());
+
+  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                      std::move(regsToKeep));
+  
+  return std::make_unique<ExecutionBlockImpl<AsyncExecutor>>(&engine, this, std::move(infos));
+}
+
+/// @brief estimateCost, the cost of a NoResults is nearly 0
+CostEstimate AsyncNode::estimateCost() const {
+  CostEstimate estimate = CostEstimate::empty();
+  estimate.estimatedCost = 0.5;  // just to make it non-zero
+  return estimate;
+}
+
+AsyncNode::AsyncNode(ExecutionPlan* plan, size_t id)
+    : ExecutionNode(plan, id) {}
+
+AsyncNode::AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base) {}
+
+ExecutionNode::NodeType AsyncNode::getType() const { return ASYNC; }
+
+ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                    bool withProperties) const {
+  return cloneHelper(std::make_unique<AsyncNode>(plan, _id),
+                     withDependencies, withProperties);
+}
+
+void AsyncNode::cloneRegisterPlan(ExecutionNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  setVarsUsedLater(dependency->getVarsUsedLater());
+  setVarsValid(dependency->getVarsValid());
+  setVarUsageValid();
+}
+
 namespace {
 const char* MATERIALIZE_NODE_IN_NM_COL_PARAM = "inNmColPtr";
 const char* MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
@@ -2442,7 +2510,7 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
      MaterializerExecutorInfos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                calcRegsToKeep(), inNmColPtrRegId, inNmDocIdRegId,
-                               outDocumentRegId, engine.getQuery()->trx()));
+                               outDocumentRegId, engine.getQuery()->copyTrx()));
 }
 
 ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan, bool withDependencies, bool withProperties) const {
@@ -2511,7 +2579,7 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
     MaterializerExecutorInfos<decltype(name)>(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                               getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                               calcRegsToKeep(), _collection->name(), inNmDocIdRegId,
-                                              outDocumentRegId, engine.getQuery()->trx()));
+                                              outDocumentRegId, engine.getQuery()->copyTrx()));
 }
 
 ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan * plan, bool withDependencies, bool withProperties) const {

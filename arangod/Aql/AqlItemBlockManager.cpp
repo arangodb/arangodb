@@ -158,16 +158,18 @@ AqlItemBlockManager::Bucket::~Bucket() {
 }
 
 bool AqlItemBlockManager::Bucket::empty() const noexcept {
+  std::lock_guard<std::mutex> guard(_mutex);
   return numItems == 0;
 }
 
 bool AqlItemBlockManager::Bucket::full() const noexcept {
+  std::lock_guard<std::mutex> guard(_mutex);
   return (numItems == numBlocksPerBucket);
 }
 
 AqlItemBlock* AqlItemBlockManager::Bucket::pop() noexcept {
-  TRI_ASSERT(!empty());
-  TRI_ASSERT(numItems > 0);
+  std::lock_guard<std::mutex> guard(_mutex);
+  TRI_ASSERT(numItems > 0); // !empty()
   AqlItemBlock* result = blocks[--numItems];
   TRI_ASSERT(result != nullptr);
   blocks[numItems] = nullptr;
@@ -175,7 +177,8 @@ AqlItemBlock* AqlItemBlockManager::Bucket::pop() noexcept {
 }
 
 void AqlItemBlockManager::Bucket::push(AqlItemBlock* block) noexcept {
-  TRI_ASSERT(!full());
+  std::lock_guard<std::mutex> guard(_mutex);
+  TRI_ASSERT(numItems < numBlocksPerBucket); // !full()
   TRI_ASSERT(blocks[numItems] == nullptr);
   blocks[numItems++] = block;
   TRI_ASSERT(numItems <= numBlocksPerBucket);

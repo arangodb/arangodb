@@ -155,6 +155,7 @@ class ExecutionNode {
     SUBQUERY_START = 29,
     SUBQUERY_END = 30,
     MATERIALIZE = 31,
+    ASYNC = 32,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -936,6 +937,38 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
+};
+
+/// @brief class NoResultsNode
+class AsyncNode : public ExecutionNode {
+  friend class ExecutionBlock;
+
+  /// @brief constructor with an id
+ public:
+  AsyncNode(ExecutionPlan* plan, size_t id);
+
+  AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final;
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  /// @brief the cost of a AsyncNode is whatever is 0
+  CostEstimate estimateCost() const override final;
+  
+  void cloneRegisterPlan(ExecutionNode* dependency);
 };
 
 namespace materialize {

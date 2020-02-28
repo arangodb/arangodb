@@ -142,7 +142,7 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
                                                              IndexExecutorInfos const& infos) {
   return DocumentProducingFunctionContext(
       inputRow, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
-      infos.getQuery(), infos.getFilter(),
+      infos.getQuery(), infos.getTrxPtr(), infos.getFilter(),
       infos.getProjections(), 
       infos.getCoveringIndexAttributePositions(), false, infos.getUseRawDocumentPointers(),
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions());
@@ -157,7 +157,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+    std::unordered_set<RegisterId> registersToKeep, Query* query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter,
     std::vector<std::string> const& projections, 
@@ -176,7 +176,8 @@ IndexExecutorInfos::IndexExecutorInfos(
       _condition(condition),
       _ast(ast),
       _options(options),
-      _engine(engine),
+      _query(query),
+      _trx(query->copyTrx()),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
@@ -243,8 +244,6 @@ IndexExecutorInfos::IndexExecutorInfos(
   }
 }
 
-ExecutionEngine* IndexExecutorInfos::getEngine() const { return _engine; }
-
 Collection const* IndexExecutorInfos::getCollection() const {
   return _collection;
 }
@@ -258,11 +257,11 @@ std::vector<std::string> const& IndexExecutorInfos::getProjections() const noexc
 }
 
 Query* IndexExecutorInfos::getQuery() const noexcept {
-  return _engine->getQuery();
+  return _query;
 }
 
 transaction::Methods* IndexExecutorInfos::getTrxPtr() const noexcept {
-  return _engine->getQuery()->trx();
+  return _trx;
 }
 
 Expression* IndexExecutorInfos::getFilter() const noexcept {
@@ -518,11 +517,11 @@ void IndexExecutor::initIndexes(InputAqlItemRow& input) {
             e->expression->invalidate();
           }
 
-          _infos.getEngine()->getQuery()->exitContext();
+          _infos.getQuery()->exitContext();
         }
       };
 
-      _infos.getEngine()->getQuery()->enterContext();
+      _infos.getQuery()->enterContext();
       TRI_DEFER(cleanup());
 
       ISOLATE;
@@ -555,7 +554,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
   // modify the existing node in place
   TEMPORARILY_UNLOCK_NODE(condition);
 
-  Query* query = _infos.getEngine()->getQuery();
+  Query* query = _infos.getQuery();
 
   for (size_t posInExpressions = 0;
        posInExpressions < _infos.getNonConstExpressions().size(); ++posInExpressions) {

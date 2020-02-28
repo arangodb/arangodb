@@ -62,7 +62,7 @@ struct DocumentProducingFunctionContext {
  public:
   DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
                                    RegisterId outputRegister, bool produceResult,
-                                   Query* query, Expression* filter,
+                                   Query* query, transaction::Methods* trx, Expression* filter,
                                    std::vector<std::string> const& projections,
                                    std::vector<size_t> const& coveringIndexAttributePositions,
                                    bool allowCoveringIndexOptimization,
@@ -115,7 +115,8 @@ struct DocumentProducingFunctionContext {
  private:
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
-  Query* const _query;
+  Query* _query;
+  transaction::Methods* _trx;
   Expression* _filter;
   std::vector<std::pair<ProjectionType, std::string>> _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;

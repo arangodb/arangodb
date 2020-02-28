@@ -80,6 +80,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   iresearch::IResearchViewNode::ViewValuesRegisters const& getOutNonMaterializedViewRegs() const noexcept;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
   Query& getQuery() const noexcept;
+  transaction::Methods* trx() const noexcept;
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;
@@ -102,6 +103,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   RegisterId const _numScoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;
+  transaction::Methods* _trx;
   std::vector<iresearch::Scorer> const& _scorers;
   std::pair<iresearch::IResearchViewSort const*, size_t> _sort;
   iresearch::IResearchViewStoredValues const& _storedValues;

@@ -89,16 +89,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
  private:
   
-  enum class ReqState {
-    None,
-    SendingGetSome,
-    GotSendSome,
-    SendingSkipSome,
-    GotSkipSome,
-    SendingShutdown,
-    GotShutdown
-  };
-  
   ExecutorInfos _infos;
 
   Query const& _query;

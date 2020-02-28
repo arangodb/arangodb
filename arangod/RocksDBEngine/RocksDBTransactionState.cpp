@@ -429,9 +429,9 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
       clearQueryCache();
     }
     TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
+    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   }
 
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   unuseCollections(nestingLevel());
   return result;
 }

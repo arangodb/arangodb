@@ -867,9 +867,9 @@ std::unique_ptr<transaction::ContextData> RocksDBEngine::createTransactionContex
   return std::unique_ptr<transaction::ContextData>(nullptr);  // not used by rocksdb
 }
 
-std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
+std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
-  return std::make_unique<RocksDBTransactionState>(vocbase, tid, options);
+  return std::make_shared<RocksDBTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollection(

@@ -142,9 +142,9 @@ std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContex
   return std::unique_ptr<transaction::ContextData>();  // not used by coordinator
 }
 
-std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
+std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
-  return std::make_unique<ClusterTransactionState>(vocbase, tid, options);
+  return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(

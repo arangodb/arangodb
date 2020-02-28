@@ -22,6 +22,7 @@
 
 #include "SmartContext.h"
 
+#include "Basics/Exceptions.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -36,20 +37,21 @@ namespace transaction {
   
 SmartContext::SmartContext(TRI_vocbase_t& vocbase,
                            TRI_voc_tid_t globalId,
-                           TransactionState* state)
-  : Context(vocbase), _globalId(globalId), _state(state) {
+                           std::shared_ptr<TransactionState> state)
+  : Context(vocbase), _globalId(globalId), _state(std::move(state)) {
   TRI_ASSERT(_globalId != 0);
 }
   
 SmartContext::~SmartContext() {
-  if (_state) {
-    if (_state->isTopLevelTransaction()) {
-      TRI_ASSERT(false); // probably should not happen
-      delete _state;
-    }
-  }
+//  if (_state) {
+//    if (_state->isTopLevelTransaction()) {
+//      std::this_thread::sleep_for(std::chrono::seconds(60));
+//      TRI_ASSERT(false); // probably should not happen
+//      delete _state;
+//    }
+//  }
 }
-  
+
 /// @brief order a custom type handler for the collection
 std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::SmartContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
@@ -79,9 +81,9 @@ TRI_voc_tid_t transaction::SmartContext::generateId() const {
 //  ============= ManagedContext =============
   
 ManagedContext::ManagedContext(TRI_voc_tid_t globalId,
-                               TransactionState* state,
+                               std::shared_ptr<TransactionState> state,
                                AccessMode::Type mode)
-  : SmartContext(state->vocbase(), globalId, state), _mode(mode) {}
+  : SmartContext(state->vocbase(), globalId, std::move(state)), _mode(mode) {}
   
 ManagedContext::~ManagedContext() {
   if (_state != nullptr) {
@@ -93,7 +95,7 @@ ManagedContext::~ManagedContext() {
 }
 
 /// @brief get parent transaction (if any)
-TransactionState* ManagedContext::getParentTransaction() const {
+std::shared_ptr<TransactionState> ManagedContext::getParentTransaction() const {
   TRI_ASSERT(_state);
   // single document transaction should never be leased out
   TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
@@ -104,15 +106,21 @@ void ManagedContext::unregisterTransaction() noexcept {
   _state = nullptr; // delete is handled by transaction::Methods
 }
 
+std::shared_ptr<SmartContext> ManagedContext::clone() const {
+  auto clone = std::make_shared<transaction::ManagedContext>(_globalId, _state, _mode);
+  clone->_state = _state;
+  return clone;
+}
+  
 // ============= AQLStandaloneContext =============
   
 /// @brief get parent transaction (if any)
-TransactionState* AQLStandaloneContext::getParentTransaction() const {
+std::shared_ptr<TransactionState> AQLStandaloneContext::getParentTransaction() const {
   return _state;
 }
     
 /// @brief register the transaction,
-void AQLStandaloneContext::registerTransaction(TransactionState* state) {
+void AQLStandaloneContext::registerTransaction(std::shared_ptr<TransactionState> const& state) {
   TRI_ASSERT(_state == nullptr);
   _state = state;
   if (state) {
@@ -130,6 +138,12 @@ void AQLStandaloneContext::unregisterTransaction() noexcept {
   TRI_ASSERT(mgr != nullptr);
   mgr->unregisterAQLTrx(_globalId);
 }
+
+std::shared_ptr<SmartContext> AQLStandaloneContext::clone() const {
+  auto clone = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, _globalId);
+  clone->_state = _state;
+  return clone;
+}
   
 // ============= StandaloneSmartContext =============
   
@@ -138,12 +152,12 @@ StandaloneSmartContext::StandaloneSmartContext(TRI_vocbase_t& vocbase)
   : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
   
 /// @brief get parent transaction (if any)
-TransactionState* StandaloneSmartContext::getParentTransaction() const {
+std::shared_ptr<TransactionState> StandaloneSmartContext::getParentTransaction() const {
   return _state;
 }
 
 /// @brief register the transaction,
-void StandaloneSmartContext::registerTransaction(TransactionState* state) {
+void StandaloneSmartContext::registerTransaction(std::shared_ptr<TransactionState> const& state) {
   TRI_ASSERT(_state == nullptr);
   _state = state;
 }
@@ -152,6 +166,11 @@ void StandaloneSmartContext::registerTransaction(TransactionState* state) {
 void StandaloneSmartContext::unregisterTransaction() noexcept {
   TRI_ASSERT(_state != nullptr);
   _state = nullptr;
+}
+
+std::shared_ptr<SmartContext> StandaloneSmartContext::clone() const {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 }  // namespace transaction

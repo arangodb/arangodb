@@ -1435,7 +1435,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                                              std::move(infos));
   }
 
-  auto* trx = engine.getQuery()->trx();
+  auto* trx = engine.getQuery()->copyTrx();
 
   if (!trx) {
     LOG_TOPIC("7c905", WARN, arangodb::iresearch::TOPIC)

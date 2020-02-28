@@ -47,6 +47,7 @@ CalculationExecutorInfos::CalculationExecutorInfos(
                     std::move(registersToClear), std::move(registersToKeep)),
       _outputRegisterId(outputRegister),
       _query(query),
+      _trx(query.copyTrx()),
       _expression(expression),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)) {
@@ -70,6 +71,8 @@ RegisterId CalculationExecutorInfos::getOutputRegisterId() const noexcept {
 }
 
 Query& CalculationExecutorInfos::getQuery() const noexcept { return _query; }
+
+transaction::Methods* CalculationExecutorInfos::getTrx() const noexcept { return _trx; }
 
 Expression& CalculationExecutorInfos::getExpression() const noexcept {
   return _expression;
@@ -186,7 +189,7 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(InputAqlItemR
                                 _infos.getExpInVars(), _infos.getExpInRegs());
 
   bool mustDestroy;  // will get filled by execution
-  AqlValue a = _infos.getExpression().execute(_infos.getQuery().trx(), &ctx, mustDestroy);
+  AqlValue a = _infos.getExpression().execute(_infos.getTrx(), &ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {
@@ -219,7 +222,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
                                 _infos.getExpInVars(), _infos.getExpInRegs());
 
   bool mustDestroy;  // will get filled by execution
-  AqlValue a = _infos.getExpression().execute(_infos.getQuery().trx(), &ctx, mustDestroy);
+  AqlValue a = _infos.getExpression().execute(_infos.getTrx(), &ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {

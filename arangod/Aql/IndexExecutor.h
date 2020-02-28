@@ -59,7 +59,7 @@ class IndexExecutorInfos : public ExecutorInfos {
   IndexExecutorInfos(
       std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters, RegisterId nrInputRegisters,
       RegisterId firstOutputRegister, RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+      std::unordered_set<RegisterId> registersToKeep, Query* query,
       Collection const* collection, Variable const* outVariable, bool produceResult,
       Expression* filter,
       std::vector<std::string> const& projections, 
@@ -76,7 +76,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   IndexExecutorInfos(IndexExecutorInfos const&) = delete;
   ~IndexExecutorInfos() = default;
 
-  ExecutionEngine* getEngine() const;
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
   std::vector<std::string> const& getProjections() const noexcept;
@@ -136,7 +135,8 @@ class IndexExecutorInfos : public ExecutorInfos {
   /// @brief the index sort order - this is the same order for all indexes
   IndexIteratorOptions _options;
 
-  ExecutionEngine* _engine;
+  Query* _query;
+  transaction::Methods* _trx;
   Collection const* _collection;
   Variable const* _outVariable;
   Expression* _filter;

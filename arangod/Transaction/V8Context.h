@@ -47,10 +47,10 @@ class V8Context final : public Context {
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
 
   /// @brief get parent transaction (if any)
-  TransactionState* getParentTransaction() const override;
+  std::shared_ptr<TransactionState> getParentTransaction() const override;
 
   /// @brief register the transaction in the context
-  void registerTransaction(TransactionState* trx) override;
+  void registerTransaction(std::shared_ptr<TransactionState> const& trx) override;
 
   /// @brief return the resolver
   CollectionNameResolver const& resolver() override final;
@@ -68,7 +68,7 @@ class V8Context final : public Context {
   bool isGlobal() const;
 
   /// @brief return parent transaction state or none
-  static TransactionState* getParentState();
+  static std::shared_ptr<TransactionState> getParentState();
 
   /// @brief check whether the transaction is embedded
   static bool isEmbedded();
@@ -88,7 +88,7 @@ class V8Context final : public Context {
   transaction::V8Context* _mainScope;
 
   /// @brief the currently ongoing transaction
-  TransactionState* _currentTransaction;
+  std::shared_ptr<TransactionState> _currentTransaction;
 
   /// @brief whether or not further transactions can be embedded
   bool const _embeddable;

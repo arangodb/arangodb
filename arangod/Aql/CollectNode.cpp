@@ -35,6 +35,7 @@
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
@@ -283,7 +284,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                      [](auto& it) { return it.second.second; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
-      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
+      transaction::Methods* trxPtr = _plan->getAst()->query()->copyTrx();
       HashedCollectExecutorInfos infos(
           getRegisterPlan()->nrRegs[previousNode->getDepth()],
           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
@@ -332,14 +333,13 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                      [](auto& it) { return it.second.second; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
-      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       SortedCollectExecutorInfos infos(
           getRegisterPlan()->nrRegs[previousNode->getDepth()],
           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
           std::move(readableInputRegisters), std::move(writeableOutputRegisters),
           std::move(groupRegisters), collectRegister, expressionRegister,
           _expressionVariable, std::move(aggregateTypes), std::move(variables),
-          std::move(aggregateRegisters), trxPtr, _count);
+          std::move(aggregateRegisters), _plan->getAst()->query()->copyTrx(), _count);
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));
@@ -371,13 +371,13 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       // calculate the group registers
       calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
 
-      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       DistinctCollectExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                          getRegisterPlan()->nrRegs[getDepth()],
                                          getRegsToClear(), calcRegsToKeep(),
                                          std::move(readableInputRegisters),
                                          std::move(writeableOutputRegisters),
-                                         std::move(groupRegisters), trxPtr);
+                                         std::move(groupRegisters),
+                                         _plan->getAst()->query()->copyTrx());
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(&engine, this,
                                                                            std::move(infos));

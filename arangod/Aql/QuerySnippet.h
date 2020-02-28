@@ -84,7 +84,7 @@ class QuerySnippet {
                                              std::string const& distributeId);
 
  private:
-  GatherNode const* _sinkNode;
+  GatherNode const* _sinkNode; // node that merges the results for all shards
 
   size_t const _idOfSinkRemoteNode;
 
