@@ -410,12 +410,25 @@ module.exports =
                   body[key] = error.extra[key];
                 });
               }
-              res.responseCode = error.statusCode;
+              res.responseCode = error.statusCode || 500;
               res.contentType = 'application/json';
               res.body = JSON.stringify(body);
             }
 
             if (handled) {
+              if (!res.responseCode) {
+                res.responseCode = 200;
+              } else if (isNaN(res.responseCode)) {
+                console.warn(`Unexpected status code value: ${res.responseCode}`);
+                res.responseCode = 500;
+              } else {
+                res.responseCode = Number(res.responseCode);
+              }
+              if (!res.contentType) {
+                res.contentType = 'application/json';
+              } else {
+                res.contentType = String(res.contentType);
+              }
               // provide default CORS headers
               if (req.headers.origin) {
                 if (!res.headers) {
