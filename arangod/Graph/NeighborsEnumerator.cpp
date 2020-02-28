@@ -165,9 +165,13 @@ bool NeighborsEnumerator::shouldPrune(arangodb::velocypack::StringRef v) {
   }
 
   auto* evaluator = _opts->getPruneEvaluator();
+  aql::AqlValue vertex;
+  aql::AqlValueGuard vertexGuard{vertex, true};
   if (evaluator->needsVertex()) {
-    evaluator->injectVertex(_traverser->fetchVertexData(v).slice());
+    vertex = _traverser->fetchVertexData(v);
+    evaluator->injectVertex(vertex.slice());
   }
+  
   // We cannot support these two here
   TRI_ASSERT(!evaluator->needsEdge());
   TRI_ASSERT(!evaluator->needsPath());
