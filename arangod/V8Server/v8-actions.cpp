@@ -630,19 +630,26 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_ASSERT(request != nullptr);
 
-  rest::ResponseCode code = rest::ResponseCode::OK;
-
   using arangodb::Endpoint;
 
   // set response code
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (TRI_HasProperty(context, isolate, res, ResponseCodeKey)) {
-    code = (rest::ResponseCode)(TRI_ObjectToInt64(isolate,
-                                                  res->Get(context,
-                                                           ResponseCodeKey
-                                                    ).FromMaybe(v8::Local<v8::Value>())));
+    uint64_t foxxcode = TRI_ObjectToInt64(isolate,
+                                          res->Get(context,
+                                                   ResponseCodeKey
+                                                   ).FromMaybe(v8::Local<v8::Value>()));
+    if (GeneralResponse::isValidResponseCode(foxxcode)) {
+      response->setResponseCode(static_cast<rest::ResponseCode>(foxxcode));
+    } else {
+      response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
+      LOG_TOPIC("x7f45", ERR, Logger::V8)
+        << "invalid http status code specified " << foxxcode
+        << " diverting to 500";
+    }
+  } else {
+    response->setResponseCode(rest::ResponseCode::OK);
   }
-  response->setResponseCode(code);
 
   // string should not be used
   std::string contentType = StaticStrings::MimeTypeJsonNoEncoding;

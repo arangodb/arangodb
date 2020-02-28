@@ -31,6 +31,77 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+bool GeneralResponse::isValidResponseCode(uint64_t code) {
+  switch (static_cast<ResponseCode>(code)) {
+    case ResponseCode::CONTINUE:
+    case ResponseCode::SWITCHING_PROTOCOLS:
+    case ResponseCode::PROCESSING:
+    case ResponseCode::OK:
+    case ResponseCode::CREATED:
+    case ResponseCode::ACCEPTED:
+    case ResponseCode::PARTIAL:
+    case ResponseCode::NO_CONTENT:
+    case ResponseCode::RESET_CONTENT:
+    case ResponseCode::PARTIAL_CONTENT:
+    case ResponseCode::MOVED_PERMANENTLY:
+    case ResponseCode::FOUND:
+    case ResponseCode::SEE_OTHER:
+    case ResponseCode::NOT_MODIFIED:
+    case ResponseCode::TEMPORARY_REDIRECT:
+    case ResponseCode::PERMANENT_REDIRECT:
+    case ResponseCode::BAD:
+    case ResponseCode::UNAUTHORIZED:
+    case ResponseCode::PAYMENT_REQUIRED:
+    case ResponseCode::FORBIDDEN:
+    case ResponseCode::NOT_FOUND:
+    case ResponseCode::METHOD_NOT_ALLOWED:
+    case ResponseCode::NOT_ACCEPTABLE:
+    case ResponseCode::REQUEST_TIMEOUT:
+    case ResponseCode::CONFLICT:
+    case ResponseCode::GONE:
+    case ResponseCode::LENGTH_REQUIRED:
+    case ResponseCode::PRECONDITION_FAILED:
+    case ResponseCode::REQUEST_ENTITY_TOO_LARGE:
+    case ResponseCode::REQUEST_URI_TOO_LONG:
+    case ResponseCode::UNSUPPORTED_MEDIA_TYPE:
+    case ResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE:
+    case ResponseCode::EXPECTATION_FAILED:
+    case ResponseCode::I_AM_A_TEAPOT:
+    case ResponseCode::UNPROCESSABLE_ENTITY:
+    case ResponseCode::LOCKED:
+    case ResponseCode::PRECONDITION_REQUIRED:
+    case ResponseCode::TOO_MANY_REQUESTS:
+    case ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE:
+    case ResponseCode::UNAVAILABLE_FOR_LEGAL_REASONS:
+    case ResponseCode::SERVER_ERROR:
+    case ResponseCode::NOT_IMPLEMENTED:
+    case ResponseCode::BAD_GATEWAY:
+    case ResponseCode::SERVICE_UNAVAILABLE:
+    case ResponseCode::HTTP_VERSION_NOT_SUPPORTED:
+    case ResponseCode::BANDWIDTH_LIMIT_EXCEEDED:
+    case ResponseCode::NOT_EXTENDED:
+      return true;
+    default: {
+      int group = ((int)code) / 100;
+      switch (group) {
+      case 1:
+      case 2:
+      case 3:
+      case 4:
+      case 5:
+        return true;
+        if (static_cast<int>(code) != 0) {
+          return true;
+        }
+        return false;
+      default:
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
     //  Informational 1xx
@@ -152,13 +223,18 @@ std::string GeneralResponse::responseString(ResponseCode code) {
           return StringUtils::itoa((int)code) + " Client error";
         case 5:
           return StringUtils::itoa((int)code) + " Server error";
+        case 0:
+          if (static_cast<int>(code) != 0) {
+            return StringUtils::itoa(500) + " Internal Server error";
+          }
+          break;
         default:
           break;
       }
     }
   }
 
-  return StringUtils::itoa((int)code) + " Unknown";
+  return StringUtils::itoa(500) + " Internal Server error - Unknown";
 }
 
 rest::ResponseCode GeneralResponse::responseCode(std::string const& str) {
