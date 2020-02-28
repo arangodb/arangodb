@@ -80,14 +80,10 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> DependencyProxy<blockP
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(block == nullptr);
-    TRI_ASSERT(skipped == 0);
-  }
 
   if (skipped == 0 && block == nullptr) {
-    // We're not waiting and didn't get any input, so we have to be done.
-    TRI_ASSERT(state == ExecutionState::DONE);
+    // We're either waiting or Done
+    TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::WAITING);
   }
   return {state, skipped, block};
 }
