@@ -48,20 +48,34 @@ UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                          OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
-  while (!output.isFull() && input.hasDataRow(currentDependency())) {
-    auto [state, inputRow] = input.nextDataRow(currentDependency());
-    output.copyRow(inputRow);
-    TRI_ASSERT(output.produced());
-    output.advanceRow();
+  while (!output.isFull() && !done()) {
+    if (input.hasDataRow(currentDependency())) {
+      auto [state, inputRow] = input.nextDataRow(currentDependency());
+      output.copyRow(inputRow);
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
 
-    if (state == ExecutorState::DONE) {
-      advanceDependency();
+      if (state == ExecutorState::DONE) {
+        advanceDependency();
+      }
+    } else {
+      if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+        advanceDependency();
+      } else {
+        return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
+                currentDependency()};
+      }
     }
+  }
+
+  while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+    advanceDependency();
   }
 
   if (done()) {
     // here currentDependency is invalid which will cause things to crash
     // if we ask upstream in ExecutionBlockImpl. yolo.
+    TRI_ASSERT(!input.hasDataRow());
     return {ExecutorState::DONE, Stats{}, AqlCall{}, currentDependency()};
   } else {
     return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},

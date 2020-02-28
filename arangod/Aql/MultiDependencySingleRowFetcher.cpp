@@ -169,6 +169,10 @@ void MultiDependencySingleRowFetcher::initDependencies() {
   for (size_t i = 0; i < _dependencyProxy->numberDependencies(); ++i) {
     _dependencyInfos.emplace_back(DependencyInfo{});
   }
+  _dependencyStates.reserve(_dependencyProxy->numberDependencies());
+  for (size_t i = 0; i < _dependencyProxy->numberDependencies(); ++i) {
+    _dependencyStates.emplace_back(ExecutionState::HASMORE);
+  }
 }
 
 size_t MultiDependencySingleRowFetcher::numberDependencies() {
@@ -368,6 +372,16 @@ auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependen
 
   if (state == ExecutionState::WAITING) {
     return {state, 0, AqlItemBlockInputRange{ExecutorState::HASMORE}};
+  }
+
+  _dependencyStates.at(dependency) = state;
+  if (std::any_of(std::begin(_dependencyStates), std::end(_dependencyStates),
+                  [](ExecutionState const s) {
+                    return s == ExecutionState::HASMORE;
+                  })) {
+    state = ExecutionState::HASMORE;
+  } else {
+    state = ExecutionState::DONE;
   }
   if (block == nullptr) {
     if (state == ExecutionState::HASMORE) {

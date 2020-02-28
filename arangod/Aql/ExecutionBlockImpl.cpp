@@ -1209,13 +1209,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
 
       _lastRange.setDependency(dependency, range);
 
-      if (_lastRange.isDone()) {
-        LOG_DEVEL << " MultiDepFetcher DONE ";
-        return {ExecutionState::DONE, skipped, _lastRange};
-      } else {
-        LOG_DEVEL << " MultiDepFetcher HASMORE";
-        return {ExecutionState::HASMORE, skipped, _lastRange};
-      }
+      return {state, skipped, _lastRange};
     } else {
       return _rowFetcher.execute(stack);
     }
@@ -1453,7 +1447,6 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
       auto [state, stats, skippedLocal, call, dependency] =
           executeSkipRowsRange(_lastRange, clientCall);
-      LOG_DEVEL << "fast foward requesting dependency " << _requestedDependency;
       _requestedDependency = dependency;
 
       if (type == FastForwardVariant::EXECUTOR) {
@@ -1614,7 +1607,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
           auto [state, stats, skippedLocal, call, dependency] =
               executeSkipRowsRange(_lastRange, clientCall);
-          LOG_DEVEL << "skip requesting dependency " << _requestedDependency;
           _requestedDependency = dependency;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           // Assertion: We did skip 'skippedLocal' documents here.
@@ -1681,7 +1673,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               executeProduceRows(_lastRange, *_outputItemRow);
           // TODO: Check
           _requestedDependency = dependency;
-          LOG_DEVEL << "produce requesting dependency " << _requestedDependency;
           _executorReturnedDone = state == ExecutorState::DONE;
           _engine->_stats += stats;
           localExecutorState = state;
@@ -1717,6 +1708,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           auto [state, stats, skippedLocal, call, dependency] =
               executeFastForward(_lastRange, clientCall);
 
+          _requestedDependency = dependency;
           _skipped += skippedLocal;
           _engine->_stats += stats;
           localExecutorState = state;
@@ -1928,13 +1920,10 @@ auto ExecutionBlockImpl<Executor>::outputIsFull() const noexcept -> bool {
          _outputItemRow->allRowsUsed();
 }
 
+// TODO: remove again
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const -> bool {
-  if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-    return _lastRange.hasDataRow(_requestedDependency);
-  } else {
-    return _lastRange.hasDataRow();
-  }
+  return _lastRange.hasDataRow();
 }
 
 template <>

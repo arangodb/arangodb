@@ -144,6 +144,7 @@ class MultiDependencySingleRowFetcher {
    * @brief Holds the information for all dependencies
    */
   std::vector<DependencyInfo> _dependencyInfos;
+  std::vector<ExecutionState> _dependencyStates;
 
  private:
   /**

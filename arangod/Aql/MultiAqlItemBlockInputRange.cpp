@@ -43,26 +43,17 @@ auto MultiAqlItemBlockInputRange::resizeIfNecessary(ExecutorState state, size_t 
   // We never want to reduce the number of dependencies.
   TRI_ASSERT(_inputs.size() <= nrInputRanges);
   if (_inputs.size() < nrInputRanges) {
-    LOG_DEVEL << "resizing to " << nrInputRanges;
     _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
   }
 }
 
 auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
     noexcept -> ExecutorState {
-  if (dependency >= _inputs.size()) {
-    LOG_DEVEL << "upstream state about to crash, because we were asked for: " << dependency
-              << "  but only have " << _inputs.size();
-  }
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).upstreamState();
 }
 
 auto MultiAqlItemBlockInputRange::hasDataRow(size_t const dependency) const noexcept -> bool {
-  if (dependency >= _inputs.size()) {
-    LOG_DEVEL << "has data row about to crash, because we were asked for: " << dependency
-              << "  but only have " << _inputs.size();
-  }
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).hasDataRow();
 }
@@ -76,20 +67,12 @@ auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
 
 auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
-  if (dependency >= _inputs.size()) {
-    LOG_DEVEL << "peek data row about to crash, because we were asked for: " << dependency
-              << "  but only have " << _inputs.size();
-  }
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).peekDataRow();
 }
 
 auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
-  if (dependency >= _inputs.size()) {
-    LOG_DEVEL << "next data row about to crash, because we were asked for: " << dependency
-              << "  but only have " << _inputs.size();
-  }
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).nextDataRow();
 }
@@ -139,16 +122,11 @@ auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
 }
 
 auto MultiAqlItemBlockInputRange::isDone() const -> bool {
-  LOG_DEVEL << "LOG BEGIN, size " << _inputs.size();
-
   auto res = std::all_of(std::begin(_inputs), std::end(_inputs),
                          [](AqlItemBlockInputRange const& i) -> bool {
-                           LOG_DEVEL << " LOG STREAM " << i.hasDataRow() << " "
-                                     << i.upstreamState();
                            return !i.hasDataRow() &&
                                   i.upstreamState() == ExecutorState::DONE;
                          });
-  LOG_DEVEL << " LOG END";
   return res;
 }
 
