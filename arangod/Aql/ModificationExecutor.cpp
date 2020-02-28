@@ -166,7 +166,7 @@ ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& o
 
 template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
-    AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    typename FetcherType::DataRange& input, OutputAqlItemRow& output)  // FetcherType::DataRange
     -> std::tuple<ExecutorState, ModificationStats, AqlCall> {
   TRI_ASSERT(_infos._trx);
 
@@ -174,8 +174,24 @@ template <typename FetcherType, typename ModifierType>
 
   _modifier.reset();
 
+  // StateType (empty || HASMORE )
+  // (if constexp )type of range = input matrx
+  // doCollect (input.nextDataRange)
+  //   -> state
+  // else
+  // doCollect input
+  //   -> state
+
+  ExecutorState upstreamState = ExecutorState::HASMORE;
   // only produce at most output.numRowsLeft() many results
-  doCollect(input, output.numRowsLeft());
+  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+    auto range = input.getNextInputRange();
+    doCollect(range, output.numRowsLeft());
+    upstreamState = range.upstreamState();
+  } else {
+    doCollect(input, output.numRowsLeft());
+    upstreamState = input.upstreamState();
+  }
 
   if (_modifier.nrOfOperations() > 0) {
     _modifier.transact();
@@ -188,17 +204,26 @@ template <typename FetcherType, typename ModifierType>
     doOutput(output, stats);
   }
 
-  return {input.upstreamState(), stats, AqlCall{}};
+  return {upstreamState, stats, AqlCall{}};
 }
 
 template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::skipRowsRange(
-    AqlItemBlockInputRange& input, AqlCall& call)
+    typename FetcherType::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto stats = ModificationStats{};
   _modifier.reset();
 
-  doCollect(input, call.getOffset());
+  ExecutorState upstreamState = ExecutorState::HASMORE;
+  // only produce at most output.numRowsLeft() many results
+  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+    auto range = input.getNextInputRange();
+    doCollect(range, call.getOffset());
+    upstreamState = range.upstreamState();
+  } else {
+    doCollect(input, call.getOffset());
+    upstreamState = input.upstreamState();
+  }
 
   if (_modifier.nrOfOperations() > 0) {
     _modifier.transact();
@@ -211,7 +236,7 @@ template <typename FetcherType, typename ModifierType>
     call.didSkip(_modifier.nrOfOperations());
   }
 
-  return {input.upstreamState(), stats, _modifier.nrOfOperations(), AqlCall{}};
+  return {upstreamState, stats, _modifier.nrOfOperations(), AqlCall{}};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
