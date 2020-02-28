@@ -166,7 +166,7 @@ ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& o
 
 template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
-    typename FetcherType::DataRange& input, OutputAqlItemRow& output)  // FetcherType::DataRange
+    typename FetcherType::DataRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, ModificationStats, AqlCall> {
   TRI_ASSERT(_infos._trx);
 
