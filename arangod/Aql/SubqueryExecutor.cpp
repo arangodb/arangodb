@@ -21,12 +21,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SubqueryExecutor.h"
+#include <Logger/LogMacros.h>
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
+
+#define LOG_DEVEL_SQ LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -165,6 +168,8 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
     return upstreamCall;
   };
 
+  LOG_DEVEL_SQ << uint64_t(this) <<  "produceRows " << output.getClientCall();
+
   if (_state == ExecutorState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
@@ -178,6 +183,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
       if (_infos.isConst() && !_input.isFirstDataRowInBlock()) {
         // Simply write
         writeOutput(output);
+        LOG_DEVEL_SQ << uint64_t(this) << "wrote output is const " << _state << " " << getUpstreamCall();
         return {_state, NoStats{}, getUpstreamCall()};
       }
 
@@ -199,6 +205,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
       // Subquery DONE
       if (state == ExecutionState::DONE) {
         writeOutput(output);
+        LOG_DEVEL_SQ << uint64_t(this) << "wrote output subquery done " << _state << " " << getUpstreamCall();
         return {_state, NoStats{}, getUpstreamCall()};
       }
 
@@ -206,9 +213,9 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
       // init new subquery
       if (!_input) {
         std::tie(_state, _input) = input.nextDataRow();
-
+        LOG_DEVEL_SQ << uint64_t(this) << " nextDataRow: " << _state << " " << _input.isInitialized();
         if (!_input) {
-          // We are done!
+          LOG_DEVEL_SQ << uint64_t(this) << "exit produce, no more input" << _state;
           return {_state, NoStats{}, getUpstreamCall()};
         }
       }
@@ -298,6 +305,8 @@ auto SubqueryExecutor<true>::skipRowsRange(AqlItemBlockInputRange& inputRange, A
 
   size_t skipped = 0;
 
+  LOG_DEVEL_SQ << uint64_t(this) <<  "skipRowsRange " << call;
+
   if (_state == ExecutorState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
@@ -310,9 +319,11 @@ auto SubqueryExecutor<true>::skipRowsRange(AqlItemBlockInputRange& inputRange, A
       // Const case
       if (_infos.isConst() && !_input.isFirstDataRowInBlock()) {
         // Simply write
-        //writeOutput(output);
+        _subqueryInitialized = false;
+        _input = InputAqlItemRow(CreateInvalidInputRowHint{});
         skipped += 1;
         call.didSkip(1);
+        LOG_DEVEL_SQ << uint64_t(this) << "did skip one";
         return {_state, NoStats{}, skipped, getUpstreamCall()};
       }
 
@@ -333,8 +344,11 @@ auto SubqueryExecutor<true>::skipRowsRange(AqlItemBlockInputRange& inputRange, A
 
       // Subquery DONE
       if (state == ExecutionState::DONE) {
+        _subqueryInitialized = false;
+        _input = InputAqlItemRow(CreateInvalidInputRowHint{});
         skipped += 1;
         call.didSkip(1);
+        LOG_DEVEL_SQ << uint64_t(this) << "did skip one";
         return {_state, NoStats{}, skipped, getUpstreamCall()};
       }
 
@@ -344,6 +358,7 @@ auto SubqueryExecutor<true>::skipRowsRange(AqlItemBlockInputRange& inputRange, A
         std::tie(_state, _input) = inputRange.nextDataRow();
 
         if (!_input) {
+          LOG_DEVEL_SQ << uint64_t(this) << "skipped nothing waiting for input " << _state;
           return {_state, NoStats{}, skipped, getUpstreamCall()};
         }
       }
