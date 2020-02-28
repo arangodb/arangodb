@@ -222,6 +222,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockInputRange.cpp
+  Aql/AqlItemBlockInputMatrix.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
   Aql/AqlItemMatrix.cpp

@@ -69,7 +69,7 @@ namespace aql {
 // CalculationExecutor<CalculationType::V8Condition> and
 // CalculationExecutor<CalculationType::Reference>!
 
-class CalculationExecutorTest : public AqlExecutorTestCase<true> {
+class CalculationExecutorTest : public AqlExecutorTestCase<false> {
  protected:
   ExecutionState state;
   AqlItemBlockManager itemBlockManager;
@@ -285,9 +285,8 @@ TEST_F(CalculationExecutorTest, test_produce_datarange_need_more) {
 
   AqlItemBlockInputRange input{ExecutorState::HASMORE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(),
-                          infos.registersToClear(),
-                              AqlCall{0, 3, AqlCall::Infinity{}, false});
+                          infos.registersToKeep(), infos.registersToClear(),
+                          AqlCall{0, 3, AqlCall::Infinity{}, false});
 
   auto myCall = output.getClientCall();
   EXPECT_EQ(myCall.getLimit(), 3);
@@ -316,7 +315,7 @@ TEST_F(CalculationExecutorTest, test_produce_datarange_need_more) {
   EXPECT_FALSE(outputCall.fullCount);
 }
 
-TEST_F(CalculationExecutorTest, DISABLED_test_produce_datarange_has_more) { // TODO: fix and re-enable after this executor newStyle is active
+TEST_F(CalculationExecutorTest, DISABLED_test_produce_datarange_has_more) {  // TODO: fix and re-enable after this executor newStyle is active
   // This fetcher will not be called!
   // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
   auto fakeUnusedBlock = VPackParser::fromJson("[  ]");

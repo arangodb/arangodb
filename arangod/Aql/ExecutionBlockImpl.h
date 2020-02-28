@@ -37,6 +37,9 @@
 
 namespace arangodb::aql {
 
+template <BlockPassthrough passThrough>
+class SingleRowFetcher;
+
 template <class Fetcher>
 class IdExecutor;
 
@@ -221,6 +224,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///        3. SharedAqlItemBlockPtr: The next data block.
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 
+  template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
+  [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
+
  private:
   /**
    * @brief Inner execute() part, without the tracing calls.
@@ -229,9 +235,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   // execute a skipRowsRange call
   std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> executeSkipRowsRange(
-      AqlItemBlockInputRange& input, AqlCall& call);
+      typename Fetcher::DataRange& inputRange, AqlCall& call);
 
-  auto executeFastForward(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+  auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
       -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall>;
 
   /**
@@ -270,8 +276,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /// @brief request an AqlItemBlock from the memory manager
   [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
-  void resetAfterShadowRow();
-
   [[nodiscard]] ExecutionState fetchShadowRowInternal();
 
   // Allocate an output block and install a call in it
@@ -286,7 +290,14 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
   [[nodiscard]] auto nextState(AqlCall const& call) const -> ExecState;
 
+  // Executor is done, we need to handle ShadowRows of subqueries.
+  // In most executors they are simply copied, in subquery executors
+  // there needs to be actions applied here.
+  [[nodiscard]] auto shadowRowForwarding() -> ExecState;
+
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
+
+  void resetExecutor();
 
  private:
   /**
@@ -331,6 +342,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // into an output block.
   // If so we are not allowed to reuse it.
   bool _hasUsedDataRangeBlock;
+
+  bool _executorReturnedDone = false;
 };
 
 }  // namespace arangodb::aql
