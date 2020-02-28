@@ -1,4 +1,4 @@
-v3.6.2 (XXXX-XX-XX)
+v3.6.2 (2020-02-28)
 -------------------
 
 * Fix supervision mode detection while unlocking agency in cluster
