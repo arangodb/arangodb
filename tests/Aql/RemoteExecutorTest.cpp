@@ -53,13 +53,19 @@ auto operator==(AqlCallStack const& leftC, AqlCallStack const& rightC) -> bool {
 
 auto operator==(AqlExecuteResult const& left, AqlExecuteResult const& right) -> bool {
   return left.state() == right.state() && left.skipped() == right.skipped() &&
-         left.block() == right.block() &&
+         (left.block() == nullptr) == (right.block() == nullptr) &&
          (left.block() == nullptr || *left.block() == *right.block());
 }
 
 }  // namespace arangodb::aql
 
 namespace arangodb::tests::aql {
+
+auto blockToString(SharedAqlItemBlockPtr const& block) -> std::string {
+  velocypack::Builder blockBuilder;
+  block->toSimpleVPack(&velocypack::Options::Defaults, blockBuilder);
+  return blockBuilder.toJson();
+}
 
 class DeSerializeAqlCallTest : public ::testing::TestWithParam<AqlCall> {
  public:
@@ -195,6 +201,14 @@ TEST_P(DeSerializeAqlExecuteResultTest, testSuite) {
 
   auto const deSerializedAqlExecuteResult = *maybeAqlExecuteResult;
 
+  ASSERT_EQ(aqlExecuteResult.state(), deSerializedAqlExecuteResult.state());
+  ASSERT_EQ(aqlExecuteResult.skipped(), deSerializedAqlExecuteResult.skipped());
+  ASSERT_EQ(aqlExecuteResult.block() == nullptr, deSerializedAqlExecuteResult.block() == nullptr);
+  if (aqlExecuteResult.block() != nullptr) {
+    ASSERT_EQ(*aqlExecuteResult.block(), *deSerializedAqlExecuteResult.block())
+        << "left: " << blockToString(aqlExecuteResult.block())
+        << "; right: " << blockToString(deSerializedAqlExecuteResult.block());
+  }
   ASSERT_EQ(aqlExecuteResult, deSerializedAqlExecuteResult);
 }
 
