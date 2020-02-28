@@ -1124,8 +1124,10 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
       _lastRange.setDependency(dependency, range);
 
       if (_lastRange.isDone()) {
+        LOG_DEVEL << " MultiDepFetcher DONE ";
         return {ExecutionState::DONE, skipped, _lastRange};
       } else {
+        LOG_DEVEL << " MultiDepFetcher HASMORE";
         return {ExecutionState::HASMORE, skipped, _lastRange};
       }
     } else {
@@ -1212,7 +1214,8 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
   }
   // TODO: We only need to do this is the executor actually require to call.
   // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (is_one_of_v<Executor, LimitExecutor, UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>) {
+  if constexpr (is_one_of_v<Executor, LimitExecutor>) {
+    //  UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>)
     return FastForwardVariant::EXECUTOR;
   }
   return FastForwardVariant::FETCHER;
@@ -1230,7 +1233,9 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
       auto [state, stats, skippedLocal, call, dependency] =
           executeSkipRowsRange(_lastRange, clientCall);
+      LOG_DEVEL << "fast foward requesting dependency " << _requestedDependency;
       _requestedDependency = dependency;
+
       if (type == FastForwardVariant::EXECUTOR) {
         // We do not report the skip
         skippedLocal = 0;
@@ -1239,19 +1244,14 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
     }
     case FastForwardVariant::FETCHER: {
       LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
-      if constexpr (!is_one_of_v<Fetcher, MultiDependencySingleRowFetcher>) {
-        while (inputRange.hasDataRow()) {
-          auto [state, row] = inputRange.nextDataRow();
-          TRI_ASSERT(row.isInitialized());
-        }
-
-        AqlCall call{};
-        call.hardLimit = 0;
-        return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call, 0};
-      } else {
-        // MultiDependencySingleRowFetcher can't fast forward right now
-        TRI_ASSERT(false);
+      while (inputRange.hasDataRow()) {
+        auto [state, row] = inputRange.nextDataRow();
+        TRI_ASSERT(row.isInitialized());
       }
+
+      AqlCall call{};
+      call.hardLimit = 0;
+      return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call, 0};
     }
   }
   // Unreachable
@@ -1362,6 +1362,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
           auto [state, stats, skippedLocal, call, dependency] =
               executeSkipRowsRange(_lastRange, clientCall);
+          LOG_DEVEL << "skip requesting dependency " << _requestedDependency;
           _requestedDependency = dependency;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           // Assertion: We did skip 'skippedLocal' documents here.
@@ -1420,6 +1421,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               executeProduceRows(_lastRange, *_outputItemRow);
           // TODO: Check
           _requestedDependency = dependency;
+          LOG_DEVEL << "produce requesting dependency " << _requestedDependency;
           _engine->_stats += stats;
           localExecutorState = state;
 
@@ -1580,13 +1582,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     // We return skipped here, reset member
     size_t skipped = _skipped;
     _skipped = 0;
-    if (localExecutorState == ExecutorState::HASMORE || lastRangeHasDataRow() ||
-        _lastRange.hasShadowRow()) {
+    if (localExecutorState == ExecutorState::HASMORE ||
+        _lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
     }
-    // We must return skipped and/or data when reporting HASMORE
+    // We must return skipped and/or data when reportingHASMORE
     TRI_ASSERT(_upstreamState != ExecutionState::HASMORE ||
                (skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0)));
     return {_upstreamState, skipped, std::move(outputBlock)};

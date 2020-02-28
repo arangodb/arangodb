@@ -43,6 +43,7 @@ auto MultiAqlItemBlockInputRange::resizeIfNecessary(ExecutorState state, size_t 
   // We never want to reduce the number of dependencies.
   TRI_ASSERT(_inputs.size() <= nrInputRanges);
   if (_inputs.size() < nrInputRanges) {
+    LOG_DEVEL << "resizing to " << nrInputRanges;
     _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
   }
 }
@@ -50,7 +51,7 @@ auto MultiAqlItemBlockInputRange::resizeIfNecessary(ExecutorState state, size_t 
 auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
     noexcept -> ExecutorState {
   if (dependency >= _inputs.size()) {
-    LOG_DEVEL << "about to crash, because we were asked for: " << dependency
+    LOG_DEVEL << "upstream state about to crash, because we were asked for: " << dependency
               << "  but only have " << _inputs.size();
   }
   TRI_ASSERT(dependency < _inputs.size());
@@ -58,18 +59,37 @@ auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
 }
 
 auto MultiAqlItemBlockInputRange::hasDataRow(size_t const dependency) const noexcept -> bool {
+  if (dependency >= _inputs.size()) {
+    LOG_DEVEL << "has data row about to crash, because we were asked for: " << dependency
+              << "  but only have " << _inputs.size();
+  }
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).hasDataRow();
 }
 
+auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
+  return std::any_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.hasDataRow();
+                     });
+}
+
 auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+  if (dependency >= _inputs.size()) {
+    LOG_DEVEL << "peek data row about to crash, because we were asked for: " << dependency
+              << "  but only have " << _inputs.size();
+  }
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).peekDataRow();
 }
 
 auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+  if (dependency >= _inputs.size()) {
+    LOG_DEVEL << "next data row about to crash, because we were asked for: " << dependency
+              << "  but only have " << _inputs.size();
+  }
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).nextDataRow();
 }
@@ -86,12 +106,16 @@ auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
 //       * assert that all dependencies are on a shadow row?
 auto MultiAqlItemBlockInputRange::peekShadowRow() const
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
+  TRI_ASSERT(!hasDataRow());
+
   // TODO: Correct?
   return _inputs.at(0).peekShadowRow();
 }
 
 auto MultiAqlItemBlockInputRange::nextShadowRow()
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
+  TRI_ASSERT(!hasDataRow());
+
   // Need to consume all shadow rows simultaneously.
   // TODO: Assert we're on the correct shadow row for all upstreams
   auto state = ExecutorState::HASMORE;
@@ -116,8 +140,21 @@ auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
 }
 
 auto MultiAqlItemBlockInputRange::isDone() const -> bool {
-  return std::all_of(std::begin(_inputs), std::end(_inputs),
-                     [](AqlItemBlockInputRange const& i) -> bool {
-                       return i.upstreamState() == ExecutorState::DONE;
-                     });
+  LOG_DEVEL << "LOG BEGIN, size " << _inputs.size();
+
+  auto res = std::all_of(std::begin(_inputs), std::end(_inputs),
+                         [](AqlItemBlockInputRange const& i) -> bool {
+                           LOG_DEVEL << " LOG STREAM " << i.hasDataRow() << " "
+                                     << i.upstreamState();
+                           return !i.hasDataRow() &&
+                                  i.upstreamState() == ExecutorState::DONE;
+                         });
+  LOG_DEVEL << " LOG END";
+  return res;
+}
+
+void MultiAqlItemBlockInputRange::skipAllRemainingDataRows() {
+  for (auto i : _inputs) {
+    i.skipAllRemainingDataRows();
+  }
 }

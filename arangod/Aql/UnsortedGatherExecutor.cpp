@@ -59,8 +59,14 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     }
   }
 
-  LOG_DEVEL << "going to ask for dependency " << currentDependency();
-  return {input.upstreamState(currentDependency()), Stats{}, AqlCall{}, currentDependency()};
+  if (done()) {
+    // here currentDependency is invalid which will cause things to crash
+    // if we ask upstream in ExecutionBlockImpl. yolo.
+    return {ExecutorState::DONE, Stats{}, AqlCall{}, currentDependency()};
+  } else {
+    return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
+            currentDependency()};
+  }
 }
 
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
@@ -77,8 +83,14 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
     }
   }
 
-  return {input.upstreamState(currentDependency()), Stats{}, skipped, AqlCall{},
-          currentDependency()};
+  if (done()) {
+    // here currentDependency is invalid which will cause things to crash
+    // if we ask upstream in ExecutionBlockImpl. yolo.
+    return {ExecutorState::DONE, Stats{}, skipped, AqlCall{}, currentDependency()};
+  } else {
+    return {input.upstreamState(currentDependency()), Stats{}, skipped,
+            AqlCall{}, currentDependency()};
+  }
 }
 
 auto UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output)

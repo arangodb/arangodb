@@ -46,6 +46,7 @@ class MultiAqlItemBlockInputRange {
   ExecutorState upstreamState(size_t const dependency) const noexcept;
   bool upstreamHasMore(size_t const dependency) const noexcept;
 
+  bool hasDataRow() const noexcept;
   bool hasDataRow(size_t const dependency) const noexcept;
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow(size_t const dependency) const;
@@ -63,6 +64,8 @@ class MultiAqlItemBlockInputRange {
   auto getBlock(size_t const dependency = 0) const noexcept -> SharedAqlItemBlockPtr;
 
   auto setDependency(size_t const dependency, AqlItemBlockInputRange& range) -> void;
+
+  void skipAllRemainingDataRows();
 
  private:
   ExecutorState _finalState{ExecutorState::HASMORE};
