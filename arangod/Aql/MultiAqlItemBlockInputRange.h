@@ -65,7 +65,7 @@ class MultiAqlItemBlockInputRange {
 
   auto setDependency(size_t const dependency, AqlItemBlockInputRange& range) -> void;
 
-  void skipAllRemainingDataRows();
+  size_t skipAllRemainingDataRows();
 
  private:
   ExecutorState _finalState{ExecutorState::HASMORE};

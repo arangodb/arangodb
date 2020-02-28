@@ -132,6 +132,10 @@ struct BaseOptions {
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
 
+  /// @brief whether or not an edge collection shall be excluded
+  /// this can be overridden in TraverserOptions
+  virtual bool shouldExcludeEdgeCollection(std::string const& name) const { return false; }
+
   TraverserCache* cache();
 
   void activateCache(bool enableDocumentCache,

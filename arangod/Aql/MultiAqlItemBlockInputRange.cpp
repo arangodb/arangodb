@@ -153,8 +153,12 @@ auto MultiAqlItemBlockInputRange::isDone() const -> bool {
   return res;
 }
 
-void MultiAqlItemBlockInputRange::skipAllRemainingDataRows() {
-  for (auto i : _inputs) {
-    i.skipAllRemainingDataRows();
+size_t MultiAqlItemBlockInputRange::skipAllRemainingDataRows() {
+  for (size_t i = 0; i < _inputs.size(); i++) {
+    _inputs.at(i).skipAllRemainingDataRows();
+    if (_inputs.at(i).upstreamState() == ExecutorState::HASMORE) {
+      return i;
+    }
   }
+  return 0;
 }

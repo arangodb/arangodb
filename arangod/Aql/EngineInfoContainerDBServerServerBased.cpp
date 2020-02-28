@@ -325,7 +325,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     TRI_ASSERT(infoBuilder.isOpenObject());
 
     infoBuilder.add(StaticStrings::SerializationFormat,
-                    VPackValue(static_cast<int>(aql::SerializationFormat::SHADOWROWS)));
+                    VPackValue(static_cast<SerializationFormatType>(
+                        aql::SerializationFormat::SHADOWROWS)));
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
 

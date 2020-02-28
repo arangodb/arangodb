@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,42 +21,33 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ExecutionState.h"
+#include "NumberUtils.h"
+#include "Basics/debugging.h"
 
-#include <ostream>
+#ifdef _MSC_VER
+#include <intrin.h>
+
+#pragma intrinsic(_BitScanReverse)
+#endif
 
 namespace arangodb {
-namespace aql {
+namespace NumberUtils {
 
-std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
-  switch (state) {
-    case ExecutionState::DONE:
-      ostream << "DONE";
-      break;
-    case ExecutionState::HASMORE:
-      ostream << "HASMORE";
-      break;
-    case ExecutionState::WAITING:
-      ostream << "WAITING";
-      break;
-  }
-  return ostream;
+/// @brief calculate the integer log2 value for the given input
+/// the result is undefined when calling this with a value of 0!
+uint32_t log2(uint32_t value) noexcept {
+  TRI_ASSERT(value > 0);
+
+#if (defined(__GNUC__) || defined(__clang__))
+  return (8 * sizeof(unsigned long)) - static_cast<uint32_t>(__builtin_clzl(static_cast<unsigned long>(value))) - 1;
+#elif defined(_MSC_VER)
+  unsigned long index;
+  _BitScanReverse(&index, static_cast<unsigned long>(value));
+  return static_cast<uint32_t>(index);
+#else
+  static_assert(false, "no known way of computing log2");
+#endif
 }
 
-std::ostream& operator<<(std::ostream& ostream, ExecutorState state) {
-  switch (state) {
-    case ExecutorState::DONE:
-      ostream << "DONE";
-      break;
-    case ExecutorState::HASMORE:
-      ostream << "HASMORE";
-      break;
-    default:
-      ostream << " WAT WAT WAT";
-      break;
-  }
-  return ostream;
 }
-
-}  // namespace aql
-}  // namespace arangodb
+}

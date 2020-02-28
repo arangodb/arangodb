@@ -63,7 +63,10 @@ void AcceptorUnixDomain::open() {
 }
 
 void AcceptorUnixDomain::asyncAccept() {
-  TRI_ASSERT(!_asioSocket);
+  // In most cases _asioSocket will be nullptr here, however, if
+  // the async_accept returns with an error, then an old _asioSocket
+  // is already set. Therefore, we do no longer assert here that
+  // _asioSocket is nullptr.
   IoContext& context = _server.selectIoContext();
 
   _asioSocket.reset(new AsioSocket<SocketType::Unix>(context));
