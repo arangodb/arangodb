@@ -78,6 +78,51 @@ DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
   return {state, skipped, block};
 }
 
+TEST_VIRTUAL std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
+                                                        AqlCallStack& stack) {
+  // TODO: assert dependency in range
+  ExecutionState state = ExecutionState::HASMORE;
+  size_t skipped = 0;
+  SharedAqlItemBlockPtr block = nullptr;
+
+  if (!_distributeId.empty()) {
+    // We are in the cluster case.
+    // we have to ask executeForShard
+    auto upstreamWithClient =
+        dynamic_cast<BlocksWithClients*>(&upstreamBlockForDependency(dependency));
+    TRI_ASSERT(upstreamWithClient != nullptr);
+    if (upstreamWithClient == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                     "Invalid state reached, we try to "
+                                     "request sharded data from a block "
+                                     "that is not able to provide it.");
+    }
+    std::tie(state, skipped, block) =
+        upstreamWithClient->executeForClient(stack, _distributeId);
+  } else {
+    std::tie(state, skipped, block) =
+        upstreamBlockForDependency(dependency).execute(stack);
+  }
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(block == nullptr);
+    TRI_ASSERT(skipped == 0);
+    break;
+  }
+
+  if (skipped == 0 && block == nullptr) {
+    // We're not waiting and didn't get any input, so we have to be done.
+    TRI_ASSERT(state == ExecutionState::DONE);
+    if (!advanceDependency()) {
+      break;
+    }
+  }
+  return {state, skipped, block};
+}
+
 template <BlockPassthrough blockPassthrough>
 ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {
   TRI_ASSERT(atMost > 0);
