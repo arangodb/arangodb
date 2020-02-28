@@ -361,10 +361,10 @@ auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> voi
   _dependencyProxy->useStack(stack);
 }
 
-auto MultiDependencySingleRowFetcher::executeForDependency(AqlCallStack& stack,
-                                                           size_t const dependency)
+auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependency,
+                                                           AqlCallStack& stack)
     -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange> {
-  auto [state, skipped, block] = _dependencyProxy->executeForDependency(stack, dependency);
+  auto [state, skipped, block] = _dependencyProxy->executeForDependency(dependency, stack);
 
   if (state == ExecutionState::WAITING) {
     return {state, 0, AqlItemBlockInputRange{ExecutorState::HASMORE}};

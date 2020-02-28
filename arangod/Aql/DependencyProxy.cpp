@@ -78,9 +78,9 @@ DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
   return {state, skipped, block};
 }
 
-TEST_VIRTUAL std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
-DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
-                                                        AqlCallStack& stack) {
+template <BlockPassthrough blockPassthrough>
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> DependencyProxy<blockPassthrough>::executeForDependency(
+    size_t dependency, AqlCallStack& stack) {
   // TODO: assert dependency in range
   ExecutionState state = ExecutionState::HASMORE;
   size_t skipped = 0;
@@ -110,15 +110,11 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(block == nullptr);
     TRI_ASSERT(skipped == 0);
-    break;
   }
 
   if (skipped == 0 && block == nullptr) {
     // We're not waiting and didn't get any input, so we have to be done.
     TRI_ASSERT(state == ExecutionState::DONE);
-    if (!advanceDependency()) {
-      break;
-    }
   }
   return {state, skipped, block};
 }

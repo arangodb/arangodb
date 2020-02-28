@@ -1116,7 +1116,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
     if constexpr (is_one_of_v<Fetcher, MultiDependencySingleRowFetcher>) {
       // TODO
       // should this really be _range[i] = bla
-      auto [state, skipped, range] = _rowFetcher.execute(stack, dependency);
+      auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, stack);
       _lastRange.setDependency(dependency, range);
       return {state, skipped, _lastRange};
     } else {
