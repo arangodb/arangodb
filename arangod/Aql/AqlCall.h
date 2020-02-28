@@ -237,6 +237,12 @@ constexpr bool operator==(AqlCall::Limit const& a, AqlCall::Limit const& b) {
                     a);
 }
 
+constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
+  return left.hardLimit == right.hardLimit && left.softLimit == right.softLimit &&
+         left.offset == right.offset && left.fullCount == right.fullCount &&
+         left.skippedRows == right.skippedRows;
+}
+
 inline std::ostream& operator<<(std::ostream& out,
                                 const arangodb::aql::AqlCall::Limit& limit) {
   return std::visit(arangodb::overload{[&out](size_t const& i) -> std::ostream& {
