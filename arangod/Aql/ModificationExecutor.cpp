@@ -174,14 +174,6 @@ template <typename FetcherType, typename ModifierType>
 
   _modifier.reset();
 
-  // StateType (empty || HASMORE )
-  // (if constexp )type of range = input matrx
-  // doCollect (input.nextDataRange)
-  //   -> state
-  // else
-  // doCollect input
-  //   -> state
-
   ExecutorState upstreamState = ExecutorState::HASMORE;
   // only produce at most output.numRowsLeft() many results
   if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
