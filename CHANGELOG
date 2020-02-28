@@ -1,6 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Fix supervision mode detection when unlocking agency in hot backup
+
 * Clear backups from DB servers and agency, when plan unchanged not
   met and not allowing for inconsistency.
 
