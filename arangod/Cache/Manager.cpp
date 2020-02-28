@@ -337,7 +337,8 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(Cache* cache) {
   Manager::time_point nextRequest = futureTime(100);
   bool allowed = false;
 
-  SpinLocker guard(SpinLocker::Mode::Write, _lock, Manager::triesSlow);
+  SpinLocker guard(SpinLocker::Mode::Write, _lock,
+                   static_cast<std::size_t>(Manager::triesSlow));
   if (guard.isLocked()) {
     if (isOperational() && !globalProcessRunning()) {
       Metadata& metadata = cache->metadata();
@@ -372,7 +373,8 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(Cache* cache, std::
   Manager::time_point nextRequest = futureTime(100);
   bool allowed = false;
 
-  SpinLocker guard(SpinLocker::Mode::Write, _lock, Manager::triesSlow);
+  SpinLocker guard(SpinLocker::Mode::Write, _lock,
+                   static_cast<std::size_t>(Manager::triesSlow));
   if (guard.isLocked()) {
     if (isOperational() && !globalProcessRunning()) {
       Metadata& metadata = cache->metadata();
