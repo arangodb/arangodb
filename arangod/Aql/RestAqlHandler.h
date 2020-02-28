@@ -75,8 +75,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //   "callStack": an array of objects, each with the following attributes:
   //     "offset": a non-negative integer
   //     "limit": either a non-negative integer, or the string "infinity"
-  //     "limitType: string or null, either "soft" or "hard"; set iff limit is not infinity
-  //     "fullCount": a boolean
+  //     "limitType: string or null, either "soft" or "hard"; set iff limit is
+  //     not infinity "fullCount": a boolean
   //   The result is an object with the attributes
   //     "code": integer, error code.
   //        If there was no error:
@@ -147,7 +147,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                                 std::shared_ptr<transaction::Context> const& ctx,
                                 double const ttl, bool& needToLock,
                                 arangodb::velocypack::Builder& answer);
-  
+
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
 
@@ -163,9 +163,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // our traversal engine registry
   traverser::TraverserEngineRegistry* _traverserRegistry;
-  
+
   aql::Query* _query;
-  
+
   // id of current query
   QueryId _qId;
 };

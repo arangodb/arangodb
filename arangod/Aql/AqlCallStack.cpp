@@ -35,8 +35,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 AqlCallStack::AqlCallStack(AqlCall call, bool compatibilityMode3_6)
-    : _operations{{std::move(call)}},
-      _compatibilityMode3_6(compatibilityMode3_6) {}
+    : _operations{{std::move(call)}}, _compatibilityMode3_6(compatibilityMode3_6) {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCall call)
     : _operations{other._operations} {
@@ -156,7 +155,7 @@ void AqlCallStack::toVelocyPack(velocypack::Builder& builder) const {
   reverseStack.reserve(_operations.size());
   {
     auto ops = _operations;
-    while(!ops.empty()) {
+    while (!ops.empty()) {
       reverseStack.emplace_back(ops.top());
       ops.pop();
     }

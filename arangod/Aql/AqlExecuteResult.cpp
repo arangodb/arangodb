@@ -42,7 +42,7 @@ auto getStringView(velocypack::Slice slice) -> std::string_view {
   velocypack::StringRef ref = slice.stringRef();
   return std::string_view(ref.data(), ref.size());
 }
-}
+}  // namespace
 
 auto AqlExecuteResult::state() const noexcept -> ExecutionState {
   return _state;
@@ -85,11 +85,14 @@ void AqlExecuteResult::toVelocyPack(velocypack::Builder& builder,
   builder.close();
 }
 
-auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice, AqlItemBlockManager& itemBlockManager) -> ResultT<AqlExecuteResult> {
+auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
+                                      AqlItemBlockManager& itemBlockManager)
+    -> ResultT<AqlExecuteResult> {
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
     return Result(TRI_ERROR_TYPE_ERROR,
-        "When deserializating AqlExecuteResult: Expected object, got "s + slice.typeName());
+                  "When deserializating AqlExecuteResult: Expected object, got "s +
+                      slice.typeName());
   }
 
   auto expectedPropertiesFound = std::map<std::string_view, bool>{};
@@ -112,11 +115,9 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice, AqlItemBloc
     auto value = getStringView(slice);
     if (value == StaticStrings::AqlRemoteStateDone) {
       return ExecutionState::DONE;
-    }
-    else if (value == StaticStrings::AqlRemoteStateHasmore) {
+    } else if (value == StaticStrings::AqlRemoteStateHasmore) {
       return ExecutionState::HASMORE;
-    }
-    else {
+    } else {
       auto message = std::string{
           "When deserializating AqlExecuteResult: When reading state: "
           "Unexpected value '"};
@@ -155,7 +156,8 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice, AqlItemBloc
   for (auto const it : velocypack::ObjectIterator(slice)) {
     auto const keySlice = it.key;
     if (ADB_UNLIKELY(!keySlice.isString())) {
-      return Result(TRI_ERROR_TYPE_ERROR,
+      return Result(
+          TRI_ERROR_TYPE_ERROR,
           "When deserializating AqlExecuteResult: Key is not a string");
     }
     auto const key = getStringView(keySlice);
@@ -176,15 +178,13 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice, AqlItemBloc
         return std::move(maybeState).result();
       }
       state = maybeState.get();
-    }
-    else if (key == StaticStrings::AqlRemoteSkipped) {
+    } else if (key == StaticStrings::AqlRemoteSkipped) {
       auto maybeSkipped = readSkipped(it.value);
       if (maybeSkipped.fail()) {
         return std::move(maybeSkipped).result();
       }
       skipped = maybeSkipped.get();
-    }
-    else if (key == StaticStrings::AqlRemoteBlock) {
+    } else if (key == StaticStrings::AqlRemoteBlock) {
       auto maybeBlock = readBlock(it.value);
       if (maybeBlock.fail()) {
         return std::move(maybeBlock).result();
@@ -192,7 +192,9 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice, AqlItemBloc
       block = maybeBlock.get();
     } else {
       LOG_TOPIC("cc6f4", WARN, Logger::AQL)
-          << "When deserializating AqlExecuteResult: Encountered unexpected key " << key;
+          << "When deserializating AqlExecuteResult: Encountered unexpected "
+             "key "
+          << key;
       // If you run into this assertion during rolling upgrades after adding a
       // new attribute, remove it in the older version.
       TRI_ASSERT(false);
@@ -201,7 +203,8 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice, AqlItemBloc
 
   for (auto const& it : expectedPropertiesFound) {
     if (ADB_UNLIKELY(!it.second)) {
-      auto message = std::string{"When deserializating AqlExecuteResult: missing key "};
+      auto message =
+          std::string{"When deserializating AqlExecuteResult: missing key "};
       message += it.first;
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }

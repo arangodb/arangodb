@@ -46,7 +46,8 @@ class AqlExecuteResult {
       : _state(state), _skipped(skipped), _block(std::move(block)) {}
 
   void toVelocyPack(velocypack::Builder&, velocypack::Options const*);
-  static auto fromVelocyPack(velocypack::Slice, AqlItemBlockManager&) -> ResultT<AqlExecuteResult>;
+  static auto fromVelocyPack(velocypack::Slice, AqlItemBlockManager&)
+      -> ResultT<AqlExecuteResult>;
 
   [[nodiscard]] auto state() const noexcept -> ExecutionState;
   [[nodiscard]] auto skipped() const noexcept -> std::size_t;

@@ -42,7 +42,7 @@ auto getStringView(velocypack::Slice slice) -> std::string_view {
   velocypack::StringRef ref = slice.stringRef();
   return std::string_view(ref.data(), ref.size());
 }
-}
+}  // namespace
 
 auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {
@@ -64,7 +64,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
 
   auto const readLimit = [](velocypack::Slice slice) -> ResultT<AqlCall::Limit> {
     auto const type = slice.type();
-    if (type == velocypack::ValueType::String && slice.isEqualString(StaticStrings::AqlRemoteInfinity)) {
+    if (type == velocypack::ValueType::String &&
+        slice.isEqualString(StaticStrings::AqlRemoteInfinity)) {
       return AqlCall::Limit{AqlCall::Infinity{}};
     } else if (slice.isInteger()) {
       try {
@@ -90,7 +91,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
   };
 
-  auto const readLimitType = [](velocypack::Slice slice) -> ResultT<std::optional<AqlCall::LimitType>> {
+  auto const readLimitType =
+      [](velocypack::Slice slice) -> ResultT<std::optional<AqlCall::LimitType>> {
     if (slice.isNull()) {
       return {std::nullopt};
     }
@@ -104,11 +106,9 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     auto value = getStringView(slice);
     if (value == StaticStrings::AqlRemoteLimitTypeSoft) {
       return {AqlCall::LimitType::SOFT};
-    }
-    else if (value == StaticStrings::AqlRemoteLimitTypeHard) {
+    } else if (value == StaticStrings::AqlRemoteLimitTypeHard) {
       return {AqlCall::LimitType::HARD};
-    }
-    else {
+    } else {
       auto message = std::string{
           "When deserializating AqlCall: When reading limitType: "
           "Unexpected value '"};
@@ -218,7 +218,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
         break;
     }
   } else if (ADB_UNLIKELY(!std::holds_alternative<Infinity>(limit))) {
-    return Result(TRI_ERROR_TYPE_ERROR,
+    return Result(
+        TRI_ERROR_TYPE_ERROR,
         "When deserializating AqlCall: limit set, but limitType is missing.");
   }
 
@@ -249,7 +250,7 @@ void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
                      [](std::size_t limit) { return Value(limit); },
                  },
                  limit);
-  auto const limitTypeValue = std::invoke([&](){
+  auto const limitTypeValue = std::invoke([&]() {
     if (!limitType.has_value()) {
       return Value(ValueType::Null);
     } else {

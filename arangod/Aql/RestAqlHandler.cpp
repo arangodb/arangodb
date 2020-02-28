@@ -621,7 +621,7 @@ auto getStringView(velocypack::Slice slice) -> std::string_view {
   velocypack::StringRef ref = slice.stringRef();
   return std::string_view(ref.data(), ref.size());
 }
-}
+}  // namespace
 
 // TODO Use the deserializer when available
 auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecuteCall> {
@@ -641,7 +641,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
     auto const keySlice = it.key;
     if (ADB_UNLIKELY(!keySlice.isString())) {
       return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-          "When deserializating AqlExecuteCall: Key is not a string");
+                    "When deserializating AqlExecuteCall: Key is not a string");
     }
     auto const key = getStringView(keySlice);
 
@@ -658,7 +658,8 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
     if (key == StaticStrings::AqlRemoteCallStack) {
       auto maybeCallStack = AqlCallStack::fromVelocyPack(it.value);
       if (ADB_UNLIKELY(maybeCallStack.fail())) {
-        auto message = std::string{"When deserializating AqlExecuteCall: failed to deserialize "};
+        auto message = std::string{
+            "When deserializating AqlExecuteCall: failed to deserialize "};
         message += StaticStrings::AqlRemoteCallStack;
         message += ": ";
         message += maybeCallStack.errorMessage();
@@ -677,7 +678,8 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
 
   for (auto const& it : expectedPropertiesFound) {
     if (ADB_UNLIKELY(!it.second)) {
-      auto message = std::string{"When deserializating AqlExecuteCall: missing key "};
+      auto message =
+          std::string{"When deserializating AqlExecuteCall: missing key "};
       message += it.first;
       return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, std::move(message));
     }
