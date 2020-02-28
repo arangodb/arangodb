@@ -547,7 +547,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(VPackS
   }
 
   if (auto value = slice.get(StaticStrings::AqlRemoteResult); !value.isNone()) {
-    return AqlExecuteResult::fromVelocyPack(slice, _engine->itemBlockManager());
+    return AqlExecuteResult::fromVelocyPack(value, _engine->itemBlockManager());
   }
 
   return Result{TRI_ERROR_TYPE_ERROR, "When parsing execute result: field result missing"};
