@@ -33,15 +33,25 @@ const path = require('path');
 var db = arangodb.db;
 var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 
-print("santoeuh")
 const FoxxManager = require('@arangodb/foxx/manager');
-print("santoeuh")
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'interface');
 
 
-const mime = 'image/gif';
+const binaryMime = 'image/gif';
+const textMime = 'text/plain';
 const pixelGif = new Buffer('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64');
 
+const cmpBuffer = function(a, b) {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; ++i) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+  return true;
+};
 
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -54,10 +64,10 @@ function foxxInterfaceSuite () {
   const mount = '/test-interface';
   const url = `/_db/${db._name()}${mount}/interface-echo`;
   const binUrl = `${url}-bin`;
+  const txtUrl = `${url}-str`;
   return {
 
     setUpAll: function () {
-      print("setup")
       FoxxManager.uninstall(mount, {force: true});
       FoxxManager.install(basePath, mount);
     },
@@ -66,22 +76,50 @@ function foxxInterfaceSuite () {
       // FoxxManager.uninstall(mount, {force: true});
     },
     
-    testFoxxInterfacePostBody: function () {
-      print(origin)
-      print(arango.POST(url, {'bla': 'blub'}))
-    },
-    testFoxxInterfaceGet: function () {
-    },
-    testFoxxInterfaceHead: function () {
-    },
+    //testFoxxInterfacePostBody: function () {
+    //  print(origin)
+    //  print(arango.POST(url, {'bla': 'blub'}))
+    //},
+    //testFoxxInterfaceGet: function () {
+    //},
+    //testFoxxInterfaceHead: function () {
+    //},
     testFoxxInterfacePostBodyBinary: function () {
-      print(origin)
-      print(arango.POST(binUrl, pixelGif, {'content-type': mime}));
+      [
+        'POST_RAW',
+        'PUT_RAW',
+        'PATCH_RAW',
+        'DELETE_RAW'
+      ].forEach((reqMethod) => {
+        let res = arango[reqMethod](binUrl,
+                                    pixelGif,
+                                    {
+                                      'content-type': binaryMime
+                                    });
+        assertEqual(res.code, 200, res.body);
+        assertTrue(res.body instanceof Buffer);
+        
+        let respBody = new Buffer(res.body);
+        assertTrue(cmpBuffer(respBody, pixelGif), "whether the server sent us a proper one pixel gif");
+        assertEqual(res.headers['content-length'], pixelGif.length);
+        assertEqual(res.headers['content-type'], binaryMime);
+        assertEqual(res.headers['test'], 'header');
+        assertEqual(res.headers['request-type'], reqMethod);
+      });
     },
     testFoxxInterfaceGetBinary: function () {
     },
     testFoxxInterfaceHeadBinary: function () {
+    },
+
+    testFoxxInterfacePostBodyText: function () {
+    },
+    testFoxxInterfaceGetText: function () {
+    },
+    testFoxxInterfaceHeadText: function () {
     }
+
+
   };
 }
 
