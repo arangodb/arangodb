@@ -216,6 +216,49 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   return call;
 }
 
+void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
+  using namespace velocypack;
+
+  auto limitType = std::optional<LimitType>{};
+  auto limit = Limit{Infinity{}};
+  if (hasHardLimit()) {
+    limitType = LimitType::HARD;
+    limit = hardLimit;
+  } else if (hasSoftLimit()) {
+    limitType = LimitType::SOFT;
+    limit = softLimit;
+  }
+
+  auto const limitValue =
+      std::visit(overload{
+                     [](Infinity) {
+                       return Value(StaticStrings::AqlRemoteInfinity);
+                     },
+                     [](std::size_t limit) { return Value(limit); },
+                 },
+                 limit);
+  auto const limitTypeValue = std::invoke([&](){
+    if (!limitType.has_value()) {
+      return Value(ValueType::Null);
+    } else {
+      switch (limitType.value()) {
+        case LimitType::SOFT:
+          return Value(StaticStrings::AqlRemoteLimitTypeSoft);
+        case LimitType::HARD:
+          return Value(StaticStrings::AqlRemoteLimitTypeHard);
+      }
+      // unreachable
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+  });
+
+  builder.add(StaticStrings::AqlRemoteLimit, limitValue);
+  builder.add(StaticStrings::AqlRemoteLimitType, limitTypeValue);
+  builder.add(StaticStrings::AqlRemoteFullCount, Value(fullCount));
+  builder.add(StaticStrings::AqlRemoteOffset, Value(offset));
+}
+
 auto AqlCall::toString() const -> std::string {
   auto stream = std::stringstream{};
   stream << *this;

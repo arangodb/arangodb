@@ -90,7 +90,7 @@ class AqlCallStack {
     return _operations.size() + _depth;
   }
 
-  void toVelocyPack(velocypack::Builder& builder);
+  void toVelocyPack(velocypack::Builder& builder) const;
 
  private:
   explicit AqlCallStack(std::stack<AqlCall>&& operations);

@@ -92,6 +92,9 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   auto executeViaNewApi(AqlCallStack stack)
       -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
 
+  [[nodiscard]] auto serializeExecuteCallBody(AqlCallStack const& callStack) const
+      -> velocypack::Buffer<uint8_t>;
+
   ExecutorInfos const& infos() const { return _infos; }
 
   Query const& getQuery() const { return _query; }

@@ -45,6 +45,7 @@
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -515,18 +516,14 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
                VelocyPackHelper::getNumericValue<int>(responseBody,
                                                       StaticStrings::Code, -1));
 
-    auto result = AqlExecuteResult::fromVelocyPack(responseBody);
+    auto result = AqlExecuteResult::fromVelocyPack(responseBody, _engine->itemBlockManager());
 
-    return result.asTuple();
+    return result->asTuple();
   }
 
   // We need to send a request here
-  VPackBuffer<uint8_t> buffer;
-  {
-    VPackBuilder builder(buffer);
-    callStack.toVelocyPack(builder);
-    traceExecuteRequest(builder.slice(), callStack);
-  }
+  auto buffer = serializeExecuteCallBody(callStack);
+  this->traceExecuteRequest(VPackSlice(buffer.data()), callStack);
 
   auto res = sendAsyncRequest(fuerte::RestVerb::Put,
                               RestAqlHandler::Route::execute(), std::move(buffer));
@@ -536,6 +533,19 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
   }
 
   return {ExecutionState::WAITING, 0, nullptr};
+}
+
+auto ExecutionBlockImpl<RemoteExecutor>::serializeExecuteCallBody(AqlCallStack const& callStack) const
+    -> VPackBuffer<uint8_t> {
+  VPackBuffer<uint8_t> buffer;
+  {
+    VPackBuilder builder(buffer);
+    builder.openObject();
+    builder.add(VPackValue(StaticStrings::AqlRemoteCallStack));
+    callStack.toVelocyPack(builder);
+    builder.close();
+  }
+  return buffer;
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::api() const noexcept -> Api {

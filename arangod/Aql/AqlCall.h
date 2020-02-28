@@ -64,6 +64,7 @@ struct AqlCall {
         fullCount{fullCount} {}
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCall>;
+  void toVelocyPack(velocypack::Builder&) const;
 
   auto toString() const -> std::string;
 

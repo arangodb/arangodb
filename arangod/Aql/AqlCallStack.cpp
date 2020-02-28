@@ -22,8 +22,9 @@
 
 #include "AqlCallStack.h"
 
-#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 // TODO: This class is not yet memory efficient or optimized in any way.
@@ -150,10 +151,23 @@ auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice) -> ResultT<AqlC
   return AqlCallStack{std::move(stack)};
 }
 
-void AqlCallStack::toVelocyPack(velocypack::Builder& builder) {
-  // TODO implement
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void AqlCallStack::toVelocyPack(velocypack::Builder& builder) const {
+  auto reverseStack = std::vector<AqlCall>{};
+  reverseStack.reserve(_operations.size());
+  {
+    auto ops = _operations;
+    while(!ops.empty()) {
+      reverseStack.emplace_back(ops.top());
+      ops.pop();
+    }
+  }
+
+  builder.openArray();
+  for (auto it = reverseStack.rbegin(); it != reverseStack.rend(); --it) {
+    auto const& call = *it;
+    call.toVelocyPack(builder);
+  }
+  builder.close();
 }
 
 auto AqlCallStack::toString() const -> std::string {
