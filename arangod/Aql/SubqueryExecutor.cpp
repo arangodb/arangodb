@@ -158,7 +158,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::pro
 template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRange& input,
                                                            OutputAqlItemRow& output)
-    -> std::tuple<ExecutorState, Stats, AqlCall> {
+    -> std::tuple<ExecutionState, Stats, AqlCall> {
   auto getUpstreamCall = [&]() {
     AqlCall upstreamCall = output.getClientCall();
     if constexpr (isModificationSubquery) {
@@ -173,7 +173,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
   if (_state == ExecutorState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
-    return {_state, NoStats{}, getUpstreamCall()};
+    return {translatedReturnType(), NoStats{}, getUpstreamCall()};
   }
   while (true) {
     if (_subqueryInitialized) {
@@ -185,13 +185,17 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
         writeOutput(output);
         LOG_DEVEL_SQ << uint64_t(this) << "wrote output is const " << _state
                      << " " << getUpstreamCall();
-        return {_state, NoStats{}, getUpstreamCall()};
+        return {translatedReturnType(), NoStats{}, getUpstreamCall()};
       }
 
       // Non const case, or first run in const
       auto [state, skipped, block] = _subquery.execute(AqlCallStack(AqlCall{}));
       TRI_ASSERT(skipped == 0);
+      if (state == ExecutionState::WAITING) {
+        return {state, NoStats{}, getUpstreamCall()};
+      }
       // We get a result
+      LOG_DEVEL_SQ << uint64_t(this) << " we get subquery result";
       if (block != nullptr) {
         TRI_IF_FAILURE("SubqueryBlock::executeSubquery") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -199,6 +203,8 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
 
         if (_infos.returnsData()) {
           TRI_ASSERT(_subqueryResults != nullptr);
+          LOG_DEVEL_SQ << uint64_t(this)
+                       << " store subquery result for writing " << block->size();
           _subqueryResults->emplace_back(std::move(block));
         }
       }
@@ -208,7 +214,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
         writeOutput(output);
         LOG_DEVEL_SQ << uint64_t(this) << "wrote output subquery done "
                      << _state << " " << getUpstreamCall();
-        return {_state, NoStats{}, getUpstreamCall()};
+        return {translatedReturnType(), NoStats{}, getUpstreamCall()};
       }
 
     } else {
@@ -219,17 +225,22 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
                      << _input.isInitialized();
         if (!_input) {
           LOG_DEVEL_SQ << uint64_t(this) << "exit produce, no more input" << _state;
-          return {_state, NoStats{}, getUpstreamCall()};
+          return {translatedReturnType(), NoStats{}, getUpstreamCall()};
         }
       }
 
       TRI_ASSERT(_input);
       if (!_infos.isConst() || _input.isFirstDataRowInBlock()) {
-        auto initRes = _subquery.initializeCursor(_input);
+        LOG_DEVEL_SQ << "Subquery: Initialize cursor";
+        auto [state, result] = _subquery.initializeCursor(_input);
+        if (state == ExecutionState::WAITING) {
+          LOG_DEVEL_SQ << "Waiting on initialize cursor";
+          return {state, NoStats{}, AqlCall{}};
+        }
 
-        if (initRes.second.fail()) {
+        if (result.fail()) {
           // Error during initialize cursor
-          THROW_ARANGO_EXCEPTION(initRes.second);
+          THROW_ARANGO_EXCEPTION(result);
         }
         _subqueryResults = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
       }
@@ -297,10 +308,19 @@ SubqueryExecutor<isModificationSubquery>::fetchBlockForPassthrough(size_t atMost
   return {rv.first, {}, std::move(rv.second)};
 }
 
+template <bool isModificationSubquery>
+auto SubqueryExecutor<isModificationSubquery>::translatedReturnType() const
+    noexcept -> ExecutionState {
+  if (_state == ExecutorState::DONE) {
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
+}
+
 template <>
 template <>
 auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange, AqlCall& call)
-    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+    -> std::tuple<ExecutionState, Stats, size_t, AqlCall> {
   auto getUpstreamCall = [&]() {
     auto upstreamCall = AqlCall{};
     return upstreamCall;
@@ -313,7 +333,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
   if (_state == ExecutorState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
-    return {_state, NoStats{}, 0, getUpstreamCall()};
+    return {translatedReturnType(), NoStats{}, 0, getUpstreamCall()};
   }
   while (true) {
     if (_subqueryInitialized) {
@@ -327,12 +347,16 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
         skipped += 1;
         call.didSkip(1);
         LOG_DEVEL_SQ << uint64_t(this) << "did skip one";
-        return {_state, NoStats{}, skipped, getUpstreamCall()};
+        return {translatedReturnType(), NoStats{}, skipped, getUpstreamCall()};
       }
 
       // Non const case, or first run in const
       auto [state, skipped, block] = _subquery.execute(AqlCallStack(AqlCall{}));
       TRI_ASSERT(skipped == 0);
+      if (state == ExecutionState::WAITING) {
+        return {state, NoStats{}, 0, getUpstreamCall()};
+      }
+
       // We get a result
       if (block != nullptr) {
         TRI_IF_FAILURE("SubqueryBlock::executeSubquery") {
@@ -352,7 +376,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
         skipped += 1;
         call.didSkip(1);
         LOG_DEVEL_SQ << uint64_t(this) << "did skip one";
-        return {_state, NoStats{}, skipped, getUpstreamCall()};
+        return {translatedReturnType(), NoStats{}, skipped, getUpstreamCall()};
       }
 
     } else {
@@ -362,17 +386,20 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
 
         if (!_input) {
           LOG_DEVEL_SQ << uint64_t(this) << "skipped nothing waiting for input " << _state;
-          return {_state, NoStats{}, skipped, getUpstreamCall()};
+          return {translatedReturnType(), NoStats{}, skipped, getUpstreamCall()};
         }
       }
 
       TRI_ASSERT(_input);
       if (!_infos.isConst() || _input.isFirstDataRowInBlock()) {
-        auto initRes = _subquery.initializeCursor(_input);
+        auto [state, result] = _subquery.initializeCursor(_input);
+        if (state == ExecutionState::WAITING) {
+          return {state, NoStats{}, 0, getUpstreamCall()};
+        }
 
-        if (initRes.second.fail()) {
+        if (result.fail()) {
           // Error during initialize cursor
-          THROW_ARANGO_EXCEPTION(initRes.second);
+          THROW_ARANGO_EXCEPTION(result);
         }
         _subqueryResults = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
       }

@@ -1252,6 +1252,11 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
   if constexpr (isNewStyleExecutor<Executor>) {
     if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor>) {
       return _executor.produceRows(input, output);
+    } else if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
+      // The SubqueryExecutor has it's own special handling outside.
+      // SO this code is in fact not reachable
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     } else {
       auto [state, stats, call] = _executor.produceRows(input, output);
       return {state, stats, call, 0};
@@ -1274,6 +1279,11 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
         auto res = _executor.skipRowsRange(inputRange, call);
         _executorReturnedDone = std::get<ExecutorState>(res) == ExecutorState::DONE;
         return res;
+      } else if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
+        // The SubqueryExecutor has it's own special handling outside.
+        // SO this code is in fact not reachable
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
       } else {
         auto [state, stats, skipped, localCall] =
             _executor.skipRowsRange(inputRange, call);
@@ -1576,10 +1586,19 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0}));
     TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.fullCount));
     TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.hasHardLimit()));
+    if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
+      // The old subquery executor can in-fact return waiting on produce call.
+      // if it needs to wait for the subquery.
+      // So we need to allow the return state here as well.
+      TRI_ASSERT(_execState == ExecState::CHECKCALL ||
+                 _execState == ExecState::SHADOWROWS || _execState == ExecState::UPSTREAM ||
+                 _execState == ExecState::PRODUCE || _execState == ExecState::SKIP);
+    } else {
+      // We can only have returned the following internal states
+      TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
+                 _execState == ExecState::UPSTREAM);
+    }
 
-    // We can only have returned the following internal states
-    TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
-               _execState == ExecState::UPSTREAM);
     // Skip can only be > 0 if we are in upstream cases.
     TRI_ASSERT(_skipped == 0 || _execState == ExecState::UPSTREAM);
 
@@ -1633,8 +1652,33 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               clientCall.getLimit() == 0 && clientCall.needsFullCount();
 #endif
           LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
-          auto [state, stats, skippedLocal, call, dependency] =
-              executeSkipRowsRange(_lastRange, clientCall);
+
+          ExecutorState state = ExecutorState::HASMORE;
+          typename Executor::Stats stats;
+          size_t skippedLocal = 0;
+          AqlCall call{};
+          size_t dependency = 0;
+          if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
+            // NOTE: The subquery Executor will by itself call EXECUTE on it's
+            // subquery. This can return waiting => we can get a WAITING state
+            // here. We can only get the waiting state for SUbquery executors.
+            ExecutionState subqueryState = ExecutionState::HASMORE;
+            std::tie(subqueryState, stats, skippedLocal, call) =
+                _executor.skipRowsRange(_lastRange, clientCall);
+            if (subqueryState == ExecutionState::WAITING) {
+              TRI_ASSERT(skippedLocal == 0);
+              return {subqueryState, 0, nullptr};
+            } else if (subqueryState == ExecutionState::DONE) {
+              state = ExecutorState::DONE;
+            } else {
+              state = ExecutorState::HASMORE;
+            }
+          } else {
+            // Execute skipSome
+            std::tie(state, stats, skippedLocal, call, dependency) =
+                executeSkipRowsRange(_lastRange, clientCall);
+          }
+
           _requestedDependency = dependency;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           // Assertion: We did skip 'skippedLocal' documents here.
@@ -1695,11 +1739,29 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           }
           TRI_ASSERT(_outputItemRow);
           TRI_ASSERT(!_executorReturnedDone);
-
-          // Execute getSome
-          auto const [state, stats, call, dependency] =
-              executeProduceRows(_lastRange, *_outputItemRow);
-          // TODO: Check
+          ExecutorState state = ExecutorState::HASMORE;
+          typename Executor::Stats stats;
+          AqlCall call{};
+          size_t dependency = 0;
+          if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
+            // NOTE: The subquery Executor will by itself call EXECUTE on it's
+            // subquery. This can return waiting => we can get a WAITING state
+            // here. We can only get the waiting state for SUbquery executors.
+            ExecutionState subqueryState = ExecutionState::HASMORE;
+            std::tie(subqueryState, stats, call) =
+                _executor.produceRows(_lastRange, *_outputItemRow);
+            if (subqueryState == ExecutionState::WAITING) {
+              return {subqueryState, 0, nullptr};
+            } else if (subqueryState == ExecutionState::DONE) {
+              state = ExecutorState::DONE;
+            } else {
+              state = ExecutorState::HASMORE;
+            }
+          } else {
+            // Execute getSome
+            std::tie(state, stats, call, dependency) =
+                executeProduceRows(_lastRange, *_outputItemRow);
+          }
           _requestedDependency = dependency;
           _executorReturnedDone = state == ExecutorState::DONE;
           _engine->_stats += stats;
