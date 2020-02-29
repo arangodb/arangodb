@@ -373,6 +373,8 @@ auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependen
   if (state == ExecutionState::WAITING) {
     return {state, 0, AqlItemBlockInputRange{ExecutorState::HASMORE}};
   }
+  ExecutorState execState =
+      state == ExecutionState::DONE ? ExecutorState::DONE : ExecutorState::HASMORE;
 
   _dependencyStates.at(dependency) = state;
   if (std::any_of(std::begin(_dependencyStates), std::end(_dependencyStates),
@@ -384,18 +386,9 @@ auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependen
     state = ExecutionState::DONE;
   }
   if (block == nullptr) {
-    if (state == ExecutionState::HASMORE) {
-      return {state, skipped, AqlItemBlockInputRange{ExecutorState::HASMORE, skipped}};
-    }
-    return {state, skipped, AqlItemBlockInputRange{ExecutorState::DONE, skipped}};
+    return {state, skipped, AqlItemBlockInputRange{execState, skipped}};
   }
-
+  TRI_ASSERT(block != nullptr);
   auto [start, end] = block->getRelevantRange();
-  if (state == ExecutionState::HASMORE) {
-    TRI_ASSERT(block != nullptr);
-    return {state, skipped,
-            AqlItemBlockInputRange{ExecutorState::DONE, skipped, block, start}};
-  }
-  return {state, skipped,
-          AqlItemBlockInputRange{ExecutorState::DONE, skipped, block, start}};
+  return {state, skipped, AqlItemBlockInputRange{execState, skipped, block, start}};
 }
