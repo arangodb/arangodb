@@ -130,7 +130,7 @@ auto MultiAqlItemBlockInputRange::isDone() const -> bool {
   return res;
 }
 
-size_t MultiAqlItemBlockInputRange::skipAllRemainingDataRows() {
+auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   for (size_t i = 0; i < _inputs.size(); i++) {
     _inputs.at(i).skipAllRemainingDataRows();
     if (_inputs.at(i).upstreamState() == ExecutorState::HASMORE) {
@@ -138,4 +138,8 @@ size_t MultiAqlItemBlockInputRange::skipAllRemainingDataRows() {
     }
   }
   return 0;
+}
+
+auto MultiAqlItemBlockInputRange::numberDependencies() const noexcept -> size_t {
+  return _inputs.size();
 }
