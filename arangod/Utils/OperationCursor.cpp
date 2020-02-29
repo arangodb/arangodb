@@ -24,10 +24,9 @@
 #include "OperationCursor.h"
 
 using namespace arangodb;
-      
+
 OperationCursor::OperationCursor(std::unique_ptr<IndexIterator> iterator)
-    : _indexIterator(std::move(iterator)),
-      _hasMore(true) {
+    : _indexIterator(std::move(iterator)), _hasMore(true) {
   TRI_ASSERT(_indexIterator != nullptr);
 }
 
@@ -145,9 +144,11 @@ void OperationCursor::skipAll(uint64_t& skipped) {
   }
 
   while (_hasMore) {
-    _indexIterator->skip(toSkip, skipped);
+    uint64_t skippedLocal = 0;
+    _indexIterator->skip(toSkip, skippedLocal);
     if (skipped != toSkip) {
       _hasMore = false;
     }
+    skipped += skippedLocal;
   }
 }

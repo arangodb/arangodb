@@ -518,7 +518,12 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
   stats.incrScanned(call.getSkipCount());
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = call.getOffset() + std::min(call.softLimit, call.hardLimit);
+  if (!call.needsFullCount()) {
+    // Do not overfetch too much.
+    upstreamCall.softLimit = call.getOffset() + std::min(call.softLimit, call.hardLimit);
+    // else we do unlimited softLimit.
+    // we are going to return everything anyways.
+  }
   return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
 }
 

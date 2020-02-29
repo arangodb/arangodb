@@ -238,8 +238,13 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
   if (_cursorHasMore) {
     return {ExecutorState::HASMORE, stats, call.getSkipCount(), upstreamCall};
   }
+  if (!call.needsFullCount()) {
+    // Do not overfetch too much
+    upstreamCall.softLimit = call.getOffset();
+    // else we do unlimited softLimit.
+    // we are going to return everything anyways.
+  }
 
-  upstreamCall.softLimit = call.getOffset();
   return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
 }
 

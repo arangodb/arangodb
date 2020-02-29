@@ -752,7 +752,6 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
   }
 
   AqlCall upstreamCall;
-  upstreamCall.fullCount = clientCall.needsFullCount();
 
   LOG_DEVEL_IDX << "IndexExecutor::produceRows reporting state " << returnState();
   return {returnState(), stats, upstreamCall};
