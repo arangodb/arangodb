@@ -28,6 +28,11 @@
 
 #include <utility>
 
+namespace arangodb {
+template <class T>
+class ResultT;
+}
+
 namespace arangodb::velocypack {
 class Builder;
 struct Options;
@@ -41,10 +46,15 @@ class AqlExecuteResult {
       : _state(state), _skipped(skipped), _block(std::move(block)) {}
 
   void toVelocyPack(velocypack::Builder&, velocypack::Options const*);
+  static auto fromVelocyPack(velocypack::Slice, AqlItemBlockManager&)
+      -> ResultT<AqlExecuteResult>;
 
   [[nodiscard]] auto state() const noexcept -> ExecutionState;
   [[nodiscard]] auto skipped() const noexcept -> std::size_t;
   [[nodiscard]] auto block() const noexcept -> SharedAqlItemBlockPtr const&;
+
+  [[nodiscard]] auto asTuple() const noexcept
+      -> std::tuple<ExecutionState, std::size_t, SharedAqlItemBlockPtr>;
 
  private:
   ExecutionState _state = ExecutionState::HASMORE;

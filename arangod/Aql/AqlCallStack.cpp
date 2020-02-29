@@ -22,8 +22,9 @@
 
 #include "AqlCallStack.h"
 
-#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 // TODO: This class is not yet memory efficient or optimized in any way.
@@ -34,8 +35,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 AqlCallStack::AqlCallStack(AqlCall call, bool compatibilityMode3_6)
-    : _operations{{std::move(call)}},
-      _compatibilityMode3_6(compatibilityMode3_6) {}
+    : _operations{{std::move(call)}}, _compatibilityMode3_6(compatibilityMode3_6) {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCall call)
     : _operations{other._operations} {
@@ -148,4 +148,43 @@ auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice) -> ResultT<AqlC
   TRI_ASSERT(i > 0);
 
   return AqlCallStack{std::move(stack)};
+}
+
+void AqlCallStack::toVelocyPack(velocypack::Builder& builder) const {
+  auto reverseStack = std::vector<AqlCall>{};
+  reverseStack.reserve(_operations.size());
+  {
+    auto ops = _operations;
+    while (!ops.empty()) {
+      reverseStack.emplace_back(ops.top());
+      ops.pop();
+    }
+  }
+
+  builder.openArray();
+  for (auto it = reverseStack.rbegin(); it != reverseStack.rend(); ++it) {
+    auto const& call = *it;
+    call.toVelocyPack(builder);
+  }
+  builder.close();
+}
+
+auto AqlCallStack::toString() const -> std::string {
+  auto result = std::string{};
+  result += "[";
+  auto ops = _operations;
+  if (!ops.empty()) {
+    auto op = ops.top();
+    ops.pop();
+    result += " ";
+    result += op.toString();
+    while (!ops.empty()) {
+      op = ops.top();
+      ops.pop();
+      result += ", ";
+      result += op.toString();
+    }
+  }
+  result += " ]";
+  return result;
 }

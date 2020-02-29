@@ -42,7 +42,7 @@ auto getStringView(velocypack::Slice slice) -> std::string_view {
   velocypack::StringRef ref = slice.stringRef();
   return std::string_view(ref.data(), ref.size());
 }
-}
+}  // namespace
 
 auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {
@@ -63,7 +63,9 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   auto fullCount = false;
 
   auto const readLimit = [](velocypack::Slice slice) -> ResultT<AqlCall::Limit> {
-    if (slice.isEqualString(StaticStrings::AqlRemoteInfinity)) {
+    auto const type = slice.type();
+    if (type == velocypack::ValueType::String &&
+        slice.isEqualString(StaticStrings::AqlRemoteInfinity)) {
       return AqlCall::Limit{AqlCall::Infinity{}};
     } else if (slice.isInteger()) {
       try {
@@ -89,7 +91,11 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
   };
 
-  auto const readLimitType = [](velocypack::Slice slice) -> ResultT<AqlCall::LimitType> {
+  auto const readLimitType =
+      [](velocypack::Slice slice) -> ResultT<std::optional<AqlCall::LimitType>> {
+    if (slice.isNull()) {
+      return {std::nullopt};
+    }
     if (ADB_UNLIKELY(!slice.isString())) {
       auto message = std::string{
           "When deserializating AqlCall: When reading limitType: "
@@ -99,12 +105,10 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
     auto value = getStringView(slice);
     if (value == StaticStrings::AqlRemoteLimitTypeSoft) {
-      return AqlCall::LimitType::SOFT;
-    }
-    else if (value == StaticStrings::AqlRemoteLimitTypeHard) {
-      return AqlCall::LimitType::HARD;
-    }
-    else {
+      return {AqlCall::LimitType::SOFT};
+    } else if (value == StaticStrings::AqlRemoteLimitTypeHard) {
+      return {AqlCall::LimitType::HARD};
+    } else {
       auto message = std::string{
           "When deserializating AqlCall: When reading limitType: "
           "Unexpected value '"};
@@ -214,7 +218,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
         break;
     }
   } else if (ADB_UNLIKELY(!std::holds_alternative<Infinity>(limit))) {
-    return Result(TRI_ERROR_TYPE_ERROR,
+    return Result(
+        TRI_ERROR_TYPE_ERROR,
         "When deserializating AqlCall: limit set, but limitType is missing.");
   }
 
@@ -222,4 +227,55 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   call.fullCount = fullCount;
 
   return call;
+}
+
+void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
+  using namespace velocypack;
+
+  auto limitType = std::optional<LimitType>{};
+  auto limit = Limit{Infinity{}};
+  if (hasHardLimit()) {
+    limitType = LimitType::HARD;
+    limit = hardLimit;
+  } else if (hasSoftLimit()) {
+    limitType = LimitType::SOFT;
+    limit = softLimit;
+  }
+
+  auto const limitValue =
+      std::visit(overload{
+                     [](Infinity) {
+                       return Value(StaticStrings::AqlRemoteInfinity);
+                     },
+                     [](std::size_t limit) { return Value(limit); },
+                 },
+                 limit);
+  auto const limitTypeValue = std::invoke([&]() {
+    if (!limitType.has_value()) {
+      return Value(ValueType::Null);
+    } else {
+      switch (limitType.value()) {
+        case LimitType::SOFT:
+          return Value(StaticStrings::AqlRemoteLimitTypeSoft);
+        case LimitType::HARD:
+          return Value(StaticStrings::AqlRemoteLimitTypeHard);
+      }
+      // unreachable
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+  });
+
+  builder.openObject();
+  builder.add(StaticStrings::AqlRemoteLimit, limitValue);
+  builder.add(StaticStrings::AqlRemoteLimitType, limitTypeValue);
+  builder.add(StaticStrings::AqlRemoteFullCount, Value(fullCount));
+  builder.add(StaticStrings::AqlRemoteOffset, Value(offset));
+  builder.close();
+}
+
+auto AqlCall::toString() const -> std::string {
+  auto stream = std::stringstream{};
+  stream << *this;
+  return stream.str();
 }

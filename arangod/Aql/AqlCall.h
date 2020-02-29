@@ -64,6 +64,9 @@ struct AqlCall {
         fullCount{fullCount} {}
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCall>;
+  void toVelocyPack(velocypack::Builder&) const;
+
+  auto toString() const -> std::string;
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateSkipSome(std::size_t toSkip) {
@@ -232,6 +235,12 @@ constexpr bool operator==(AqlCall::Limit const& a, AqlCall::Limit const& b) {
   return std::visit(overload{[&b](size_t const& i) -> bool { return i == b; },
                              [&b](auto inf) -> bool { return inf == b; }},
                     a);
+}
+
+constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
+  return left.hardLimit == right.hardLimit && left.softLimit == right.softLimit &&
+         left.offset == right.offset && left.fullCount == right.fullCount &&
+         left.skippedRows == right.skippedRows;
 }
 
 inline std::ostream& operator<<(std::ostream& out,

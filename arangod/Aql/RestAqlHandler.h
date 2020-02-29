@@ -54,7 +54,12 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override;
   RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
-  
+
+  class Route {
+   public:
+    static auto execute() -> const char* { return "/_api/aql/execute"; }
+  };
+
  public:
   // DELETE method for /_api/aql/kill/<queryId>, (internal)
   bool killQuery(std::string const& idString);
@@ -70,14 +75,15 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //   "callStack": an array of objects, each with the following attributes:
   //     "offset": a non-negative integer
   //     "limit": either a non-negative integer, or the string "infinity"
-  //     "limitType: string or null, either "soft" or "hard"; set iff limit is not infinity
-  //     "fullCount": a boolean
+  //     "limitType: string or null, either "soft" or "hard"; set iff limit is
+  //     not infinity "fullCount": a boolean
   //   The result is an object with the attributes
   //     "code": integer, error code.
   //        If there was no error:
-  //     "state": string, either "hasMore" or "done"
-  //     "skipped": non-negative integer
-  //     "result": serialized AqlItemBlock, or null when no rows are returned.
+  //     "result": an object with the following attributes:
+  //       "state": string, either "hasMore" or "done"
+  //       "skipped": non-negative integer
+  //       "block": serialized AqlItemBlock, or null when no rows are returned.
   // For the "getSome" operation one has to give:
   //   "atMost": must be a positive integer, the cursor returns never
   //             more than "atMost" items. Defaults to
@@ -141,7 +147,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                                 std::shared_ptr<transaction::Context> const& ctx,
                                 double const ttl, bool& needToLock,
                                 arangodb::velocypack::Builder& answer);
-  
+
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
 
@@ -157,9 +163,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // our traversal engine registry
   traverser::TraverserEngineRegistry* _traverserRegistry;
-  
+
   aql::Query* _query;
-  
+
   // id of current query
   QueryId _qId;
 };

@@ -56,7 +56,8 @@ std::string const StaticStrings::ReturnNewString("returnNew");
 std::string const StaticStrings::ReturnOldString("returnOld");
 std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
-std::string const StaticStrings::SkipDocumentValidation("skipDocumentValidation");
+std::string const StaticStrings::SkipDocumentValidation(
+    "skipDocumentValidation");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
 std::string const StaticStrings::Group("group");
@@ -307,6 +308,7 @@ std::string const StaticStrings::AqlRemoteLimitTypeHard("hard");
 std::string const StaticStrings::AqlRemoteFullCount("fullCount");
 std::string const StaticStrings::AqlRemoteOffset("offset");
 std::string const StaticStrings::AqlRemoteInfinity("infinity");
+std::string const StaticStrings::AqlRemoteResult("result");
 std::string const StaticStrings::AqlRemoteBlock("block");
 std::string const StaticStrings::AqlRemoteSkipped("skipped");
 std::string const StaticStrings::AqlRemoteState("state");

@@ -155,7 +155,8 @@ class ExecutionBlock {
   void traceExecuteBegin(AqlCallStack const& stack);
 
   // Trace the end of a execute call, potentially with result
-  void traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result);
+  auto traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result)
+      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;

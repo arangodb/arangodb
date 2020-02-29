@@ -47,6 +47,8 @@ class AqlCallStack {
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallStack>;
 
+  auto toString() const -> std::string;
+
   // Quick test is this CallStack is of local relevance, or it is sufficient to pass it through
   bool isRelevant() const;
 
@@ -87,6 +89,8 @@ class AqlCallStack {
   auto subqueryLevel() const noexcept -> size_t {
     return _operations.size() + _depth;
   }
+
+  void toVelocyPack(velocypack::Builder& builder) const;
 
  private:
   explicit AqlCallStack(std::stack<AqlCall>&& operations);
