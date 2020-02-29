@@ -169,17 +169,34 @@ template <typename FetcherType, typename ModifierType>
     typename FetcherType::DataRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, ModificationStats, AqlCall> {
   TRI_ASSERT(_infos._trx);
-
+  AqlCall upstreamCall{};
+  if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
+                !std::is_same_v<FetcherType, AllRowsFetcher>) {
+    upstreamCall.softLimit = _modifier.getBatchSize();
+  }
   auto stats = ModificationStats{};
 
   _modifier.reset();
+  if (!input.hasDataRow()) {
+    // Input is empty
+    return {input.upstreamState(), stats, upstreamCall};
+  }
 
-  ExecutorState upstreamState = ExecutorState::HASMORE;
+  TRI_IF_FAILURE("ModificationBlock::getSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   // only produce at most output.numRowsLeft() many results
+  ExecutorState upstreamState = ExecutorState::HASMORE;
   if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
-    auto range = input.getNextInputRange();
+    auto& range = input.getInputRange();
     doCollect(range, output.numRowsLeft());
     upstreamState = range.upstreamState();
+    if (upstreamState == ExecutorState::DONE) {
+      // We are done with this input.
+      // We need to forward it to the last ShadowRow.
+      input.skipAllRemainingDataRows();
+    }
   } else {
     doCollect(input, output.numRowsLeft());
     upstreamState = input.upstreamState();
@@ -196,39 +213,65 @@ template <typename FetcherType, typename ModifierType>
     doOutput(output, stats);
   }
 
-  return {upstreamState, stats, AqlCall{}};
+  return {upstreamState, stats, upstreamCall};
 }
 
 template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::skipRowsRange(
     typename FetcherType::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  auto stats = ModificationStats{};
-  _modifier.reset();
-
-  ExecutorState upstreamState = ExecutorState::HASMORE;
-  // only produce at most output.numRowsLeft() many results
-  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
-    auto range = input.getNextInputRange();
-    doCollect(range, call.getOffset());
-    upstreamState = range.upstreamState();
-  } else {
-    doCollect(input, call.getOffset());
-    upstreamState = input.upstreamState();
+  AqlCall upstreamCall{};
+  if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
+                !std::is_same_v<FetcherType, AllRowsFetcher>) {
+    upstreamCall.softLimit = _modifier.getBatchSize();
   }
 
-  if (_modifier.nrOfOperations() > 0) {
-    _modifier.transact();
+  auto stats = ModificationStats{};
 
-    if (_infos._doCount) {
-      stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
-      stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+  TRI_IF_FAILURE("ModificationBlock::getSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  // only produce at most output.numRowsLeft() many results
+  ExecutorState upstreamState = input.upstreamState();
+  while (input.hasDataRow() && call.needSkipMore()) {
+    _modifier.reset();
+    size_t toSkip = call.getOffset();
+    if (call.getLimit() == 0 && call.hasHardLimit()) {
+      // We need to produce all modification operations.
+      // If we are bound by limits or not!
+      toSkip = ExecutionBlock::SkipAllSize();
+    }
+    if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+      auto& range = input.getInputRange();
+      if (range.hasDataRow()) {
+        doCollect(range, toSkip);
+      }
+      upstreamState = range.upstreamState();
+      if (upstreamState == ExecutorState::DONE) {
+        // We are done with this input.
+        // We need to forward it to the last ShadowRow.
+        input.skipAllRemainingDataRows();
+        TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
+      }
+    } else {
+      doCollect(input, toSkip);
+      upstreamState = input.upstreamState();
     }
 
-    call.didSkip(_modifier.nrOfOperations());
+    if (_modifier.nrOfOperations() > 0) {
+      _modifier.transact();
+
+      if (_infos._doCount) {
+        stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
+        stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+      }
+
+      call.didSkip(_modifier.nrOfOperations());
+    }
   }
 
-  return {upstreamState, stats, _modifier.nrOfOperations(), AqlCall{}};
+  return {upstreamState, stats, call.getSkipCount(), upstreamCall};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;

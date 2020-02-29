@@ -54,18 +54,22 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, AqlItemMat
   }
 }
 
-AqlItemBlockInputRange AqlItemBlockInputMatrix::getNextInputRange() {
+AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
   TRI_ASSERT(_aqlItemMatrix != nullptr);
 
-  if (_aqlItemMatrix->numberOfBlocks() == 0) {
-    return AqlItemBlockInputRange{upstreamState()};
+  if (_lastRange.hasDataRow()) {
+    return _lastRange;
   }
-
-  SharedAqlItemBlockPtr blockPtr = _aqlItemMatrix->getBlock(_currentBlockRowIndex);
-  auto [start, end] = blockPtr->getRelevantRange();
-  ExecutorState state = incrBlockIndex();
-
-  return {state, 0, std::move(blockPtr), start};
+  // Need initialze lastRange
+  if (_aqlItemMatrix->numberOfBlocks() == 0) {
+    _lastRange = {AqlItemBlockInputRange{upstreamState()}};
+  } else {
+    SharedAqlItemBlockPtr blockPtr = _aqlItemMatrix->getBlock(_currentBlockRowIndex);
+    auto [start, end] = blockPtr->getRelevantRange();
+    ExecutorState state = incrBlockIndex();
+    _lastRange = {state, 0, std::move(blockPtr), start};
+  }
+  return _lastRange;
 }
 
 SharedAqlItemBlockPtr AqlItemBlockInputMatrix::getBlock() const noexcept {
@@ -170,5 +174,6 @@ ExecutorState AqlItemBlockInputMatrix::incrBlockIndex() {
 }
 
 void AqlItemBlockInputMatrix::resetBlockIndex() noexcept {
+  _lastRange = {AqlItemBlockInputRange{upstreamState()}};
   _currentBlockRowIndex = 0;
 }

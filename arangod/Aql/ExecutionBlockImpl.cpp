@@ -1257,7 +1257,7 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
       return {state, stats, call, 0};
     }
   } else {
-    TRI_ASSERT(false);
+    return {ExecutorState::DONE, typename Executor::Stats{}, AqlCall{}, 0};
   }
 }
 

@@ -195,12 +195,10 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   AqlCall upstreamCall{};
   EnumerateCollectionStats stats{};
-  bool offsetPhase = (call.getOffset() > 0);
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
-
-  while (inputRange.hasDataRow() && call.shouldSkip()) {
+  while ((inputRange.hasDataRow() || _cursorHasMore) && call.shouldSkip()) {
     uint64_t skipped = 0;
 
     if (!_cursorHasMore) {
@@ -210,13 +208,8 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
     if (_cursorHasMore) {
       TRI_ASSERT(_currentRow.isInitialized());
       // if offset is > 0, we're in offset skip phase
-      if (offsetPhase) {
-        if (skipped < call.getOffset()) {
-          skipped += skipEntries(call.getOffset(), stats);
-        } else {
-          // we skipped enough in our offset phase
-          break;
-        }
+      if (call.getOffset() > 0) {
+        skipped += skipEntries(call.getOffset(), stats);
       } else {
         // fullCount phase
         if (_infos.getFilter() == nullptr) {
@@ -276,7 +269,6 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
-
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_cursorHasMore) {
       initializeNewRow(inputRange);
@@ -309,7 +301,6 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
   if (!_cursorHasMore) {
     initializeNewRow(inputRange);
   }
-
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 

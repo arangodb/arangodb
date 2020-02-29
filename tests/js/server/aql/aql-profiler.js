@@ -571,13 +571,13 @@ function ahuacatlProfilerTestSuite () {
     testNoResultsBlock1: function() {
       const query = 'FOR i IN 1..@rows FILTER 1 == 0 RETURN i';
 
-      // As the descendant blocks of NoResultsBlock don't get a single getSome
-      // call, they don't show up in the statistics.
+      // Also if we have no results, we do send a drop-all to dependecies
+      // potentielly we have modifiaction nodes that need to be executed.
 
       const genNodeList = () => [
-        {type: SingletonBlock, calls: 0, items: 0},
-        {type: CalculationBlock, calls: 0, items: 0},
-        {type: EnumerateListBlock, calls: 0, items: 0},
+        {type: SingletonBlock, calls: 1, items: 0},
+        {type: CalculationBlock, calls: 1, items: 0},
+        {type: EnumerateListBlock, calls: 1, items: 0},
         {type: NoResultsBlock, calls: 1, items: 0},
         {type: ReturnBlock, calls: 1, items: 0},
       ];

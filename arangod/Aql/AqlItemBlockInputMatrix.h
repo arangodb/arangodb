@@ -51,7 +51,7 @@ class AqlItemBlockInputMatrix {
   // Will provide access to the first block (from _aqlItemMatrix)
   // After a block has been delivered, the block index will be increased.
   // Next call then will deliver the next block etc.
-  AqlItemBlockInputRange getNextInputRange();
+  AqlItemBlockInputRange& getInputRange();
   std::pair<ExecutorState, AqlItemMatrix const*> getMatrix() noexcept;
 
   ExecutorState upstreamState() const noexcept;
@@ -70,6 +70,7 @@ class AqlItemBlockInputMatrix {
   // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and
   // usable DataRange object available to work with.
   AqlItemMatrix* _aqlItemMatrix;
+  AqlItemBlockInputRange _lastRange{ExecutorState::HASMORE};
   size_t _currentBlockRowIndex = 0;
   ShadowAqlItemRow _shadowRow{CreateInvalidShadowRowHint{}};
 };
