@@ -271,8 +271,6 @@ template <typename FetcherType, typename ModifierType>
     }
   }
 
-  LOG_DEVEL << "We skipped and got state: " << upstreamState;
-
   return {upstreamState, stats, call.getSkipCount(), upstreamCall};
 }
 
