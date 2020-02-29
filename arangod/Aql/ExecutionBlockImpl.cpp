@@ -136,10 +136,10 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 template <typename Executor>
 constexpr bool isNewStyleExecutor = is_one_of_v<
     Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, DistinctCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
-    SubqueryExecutor<true>, SubqueryExecutor<false>,  CountCollectExecutor,
-    CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
-    HashedCollectExecutor, ConstrainedSortExecutor,
+    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, DistinctCollectExecutor, IndexExecutor,
+    EnumerateCollectionExecutor, SubqueryExecutor<true>, SubqueryExecutor<false>, CountCollectExecutor,
+    CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>,
+    CalculationExecutor<CalculationType::V8Condition>, HashedCollectExecutor, ConstrainedSortExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     TestLambdaExecutor,
     TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
@@ -151,9 +151,10 @@ constexpr bool isNewStyleExecutor = is_one_of_v<
     ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
     ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
     ModificationExecutor<AllRowsFetcher, UpsertModifier>,
-    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, SubqueryStartExecutor,
-    UnsortedGatherExecutor, SubqueryEndExecutor, TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor,
-    LimitExecutor, SortExecutor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>,
+    SubqueryStartExecutor, UnsortedGatherExecutor, SubqueryEndExecutor, TraversalExecutor,
+    KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor, SortExecutor,
+    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
@@ -1107,7 +1108,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 
   bool constexpr useExecutor = hasSkipRowsRange<Executor>::value;
 
-  static_assert(!std::is_same_v<Executor, SubqueryExecutor<true>> || hasSkipRowsRange<Executor>::value);
+  static_assert(!std::is_same_v<Executor, SubqueryExecutor<true>> ||
+                hasSkipRowsRange<Executor>::value);
 
   // ConstFetcher and SingleRowFetcher<BlockPassthrough::Enable> can skip, but
   // it may not be done for modification subqueries.
@@ -1124,9 +1126,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, KShortestPathsExecutor,
-              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
-              IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor, ConstrainedSortExecutor,
-              CountCollectExecutor, SubqueryExecutor<true>,
+              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
+              HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
+              ConstrainedSortExecutor, CountCollectExecutor, SubqueryExecutor<true>,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
@@ -1137,9 +1139,10 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
               ModificationExecutor<AllRowsFetcher, UpsertModifier>,
-              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor,
-              EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor, LimitExecutor,
-              UnsortedGatherExecutor, SortExecutor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>,
+              TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor,
+              SortedCollectExecutor, LimitExecutor, UnsortedGatherExecutor, SortExecutor,
+              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
@@ -1170,12 +1173,13 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(
       !std::is_same<Executor, LimitExecutor>::value || useFetcher,
       "LimitExecutor needs to implement skipRows() to work correctly");
- 
+
   if constexpr (useExecutor) {
     return SkipRowsRangeVariant::EXECUTOR;
+  } else {
+    static_assert(useFetcher);
+    return SkipRowsRangeVariant::FETCHER;
   }
-  static_assert(useFetcher);
-  return SkipRowsRangeVariant::FETCHER;
 }
 
 // Let's do it the C++ way.
@@ -1202,8 +1206,7 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
   }
   // TODO: We only need to do this is the executor actually require to call.
   // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (is_one_of_v<Executor, LimitExecutor,
-                            ModificationExecutor<AllRowsFetcher, InsertModifier>,
+  if constexpr (is_one_of_v<Executor, LimitExecutor, ModificationExecutor<AllRowsFetcher, InsertModifier>,
                             ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
                             ModificationExecutor<AllRowsFetcher, RemoveModifier>,
                             ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
@@ -1238,6 +1241,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
     }
   } else {
     TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 }
 
