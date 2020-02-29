@@ -72,7 +72,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     // Test Shadow Rows
     EXPECT_FALSE(testee.hasShadowRow());
     {
-      auto const [state, row] = testee.peekShadowRow();
+      auto const [state, row] = testee.peekShadowRowAndState();
       EXPECT_EQ(GetParam(), state);
       EXPECT_FALSE(row.isInitialized());
     }
@@ -92,7 +92,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     auto rowIndexBefore = testee.getRowIndex();
     // Validate that shadowRowAPI does not move on
     {
-      auto [state, row] = testee.peekShadowRow();
+      auto [state, row] = testee.peekShadowRowAndState();
       EXPECT_EQ(state, ExecutorState::DONE);
       EXPECT_FALSE(row.isInitialized());
       ASSERT_EQ(rowIndexBefore, testee.getRowIndex())
@@ -154,7 +154,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     }
     // Validate ShadowRow API
     {
-      auto [state, row] = testee.peekShadowRow();
+      auto [state, row] = testee.peekShadowRowAndState();
       EXPECT_EQ(state, expectedState);
       EXPECT_TRUE(row.isInitialized());
       auto val = row.getValue(0);
@@ -209,7 +209,7 @@ TEST_P(InputRangeTest, empty_does_not_have_more_shadow_rows) {
 
 TEST_P(InputRangeTest, empty_peek_shadow_is_empty) {
   auto testee = createEmpty();
-  auto const [state, row] = testee.peekShadowRow();
+  auto const [state, row] = testee.peekShadowRowAndState();
   EXPECT_EQ(GetParam(), state);
   EXPECT_FALSE(row.isInitialized());
 }

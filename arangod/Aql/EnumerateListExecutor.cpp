@@ -182,7 +182,6 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipR
       initializeNewRow(inputRange);
       continue;
     }
-    // auto const& [state, input] = inputRange.peekDataRow();
 
     TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
     // if offset is > 0, we're in offset skip phase
@@ -201,7 +200,12 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipR
   }
   call.didSkip(skipped);
 
-  upstreamCall.softLimit = call.getOffset();
+  if (!call.needsFullCount()) {
+    // Do not overfetch too much
+    upstreamCall.softLimit = call.getOffset();
+    // else we do unlimited softLimit.
+    // we are going to return everything anyways.
+  }
   if (_inputArrayPosition < _inputArrayLength) {
     // fullCount will always skip the complete array
     TRI_ASSERT(offsetPhase);
