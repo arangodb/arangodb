@@ -167,9 +167,9 @@ SortingGatherExecutorInfos::SortingGatherExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, std::vector<SortRegister>&& sortRegister,
-    arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode, size_t limit,
-    GatherNode::Parallelism p)
+    std::unordered_set<RegisterId> registersToKeep,
+    std::vector<SortRegister>&& sortRegister, arangodb::transaction::Methods* trx,
+    GatherNode::SortMode sortMode, size_t limit, GatherNode::Parallelism p)
     : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
@@ -249,6 +249,101 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
   return {state, NoStats{}};
 }
 
+auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputRange) -> void {
+  if (!_initialized) {
+    _strategy->prepare(inputRange);
+    _initialized = true;
+    _numberDependencies = inputRange.numberDependencies();
+  }
+}
+
+auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const& inputRange) const
+    -> std::optional<std::tuple<AqlCall, size_t>> {
+  for (size_t dep = 0; dep < _numberDependencies; ++dep) {
+    auto const& [state, input] = inputRange.peekDataRow(dep);
+    if (!input && state != ExecutorState::DONE) {
+      // This dependency requires input
+      // TODO: This call requires limits
+      return std::tuple<AqlCall, size_t>{AqlCall{}, dep};
+    }
+  }
+  // No call required
+  return {};
+}
+
+auto SortingGatherExecutor::isDone(typename Fetcher::DataRange const& input) const -> bool {
+  // TODO: Include contrained sort
+  return input.isDone();
+}
+
+auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> InputAqlItemRow {
+  if (isDone(input)) {
+    // No rows, there is a chance we get into this.
+    // If we requested data from upstream, but all if it is done.
+    return InputAqlItemRow{CreateInvalidInputRowHint{}};
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool oneWithContent = false;
+  for (size_t dep = 0; dep < _numberDependencies; ++dep) {
+    auto const& [state, row] = input.peekDataRow(i);
+    if (row) {
+      oneWithContent = true;
+    }
+  }
+  TRI_ASSERT(oneWithContent);
+#endif
+  auto nextVal = _strategy->nextValue();
+  // TODO we might do some short-cuts here to maintain a list of requests
+  // to send in order to improve requires input
+  return nextVal.row;
+}
+
+auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
+                                        OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
+  while (!isDone(input) && !output.isFull()) {
+    auto maybeCall = requiresMoreInput(input);
+    if (maybeCall.has_value()) {
+      auto const& [request, dep] = maybeCall.value();
+      return {ExecutorState::HASMORE, NoStats{}, request, dep};
+    }
+    auto row = nextRow(input);
+    TRI_ASSERT(row.isInitialized() || isDone(input));
+    if (row) {
+      output.copyRow(row);
+      output.advanceRow();
+    }
+  }
+
+  // Call and dependency unused
+  if (isDone(input)) {
+    return {ExecutorState::DONE, NoStats{}, AqlCall{}, 0};
+  }
+  return {ExecutorState::HASMORE, NoStats{}, AqlCall{}, 0};
+}
+
+auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
+  while (!isDone(input) && !call.needSkipMore()) {
+    auto maybeCall = requiresMoreInput(input);
+    if (maybeCall.has_value()) {
+      auto const& [request, dep] = maybeCall.value();
+      return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), request, dep};
+    }
+    auto row = nextRow(input);
+    TRI_ASSERT(row.isInitialized() || isDone(input));
+    if (row) {
+      call.didSkip(1);
+    }
+  }
+
+  // Call and dependency unused
+  if (isDone(input)) {
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}, 0};
+  }
+  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall{}, 0};
+}
+
 std::pair<ExecutionState, InputAqlItemRow> SortingGatherExecutor::produceNextRow(size_t const atMost) {
   TRI_ASSERT(_strategy != nullptr);
   assertConstrainedDoesntOverfetch(atMost);
@@ -261,8 +356,8 @@ std::pair<ExecutionState, InputAqlItemRow> SortingGatherExecutor::produceNextRow
       return {state, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
   } else {
-    // Activate this assert as soon as all blocks follow the done == no call api
-    // TRI_ASSERT(_nrDone < _numberDependencies);
+    // Activate this assert as soon as all blocks follow the done == no call
+    // api TRI_ASSERT(_nrDone < _numberDependencies);
     if (_inputRows[_dependencyToFetch].state == ExecutionState::DONE) {
       _inputRows[_dependencyToFetch].row = InputAqlItemRow{CreateInvalidInputRowHint()};
     } else {
@@ -345,13 +440,12 @@ ExecutionState SortingGatherExecutor::init(size_t const atMost) {
 
   size_t numWaiting = 0;
   for (size_t i = 0; i < _numberDependencies; i++) {
-    if (_inputRows[i].state == ExecutionState::DONE ||
-        _inputRows[i].row) {
+    if (_inputRows[i].state == ExecutionState::DONE || _inputRows[i].row) {
       continue;
     }
-    
-    std::tie(_inputRows[i].state,
-             _inputRows[i].row) = _fetcher.fetchRowForDependency(i, atMost);
+
+    std::tie(_inputRows[i].state, _inputRows[i].row) =
+        _fetcher.fetchRowForDependency(i, atMost);
     if (_inputRows[i].state == ExecutionState::WAITING) {
       if (!_fetchParallel) {
         return ExecutionState::WAITING;
@@ -366,7 +460,7 @@ ExecutionState SortingGatherExecutor::init(size_t const atMost) {
   if (numWaiting > 0) {
     return ExecutionState::WAITING;
   }
-  
+
   TRI_ASSERT(_numberDependencies > 0);
   _dependencyToFetch = _numberDependencies - 1;
   _initialized = true;
@@ -430,15 +524,16 @@ bool SortingGatherExecutor::maySkip() const noexcept {
   return constrainedSort() && _rowsReturned >= _limit;
 }
 
-std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::skipRows(size_t const atMost) {
+std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::skipRows(
+    size_t const atMost) {
   if (!maySkip()) {
     // Until our limit, we must produce rows, because we might be asked later
     // to produce rows, in which case all rows have to have been skipped in
     // order.
     return produceAndSkipRows(atMost);
   } else {
-    // If we've reached our limit, we will never be asked to produce rows again.
-    // So we can just skip without sorting.
+    // If we've reached our limit, we will never be asked to produce rows
+    // again. So we can just skip without sorting.
     return reallySkipRows(atMost);
   }
 }
@@ -464,7 +559,7 @@ std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherEx
     _dependencyToFetch = 0;
   }
 
-  { // Skip rows we had left in the heap first
+  {  // Skip rows we had left in the heap first
     std::size_t const skip = std::min(atMost, _rowsLeftInHeap);
     _rowsLeftInHeap -= skip;
     _skipped += skip;
@@ -512,11 +607,9 @@ std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherEx
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
   // We may not skip more rows in this method than we can produce!
-  auto const ourAtMost = constrainedSort()
-      ? std::min(atMost, rowsLeftToWrite())
-      : atMost;
+  auto const ourAtMost = constrainedSort() ? std::min(atMost, rowsLeftToWrite()) : atMost;
 
-  while(state == ExecutionState::HASMORE && _skipped < ourAtMost) {
+  while (state == ExecutionState::HASMORE && _skipped < ourAtMost) {
     std::tie(state, row) = produceNextRow(ourAtMost - _skipped);
     // HASMORE => row has to be initialized
     TRI_ASSERT(state != ExecutionState::HASMORE || row.isInitialized());
@@ -533,8 +626,8 @@ std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherEx
   }
 
   // Note that _skipped *can* be larger than `ourAtMost`, due to WAITING, in
-  // which case we might get a lower `ourAtMost` on the second call than during
-  // the first.
+  // which case we might get a lower `ourAtMost` on the second call than
+  // during the first.
   TRI_ASSERT(_skipped <= atMost);
   TRI_ASSERT(state != ExecutionState::HASMORE || _skipped > 0);
   TRI_ASSERT(state != ExecutionState::WAITING || _skipped == 0);

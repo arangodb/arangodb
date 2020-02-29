@@ -36,7 +36,9 @@ class Methods;
 
 namespace aql {
 
+struct AqlCall;
 class MultiDependencySingleRowFetcher;
+class MultiAqlItemBlockInputRange;
 class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
@@ -49,9 +51,8 @@ class SortingGatherExecutorInfos : public ExecutorInfos {
                              std::unordered_set<RegisterId> registersToClear,
                              std::unordered_set<RegisterId> registersToKeep,
                              std::vector<SortRegister>&& sortRegister,
-                             arangodb::transaction::Methods* trx,
-                             GatherNode::SortMode sortMode, size_t limit,
-                             GatherNode::Parallelism p);
+                             arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode,
+                             size_t limit, GatherNode::Parallelism p);
   SortingGatherExecutorInfos() = delete;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos&&);
   SortingGatherExecutorInfos(SortingGatherExecutorInfos const&) = delete;
@@ -62,7 +63,7 @@ class SortingGatherExecutorInfos : public ExecutorInfos {
   arangodb::transaction::Methods* trx() { return _trx; }
 
   GatherNode::SortMode sortMode() const noexcept { return _sortMode; }
-  
+
   GatherNode::Parallelism parallelism() const noexcept { return _parallelism; }
 
   size_t limit() const noexcept { return _limit; }
@@ -123,6 +124,35 @@ class SortingGatherExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief Produce rows
+   *
+   * @param input DataRange delivered by the fetcher
+   * @param output place to write rows to
+   * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
+   *   ExecutorState: DONE or HASMORE (only within a subquery)
+   *   Stats: Stats gerenated here
+   *   AqlCall: Request to upstream
+   *   size:t: Dependency to request
+   */
+  [[nodiscard]] auto produceRows(MultiAqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall, size_t>;
+
+  /**
+   * @brief Skip rows
+   *
+   * @param input DataRange delivered by the fetcher
+   * @param call skip request form consumer
+   * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
+   *   ExecutorState: DONE or HASMORE (only within a subquery)
+   *   Stats: Stats gerenated here
+   *   size_t: Number of rows skipped
+   *   AqlCall: Request to upstream
+   *   size:t: Dependency to request
+   */
+  [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t>;
+
   void adjustNrDone(size_t dependency);
 
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
@@ -148,6 +178,41 @@ class SortingGatherExecutor {
   // This also means that we may not produce rows anymore after that point.
   bool maySkip() const noexcept;
 
+  /**
+   * @brief Function that checks if all dependencies are either
+   *  done, or have a row.
+   *  The first one that does not match the condition
+   *  will produce an upstream call to be fulfilled.
+   *
+   * @param inputRange Range of all input dependencies
+   * @return std::optional<std::tuple<AqlCall, size_t>>  optional call for the dependnecy requiring input
+   */
+  auto requiresMoreInput(MultiAqlItemBlockInputRange const& inputRange) const
+      -> std::optional<std::tuple<AqlCall, size_t>>;
+
+  /**
+   * @brief Get the next row matching the sorting strategy
+   *
+   * @return InputAqlItemRow best fit row. Might be invalid if all input is done.
+   */
+  auto nextRow(MultiAqlItemBlockInputRange& input) -> InputAqlItemRow;
+
+  /**
+   * @brief Tests if this Executor is done producing
+   *        => All inputs are fully consumed
+   *
+   * @return true we are done
+   * @return false we have more
+   */
+  auto isDone(MultiAqlItemBlockInputRange const& input) const -> bool;
+
+  /**
+   * @brief Initialize the Sorting strategy with the given input.
+   *        This is known to be empty, but all prepared at this point.
+   * @param inputRange The input, no data included yet.
+   */
+  auto initialize(typename Fetcher::DataRange const& inputRange) -> void;
+
  private:
   Fetcher& _fetcher;
 
@@ -165,7 +230,7 @@ class SortingGatherExecutor {
 
   // Counter for DONE states
   size_t _nrDone;
-  
+
   /// @brief If we do a constrained sort, it holds the limit > 0. Otherwise, it's 0.
   size_t _limit;
 
@@ -193,7 +258,7 @@ class SortingGatherExecutor {
 #endif
   std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> reallySkipRows(size_t atMost);
   std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> produceAndSkipRows(size_t atMost);
-  
+
   const bool _fetchParallel;
 };
 
