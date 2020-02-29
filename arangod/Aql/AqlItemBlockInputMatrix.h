@@ -56,7 +56,7 @@ class AqlItemBlockInputMatrix {
 
   ExecutorState upstreamState() const noexcept;
   bool upstreamHasMore() const noexcept;
-  void skipAllRemainingDataRows();
+  size_t skipAllRemainingDataRows();
 
   // Will return HASMORE if we were able to increase the row index.
   // Otherwise will return DONE.
@@ -67,8 +67,8 @@ class AqlItemBlockInputMatrix {
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   ExecutorState _finalState{ExecutorState::HASMORE};
 
-  // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and usable
-  // DataRange object available to work with.
+  // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and
+  // usable DataRange object available to work with.
   AqlItemMatrix* _aqlItemMatrix;
   size_t _currentBlockRowIndex = 0;
   ShadowAqlItemRow _shadowRow{CreateInvalidShadowRowHint{}};

@@ -23,18 +23,89 @@
 #include "UnsortedGatherExecutor.h"
 
 #include "Aql/IdExecutor.h"  // for IdExecutorInfos
+#include "Aql/MultiAqlItemBlockInputRange.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Basics/debugging.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
+
+struct Dependency {
+  Dependency() : _number{0} {};
+
+  size_t _number;
+};
 
 UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
     : _fetcher(fetcher) {}
 
 UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
+
+auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
+                                         OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
+  while (!output.isFull() && !done()) {
+    if (input.hasDataRow(currentDependency())) {
+      auto [state, inputRow] = input.nextDataRow(currentDependency());
+      output.copyRow(inputRow);
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
+
+      if (state == ExecutorState::DONE) {
+        advanceDependency();
+      }
+    } else {
+      if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+        advanceDependency();
+      } else {
+        return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
+                currentDependency()};
+      }
+    }
+  }
+
+  while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+    advanceDependency();
+  }
+
+  if (done()) {
+    // here currentDependency is invalid which will cause things to crash
+    // if we ask upstream in ExecutionBlockImpl. yolo.
+    TRI_ASSERT(!input.hasDataRow());
+    return {ExecutorState::DONE, Stats{}, AqlCall{}, currentDependency()};
+  } else {
+    return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
+            currentDependency()};
+  }
+}
+
+auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
+  auto skipped = size_t{0};
+  while (call.needSkipMore() && input.hasDataRow(currentDependency())) {
+    auto [state, inputRow] = input.nextDataRow(currentDependency());
+
+    call.didSkip(1);
+    skipped++;
+
+    if (state == ExecutorState::DONE) {
+      advanceDependency();
+    }
+  }
+
+  if (done()) {
+    // here currentDependency is invalid which will cause things to crash
+    // if we ask upstream in ExecutionBlockImpl. yolo.
+    return {ExecutorState::DONE, Stats{}, skipped, AqlCall{}, currentDependency()};
+  } else {
+    return {input.upstreamState(currentDependency()), Stats{}, skipped,
+            AqlCall{}, currentDependency()};
+  }
+}
 
 auto UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output)
     -> std::pair<ExecutionState, Stats> {
