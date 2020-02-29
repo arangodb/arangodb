@@ -73,7 +73,7 @@ auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
 
 auto MultiAqlItemBlockInputRange::skipAll(size_t const dependency) noexcept -> std::size_t {
   TRI_ASSERT(dependency < _inputs.size());
-  return _inputs.at(dependency).skipAll()
+  return _inputs.at(dependency).skipAll();
 }
 
 auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)

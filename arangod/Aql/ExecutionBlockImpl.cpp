@@ -151,8 +151,8 @@ constexpr bool isNewStyleExecutor = is_one_of_v<
     ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
     ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
     ModificationExecutor<AllRowsFetcher, UpsertModifier>,
-    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>,
-    SubqueryStartExecutor, UnsortedGatherExecutor, SubqueryEndExecutor, TraversalExecutor,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, SubqueryStartExecutor,
+    UnsortedGatherExecutor, SortingGatherExecutor, SubqueryEndExecutor, TraversalExecutor,
     KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor, SortExecutor,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
@@ -1139,9 +1139,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
               ModificationExecutor<AllRowsFetcher, UpsertModifier>,
-              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>,
-              TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor,
-              SortedCollectExecutor, LimitExecutor, UnsortedGatherExecutor, SortExecutor,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor,
+              EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
+              LimitExecutor, UnsortedGatherExecutor, SortingGatherExecutor, SortExecutor,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
@@ -1250,7 +1250,7 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
                                                       OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> {
   if constexpr (isNewStyleExecutor<Executor>) {
-    if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor>) {
+    if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor>) {
       return _executor.produceRows(input, output);
     } else {
       auto [state, stats, call] = _executor.produceRows(input, output);
@@ -1268,7 +1268,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
   if constexpr (isNewStyleExecutor<Executor>) {
     call.skippedRows = 0;
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
-      if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor>) {
+      if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor>) {
         // If the executor has a method skipRowsRange, to skip outputs.
         // Every non-passthrough executor needs to implement this.
         auto res = _executor.skipRowsRange(inputRange, call);

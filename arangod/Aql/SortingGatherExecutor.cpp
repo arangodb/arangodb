@@ -161,10 +161,9 @@ class MinElementSorting final : public SortingGatherExecutor::SortingStrategy,
 
 }  // namespace
 SortingGatherExecutor::ValueType::ValueType(size_t index)
-    : dependencyIndex{index}, row{CreateInvalidInputRowHint()}, state{ExecutionState::HASMORE} {}
+    : dependencyIndex{index}, row{CreateInvalidInputRowHint()}, state{ExecutorState::HASMORE} {}
 
-SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow,
-                                            ExecutionState pstate)
+SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow, ExecutorState pstate)
     : dependencyIndex{index}, row{prow}, state{pstate} {}
 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(
@@ -187,17 +186,11 @@ SortingGatherExecutorInfos::SortingGatherExecutorInfos(SortingGatherExecutorInfo
 SortingGatherExecutorInfos::~SortingGatherExecutorInfos() = default;
 
 SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher),
-      _initialized(false),
+    : _initialized(false),
       _numberDependencies(0),
-      _dependencyToFetch(0),
       _inputRows(),
-      _nrDone(0),
       _limit(infos.limit()),
       _rowsReturned(0),
-      _heapCounted(false),
-      _rowsLeftInHeap(0),
-      _skipped(0),
       _strategy(nullptr),
       _fetchParallel(infos.parallelism() == GatherNode::Parallelism::Parallel) {
   switch (infos.sortMode()) {
@@ -217,42 +210,6 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
 
 SortingGatherExecutor::~SortingGatherExecutor() = default;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Guarantees requiredby this this block:
-///        1) For every dependency the input is sorted, according to the same strategy.
-///
-///        What this block does:
-///        InitPhase:
-///          Fetch 1 Block for every dependency.
-///        ExecPhase:
-///          Fetch row of scheduled block.
-///          Pick the next (sorted) element (by strategy)
-///          Schedule this block to fetch Row
-///
-////////////////////////////////////////////////////////////////////////////////
-
-std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlItemRow& output) {
-  size_t const atMost = constrainedSort() ? output.numRowsLeft()
-                                          : ExecutionBlock::DefaultBatchSize;
-  ExecutionState state;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  std::tie(state, row) = produceNextRow(atMost);
-
-  // HASMORE => row has to be initialized
-  TRI_ASSERT(state != ExecutionState::HASMORE || row.isInitialized());
-  // WAITING => row may not be initialized
-  TRI_ASSERT(state != ExecutionState::WAITING || !row.isInitialized());
-
-  if (row) {
-    // NOTE: The original gatherBlock did referencing
-    // inside the outputblock by identical AQL values.
-    // This optimization is not in use anymore.
-    output.copyRow(row);
-  }
-
-  return {state, NoStats{}};
-}
-
 auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputRange)
     -> std::optional<std::tuple<AqlCall, size_t>> {
   if (!_initialized) {
@@ -262,7 +219,7 @@ auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputR
                _numberDependencies == inputRange.numberDependencies());
     _numberDependencies = inputRange.numberDependencies();
     auto call = requiresMoreInput(inputRange);
-    if (call.has_value) {
+    if (call.has_value()) {
       return call;
     }
     // If we have collected all ranges once, we can prepare the local data-structure copy
@@ -275,6 +232,7 @@ auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputR
     _initialized = true;
     _numberDependencies = inputRange.numberDependencies();
   }
+  return {};
 }
 
 auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const& inputRange)
@@ -311,7 +269,7 @@ auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> Input
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool oneWithContent = false;
   for (size_t dep = 0; dep < _numberDependencies; ++dep) {
-    auto const& [state, row] = input.peekDataRow(i);
+    auto const& [state, row] = input.peekDataRow(dep);
     if (row) {
       oneWithContent = true;
     }
@@ -334,9 +292,32 @@ auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> Input
   return nextVal.row;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Guarantees requiredby this this block:
+///        1) For every dependency the input is sorted, according to the same strategy.
+///
+///        What this block does:
+///        InitPhase:
+///          Fetch 1 Block for every dependency.
+///        ExecPhase:
+///          Fetch row of scheduled block.
+///          Pick the next (sorted) element (by strategy)
+///          Schedule this block to fetch Row
+///
+////////////////////////////////////////////////////////////////////////////////
+
 auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
+  {
+    // First initialize
+    auto maybeCall = initialize(input);
+    if (maybeCall.has_value()) {
+      auto const& [request, dep] = maybeCall.value();
+      return {ExecutorState::HASMORE, NoStats{}, request, dep};
+    }
+  }
+
   while (!isDone(input) && !output.isFull()) {
     TRI_ASSERT(!maySkip());
     auto maybeCall = requiresMoreInput(input);
@@ -362,6 +343,15 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
 
 auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
+  {
+    // First initialize
+    auto maybeCall = initialize(input);
+    if (maybeCall.has_value()) {
+      auto const& [request, dep] = maybeCall.value();
+      return {ExecutorState::HASMORE, NoStats{}, 0, request, dep};
+    }
+  }
+
   while (!isDone(input) && call.needSkipMore()) {
     auto maybeCall = requiresMoreInput(input);
     if (maybeCall.has_value()) {
@@ -413,169 +403,8 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
           _numberDependencies + 1};
 }
 
-std::pair<ExecutionState, InputAqlItemRow> SortingGatherExecutor::produceNextRow(size_t const atMost) {
-  TRI_ASSERT(_strategy != nullptr);
-  assertConstrainedDoesntOverfetch(atMost);
-  // We shouldn't be asked for more rows when we are allowed to skip
-  TRI_ASSERT(!maySkip());
-  if (!_initialized) {
-    ExecutionState state = init(atMost);
-    if (state != ExecutionState::HASMORE) {
-      // Can be DONE(unlikely, no input) of WAITING
-      return {state, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-    }
-  } else {
-    // Activate this assert as soon as all blocks follow the done == no call
-    // api TRI_ASSERT(_nrDone < _numberDependencies);
-    if (_inputRows[_dependencyToFetch].state == ExecutionState::DONE) {
-      _inputRows[_dependencyToFetch].row = InputAqlItemRow{CreateInvalidInputRowHint()};
-    } else {
-      // This is executed on every produceRows, and will replace the row that we have returned last time
-      std::tie(_inputRows[_dependencyToFetch].state,
-               _inputRows[_dependencyToFetch].row) =
-          _fetcher.fetchRowForDependency(_dependencyToFetch, atMost);
-      if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
-        return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-      }
-      if (!_inputRows[_dependencyToFetch].row) {
-        TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
-        adjustNrDone(_dependencyToFetch);
-      }
-    }
-  }
-  if (_nrDone >= _numberDependencies) {
-    // We cannot return a row, because all are done
-    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-  }
-// if we get here, we have a valid row for every not done dependency.
-// And we have atLeast 1 valid row left
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool oneWithContent = false;
-  for (auto const& inPair : _inputRows) {
-    // Waiting needs to bail out at fetch state
-    TRI_ASSERT(inPair.state != ExecutionState::WAITING);
-    // row.invalid => dependency is done
-    TRI_ASSERT(inPair.row || inPair.state == ExecutionState::DONE);
-    if (inPair.row) {
-      oneWithContent = true;
-    }
-  }
-  // We have at least one row to sort.
-  TRI_ASSERT(oneWithContent);
-#endif
-  // get the index of the next best value.
-  ValueType val = _strategy->nextValue();
-  _dependencyToFetch = val.dependencyIndex;
-  // We can never pick an invalid row!
-  TRI_ASSERT(val.row);
-  ++_rowsReturned;
-  adjustNrDone(_dependencyToFetch);
-  if (_nrDone >= _numberDependencies) {
-    return {ExecutionState::DONE, val.row};
-  }
-  return {ExecutionState::HASMORE, val.row};
-}
-
-void SortingGatherExecutor::adjustNrDone(size_t const dependency) {
-  auto const& dep = _inputRows[dependency];
-  if (dep.state == ExecutionState::DONE) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_flaggedAsDone[dependency] == false);
-    _flaggedAsDone[dependency] = true;
-#endif
-    ++_nrDone;
-  }
-}
-
-void SortingGatherExecutor::initNumDepsIfNecessary() {
-  if (_numberDependencies == 0) {
-    // We need to initialize the dependencies once, they are injected
-    // after the fetcher is created.
-    _numberDependencies = _fetcher.numberDependencies();
-    TRI_ASSERT(_numberDependencies > 0);
-    _inputRows.reserve(_numberDependencies);
-    for (size_t index = 0; index < _numberDependencies; ++index) {
-      _inputRows.emplace_back(ValueType{index});
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _flaggedAsDone.emplace_back(false);
-#endif
-    }
-  }
-}
-
-ExecutionState SortingGatherExecutor::init(size_t const atMost) {
-  assertConstrainedDoesntOverfetch(atMost);
-  initNumDepsIfNecessary();
-
-  size_t numWaiting = 0;
-  for (size_t i = 0; i < _numberDependencies; i++) {
-    if (_inputRows[i].state == ExecutionState::DONE || _inputRows[i].row) {
-      continue;
-    }
-
-    std::tie(_inputRows[i].state, _inputRows[i].row) =
-        _fetcher.fetchRowForDependency(i, atMost);
-    if (_inputRows[i].state == ExecutionState::WAITING) {
-      if (!_fetchParallel) {
-        return ExecutionState::WAITING;
-      }
-      numWaiting++;
-    } else if (!_inputRows[i].row) {
-      TRI_ASSERT(_inputRows[i].state == ExecutionState::DONE);
-      adjustNrDone(i);
-    }
-  }
-
-  if (numWaiting > 0) {
-    return ExecutionState::WAITING;
-  }
-
-  TRI_ASSERT(_numberDependencies > 0);
-  _dependencyToFetch = _numberDependencies - 1;
-  _initialized = true;
-  if (_nrDone >= _numberDependencies) {
-    return ExecutionState::DONE;
-  }
-  _strategy->prepare(_inputRows);
-  return ExecutionState::HASMORE;
-}
-
 std::pair<ExecutionState, size_t> SortingGatherExecutor::expectedNumberOfRows(size_t const atMost) const {
-  assertConstrainedDoesntOverfetch(atMost);
-  // We shouldn't be asked for more rows when we are allowed to skip
-  TRI_ASSERT(!maySkip());
-  ExecutionState state;
-  size_t expectedNumberOfRows;
-  std::tie(state, expectedNumberOfRows) = _fetcher.preFetchNumberOfRows(atMost);
-  if (state == ExecutionState::WAITING) {
-    return {state, 0};
-  }
-  if (expectedNumberOfRows >= atMost) {
-    // We do not care, we have more than atMost anyways.
-    return {state, expectedNumberOfRows};
-  }
-  // Now we need to figure out a more precise state
-  for (auto const& inRow : _inputRows) {
-    if (inRow.state == ExecutionState::HASMORE) {
-      // This block is not fully fetched, we do NOT know how many rows
-      // will be in the next batch, overestimate!
-      return {ExecutionState::HASMORE, atMost};
-    }
-    if (inRow.row.isInitialized()) {
-      // This dependency is in owned by this Executor
-      expectedNumberOfRows++;
-    }
-  }
-  if (expectedNumberOfRows == 0) {
-    return {ExecutionState::DONE, 0};
-  }
-  return {ExecutionState::HASMORE, expectedNumberOfRows};
-}
-
-size_t SortingGatherExecutor::rowsLeftToWrite() const noexcept {
-  TRI_ASSERT(constrainedSort());
-  TRI_ASSERT(_limit >= _rowsReturned);
-  return _limit - _rowsReturned;
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 bool SortingGatherExecutor::constrainedSort() const noexcept {
@@ -593,115 +422,8 @@ bool SortingGatherExecutor::maySkip() const noexcept {
   return constrainedSort() && _rowsReturned >= _limit;
 }
 
-std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::skipRows(
-    size_t const atMost) {
-  if (!maySkip()) {
-    // Until our limit, we must produce rows, because we might be asked later
-    // to produce rows, in which case all rows have to have been skipped in
-    // order.
-    return produceAndSkipRows(atMost);
-  } else {
-    // If we've reached our limit, we will never be asked to produce rows
-    // again. So we can just skip without sorting.
-    return reallySkipRows(atMost);
-  }
-}
-
-std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::reallySkipRows(
-    size_t const atMost) {
-  // Once, count all rows that are left in the heap (and free them)
-  if (!_heapCounted) {
-    initNumDepsIfNecessary();
-
-    // This row was just fetched:
-    _inputRows[_dependencyToFetch].row = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    _rowsLeftInHeap = 0;
-    for (auto& it : _inputRows) {
-      if (it.row) {
-        ++_rowsLeftInHeap;
-        it.row = InputAqlItemRow{CreateInvalidInputRowHint{}};
-      }
-    }
-    _heapCounted = true;
-
-    // Now we will just skip through all dependencies, starting with the first.
-    _dependencyToFetch = 0;
-  }
-
-  {  // Skip rows we had left in the heap first
-    std::size_t const skip = std::min(atMost, _rowsLeftInHeap);
-    _rowsLeftInHeap -= skip;
-    _skipped += skip;
-  }
-
-  while (_dependencyToFetch < _numberDependencies && _skipped < atMost) {
-    auto& state = _inputRows[_dependencyToFetch].state;
-    while (state != ExecutionState::DONE && _skipped < atMost) {
-      std::size_t skippedNow;
-      std::tie(state, skippedNow) =
-          _fetcher.skipRowsForDependency(_dependencyToFetch, atMost - _skipped);
-      if (state == ExecutionState::WAITING) {
-        TRI_ASSERT(skippedNow == 0);
-        return {state, NoStats{}, 0};
-      }
-      _skipped += skippedNow;
-    }
-    if (state == ExecutionState::DONE) {
-      ++_dependencyToFetch;
-    }
-  }
-
-  // Skip dependencies which are DONE
-  while (_dependencyToFetch < _numberDependencies &&
-         _inputRows[_dependencyToFetch].state == ExecutionState::DONE) {
-    ++_dependencyToFetch;
-  }
-  // The current dependency must now neither be DONE, nor WAITING.
-  TRI_ASSERT(_dependencyToFetch >= _numberDependencies ||
-             _inputRows[_dependencyToFetch].state == ExecutionState::HASMORE);
-
-  ExecutionState const state = _dependencyToFetch < _numberDependencies
-                                   ? ExecutionState::HASMORE
-                                   : ExecutionState::DONE;
-
-  TRI_ASSERT(_skipped <= atMost);
-  std::size_t const skipped = _skipped;
-  _skipped = 0;
-  return {state, NoStats{}, skipped};
-}
-
-std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::produceAndSkipRows(
-    size_t const atMost) {
-  ExecutionState state = ExecutionState::HASMORE;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-
-  // We may not skip more rows in this method than we can produce!
-  auto const ourAtMost = constrainedSort() ? std::min(atMost, rowsLeftToWrite()) : atMost;
-
-  while (state == ExecutionState::HASMORE && _skipped < ourAtMost) {
-    std::tie(state, row) = produceNextRow(ourAtMost - _skipped);
-    // HASMORE => row has to be initialized
-    TRI_ASSERT(state != ExecutionState::HASMORE || row.isInitialized());
-    // WAITING => row may not be initialized
-    TRI_ASSERT(state != ExecutionState::WAITING || !row.isInitialized());
-
-    if (row.isInitialized()) {
-      ++_skipped;
-    }
-  }
-
-  if (state == ExecutionState::WAITING) {
-    return {state, NoStats{}, 0};
-  }
-
-  // Note that _skipped *can* be larger than `ourAtMost`, due to WAITING, in
-  // which case we might get a lower `ourAtMost` on the second call than
-  // during the first.
-  TRI_ASSERT(_skipped <= atMost);
-  TRI_ASSERT(state != ExecutionState::HASMORE || _skipped > 0);
-  TRI_ASSERT(state != ExecutionState::WAITING || _skipped == 0);
-
-  std::size_t const skipped = _skipped;
-  _skipped = 0;
-  return {state, NoStats{}, skipped};
+auto SortingGatherExecutor::rowsLeftToWrite() const noexcept -> size_t {
+  TRI_ASSERT(constrainedSort());
+  TRI_ASSERT(_limit >= _rowsReturned);
+  return _limit - std::min(_limit, _rowsReturned);
 }
