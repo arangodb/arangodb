@@ -146,7 +146,7 @@ void OperationCursor::skipAll(uint64_t& skipped) {
   while (_hasMore) {
     uint64_t skippedLocal = 0;
     _indexIterator->skip(toSkip, skippedLocal);
-    if (skipped != toSkip) {
+    if (skippedLocal != toSkip) {
       _hasMore = false;
     }
     skipped += skippedLocal;
