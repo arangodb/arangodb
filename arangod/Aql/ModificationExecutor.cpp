@@ -178,17 +178,19 @@ template <typename FetcherType, typename ModifierType>
     return {input.upstreamState(), stats, AqlCall{}};
   }
   // only produce at most output.numRowsLeft() many results
+  ExecutorState upstreamState = ExecutorState::HASMORE;
   if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
-    auto range = input.getInputRange();
+    auto& range = input.getInputRange();
     doCollect(range, output.numRowsLeft());
-    if (range.upstreamState() == ExecutorState::DONE) {
+    upstreamState = range.upstreamState();
+    if (upstreamState == ExecutorState::DONE) {
       // We are done with this input.
       // We need to forward it to the last ShadowRow.
       input.skipAllRemainingDataRows();
-      TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
     }
   } else {
     doCollect(input, output.numRowsLeft());
+    upstreamState = input.upstreamState();
   }
 
   if (_modifier.nrOfOperations() > 0) {
@@ -202,7 +204,7 @@ template <typename FetcherType, typename ModifierType>
     doOutput(output, stats);
   }
 
-  return {input.upstreamState(), stats, AqlCall{}};
+  return {upstreamState, stats, AqlCall{}};
 }
 
 template <typename FetcherType, typename ModifierType>
@@ -216,11 +218,19 @@ template <typename FetcherType, typename ModifierType>
     return {input.upstreamState(), stats, 0, AqlCall{}};
   }
 
+  size_t toSkip = call.getOffset();
+  if (call.getLimit() == 0 && call.hasHardLimit()) {
+    // We need to produce all modification operations.
+    // If we are bound by limits or not!
+    toSkip = ExecutionBlock::SkipAllSize();
+  }
   // only produce at most output.numRowsLeft() many results
+  ExecutorState upstreamState = ExecutorState::HASMORE;
   if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
-    auto range = input.getInputRange();
+    auto& range = input.getInputRange();
     doCollect(range, call.getOffset());
-    if (range.upstreamState() == ExecutorState::DONE) {
+    upstreamState = range.upstreamState();
+    if (upstreamState == ExecutorState::DONE) {
       // We are done with this input.
       // We need to forward it to the last ShadowRow.
       input.skipAllRemainingDataRows();
@@ -228,6 +238,7 @@ template <typename FetcherType, typename ModifierType>
     }
   } else {
     doCollect(input, call.getOffset());
+    upstreamState = input.upstreamState();
   }
 
   if (_modifier.nrOfOperations() > 0) {
@@ -241,7 +252,7 @@ template <typename FetcherType, typename ModifierType>
     call.didSkip(_modifier.nrOfOperations());
   }
 
-  return {input.upstreamState(), stats, _modifier.nrOfOperations(), AqlCall{}};
+  return {upstreamState, stats, _modifier.nrOfOperations(), AqlCall{}};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
