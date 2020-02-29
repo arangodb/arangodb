@@ -83,9 +83,32 @@ class UnsortedGatherExecutor {
 
   [[nodiscard]] auto skipRows(size_t atMost) -> std::tuple<ExecutionState, NoStats, size_t>;
 
-  // TODO: This should really be the DataRange of the fetcher?
+  /**
+   * @brief Produce rows
+   *
+   * @param input DataRange delivered by the fetcher
+   * @param output place to write rows to
+   * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
+   *   ExecutorState: DONE or HASMORE (only within a subquery)
+   *   Stats: Stats gerenated here
+   *   AqlCall: Request to upstream
+   *   size:t: Dependency to request
+   */
   [[nodiscard]] auto produceRows(typename Fetcher::DataRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall, size_t>;
+
+  /**
+   * @brief Skip rows
+   *
+   * @param input DataRange delivered by the fetcher
+   * @param call skip request form consumer
+   * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
+   *   ExecutorState: DONE or HASMORE (only within a subquery)
+   *   Stats: Stats gerenated here
+   *   size_t: Number of rows skipped
+   *   AqlCall: Request to upstream
+   *   size:t: Dependency to request
+   */
   [[nodiscard]] auto skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t>;
 
