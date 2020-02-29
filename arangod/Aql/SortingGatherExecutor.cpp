@@ -163,6 +163,10 @@ class MinElementSorting final : public SortingGatherExecutor::SortingStrategy,
 SortingGatherExecutor::ValueType::ValueType(size_t index)
     : dependencyIndex{index}, row{CreateInvalidInputRowHint()}, state{ExecutionState::HASMORE} {}
 
+SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow,
+                                            ExecutionState pstate)
+    : dependencyIndex{index}, row{prow}, state{pstate} {}
+
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
@@ -249,18 +253,40 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
   return {state, NoStats{}};
 }
 
-auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputRange) -> void {
+auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputRange)
+    -> std::optional<std::tuple<AqlCall, size_t>> {
   if (!_initialized) {
-    _strategy->prepare(inputRange);
+    // We cannot modify the number of dependencies, so we start
+    // with 0 dependencies, and will increase to whatever inputRange gives us.
+    TRI_ASSERT(_numberDependencies == 0 ||
+               _numberDependencies == inputRange.numberDependencies());
+    _numberDependencies = inputRange.numberDependencies();
+    auto call = requiresMoreInput(inputRange);
+    if (call.has_value) {
+      return call;
+    }
+    // If we have collected all ranges once, we can prepare the local data-structure copy
+    _inputRows.reserve(_numberDependencies);
+    for (size_t dep = 0; dep < _numberDependencies; ++dep) {
+      auto const [state, row] = inputRange.peekDataRow(dep);
+      _inputRows.emplace_back(dep, row, state);
+    }
+    _strategy->prepare(_inputRows);
     _initialized = true;
     _numberDependencies = inputRange.numberDependencies();
   }
 }
 
-auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const& inputRange) const
+auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const& inputRange)
     -> std::optional<std::tuple<AqlCall, size_t>> {
   for (size_t dep = 0; dep < _numberDependencies; ++dep) {
     auto const& [state, input] = inputRange.peekDataRow(dep);
+    // Update the local copy, just to be sure it is up to date
+    // We might do too many copies here, but most likely this
+    // will not be a performance bottleneck.
+    ValueType& localDep = _inputRows[dep];
+    localDep.row = input;
+    localDep.state = state;
     if (!input && state != ExecutorState::DONE) {
       // This dependency requires input
       // TODO: This call requires limits
@@ -293,8 +319,18 @@ auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> Input
   TRI_ASSERT(oneWithContent);
 #endif
   auto nextVal = _strategy->nextValue();
-  // TODO we might do some short-cuts here to maintain a list of requests
-  // to send in order to improve requires input
+  _rowsReturned++;
+  {
+    // Consume the row, and set it to next input
+    std::ignore = input.nextDataRow(nextVal.dependencyIndex);
+    auto const& [state, row] = input.peekDataRow(nextVal.dependencyIndex);
+    _inputRows[nextVal.dependencyIndex].state = state;
+    _inputRows[nextVal.dependencyIndex].row = row;
+
+    // TODO we might do some short-cuts here to maintain a list of requests
+    // to send in order to improve requires input
+  }
+
   return nextVal.row;
 }
 
@@ -302,6 +338,7 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
   while (!isDone(input) && !output.isFull()) {
+    TRI_ASSERT(!maySkip());
     auto maybeCall = requiresMoreInput(input);
     if (maybeCall.has_value()) {
       auto const& [request, dep] = maybeCall.value();
@@ -315,33 +352,65 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     }
   }
 
-  // Call and dependency unused
+  // Call and dependency unused, so we return a too large dependency
+  // in order to trigger asserts if it is used.
   if (isDone(input)) {
-    return {ExecutorState::DONE, NoStats{}, AqlCall{}, 0};
+    return {ExecutorState::DONE, NoStats{}, AqlCall{}, _numberDependencies + 1};
   }
-  return {ExecutorState::HASMORE, NoStats{}, AqlCall{}, 0};
+  return {ExecutorState::HASMORE, NoStats{}, AqlCall{}, _numberDependencies + 1};
 }
 
 auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
-  while (!isDone(input) && !call.needSkipMore()) {
+  while (!isDone(input) && call.needSkipMore()) {
     auto maybeCall = requiresMoreInput(input);
     if (maybeCall.has_value()) {
       auto const& [request, dep] = maybeCall.value();
       return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), request, dep};
     }
-    auto row = nextRow(input);
-    TRI_ASSERT(row.isInitialized() || isDone(input));
-    if (row) {
-      call.didSkip(1);
+    if (call.getOffset() > 0) {
+      TRI_ASSERT(!maySkip());
+      // We need to sort still
+      // And account the row in the limit
+      auto row = nextRow(input);
+      TRI_ASSERT(row.isInitialized() || isDone(input));
+      if (row) {
+        call.didSkip(1);
+      }
+    } else {
+      // We are only called with fullcount.
+      // sorting does not matter.
+      // Start simply skip all from upstream.
+      for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
+        ExecutorState state = ExecutorState::HASMORE;
+        InputAqlItemRow row{CreateInvalidInputRowHint{}};
+        while (state == ExecutorState::HASMORE) {
+          std::tie(state, row) = input.nextDataRow(dep);
+          if (row) {
+            call.didSkip(1);
+          } else {
+            // We have consumed all overfetched rows.
+            // We may still have a skip counter within the range.
+            call.didSkip(input.skipAll(dep));
+            if (state == ExecutorState::HASMORE) {
+              // We need to fetch more data, but can fullCount now
+              AqlCall request{0, true, 0, AqlCall::LimitType::HARD};
+              return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), request, dep};
+            }
+          }
+        }
+      }
     }
   }
 
-  // Call and dependency unused
+  // Call and dependency unused, so we return a too large dependency
+  // in order to trigger asserts if it is used.
   if (isDone(input)) {
-    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}, 0};
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{},
+            _numberDependencies + 1};
   }
-  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall{}, 0};
+  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall{},
+          _numberDependencies + 1};
 }
 
 std::pair<ExecutionState, InputAqlItemRow> SortingGatherExecutor::produceNextRow(size_t const atMost) {

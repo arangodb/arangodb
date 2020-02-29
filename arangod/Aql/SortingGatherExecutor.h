@@ -81,9 +81,10 @@ class SortingGatherExecutor {
   struct ValueType {
     size_t dependencyIndex;
     InputAqlItemRow row;
-    ExecutionState state;
+    ExecutorState state;
 
     explicit ValueType(size_t index);
+    ValueType(size_t, InputAqlItemRow, ExecutorState);
   };
 
   ////////////////////////////////////////////////////////////////////////////////
