@@ -1249,11 +1249,15 @@ template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRange& input,
                                                       OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> {
-  if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor>) {
-    return _executor.produceRows(input, output);
+  if constexpr (isNewStyleExecutor<Executor>) {
+    if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor>) {
+      return _executor.produceRows(input, output);
+    } else {
+      auto [state, stats, call] = _executor.produceRows(input, output);
+      return {state, stats, call, 0};
+    }
   } else {
-    auto [state, stats, call] = _executor.produceRows(input, output);
-    return {state, stats, call, 0};
+    return {ExecutorState::DONE, typename Executor::Stats{}, AqlCall{}, 0};
   }
 }
 
