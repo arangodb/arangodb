@@ -33,8 +33,7 @@
 #include <cstddef>
 #include <memory>
 
-// TODO REMOVE ME TEMPORARY
-#include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/AqlItemBlockInputMatrix.h"
 
 namespace arangodb {
 namespace aql {
@@ -90,22 +89,28 @@ class AllRowsFetcher {
 
  public:
   explicit AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
-
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
-  // TODO FIXME, this Range does not work here.
-  using DataRange = AqlItemBlockInputRange;
+  using DataRange = AqlItemBlockInputMatrix;
 
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   AllRowsFetcher() = default;
 
  public:
-  // TODO implement and document
-  std::tuple<ExecutionState, size_t, DataRange> execute(/* TODO: add"justDoIt"-style parameter */) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  /**
+   * @brief Execute the given call stack
+   *
+   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
+   * @return std::tuple<ExecutionState, size_t, DataRange>
+   *   ExecutionState => DONE, all queries are done, there will be no more
+   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
+   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
+   *
+   *   size_t => Amount of documents skipped
+   *   DataRange => Resulting data
+   */
+  std::tuple<ExecutionState, size_t, DataRange> execute(AqlCallStack& stack);
 
   /**
    * @brief Fetch one new AqlItemRow from upstream.

@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlResult.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
@@ -42,8 +43,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -561,6 +560,49 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlIte
     return res;
   }
   _initializeCursorCalled = true;
+  return res;
+}
+
+auto ExecutionEngine::execute(AqlCallStack const& stack)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  if (_query.killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+  auto const res = _root->execute(stack);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (std::get<ExecutionState>(res) == ExecutionState::WAITING) {
+    auto const skipped = std::get<size_t>(res);
+    auto const block = std::get<SharedAqlItemBlockPtr>(res);
+    TRI_ASSERT(skipped == 0);
+    TRI_ASSERT(block == nullptr);
+  }
+#endif
+  return res;
+}
+
+auto ExecutionEngine::executeForClient(AqlCallStack const& stack, std::string const& clientId)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  if (_query.killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
+  auto rootBlock = dynamic_cast<BlocksWithClients*>(root());
+  if (rootBlock == nullptr) {
+    using namespace std::string_literals;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                   "unexpected node type "s +
+                                       root()->getPlanNode()->getTypeString());
+  }
+
+  auto const res = rootBlock->executeForClient(stack, clientId);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (std::get<ExecutionState>(res) == ExecutionState::WAITING) {
+    auto const skipped = std::get<size_t>(res);
+    auto const& block = std::get<SharedAqlItemBlockPtr>(res);
+    TRI_ASSERT(skipped == 0);
+    TRI_ASSERT(block == nullptr);
+  }
+#endif
   return res;
 }
 

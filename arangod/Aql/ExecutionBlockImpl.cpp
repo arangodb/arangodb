@@ -134,18 +134,26 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
 template <typename Executor>
-constexpr bool isNewStyleExecutor =
-    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor,
-                DistinctCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
-                // TODO: re-enable after new subquery end & start are implemented
-                // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
-                HashedCollectExecutor, ConstrainedSortExecutor,
+constexpr bool isNewStyleExecutor = is_one_of_v<
+    Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
+    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, DistinctCollectExecutor, IndexExecutor, EnumerateCollectionExecutor,
+    // TODO: re-enable after new subquery end & start are implemented
+    // CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
+    HashedCollectExecutor, ConstrainedSortExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     TestLambdaExecutor,
     TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+    ModificationExecutor<AllRowsFetcher, InsertModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+    ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+    ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+    ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, SubqueryStartExecutor,
+    UnsortedGatherExecutor, SubqueryEndExecutor, TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor,
+    LimitExecutor, SortExecutor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
@@ -190,6 +198,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _execState{ExecState::CHECKCALL},
       _upstreamRequest{},
       _clientRequest{},
+      _requestedDependency{},
       _hasUsedDataRangeBlock{false} {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
@@ -611,19 +620,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
-  constexpr bool customInit = hasInitializeCursor<Executor>::value;
-  // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
-  // implemented, so assert this implementation is used.
-  static_assert(!std::is_same<Executor, EnumerateCollectionExecutor>::value || customInit,
-                "EnumerateCollectionExecutor is expected to implement a custom "
-                "initializeCursor method!");
-  static_assert(!std::is_same<Executor, IndexExecutor>::value || customInit,
-                "IndexExecutor is expected to implement a custom "
-                "initializeCursor method!");
-  static_assert(!std::is_same<Executor, DistinctCollectExecutor>::value || customInit,
-                "DistinctCollectExecutor is expected to implement a custom "
-                "initializeCursor method!");
-  InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+  resetExecutor();
 
   // // use this with c++17 instead of specialization below
   // if constexpr (std::is_same_v<Executor, IdExecutor>) {
@@ -732,9 +729,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
 
   _rowFetcher.injectBlock(block);
 
-  // cppcheck-suppress unreadVariable
-  constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
-  InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+  resetExecutor();
 }
 
 // TODO -- remove this specialization when cpp 17 becomes available
@@ -1059,6 +1054,9 @@ void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
 // This cannot return upstream call or shadowrows.
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::nextState(AqlCall const& call) const -> ExecState {
+  if (_executorReturnedDone) {
+    return ExecState::FASTFORWARD;
+  }
   if (call.getOffset() > 0) {
     // First skip
     return ExecState::SKIP;
@@ -1125,13 +1123,21 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, KShortestPathsExecutor,
-              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
-              HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
-              ConstrainedSortExecutor,
+              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
+              IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor, ConstrainedSortExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
-              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+              ModificationExecutor<AllRowsFetcher, InsertModifier>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+              ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+              ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+              ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor,
+              EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor, LimitExecutor,
+              UnsortedGatherExecutor, SortExecutor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
@@ -1177,16 +1183,100 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 template <class T>
 struct dependent_false : std::false_type {};
 
+/**
+ * @brief Define the variant of FastForward behaviour
+ *
+ * FULLCOUNT => Call executeSkipRowsRange and report what has been skipped.
+ * EXECUTOR => Call executeSkipRowsRange, but do not report what has been skipped.
+ *             (This instance is used to make sure Modifications are performed, or stats are correct)
+ * FETCHER => Do not bother the Executor, drop all from input, without further reporting
+ */
+enum class FastForwardVariant { FULLCOUNT, EXECUTOR, FETCHER };
+
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(AqlItemBlockInputRange& inputRange,
+static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwardVariant {
+  if (call.needsFullCount() && call.getOffset() == 0 && call.getLimit() == 0) {
+    // Only start fullCount after the original call is fulfilled. Otherwise
+    // do fast-forward variant
+    TRI_ASSERT(call.hasHardLimit());
+    return FastForwardVariant::FULLCOUNT;
+  }
+  // TODO: We only need to do this is the executor actually require to call.
+  // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
+  if constexpr (is_one_of_v<Executor, LimitExecutor,
+                            ModificationExecutor<AllRowsFetcher, InsertModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+                            ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+                            ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+                            ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>) {
+    return FastForwardVariant::EXECUTOR;
+  }
+  return FastForwardVariant::FETCHER;
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t const dependency)
+    -> std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> {
+  // Silence compiler about unused dependency
+  (void)dependency;
+  if constexpr (isNewStyleExecutor<Executor>) {
+    if constexpr (is_one_of_v<Fetcher, MultiDependencySingleRowFetcher>) {
+      // TODO: This is a hack to guarantee we have enough space in our range
+      //       to fit all inputs, in particular the one executed below
+      TRI_ASSERT(dependency < _dependencies.size());
+      _lastRange.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
+
+      auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, stack);
+
+      _lastRange.setDependency(dependency, range);
+
+      return {state, skipped, _lastRange};
+    } else {
+      return _rowFetcher.execute(stack);
+    }
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRange& input,
+                                                      OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> {
+  if constexpr (isNewStyleExecutor<Executor>) {
+    if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor>) {
+      return _executor.produceRows(input, output);
+    } else {
+      auto [state, stats, call] = _executor.produceRows(input, output);
+      return {state, stats, call, 0};
+    }
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRange& inputRange,
                                                         AqlCall& call)
-    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t> {
   if constexpr (isNewStyleExecutor<Executor>) {
     call.skippedRows = 0;
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
-      // If the executor has a method skipRowsRange, to skip outputs.
-      // Every non-passthrough executor needs to implement this.
-      return _executor.skipRowsRange(inputRange, call);
+      if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor>) {
+        // If the executor has a method skipRowsRange, to skip outputs.
+        // Every non-passthrough executor needs to implement this.
+        auto res = _executor.skipRowsRange(inputRange, call);
+        _executorReturnedDone = std::get<ExecutorState>(res) == ExecutorState::DONE;
+        return res;
+      } else {
+        auto [state, stats, skipped, localCall] =
+            _executor.skipRowsRange(inputRange, call);
+        _executorReturnedDone = state == ExecutorState::DONE;
+        return {state, stats, skipped, localCall, 0};
+      }
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
       // If we know that every input row produces exactly one output row (this
       // is a property of the executor), then we can just let the fetcher skip
@@ -1196,18 +1286,18 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(AqlItemBlockInputRange& 
       static_assert(
           std::is_same_v<typename Executor::Stats, NoStats>,
           "Executors with custom statistics must implement skipRowsRange.");
-      return {inputRange.upstreamState(), NoStats{}, 0, call};
+      return {inputRange.upstreamState(), NoStats{}, 0, call, 0};
     } else {
       static_assert(dependent_false<Executor>::value,
                     "This value of SkipRowsRangeVariant is not supported");
-      return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
+      return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call, 0);
     }
   } else {
     TRI_ASSERT(false);
-    return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
+    return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call, 0);
   }
   // Compiler is unhappy without this.
-  return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
+  return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call, 0);
 }
 
 template <>
@@ -1220,6 +1310,9 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding() -> ExecSta
     // If we get woken up by a dataRow during forwarding of ShadowRows
     // This will return false, and if so we need to call produce instead.
     auto didWrite = _executor.produceShadowRow(_lastRange, *_outputItemRow);
+    // The Subquery Start returns DONE after every row.
+    // This needs to be resetted as soon as a shadowRow has been produced
+    _executorReturnedDone = false;
     if (didWrite) {
       if (_lastRange.hasShadowRow()) {
         // Forward the ShadowRows
@@ -1242,6 +1335,7 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding() -> ExecSta
     _outputItemRow->increaseShadowRowDepth(shadowRow);
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
+
     if (_lastRange.hasShadowRow()) {
       return ExecState::SHADOWROWS;
     }
@@ -1268,6 +1362,9 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding() -> ExecState
     // We need to consume the row, and write the Aggregate to it.
     _executor.consumeShadowRow(shadowRow, *_outputItemRow);
     didConsume = true;
+    // we need to reset the ExecutorHasReturnedDone, it will
+    // return done after every subquery is fully collected.
+    _executorReturnedDone = false;
   } else {
     _outputItemRow->decreaseShadowRowDepth(shadowRow);
   }
@@ -1323,9 +1420,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
     LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
     // We found a relevant shadow Row.
     // We need to reset the Executor
-    // cppcheck-suppress unreadVariable
-    constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
-    InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+    resetExecutor();
   }
 
   TRI_ASSERT(_outputItemRow->produced());
@@ -1354,36 +1449,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
   }
 }
 
-/**
- * @brief Define the variant of FastForward behaviour
- *
- * FULLCOUNT => Call executeSkipRowsRange and report what has been skipped.
- * EXECUTOR => Call executeSkipRowsRange, but do not report what has been skipped.
- *             (This instance is used to make sure Modifications are performed, or stats are correct)
- * FETCHER => Do not bother the Executor, drop all from input, without further reporting
- */
-enum class FastForwardVariant { FULLCOUNT, EXECUTOR, FETCHER };
-
 template <class Executor>
-static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwardVariant {
-  if (call.needsFullCount() && call.getOffset() == 0 && call.getLimit() == 0) {
-    // Only start fullCount after the original call is fulfilled. Otherwise
-    // do fast-forward variant
-    TRI_ASSERT(call.hasHardLimit());
-    return FastForwardVariant::FULLCOUNT;
-  }
-  // TODO: We only need to do this is the executor actually require to call.
-  // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (is_one_of_v<Executor, LimitExecutor>) {
-    return FastForwardVariant::EXECUTOR;
-  }
-  return FastForwardVariant::FETCHER;
-}
-
-template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& inputRange,
+auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRange& inputRange,
                                                       AqlCall& clientCall)
-    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t> {
   TRI_ASSERT(isNewStyleExecutor<Executor>);
   if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
     if (clientCall.needsFullCount() && clientCall.getOffset() == 0 &&
@@ -1393,29 +1462,46 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
       return executeSkipRowsRange(_lastRange, clientCall);
     }
     // Do not fastForward anything, the Subquery start will handle it by itself
-    return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}};
+    return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}, 0};
   }
   auto type = fastForwardType(clientCall, _executor);
+
   switch (type) {
     case FastForwardVariant::FULLCOUNT:
     case FastForwardVariant::EXECUTOR: {
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
-      auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
+      auto [state, stats, skippedLocal, call, dependency] =
+          executeSkipRowsRange(_lastRange, clientCall);
+      _requestedDependency = dependency;
+
       if (type == FastForwardVariant::EXECUTOR) {
         // We do not report the skip
         skippedLocal = 0;
       }
-      return {state, stats, skippedLocal, call};
+
+      if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix, MultiAqlItemBlockInputRange>) {
+        // The executor will have used all Rows.
+        // However we need to drop them from the input
+        // here.
+        inputRange.skipAllRemainingDataRows();
+      }
+
+      return {state, stats, skippedLocal, call, dependency};
     }
     case FastForwardVariant::FETCHER: {
       LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
-      while (inputRange.hasDataRow()) {
-        auto [state, row] = inputRange.nextDataRow();
-        TRI_ASSERT(row.isInitialized());
-      }
+      _requestedDependency = inputRange.skipAllRemainingDataRows();
       AqlCall call{};
       call.hardLimit = 0;
-      return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call};
+
+      // TODO We have to ask all dependencies to go forward to the next shadow row
+      if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+        return {inputRange.upstreamState(_requestedDependency),
+                typename Executor::Stats{}, 0, call, _requestedDependency};
+      } else {
+        return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call,
+                _requestedDependency};
+      }
     }
   }
   // Unreachable
@@ -1476,7 +1562,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       // However we need to maintain the upstream state.
       size_t skippedLocal = 0;
       typename Fetcher::DataRange bypassedRange{ExecutorState::HASMORE};
-      std::tie(_upstreamState, skippedLocal, bypassedRange) = _rowFetcher.execute(stack);
+      std::tie(_upstreamState, skippedLocal, bypassedRange) =
+          executeFetcher(stack, _requestedDependency);
       return {_upstreamState, skippedLocal, bypassedRange.getBlock()};
     }
 
@@ -1543,15 +1630,15 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               clientCall.getLimit() == 0 && clientCall.needsFullCount();
 #endif
           LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
-          auto [state, stats, skippedLocal, call] =
+          auto [state, stats, skippedLocal, call, dependency] =
               executeSkipRowsRange(_lastRange, clientCall);
+          _requestedDependency = dependency;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           // Assertion: We did skip 'skippedLocal' documents here.
-          // This means that they have to be removed from clientCall.getOffset()
-          // This has to be done by the Executor calling call.didSkip()
-          // accordingly.
-          // The LIMIT executor with a LIMIT of 0 can also bypass fullCount
-          // here, even if callLimit > 0
+          // This means that they have to be removed from
+          // clientCall.getOffset() This has to be done by the Executor
+          // calling call.didSkip() accordingly. The LIMIT executor with a
+          // LIMIT of 0 can also bypass fullCount here, even if callLimit > 0
           if (canPassFullcount || std::is_same_v<Executor, LimitExecutor>) {
             // In this case we can first skip. But straight after continue with fullCount, so we might skip more
             TRI_ASSERT(clientCall.getOffset() + skippedLocal >= offsetBefore);
@@ -1604,15 +1691,18 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             ensureOutputBlock(std::move(clientCall));
           }
           TRI_ASSERT(_outputItemRow);
+          TRI_ASSERT(!_executorReturnedDone);
 
           // Execute getSome
-          auto const [state, stats, call] =
-              _executor.produceRows(_lastRange, *_outputItemRow);
+          auto const [state, stats, call, dependency] =
+              executeProduceRows(_lastRange, *_outputItemRow);
+          // TODO: Check
+          _requestedDependency = dependency;
+          _executorReturnedDone = state == ExecutorState::DONE;
           _engine->_stats += stats;
           localExecutorState = state;
 
           if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
-            // Produce might have modified the clientCall
             // But only do this if we are not subquery.
             clientCall = _outputItemRow->getClientCall();
           }
@@ -1626,7 +1716,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // In all other branches only if the client Still needs more data.
             _execState = ExecState::DONE;
             break;
-          } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
+          } else if (clientCall.getLimit() > 0 && !lastRangeHasDataRow()) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
             _upstreamRequest = call;
@@ -1640,19 +1730,16 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         case ExecState::FASTFORWARD: {
           LOG_QUERY("96e2c", DEBUG)
               << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
-          auto [state, stats, skippedLocal, call] =
+          auto [state, stats, skippedLocal, call, dependency] =
               executeFastForward(_lastRange, clientCall);
 
+          _requestedDependency = dependency;
           _skipped += skippedLocal;
           _engine->_stats += stats;
           localExecutorState = state;
 
           if (state == ExecutorState::DONE) {
-            if (_outputItemRow && _outputItemRow->isInitialized() &&
-                _outputItemRow->allRowsUsed()) {
-              // We have a block with data, but no more place for a shadow row.
-              _execState = ExecState::DONE;
-            } else if (!_lastRange.hasShadowRow() && !_lastRange.hasDataRow()) {
+            if (!_lastRange.hasShadowRow() && !_lastRange.hasDataRow()) {
               _execState = ExecState::DONE;
             } else {
               _execState = ExecState::SHADOWROWS;
@@ -1671,7 +1758,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // HASMORE even if it knew that upstream has no further rows.
           TRI_ASSERT(_upstreamState != ExecutionState::DONE);
           // We need to make sure _lastRange is all used
-          TRI_ASSERT(!_lastRange.hasDataRow());
+          TRI_ASSERT(!lastRangeHasDataRow());
           TRI_ASSERT(!_lastRange.hasShadowRow());
           size_t skippedLocal = 0;
 
@@ -1687,7 +1774,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             stack.pushCall(std::move(callCopy));
           }
 
-          std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
+          std::tie(_upstreamState, skippedLocal, _lastRange) =
+              executeFetcher(stack, _requestedDependency);
 
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             // Do not pop the call, we did not put it on.
@@ -1719,7 +1807,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // We skipped through passthrough, so count that a skip was solved.
             clientCall.didSkip(skippedLocal);
           }
-          _execState = ExecState::CHECKCALL;
+          if (_lastRange.hasShadowRow() && !_lastRange.peekShadowRow().isRelevant()) {
+            _execState = ExecState::SHADOWROWS;
+          } else {
+            _execState = ExecState::CHECKCALL;
+          }
           break;
         }
         case ExecState::SHADOWROWS: {
@@ -1729,7 +1821,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               << printTypeInfo() << " (sub-)query completed. Move ShadowRows.";
 
           // TODO: Check if we can have the situation that we are between two shadow rows here.
-          // E.g. LastRow is releveant shadowRow. NextRow is non-relevant shadowRow.
+          // E.g. LastRow is relevant shadowRow. NextRow is non-relevant shadowRow.
           // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
           // an empty input. Only exception might be COLLECT COUNT.
 
@@ -1787,7 +1879,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
     }
-    // We must return skipped and/or data when reporting HASMORE
+    // We must return skipped and/or data when reportingHASMORE
     TRI_ASSERT(_upstreamState != ExecutionState::HASMORE ||
                (skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0)));
     return {_upstreamState, skipped, std::move(outputBlock)};
@@ -1799,12 +1891,23 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   }
 }
 
-/// @brief reset all internal states after processing a shadow row.
 template <class Executor>
-void ExecutionBlockImpl<Executor>::resetAfterShadowRow() {
+void ExecutionBlockImpl<Executor>::resetExecutor() {
   // cppcheck-suppress unreadVariable
-  constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
+  constexpr bool customInit = hasInitializeCursor<Executor>::value;
+  // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
+  // implemented, so assert this implementation is used.
+  static_assert(!std::is_same<Executor, EnumerateCollectionExecutor>::value || customInit,
+                "EnumerateCollectionExecutor is expected to implement a custom "
+                "initializeCursor method!");
+  static_assert(!std::is_same<Executor, IndexExecutor>::value || customInit,
+                "IndexExecutor is expected to implement a custom "
+                "initializeCursor method!");
+  static_assert(!std::is_same<Executor, DistinctCollectExecutor>::value || customInit,
+                "DistinctCollectExecutor is expected to implement a custom "
+                "initializeCursor method!");
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+  _executorReturnedDone = false;
 }
 
 template <class Executor>
@@ -1830,7 +1933,7 @@ ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
   } else {
     if (_state != InternalState::DONE) {
       _state = InternalState::FETCH_DATA;
-      resetAfterShadowRow();
+      resetExecutor();
     }
   }
   return state;
@@ -1840,6 +1943,12 @@ template <class Executor>
 auto ExecutionBlockImpl<Executor>::outputIsFull() const noexcept -> bool {
   return _outputItemRow != nullptr && _outputItemRow->isInitialized() &&
          _outputItemRow->allRowsUsed();
+}
+
+// TODO: remove again
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const -> bool {
+  return _lastRange.hasDataRow();
 }
 
 template <>

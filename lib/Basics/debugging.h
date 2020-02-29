@@ -119,6 +119,9 @@ template<typename T> struct is_container {
   static constexpr bool value = sizeof(test(std::declval<T>())) == 1;
 };
 
+template< class T >
+inline constexpr bool is_container_v = is_container<T>::value;
+
 template < typename T > struct is_associative {
   static tc& test(...) ;
   
@@ -127,16 +130,24 @@ template < typename T > struct is_associative {
   static constexpr bool value = sizeof( test( std::declval<T>() ) ) == 1 ;
 };
 
-}
+}  // namespace container_traits
+
+template <class T>
+struct remove_cvref {
+  typedef std::remove_cv_t<std::remove_reference_t<T>> type;
+};
+template <class T>
+using remove_cvref_t = typename remove_cvref<T>::type;
 
 template < typename T > struct is_container :
-  std::conditional<(container_traits::is_container<T>::value || std::is_array<T>::value)
-                   && !std::is_same<char *, typename std::decay<T>::type>::value
-                   && !std::is_same<char const*, typename std::decay<T>::type>::value
-                   && !std::is_same<unsigned char *, typename std::decay<T>::type>::value
-                   && !std::is_same<unsigned char const*, typename std::decay<T>::type>::value
-                   && !std::is_same<T, std::string>::value
-                   && !std::is_same<T, const std::string>::value, std::true_type, std::false_type >::type {};
+  std::conditional_t<(container_traits::is_container_v<T> || std::is_array_v<T>)
+                   && !std::is_same_v<char *, std::decay_t<T>>
+                   && !std::is_same_v<char const*, std::decay_t<T>>
+                   && !std::is_same_v<unsigned char *, std::decay_t<T>>
+                   && !std::is_same_v<unsigned char const*, std::decay_t<T>>
+                   && !std::is_same_v<std::string, std::decay_t<T>>
+                   && !std::is_same_v<std::string_view, std::decay_t<T>>,
+                   std::true_type, std::false_type > {};
 
 template < typename T > struct is_associative :
   std::conditional< container_traits::is_container<T>::value && container_traits::is_associative<T>::value,

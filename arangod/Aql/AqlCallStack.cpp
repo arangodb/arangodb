@@ -22,6 +22,10 @@
 
 #include "AqlCallStack.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 // TODO: This class is not yet memory efficient or optimized in any way.
 // it might be reimplement soon to have the above features, Focus now is on
 // the API we want to use.
@@ -31,11 +35,10 @@ using namespace arangodb::aql;
 
 AqlCallStack::AqlCallStack(AqlCall call, bool compatibilityMode3_6)
     : _operations{{std::move(call)}},
-      _depth(0),
       _compatibilityMode3_6(compatibilityMode3_6) {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCall call)
-    : _operations{other._operations}, _depth(0) {
+    : _operations{other._operations} {
   // We can only use this constructor on relevant levels
   // Alothers need to use passThrough constructor
   TRI_ASSERT(other._depth == 0);
@@ -47,6 +50,9 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other)
     : _operations{other._operations},
       _depth(other._depth),
       _compatibilityMode3_6(other._compatibilityMode3_6) {}
+
+AqlCallStack::AqlCallStack(std::stack<AqlCall>&& operations)
+    : _operations(std::move(operations)) {}
 
 bool AqlCallStack::isRelevant() const { return _depth == 0; }
 
@@ -107,4 +113,39 @@ auto AqlCallStack::increaseSubqueryDepth() -> void {
   TRI_ASSERT(_depth < std::numeric_limits<size_t>::max() - 2);
   _depth++;
   TRI_ASSERT(!isRelevant());
+}
+
+auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice) -> ResultT<AqlCallStack> {
+  if (ADB_UNLIKELY(!slice.isArray())) {
+    using namespace std::string_literals;
+    return Result(TRI_ERROR_TYPE_ERROR,
+                  "When deserializing AqlCallStack: expected array, got "s +
+                      slice.typeName());
+  }
+  if (ADB_UNLIKELY(slice.isEmptyArray())) {
+    return Result(TRI_ERROR_TYPE_ERROR,
+                  "When deserializing AqlCallStack: stack is empty");
+  }
+
+  auto stack = std::stack<AqlCall>{};
+  auto i = std::size_t{0};
+  for (auto const entry : VPackArrayIterator(slice)) {
+    auto maybeAqlCall = AqlCall::fromVelocyPack(entry);
+
+    if (ADB_UNLIKELY(maybeAqlCall.fail())) {
+      auto message = std::string{"When deserializing AqlCallStack: entry "};
+      message += std::to_string(i);
+      message += ": ";
+      message += std::move(maybeAqlCall).errorMessage();
+      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+    }
+
+    stack.emplace(maybeAqlCall.get());
+
+    ++i;
+  }
+
+  TRI_ASSERT(i > 0);
+
+  return AqlCallStack{std::move(stack)};
 }
