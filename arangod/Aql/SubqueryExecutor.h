@@ -23,11 +23,11 @@
 #ifndef ARANGOD_AQL_SUBQUERY_EXECUTOR_H
 #define ARANGOD_AQL_SUBQUERY_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/AqlItemBlockInputRange.h"
-#include "Aql/AqlCall.h"
 #include "Aql/Stats.h"
 #include "Basics/Result.h"
 
@@ -97,13 +97,13 @@ class SubqueryExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, Stats, AqlCall>;
+      -> std::tuple<ExecutionState, Stats, AqlCall>;
 
   // skipRowsRange <=> isModificationSubquery
 
-  template<bool E = isModificationSubquery, std::enable_if_t<E, int> = 0>
+  template <bool E = isModificationSubquery, std::enable_if_t<E, int> = 0>
   auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
-  -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+      -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
 
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
@@ -113,6 +113,12 @@ class SubqueryExecutor {
    * Handles reset of local state variables
    */
   void writeOutput(OutputAqlItemRow& output);
+
+  /**
+   * @brief Translate _state => to to execution allowing waiting.
+   *
+   */
+  auto translatedReturnType() const noexcept -> ExecutionState;
 
  private:
   Fetcher& _fetcher;
