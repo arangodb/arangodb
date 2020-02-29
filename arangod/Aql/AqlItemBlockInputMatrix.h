@@ -50,14 +50,14 @@ class AqlItemBlockInputMatrix {
 
   ExecutorState upstreamState() const noexcept;
   bool upstreamHasMore() const noexcept;
-  void skipAllRemainingDataRows();
+  size_t skipAllRemainingDataRows();
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   ExecutorState _finalState{ExecutorState::HASMORE};
 
-  // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and usable
-  // DataRange object available to work with.
+  // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and
+  // usable DataRange object available to work with.
   AqlItemMatrix* _aqlItemMatrix;
   ShadowAqlItemRow _shadowRow{CreateInvalidShadowRowHint{}};
 };
