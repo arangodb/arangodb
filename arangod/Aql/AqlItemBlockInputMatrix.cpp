@@ -54,6 +54,20 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, AqlItemMat
   }
 }
 
+AqlItemBlockInputRange AqlItemBlockInputMatrix::getNextInputRange() {
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
+
+  if (_aqlItemMatrix->numberOfBlocks() == 0) {
+    return AqlItemBlockInputRange{upstreamState()};
+  }
+
+  SharedAqlItemBlockPtr blockPtr = _aqlItemMatrix->getBlock(_currentBlockRowIndex);
+  auto [start, end] = blockPtr->getRelevantRange();
+  ExecutorState state = incrBlockIndex();
+
+  return {state, 0, std::move(blockPtr), start};
+}
+
 SharedAqlItemBlockPtr AqlItemBlockInputMatrix::getBlock() const noexcept {
   TRI_ASSERT(_aqlItemMatrix == nullptr);
   return _block;
@@ -94,6 +108,7 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRo
       !_aqlItemMatrix->peekShadowRow().isRelevant()) {
     // next row will be a shadow row
     _shadowRow = _aqlItemMatrix->popShadowRow();
+    resetBlockIndex();
   } else {
     _shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint()};
   }
@@ -136,8 +151,24 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
       TRI_ASSERT(_finalState == ExecutorState::DONE);
       _aqlItemMatrix->clear();
     }
+    resetBlockIndex();
   }
   // Else we did already skip once.
   // nothing to do
   return 0;
+}
+
+ExecutorState AqlItemBlockInputMatrix::incrBlockIndex() {
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
+  if (_currentBlockRowIndex + 1 < _aqlItemMatrix->numberOfBlocks()) {
+    _currentBlockRowIndex++;
+    // we were able to increase the size as we reached not the end yet
+    return ExecutorState::HASMORE;
+  }
+  // we could not increase the index, we already reached the end
+  return ExecutorState::DONE;
+}
+
+void AqlItemBlockInputMatrix::resetBlockIndex() noexcept {
+  _currentBlockRowIndex = 0;
 }

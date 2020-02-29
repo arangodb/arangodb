@@ -144,9 +144,16 @@ constexpr bool isNewStyleExecutor = is_one_of_v<
     TestLambdaExecutor,
     TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-    UnsortedGatherExecutor, SubqueryStartExecutor, SubqueryEndExecutor, TraversalExecutor,
-    KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor, SortExecutor,
-    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+    ModificationExecutor<AllRowsFetcher, InsertModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+    ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+    ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+    ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, SubqueryStartExecutor,
+    UnsortedGatherExecutor, SubqueryEndExecutor, TraversalExecutor, KShortestPathsExecutor, ShortestPathExecutor, EnumerateListExecutor,
+    LimitExecutor, SortExecutor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
     IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
@@ -1120,9 +1127,16 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
-              UnsortedGatherExecutor, TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor,
-              SubqueryEndExecutor, SortedCollectExecutor, LimitExecutor, SortExecutor,
-              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
+              ModificationExecutor<AllRowsFetcher, InsertModifier>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+              ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+              ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+              ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor,
+              EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor, LimitExecutor,
+              UnsortedGatherExecutor, SortExecutor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
               IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
@@ -1187,7 +1201,15 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
   }
   // TODO: We only need to do this is the executor actually require to call.
   // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (is_one_of_v<Executor, LimitExecutor>) {
+  if constexpr (is_one_of_v<Executor, LimitExecutor,
+                            ModificationExecutor<AllRowsFetcher, InsertModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+                            ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+                            ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+                            ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>) {
     return FastForwardVariant::EXECUTOR;
   }
   return FastForwardVariant::FETCHER;
@@ -1441,6 +1463,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
     return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}, 0};
   }
   auto type = fastForwardType(clientCall, _executor);
+
   switch (type) {
     case FastForwardVariant::FULLCOUNT:
     case FastForwardVariant::EXECUTOR: {

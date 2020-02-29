@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
 #define ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
 
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -46,11 +47,21 @@ class AqlItemBlockInputMatrix {
   bool hasDataRow() const noexcept;
 
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
+
+  // Will provide access to the first block (from _aqlItemMatrix)
+  // After a block has been delivered, the block index will be increased.
+  // Next call then will deliver the next block etc.
+  AqlItemBlockInputRange getNextInputRange();
   std::pair<ExecutorState, AqlItemMatrix const*> getMatrix() noexcept;
 
   ExecutorState upstreamState() const noexcept;
   bool upstreamHasMore() const noexcept;
   size_t skipAllRemainingDataRows();
+
+  // Will return HASMORE if we were able to increase the row index.
+  // Otherwise will return DONE.
+  ExecutorState incrBlockIndex();
+  void resetBlockIndex() noexcept;
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
@@ -59,6 +70,7 @@ class AqlItemBlockInputMatrix {
   // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and
   // usable DataRange object available to work with.
   AqlItemMatrix* _aqlItemMatrix;
+  size_t _currentBlockRowIndex = 0;
   ShadowAqlItemRow _shadowRow{CreateInvalidShadowRowHint{}};
 };
 

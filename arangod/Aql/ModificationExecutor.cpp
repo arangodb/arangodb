@@ -101,29 +101,23 @@ ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& f
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier
 template <typename FetcherType, typename ModifierType>
-std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
-ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t maxOutputs) {
+auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
+                                                                size_t maxOutputs)
+    -> void {
   // for fetchRow
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ExecutionState state = ExecutionState::HASMORE;
 
   // Maximum number of rows we can put into output
   // So we only ever produce this many here
-  // TODO: If we SKIP_IGNORE, then we'd be able to output more;
-  //       this would require some counting to happen in the modifier
-  while (_modifier.nrOfOperations() < maxOutputs && state != ExecutionState::DONE) {
-    std::tie(state, row) = _fetcher.fetchRow(maxOutputs);
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, ModificationStats{}};
-    }
-    if (row.isInitialized()) {
-      // Make sure we have a valid row
-      TRI_ASSERT(row.isInitialized());
-      _modifier.accumulate(row);
-    }
+  while (_modifier.nrOfOperations() < maxOutputs && input.hasDataRow()) {
+    auto [state, row] = input.nextDataRow();
+
+    // Make sure we have a valid row
+    TRI_ASSERT(row.isInitialized());
+    _modifier.accumulate(row);
   }
   TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
-  return {state, ModificationStats{}};
 }
 
 // Outputs accumulated results, and counts the statistics
@@ -131,7 +125,10 @@ template <typename FetcherType, typename ModifierType>
 void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
                                                                Stats& stats) {
   typename ModifierType::OutputIterator modifierOutputIterator(_modifier);
+  // We only accumulated as many items as we can output, so this
+  // should be correct
   for (auto const& modifierOutput : modifierOutputIterator) {
+    TRI_ASSERT(!output.isFull());
     bool written = false;
     switch (modifierOutput.getType()) {
       case ModifierOutput::Type::ReturnIfRequired:
@@ -157,53 +154,81 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
         break;
     }
   }
-
-  if (_infos._doCount) {
-    stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
-    stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
-  }
 }
 
 template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
 ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
+  TRI_ASSERT(false);
+
+  return {ExecutionState::DONE, ModificationStats{}};
+}
+
+template <typename FetcherType, typename ModifierType>
+[[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
+    typename FetcherType::DataRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, ModificationStats, AqlCall> {
   TRI_ASSERT(_infos._trx);
 
-  ModificationExecutor::Stats stats;
+  auto stats = ModificationStats{};
 
-  const size_t maxOutputs = std::min(output.numRowsLeft(), _modifier.getBatchSize());
+  _modifier.reset();
 
-  // if we returned "WAITING" the last time we still have
-  // documents in the accumulator that we have not submitted
-  // yet
-  if (_lastState != ExecutionState::WAITING) {
-    _modifier.reset();
+  ExecutorState upstreamState = ExecutorState::HASMORE;
+  // only produce at most output.numRowsLeft() many results
+  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+    auto range = input.getNextInputRange();
+    doCollect(range, output.numRowsLeft());
+    upstreamState = range.upstreamState();
+  } else {
+    doCollect(input, output.numRowsLeft());
+    upstreamState = input.upstreamState();
   }
 
-  TRI_IF_FAILURE("ModificationBlock::getSome") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  if (_modifier.nrOfOperations() > 0) {
+    _modifier.transact();
+
+    if (_infos._doCount) {
+      stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
+      stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+    }
+
+    doOutput(output, stats);
   }
 
-  std::tie(_lastState, stats) = doCollect(maxOutputs);
+  return {upstreamState, stats, AqlCall{}};
+}
 
-  if (_lastState == ExecutionState::WAITING) {
-    return {ExecutionState::WAITING, std::move(stats)};
+template <typename FetcherType, typename ModifierType>
+[[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::skipRowsRange(
+    typename FetcherType::DataRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  auto stats = ModificationStats{};
+  _modifier.reset();
+
+  ExecutorState upstreamState = ExecutorState::HASMORE;
+  // only produce at most output.numRowsLeft() many results
+  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+    auto range = input.getNextInputRange();
+    doCollect(range, call.getOffset());
+    upstreamState = range.upstreamState();
+  } else {
+    doCollect(input, call.getOffset());
+    upstreamState = input.upstreamState();
   }
 
-  TRI_ASSERT(_lastState == ExecutionState::DONE || _lastState == ExecutionState::HASMORE);
+  if (_modifier.nrOfOperations() > 0) {
+    _modifier.transact();
 
-  _modifier.transact();
+    if (_infos._doCount) {
+      stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
+      stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+    }
 
-  // If the query is silent, there is no way to relate
-  // the results slice contents and the submitted documents
-  // If the query is *not* silent, we should get one result
-  // for every document.
-  // Yes. Really.
-  TRI_ASSERT(_infos._options.silent || _modifier.nrOfDocuments() == _modifier.nrOfResults());
+    call.didSkip(_modifier.nrOfOperations());
+  }
 
-  doOutput(output, stats);
-
-  return {_lastState, std::move(stats)};
+  return {upstreamState, stats, _modifier.nrOfOperations(), AqlCall{}};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
