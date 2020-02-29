@@ -94,6 +94,20 @@ TEST_P(DistinctCollectExecutorTest, split_1) {
       .run();
 }
 
+TEST_P(DistinctCollectExecutorTest, split_3) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<DistinctCollectExecutor>(std::move(infos))
+      .setInputValueList(1, 2, 1, 2, 5, 4, 3, 3, 1, 2)
+      .setInputSplitType(split)
+      .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
+      .expectOutputValueList(5, 4)
+      .expectSkipped(3)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
 TEST_P(DistinctCollectExecutorTest, split_2) {
   auto [split] = GetParam();
 

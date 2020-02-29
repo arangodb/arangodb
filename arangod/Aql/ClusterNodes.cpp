@@ -172,7 +172,7 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
                       std::move(regsToKeep));
 
   return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
-      &engine, this, std::move(infos), server(), getDistributeId(), queryId());
+      &engine, this, std::move(infos), server(), getDistributeId(), queryId(), api());
 }
 
 /// @brief toVelocyPack, for RemoteNode

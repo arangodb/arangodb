@@ -38,7 +38,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
@@ -162,7 +161,7 @@ struct Pipeline {
     return *this;
   }
 
-  ~Pipeline() {
+  virtual ~Pipeline() {
     for (auto&& b : _pipeline) {
       b.release();
     }
@@ -347,7 +346,7 @@ struct ExecutorTestHelper {
                                                    std::move(infos));
   }
 
-  auto setPipeline(Pipeline&& pipeline) -> ExecutorTestHelper& {
+  auto setPipeline(Pipeline pipeline) -> ExecutorTestHelper& {
     _pipeline = std::move(pipeline);
     return *this;
   }

@@ -26,6 +26,8 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/AqlCall.h"
 #include "Aql/Stats.h"
 #include "Basics/Result.h"
 
@@ -63,7 +65,7 @@ class SubqueryExecutorInfos : public ExecutorInfos {
   bool const _isConst;
 };
 
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
 class SubqueryExecutor {
  public:
   struct Properties {
@@ -94,6 +96,15 @@ class SubqueryExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  // skipRowsRange <=> isModificationSubquery
+
+  template<bool E = isModificationSubquery, std::enable_if_t<E, int> = 0>
+  auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+  -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
@@ -108,7 +119,7 @@ class SubqueryExecutor {
   SubqueryExecutorInfos& _infos;
 
   // Upstream state, used to determine if we are done with all subqueries
-  ExecutionState _state;
+  ExecutorState _state;
 
   // Flag if the current subquery is initialized and worked on
   bool _subqueryInitialized;

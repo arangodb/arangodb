@@ -182,7 +182,6 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipR
       initializeNewRow(inputRange);
       continue;
     }
-    // auto const& [state, input] = inputRange.peekDataRow();
 
     TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
     // if offset is > 0, we're in offset skip phase
