@@ -228,53 +228,52 @@ template <typename FetcherType, typename ModifierType>
 
   auto stats = ModificationStats{};
 
-  _modifier.reset();
-
-  if (!input.hasDataRow()) {
-    // Input is empty
-    return {input.upstreamState(), stats, 0, upstreamCall};
-  }
-
   TRI_IF_FAILURE("ModificationBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  size_t toSkip = call.getOffset();
-  if (call.getLimit() == 0 && call.hasHardLimit()) {
-    // We need to produce all modification operations.
-    // If we are bound by limits or not!
-    toSkip = ExecutionBlock::SkipAllSize();
-  }
   // only produce at most output.numRowsLeft() many results
-  ExecutorState upstreamState = ExecutorState::HASMORE;
-  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
-    auto& range = input.getInputRange();
-    doCollect(range, call.getOffset());
-    upstreamState = range.upstreamState();
-    if (upstreamState == ExecutorState::DONE) {
-      // We are done with this input.
-      // We need to forward it to the last ShadowRow.
-      input.skipAllRemainingDataRows();
-      TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
+  ExecutorState upstreamState = input.upstreamState();
+  while (input.hasDataRow() && call.needSkipMore()) {
+    _modifier.reset();
+    size_t toSkip = call.getOffset();
+    if (call.getLimit() == 0 && call.hasHardLimit()) {
+      // We need to produce all modification operations.
+      // If we are bound by limits or not!
+      toSkip = ExecutionBlock::SkipAllSize();
     }
-  } else {
-    doCollect(input, call.getOffset());
-    upstreamState = input.upstreamState();
+    if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+      auto& range = input.getInputRange();
+      if (range.hasDataRow()) {
+        doCollect(range, toSkip);
+      }
+      upstreamState = range.upstreamState();
+      if (upstreamState == ExecutorState::DONE) {
+        // We are done with this input.
+        // We need to forward it to the last ShadowRow.
+        input.skipAllRemainingDataRows();
+        TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
+      }
+    } else {
+      doCollect(input, toSkip);
+      upstreamState = input.upstreamState();
+    }
+
+    if (_modifier.nrOfOperations() > 0) {
+      _modifier.transact();
+
+      if (_infos._doCount) {
+        stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
+        stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+      }
+
+      call.didSkip(_modifier.nrOfOperations());
+    }
   }
+
   LOG_DEVEL << "We skipped and got state: " << upstreamState;
 
-  if (_modifier.nrOfOperations() > 0) {
-    _modifier.transact();
-
-    if (_infos._doCount) {
-      stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
-      stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
-    }
-
-    call.didSkip(_modifier.nrOfOperations());
-  }
-
-  return {upstreamState, stats, _modifier.nrOfOperations(), upstreamCall};
+  return {upstreamState, stats, call.getSkipCount(), upstreamCall};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
