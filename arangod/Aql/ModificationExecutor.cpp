@@ -231,9 +231,8 @@ template <typename FetcherType, typename ModifierType>
   _modifier.reset();
 
   if (!input.hasDataRow()) {
-    LOG_DEVEL << "Initially no row"
-        // Input is empty
-        return {input.upstreamState(), stats, 0, upstreamCall};
+    // Input is empty
+    return {input.upstreamState(), stats, 0, upstreamCall};
   }
 
   TRI_IF_FAILURE("ModificationBlock::getSome") {
