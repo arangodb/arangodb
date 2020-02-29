@@ -74,6 +74,8 @@ class AqlItemMatrix {
    */
   bool empty() const noexcept;
 
+  void clear();
+
   std::vector<RowIndex> produceRowIndexes() const;
 
   /**

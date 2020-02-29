@@ -316,8 +316,8 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack) {
   }
 }
 
-void ExecutionBlock::traceExecuteEnd(
-    std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result) {
+auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     auto const& [state, skipped, block] = result;
     auto const items = block != nullptr ? block->size() : 0;
@@ -358,6 +358,8 @@ void ExecutionBlock::traceExecuteEnd(
       }
     }
   }
+
+  return result;
 }
 
 auto ExecutionBlock::printTypeInfo() const -> std::string const {

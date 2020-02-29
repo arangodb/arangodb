@@ -57,6 +57,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/QueryHelper.cpp
+  Aql/RemoteExecutorTest.cpp
   Aql/RemoveExecutorTest.cpp
   Aql/ReplaceExecutorTest.cpp
   Aql/ReturnExecutorTest.cpp

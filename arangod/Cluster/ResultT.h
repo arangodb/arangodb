@@ -230,14 +230,20 @@ class ResultT {
   ResultT(std::optional<T>&& val_, int errorNumber, std::string const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
+  ResultT(std::optional<T>&& val_, int errorNumber, std::string&& errorMessage)
+      : _result(errorNumber, std::move(errorMessage)), _val(val_) {}
+
   ResultT(std::optional<T> const& val_, int errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}
 
   ResultT(std::optional<T> const& val_, int errorNumber, std::string const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
-  ResultT(std::optional<T>&& val_, Result result)
-      : _result(std::move(result)), _val(std::move(val_)) {}
+  ResultT(std::optional<T> const& val_, int errorNumber, std::string&& errorMessage)
+      : _result(errorNumber, std::move(errorMessage)), _val(val_) {}
+
+  ResultT(std::optional<T>&& val_, Result const& result)
+      : _result(result), _val(std::move(val_)) {}
 
   ResultT(std::optional<T>&& val_, Result&& result)
       : _result(std::move(result)), _val(std::move(val_)) {}
