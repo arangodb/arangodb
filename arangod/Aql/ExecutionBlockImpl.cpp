@@ -177,7 +177,8 @@ constexpr bool isNewStyleExecutor = is_one_of_v<
     NoResultsExecutor, ShortestPathExecutor, EnumerateListExecutor, LimitExecutor,
     SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
     SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
-    SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>>;
+    SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>,
+    MaterializeExecutor<RegisterId>, MaterializeExecutor<std::string const&>>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1159,7 +1160,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
               LimitExecutor, NoResultsExecutor, SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
               SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
-              SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>>),
+              SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>,
+              MaterializeExecutor<RegisterId>, MaterializeExecutor<std::string const&>>),
       "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!

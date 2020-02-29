@@ -434,7 +434,10 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Rem
   // Use the old getSome/SkipSome API.
   // TODO needs execute implementation instead
   auto myCall = stack.popCall();
-  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall));
+
+  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall) ||
+             AqlCall::IsFullCountCall(myCall) || AqlCall::IsFastForwardCall(myCall));
+
   if (AqlCall::IsSkipSomeCall(myCall)) {
     auto const [state, skipped] = skipSome(myCall.getOffset());
     if (state != ExecutionState::WAITING) {
@@ -444,8 +447,26 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Rem
   } else if (AqlCall::IsGetSomeCall(myCall)) {
     auto const [state, block] = getSome(myCall.getLimit());
     // We do not need to count as softLimit will be overwritten, and hard cannot be set.
+    if (stack.empty() && myCall.hasHardLimit() && !myCall.needsFullCount() && block != nullptr) {
+      // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
+      myCall.didProduce(block->size());
+      if (myCall.getLimit() == 0) {
+        return {ExecutionState::DONE, 0, block};
+      }
+    }
+
     return {state, 0, block};
+  } else if (AqlCall::IsFullCountCall(myCall)) {
+    auto const [state, skipped] = skipSome(ExecutionBlock::SkipAllSize());
+    if (state != ExecutionState::WAITING) {
+      myCall.didSkip(skipped);
+    }
+    return {state, skipped, nullptr};
+  } else if (AqlCall::IsFastForwardCall(myCall)) {
+    // No idea if DONE is correct here...
+    return {ExecutionState::DONE, 0, nullptr};
   }
+
   // Should never get here!
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

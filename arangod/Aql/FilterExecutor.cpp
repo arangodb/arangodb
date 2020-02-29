@@ -100,7 +100,6 @@ std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t at
   return _fetcher.preFetchNumberOfRows(atMost);
 }
 
-// TODO Remove me, we are using the getSome skip variant here.
 auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   FilterStats stats{};
