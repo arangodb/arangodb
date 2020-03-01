@@ -39,14 +39,13 @@ ParallelUnsortedGatherExecutorInfos::ParallelUnsortedGatherExecutorInfos(
                     nrInOutRegisters, nrInOutRegisters,
                     std::move(registersToClear), std::move(registersToKeep)) {}
 
-ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher), _numberDependencies(0), _currentDependency(0), _skipped(0) {}
+ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher&, Infos& infos) {}
 
 ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
 
-auto ParallelUnsortedGatherExecutor::upstreamCall() const noexcept -> AqlCall {
-  // TODO: Implement me
-  return AqlCall{};
+auto ParallelUnsortedGatherExecutor::upstreamCall(AqlCall const& clientCall) const
+    noexcept -> AqlCall {
+  return clientCall;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +87,7 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
     TRI_ASSERT(waitingDep == input.numberDependencies());
     return {ExecutorState::DONE, NoStats{}, AqlCall{}, waitingDep};
   }
-  return {ExecutorState::HASMORE, NoStats{}, upstreamCall(), waitingDep};
+  return {ExecutorState::HASMORE, NoStats{}, upstreamCall(output.getClientCall()), waitingDep};
 }
 
 auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
@@ -131,5 +130,6 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
     TRI_ASSERT(waitingDep == input.numberDependencies());
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}, waitingDep};
   }
-  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall(), waitingDep};
+  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
+          upstreamCall(call), waitingDep};
 }

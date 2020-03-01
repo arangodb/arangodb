@@ -100,22 +100,7 @@ class ParallelUnsortedGatherExecutor {
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t>;
 
  private:
-  void initDependencies();
-
-  auto upstreamCall() const noexcept -> AqlCall;
-
- private:
-  Fetcher& _fetcher;
-  // 64: default size of buffer; 8: Alignment size; computed to 4 but breaks in windows debug build.
-  ::arangodb::containers::SmallVector<ExecutionState, 64, 8>::allocator_type::arena_type _arena;
-  ::arangodb::containers::SmallVector<ExecutionState, 64, 8> _upstream{_arena};
-
-  // Total Number of dependencies
-  size_t _numberDependencies;
-
-  size_t _currentDependency;
-
-  size_t _skipped;
+  auto upstreamCall(AqlCall const& clientCall) const noexcept -> AqlCall;
 };
 
 }  // namespace aql
