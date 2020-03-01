@@ -102,7 +102,6 @@ class SubqueryExecutorIntegrationTest
 
   // returns a new pipeline that contains body as a subquery
   auto createSubquery(Pipeline body) -> Pipeline {
-
     /*
         auto subqueryEnd = createSubqueryEndExecutionBlock();
         if (!body.empty()) {
@@ -116,7 +115,7 @@ class SubqueryExecutorIntegrationTest
 
         body.get().emplace_back(std::move(subqueryStart));
     */
-    return std::move(body);
+    return body;
   }
 
   auto createSubquery() -> Pipeline { return createSubquery(Pipeline()); }
@@ -315,13 +314,13 @@ class SubqueryExecutorIntegrationTest
   }
 };
 
+/*
 template <size_t... vs>
 const SubqueryExecutorSplitType splitIntoBlocks =
     SubqueryExecutorSplitType{std::vector<std::size_t>{vs...}};
 template <size_t step>
 const SubqueryExecutorSplitType splitStep = SubqueryExecutorSplitType{step};
 
-/*
 INSTANTIATE_TEST_CASE_P(SubqueryExecutorIntegrationTest, SubqueryExecutorIntegrationTest,
                         ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
                                           splitStep<2>, splitStep<1>));

@@ -109,7 +109,6 @@ using namespace arangodb::aql;
   }
 
 CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
-CREATE_HAS_MEMBER_CHECK(skipRows, hasSkipRows);
 CREATE_HAS_MEMBER_CHECK(fetchBlockForPassthrough, hasFetchBlockForPassthrough);
 CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
 CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
@@ -293,73 +292,6 @@ struct ExecuteSkipVariant<SkipVariants::GET_SOME> {
     return std::make_tuple(ExecutionState::DONE, typename Executor::Stats{}, 0);  // tuple, cannot use initializer list due to build failure
   }
 };
-
-template <class Executor>
-static SkipVariants constexpr skipType() {
-  static_assert(!isNewStyleExecutor<Executor>);
-  bool constexpr useFetcher =
-      Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable &&
-      !std::is_same<Executor, SubqueryExecutor<true>>::value;
-
-  bool constexpr useExecutor = hasSkipRows<Executor>::value;
-
-  // ConstFetcher and SingleRowFetcher<BlockPassthrough::Enable> can skip, but
-  // it may not be done for modification subqueries.
-  static_assert(useFetcher ==
-                    (std::is_same<typename Executor::Fetcher, ConstFetcher>::value ||
-                     (std::is_same<typename Executor::Fetcher, SingleRowFetcher<BlockPassthrough::Enable>>::value &&
-                      !std::is_same<Executor, SubqueryExecutor<true>>::value)),
-                "Unexpected fetcher for SkipVariants::FETCHER");
-
-  static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
-                "Fetcher is chosen for skipping, but has not skipRows method!");
-
-  static_assert(
-      useExecutor ==
-          (std::is_same<Executor, IndexExecutor>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::NotMaterialize>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterialize>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::Materialize>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::NotMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::NotMaterialize>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterialize>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::Materialize>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::NotMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::NotMaterialize>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::LateMaterialize>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::Materialize>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::NotMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::LateMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::NotMaterialize>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::LateMaterialize>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::Materialize>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::NotMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::LateMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
-           std::is_same<Executor, EnumerateCollectionExecutor>::value ||
-           std::is_same<Executor, LimitExecutor>::value ||
-           std::is_same<Executor, ConstrainedSortExecutor>::value ||
-           std::is_same<Executor, SortingGatherExecutor>::value ||
-           std::is_same<Executor, UnsortedGatherExecutor>::value ||
-           std::is_same<Executor, ParallelUnsortedGatherExecutor>::value ||
-           std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
-           std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
-      "Unexpected executor for SkipVariants::EXECUTOR");
-
-  // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
-  static_assert(
-      !std::is_same<Executor, LimitExecutor>::value || useFetcher,
-      "LimitExecutor needs to implement skipRows() to work correctly");
-
-  if (useExecutor) {
-    return SkipVariants::EXECUTOR;
-  } else if (useFetcher) {
-    return SkipVariants::FETCHER;
-  } else {
-    return SkipVariants::GET_SOME;
-  }
-}
 
 }  // namespace arangodb::aql
 
@@ -858,9 +790,6 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                      (std::is_same_v<typename Executor::Fetcher, SingleRowFetcher<BlockPassthrough::Enable>> &&
                       !std::is_same<Executor, SubqueryExecutor<true>>::value)),
                 "Unexpected fetcher for SkipVariants::FETCHER");
-
-  static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
-                "Fetcher is chosen for skipping, but has not skipRows method!");
 
   static_assert(
       useExecutor ==

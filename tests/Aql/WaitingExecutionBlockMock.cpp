@@ -65,54 +65,6 @@ std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shut
   return std::make_pair(state, res);
 }
 
-std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::getSome(size_t atMost) {
-  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
-    _hasWaited = true;
-    if (_returnedDone) {
-      return {ExecutionState::DONE, nullptr};
-    }
-    return {ExecutionState::WAITING, nullptr};
-  }
-  _hasWaited = false;
-
-  if (_data.empty()) {
-    _returnedDone = true;
-    return {ExecutionState::DONE, nullptr};
-  }
-
-  auto result = std::move(_data.front());
-  _data.pop_front();
-
-  if (_data.empty()) {
-    _returnedDone = true;
-    return {ExecutionState::DONE, std::move(result)};
-  } else {
-    return {ExecutionState::HASMORE, std::move(result)};
-  }
-}
-
-std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(size_t atMost) {
-  traceSkipSomeBegin(atMost);
-  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
-    _hasWaited = true;
-    return traceSkipSomeEnd(ExecutionState::WAITING, 0);
-  }
-  _hasWaited = false;
-
-  if (_data.empty()) {
-    return traceSkipSomeEnd(ExecutionState::DONE, 0);
-  }
-
-  size_t skipped = _data.front()->size();
-  _data.pop_front();
-
-  if (_data.empty()) {
-    return traceSkipSomeEnd(ExecutionState::DONE, skipped);
-  } else {
-    return traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
-  }
-}
-
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);

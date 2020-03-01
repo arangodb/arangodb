@@ -127,8 +127,6 @@ class MultiDependencySingleRowFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRowForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
 
-  std::pair<ExecutionState, size_t> skipRowsForDependency(size_t dependency, size_t atMost);
-
   std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   //@deprecated

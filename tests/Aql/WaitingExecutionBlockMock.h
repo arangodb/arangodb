@@ -81,31 +81,6 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
       arangodb::aql::InputAqlItemRow const& input) override;
 
-  /**
-   * @brief The return values are alternating. On non-WAITING case
-   *        it will return atMost many elements from _data.
-   *
-   *
-   * @param atMost This many elements will be returned at Most
-   *
-   * @return First: <WAITING, nullptr>
-   *         Second: <HASMORE/DONE, _data-part>
-   */
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> getSome(size_t atMost) override;
-
-  /**
-   * @brief The return values are alternating. On non-WAITING case
-   *        it will return atMost, or whatever is not skipped over on data,
-   * whichever number is lower.
-   *
-   *
-   * @param atMost This many elements will be skipped at most
-   *
-   * @return First: <WAITING, 0>
-   *         Second: <HASMORE/DONE, min(atMost,_data.length)>
-   */
-  std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
-
   std::tuple<arangodb::aql::ExecutionState, size_t, arangodb::aql::SharedAqlItemBlockPtr> execute(
       arangodb::aql::AqlCallStack stack) override;
 
@@ -120,7 +95,6 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   size_t _inflight;
-  bool _returnedDone = false;
   bool _hasWaited;
   WaitingBehaviour _variant;
 };
