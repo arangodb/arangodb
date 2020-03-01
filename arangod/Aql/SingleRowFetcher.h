@@ -40,6 +40,7 @@ namespace arangodb::aql {
 class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -74,7 +75,7 @@ class SingleRowFetcher {
    *   size_t => Amount of documents skipped
    *   DataRange => Resulting data
    */
-  std::tuple<ExecutionState, size_t, DataRange> execute(AqlCallStack& stack);
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
 
   /**
    * @brief Fetch one new AqlItemRow from upstream.

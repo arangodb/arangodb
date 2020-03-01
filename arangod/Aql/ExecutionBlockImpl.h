@@ -51,6 +51,7 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief This is the implementation class of AqlExecutionBlocks.
@@ -220,9 +221,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///          * WAITING: We have async operation going on, nothing happend, please call again
   ///          * HASMORE: Here is some data in the request range, there is still more, if required call again
   ///          * DONE: Here is some data, and there will be no further data available.
-  ///        2. size_t: Amount of documents skipped.
+  ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
-  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
   [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
@@ -231,9 +232,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /**
    * @brief Inner execute() part, without the tracing calls.
    */
-  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
-  std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> executeFetcher(
+  std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
       AqlCallStack& stack, size_t const dependency);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> executeProduceRows(
@@ -335,7 +336,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   InternalState _state;
 
-  size_t _skipped{};
+  SkipResult _skipped{};
 
   DataRange _lastRange;
 

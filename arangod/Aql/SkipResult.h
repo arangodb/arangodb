@@ -26,10 +26,21 @@
 // for size_t
 #include <cstddef>
 
+namespace arangodb {
+template <typename T>
+class ResultT;
+}
+namespace arangodb::velocypack {
+class Builder;
+class Slice;
+}  // namespace arangodb::velocypack
+
 namespace arangodb::aql {
 
 class SkipResult {
  public:
+  static auto fromVelocyPack(velocypack::Slice) -> ResultT<SkipResult>;
+
   SkipResult();
 
   ~SkipResult() = default;
@@ -40,8 +51,15 @@ class SkipResult {
 
   auto didSkip(size_t skipped) -> void;
 
+  auto nothingSkipped() const noexcept -> bool;
+
+  auto toVelocyPack(arangodb::velocypack::Builder& builder) const noexcept -> void;
+
  private:
   size_t _skipped{0};
 };
+
+auto operator+=(SkipResult& a, SkipResult const& b) noexcept -> SkipResult&;
+
 }  // namespace arangodb::aql
 #endif

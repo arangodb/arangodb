@@ -37,6 +37,7 @@ class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -71,7 +72,7 @@ class ConstFetcher {
    *   size_t => Amount of documents skipped
    *   DataRange => Resulting data
    */
-  auto execute(AqlCallStack& stack) -> std::tuple<ExecutionState, size_t, DataRange>;
+  auto execute(AqlCallStack& stack) -> std::tuple<ExecutionState, SkipResult, DataRange>;
 
   /**
    * @brief Fetch one new AqlItemRow from upstream.

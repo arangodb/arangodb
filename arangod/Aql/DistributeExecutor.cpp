@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Aql/SkipResult.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -212,7 +213,7 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock() -> SharedAqlItemBlock
 }
 
 auto DistributeExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upstreamState)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(_executor != nullptr);
   // Make sure we actually have data before you call execute
   TRI_ASSERT(hasDataFor(call));

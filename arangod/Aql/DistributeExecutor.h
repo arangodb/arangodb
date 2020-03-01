@@ -95,7 +95,7 @@ class DistributeExecutor {
     auto hasDataFor(AqlCall const& call) -> bool;
 
     auto execute(AqlCall call, ExecutionState upstreamState)
-        -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+        -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
    private:
     /**

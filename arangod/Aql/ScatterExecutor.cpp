@@ -83,7 +83,7 @@ auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
 }
 
 auto ScatterExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upstreamState)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(_executor != nullptr);
   // Make sure we actually have data before you call execute
   TRI_ASSERT(hasDataFor(call));

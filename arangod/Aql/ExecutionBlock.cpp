@@ -316,15 +316,15 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack) {
   }
 }
 
-auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result)
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     auto const& [state, skipped, block] = result;
     auto const items = block != nullptr ? block->size() : 0;
     ExecutionNode const* en = getPlanNode();
     ExecutionStats::Node stats;
     stats.calls = 1;
-    stats.items = skipped + items;
+    stats.items = skipped.getSkipCount() + items;
     if (state != ExecutionState::WAITING) {
       stats.runtime = TRI_microtime() - _getSomeBegin;
       _getSomeBegin = 0.0;
@@ -339,9 +339,9 @@ auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAq
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
-      LOG_QUERY("60bbc", INFO) << "execute done " << printBlockInfo()
-                               << " state=" << stateToString(state)
-                               << " skipped=" << skipped << " produced=" << items;
+      LOG_QUERY("60bbc", INFO)
+          << "execute done " << printBlockInfo() << " state=" << stateToString(state)
+          << " skipped=" << skipped.getSkipCount() << " produced=" << items;
 
       if (_profile >= PROFILE_LEVEL_TRACE_2) {
         if (block == nullptr) {

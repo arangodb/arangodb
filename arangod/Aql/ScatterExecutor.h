@@ -31,6 +31,7 @@
 namespace arangodb {
 namespace aql {
 
+class SkipResult;
 class ExecutionEngine;
 class ScatterNode;
 
@@ -60,7 +61,7 @@ class ScatterExecutor {
     auto hasDataFor(AqlCall const& call) -> bool;
 
     auto execute(AqlCall call, ExecutionState upstreamState)
-        -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+        -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
    private:
     std::deque<SharedAqlItemBlockPtr> _queue;

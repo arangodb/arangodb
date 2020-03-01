@@ -58,6 +58,7 @@
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SimpleModifier.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
+#include "Aql/SkipResult.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortedCollectExecutor.h"
@@ -521,10 +522,10 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
     // If we indiscriminately return ExecutionState::HASMORE, then we end up in an infinite loop
     //
     // luckily we can dispose of this kludge once executors have been ported.
-    if (skipped < atMost && state == ExecutionState::DONE) {
-      return {ExecutionState::DONE, skipped};
+    if (skipped.getSkipCount() < atMost && state == ExecutionState::DONE) {
+      return {ExecutionState::DONE, skipped.getSkipCount()};
     } else {
-      return {ExecutionState::HASMORE, skipped};
+      return {ExecutionState::HASMORE, skipped.getSkipCount()};
     }
   } else {
     traceSkipSomeBegin(atMost);
@@ -616,8 +617,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_dependencyProxy);
 
-  TRI_ASSERT(_skipped == 0);
-  _skipped = 0;
+  TRI_ASSERT(_skipped.nothingSkipped());
+  _skipped = SkipResult{};
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
@@ -640,7 +641,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 }
 
 template <class Executor>
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
   // TODO remove this IF
   // These are new style executors
   if constexpr (isNewStyleExecutor<Executor>) {
@@ -673,7 +675,9 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
     if (state != ExecutionState::WAITING) {
       myCall.didSkip(skipped);
     }
-    return {state, skipped, nullptr};
+    SkipResult skipRes{};
+    skipRes.didSkip(skipped);
+    return {state, skipRes, nullptr};
   } else if (AqlCall::IsGetSomeCall(myCall)) {
     auto const [state, block] = getSome(myCall.getLimit());
     // We do not need to count as softLimit will be overwritten, and hard cannot be set.
@@ -681,20 +685,22 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
       // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
       myCall.didProduce(block->size());
       if (myCall.getLimit() == 0) {
-        return {ExecutionState::DONE, 0, block};
+        return {ExecutionState::DONE, SkipResult{}, block};
       }
     }
 
-    return {state, 0, block};
+    return {state, SkipResult{}, block};
   } else if (AqlCall::IsFullCountCall(myCall)) {
     auto const [state, skipped] = skipSome(ExecutionBlock::SkipAllSize());
     if (state != ExecutionState::WAITING) {
       myCall.didSkip(skipped);
     }
-    return {state, skipped, nullptr};
+    SkipResult skipRes{};
+    skipRes.didSkip(skipped);
+    return {state, skipRes, nullptr};
   } else if (AqlCall::IsFastForwardCall(myCall)) {
     // No idea if DONE is correct here...
-    return {ExecutionState::DONE, 0, nullptr};
+    return {ExecutionState::DONE, SkipResult{}, nullptr};
   }
   // Should never get here!
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -717,8 +723,8 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_dependencyProxy);
 
-  TRI_ASSERT(_skipped == 0);
-  _skipped = 0;
+  TRI_ASSERT(_skipped.nothingSkipped());
+  _skipped = SkipResult{};
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
@@ -1221,7 +1227,7 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t const dependency)
-    -> std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> {
+    -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
   // Silence compiler about unused dependency
   (void)dependency;
   if constexpr (isNewStyleExecutor<Executor>) {
@@ -1565,7 +1571,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
  *        SharedAqlItemBlockPtr -> The resulting data
  */
 template <class Executor>
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   if constexpr (isNewStyleExecutor<Executor>) {
     if (!stack.isRelevant()) {
@@ -1573,7 +1579,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       // We are bypassing subqueries.
       // This executor is not allowed to perform actions
       // However we need to maintain the upstream state.
-      size_t skippedLocal = 0;
+      SkipResult skippedLocal;
       typename Fetcher::DataRange bypassedRange{ExecutorState::HASMORE};
       std::tie(_upstreamState, skippedLocal, bypassedRange) =
           executeFetcher(stack, _requestedDependency);
@@ -1600,7 +1606,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     }
 
     // Skip can only be > 0 if we are in upstream cases.
-    TRI_ASSERT(_skipped == 0 || _execState == ExecState::UPSTREAM);
+    TRI_ASSERT(_skipped.nothingSkipped() || _execState == ExecState::UPSTREAM);
 
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
       // TODO: implement forwarding of SKIP properly:
@@ -1667,7 +1673,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
                 _executor.skipRowsRange(_lastRange, clientCall);
             if (subqueryState == ExecutionState::WAITING) {
               TRI_ASSERT(skippedLocal == 0);
-              return {subqueryState, 0, nullptr};
+              return {subqueryState, SkipResult{}, nullptr};
             } else if (subqueryState == ExecutionState::DONE) {
               state = ExecutorState::DONE;
             } else {
@@ -1698,7 +1704,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           }
 #endif
           localExecutorState = state;
-          _skipped += skippedLocal;
+          _skipped.didSkip(skippedLocal);
           _engine->_stats += stats;
           // The execute might have modified the client call.
           if (state == ExecutorState::DONE) {
@@ -1751,7 +1757,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             std::tie(subqueryState, stats, call) =
                 _executor.produceRows(_lastRange, *_outputItemRow);
             if (subqueryState == ExecutionState::WAITING) {
-              return {subqueryState, 0, nullptr};
+              return {subqueryState, SkipResult{}, nullptr};
             } else if (subqueryState == ExecutionState::DONE) {
               state = ExecutorState::DONE;
             } else {
@@ -1799,7 +1805,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               executeFastForward(_lastRange, clientCall);
 
           _requestedDependency = dependency;
-          _skipped += skippedLocal;
+          _skipped.didSkip(skippedLocal);
           _engine->_stats += stats;
           localExecutorState = state;
 
@@ -1825,7 +1831,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // We need to make sure _lastRange is all used
           TRI_ASSERT(!lastRangeHasDataRow());
           TRI_ASSERT(!_lastRange.hasShadowRow());
-          size_t skippedLocal = 0;
+          SkipResult skippedLocal;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           size_t subqueryLevelBefore = stack.subqueryLevel();
@@ -1860,7 +1866,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // We might have some local accounting to this call.
             _clientRequest = clientCall;
             // We do not return anything in WAITING state, also NOT skipped.
-            return {_upstreamState, 0, nullptr};
+            return {_upstreamState, SkipResult{}, nullptr};
           }
           if constexpr (Executor::Properties::allowsBlockPassthrough ==
                         BlockPassthrough::Enable) {
@@ -1870,7 +1876,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
             _skipped += skippedLocal;
             // We skipped through passthrough, so count that a skip was solved.
-            clientCall.didSkip(skippedLocal);
+            clientCall.didSkip(skippedLocal.getSkipCount());
           }
           if (_lastRange.hasShadowRow() && !_lastRange.peekShadowRow().isRelevant()) {
             _execState = ExecState::SHADOWROWS;
@@ -1936,17 +1942,19 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     _outputItemRow.reset();
 
     // We return skipped here, reset member
-    size_t skipped = _skipped;
-    _skipped = 0;
+    SkipResult skipped = _skipped;
+    _skipped = SkipResult{};
     if (localExecutorState == ExecutorState::HASMORE ||
         _lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE
-      TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
+      TRI_ASSERT(!skipped.nothingSkipped() ||
+                 (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
     }
     // We must return skipped and/or data when reportingHASMORE
     TRI_ASSERT(_upstreamState != ExecutionState::HASMORE ||
-               (skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0)));
+               (!skipped.nothingSkipped() ||
+                (outputBlock != nullptr && outputBlock->numEntries() > 0)));
     return {_upstreamState, skipped, std::move(outputBlock)};
   } else {
     // TODO this branch must never be taken with an executor that has not been

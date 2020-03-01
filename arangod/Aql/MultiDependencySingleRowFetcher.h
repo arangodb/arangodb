@@ -39,6 +39,7 @@ class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do need one
@@ -135,7 +136,7 @@ class MultiDependencySingleRowFetcher {
   auto useStack(AqlCallStack const& stack) -> void;
 
   auto executeForDependency(size_t const dependency, AqlCallStack& stack)
-      -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange>;
+      -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
