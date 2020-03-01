@@ -26,6 +26,7 @@
 #include "Cluster/ResultT.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
@@ -34,30 +35,63 @@ SkipResult::SkipResult() {}
 
 SkipResult::SkipResult(SkipResult const& other) : _skipped{other._skipped} {}
 
-auto SkipResult::getSkipCount() const noexcept -> size_t { return _skipped; }
+auto SkipResult::getSkipCount() const noexcept -> size_t {
+  TRI_ASSERT(!_skipped.empty());
+  return _skipped.back();
+}
 
-auto SkipResult::didSkip(size_t skipped) -> void { _skipped += skipped; }
+auto SkipResult::didSkip(size_t skipped) -> void {
+  TRI_ASSERT(!_skipped.empty());
+  _skipped.back() += skipped;
+}
 
 auto SkipResult::nothingSkipped() const noexcept -> bool {
-  return _skipped == 0;
+  TRI_ASSERT(!_skipped.empty());
+  return std::all_of(_skipped.begin(), _skipped.end(),
+                     [](size_t const& e) -> bool { return e == 0; });
 }
 
 auto SkipResult::toVelocyPack(VPackBuilder& builder) const noexcept -> void {
-  builder.add(VPackValue(_skipped));
+  VPackArrayBuilder guard(&builder);
+  TRI_ASSERT(!_skipped.empty());
+  for (auto const& s : _skipped) {
+    builder.add(VPackValue(s));
+  }
 }
 
 auto SkipResult::fromVelocyPack(VPackSlice slice) -> ResultT<SkipResult> {
-  if (!slice.isInteger()) {
+  if (!slice.isArray()) {
     auto message = std::string{
         "When deserializating AqlExecuteResult: When reading skipped: "
         "Unexpected type "};
     message += slice.typeName();
     return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
   }
+  if (slice.isEmptyArray()) {
+    auto message = std::string{
+        "When deserializating AqlExecuteResult: When reading skipped: "
+        "Got an empty list of skipped values."};
+    return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+  }
   try {
     SkipResult res;
-    res.didSkip(slice.getNumber<std::size_t>());
-    return res;
+    auto it = VPackArrayIterator(slice);
+    while (it.valid()) {
+      auto val = it.value();
+      if (!val.isInteger()) {
+        auto message = std::string{
+            "When deserializating AqlExecuteResult: When reading skipped: "
+            "Unexpected type "};
+        message += slice.typeName();
+        return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      }
+      if (!it.isFirst()) {
+        res.incrementSubquery();
+      }
+      res.didSkip(val.getNumber<std::size_t>());
+      ++it;
+    }
+    return {res};
   } catch (velocypack::Exception const& ex) {
     auto message = std::string{
         "When deserializating AqlExecuteResult: When reading skipped: "};
@@ -66,11 +100,34 @@ auto SkipResult::fromVelocyPack(VPackSlice slice) -> ResultT<SkipResult> {
   }
 }
 
-auto arangodb::aql::operator+=(SkipResult& a, SkipResult const& b) noexcept -> SkipResult& {
-  a.didSkip(b.getSkipCount());
-  return a;
+auto SkipResult::incrementSubquery() -> void { _skipped.emplace_back(0); }
+auto SkipResult::decrementSubquery() -> void {
+  TRI_ASSERT(!_skipped.empty());
+  _skipped.pop_back();
+  TRI_ASSERT(!_skipped.empty());
+}
+auto SkipResult::subqueryDepth() const noexcept -> size_t {
+  TRI_ASSERT(!_skipped.empty());
+  return _skipped.size();
 }
 
-auto arangodb::aql::operator==(SkipResult const& a, SkipResult const& b) noexcept -> bool {
-  return a.getSkipCount() == b.getSkipCount();
+auto SkipResult::operator+=(SkipResult const& b) noexcept -> SkipResult& {
+  didSkip(b.getSkipCount());
+  return *this;
+}
+
+auto SkipResult::operator==(SkipResult const& b) const noexcept -> bool {
+  if (_skipped.size() != b._skipped.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < _skipped.size(); ++i) {
+    if (_skipped[i] != b._skipped[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+auto SkipResult::operator!=(SkipResult const& b) const noexcept -> bool {
+  return !(*this == b);
 }

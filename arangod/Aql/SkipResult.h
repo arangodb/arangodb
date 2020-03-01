@@ -25,6 +25,7 @@
 
 // for size_t
 #include <cstddef>
+#include <vector>
 
 namespace arangodb {
 template <typename T>
@@ -55,13 +56,20 @@ class SkipResult {
 
   auto toVelocyPack(arangodb::velocypack::Builder& builder) const noexcept -> void;
 
+  auto incrementSubquery() -> void;
+
+  auto decrementSubquery() -> void;
+
+  auto subqueryDepth() const noexcept -> size_t;
+
+  auto operator+=(SkipResult const& b) noexcept -> SkipResult&;
+
+  auto operator==(SkipResult const& b) const noexcept -> bool;
+  auto operator!=(SkipResult const& b) const noexcept -> bool;
+
  private:
-  size_t _skipped{0};
+  std::vector<size_t> _skipped{0};
 };
-
-auto operator+=(SkipResult& a, SkipResult const& b) noexcept -> SkipResult&;
-
-auto operator==(SkipResult const& a, SkipResult const& b) noexcept -> bool;
 
 }  // namespace arangodb::aql
 #endif

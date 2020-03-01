@@ -88,6 +88,7 @@ TEST_F(SkipResultTest, serialize_deserialize_empty) {
   auto testee = maybeTestee.get();
   EXPECT_EQ(testee.nothingSkipped(), original.nothingSkipped());
   EXPECT_EQ(testee.getSkipCount(), original.getSkipCount());
+  EXPECT_EQ(testee, original);
 }
 
 TEST_F(SkipResultTest, serialize_deserialize_with_count) {
@@ -100,6 +101,7 @@ TEST_F(SkipResultTest, serialize_deserialize_with_count) {
   auto testee = maybeTestee.get();
   EXPECT_EQ(testee.nothingSkipped(), original.nothingSkipped());
   EXPECT_EQ(testee.getSkipCount(), original.getSkipCount());
+  EXPECT_EQ(testee, original);
 }
 
 TEST_F(SkipResultTest, can_be_added) {
@@ -109,6 +111,93 @@ TEST_F(SkipResultTest, can_be_added) {
   b.didSkip(7);
   a += b;
   EXPECT_EQ(a.getSkipCount(), 13);
+}
+
+TEST_F(SkipResultTest, can_add_a_subquery_depth) {
+  SkipResult a{};
+  a.didSkip(5);
+  EXPECT_EQ(a.getSkipCount(), 5);
+  a.incrementSubquery();
+  EXPECT_EQ(a.getSkipCount(), 0);
+  a.didSkip(7);
+  EXPECT_EQ(a.getSkipCount(), 7);
+  a.decrementSubquery();
+  EXPECT_EQ(a.getSkipCount(), 5);
+}
+
+TEST_F(SkipResultTest, nothing_skip_on_subquery) {
+  SkipResult a{};
+  EXPECT_TRUE(a.nothingSkipped());
+  a.didSkip(6);
+  EXPECT_FALSE(a.nothingSkipped());
+  a.incrementSubquery();
+  EXPECT_EQ(a.getSkipCount(), 0);
+  EXPECT_FALSE(a.nothingSkipped());
+}
+
+TEST_F(SkipResultTest, serialize_deserialize_with_a_subquery) {
+  SkipResult original{};
+  original.didSkip(6);
+  original.incrementSubquery();
+  original.didSkip(2);
+
+  VPackBuilder builder;
+  original.toVelocyPack(builder);
+  auto maybeTestee = SkipResult::fromVelocyPack(builder.slice());
+  ASSERT_FALSE(maybeTestee.fail());
+  auto testee = maybeTestee.get();
+  // Use built_in eq
+  EXPECT_EQ(testee, original);
+  // Manual test
+  EXPECT_EQ(testee.nothingSkipped(), original.nothingSkipped());
+  EXPECT_EQ(testee.getSkipCount(), original.getSkipCount());
+  EXPECT_EQ(testee.subqueryDepth(), original.subqueryDepth());
+  original.decrementSubquery();
+  testee.decrementSubquery();
+  EXPECT_EQ(testee.nothingSkipped(), original.nothingSkipped());
+  EXPECT_EQ(testee.getSkipCount(), original.getSkipCount());
+  EXPECT_EQ(testee.subqueryDepth(), original.subqueryDepth());
+}
+
+TEST_F(SkipResultTest, equality) {
+  auto buildTestSet = []() -> std::vector<SkipResult> {
+    SkipResult empty{};
+    SkipResult skip1{};
+    skip1.didSkip(6);
+
+    SkipResult skip2{};
+    skip2.didSkip(8);
+
+    SkipResult subQuery1{};
+    subQuery1.incrementSubquery();
+    subQuery1.didSkip(4);
+
+    SkipResult subQuery2{};
+    subQuery2.didSkip(8);
+    subQuery2.incrementSubquery();
+    subQuery2.didSkip(4);
+
+    SkipResult subQuery3{};
+    subQuery3.didSkip(8);
+    subQuery3.incrementSubquery();
+    return {empty, skip1, skip2, subQuery1, subQuery2, subQuery3};
+  };
+
+  // We create two identical sets with different entries
+  auto set1 = buildTestSet();
+  auto set2 = buildTestSet();
+  for (size_t i = 0; i < set1.size(); ++i) {
+    for (size_t j = 0; j < set2.size(); ++j) {
+      // Addresses are different
+      EXPECT_NE(&set1.at(i), &set2.at(j));
+      // Identical index => Equal object
+      if (i == j) {
+        EXPECT_EQ(set1.at(i), set2.at(j));
+      } else {
+        EXPECT_NE(set1.at(i), set2.at(j));
+      }
+    }
+  }
 }
 
 }  // namespace aql
