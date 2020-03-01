@@ -211,154 +211,6 @@ template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  if constexpr (isNewStyleExecutor<Executor>) {
-    AqlCallStack stack{AqlCall::SimulateGetSome(atMost)};
-    auto const [state, skipped, block] = execute(stack);
-    return {state, block};
-  } else {
-    traceGetSomeBegin(atMost);
-    auto result = getSomeWithoutTrace(atMost);
-    return traceGetSomeEnd(result.first, std::move(result.second));
-  }
-}
-
-template <class Executor>
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
-  if constexpr (isNewStyleExecutor<Executor>) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
-  } else {
-    TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize);
-    // silence tests -- we need to introduce new failure tests for fetchers
-    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    if (getQuery().killed()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-    }
-
-    if (_state == InternalState::DONE) {
-      // We are done, so we stay done
-      return {ExecutionState::DONE, nullptr};
-    }
-
-    if (!_outputItemRow) {
-      ExecutionState state;
-      SharedAqlItemBlockPtr newBlock;
-      std::tie(state, newBlock) =
-          requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
-      if (state == ExecutionState::WAITING) {
-        TRI_ASSERT(newBlock == nullptr);
-        return {state, nullptr};
-      }
-      if (newBlock == nullptr) {
-        TRI_ASSERT(state == ExecutionState::DONE);
-        _state = InternalState::DONE;
-        // _rowFetcher must be DONE now already
-        return {state, nullptr};
-      }
-      TRI_ASSERT(newBlock != nullptr);
-      TRI_ASSERT(newBlock->size() > 0);
-      // We cannot hold this assertion, if we are on a pass-through
-      // block and the upstream uses execute already.
-      // TRI_ASSERT(newBlock->size() <= atMost);
-      _outputItemRow = createOutputRow(newBlock, AqlCall{});
-    }
-
-    ExecutionState state = ExecutionState::HASMORE;
-    ExecutorStats executorStats{};
-
-    TRI_ASSERT(atMost > 0);
-
-    if (isInSplicedSubquery()) {
-      // The loop has to be entered at least once!
-      TRI_ASSERT(!_outputItemRow->isFull());
-      while (!_outputItemRow->isFull() && _state != InternalState::DONE) {
-        // Assert that write-head is always pointing to a free row
-        TRI_ASSERT(!_outputItemRow->produced());
-        switch (_state) {
-          case InternalState::FETCH_DATA: {
-            std::tie(state, executorStats) = _executor.produceRows(*_outputItemRow);
-            // Count global but executor-specific statistics, like number of
-            // filtered rows.
-            _engine->_stats += executorStats;
-            if (_outputItemRow->produced()) {
-              _outputItemRow->advanceRow();
-            }
-
-            if (state == ExecutionState::WAITING) {
-              return {state, nullptr};
-            }
-
-            if (state == ExecutionState::DONE) {
-              _state = InternalState::FETCH_SHADOWROWS;
-            }
-            break;
-          }
-          case InternalState::FETCH_SHADOWROWS: {
-            state = fetchShadowRowInternal();
-            if (state == ExecutionState::WAITING) {
-              return {state, nullptr};
-            }
-            break;
-          }
-          case InternalState::DONE: {
-            TRI_ASSERT(false);  // Invalid state
-          }
-        }
-      }
-      // Modify the return state.
-      // As long as we do still have ShadowRows
-      // We need to return HASMORE!
-      if (_state == InternalState::DONE) {
-        state = ExecutionState::DONE;
-      } else {
-        state = ExecutionState::HASMORE;
-      }
-    } else {
-      // The loop has to be entered at least once!
-      TRI_ASSERT(!_outputItemRow->isFull());
-      while (!_outputItemRow->isFull()) {
-        std::tie(state, executorStats) = _executor.produceRows(*_outputItemRow);
-        // Count global but executor-specific statistics, like number of filtered rows.
-        _engine->_stats += executorStats;
-        if (_outputItemRow->produced()) {
-          _outputItemRow->advanceRow();
-        }
-
-        if (state == ExecutionState::WAITING) {
-          return {state, nullptr};
-        }
-
-        if (state == ExecutionState::DONE) {
-          auto outputBlock = _outputItemRow->stealBlock();
-          // This is not strictly necessary here, as we shouldn't be called again after DONE.
-          _outputItemRow.reset();
-          return {state, std::move(outputBlock)};
-        }
-      }
-
-      TRI_ASSERT(state == ExecutionState::HASMORE);
-      TRI_ASSERT(_outputItemRow->isFull());
-    }
-
-    auto outputBlock = _outputItemRow->stealBlock();
-    // we guarantee that we do return a valid pointer in the HASMORE case.
-    TRI_ASSERT(outputBlock != nullptr || _state == InternalState::DONE);
-    _outputItemRow.reset();
-    return {state, std::move(outputBlock)};
-  }
-}
-
-template <class Executor>
 std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     SharedAqlItemBlockPtr& newBlock, AqlCall&& call) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -511,76 +363,6 @@ static SkipVariants constexpr skipType() {
 
 }  // namespace arangodb::aql
 
-template <class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
-  if constexpr (isNewStyleExecutor<Executor>) {
-    AqlCallStack stack{AqlCall::SimulateSkipSome(atMost)};
-    auto const [state, skipped, block] = execute(stack);
-
-    // execute returns ExecutionState::DONE here, which stops execution after simulating a skip.
-    // If we indiscriminately return ExecutionState::HASMORE, then we end up in an infinite loop
-    //
-    // luckily we can dispose of this kludge once executors have been ported.
-    if (skipped < atMost && state == ExecutionState::DONE) {
-      return {ExecutionState::DONE, skipped};
-    } else {
-      return {ExecutionState::HASMORE, skipped};
-    }
-  } else {
-    traceSkipSomeBegin(atMost);
-    auto state = ExecutionState::HASMORE;
-
-    while (state == ExecutionState::HASMORE && _skipped < atMost) {
-      auto res = skipSomeOnceWithoutTrace(atMost - _skipped);
-      TRI_ASSERT(state != ExecutionState::WAITING || res.second == 0);
-      state = res.first;
-      _skipped += res.second;
-      TRI_ASSERT(_skipped <= atMost);
-    }
-
-    size_t skipped = 0;
-    if (state != ExecutionState::WAITING) {
-      std::swap(skipped, _skipped);
-    }
-
-    TRI_ASSERT(skipped <= atMost);
-    return traceSkipSomeEnd(state, skipped);
-  }
-}
-
-template <class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSomeOnceWithoutTrace(size_t atMost) {
-  if constexpr (isNewStyleExecutor<Executor>) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
-  } else {
-    constexpr SkipVariants customSkipType = skipType<Executor>();
-
-    if constexpr (customSkipType == SkipVariants::GET_SOME) {
-      atMost = std::min(atMost, DefaultBatchSize);
-      auto res = getSomeWithoutTrace(atMost);
-
-      size_t skipped = 0;
-      if (res.second != nullptr) {
-        skipped = res.second->size();
-      }
-      TRI_ASSERT(skipped <= atMost);
-
-      return {res.first, skipped};
-    }
-
-    ExecutionState state;
-    typename Executor::Stats stats;
-    size_t skipped;
-    std::tie(state, stats, skipped) =
-        ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost);
-    _engine->_stats += stats;
-    TRI_ASSERT(skipped <= atMost);
-
-    return {state, skipped};
-  }
-}
-
 template <bool customInit>
 struct InitializeCursor {};
 
@@ -641,63 +423,21 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
-  // TODO remove this IF
-  // These are new style executors
-  if constexpr (isNewStyleExecutor<Executor>) {
-    // Only this executor is fully implemented
-    traceExecuteBegin(stack);
-    // silence tests -- we need to introduce new failure tests for fetchers
-    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    auto res = executeWithoutTrace(stack);
-    return traceExecuteEnd(res);
+  // Only this executor is fully implemented
+  traceExecuteBegin(stack);
+  // silence tests -- we need to introduce new failure tests for fetchers
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  // Fall back to getSome/skipSome
-  auto myCall = stack.popCall();
-
-  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall) ||
-             AqlCall::IsFullCountCall(myCall) || AqlCall::IsFastForwardCall(myCall));
-  _rowFetcher.useStack(stack);
-
-  if (AqlCall::IsSkipSomeCall(myCall)) {
-    auto const [state, skipped] = skipSome(myCall.getOffset());
-    if (state != ExecutionState::WAITING) {
-      myCall.didSkip(skipped);
-    }
-    return {state, skipped, nullptr};
-  } else if (AqlCall::IsGetSomeCall(myCall)) {
-    auto const [state, block] = getSome(myCall.getLimit());
-    // We do not need to count as softLimit will be overwritten, and hard cannot be set.
-    if (stack.empty() && myCall.hasHardLimit() && !myCall.needsFullCount() && block != nullptr) {
-      // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
-      myCall.didProduce(block->size());
-      if (myCall.getLimit() == 0) {
-        return {ExecutionState::DONE, 0, block};
-      }
-    }
-
-    return {state, 0, block};
-  } else if (AqlCall::IsFullCountCall(myCall)) {
-    auto const [state, skipped] = skipSome(ExecutionBlock::SkipAllSize());
-    if (state != ExecutionState::WAITING) {
-      myCall.didSkip(skipped);
-    }
-    return {state, skipped, nullptr};
-  } else if (AqlCall::IsFastForwardCall(myCall)) {
-    // No idea if DONE is correct here...
-    return {ExecutionState::DONE, 0, nullptr};
-  }
-  // Should never get here!
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto res = executeWithoutTrace(stack);
+  return traceExecuteEnd(res);
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480

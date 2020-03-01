@@ -94,8 +94,6 @@ class SubqueryExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutionState, Stats, AqlCall>;
 

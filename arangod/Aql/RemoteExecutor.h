@@ -32,9 +32,11 @@
 
 #include <mutex>
 
-namespace arangodb::fuerte { inline namespace v1 {
+namespace arangodb::fuerte {
+inline namespace v1 {
 enum class RestVerb;
-}}
+}
+}  // namespace arangodb::fuerte
 
 namespace arangodb::aql {
 
@@ -58,10 +60,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
                      std::string const& ownName, std::string const& queryId, Api);
 
   ~ExecutionBlockImpl() override = default;
-
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
-
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
@@ -166,6 +164,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   Api _apiToUse = Api::EXECUTE;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_REMOTE_EXECUTOR_H

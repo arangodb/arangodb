@@ -123,12 +123,6 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
 
   std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
-  /// @brief getSome: shouldn't be used, use skipSomeForShard
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) final;
-
-  /// @brief skipSome: shouldn't be used, use skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) final;
-
   /// @brief execute: shouldn't be used, use executeForClient
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 

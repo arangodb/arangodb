@@ -102,19 +102,6 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
 }
 
 template <BlockPassthrough passBlocksThrough>
-std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(size_t atMost) {
-  TRI_ASSERT(!_currentRow.isInitialized() || _currentRow.isLastRowInBlock());
-  TRI_ASSERT(!indexIsValid());
-
-  auto res = _dependencyProxy->skipSome(atMost);
-  _upstreamState = res.first;
-
-  TRI_ASSERT(res.second <= atMost);
-
-  return res;
-}
-
-template <BlockPassthrough passBlocksThrough>
 bool SingleRowFetcher<passBlocksThrough>::fetchBlockIfNecessary(size_t atMost) {
   // Fetch a new block iff necessary
   if (!indexIsValid()) {
