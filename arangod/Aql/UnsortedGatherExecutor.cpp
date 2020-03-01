@@ -86,7 +86,7 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
   auto skipped = size_t{0};
-  while (call.needSkipMore() && input.hasDataRow(currentDependency())) {
+  while (call.needSkipMore() && !done() && input.hasDataRow(currentDependency())) {
     auto [state, inputRow] = input.nextDataRow(currentDependency());
 
     call.didSkip(1);
