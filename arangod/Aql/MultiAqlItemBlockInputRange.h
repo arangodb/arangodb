@@ -49,6 +49,15 @@ class MultiAqlItemBlockInputRange {
   bool hasDataRow() const noexcept;
   bool hasDataRow(size_t const dependency) const noexcept;
 
+  /**
+   * @brief Get a reference to the range of a given dependency
+   * NOTE: Modifing this range will modify the state of this class as well
+   *
+   * @param dependency index of the dependency
+   * @return AqlItemBlockInputRange& Modifyable reference to the input data stream
+   */
+  auto rangeForDependency(size_t const dependency) -> AqlItemBlockInputRange&;
+
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow(size_t const dependency) const;
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(size_t const dependency);
   auto skipAll(size_t const dependency) noexcept -> std::size_t;

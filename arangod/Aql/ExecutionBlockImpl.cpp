@@ -135,7 +135,7 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
  */
 template <typename Executor>
 constexpr bool isNewStyleExecutor = is_one_of_v<
-    Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
+    Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>, ParallelUnsortedGatherExecutor,
     IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, DistinctCollectExecutor, IndexExecutor,
     EnumerateCollectionExecutor, SubqueryExecutor<true>, SubqueryExecutor<false>, CountCollectExecutor,
     CalculationExecutor<CalculationType::Condition>, CalculationExecutor<CalculationType::Reference>,
@@ -865,7 +865,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(
       useExecutor ==
           (is_one_of_v<
-              Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, KShortestPathsExecutor,
+              Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, KShortestPathsExecutor, ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
               HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
               ConstrainedSortExecutor, CountCollectExecutor, SubqueryExecutor<true>,
@@ -990,7 +990,7 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
                                                       OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> {
   if constexpr (isNewStyleExecutor<Executor>) {
-    if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor>) {
+    if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>) {
       return _executor.produceRows(input, output);
     } else if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
       // The SubqueryExecutor has it's own special handling outside.
@@ -1013,7 +1013,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
   if constexpr (isNewStyleExecutor<Executor>) {
     call.skippedRows = 0;
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
-      if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor>) {
+      if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>) {
         // If the executor has a method skipRowsRange, to skip outputs.
         // Every non-passthrough executor needs to implement this.
         auto res = _executor.skipRowsRange(inputRange, call);

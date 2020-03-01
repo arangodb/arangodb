@@ -39,10 +39,14 @@ ParallelUnsortedGatherExecutorInfos::ParallelUnsortedGatherExecutorInfos(
                     nrInOutRegisters, nrInOutRegisters,
                     std::move(registersToClear), std::move(registersToKeep)) {}
 
-ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher), _numberDependencies(0), _currentDependency(0), _skipped(0) {}
+ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher&, Infos& infos) {}
 
 ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
+
+auto ParallelUnsortedGatherExecutor::upstreamCall(AqlCall const& clientCall) const
+    noexcept -> AqlCall {
+  return clientCall;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Guarantees requiredby this this block:
@@ -58,117 +62,74 @@ ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-std::pair<ExecutionState, NoStats> ParallelUnsortedGatherExecutor::produceRows(OutputAqlItemRow& output) {
-  initDependencies();
-  
-  ExecutionState state;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  
-  size_t x;
-  for (x = 0; x < _numberDependencies; ++x) {
-    size_t i = (_currentDependency + x) % _numberDependencies;
-  
-    if (_upstream[i] == ExecutionState::DONE) {
-      continue;
-    }
-    
-    size_t tmp = 0;
-    
-    state = ExecutionState::HASMORE;
-    while (!output.isFull() && state == ExecutionState::HASMORE) {
-      std::tie(state, inputRow) = _fetcher.fetchRowForDependency(i, output.numRowsLeft() /*atMost*/);
-      if (inputRow) {
-        output.copyRow(inputRow);
-        TRI_ASSERT(output.produced());
+auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
+                                                 OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
+  // Illegal dependency, on purpose to trigger asserts
+  size_t waitingDep = input.numberDependencies();
+  for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
+    while (!output.isFull()) {
+      auto [state, row] = input.nextDataRow(dep);
+      if (row) {
+        output.copyRow(row);
         output.advanceRow();
-        tmp++;
-      }
-    }
-    
-    _upstream[i] = state;
-    if (output.isFull()) {
-      break;
-    }
-  }
-  _currentDependency = x;
-  
-  NoStats stats;
-  
-  // fix assert in ExecutionBlockImpl<E>::getSomeWithoutTrace
-  if (output.isFull()) {
-    return {ExecutionState::HASMORE, stats};
-  }
-  
-  size_t numWaiting = 0;
-  for (x = 0; x < _numberDependencies; ++x) {
-    if (_upstream[x] == ExecutionState::HASMORE) {
-      return {ExecutionState::HASMORE, stats};
-    } else if (_upstream[x] == ExecutionState::WAITING) {
-      numWaiting++;
-    }
-  }
-  if (numWaiting > 0) {
-    return {ExecutionState::WAITING, stats};
-  }
-  
-  TRI_ASSERT(std::all_of(_upstream.begin(), _upstream.end(), [](auto const& s) { return s == ExecutionState::DONE; } ));
-  return {ExecutionState::DONE, stats};
-}
-
-std::tuple<ExecutionState, ParallelUnsortedGatherExecutor::Stats, size_t>
-ParallelUnsortedGatherExecutor::skipRows(size_t const toSkip) {
-  initDependencies();
-  TRI_ASSERT(_skipped <= toSkip);
-  
-  ExecutionState state = ExecutionState::HASMORE;
-  while (_skipped < toSkip) {
-    
-    const size_t i = _currentDependency;
-    if (_upstream[i] == ExecutionState::DONE) {
-      if (std::all_of(_upstream.begin(), _upstream.end(),
-                      [](auto s) { return s == ExecutionState::DONE; })) {
-         state = ExecutionState::DONE;
-         break;
-       }
-      _currentDependency = (i + 1) % _numberDependencies;
-       continue;
-     }
-    
-    TRI_ASSERT(_skipped <= toSkip);
-
-    size_t skippedNow;
-    std::tie(state, skippedNow) = _fetcher.skipRowsForDependency(i, toSkip - _skipped);
-    _upstream[i] = state;
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(skippedNow == 0);
-      return {ExecutionState::WAITING, NoStats{}, 0};
-    }
-    _skipped += skippedNow;
-    
-    if (_upstream[i] == ExecutionState::DONE) {
-      if (std::all_of(_upstream.begin(), _upstream.end(),
-                      [](auto s) { return s == ExecutionState::DONE; })) {
+      } else {
+        // This output did not produce anything
+        if (state == ExecutorState::HASMORE) {
+          waitingDep = dep;
+        }
         break;
       }
-       _currentDependency = (i + 1) % _numberDependencies;
-       continue;
-     }
+    }
   }
-  
-  size_t skipped = _skipped;
-  _skipped = 0;
-
-  TRI_ASSERT(skipped <= toSkip);
-  return {state, NoStats{}, skipped};
+  if (input.isDone()) {
+    // We cannot have one that we are waiting on, if we are done.
+    TRI_ASSERT(waitingDep == input.numberDependencies());
+    return {ExecutorState::DONE, NoStats{}, AqlCall{}, waitingDep};
+  }
+  return {ExecutorState::HASMORE, NoStats{}, upstreamCall(output.getClientCall()), waitingDep};
 }
 
-void ParallelUnsortedGatherExecutor::initDependencies() {
-  if (_numberDependencies == 0) {
-    // We need to initialize the dependencies once, they are injected
-    // after the fetcher is created.
-    _numberDependencies = _fetcher.numberDependencies();
-    TRI_ASSERT(_numberDependencies > 0);
-    _upstream.resize(_numberDependencies, ExecutionState::HASMORE);
-    TRI_ASSERT(std::all_of(_upstream.begin(), _upstream.end(), [](auto const& s) { return s == ExecutionState::HASMORE; } ));
+auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
+                                                   AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
+  size_t waitingDep = input.numberDependencies();
+  for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
+    auto& range = input.rangeForDependency(dep);
+    while (call.needSkipMore()) {
+      if (!range.hasDataRow() && range.skippedInFlight() == 0) {
+        // Consumed this range,
+        // consume the next one
+
+        // Guarantee:
+        // While in offsetPhase, we will only send requests to the first
+        // NON-DONE dependency.
+        if (range.upstreamState() == ExecutorState::HASMORE &&
+            waitingDep == input.numberDependencies()) {
+          waitingDep = dep;
+        }
+        break;
+      }
+      if (range.hasDataRow()) {
+        // We overfetched, skipLocally
+        // By gurantee we will only see data, if
+        // we are past the offset phase.
+        TRI_ASSERT(call.getOffset() == 0);
+      } else {
+        if (call.getOffset() > 0) {
+          call.didSkip(range.skip(call.getOffset()));
+        } else {
+          // Fullcount Case
+          call.didSkip(range.skipAll());
+        }
+      }
+    }
   }
+  if (input.isDone()) {
+    // We cannot have one that we are waiting on, if we are done.
+    TRI_ASSERT(waitingDep == input.numberDependencies());
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}, waitingDep};
+  }
+  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
+          upstreamCall(call), waitingDep};
 }

@@ -65,6 +65,11 @@ auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
                      });
 }
 
+auto MultiAqlItemBlockInputRange::rangeForDependency(size_t const dependency)
+    -> AqlItemBlockInputRange& {
+  return _inputs.at(dependency);
+}
+
 auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
   TRI_ASSERT(dependency < _inputs.size());
