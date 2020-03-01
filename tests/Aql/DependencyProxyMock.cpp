@@ -25,6 +25,8 @@
 
 #include "gtest/gtest.h"
 
+#include "Aql/SkipResult.h"
+
 #include <velocypack/Options.h>
 
 namespace arangodb::tests::aql {
@@ -130,10 +132,11 @@ DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::
 }
 
 template <BlockPassthrough passBlocksThrough>
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 DependencyProxyMock<passBlocksThrough>::execute(AqlCallStack& stack) {
   TRI_ASSERT(_block != nullptr);
-  return {arangodb::aql::ExecutionState::DONE, 0, _block};
+  SkipResult res{};
+  return {arangodb::aql::ExecutionState::DONE, res, _block};
 }
 
 template <BlockPassthrough passBlocksThrough>

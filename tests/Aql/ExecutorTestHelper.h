@@ -387,7 +387,7 @@ struct ExecutorTestHelper {
 
     if (!loop) {
       auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
-      skippedTotal = skipped;
+      skippedTotal = skipped.getSkipCount();
       finalState = state;
       if (result != nullptr) {
         allResults.add(result);
@@ -397,8 +397,8 @@ struct ExecutorTestHelper {
         auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
         finalState = state;
         auto call = _callStack.popCall();
-        skippedTotal += skipped;
-        call.didSkip(skipped);
+        skippedTotal += skipped.getSkipCount();
+        call.didSkip(skipped.getSkipCount());
         if (result != nullptr) {
           call.didProduce(result->size());
           allResults.add(result);

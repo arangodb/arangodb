@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "Aql/SkipResult.h"
+#include "Cluster/ResultT.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -82,7 +83,9 @@ TEST_F(SkipResultTest, serialize_deserialize_empty) {
   SkipResult original{};
   VPackBuilder builder;
   original.toVelocyPack(builder);
-  auto testee = SkipResult::fromVelocyPack(builder.slice());
+  auto maybeTestee = SkipResult::fromVelocyPack(builder.slice());
+  ASSERT_FALSE(maybeTestee.fail());
+  auto testee = maybeTestee.get();
   EXPECT_EQ(testee.nothingSkipped(), original.nothingSkipped());
   EXPECT_EQ(testee.getSkipCount(), original.getSkipCount());
 }
@@ -92,12 +95,14 @@ TEST_F(SkipResultTest, serialize_deserialize_with_count) {
   original.didSkip(6);
   VPackBuilder builder;
   original.toVelocyPack(builder);
-  auto testee = SkipResult::fromVelocyPack(builder.slice());
+  auto maybeTestee = SkipResult::fromVelocyPack(builder.slice());
+  ASSERT_FALSE(maybeTestee.fail());
+  auto testee = maybeTestee.get();
   EXPECT_EQ(testee.nothingSkipped(), original.nothingSkipped());
   EXPECT_EQ(testee.getSkipCount(), original.getSkipCount());
 }
 
-TEST_F(SkipResult, can_be_added) {
+TEST_F(SkipResultTest, can_be_added) {
   SkipResult a{};
   a.didSkip(6);
   SkipResult b{};

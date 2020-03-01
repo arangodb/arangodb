@@ -159,7 +159,7 @@ TEST_P(RandomOrderTest, all_clients_should_get_the_block) {
     AqlCallStack stack{call};
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     ValidateBlocksAreEqual(block, inputBlock);
   }
 }
@@ -179,7 +179,7 @@ TEST_P(RandomOrderTest, all_clients_can_skip_the_block) {
     AqlCallStack stack{call};
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 3);
+    EXPECT_EQ(skipped.getSkipCount(), 3);
     EXPECT_EQ(block, nullptr);
   }
 }
@@ -201,7 +201,7 @@ TEST_P(RandomOrderTest, all_clients_can_fullcount_the_block) {
     AqlCallStack stack{call};
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 2);
+    EXPECT_EQ(skipped.getSkipCount(), 2);
     ValidateBlocksAreEqual(block, expectedBlock);
   }
 }
@@ -223,7 +223,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
       AqlCallStack stack{call};
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       ValidateBlocksAreEqual(block, inputBlock);
     } else if (client == "b") {
       AqlCall call{};
@@ -232,7 +232,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
       AqlCallStack stack{call};
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 2);
+      EXPECT_EQ(skipped.getSkipCount(), 2);
       auto expectedBlock = buildBlock<1>(itemBlockManager, {{2}, {3}});
       ValidateBlocksAreEqual(block, expectedBlock);
     } else if (client == "c") {
@@ -242,7 +242,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
         AqlCallStack stack{call};
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
-        EXPECT_EQ(skipped, 0);
+        EXPECT_EQ(skipped.getSkipCount(), 0);
         auto expectedBlock = buildBlock<1>(itemBlockManager, {{0}, {1}});
         ValidateBlocksAreEqual(block, expectedBlock);
       }
@@ -254,7 +254,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
         AqlCallStack stack{call};
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
-        EXPECT_EQ(skipped, 1);
+        EXPECT_EQ(skipped.getSkipCount(), 1);
         auto expectedBlock = buildBlock<1>(itemBlockManager, {{3}, {4}});
         ValidateBlocksAreEqual(block, expectedBlock);
       }
@@ -283,7 +283,7 @@ TEST_P(RandomOrderTest, get_does_not_jump_over_shadowrows) {
     AqlCallStack stack{call};
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::HASMORE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     ValidateBlocksAreEqual(block, firstExpectedBlock);
   }
 
@@ -295,7 +295,7 @@ TEST_P(RandomOrderTest, get_does_not_jump_over_shadowrows) {
     AqlCallStack stack{call};
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     ValidateBlocksAreEqual(block, secondExpectedBlock);
   }
 }
@@ -321,7 +321,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_produce) {
     AqlCallStack stack{call};
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::HASMORE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     ValidateBlocksAreEqual(block, firstExpectedBlock);
   }
 
@@ -333,7 +333,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_produce) {
     AqlCallStack stack{call};
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     ValidateBlocksAreEqual(block, secondExpectedBlock);
   }
 }
@@ -360,7 +360,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_skip) {
     AqlCallStack stack{call};
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::HASMORE);
-    EXPECT_EQ(skipped, 2);
+    EXPECT_EQ(skipped.getSkipCount(), 2);
     ValidateBlocksAreEqual(block, firstExpectedBlock);
   }
 
@@ -372,7 +372,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_skip) {
     AqlCallStack stack{call};
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     ValidateBlocksAreEqual(block, secondExpectedBlock);
   }
 }
@@ -398,7 +398,7 @@ TEST_P(RandomOrderTest, handling_of_consecutive_shadow_rows) {
       AqlCallStack stack{call};
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::HASMORE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       auto expected =
           buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}}, {{2, 0}, {3, 1}});
       ValidateBlocksAreEqual(block, expected);
@@ -409,7 +409,7 @@ TEST_P(RandomOrderTest, handling_of_consecutive_shadow_rows) {
       AqlCallStack stack{call};
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       auto expected = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{0, 0}, {1, 1}});
       ValidateBlocksAreEqual(block, expected);
     }
@@ -434,7 +434,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       AqlCallStack stack{call};
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::HASMORE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       auto expectedBlock =
           buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}}, {{3, 0}});
       ValidateBlocksAreEqual(block, expectedBlock);
@@ -445,7 +445,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       AqlCallStack stack{call};
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::HASMORE);
-      EXPECT_EQ(skipped, 2);
+      EXPECT_EQ(skipped.getSkipCount(), 2);
       auto expectedBlock = buildBlock<1>(itemBlockManager, {{2}, {3}}, {{1, 0}});
       ValidateBlocksAreEqual(block, expectedBlock);
     } else if (client == "c") {
@@ -455,7 +455,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
         AqlCallStack stack{call};
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
-        EXPECT_EQ(skipped, 0);
+        EXPECT_EQ(skipped.getSkipCount(), 0);
         auto expectedBlock = buildBlock<1>(itemBlockManager, {{0}, {1}});
         ValidateBlocksAreEqual(block, expectedBlock);
       }
@@ -467,7 +467,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
         AqlCallStack stack{call};
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
-        EXPECT_EQ(skipped, 1);
+        EXPECT_EQ(skipped.getSkipCount(), 1);
         auto expectedBlock = buildBlock<1>(itemBlockManager, {{3}}, {{0, 0}});
         ValidateBlocksAreEqual(block, expectedBlock);
       }
@@ -484,7 +484,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       AqlCallStack stack{call};
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       auto expectedBlock = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{1, 0}});
       ValidateBlocksAreEqual(block, expectedBlock);
     } else if (client == "b") {
@@ -493,7 +493,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       AqlCallStack stack{call};
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       auto expectedBlock = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{1, 0}});
       ValidateBlocksAreEqual(block, expectedBlock);
     } else if (client == "c") {
@@ -503,7 +503,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
         AqlCallStack stack{call};
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::DONE);
-        EXPECT_EQ(skipped, 1);
+        EXPECT_EQ(skipped.getSkipCount(), 1);
         auto expectedBlock = buildBlock<1>(itemBlockManager, {{5}}, {{0, 0}});
         ValidateBlocksAreEqual(block, expectedBlock);
       }
@@ -579,7 +579,7 @@ TEST_F(ScatterExecutionBlockTest, any_ordering_of_calls_is_fine) {
       } else {
         EXPECT_EQ(state, ExecutionState::HASMORE);
       }
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       ASSERT_TRUE(callNr < blocks.size());
       ValidateBlocksAreEqual(block, blocks[callNr]);
       callNr++;

@@ -61,5 +61,7 @@ class SkipResult {
 
 auto operator+=(SkipResult& a, SkipResult const& b) noexcept -> SkipResult&;
 
+auto operator==(SkipResult const& a, SkipResult const& b) noexcept -> bool;
+
 }  // namespace arangodb::aql
 #endif

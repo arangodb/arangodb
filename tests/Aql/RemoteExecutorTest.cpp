@@ -71,9 +71,7 @@ class DeSerializeAqlCallTest : public ::testing::TestWithParam<AqlCall> {
  public:
   DeSerializeAqlCallTest() = default;
 
-  void SetUp() override {
-    aqlCall = GetParam();
-  }
+  void SetUp() override { aqlCall = GetParam(); }
 
  protected:
   AqlCall aqlCall{};
@@ -118,20 +116,18 @@ class DeSerializeAqlCallStackTest : public ::testing::TestWithParam<AqlCallStack
  public:
   DeSerializeAqlCallStackTest() = default;
 
-  void SetUp() override {
-    aqlCallStack = GetParam();
-  }
+  void SetUp() override { aqlCallStack = GetParam(); }
 
  protected:
   AqlCallStack aqlCallStack{AqlCall{}};
 };
 
 auto const testingAqlCallStacks = ::testing::ValuesIn(std::array{
-  AqlCallStack{AqlCall{}},
-  AqlCallStack{AqlCall{3, false, AqlCall::Infinity{}}},
-  AqlCallStack{AqlCallStack{AqlCall{}}, AqlCall{3, false, AqlCall::Infinity{}}},
-  AqlCallStack{AqlCallStack{AqlCallStack{AqlCall{1}}, AqlCall{2}}, AqlCall{3}},
-  AqlCallStack{AqlCallStack{AqlCallStack{AqlCall{3}}, AqlCall{2}}, AqlCall{1}},
+    AqlCallStack{AqlCall{}},
+    AqlCallStack{AqlCall{3, false, AqlCall::Infinity{}}},
+    AqlCallStack{AqlCallStack{AqlCall{}}, AqlCall{3, false, AqlCall::Infinity{}}},
+    AqlCallStack{AqlCallStack{AqlCallStack{AqlCall{1}}, AqlCall{2}}, AqlCall{3}},
+    AqlCallStack{AqlCallStack{AqlCallStack{AqlCall{3}}, AqlCall{2}}, AqlCall{1}},
 });
 
 TEST_P(DeSerializeAqlCallStackTest, testSuite) {
@@ -149,37 +145,43 @@ TEST_P(DeSerializeAqlCallStackTest, testSuite) {
     return ResultT<AqlCallStack>::error(-1);
   });
 
-  ASSERT_TRUE(maybeDeSerializedCallStack.ok()) << maybeDeSerializedCallStack.errorMessage();
+  ASSERT_TRUE(maybeDeSerializedCallStack.ok())
+      << maybeDeSerializedCallStack.errorMessage();
 
   auto const deSerializedCallStack = *maybeDeSerializedCallStack;
 
   ASSERT_EQ(aqlCallStack, deSerializedCallStack);
 }
 
-INSTANTIATE_TEST_CASE_P(DeSerializeAqlCallStackTestVariations, DeSerializeAqlCallStackTest, testingAqlCallStacks);
-
+INSTANTIATE_TEST_CASE_P(DeSerializeAqlCallStackTestVariations,
+                        DeSerializeAqlCallStackTest, testingAqlCallStacks);
 
 class DeSerializeAqlExecuteResultTest : public ::testing::TestWithParam<AqlExecuteResult> {
  public:
   DeSerializeAqlExecuteResultTest() = default;
 
-  void SetUp() override {
-    aqlExecuteResult = GetParam();
-  }
+  void SetUp() override { aqlExecuteResult = GetParam(); }
 
  protected:
-  AqlExecuteResult aqlExecuteResult{ExecutionState::DONE, 0, nullptr};
+  AqlExecuteResult aqlExecuteResult{ExecutionState::DONE, SkipResult{}, nullptr};
 };
 
 ResourceMonitor resourceMonitor{};
 AqlItemBlockManager manager{&resourceMonitor, SerializationFormat::SHADOWROWS};
 
+auto MakeSkipResult(size_t const i) -> SkipResult {
+  SkipResult res{};
+  res.didSkip(i);
+  return res;
+}
+
 auto const testingAqlExecuteResults = ::testing::ValuesIn(std::array{
-    AqlExecuteResult{ExecutionState::DONE, 0, nullptr},
-    AqlExecuteResult{ExecutionState::HASMORE, 0, nullptr},
-    AqlExecuteResult{ExecutionState::HASMORE, 4, nullptr},
-    AqlExecuteResult{ExecutionState::DONE, 0, buildBlock<1>(manager, {{42}})},
-    AqlExecuteResult{ExecutionState::HASMORE, 3, buildBlock<2>(manager, {{3, 42}, {4, 41}})},
+    AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), nullptr},
+    AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(0), nullptr},
+    AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(4), nullptr},
+    AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), buildBlock<1>(manager, {{42}})},
+    AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(3),
+                     buildBlock<2>(manager, {{3, 42}, {4, 41}})},
 });
 
 TEST_P(DeSerializeAqlExecuteResultTest, testSuite) {
@@ -203,7 +205,8 @@ TEST_P(DeSerializeAqlExecuteResultTest, testSuite) {
 
   ASSERT_EQ(aqlExecuteResult.state(), deSerializedAqlExecuteResult.state());
   ASSERT_EQ(aqlExecuteResult.skipped(), deSerializedAqlExecuteResult.skipped());
-  ASSERT_EQ(aqlExecuteResult.block() == nullptr, deSerializedAqlExecuteResult.block() == nullptr);
+  ASSERT_EQ(aqlExecuteResult.block() == nullptr,
+            deSerializedAqlExecuteResult.block() == nullptr);
   if (aqlExecuteResult.block() != nullptr) {
     ASSERT_EQ(*aqlExecuteResult.block(), *deSerializedAqlExecuteResult.block())
         << "left: " << blockToString(aqlExecuteResult.block())
@@ -212,6 +215,7 @@ TEST_P(DeSerializeAqlExecuteResultTest, testSuite) {
   ASSERT_EQ(aqlExecuteResult, deSerializedAqlExecuteResult);
 }
 
-INSTANTIATE_TEST_CASE_P(DeSerializeAqlExecuteResultTestVariations, DeSerializeAqlExecuteResultTest, testingAqlExecuteResults);
+INSTANTIATE_TEST_CASE_P(DeSerializeAqlExecuteResultTestVariations,
+                        DeSerializeAqlExecuteResultTest, testingAqlExecuteResults);
 
 }  // namespace arangodb::tests::aql

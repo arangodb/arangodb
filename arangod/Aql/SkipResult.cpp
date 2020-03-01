@@ -70,3 +70,7 @@ auto arangodb::aql::operator+=(SkipResult& a, SkipResult const& b) noexcept -> S
   a.didSkip(b.getSkipCount());
   return a;
 }
+
+auto arangodb::aql::operator==(SkipResult const& a, SkipResult const& b) noexcept -> bool {
+  return a.getSkipCount() == b.getSkipCount();
+}
