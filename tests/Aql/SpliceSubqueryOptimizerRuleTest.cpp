@@ -813,6 +813,46 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
   verifyQueryResult(query, expected->slice());
 }
 
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_skip_nodes) {
+  auto query = R"aql(
+    FOR k IN 1..10
+      LET sub1 = (
+        FOR j IN 1..10
+        LET sub2 = (
+          FOR i IN 1..4
+          LIMIT 2,10
+          RETURN i
+        )
+        LIMIT 2,10
+        RETURN [j, sub2]
+      )
+      LIMIT 3, 10
+      RETURN [k, sub1])aql";
+  verifySubquerySplicing(query, 2);
+
+  VPackBuilder builder;
+  builder.openArray();
+  for (size_t k = 4; k <= 10; ++k) {
+    builder.openArray();
+    builder.add(VPackValue(k));
+    builder.openArray();
+    for (size_t j = 3; j <= 10; ++j) {
+      builder.openArray();
+      builder.add(VPackValue(j));
+      builder.openArray();
+      for (size_t i = 3; i <= 4; ++i) {
+        builder.add(VPackValue(i));
+      }
+      builder.close();
+      builder.close();
+    }
+    builder.close();
+    builder.close();
+  }
+  builder.close();
+  verifyQueryResult(query, builder.slice());
+}
+
 // TODO Check isInSplicedSubquery
 // TODO Test cluster rules
 
