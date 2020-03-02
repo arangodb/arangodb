@@ -126,9 +126,6 @@ class TestLambdaSkipExecutor;
 }  // namespace arangodb
 #endif
 
-template <typename T, typename... Es>
-constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
-
 /*
  * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
@@ -1230,12 +1227,23 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
       //       to fit all inputs, in particular the one executed below
       TRI_ASSERT(dependency < _dependencies.size());
       _lastRange.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
-
-      auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, stack);
-
-      _lastRange.setDependency(dependency, range);
-
-      return {state, skipped, _lastRange};
+      if constexpr (!isParallelExecutor) {
+        auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, stack);
+        _lastRange.setDependency(dependency, range);
+        return {state, skipped, _lastRange};
+      } else {
+        _callsInFlight.resize(_dependencyProxy.numberDependencies());
+        if (!_callsInFlight[dependency].has_value()) {
+          _callsInFlight[dependency] = stack;
+        }
+        TRI_ASSERT(_callsInFlight[dependency].has_value());
+        auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, _callsInFlight[dependency].value());
+        if (state != ExecutionState::WAITING) {
+          _callsInFlight[dependency] = std::nullopt;
+        }
+        _lastRange.setDependency(dependency, range);
+        return {state, skipped, _lastRange};
+      }
     } else {
       return _rowFetcher.execute(stack);
     }
