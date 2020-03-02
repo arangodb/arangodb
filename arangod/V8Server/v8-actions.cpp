@@ -643,7 +643,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       response->setResponseCode(static_cast<rest::ResponseCode>(foxxcode));
     } else {
       response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
-      LOG_TOPIC("x7f45", ERR, Logger::V8)
+      LOG_TOPIC("37d37", ERR, Logger::V8)
         << "invalid http status code specified " << foxxcode
         << " diverting to 500";
     }
