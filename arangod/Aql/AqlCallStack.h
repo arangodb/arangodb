@@ -92,6 +92,8 @@ class AqlCallStack {
 
   void toVelocyPack(velocypack::Builder& builder) const;
 
+  auto is36Compatible() const noexcept -> bool { return _compatibilityMode3_6; }
+
  private:
   explicit AqlCallStack(std::stack<AqlCall>&& operations);
 
