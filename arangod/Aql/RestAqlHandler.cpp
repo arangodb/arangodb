@@ -734,6 +734,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       generateError(std::move(maybeExecuteCall).result());
       return RestStatus::DONE;
     }
+    TRI_IF_FAILURE("RestAqlHandler::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     auto& executeCall = maybeExecuteCall.get();
 
     auto items = SharedAqlItemBlockPtr{};
