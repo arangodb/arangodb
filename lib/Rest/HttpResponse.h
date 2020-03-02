@@ -69,7 +69,7 @@ class HttpResponse : public GeneralResponse {
 
   void sealBody() {
     _bodySize = _body->length();
-  };
+  }
 
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
