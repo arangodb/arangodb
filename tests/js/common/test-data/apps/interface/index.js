@@ -83,7 +83,7 @@ router.put('/interface-echo', function (req, res) {
   res.set('request-type', 'PUT_RAW');
 });
 
-router.delete('/interface-echo', function (req, res) {
+router.delete('/interface-echo', function (req, res){
   let postBuffer = req._raw.requestBody;
   if (postBuffer !== JSON.stringify({pixelStr}) ) {
     res.throw(500, {
@@ -108,7 +108,7 @@ router.delete('/interface-echo', function (req, res) {
   res.write({pixelStr});
   res.set('test', 'header');
   res.set('request-type', 'DELETE_RAW');
-});
+}).body("I can haz body") ;
 
 router.patch('/interface-echo', function (req, res) {
   let postBuffer = req._raw.requestBody;
@@ -235,7 +235,7 @@ router.delete('/interface-echo-bin', function (req, res) {
   res.set('content-type', binaryMime);
   res.set('test', 'header');
   res.set('request-type', 'DELETE_RAW');
-});
+}).body("I can haz body") ;
 
 router.patch('/interface-echo-bin', function (req, res) {
   let postBuffer = new Buffer(req._raw.rawRequestBody);
@@ -365,7 +365,7 @@ router.delete('/interface-echo-str', function (req, res) {
   res.set('content-type', textMime);
   res.set('test', 'header');
   res.set('request-type', 'DELETE_RAW');
-});
+}).body("I can haz body") ;
 
 router.patch('/interface-echo-str', function (req, res) {
   let postBuffer = new Buffer(req._raw.rawRequestBody);

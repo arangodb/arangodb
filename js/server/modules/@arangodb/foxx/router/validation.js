@@ -56,6 +56,7 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
   let body = req.body;
 
   if (!def.contentTypes) {
+     assert(!body || !body.length, 'Unexpected request body');
     return null;
   }
 
