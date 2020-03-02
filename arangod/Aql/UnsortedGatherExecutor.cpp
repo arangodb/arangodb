@@ -88,7 +88,6 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   while (call.needSkipMore() && !done()) {
     if (input.hasDataRow(currentDependency())) {
       auto [state, inputRow] = input.nextDataRow(currentDependency());
-
       call.didSkip(1);
 
       if (state == ExecutorState::DONE) {
@@ -102,6 +101,10 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
         break;
       }
     }
+  }
+
+  while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+    advanceDependency();
   }
 
   if (done()) {
