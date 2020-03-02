@@ -138,7 +138,7 @@ using namespace arangodb::application_features;
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    CrashHandler::installCrashHandler();
+    //CrashHandler::installCrashHandler();
     std::string name = context.binaryName();
 
     auto options = std::make_shared<arangodb::options::ProgramOptions>(
