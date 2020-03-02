@@ -576,9 +576,8 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
 
     nghttp2_data_provider *prd_ptr = nullptr, prd;
-    if (!res.generateBody()  ||
-        (res.generateBody() &&
-         ::expectResponseBody(static_cast<int>(res.responseCode())))
+    if (!res.generateBody() ||
+        ::expectResponseBody(static_cast<int>(res.responseCode()))
       ) {
       std::string len;
       len = std::to_string(res.bodySize());
