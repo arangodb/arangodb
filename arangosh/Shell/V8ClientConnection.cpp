@@ -1823,10 +1823,11 @@ again:
       std::vector<VPackSlice> const& slices = response->slices();
       if (!slices.empty()) {
         result->Set(context,
-                    TRI_V8_ASCII_STRING(isolate, "body"),
+                    TRI_V8_ASCII_STRING(isolate, "parsedBody"),
                     TRI_VPackToV8(isolate, slices[0])).FromMaybe(false);
       }
-    } else if (responseBody.size() > 0) {
+    }
+    if (responseBody.size() > 0) {
       const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
       v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
       result->Set(context,

@@ -98,10 +98,10 @@ function foxxInterfaceSuite () {
                                     {
                                       'content-type': jsonMime
                                     });
-        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.body });
-        assertTrue(typeof res.body === 'object');
+        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.parsedBody });
+        assertTrue(typeof res.parsedBody === 'object');
         
-        assertEqual(JSON.stringify(res.body), JSON.stringify({ pixelStr }));
+        assertEqual(JSON.stringify(res.parsedBody), JSON.stringify({ pixelStr }));
         assertEqual(res.headers['content-length'], vpackObjectSize);
         assertEqual(res.headers['content-type'], vpackMime);
         assertEqual(res.headers['test'], 'header');
@@ -110,10 +110,10 @@ function foxxInterfaceSuite () {
     },
     testFoxxInterfaceGet: function () {
       let res = arango.GET_RAW(url);
-      assertEqual(res.code, 200, res.body);
-      assertTrue(typeof res.body === 'object');
+      assertEqual(res.code, 200, res.parsedBody);
+      assertTrue(typeof res.parsedBody === 'object');
       
-      assertEqual(JSON.stringify(res.body), JSON.stringify({ pixelStr }));
+      assertEqual(JSON.stringify(res.parsedBody), JSON.stringify({ pixelStr }));
       assertEqual(res.headers['content-length'], vpackObjectSize);
       assertEqual(res.headers['content-type'], vpackMime);
       assertEqual(res.headers['test'], 'header');
@@ -121,7 +121,7 @@ function foxxInterfaceSuite () {
     },
     testFoxxInterfaceHead: function () {
       let res = arango.HEAD_RAW(url);
-      assertEqual(res.code, 200, res.body);
+      assertEqual(res.code, 200, res.parsedBody);
       assertUndefined(res.body);
       assertEqual(res.headers['content-length'], vpackObjectSize);
       assertEqual(res.headers['content-type'], vpackMime);
@@ -140,7 +140,7 @@ function foxxInterfaceSuite () {
                                     {
                                       'content-type': binaryMime
                                     });
-        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.body });
+        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.parsedBody });
         assertTrue(res.body instanceof Buffer);
         
         let respBody = new Buffer(res.body);
@@ -153,7 +153,7 @@ function foxxInterfaceSuite () {
     },
     testFoxxInterfaceGetBinary: function () {
       let res = arango.GET_RAW(binUrl);
-      assertEqual(res.code, 200, res.body);
+      assertEqual(res.code, 200, res.parsedBody);
       assertTrue(res.body instanceof Buffer);
       
       let respBody = new Buffer(res.body);
@@ -165,7 +165,7 @@ function foxxInterfaceSuite () {
     },
     testFoxxInterfaceHeadBinary: function () {
       let res = arango.HEAD_RAW(binUrl);
-      assertEqual(res.code, 200, res.body);
+      assertEqual(res.code, 200, res.parsedBody);
       assertTrue(res.body instanceof Buffer);
       assertEqual(res.body.length, 0);
       
@@ -187,7 +187,7 @@ function foxxInterfaceSuite () {
                                     {
                                       'content-type': textMime
                                     });
-        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.body });
+        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.parsedBody });
         assertTrue(typeof res.body === 'string');
 
         assertEqual(res.body, pixelStr, "whether the server sent us a proper one pixel gif");
@@ -199,7 +199,7 @@ function foxxInterfaceSuite () {
     },
     testFoxxInterfaceGetText: function () {
       let res = arango.GET_RAW(txtUrl);
-      assertEqual(res.code, 200, res.body);
+      assertEqual(res.code, 200, res.parsedBody);
       assertTrue(typeof res.body === 'string');
 
       assertEqual(res.body, pixelStr, "whether the server sent us a proper one pixel gif");
@@ -210,7 +210,7 @@ function foxxInterfaceSuite () {
     },
     testFoxxInterfaceHeadText: function () {
       let res = arango.HEAD_RAW(txtUrl);
-      assertEqual(res.code, 200, res.body);
+      assertEqual(res.code, 200, res.parsedBody);
       assertUndefined(res.body);
       assertEqual(res.headers['content-length'], pixelStr.length);
       assertEqual(res.headers['content-type'], textMime);
