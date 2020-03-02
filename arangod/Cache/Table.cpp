@@ -124,8 +124,10 @@ Table::BucketLocker::BucketLocker(BucketLocker&& other) noexcept {
 Table::BucketLocker::~BucketLocker() { release(); }
 
 Table::BucketLocker& Table::BucketLocker::operator=(BucketLocker&& other) noexcept {
-  release();
-  steal(std::move(other));
+  if (this != &other) {
+    release();
+    steal(std::move(other));
+  }
   return *this;
 }
 
@@ -263,21 +265,24 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(std::uint32_t index) {
   std::uint32_t mask;
   std::uint32_t shift;
 
-  SpinLocker guard(SpinLocker::Mode::Read, _lock);
-  std::shared_ptr<Table> source = _auxiliary->shared_from_this();
-  TRI_ASSERT(_auxiliary.get() != nullptr);
-  if (_logSize > _auxiliary->_logSize) {
-    std::uint32_t diff = _logSize - _auxiliary->_logSize;
-    base = &(_auxiliary->_buckets[index >> diff]);
-    size = 1;
-    mask = 0;
-    shift = 0;
-  } else {
-    std::uint32_t diff = _auxiliary->_logSize - _logSize;
-    base = &(_auxiliary->_buckets[index << diff]);
-    size = static_cast<std::uint64_t>(1) << diff;
-    mask = (static_cast<std::uint32_t>(size - 1) << _auxiliary->_shift);
-    shift = _auxiliary->_shift;
+  std::shared_ptr<Table> source = nullptr;
+  {
+    SpinLocker guard(SpinLocker::Mode::Read, _lock);
+    source = _auxiliary->shared_from_this();
+    TRI_ASSERT(_auxiliary.get() != nullptr);
+    if (_logSize > _auxiliary->_logSize) {
+      std::uint32_t diff = _logSize - _auxiliary->_logSize;
+      base = &(_auxiliary->_buckets[index >> diff]);
+      size = 1;
+      mask = 0;
+      shift = 0;
+    } else {
+      std::uint32_t diff = _auxiliary->_logSize - _logSize;
+      base = &(_auxiliary->_buckets[index << diff]);
+      size = static_cast<std::uint64_t>(1) << diff;
+      mask = (static_cast<std::uint32_t>(size - 1) << _auxiliary->_shift);
+      shift = _auxiliary->_shift;
+    }
   }
 
   return std::make_unique<Subtable>(source, base, size, mask, shift);

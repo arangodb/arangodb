@@ -229,21 +229,19 @@ void Cache::requestMigrate(std::uint32_t requestedLogSize) {
   }
 
   SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
-  if (taskGuard.isLocked()) {
-    if (std::chrono::steady_clock::now().time_since_epoch().count() >
-        _migrateRequestTime.load()) {
-      cache::Table* table = _table.load(std::memory_order_relaxed);
-      TRI_ASSERT(table != nullptr);
+  if (std::chrono::steady_clock::now().time_since_epoch().count() >
+      _migrateRequestTime.load()) {
+    cache::Table* table = _table.load(std::memory_order_relaxed);
+    TRI_ASSERT(table != nullptr);
 
-      bool ok = false;
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-        ok = !_metadata.isMigrating() && (requestedLogSize != table->logSize());
-      }
-      if (ok) {
-        auto result = _manager->requestMigrate(this, requestedLogSize);
-        _migrateRequestTime.store(result.second.time_since_epoch().count());
-      }
+    bool ok = false;
+    {
+      SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+      ok = !_metadata.isMigrating() && (requestedLogSize != table->logSize());
+    }
+    if (ok) {
+      auto result = _manager->requestMigrate(this, requestedLogSize);
+      _migrateRequestTime.store(result.second.time_since_epoch().count());
     }
   }
 }

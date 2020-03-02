@@ -159,7 +159,7 @@ bool ReadWriteSpinLock::lockRead(std::size_t maxAttempts) noexcept {
 }
 
 void ReadWriteSpinLock::unlock() noexcept {
-  if (isLockedRead()) {
+  if (isLockedWrite()) {
     unlockWrite();
   } else {
     TRI_ASSERT(isLockedRead());
