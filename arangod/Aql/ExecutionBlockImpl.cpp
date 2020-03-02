@@ -1407,6 +1407,10 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding() -> ExecState
     // We still have shadowRows, we
     // need to forward them
     return ExecState::SHADOWROWS;
+  } else if (_outputItemRow->isFull()) {
+    // Fullfilled the call
+    // Need to return!
+    return ExecState::DONE;
   } else {
     if (didConsume) {
       // We did only consume the input
@@ -1979,10 +1983,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     }
 */
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-      TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() /*we inected a call*/);
-    } else {
-      TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() + 1 /*we took our call*/);
+    if (!stack.is36Compatible()) {
+      if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+        TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() /*we inected a call*/);
+      } else {
+        TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() + 1 /*we took our call*/);
+      }
     }
 #endif
 
