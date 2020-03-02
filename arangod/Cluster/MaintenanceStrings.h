@@ -29,6 +29,7 @@ namespace maintenance {
 
 constexpr char const* ACTIONS = "actions";
 constexpr char const* AGENCY = "agency";
+constexpr char const* CACHE_ENABLED = "cacheEnabled";
 constexpr char const* COLLECTION = "collection";
 constexpr char const* CREATE_COLLECTION = "CreateCollection";
 constexpr char const* CREATE_DATABASE = "CreateDatabase";

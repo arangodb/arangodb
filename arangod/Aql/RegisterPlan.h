@@ -28,7 +28,6 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/debugging.h"
 
 #include <memory>
 
@@ -102,10 +101,6 @@ struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = 1000;
-
-  /// @brief reserved register id for subquery depth. Needs to
-  ///        be present in all AqlItemMatrixes.
-  static constexpr RegisterId SUBQUERY_DEPTH_REGISTER = 0;
 };
 
 }  // namespace aql

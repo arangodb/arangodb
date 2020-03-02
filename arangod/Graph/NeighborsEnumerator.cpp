@@ -75,16 +75,8 @@ bool NeighborsEnumerator::next() {
       swapLastAndCurrentDepth();
       for (auto const& nextVertex : _lastDepth) {
         auto callback = [&](EdgeDocumentToken&& eid, VPackSlice other, size_t cursorId) {
-          if (_opts->hasEdgeFilter(_searchDepth, cursorId)) {
-            // execute edge filter
-            VPackSlice edge = other;
-            if (edge.isString()) {
-              edge = _opts->cache()->lookupToken(eid);
-            }
-            if (!_traverser->edgeMatchesConditions(edge, nextVertex, _searchDepth, cursorId)) {
-              // edge does not qualify
-              return;
-            }
+          if (!keepEdge(eid, other, nextVertex, _searchDepth, cursorId)) {
+            return;
           }
 
           // Counting should be done in readAll
