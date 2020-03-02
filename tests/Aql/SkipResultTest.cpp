@@ -200,6 +200,68 @@ TEST_F(SkipResultTest, equality) {
   }
 }
 
+TEST_F(SkipResultTest, merge_with_toplevel) {
+  SkipResult a{};
+  a.didSkip(12);
+  a.incrementSubquery();
+  a.didSkip(8);
+
+  SkipResult b{};
+  b.didSkip(9);
+  b.incrementSubquery();
+  b.didSkip(2);
+
+  a.merge(b, true);
+
+  SkipResult expected{};
+  expected.didSkip(12);
+  expected.didSkip(9);
+  expected.incrementSubquery();
+  expected.didSkip(8);
+  expected.didSkip(2);
+  EXPECT_EQ(a, expected);
+}
+
+TEST_F(SkipResultTest, merge_without_toplevel) {
+  SkipResult a{};
+  a.didSkip(12);
+  a.incrementSubquery();
+  a.didSkip(8);
+
+  SkipResult b{};
+  b.didSkip(9);
+  b.incrementSubquery();
+  b.didSkip(2);
+
+  a.merge(b, false);
+
+  SkipResult expected{};
+  expected.didSkip(12);
+  expected.didSkip(9);
+  expected.incrementSubquery();
+  expected.didSkip(8);
+  EXPECT_EQ(a, expected);
+}
+
+TEST_F(SkipResultTest, reset) {
+  SkipResult a{};
+  a.didSkip(12);
+  a.incrementSubquery();
+  a.didSkip(8);
+
+  EXPECT_EQ(a.getSkipCount(), 8);
+  EXPECT_EQ(a.subqueryDepth(), 2);
+  EXPECT_FALSE(a.nothingSkipped());
+  a.reset();
+
+  EXPECT_EQ(a.getSkipCount(), 0);
+  EXPECT_EQ(a.subqueryDepth(), 2);
+  EXPECT_TRUE(a.nothingSkipped());
+
+  a.decrementSubquery();
+  EXPECT_EQ(a.getSkipCount(), 0);
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

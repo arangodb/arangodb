@@ -618,7 +618,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   TRI_ASSERT(_skipped.nothingSkipped());
-  _skipped = SkipResult{};
+  _skipped.reset();
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
@@ -724,7 +724,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
   new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   TRI_ASSERT(_skipped.nothingSkipped());
-  _skipped = SkipResult{};
+  _skipped.reset();
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
@@ -1609,14 +1609,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     TRI_ASSERT(_skipped.nothingSkipped() || _execState == ExecState::UPSTREAM);
 
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-      // TODO: implement forwarding of SKIP properly:
-      // We need to modify the execute API to instead return a vector of skipped
-      // values.
-      // Then we can simply push a skip on the Stack here and let it forward.
-      // In case of a modifaction we need to NOT forward a skip, but instead do
-      // a limit := limit + offset call and a hardLimit 0 call on top of the stack.
-      TRI_ASSERT(!clientCall.needSkipMore());
-
       // In subqeryEndExecutor we actually manage two calls.
       // The clientClient is defined of what will go into the Executor.
       // on SubqueryEnd this call is generated based on the call from downstream
@@ -1848,6 +1840,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           std::tie(_upstreamState, skippedLocal, _lastRange) =
               executeFetcher(stack, _requestedDependency);
 
+          {
+            VPackBuilder skipRes;
+            skippedLocal.toVelocyPack(skipRes);
+            LOG_DEVEL << getPlanNode()->getTypeString()
+                      << " From Upstream: " << skipRes.toJson();
+          }
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             // Do not pop the call, we did not put it on.
             // However we need it for accounting later.
@@ -1873,11 +1871,33 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // We have a new range, passthrough can use this range.
             _hasUsedDataRangeBlock = false;
           }
-          if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
-            _skipped += skippedLocal;
-            // We skipped through passthrough, so count that a skip was solved.
-            clientCall.didSkip(skippedLocal.getSkipCount());
+
+          if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+            // We need to pop the last subquery from the returned skip
+            // We have not asked for a subquery skip.
+            TRI_ASSERT(skippedLocal.getSkipCount() == 0);
+            skippedLocal.decrementSubquery();
           }
+
+          if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
+            // We skipped through passthrough, so count that a skip was solved.
+            _skipped.merge(skippedLocal, false);
+            clientCall.didSkip(skippedLocal.getSkipCount());
+          } else {
+            _skipped.merge(skippedLocal, true);
+          }
+          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            // For the subqueryStart, we need to increment the SkipLevel by one
+            // as we may trigger this multiple times, check if we need to do it.
+            LOG_DEVEL << "sq: " << stack.subqueryLevel()
+                      << "skip: " << _skipped.subqueryDepth();
+            while (_skipped.subqueryDepth() < stack.subqueryLevel() + 1) {
+              // In fact, we only need to increase by 1
+              TRI_ASSERT(_skipped.subqueryDepth() == stack.subqueryLevel());
+              _skipped.incrementSubquery();
+            }
+          }
+
           if (_lastRange.hasShadowRow() && !_lastRange.peekShadowRow().isRelevant()) {
             _execState = ExecState::SHADOWROWS;
           } else {
@@ -1943,7 +1963,23 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
     // We return skipped here, reset member
     SkipResult skipped = _skipped;
-    _skipped = SkipResult{};
+
+    {
+      VPackBuilder skipRes;
+      skipped.toVelocyPack(skipRes);
+      LOG_DEVEL << getPlanNode()->getTypeString() << " Returning: " << skipRes.toJson()
+                << " stack.sq: " << stack.subqueryLevel();
+    }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+      TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() /*we inected a call*/);
+    } else {
+      TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() + 1 /*we took our call*/);
+    }
+#endif
+
+    _skipped.reset();
     if (localExecutorState == ExecutorState::HASMORE ||
         _lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE

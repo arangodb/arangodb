@@ -111,6 +111,27 @@ auto SkipResult::subqueryDepth() const noexcept -> size_t {
   return _skipped.size();
 }
 
+auto SkipResult::reset() -> void {
+  for (size_t i = 0; i < _skipped.size(); ++i) {
+    _skipped[i] = 0;
+  }
+}
+
+auto SkipResult::merge(SkipResult const& other, bool excludeTopLevel) noexcept -> void {
+  _skipped.reserve(other.subqueryDepth());
+  while (other.subqueryDepth() > subqueryDepth()) {
+    incrementSubquery();
+  }
+  TRI_ASSERT(other._skipped.size() <= _skipped.size());
+  for (size_t i = 0; i < other._skipped.size(); ++i) {
+    if (excludeTopLevel && i + 1 == other._skipped.size()) {
+      // Do not copy top level
+      continue;
+    }
+    _skipped[i] += other._skipped[i];
+  }
+}
+
 auto SkipResult::operator+=(SkipResult const& b) noexcept -> SkipResult& {
   didSkip(b.getSkipCount());
   return *this;

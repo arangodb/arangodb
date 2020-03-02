@@ -62,6 +62,10 @@ class SkipResult {
 
   auto subqueryDepth() const noexcept -> size_t;
 
+  auto reset() -> void;
+
+  auto merge(SkipResult const& other, bool excludeTopLevel) noexcept -> void;
+
   auto operator+=(SkipResult const& b) noexcept -> SkipResult&;
 
   auto operator==(SkipResult const& b) const noexcept -> bool;
