@@ -285,9 +285,6 @@ struct AstNode {
   /// @brief fetch a node's type from VPack
   static AstNodeType getNodeTypeFromVPack(arangodb::velocypack::Slice const& slice);
 
-  /// @brief return a VelocyPack representation of the node value
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackValue() const;
-
   /// @brief build a VelocyPack representation of the node value
   ///        Can throw Out of Memory Error
   void toVelocyPackValue(arangodb::velocypack::Builder&) const;
