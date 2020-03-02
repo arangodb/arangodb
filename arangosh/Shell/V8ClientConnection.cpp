@@ -1757,7 +1757,6 @@ again:
                                  "not connected");
     return v8::Undefined(isolate);
   }
-
   fu::Error rc = fu::Error::NoError;
   std::unique_ptr<fu::Response> response;
   try {
@@ -1850,9 +1849,20 @@ again:
   
   for (auto const& it : response->header.meta()) {
     headers->Set(context,
-                TRI_V8_STD_STRING(isolate, it.first),
+                 TRI_V8_STD_STRING(isolate, it.first),
                  TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
   }
+
+  if ((_builder.protocolType() == fu::ProtocolType::Vst) &&
+      (method != fu::RestVerb::Head)) {
+    // VST only adds a content-length header in case of head, since else its
+    // part of the protocol.
+    headers->Set(context,
+                 TRI_V8_STD_STRING(isolate, StaticStrings::ContentLength),
+                 TRI_V8_STD_STRING(isolate, std::to_string(responseBody.size()))).FromMaybe(false);
+    
+  }
+
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "headers"), headers).FromMaybe(false);
 
