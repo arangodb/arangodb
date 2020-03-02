@@ -287,6 +287,48 @@ arangodb::Result evaluateArg(
   return {};
 }
 
+arangodb::Result getAnalyzerByName(
+    arangodb::iresearch::FieldMeta::Analyzer& out,
+    const irs::string_ref& analyzerId,
+    char const* funcName,
+    QueryContext const& ctx) {
+  auto& analyzer = out._pool;
+  auto& shortName = out._shortName;
+
+  TRI_ASSERT(ctx.trx);
+  auto& server = ctx.trx->vocbase().server();
+  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
+    return {
+      TRI_ERROR_INTERNAL,
+      "'"s.append(IResearchAnalyzerFeature::name())
+          .append("' feature is not registered, unable to evaluate '")
+          .append(funcName).append("' function")
+    };
+  }
+  auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
+
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+    ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+    : nullptr;
+
+  if (sysVocbase) {
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+
+    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+      analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
+  }
+
+  if (!analyzer) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append("' AQL function: Unable to load requested analyzer '")
+          .append(analyzerId.c_str(), analyzerId.size()).append("'")
+    };
+  }
+
+  return {};
+}
+
 arangodb::Result extractAnalyzerFromArg(
     arangodb::iresearch::FieldMeta::Analyzer& out,
     char const* funcName,
@@ -304,18 +346,6 @@ arangodb::Result extractAnalyzerFromArg(
     };
   }
 
-  TRI_ASSERT(ctx.trx);
-  auto& server = ctx.trx->vocbase().server();
-  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
-    return {
-      TRI_ERROR_INTERNAL,
-      "'"s.append(IResearchAnalyzerFeature::name())
-          .append("' feature is not registered, unable to evaluate '")
-          .append(funcName).append("' function")
-    };
-  }
-  auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-
   ScopedAqlValue analyzerValue(*analyzerArg);
   irs::string_ref analyzerId;
 
@@ -329,29 +359,7 @@ arangodb::Result extractAnalyzerFromArg(
     return {};
   }
 
-  auto& analyzer = out._pool;
-  auto& shortName = out._shortName;
-
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
-
-  if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
-
-    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-        analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
-  }
-
-  if (!analyzer) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "'"s.append("' AQL function: Unable to load requested analyzer '")
-          .append(analyzerId.c_str(), analyzerId.size()).append("'")
-    };
-  }
-
-  return {};
+  return getAnalyzerByName(out, analyzerId, funcName, ctx);
 }
 
 struct FilterContext {
@@ -2241,8 +2249,8 @@ arangodb::Result fromFuncNgramMatch(
 
   auto const argc = args.numMembers();
 
-  if (argc < 3 || argc > 4) {
-    return error::invalidArgsCount<error::Range<3, 4>>(funcName);
+  if (argc < 2 || argc > 4) {
+    return error::invalidArgsCount<error::Range<2, 4>>(funcName);
   }
 
   // 1st argument defines a field
@@ -2263,16 +2271,60 @@ arangodb::Result fromFuncNgramMatch(
     }
   }
 
-  // 3rd argument defines a threshold
-  double_t threshold;
-  {
+  double_t threshold = 0.7;
+  TRI_ASSERT(filterCtx.analyzer);
+  auto analyzerPool = filterCtx.analyzer;
+
+  if (argc > 3) {// 4 args given. 3rd is threshold
     ScopedAqlValue tmpValue;
     auto res = evaluateArg(threshold, tmpValue, funcName, args, 2, filter, ctx);
 
     if (!res.ok()) {
       return res;
     }
+  } else if (argc > 2) {  //3 args given  -  3rd argument defines a threshold (if double) or analyzer (if string)
+    auto const* arg = args.getMemberUnchecked(2);
+
+    if (!arg) {
+      return error::invalidArgument(funcName, 3);
+    }
+
+    if (!arg->isDeterministic()) {
+      return error::nondeterministicArg(funcName, 3);
+    }
+    ScopedAqlValue tmpValue(*arg);
+    if (filter || tmpValue.isConstant()) {
+      if (!tmpValue.execute(ctx)) {
+        return error::failedToEvaluate(funcName, 3);
+      }
+      if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING == tmpValue.type()) { // this is analyzer
+        irs::string_ref analyzerId;
+        if (!tmpValue.getString(analyzerId)) {
+          return error::failedToParse(funcName, 3, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING);
+        }
+        if (filter || tmpValue.isConstant()) {
+          auto analyzerRes = getAnalyzerByName(analyzerPool, analyzerId, funcName, ctx);
+          if (!analyzerRes.ok()) {
+            return analyzerRes;
+          }
+        }
+      } else if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE == tmpValue.type()) {
+        if (!tmpValue.getDouble(threshold)) {
+          return error::failedToParse(funcName, 3, arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE);
+        }
+      } else {
+        return {
+            TRI_ERROR_BAD_PARAMETER,
+            "'"s.append(funcName).append("' AQL function: argument at position '").append(std::to_string(3))
+           .append("' has invalid type '").append(ScopedAqlValue::typeString(tmpValue.type()).c_str())
+           .append("' ('").append(ScopedAqlValue::typeString(arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE).c_str())
+           .append("' or '").append(ScopedAqlValue::typeString(arangodb::iresearch::SCOPED_VALUE_TYPE_STRING).c_str())
+           .append("' expected)")
+        };
+      }
+    }
   }
+
   if (threshold <= 0 || threshold > 1) {
     return {
       TRI_ERROR_BAD_PARAMETER,
@@ -2281,8 +2333,6 @@ arangodb::Result fromFuncNgramMatch(
     };
   }
 
-  TRI_ASSERT(filterCtx.analyzer);
-  auto analyzerPool = filterCtx.analyzer;
   // 4th optional argument defines an analyzer
   if (argc > 3) {
       auto rv = extractAnalyzerFromArg(analyzerPool, funcName, filter, args, 3, ctx);
@@ -2320,7 +2370,7 @@ arangodb::Result fromFuncNgramMatch(
     kludge::mangleStringField(name, analyzerPool);
 
     auto& ngramFilter = filter->add<irs::by_ngram_similarity>();
-    ngramFilter.field(std::move(name)).threshold(threshold);
+    ngramFilter.field(std::move(name)).threshold(threshold).boost(filterCtx.boost);;
 
     analyzer->reset(matchValue);
     irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();

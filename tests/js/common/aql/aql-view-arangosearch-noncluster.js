@@ -1752,6 +1752,22 @@ function iResearchAqlTestSuite () {
           assertEqual(1, res.length);  
           assertEqual('2', res[0].value1);
         }
+        // same but with default threshold (0.7 also)
+        {
+          let res = db._query("FOR d IN " + queryView  + 
+            " SEARCH NGRAM_MATCH(d.value2, 'Jack Sparrow', '" + queryAnalyzer + "') " + 
+            " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+          assertEqual(1, res.length);  
+          assertEqual('2', res[0].value1);
+        }
+        // same but with default threshold (0.7 also) and analyzer via ANALYZER func
+        {
+          let res = db._query("FOR d IN " + queryView  + 
+            " SEARCH ANALYZER(NGRAM_MATCH(d.value2, 'Jack Sparrow'), '" + queryAnalyzer + "') " + 
+            " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+          assertEqual(1, res.length);  
+          assertEqual('2', res[0].value1);
+        }
         {
           let res = db._query("FOR d IN " + queryView  + 
             " SEARCH NGRAM_MATCH(d.value2, 'Jack Doniels', 0.3, '" + queryAnalyzer + "') " + 

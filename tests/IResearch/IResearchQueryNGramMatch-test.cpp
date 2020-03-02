@@ -326,21 +326,12 @@ TEST_F(IResearchQueryNGramMatchTest, SysVocbase) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
-  // test missing value via []
+  // test too much args
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d['value']) SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], 'test', 0.5, 'analyzer', 'too much') SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
-  }
-
-  // test missing threshold
-  {
-    auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 'abs') SORT BM25(d) ASC, TFIDF(d) "
-      "DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
@@ -604,6 +595,29 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
         irs::flags{ irs::frequency::type(), irs::position::type() }  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
+  }
+  {
+    // 2-gram analyzer in another DB
+    {
+
+      auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+      TRI_vocbase_t* vocbase2;
+      auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+      dbFeature.createDatabase(testDBInfo(server.server(), "testVocbase2"), vocbase2); 
+      std::shared_ptr<arangodb::LogicalCollection> unused;
+      ASSERT_NE(nullptr, vocbase2);
+      arangodb::methods::Collections::createSystem(*vocbase2, arangodb::tests::AnalyzerCollectionName,
+        false, unused);
+
+      auto res =
+        analyzers.emplace(result, "testVocbase2::myngram", "ngram",
+          VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
+          irs::flags{ irs::frequency::type(), irs::position::type() } 
+      );  // cache analyzer
+      EXPECT_TRUE(res.ok());
+    }
   }
 
   // create collection0
@@ -870,11 +884,11 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
-  // test missing threshold
+  // test too much args
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 'abs') SORT BM25(d) ASC, TFIDF(d) "
+      "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 'abs', 0.5, 'identity', 'too much') SORT BM25(d) ASC, TFIDF(d) "
       "DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
@@ -993,7 +1007,7 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', "
-      "'testVocbase::test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq "
+      "'testVocbase2::test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq "
       "RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -1030,6 +1044,29 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 0.7, "
+      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test via analyzer parameter with default threshold
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[0].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', "
       "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
