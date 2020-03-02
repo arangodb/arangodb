@@ -98,7 +98,7 @@ function foxxInterfaceSuite () {
                                     {
                                       'content-type': jsonMime
                                     });
-        assertEqual(res.code, 200, res.body);
+        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.body });
         assertTrue(typeof res.body === 'object');
         
         assertEqual(JSON.stringify(res.body), JSON.stringify({ pixelStr }));
@@ -140,7 +140,7 @@ function foxxInterfaceSuite () {
                                     {
                                       'content-type': binaryMime
                                     });
-        assertEqual(res.code, 200, res.body);
+        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.body });
         assertTrue(res.body instanceof Buffer);
         
         let respBody = new Buffer(res.body);
@@ -187,7 +187,7 @@ function foxxInterfaceSuite () {
                                     {
                                       'content-type': textMime
                                     });
-        assertEqual(res.code, 200, res.body);
+        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.body });
         assertTrue(typeof res.body === 'string');
 
         assertEqual(res.body, pixelStr, "whether the server sent us a proper one pixel gif");
