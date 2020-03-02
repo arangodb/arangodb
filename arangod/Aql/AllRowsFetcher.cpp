@@ -79,10 +79,11 @@ std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::
   TRI_ASSERT(!_aqlItemMatrix->stoppedOnShadowRow());
   while (true) {
     auto [state, skipped, block] = _dependencyProxy->execute(stack);
-    TRI_ASSERT(skipped.nothingSkipped());
+    TRI_ASSERT(skipped.getSkipCount() == 0);
 
     // we will either build a complete fetched AqlItemBlockInputMatrix or return an empty one
     if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(skipped.nothingSkipped());
       TRI_ASSERT(block == nullptr);
       // On waiting we have nothing to return
       return {state, SkipResult{}, AqlItemBlockInputMatrix{ExecutorState::HASMORE}};
@@ -97,10 +98,10 @@ std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::
     // If we find a ShadowRow or ExecutionState == Done, we're done fetching.
     if (_aqlItemMatrix->stoppedOnShadowRow() || state == ExecutionState::DONE) {
       if (state == ExecutionState::HASMORE) {
-        return {state, SkipResult{},
+        return {state, skipped,
                 AqlItemBlockInputMatrix{ExecutorState::HASMORE, _aqlItemMatrix.get()}};
       }
-      return {state, SkipResult{},
+      return {state, skipped,
               AqlItemBlockInputMatrix{ExecutorState::DONE, _aqlItemMatrix.get()}};
     }
   }

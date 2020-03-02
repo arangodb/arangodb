@@ -1839,13 +1839,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
           std::tie(_upstreamState, skippedLocal, _lastRange) =
               executeFetcher(stack, _requestedDependency);
-
-          {
-            VPackBuilder skipRes;
-            skippedLocal.toVelocyPack(skipRes);
-            LOG_DEVEL << getPlanNode()->getTypeString()
-                      << " From Upstream: " << skipRes.toJson();
-          }
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             // Do not pop the call, we did not put it on.
             // However we need it for accounting later.
@@ -1879,18 +1872,33 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             skippedLocal.decrementSubquery();
           }
 
+          /*
+                    {
+                      VPackBuilder in;
+                      VPackBuilder ex;
+                      _skipped.toVelocyPack(ex);
+                      skippedLocal.toVelocyPack(in);
+                      LOG_DEVEL << "merging " << in.toJson() << " -> " << ex.toJson();
+                    }
+          */
           if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
             // We skipped through passthrough, so count that a skip was solved.
             _skipped.merge(skippedLocal, false);
             clientCall.didSkip(skippedLocal.getSkipCount());
+          } else if constexpr (is_one_of_v<Executor, SubqueryStartExecutor, SubqueryEndExecutor>) {
+            // Subquery needs to include the topLevel Skip.
+            // But does not need to apply the count to clientCall.
+            _skipped.merge(skippedLocal, false);
+            // This is what has been asked for by the SubqueryEnd
+            auto subqueryCall = stack.popCall();
+            subqueryCall.didSkip(skippedLocal.getSkipCount());
+            stack.pushCall(std::move(subqueryCall));
           } else {
             _skipped.merge(skippedLocal, true);
           }
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             // For the subqueryStart, we need to increment the SkipLevel by one
             // as we may trigger this multiple times, check if we need to do it.
-            LOG_DEVEL << "sq: " << stack.subqueryLevel()
-                      << "skip: " << _skipped.subqueryDepth();
             while (_skipped.subqueryDepth() < stack.subqueryLevel() + 1) {
               // In fact, we only need to increase by 1
               TRI_ASSERT(_skipped.subqueryDepth() == stack.subqueryLevel());
@@ -1963,14 +1971,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
     // We return skipped here, reset member
     SkipResult skipped = _skipped;
-
+/*
     {
-      VPackBuilder skipRes;
-      skipped.toVelocyPack(skipRes);
-      LOG_DEVEL << getPlanNode()->getTypeString() << " Returning: " << skipRes.toJson()
-                << " stack.sq: " << stack.subqueryLevel();
+      VPackBuilder skippor;
+      skipped.toVelocyPack(skippor);
+      LOG_DEVEL << getPlanNode()->getTypeString() << " -> " << skippor.toJson();
     }
-
+*/
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
       TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() /*we inected a call*/);

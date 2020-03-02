@@ -74,9 +74,9 @@
 
 namespace {
 
-bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
-                                arangodb::aql::ExecutionNode const* node,
-                                ::arangodb::containers::HashSet<arangodb::aql::Variable const*>& vars) {
+bool accessesCollectionVariable(
+    arangodb::aql::ExecutionPlan const* plan, arangodb::aql::ExecutionNode const* node,
+    ::arangodb::containers::HashSet<arangodb::aql::Variable const*>& vars) {
   using EN = arangodb::aql::ExecutionNode;
 
   if (node->getType() == EN::CALCULATION) {
@@ -5796,9 +5796,9 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
         std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       outVariable = traversal->pathOutVariable();
-      if (outVariable == nullptr ||
-          (!n->isVarUsedLater(outVariable) &&
-           std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end())) {
+      if (outVariable == nullptr || (!n->isVarUsedLater(outVariable) &&
+                                     std::find(pruneVars.begin(), pruneVars.end(),
+                                               outVariable) == pruneVars.end())) {
         // both traversal vertex and path outVariables not used later
         traversal->options()->setProduceVertices(false);
         modified = true;
@@ -7275,12 +7275,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
         ExecutionNode* filterParent = current->getFirstParent();
         TRI_ASSERT(filterParent != nullptr);
         plan->unlinkNode(current);
-          
+
         if (!current->isVarUsedLater(cn->outVariable())) {
           // also remove the calculation node
           plan->unlinkNode(cn);
         }
-        
+
         current = filterParent;
         modified = true;
       } else if (current->getType() == EN::CALCULATION) {
@@ -7403,19 +7403,11 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
-      // These nodes do not initiate a skip themselves, and thus are fine.
-      return false;
     case ExecutionNode::NORESULTS:
-      // no results currently cannot work, as they do not fetch from above.
     case ExecutionNode::LIMIT:
-      // limit blocks currently cannot work, both due to skipping and due to the
-      // limit and passthrough, which forbids passing shadow rows.
-      return true;
-    case ExecutionNode::COLLECT: {
-      auto const collectNode = ExecutionNode::castTo<CollectNode const*>(node);
-      // Collect nodes skip iff using the COUNT method.
-      return collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT;
-    }
+    case ExecutionNode::COLLECT:
+      // These nodes are fine
+      return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -7425,7 +7417,7 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
       "report this error. Try turning off the splice-subqueries rule to get "
       "your query working.",
       node->getTypeString().c_str());
-}
+}  // namespace
 
 void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
                                        containers::SmallVector<SubqueryNode*>& result) {
