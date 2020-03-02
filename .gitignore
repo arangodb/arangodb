@@ -112,3 +112,7 @@ datafile-*.db
 # by build process
 arangodb-linux-amd64
 last_compiled_version.sha
+
+scripts/perfanalysis
+perf*
+callgrind*
