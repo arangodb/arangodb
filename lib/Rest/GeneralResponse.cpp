@@ -89,7 +89,6 @@ bool GeneralResponse::isValidResponseCode(uint64_t code) {
       case 3:
       case 4:
       case 5:
-        return true;
         if (static_cast<int>(code) != 0) {
           return true;
         }
