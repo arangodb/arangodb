@@ -83,6 +83,8 @@ struct TraverserOptions : public graph::BaseOptions {
   UniquenessLevel uniqueEdges;
 
   std::vector<std::string> vertexCollections;
+  
+  std::vector<std::string> edgeCollections;
 
   explicit TraverserOptions(aql::Query* query);
 
@@ -107,6 +109,9 @@ struct TraverserOptions : public graph::BaseOptions {
   /// @brief Build a velocypack containing all relevant information
   ///        for DBServer traverser engines.
   void buildEngineInfo(arangodb::velocypack::Builder&) const override;
+  
+  /// @brief Whether or not the edge collection shall be excluded
+  bool shouldExcludeEdgeCollection(std::string const& name) const override;
 
   /// @brief Add a lookup info for specific depth
   void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,

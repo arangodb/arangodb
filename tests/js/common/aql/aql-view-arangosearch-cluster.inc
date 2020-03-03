@@ -1669,6 +1669,85 @@
           db._dropView(queryOptView);
         }
       },
+      testNGramMatch : function() {
+        let queryColl = "NgramMatchCol";
+        let queryView = "NgramMatchView";
+        let queryAnalyzer = "ngram_match_myngram";
+        try {
+          db._drop(queryColl);
+          db._dropView(queryView);
+          analyzers.save(queryAnalyzer, 
+                         "ngram", 
+                         {
+                           "min":2, 
+                           "max":2, 
+                           "streamType":"utf8", 
+                           "preserveOriginal":false
+                         },
+                         ["frequency", "position", "norm"]);
+          let coll = db._create(queryColl);
+          let view = db._createView(queryView,
+                                    "arangosearch",
+                                    { 
+                                      links: { 
+                                              NgramMatchCol : { analyzers: [ queryAnalyzer],
+                                                                includeAllFields: true, 
+                                                                trackListPositions: true} 
+                                              }
+                                    });
+          coll.save({ value1: "1", value2: "Jack Daniels"}); 
+          coll.save({ value1: "2", value2: "Jack Sparrow"}); 
+          coll.save({ value1: "3", value2: "Jack The Reaper"}); 
+          coll.save({ value1: "4", value2: "Jackhammer"}); 
+          coll.save({ value1: "5", value2: "Jacky Chan"}); 
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH NGRAM_MATCH(d.value2, 'Jack Sparrow', 0.7, '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+            assertEqual(1, res.length);  
+            assertEqual('2', res[0].value1);
+          }
+          // same but with default threshold (0.7 also)
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH NGRAM_MATCH(d.value2, 'Jack Sparrow', '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+            assertEqual(1, res.length);  
+            assertEqual('2', res[0].value1);
+          }
+          // same but with default threshold (0.7 also) and analyzer via ANALYZER func
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH ANALYZER(NGRAM_MATCH(d.value2, 'Jack Sparrow'), '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+            assertEqual(1, res.length);  
+            assertEqual('2', res[0].value1);
+          }
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH NGRAM_MATCH(d.value2, 'Jack Doniels', 0.3, '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+            assertEqual(3, res.length);  
+            assertEqual('1', res[0].value1);
+            assertEqual('3', res[1].value1);
+            assertEqual('2', res[2].value1);
+          }
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH NGRAM_MATCH(d.value2, 'Jack Doniels', 0.3, '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT TFIDF(d) DESC RETURN d").toArray();
+            assertEqual(3, res.length);  
+            assertEqual('1', res[0].value1);
+            assertEqual('2', res[1].value1);
+            assertEqual('3', res[2].value1);
+          }
+        } 
+        finally {
+          db._drop(queryColl);
+          db._dropView(queryView);
+          analyzers.remove(queryAnalyzer, true);
+        }
+      }
     };
   };
 }());
