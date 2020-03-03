@@ -70,6 +70,10 @@ class HttpResponse : public GeneralResponse {
   }
   size_t bodySize() const;
 
+  void sealBody() {
+    _bodySize = _body->length();
+  }
+
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
 

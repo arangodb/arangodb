@@ -1785,22 +1785,46 @@ again:
                 v8::Boolean::New(isolate, false));
   }
 
-  // got a body, copy it into the result
-  auto sb = response->payload();
-  if (sb.size() > 0) {
-    const char* str = reinterpret_cast<const char*>(sb.data());
-    v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, str, sb.size());
-    result->Set(TRI_V8_ASCII_STRING(isolate, "body"), b);
+  v8::Local<v8::Object> headers = v8::Object::New(isolate);
+  auto responseBody = response->payload();
+  if (response->contentType() != fuerte::ContentType::Custom) {
+    if ((responseBody.size() > 0) && response->isContentTypeVPack()) {
+      std::vector<VPackSlice> const& slices = response->slices();
+      if (!slices.empty()) {
+        result->Set(TRI_V8_ASCII_STRING(isolate, "parsedBody"),
+                    TRI_VPackToV8(isolate, slices[0]));
+      }
+    }
+    if (responseBody.size() > 0) {
+      const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
+      v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+      result->Set(TRI_V8_ASCII_STRING(isolate, "body"), b);
+    }
+
+    auto contentType = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
+    headers->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), contentType);
+  } else {
+    V8Buffer* buffer = V8Buffer::New
+      (isolate,
+       static_cast<char const*>(responseBody.data()),
+       responseBody.size());
+    auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+    result->Set(TRI_V8_ASCII_STRING(isolate, "body"),
+                bufObj);
   }
 
-  // copy all headers
-  v8::Local<v8::Object> headers = v8::Object::New(isolate);
   for (auto const& it : response->header.meta()) {
     headers->Set(TRI_V8_STD_STRING(isolate, it.first),
                  TRI_V8_STD_STRING(isolate, it.second));
   }
-  auto content = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
-  headers->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), content);
+
+  if ((_builder.protocolType() == fu::ProtocolType::Vst) &&
+      (method != fu::RestVerb::Head)) {
+    // VST only adds a content-length header in case of head, since else its
+    // part of the protocol.
+    headers->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ContentLength),
+                 TRI_V8_STD_STRING(isolate, std::to_string(responseBody.size())));
+  }
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
 
