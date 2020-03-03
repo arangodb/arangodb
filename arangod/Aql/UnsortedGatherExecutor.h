@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
 #define ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
 
+#include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
@@ -91,11 +92,10 @@ class UnsortedGatherExecutor {
    * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
    *   ExecutorState: DONE or HASMORE (only within a subquery)
    *   Stats: Stats gerenated here
-   *   AqlCall: Request to upstream
-   *   size:t: Dependency to request
+   *   AqlCallSet: Request to upstream
    */
   [[nodiscard]] auto produceRows(typename Fetcher::DataRange& input, OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, Stats, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, Stats, AqlCallSet>;
 
   /**
    * @brief Skip rows
@@ -106,11 +106,10 @@ class UnsortedGatherExecutor {
    *   ExecutorState: DONE or HASMORE (only within a subquery)
    *   Stats: Stats gerenated here
    *   size_t: Number of rows skipped
-   *   AqlCall: Request to upstream
-   *   size:t: Dependency to request
+   *   AqlCallSet: Request to upstream
    */
   [[nodiscard]] auto skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
-      -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
  private:
   [[nodiscard]] auto numDependencies() const

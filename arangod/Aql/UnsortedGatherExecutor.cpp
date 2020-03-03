@@ -47,7 +47,7 @@ UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 
 auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                          OutputAqlItemRow& output)
-    -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
+    -> std::tuple<ExecutorState, Stats, AqlCallSet> {
   while (!output.isFull() && !done()) {
     if (input.hasDataRow(currentDependency())) {
       auto [state, inputRow] = input.nextDataRow(currentDependency());
@@ -62,8 +62,10 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
         advanceDependency();
       } else {
-        return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
-                currentDependency()};
+        auto callSet = AqlCallSet{};
+        // TODO shouldn't we use `output.getClientCall()` instead of `AqlCall{}` here?
+        callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(),  AqlCall{}});
+        return {input.upstreamState(currentDependency()), Stats{}, callSet};
       }
     }
   }
@@ -73,18 +75,19 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
   }
 
   if (done()) {
-    // here currentDependency is invalid which will cause things to crash
-    // if we ask upstream in ExecutionBlockImpl. yolo.
     TRI_ASSERT(!input.hasDataRow());
-    return {ExecutorState::DONE, Stats{}, AqlCall{}, currentDependency()};
+    return {ExecutorState::DONE, Stats{}, AqlCallSet{}};
   } else {
-    return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
-            currentDependency()};
+    auto callSet = AqlCallSet{};
+    // TODO shouldn't we use `output.getClientCall()` instead of `AqlCall{}` here?
+    callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), AqlCall{}});
+    return {input.upstreamState(currentDependency()), Stats{}, callSet};
   }
 }
 
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
+  // TODO call input.skip()!
   while (call.needSkipMore() && !done()) {
     if (input.hasDataRow(currentDependency())) {
       auto [state, inputRow] = input.nextDataRow(currentDependency());
@@ -108,13 +111,15 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   }
 
   if (done()) {
-    // here currentDependency is invalid which will cause things to crash
-    // if we ask upstream in ExecutionBlockImpl. yolo.
-    return {ExecutorState::DONE, Stats{}, call.getSkipCount(), AqlCall{},
-            currentDependency()};
+    return {ExecutorState::DONE, Stats{}, call.getSkipCount(), AqlCallSet{}};
   } else {
-    return {input.upstreamState(currentDependency()), Stats{},
-            call.getSkipCount(), AqlCall{}, currentDependency()};
+    // TODO Should we not generate a call that only skips, with a soft limit of 0,
+    //      based off `call` rather than just asking for everything?
+    //      In which case of course it is important to look into the skip count
+    //      of the input ranges above!
+    auto callSet = AqlCallSet{};
+    callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), AqlCall{}});
+    return {input.upstreamState(currentDependency()), Stats{}, call.getSkipCount(), callSet};
   }
 }
 
