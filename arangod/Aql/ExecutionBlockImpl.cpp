@@ -1232,7 +1232,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
 
       auto depCallIdx = size_t{0};
       auto allAskedDepsAreWaiting = true;
-      bool allUpstreamDepsAreDone = true;
+      bool allUpstreamDepsAreDone = false;
       auto skippedTotal = size_t{0};
       // Iterate in parallel over `_callsInFlight` and `aqlCall.calls`.
       // _callsInFlight[i] corresponds to aqlCalls.calls[k] iff
