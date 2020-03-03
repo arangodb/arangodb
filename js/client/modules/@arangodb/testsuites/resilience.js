@@ -63,18 +63,19 @@ var _resilience = function(path) {
   this.func = function resilience (options) {
     let suiteName = path;
     let testCases = tu.scanTestPaths(testPaths[path], options);
-    options.cluster = true;
-    options.propagateInstanceInfo = true;
-    options.oneTestTimeout = 1800;
-    if (options.test !== undefined) {
+    let localOptions = _.clone(options);
+    localOptions.cluster = true;
+    localOptions.propagateInstanceInfo = true;    
+    localOptions.oneTestTimeout = 1800;
+    if (localOptions.test !== undefined) {
       // remove non ascii characters from our working directory:
       //                                       < A                           > Z && < a                   > z
-      suiteName += '_' + options.test.replace(/[\x00-\x40]/g, "_").replace(/[\x5B-\x60]/g, "_").replace(/[\x7B-\xFF]/g, "_");
+      suiteName += '_' + localOptions.test.replace(/[\x00-\x40]/g, "_").replace(/[\x5B-\x60]/g, "_").replace(/[\x7B-\xFF]/g, "_");
     }
-    if (options.dbServers < 5) {
-      options.dbServers = 5;
+    if (localOptions.dbServers < 5) {
+      localOptions.dbServers = 5;
     }
-    return tu.performTests(options, testCases, suiteName, tu.runThere, {
+    return tu.performTests(localOptions, testCases, suiteName, tu.runThere, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
     });
