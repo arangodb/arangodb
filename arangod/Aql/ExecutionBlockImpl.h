@@ -308,6 +308,14 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void resetExecutor();
 
+  // Forwarding of ShadowRows if the executor has SideEffects.
+  // This skips over ShadowRows, and counts them in the correct
+  // position of the callStack as "skipped".
+  // as soon as we reach a place where there is no skip
+  // ordered in the outer shadow rows, this call
+  // will fall back to shadowRowForwardning.
+  [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack) -> ExecState;
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this

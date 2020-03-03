@@ -1449,6 +1449,18 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding() -> ExecState
   }
 }
 
+template<class Executor>
+auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& stack) -> ExecState {
+  static_assert(executorHasSideEffects<Executor>);
+  if (!stack.needToSkipSubquery()) {
+    // We need to really produce things here
+    // fall back to original version as any other executor.
+    return shadowRowForwarding();  
+  }
+  // TODO implemenet ShadowRowHandling
+      return shadowRowForwarding(); 
+}
+
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
   TRI_ASSERT(_outputItemRow);
@@ -1999,7 +2011,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           }
 
           TRI_ASSERT(!_outputItemRow->allRowsUsed());
-
+          if constexpr (executorHasSideEffects<Executor>) {
+            _execState = sideEffectShadowRowForwarding(stack);
+          }
           // This may write one or more rows.
           _execState = shadowRowForwarding();
           if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
