@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H
 #define ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H
 
+#include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
@@ -82,7 +83,7 @@ class ParallelUnsortedGatherExecutor {
    *   size:t: Dependency to request
    */
   [[nodiscard]] auto produceRows(MultiAqlItemBlockInputRange& input, OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, Stats, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, Stats, AqlCallSet>;
 
   /**
    * @brief Skip rows
@@ -97,7 +98,7 @@ class ParallelUnsortedGatherExecutor {
    *   size:t: Dependency to request
    */
   [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input, AqlCall& call)
-      -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
  private:
   auto upstreamCallSkip(AqlCall const& clientCall) const noexcept -> AqlCall;

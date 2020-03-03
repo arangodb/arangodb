@@ -1379,14 +1379,13 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
     } else {
       static_assert(dependent_false<Executor>::value,
                     "This value of SkipRowsRangeVariant is not supported");
-      return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
+      TRI_ASSERT(false);
     }
   } else {
     TRI_ASSERT(false);
-    return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
   }
-  // Compiler is unhappy without this.
-  return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 template <>

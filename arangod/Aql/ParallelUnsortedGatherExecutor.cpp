@@ -75,7 +75,7 @@ auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCa
 
 auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                                  OutputAqlItemRow& output)
-    -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
+    -> std::tuple<ExecutorState, Stats, AqlCallSet> {
   // Illegal dependency, on purpose to trigger asserts
   size_t waitingDep = input.numberDependencies();
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
@@ -96,15 +96,18 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
   if (input.isDone()) {
     // We cannot have one that we are waiting on, if we are done.
     TRI_ASSERT(waitingDep == input.numberDependencies());
-    return {ExecutorState::DONE, NoStats{}, AqlCall{}, waitingDep};
+    return {ExecutorState::DONE, NoStats{}, AqlCallSet{}};
   }
-  return {ExecutorState::HASMORE, NoStats{},
-          upstreamCallProduce(output.getClientCall()), waitingDep};
+  // TODO This currently does not request in parallel
+  auto callSet = AqlCallSet{};
+  callSet.calls.emplace_back(
+      AqlCallSet::DepCallPair{waitingDep, upstreamCallProduce(output.getClientCall())});
+  return {ExecutorState::HASMORE, NoStats{}, callSet};
 }
 
 auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
                                                    AqlCall& call)
-    -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
   size_t waitingDep = input.numberDependencies();
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
     auto& range = input.rangeForDependency(dep);
@@ -140,8 +143,9 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
   if (input.isDone()) {
     // We cannot have one that we are waiting on, if we are done.
     TRI_ASSERT(waitingDep == input.numberDependencies());
-    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}, waitingDep};
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCallSet{}};
   }
-  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
-          upstreamCallSkip(call), waitingDep};
+  auto callSet = AqlCallSet{};
+  callSet.calls.emplace_back(AqlCallSet::DepCallPair{waitingDep, upstreamCallSkip(call)});
+  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
 }
