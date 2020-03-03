@@ -1,7 +1,10 @@
 devel
 -----
 
-* Fix supervision mode detection when unlocking agency in hot backup
+* Supervision to clean up zombie servers after 24h, if no
+  responsibility for shards. 
+
+* Fix supervision mode detection when unlocking agency in hot backup.
 
 * Make arangobench return a proper error message when its initial attempt to
   create the test collection fails.
