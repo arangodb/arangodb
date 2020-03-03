@@ -865,8 +865,7 @@ void Supervision::run() {
               // 60 seconds timeout in /_admin/cluster/health
 
               // wait 5 min or until next scheduled run or at least 5 minutes
-              if (_agent->leaderFor() > 300 &&
-                  _nextServerCleanup < std::chrono::system_clock::now()) {
+              if (_agent->leaderFor() > 300) {
                 LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION) << "Begin cleanupExpiredServers";
                 cleanupExpiredServers(*_snapshot, _transient);
                 LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION) << "Finished cleanupExpiredServers";
@@ -1148,7 +1147,7 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
   { VPackArrayBuilder ta(&trxs);
     for (auto const& server : servers) {
       auto const serverName = server.first;
-      LOG_TOPIC("fa76d", DEBUG, Logger::SUPERVISION) <<
+      LOG_TOPIC("fa67d", DEBUG, Logger::SUPERVISION) <<
         "Removing long overdue coordinator " << serverName << "last seen: " << server.second;
       { VPackObjectBuilder ts(&trxs);
         trxs.add("/Supervision/Health/" + serverName, del.slice());
