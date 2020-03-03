@@ -25,6 +25,7 @@
 
 #include "Aql/AqlCall.h"
 
+#include <iosfwd>
 #include <vector>
 
 namespace arangodb::aql {
@@ -42,6 +43,10 @@ struct AqlCallSet {
     return calls.empty();
   }
 };
+
+auto operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
+    -> std::ostream&;
+auto operator<<(std::ostream&, AqlCallSet const&) -> std::ostream&;
 
 }  // namespace arangodb::aql
 

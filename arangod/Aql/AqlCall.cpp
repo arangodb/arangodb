@@ -281,7 +281,7 @@ auto AqlCall::toString() const -> std::string {
   return stream.str();
 }
 
-auto aql::operator<<(std::ostream& out, const AqlCall::Limit& limit) -> std::ostream& {
+auto aql::operator<<(std::ostream& out, AqlCall::Limit const& limit) -> std::ostream& {
   return std::visit(overload{[&out](size_t const& i) -> std::ostream& {
                                return out << i;
                              },
@@ -291,7 +291,7 @@ auto aql::operator<<(std::ostream& out, const AqlCall::Limit& limit) -> std::ost
                     limit);
 }
 
-auto aql::operator<<(std::ostream& out, const AqlCall& call) -> std::ostream& {
+auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
   return out << "{ skip: " << call.getOffset() << ", softLimit: " << call.softLimit
              << ", hardLimit: " << call.hardLimit
              << ", fullCount: " << std::boolalpha << call.fullCount << " }";

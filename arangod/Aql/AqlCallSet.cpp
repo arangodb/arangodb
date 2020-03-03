@@ -24,3 +24,23 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+auto aql::operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair) -> std::ostream& {
+  return out << callPair.dependency << " => " << callPair.call;
+}
+
+auto aql::operator<<(std::ostream& out, AqlCallSet const& callSet) -> std::ostream& {
+  out << "[";
+  auto first = true;
+  for (auto const& it : callSet.calls) {
+    if (first) {
+      out << " ";
+      first = false;
+    } else {
+      out << ", ";
+    }
+    out << it;
+  }
+  out << " ]";
+  return out;
+}
