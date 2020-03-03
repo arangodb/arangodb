@@ -297,7 +297,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
   TRI_ASSERT(it->second.type == MetaType::StandaloneAQL);
 
   /// we need to make sure no-one else is still using the TransactionState
-  if (!it->second.rwlock.writeLock(/*maxAttempts*/ 256)) {
+  if (!it->second.rwlock.lockWrite(/*maxAttempts*/ 256)) {
     LOG_TOPIC("9f7d7", ERR, Logger::TRANSACTIONS)
         << "a transaction is still in use";
     TRI_ASSERT(false);
