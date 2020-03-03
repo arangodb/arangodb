@@ -235,3 +235,13 @@ target_include_directories(fuerte SYSTEM PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
+
+if(NOT TARGET velocypack)
+add_library(velocypack INTERFACE)
+target_include_directories(velocypack INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include")
+endif()
+
+set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build taocpp::json test programs"    FORCE)
+set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build taocpp::json example programs" FORCE)
+add_subdirectory(taocpp-json EXCLUDE_FROM_ALL)
+add_subdirectory(json-schema-validation EXCLUDE_FROM_ALL)

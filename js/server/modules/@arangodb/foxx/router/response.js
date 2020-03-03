@@ -304,20 +304,26 @@ module.exports =
     }
 
     throw (status, reason, options) {
-      if (typeof status === 'string') {
+      if (typeof status !== "number") {
         status = statuses(status);
       }
-      if (reason instanceof Error) {
-        const err = reason;
-        reason = err.message;
-        options = Object.assign({
-          cause: err,
-          errorNum: err.errorNum
-        }, options);
-      }
-      if (reason && typeof reason === 'object') {
-        options = reason;
-        reason = undefined;
+      if (reason) {
+        if (reason instanceof Error) {
+          const err = reason;
+          reason = err.message;
+          options = Object.assign(
+            {
+              cause: err,
+              errorNum: err.errorNum
+            },
+            options
+          );
+        } else if (typeof reason === "object") {
+          options = reason;
+          reason = undefined;
+        } else if (typeof reason !== "string") {
+          reason = String(reason);
+        }
       }
       throw Object.assign(
         httperr(status, reason),
