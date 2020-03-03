@@ -36,6 +36,7 @@ namespace arangodb::aql {
 
 class ExecutionNode;
 class ExecutionPlan;
+struct Variable;
 
 /// @brief static analysis, walker class and information collector
 struct VarInfo {
@@ -80,22 +81,26 @@ struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
     nrRegs.reserve(8);
     nrRegs.emplace_back(0);
   }
-
-  void clear();
-
-  void setSharedPtr(std::shared_ptr<RegisterPlan>* shared) { me = shared; }
-
+  
   // Copy constructor used for a subquery:
   RegisterPlan(RegisterPlan const& v, unsigned int newdepth);
   ~RegisterPlan() = default;
+  
+  void setSharedPtr(std::shared_ptr<RegisterPlan>* shared) { me = shared; }
+
+  void clear();
+  
+  RegisterPlan* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
+
+  void registerVariable(Variable const* v);
+  
+  void increaseDepth();
 
   virtual bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;  // do not walk into subquery
   }
 
   virtual void after(ExecutionNode* eb) override final;
-
-  RegisterPlan* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
 
  public:
   /// @brief maximum register id that can be assigned, plus one.
