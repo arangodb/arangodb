@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -802,7 +803,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   VPackSlice newSlice = builder->slice();
   if(options.validate) {
-    res = _logicalCollection.validate(newSlice);
+    res = _logicalCollection.validate(newSlice, trx->transactionContextPtr()->getVPackOptions());
+
     if (res.fail()) {
       return res;
     }
@@ -949,7 +951,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   }
 
   if(options.validate) {
-    res = _logicalCollection.validate(builder->slice(), oldDoc);
+    res = _logicalCollection.validate(builder->slice(), oldDoc, trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {
       return res;
     }
@@ -1058,7 +1060,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   VPackSlice const newDoc(builder->slice());
 
   if(options.validate) {
-    res = _logicalCollection.validate(newDoc, oldDoc);
+    res = _logicalCollection.validate(newDoc, oldDoc, trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {
       return res;
     }
