@@ -313,7 +313,6 @@ function backgroundIndexSuite() {
       }
 
       assertEqual(c.count(), 100000);
-      console.info("testRemoveParallel: setup done");
 
       // lets remove half via tasks
       for (let i = 0; i < 10; ++i) {
@@ -341,11 +340,9 @@ function backgroundIndexSuite() {
                        }`;
         tasks.register({ name: "UnitTestsIndexRemove" + i, command: command });
       }
-      console.info("testRemoveParallel: registered Tasks");
 
       // wait for insertion tasks to complete
       waitForTasks();
-      console.info("testRemoveParallel: Tasks done");
       
       // sanity checks
       assertEqual(c.count(), 50000);
@@ -358,7 +355,6 @@ function backgroundIndexSuite() {
                                    {'@coll': cn, 'val': invalues }, {count:true});
         assertEqual(cursor.count(), 5000);
       }
-      console.info("testRemoveParallel: aql counting remaining docs via index done");
 
       for (let i = 0; i < 10; i++) { // check for removed docs via index
         let invalues = [];
@@ -369,7 +365,6 @@ function backgroundIndexSuite() {
                                  {'@coll': cn, 'val': invalues }, {count:true});
         assertEqual(cursor.count(), 0, [i, invalues]);
       }
-      console.info("testRemoveParallel: aql checking for removed docs via index done.");
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
@@ -400,7 +395,6 @@ function backgroundIndexSuite() {
       }
       
       assertEqual(c.count(), 100000);
-      console.info("testUpdateParallel: setup done");
 
       // lets update all via tasks
       for (let i = 0; i < 10; ++i) {
@@ -428,11 +422,9 @@ function backgroundIndexSuite() {
                        }`;
         tasks.register({ name: "UnitTestsIndexUpdate" + i, command: command });
       }
-      console.info("testUpdateParallel: tasks registered");
 
       // wait for insertion tasks to complete
       waitForTasks();
-      console.info("testUpdateParallel: tasks done");
       
       // sanity checks
       assertEqual(c.count(), 100000);
@@ -440,13 +432,11 @@ function backgroundIndexSuite() {
       const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 
                                   {'@coll': cn, 'val': 100000}, {count:true});
       assertEqual(newCursor.count(), 100000);
-      console.info("testUpdateParallel: check entries via index done");
 
       // check for old entries via index
       const oldCursor = db._query("FOR doc IN @@coll FILTER doc.value < @val RETURN 1", 
                                   {'@coll': cn, 'val': 100000}, {count:true});
       assertEqual(oldCursor.count(), 0);
-      console.info("testUpdateParallel: check for old entries via index done");
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
