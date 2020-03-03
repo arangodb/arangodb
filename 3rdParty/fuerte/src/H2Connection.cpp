@@ -94,6 +94,7 @@ template <SocketType T>
   } else if (field == fu_content_length_key) {
     size_t len = std::min<size_t>(std::stoul(val.toString()), 1024 * 1024 * 64);
     strm->data.reserve(len);
+    strm->response->header.addMeta(field.toString(), val.toString());
   } else {  // fall through
     strm->response->header.addMeta(field.toString(), val.toString());
     // TODO limit max header size ??

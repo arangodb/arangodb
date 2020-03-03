@@ -517,6 +517,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     case rest::RequestType::DELETE_REQ: {
       TRI_GET_GLOBAL_STRING(DeleteConstant);
       req->Set(context, RequestTypeKey, DeleteConstant).FromMaybe(false);
+      setRequestBodyJsonOrVPack();
       break;
     }
     case rest::RequestType::HEAD: {
@@ -629,19 +630,26 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_ASSERT(request != nullptr);
 
-  rest::ResponseCode code = rest::ResponseCode::OK;
-
   using arangodb::Endpoint;
 
   // set response code
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (TRI_HasProperty(context, isolate, res, ResponseCodeKey)) {
-    code = (rest::ResponseCode)(TRI_ObjectToInt64(isolate,
-                                                  res->Get(context,
-                                                           ResponseCodeKey
-                                                    ).FromMaybe(v8::Local<v8::Value>())));
+    uint64_t foxxcode = TRI_ObjectToInt64(isolate,
+                                          res->Get(context,
+                                                   ResponseCodeKey
+                                                   ).FromMaybe(v8::Local<v8::Value>()));
+    if (GeneralResponse::isValidResponseCode(foxxcode)) {
+      response->setResponseCode(static_cast<rest::ResponseCode>(foxxcode));
+    } else {
+      response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
+      LOG_TOPIC("37d37", ERR, Logger::V8)
+        << "invalid http status code specified " << foxxcode
+        << " diverting to 500";
+    }
+  } else {
+    response->setResponseCode(rest::ResponseCode::OK);
   }
-  response->setResponseCode(code);
 
   // string should not be used
   std::string contentType = StaticStrings::MimeTypeJsonNoEncoding;
@@ -724,6 +732,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
           // what type is out? always json?
           httpResponse->body().appendText(out);
+          httpResponse->sealBody();
         } else {
           TRI_GET_GLOBAL_STRING(BodyKey);
           v8::Handle<v8::Value> b = res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
@@ -732,6 +741,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             auto obj = b.As<v8::Object>();
             httpResponse->body().appendText(V8Buffer::data(isolate, obj),
                                             V8Buffer::length(isolate, obj));
+            httpResponse->sealBody();
           } else if (autoContent && request->contentTypeResponse() == rest::ContentType::VPACK) {
             // use velocypack
             try {
@@ -744,10 +754,12 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               httpResponse->setPayload(std::move(buffer));
             } catch (...) {
               httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
+              httpResponse->sealBody();
             }
           } else {
             // treat body as a string
             httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
+            httpResponse->sealBody();
           }
         }
       } break;
@@ -853,6 +865,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         httpResponse->body().appendText(content, length);
         TRI_FreeString(content);
+        httpResponse->sealBody();
       }
       break;
 

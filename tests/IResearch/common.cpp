@@ -894,6 +894,7 @@ void assertFilterExecutionFail(TRI_vocbase_t& vocbase, std::string const& queryS
 void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryString,
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/
 ) {
+  SCOPED_TRACE(testing::Message("assertFilterParseFail failed for query:<") << queryString << ">");
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
