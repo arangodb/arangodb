@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
-#define arangodb_have_cpp_lib_chrono 1
 
 #include "v8-utils.h"
 

@@ -27,6 +27,7 @@
 #include <stddef.h>
 #include <cstdint>
 #include <string>
+#include <chrono>
 
 #include <v8.h>
 
@@ -109,10 +110,7 @@ static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
 void setConnectionToBeDeadInMS(uint64_t timeout);
 bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args);
 double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds);
-// You will only see this function if you #include <chrono>
-#ifdef arangodb_have_cpp_lib_chrono
 std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reports an exception

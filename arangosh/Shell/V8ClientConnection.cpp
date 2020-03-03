@@ -22,8 +22,6 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono> // make sure we have this!
-#define arangodb_have_cpp_lib_chrono 1
 #include "V8ClientConnection.h"
 
 #include <boost/algorithm/string.hpp>
