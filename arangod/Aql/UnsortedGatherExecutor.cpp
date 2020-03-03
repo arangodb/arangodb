@@ -41,7 +41,7 @@ struct Dependency {
 };
 
 UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher) {}
+    : _fetcher{fetcher} {}
 
 UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 
@@ -124,33 +124,9 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   }
 }
 
-auto UnsortedGatherExecutor::fetcher() const noexcept -> const Fetcher& {
-  return _fetcher;
-}
-
-auto UnsortedGatherExecutor::fetcher() noexcept -> Fetcher& { return _fetcher; }
-
 auto UnsortedGatherExecutor::numDependencies() const
     noexcept(noexcept(_fetcher.numberDependencies())) -> size_t {
   return _fetcher.numberDependencies();
-}
-
-auto UnsortedGatherExecutor::fetchNextRow(size_t atMost)
-    -> std::pair<ExecutionState, InputAqlItemRow> {
-  auto res = fetcher().fetchRowForDependency(currentDependency(), atMost);
-  if (res.first == ExecutionState::DONE) {
-    advanceDependency();
-  }
-  return res;
-}
-
-auto UnsortedGatherExecutor::skipNextRows(size_t atMost)
-    -> std::pair<ExecutionState, size_t> {
-  auto res = fetcher().skipRowsForDependency(currentDependency(), atMost);
-  if (res.first == ExecutionState::DONE) {
-    advanceDependency();
-  }
-  return res;
 }
 
 auto UnsortedGatherExecutor::done() const noexcept -> bool {

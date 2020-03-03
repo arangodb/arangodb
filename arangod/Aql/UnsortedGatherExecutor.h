@@ -103,13 +103,8 @@ class UnsortedGatherExecutor {
  private:
   [[nodiscard]] auto numDependencies() const
       noexcept(noexcept(static_cast<Fetcher*>(nullptr)->numberDependencies())) -> size_t;
-  [[nodiscard]] auto fetcher() const noexcept -> Fetcher const&;
-  [[nodiscard]] auto fetcher() noexcept -> Fetcher&;
   [[nodiscard]] auto done() const noexcept -> bool;
   [[nodiscard]] auto currentDependency() const noexcept -> size_t;
-  [[nodiscard]] auto fetchNextRow(size_t atMost)
-      -> std::pair<ExecutionState, InputAqlItemRow>;
-  [[nodiscard]] auto skipNextRows(size_t atMost) -> std::pair<ExecutionState, size_t>;
   auto advanceDependency() noexcept -> void;
 
  private:
