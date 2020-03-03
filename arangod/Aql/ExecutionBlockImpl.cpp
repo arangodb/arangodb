@@ -1914,8 +1914,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // If this triggers the executors produceRows function has returned
           // HASMORE even if it knew that upstream has no further rows.
           TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-          // We need to make sure _lastRange is all used
-          TRI_ASSERT(!lastRangeHasDataRow());
+          // We need to make sure _lastRange is all used for single-dependency
+          // executors.
+          TRI_ASSERT(isMultiDepExecutor<Executor> || !lastRangeHasDataRow());
           TRI_ASSERT(!_lastRange.hasShadowRow());
           size_t skippedLocal = 0;
 
