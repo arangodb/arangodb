@@ -64,7 +64,7 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       } else {
         auto callSet = AqlCallSet{};
         // TODO shouldn't we use `output.getClientCall()` instead of `AqlCall{}` here?
-        callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(),  AqlCall{}});
+        callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), AqlCall{}});
         return {input.upstreamState(currentDependency()), Stats{}, callSet};
       }
     }
@@ -123,29 +123,6 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   }
 }
 
-auto UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output)
-    -> std::pair<ExecutionState, Stats> {
-  while (!output.isFull() && !done()) {
-    // Note that fetchNextRow may return DONE (because the current dependency is
-    // DONE), and also return an unitialized row in that case, but we are not
-    // DONE completely - that's what `done()` is for.
-    auto [state, inputRow] = fetchNextRow(output.numRowsLeft());
-    if (state == ExecutionState::WAITING) {
-      return {state, {}};
-    }
-    // HASMORE => inputRow.isInitialized()
-    TRI_ASSERT(state == ExecutionState::DONE || inputRow.isInitialized());
-    if (inputRow.isInitialized()) {
-      output.copyRow(inputRow);
-      TRI_ASSERT(output.produced());
-      output.advanceRow();
-    }
-  }
-
-  auto state = done() ? ExecutionState::DONE : ExecutionState::HASMORE;
-  return {state, {}};
-}
-
 auto UnsortedGatherExecutor::fetcher() const noexcept -> const Fetcher& {
   return _fetcher;
 }
@@ -186,27 +163,4 @@ auto UnsortedGatherExecutor::currentDependency() const noexcept -> size_t {
 auto UnsortedGatherExecutor::advanceDependency() noexcept -> void {
   TRI_ASSERT(_currentDependency < numDependencies());
   ++_currentDependency;
-}
-
-auto UnsortedGatherExecutor::skipRows(size_t const atMost)
-    -> std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> {
-  auto const rowsLeftToSkip = [&atMost, &skipped = this->_skipped]() {
-    TRI_ASSERT(atMost >= skipped);
-    return atMost - skipped;
-  };
-  while (rowsLeftToSkip() > 0 && !done()) {
-    // Note that skipNextRow may return DONE (because the current dependency is
-    // DONE), and also return an unitialized row in that case, but we are not
-    // DONE completely - that's what `done()` is for.
-    auto [state, skipped] = skipNextRows(rowsLeftToSkip());
-    _skipped += skipped;
-    if (state == ExecutionState::WAITING) {
-      return {state, {}, 0};
-    }
-  }
-
-  auto state = done() ? ExecutionState::DONE : ExecutionState::HASMORE;
-  auto skipped = size_t{0};
-  std::swap(skipped, _skipped);
-  return {state, {}, skipped};
 }

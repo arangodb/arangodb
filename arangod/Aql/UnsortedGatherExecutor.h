@@ -74,17 +74,6 @@ class UnsortedGatherExecutor {
   ~UnsortedGatherExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
-  [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
-      -> std::pair<ExecutionState, Stats>;
-
-  [[nodiscard]] auto skipRows(size_t atMost) -> std::tuple<ExecutionState, NoStats, size_t>;
-
-  /**
    * @brief Produce rows
    *
    * @param input DataRange delivered by the fetcher
