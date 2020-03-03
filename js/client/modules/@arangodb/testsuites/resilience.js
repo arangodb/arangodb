@@ -41,6 +41,7 @@ const optionsDocumentation = [
 ];
 
 const tu = require('@arangodb/test-utils');
+const _ = require('lodash');
 
 const testPaths = {
   'resilience_move': [tu.pathForTesting('server/resilience/move')],
