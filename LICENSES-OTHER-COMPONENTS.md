@@ -1869,6 +1869,15 @@ exception from the GPL license:
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
+#### taocpp::json
+
+* Name: json
+* Version: master
+* Project Home: https://github.com/taocpp/json
+* License: https://github.com/taocpp/json/blob/master/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
 #### text-table
 
 * Name: text-table
