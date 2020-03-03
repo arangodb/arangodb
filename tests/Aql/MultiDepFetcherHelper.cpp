@@ -24,6 +24,8 @@
 #include "gtest/gtest.h"
 #include "Aql/AqlItemRowPrinter.h"
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ShadowAqlItemRow.h"
 
@@ -66,7 +68,9 @@ void arangodb::tests::aql::runFetcher(arangodb::aql::MultiDependencySingleRowFet
       void operator()(ConcreteFetcherIOPair<SkipRowsForDependency> const& iop) {
         auto const& args = iop.first;
         auto const& expected = iop.second;
-        auto actual = testee.skipRowsForDependency(args.dependency, args.atMost);
+        auto stack = AqlCallStack(AqlCall{args.atMost, 0, 0, false});
+        auto [state, skipped, ignore] = testee.executeForDependency(args.dependency, stack);
+        auto actual = std::pair<ExecutionState, size_t>(state, skipped);
         EXPECT_EQ(expected, actual) << "during step " << i;
       }
       void operator()(ConcreteFetcherIOPair<FetchShadowRow> const& iop) {
