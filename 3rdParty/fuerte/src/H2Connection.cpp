@@ -225,7 +225,7 @@ std::string makeAuthHeader(fu::detail::ConnectionConfiguration const& config) {
   // preemptively cache authentication
   if (config._authenticationType == AuthenticationType::Basic) {
     auth.append("Basic ");
-    auth.append(fu::encodeBase64(config._user + ":" + config._password));
+    auth.append(fu::encodeBase64(config._user + ":" + config._password, true));
   } else if (config._authenticationType == AuthenticationType::Jwt) {
     if (config._jwtToken.empty()) {
       throw std::logic_error("JWT token is not set");
@@ -368,7 +368,7 @@ void H2Connection<T>::finishConnect() {
       (uint8_t*)packed.data(), packed.size(), iv.data(), iv.size());
   FUERTE_ASSERT(nwrite >= 0);
   packed.resize(static_cast<size_t>(nwrite));
-  std::string encoded = fu::encodeBase64(packed);
+  std::string encoded = fu::encodeBase64(packed, true);
 
   // lets do the HTTP2 session upgrade right away
   initNgHttp2Session();
