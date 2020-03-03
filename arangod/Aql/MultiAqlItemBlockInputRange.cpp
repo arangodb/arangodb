@@ -36,12 +36,14 @@ MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
                                                          std::size_t skipped,
                                                          std::size_t nrInputRanges) {
   _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
+  TRI_ASSERT(nrInputRanges > 0);
 }
 
 auto MultiAqlItemBlockInputRange::resizeIfNecessary(ExecutorState state, size_t skipped,
                                                     size_t nrInputRanges) -> void {
   // We never want to reduce the number of dependencies.
   TRI_ASSERT(_inputs.size() <= nrInputRanges);
+  TRI_ASSERT(nrInputRanges > 0);
   if (_inputs.size() < nrInputRanges) {
     _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
   }
@@ -67,6 +69,7 @@ auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
 
 auto MultiAqlItemBlockInputRange::rangeForDependency(size_t const dependency)
     -> AqlItemBlockInputRange& {
+  TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency);
 }
 
@@ -99,7 +102,7 @@ auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
 //       * assert that all dependencies are on a shadow row?
 auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::ShadowAqlItemRow {
   TRI_ASSERT(!hasDataRow());
-
+  TRI_ASSERT(!_inputs.empty());
   // TODO: Correct?
   return _inputs.at(0).peekShadowRow();
 }

@@ -371,7 +371,6 @@ auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependen
   if (_dependencyStates.empty()) {
     initDependencies();
   }
-
   auto [state, skipped, block] = _dependencyProxy->executeForDependency(dependency, stack);
 
   if (state == ExecutionState::WAITING) {
