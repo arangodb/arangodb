@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
+  AQL functions when invoking an AQL query from the arangosh or a client application.
+  Previously, invoking an AQL query and using the `CALL` or `APPLY` AQL functions
+  to call user-defined AQL function caused undefined behavior.
+
 * Added JSON-Schema (draft-4) document validation. The validation can be
   specified by providing the new `validation` collection property when creating a
   new collection or when updating the properties of an existing collection:
