@@ -29,6 +29,7 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/SingleRowFetcher.h"
 
+#include <mutex>
 #include <tuple>
 #include <utility>
 
