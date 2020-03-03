@@ -68,7 +68,7 @@ bool agencyAsyncShouldCancel(AsyncAgencyCommManager& manager, RequestMeta& meta)
     return true;
   }
 
-  return manager.server().isStopping();
+  return manager.isStopping();
 }
 
 bool agencyAsyncShouldTimeout(RequestMeta const& meta) {
@@ -144,8 +144,14 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
   // check for conditions to abort
   auto waitTime = agencyAsyncWaitTime(meta);
   if (agencyAsyncShouldCancel(man, meta)) {
+    LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
+        << "agencyAsyncSend [" << meta.requestId << "] "
+        << "abort because cancelled";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
+    LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
+        << "agencyAsyncSend [" << meta.requestId << "] "
+        << "abort because timeout";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
   }
 
@@ -222,8 +228,14 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
   // check for conditions to abort
   auto waitTime = agencyAsyncWaitTime(meta);
   if (agencyAsyncShouldCancel(man, meta)) {
+    LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
+        << "agencyAsyncSend [" << meta.requestId << "] "
+        << "abort because cancelled";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
+    LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
+        << "agencyAsyncSend [" << meta.requestId << "] "
+        << "abort because timeout";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
   }
 
@@ -339,11 +351,28 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     network::Timeout timeout, RequestType type, std::vector<ClientId> clientIds,
     velocypack::Buffer<uint8_t>&& body) const {
   network::Headers headers;
+  uint64_t requestId = _manager.nextRequestId();
+
   return agencyAsyncSend(_manager,
                          RequestMeta({timeout, method, url, type, std::move(clientIds),
-                                      std::move(headers), clock::now(), _manager.nextRequestId(),
+                                      std::move(headers), clock::now(), requestId,
                                       _skipScheduler || _manager.getSkipScheduler(), 0}),
-                         std::move(body));
+                         std::move(body))
+      .then([requestId](futures::Try<AsyncAgencyCommResult>&& e) {
+        if (e.hasException()) {
+          LOG_TOPIC("aac82", DEBUG, Logger::AGENCYCOMM)
+              << "sendWithFailover [" << requestId << "] had exception during request";
+          try {
+            e.throwIfFailed();
+          } catch (const std::exception& e) {
+            LOG_TOPIC("aac82", DEBUG, Logger::AGENCYCOMM)
+                << "sendWithFailover [" << requestId << "] message: " << e.what();
+            throw e;
+          }
+        }
+
+        return std::move(e).get();
+      });
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(

@@ -1206,11 +1206,17 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   if (method == arangodb::rest::RequestType::POST) {
     if (isWriteTrans) {
+      LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+          << "sending write transaction with POST " << inBody.toJson() << " '"
+          << initialUrl << "'";
       result = comm.withSkipScheduler(true)
                    .sendWriteTransaction(std::chrono::duration<double>(timeout),
                                          std::move(buffer))
                    .get();
     } else {
+      LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+          << "sending non-write transaction with POST " << inBody.toJson()
+          << " '" << initialUrl << "'";
       result = comm.withSkipScheduler(true)
                    .sendWithFailover(fuerte::RestVerb::Post, initialUrl,
                                      std::chrono::duration<double>(timeout),
@@ -1218,6 +1224,9 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                    .get();
     }
   } else if (method == arangodb::rest::RequestType::GET) {
+    LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+        << "sending transaction with GET " << inBody.toJson() << " '"
+        << initialUrl << "'";
     result = comm.withSkipScheduler(true)
                  .sendWithFailover(fuerte::RestVerb::Get, initialUrl,
                                    std::chrono::duration<double>(timeout),
@@ -1227,7 +1236,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     return AgencyCommResult{static_cast<int>(rest::ResponseCode::METHOD_NOT_ALLOWED),
                             "method not supported", ""};
   }
-
+  LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM)
+      << "sendWithFailover done for " << inBody.toJson() << " '" << initialUrl << "'";
   return toAgencyCommResult(result);
 }
 

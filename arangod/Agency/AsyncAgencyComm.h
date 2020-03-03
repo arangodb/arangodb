@@ -28,7 +28,6 @@
 #include <memory>
 #include <mutex>
 
-
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -122,9 +121,15 @@ class AsyncAgencyCommManager final {
 
   application_features::ApplicationServer& server();
 
-  uint64_t nextRequestId() { return _nextRequestId.fetch_add(1, std::memory_order_relaxed); }
+  uint64_t nextRequestId() {
+    return _nextRequestId.fetch_add(1, std::memory_order_relaxed);
+  }
+
+  bool isStopping() const { return _isStopping; }
+  void setStopping(bool stopping) { _isStopping = stopping; }
 
  private:
+  bool _isStopping = false;
   bool _skipScheduler = true;
   application_features::ApplicationServer& _server;
   mutable std::mutex _lock;

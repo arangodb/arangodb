@@ -659,6 +659,8 @@ void ClusterFeature::unprepare() {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
+  AsyncAgencyCommManager::INSTANCE->setStopping(true);
+
   _asyncAgencyCommPool.reset();
   _clusterInfo->cleanup();
 }
