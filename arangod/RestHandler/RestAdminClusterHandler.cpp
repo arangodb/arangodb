@@ -354,7 +354,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
         .done();
   }
 
-  return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue([this, ctx = std::move(ctx)](AsyncAgencyCommResult&& result) mutable {
+  return AsyncAgencyComm().sendReadTransaction(20s, std::move(trx)).thenValue([this, ctx = std::move(ctx)](AsyncAgencyCommResult&& result) mutable {
     auto rootPath = arangodb::cluster::paths::root()->arango();
     if (result.ok() && result.statusCode() == 200) {
       VPackSlice agency = result.slice().at(0);
@@ -465,12 +465,16 @@ RestStatus RestAdminClusterHandler::handleRemoveServer() {
     return RestStatus::DONE;
   }
 
-  if (body.isObject()) {
-    VPackSlice server = body.get("server");
-    if (server.isString()) {
-      std::string serverId = resolveServerNameID(server);
-      return handlePostRemoveServer(serverId);
-    }
+  VPackSlice server = VPackSlice::noneSlice();
+  if (body.isString()) {
+    server = body;
+  } else if (body.isObject()) {
+    server = body.get("server");
+  }
+
+  if (server.isString()) {
+    std::string serverId = resolveServerNameID(server);
+    return handlePostRemoveServer(serverId);
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,

@@ -101,7 +101,7 @@ std::string extractEndpointFromUrl(std::string const& location) {
 
   // invalid location header
   if (delim == std::string::npos) {
-    return "";
+    return {};
   }
 
   return Endpoint::unifiedForm(specification.substr(0, delim));
