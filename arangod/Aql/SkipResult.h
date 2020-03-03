@@ -76,4 +76,7 @@ class SkipResult {
 };
 
 }  // namespace arangodb::aql
+
+std::ostream& operator<<(std::ostream&, arangodb::aql::SkipResult const&);
+
 #endif

@@ -211,7 +211,7 @@ TEST_F(SkipResultTest, merge_with_toplevel) {
   b.incrementSubquery();
   b.didSkip(2);
 
-  a.merge(b, true);
+  a.merge(b, false);
 
   SkipResult expected{};
   expected.didSkip(12);
@@ -233,7 +233,7 @@ TEST_F(SkipResultTest, merge_without_toplevel) {
   b.incrementSubquery();
   b.didSkip(2);
 
-  a.merge(b, false);
+  a.merge(b, true);
 
   SkipResult expected{};
   expected.didSkip(12);

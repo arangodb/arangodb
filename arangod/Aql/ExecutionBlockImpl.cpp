@@ -131,6 +131,23 @@ template <typename T, typename... Es>
 constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 
 /*
+ *  Determine whether an executor cannot bypass subquery skips.
+ *  This is if exection of this Executor does have side-effects
+ *  other then it's own result.
+ */
+
+template <typename Executor>
+constexpr bool executorHasSideEffects =
+    is_one_of_v<Executor, ModificationExecutor<AllRowsFetcher, InsertModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+                ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+                ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+                ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
+
+/*
  * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
@@ -1232,6 +1249,12 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
   (void)dependency;
   if constexpr (isNewStyleExecutor<Executor>) {
     if constexpr (is_one_of_v<Fetcher, MultiDependencySingleRowFetcher>) {
+      static_assert(
+          !executorHasSideEffects<Executor>,
+          "there is a special implementation for side-effect executors to "
+          "exchange the stack. For the MultiDependencyFetcher this special "
+          "case is not implemented. There is no reason to disallow this "
+          "case here however, it is just not needed thus far.");
       // TODO: This is a hack to guarantee we have enough space in our range
       //       to fit all inputs, in particular the one executed below
       TRI_ASSERT(dependency < _dependencies.size());
@@ -1242,6 +1265,16 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
       _lastRange.setDependency(dependency, range);
 
       return {state, skipped, _lastRange};
+    } else if constexpr (executorHasSideEffects<Executor>) {
+      // If the executor has side effects, we cannot bypass any subqueries
+      // by skipping them. SO we need to fetch all shadow rows in order to
+      // trigger this Executor with everthing from above.
+      // NOTE: The Executor needs to discard shadowRows, and do the
+      auto fetchAllStack = stack.createEquivalentFetchAllShadowRowsStack();
+      auto res = _rowFetcher.execute(fetchAllStack);
+      // Just make sure we did not Skip anything
+      TRI_ASSERT(std::get<SkipResult>(res).nothingSkipped());
+      return res;
     } else {
       return _rowFetcher.execute(stack);
     }
