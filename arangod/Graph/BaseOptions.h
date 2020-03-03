@@ -112,6 +112,10 @@ struct BaseOptions {
 
   void setCollectionToShard(std::map<std::string, std::string>const&);
 
+  bool produceVertices() const { return _produceVertices; }
+  
+  void setProduceVertices(bool value) { _produceVertices = value; }
+
   transaction::Methods* trx() const;
 
   aql::Query* query() const;
@@ -121,12 +125,16 @@ struct BaseOptions {
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
 
-  // Creates a complete Object containing all index information
-  // in the given builder.
+  /// @brief Creates a complete Object containing all index information
+  /// in the given builder.
   virtual void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
-
+  
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
+
+  /// @brief whether or not an edge collection shall be excluded
+  /// this can be overridden in TraverserOptions
+  virtual bool shouldExcludeEdgeCollection(std::string const& name) const { return false; }
 
   TraverserCache* cache();
 
@@ -139,18 +147,13 @@ struct BaseOptions {
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
 
   // Requires an open Object in the given builder an
-  // will inject index information into it.
-  // Does not close the builder.
-  void injectVelocyPackIndexes(arangodb::velocypack::Builder&) const;
-
-  // Requires an open Object in the given builder an
   // will inject EngineInfo into it.
   // Does not close the builder.
   void injectEngineInfo(arangodb::velocypack::Builder&) const;
 
   aql::Expression* getEdgeExpression(size_t cursorId, bool& needToInjectVertex) const;
 
-  bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue) const;
+  bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue);
 
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
                               std::string const& collectionName,
@@ -164,15 +167,20 @@ struct BaseOptions {
  protected:
   aql::Query* _query;
 
-  aql::FixedVarExpressionContext* _ctx;
+  aql::FixedVarExpressionContext _ctx;
 
   transaction::Methods* _trx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
   std::vector<LookupInfo> _baseLookupInfos;
 
-  aql::Variable const* _tmpVar;
+  /// @brief whether or not the traversal will produce vertices
+  bool _produceVertices;
+ 
+  /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
+
+  aql::Variable const* _tmpVar;
 
   /// @brief the traverser cache
   std::unique_ptr<TraverserCache> _cache;

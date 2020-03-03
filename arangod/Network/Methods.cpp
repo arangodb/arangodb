@@ -100,6 +100,10 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
 FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
                       RequestOptions const& options, Headers headers) {
+  LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
+      << "request to '" << dest
+      << "' '" << fuerte::to_string(type) << " " << path << "'";
+  
   // FIXME build future.reset(..)
   auto req = prepareRequest(type, std::move(path), std::move(payload),
                             options, std::move(headers));
@@ -109,10 +113,6 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
         << "connection pool unavailable";
     return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr, std::move(req)});
   }
-
-  LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
-      << "request to '" << dest
-      << "' '" << fuerte::to_string(type) << " " << path << "'";
 
   arangodb::network::EndpointSpec spec;
   int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
@@ -380,7 +380,6 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
       << "request to '" << destination
       << "' '" << fuerte::to_string(type) << " " << path << "'";
 
-  //  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
   auto rs = std::make_shared<RequestsState>(pool, std::move(destination),
                                             type, std::move(path),
                                             std::move(payload),

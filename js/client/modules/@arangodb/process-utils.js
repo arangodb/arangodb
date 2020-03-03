@@ -694,8 +694,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       instanceInfo.exitStatus = res;
     }
   } else {
-    // V8 executeExternalAndWait thinks that timeout is in ms, so *100
-    res = executeExternalAndWait(cmd, args, false, timeout*100, coverageEnvironment());
+    // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
+    res = executeExternalAndWait(cmd, args, false, timeout*1000, coverageEnvironment());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
@@ -708,6 +708,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       instanceInfo.exitStatus.hasOwnProperty('signal') &&
       ((instanceInfo.exitStatus.signal === 11) ||
        (instanceInfo.exitStatus.signal === 6) ||
+       (instanceInfo.exitStatus.signal === 4) || // mac sometimes SIG_ILLs...
        // Windows sometimes has random numbers in signal...
        (platform.substr(0, 3) === 'win')
       )
@@ -759,6 +760,29 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       status: false,
       message: 'irregular termination: ' + instanceInfo.exitStatus.status +
         ' exit signal: ' + instanceInfo.exitStatus.signal + errorMessage,
+      duration: deltaTime
+    };
+  } else if (res.status === 'TIMEOUT') {
+    print('Killing ' + cmd + ' - ' + JSON.stringify(args));
+    let resKill = killExternal(res.pid, abortSignal);
+    if (coreCheck) {
+      print(Date() + " executeAndWait: Marking crashy because of timeout - " + JSON.stringify(instanceInfo));
+      crashUtils.analyzeCrash(cmd,
+                              instanceInfo,
+                              options,
+                              'execution of ' + cmd + ' - kill because of timeout');
+      if (options.coreCheck) {
+        print(instanceInfo.exitStatus.gdbHint);
+      }
+      serverCrashedLocal = true;
+    }
+    instanceInfo.pid = res.pid;
+    instanceInfo.exitStatus = res;
+    return {
+      timeout: true,
+      status: false,
+      message: 'termination by timeout: ' + instanceInfo.exitStatus.status +
+        ' killed by : ' + abortSignal + errorMessage,
       duration: deltaTime
     };
   } else {
@@ -1463,7 +1487,12 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   if (tcpdump !== undefined) {
     print(CYAN + "Stopping tcpdump" + RESET);
     killExternal(tcpdump.pid);
-    statusExternal(tcpdump.pid, true);
+    try {
+      statusExternal(tcpdump.pid, true);
+    } catch (x)
+    {
+      print(Date() + ' wasn\'t able to stop tcpdump: ' + x.message );
+    }
   }
   cleanupDirectories.unshift(instanceInfo.rootDir);
   return shutdownSuccess;
@@ -1662,7 +1691,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
-      instanceInfo['vstEndpoint'] = 'vst://127.0.0.1:' + port;
       let coordinatorArgs = _.clone(options.extraArgs);
       coordinatorArgs['server.endpoint'] = endpoint;
       coordinatorArgs['cluster.my-address'] = endpoint;
@@ -1676,7 +1704,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
-      instanceInfo['vstEndpoint'] = 'vst://127.0.0.1:' + port;
       let singleArgs = _.clone(options.extraArgs);
       singleArgs['server.endpoint'] = endpoint;
       singleArgs['cluster.my-address'] = endpoint;
@@ -1964,7 +1991,7 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
-  instanceInfo.vstEndpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].url.replace(/.*\/\//, 'vst://');
+  // instanceInfo.vstEndpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].url.replace(/.*\/\//, 'vst://');
 
   return instanceInfo;
 }

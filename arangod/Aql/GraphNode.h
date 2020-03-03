@@ -202,7 +202,7 @@ class GraphNode : public ExecutionNode {
   std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
 
   /// @brief The default direction given in the query
-  TRI_edge_direction_e _defaultDirection;
+  TRI_edge_direction_e const _defaultDirection;
 
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
@@ -210,8 +210,7 @@ class GraphNode : public ExecutionNode {
   /// @brief Options for traversals
   std::unique_ptr<graph::BaseOptions> _options;
 
-  /// @brief Pseudo string value node to hold the last visited vertex id.
-  /// @brief Flag if the options have been build.
+  /// @brief Flag if the options have been built.
   /// Afterwards this class is not copyable anymore.
   bool _optionsBuilt;
 

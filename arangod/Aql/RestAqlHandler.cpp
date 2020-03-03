@@ -430,7 +430,7 @@ bool RestAqlHandler::killQuery(std::string const& idString) {
 //   "pos":   The number of the row in "items" to take, usually 0.
 // For the "shutdown" and "lock" operations no additional arguments are
 // required and an empty JSON object in the body is OK.
-// All operations allow to set the HTTP header "Shard-ID:". If this is
+// All operations allow to set the HTTP header "x-shard-id:". If this is
 // set, then the root block of the stored query must be a ScatterBlock
 // and the shard ID is given as an additional argument to the ScatterBlock's
 // special API.
@@ -637,7 +637,11 @@ Query* RestAqlHandler::findQuery(std::string const& idString) {
 // handle for useQuery
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
-  std::string const& shardId = _request->header("shard-id");
+  bool found;
+  std::string shardId = _request->header("x-shard-id", found);
+  if (!found) {  // deprecated in 3.7, remove later
+    shardId = _request->header("shard-id", found);
+  }
 
   // upon first usage, the "initializeCursor" method must be called
   // note: if the operation is "initializeCursor" itself, we do not initialize

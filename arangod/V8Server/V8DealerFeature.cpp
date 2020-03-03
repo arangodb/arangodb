@@ -201,7 +201,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER &&
       (!result.touched("console") ||
        !*(options->get<BooleanParameter>("console")->ptr))) {
-    // specifiying --console requires JavaScript, so we can only turn it off
+    // specifying --console requires JavaScript, so we can only turn it off
     // if not specified
     _enableJS = false;
   }
@@ -1400,9 +1400,9 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       }
 
       v8::Handle<v8::Object> globalObj = localContext->Global();
-      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "GLOBAL"), globalObj);
-      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "global"), globalObj);
-      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "root"), globalObj);
+      globalObj->Set(localContext, TRI_V8_ASCII_STRING(isolate, "GLOBAL"), globalObj).FromMaybe(false);
+      globalObj->Set(localContext, TRI_V8_ASCII_STRING(isolate, "global"), globalObj).FromMaybe(false);
+      globalObj->Set(localContext, TRI_V8_ASCII_STRING(isolate, "root"),   globalObj).FromMaybe(false);
 
       std::string modules = "";
       std::string sep = "";

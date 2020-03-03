@@ -50,7 +50,7 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
+std::shared_ptr<asio_ns::ssl::context> arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
   asio_ns::ssl::context::method meth;
@@ -95,9 +95,9 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
                                      "unknown SSL protocol method");
   }
 
-  asio_ns::ssl::context sslctx(meth);
+  auto sslctx = std::make_shared<asio_ns::ssl::context>(meth);
 
-  if (sslctx.native_handle() == nullptr) {
+  if (sslctx->native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL
     // library not having been initialized
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -106,7 +106,7 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
 
   // load our keys and certificates
   boost::system::error_code ec;
-  sslctx.use_certificate_chain_file(keyfile, ec);
+  sslctx->use_certificate_chain_file(keyfile, ec);
   if (ec) {
     LOG_TOPIC("c6a00", ERR, arangodb::Logger::SSL)
     << "cannot read certificate from '" << keyfile << "': " << ec;
@@ -114,7 +114,7 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
                                    "unable to read certificate from file");
   }
   
-  sslctx.use_private_key_file(keyfile, asio_ns::ssl::context::file_format::pem, ec);
+  sslctx->use_private_key_file(keyfile, asio_ns::ssl::context::file_format::pem, ec);
   if (ec) {
     LOG_TOPIC("98712", ERR, arangodb::Logger::FIXME)
     << "cannot read key from '" << keyfile << "': " << ec;
@@ -122,7 +122,7 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
                                    "unable to read key from keyfile");
   }
 #if (OPENSSL_VERSION_NUMBER < 0x00905100L)
-  sslctx.set_verify_depth(1);
+  sslctx->set_verify_depth(1);
 #endif
 
   return sslctx;

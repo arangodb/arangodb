@@ -136,8 +136,8 @@ class ShortestPathNode : public GraphNode {
   auto options() const -> graph::ShortestPathOptions*;
 
  private:
-
-  void shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c, bool withProperties) const;
+  void shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
+                               bool withProperties) const;
 
  private:
   /// @brief input variable only used if _vertexId is unused

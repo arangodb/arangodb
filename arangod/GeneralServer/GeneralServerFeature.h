@@ -73,6 +73,10 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
     return GENERAL_SERVER->_accessControlAllowOrigins;
   }
 
+  static Result reloadTLS() {
+    return GENERAL_SERVER->reloadTLSInternal();
+  }
+
  private:
   static GeneralServerFeature* GENERAL_SERVER;
 
@@ -89,8 +93,19 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
  
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
- 
+
  private:
+  Result reloadTLSInternal() {  // reload TLS data from disk
+    Result res;
+    for (auto& up : _servers) {
+      Result res2 = up->reloadTLS();
+      if (!res2.fail()) {
+        res = res2;   // yes, we only report the last error if there is one
+      }
+    }
+    return res;
+  }
+
   void buildServers();
   void defineHandlers();
 

@@ -50,7 +50,8 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
-static void parseNodeInput(AstNode const* node, std::string& id, Variable const*& variable, char const* part) {
+static void parseNodeInput(AstNode const* node, std::string& id,
+                           Variable const*& variable, char const* part) {
   switch (node->type) {
     case NODE_TYPE_REFERENCE:
       variable = static_cast<Variable*>(node->getData());
@@ -58,8 +59,9 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
       break;
     case NODE_TYPE_VALUE:
       if (node->value.type != VALUE_TYPE_STRING) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                       std::string("invalid ") + part + " vertex. Must either be "
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_PARSE, std::string("invalid ") + part +
+                                       " vertex. Must either be "
                                        "an _id string or an object with _id.");
       }
       variable = nullptr;
@@ -67,8 +69,9 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
       break;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     std::string("invalid ") + part + " vertex. Must either be an "
-                                     "_id string or an object with _id.");
+                                     std::string("invalid ") + part +
+                                         " vertex. Must either be an "
+                                         "_id string or an object with _id.");
   }
 }
 static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNode const* node,
@@ -200,13 +203,13 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
 
   // Filter Condition Parts
   TRI_ASSERT(base.hasKey("fromCondition"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
   _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
 
   TRI_ASSERT(base.hasKey("toCondition"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
@@ -265,14 +268,14 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
-                                  it->second.registerId);
+                                      it->second.registerId);
     outputRegisters->emplace(it->second.registerId);
   }
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::EDGE,
-                                  it->second.registerId);
+                                      it->second.registerId);
     outputRegisters->emplace(it->second.registerId);
   }
 

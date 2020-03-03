@@ -60,8 +60,8 @@ v8::Handle<v8::Object> WrapAnalyzer(
     arangodb::iresearch::AnalyzerPool::ptr const& analyzer) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL(IResearchAnalyzerTempl, v8::ObjectTemplate);
-  auto result = IResearchAnalyzerTempl->NewInstance();
+  TRI_GET_GLOBAL(IResearchAnalyzerInstanceTempl, v8::ObjectTemplate);
+  auto result = IResearchAnalyzerInstanceTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
@@ -81,6 +81,7 @@ v8::Handle<v8::Object> WrapAnalyzer(
 void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto* analyzer = UnwrapAnalyzer(isolate, args.Holder());
 
   if (!analyzer) {
@@ -105,11 +106,10 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
     for (auto& feature: analyzer->features()) {
       if (feature) { // valid
         if (feature->name().null()) {
-          result->Set(i++, v8::Null(isolate));
+          result->Set(context, i++, v8::Null(isolate)).FromMaybe(false);
         } else {
-          result->Set( // set value
-            i++, TRI_V8_STD_STRING(isolate, std::string(feature->name())) // args
-          );
+          result->Set(context,  // set value
+                      i++, TRI_V8_STD_STRING(isolate, std::string(feature->name()))).FromMaybe(false); // args
         }
       }
     }
@@ -250,6 +250,7 @@ void JS_AnalyzerType(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
@@ -342,7 +343,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto value = v8::Local<v8::Array>::Cast(args[3]);
 
     for (uint32_t i = 0, count = value->Length(); i < count;  ++i) {
-      auto subValue = value->Get(i);
+      auto subValue = value->Get(context, i).FromMaybe(v8::Local<v8::Value>());
 
       if (!subValue->IsString()) {
         TRI_V8_THROW_TYPE_ERROR("<feature> must be a string");
@@ -498,6 +499,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDropped()) {
@@ -549,7 +551,7 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_EXCEPTION_MEMORY();
       }
 
-      v8Result->Set(static_cast<uint32_t>(i), analyzer); // cast safe because of check above
+      v8Result->Set(context, static_cast<uint32_t>(i), analyzer).FromMaybe(false); // cast safe because of check above
     }
 
     TRI_V8_RETURN(v8Result);
@@ -683,9 +685,9 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "save"), JS_Create);
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "toArray"), JS_List);
 
-    v8g.IResearchAnalyzersTempl.Reset(isolate, objTemplate);
+    v8g.IResearchAnalyzerManagerTempl.Reset(isolate, objTemplate);
 
-    auto instance = objTemplate->NewInstance();
+    auto instance = objTemplate->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
     // register the global object accessable via JavaScipt
     if (!instance.IsEmpty()) {
@@ -707,11 +709,11 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "properties"), JS_AnalyzerProperties);
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "type"), JS_AnalyzerType);
 
-    v8g.IResearchAnalyzerTempl.Reset(isolate, objTemplate);
+    v8g.IResearchAnalyzerInstanceTempl.Reset(isolate, objTemplate);
     TRI_AddGlobalFunctionVocbase( // required only for pretty-printing via JavaScript (must to be defined AFTER v8g.IResearchAnalyzerTempl.Reset(...))
       isolate, // isolate
       TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzer"), // name
-      fnTemplate->GetFunction() // impl
+      fnTemplate->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()) // impl
     );
   }
 }

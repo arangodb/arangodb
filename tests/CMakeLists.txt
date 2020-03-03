@@ -117,7 +117,6 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
   Cluster/AgencyPathsTest.cpp
-  Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
@@ -141,7 +140,6 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
-  IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
   IResearch/Containers-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/ExpressionFilter-test.cpp
@@ -222,7 +220,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
-  SimpleHttpClient/CommunicatorTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
   Transaction/Manager-test.cpp
@@ -296,17 +293,14 @@ endif()
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INCLUDE_DIR}
+  ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
 
 if (USE_JEMALLOC)
-   add_dependencies(arangodbtests jemalloc_build)
+  add_dependencies(arangodbtests jemalloc_build)
 endif ()
-# older macos has no uncaught exceptions
-if (DARWIN)
-  target_compile_definitions(arangodbtests PUBLIC CATCH_CONFIG_NO_CPP17_UNCAUGHT_EXCEPTIONS)
-endif()
 
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES

@@ -29,7 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
@@ -391,9 +390,6 @@ void ClusterFeature::prepare() {
   // Initialize ClusterInfo library:
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
 
-  // create an instance (this will not yet create a thread)
-  ClusterComm::initialize(server());
-
   if (ServerState::instance()->isAgent() || _enableCluster) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
     // nullptr happens only during shutdown
@@ -420,6 +416,7 @@ void ClusterFeature::prepare() {
   config.idleConnectionMilli = 1000;
   config.verifyHosts = false;
   config.clusterInfo = &clusterInfo();
+  config.name = "AgencyComm";
 
   _pool = std::make_unique<network::ConnectionPool>(config);
 
@@ -445,8 +442,6 @@ void ClusterFeature::prepare() {
     AsyncAgencyCommManager::INSTANCE->addEndpoint(unified);
   }
 
-  // disable error logging for a while
-  ClusterComm::instance()->enableConnectionErrorLogging(false);
   // perform an initial connect to the agency
   if (!AgencyCommManager::MANAGER->start()) {
     LOG_TOPIC("54560", FATAL, arangodb::Logger::CLUSTER)
@@ -506,9 +501,6 @@ void ClusterFeature::prepare() {
 }
 
 void ClusterFeature::start() {
-  if (ServerState::instance()->isAgent() || _enableCluster) {
-    ClusterComm::start();
-  }
 
   // return if cluster is disabled
   if (!_enableCluster) {
@@ -574,16 +566,14 @@ void ClusterFeature::start() {
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
 
-void ClusterFeature::beginShutdown() { ClusterComm::instance()->disable(); }
+void ClusterFeature::beginShutdown() {  }
 
 void ClusterFeature::stop() {
   shutdownHeartbeatThread();
-  ClusterComm::instance()->stopBackgroundThreads();
 }
 
 void ClusterFeature::unprepare() {
   if (!_enableCluster) {
-    ClusterComm::cleanup();
     return;
   }
 

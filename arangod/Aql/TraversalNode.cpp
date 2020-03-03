@@ -363,7 +363,6 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   }
 
   // Traversal Filter Conditions
-
   TRI_ASSERT(_fromCondition != nullptr);
   nodes.add(VPackValue("fromCondition"));
   _fromCondition->toVelocyPack(nodes, flags);

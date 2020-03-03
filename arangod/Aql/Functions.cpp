@@ -669,7 +669,7 @@ std::string extractCollectionName(transaction::Methods* trx,
     VPackSlice slice = materializer.slice(value, true);
     VPackSlice id = slice;
 
-    if (slice.isObject() && slice.hasKey(StaticStrings::IdString)) {
+    if (slice.isObject()) {
       id = slice.get(StaticStrings::IdString);
     }
     if (id.isString()) {
@@ -683,7 +683,8 @@ std::string extractCollectionName(transaction::Methods* trx,
     size_t pos = identifier.find('/');
 
     if (pos != std::string::npos) {
-      return identifier.substr(0, pos);
+      // this is superior to  identifier.substr(0, pos)
+      identifier.resize(pos);
     }
 
     return identifier;
@@ -875,16 +876,20 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
     searchBuilder->add(VPackValue(identifier));
   } else {
     if (collectionName.empty()) {
-      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
+      char const* p = identifier.data() + pos + 1;
+      size_t l = identifier.size() - pos - 1;
+      searchBuilder->add(VPackValuePair(p, l, VPackValueType::String));
       collectionName = identifier.substr(0, pos);
-    } else if (identifier.substr(0, pos) != collectionName) {
+    } else if (identifier.compare(0, pos, collectionName) != 0) {
       // Requesting an _id that cannot be stored in this collection
       if (ignoreError) {
         return;
       }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     } else {
-      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
+      char const* p = identifier.data() + pos + 1;
+      size_t l = identifier.size() - pos - 1;
+      searchBuilder->add(VPackValuePair(p, l, VPackValueType::String));
     }
   }
 
@@ -1123,6 +1128,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
   {
     ISOLATE;
     v8::HandleScope scope(isolate);                                   \
+    auto context = TRI_IGETC;
 
     Query* query = expressionContext->query();
     TRI_ASSERT(query != nullptr);
@@ -1143,7 +1149,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
       v8::Handle<v8::Array> params = v8::Array::New(isolate, static_cast<int>(n));
 
       for (int i = 0; i < n; ++i) {
-        params->Set(static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx));
+        params->Set(context, static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx)).FromMaybe(true);
       }
       args[1] = params;
       args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
@@ -1552,19 +1558,22 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
   AqlValue const& value1 = extractFunctionParameterValue(parameters, 0);
   AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
 
-  // FIXME: there is only one shared stringbuffer instance
-  transaction::StringBufferLeaser buffer1(trx);
-  transaction::StringBufferLeaser buffer2(trx);
+  // we use one buffer to stringify both arguments
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
-  arangodb::basics::VPackStringBufferAdapter adapter1(buffer1->stringBuffer());
-  arangodb::basics::VPackStringBufferAdapter adapter2(buffer2->stringBuffer());
+  // stringify argument 1
+  ::appendAsString(trx, adapter, value1);
 
-  ::appendAsString(trx, adapter1, value1);
-  ::appendAsString(trx, adapter2, value2);
+  // note split position
+  size_t const split = buffer->length();
+
+  // stringify argument 2
+  ::appendAsString(trx, adapter, value2);
 
   int encoded = basics::StringUtils::levenshteinDistance(
-      std::string(buffer1->begin(), buffer1->length()),
-      std::string(buffer2->begin(), buffer2->length()));
+      buffer->begin(), split,
+      buffer->begin() + split, buffer->length() - split);
 
   return AqlValue(AqlValueHintInt(encoded));
 }
@@ -2309,7 +2318,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         if (it.isString()) {
           arangodb::velocypack::ValueLength length;
           char const* str = it.getStringUnchecked(length);
-          matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+          matchPatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
         } else {
           registerInvalidArgumentWarning(expressionContext, AFN);
           return AqlValue(AqlValueHintNull());
@@ -6547,17 +6556,24 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
 
   bool havePadValue = parameters.size() == 4;
 
-  if (offset.isNull(true) || offset.toInt64() < 0) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
-  }
-  uint64_t replaceOffset = static_cast<uint64_t>(offset.toInt64());
-
   if (!baseArray.isArray()) {
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
   
-  if (baseArray.length() < replaceOffset && !havePadValue) {
+  if (offset.isNull(true)) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+  }
+  auto length = baseArray.length();
+  uint64_t replaceOffset;
+  int64_t posParam = offset.toInt64();
+  if (posParam >= 0) {
+    replaceOffset = static_cast<uint64_t>(posParam);
+  } else {
+    replaceOffset = (static_cast<int64_t>(length) + posParam < 0) ? 0: static_cast<uint64_t>(length +  posParam);
+  }
+
+  if (length < replaceOffset && !havePadValue) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
 
@@ -6578,8 +6594,8 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
     it.next();
   }
 
-  uint64_t pos = arraySlice.length();
-  if (replaceOffset >= baseArray.length()) {
+  uint64_t pos = length;
+  if (replaceOffset >= length) {
     VPackSlice paddVpValue = materializer.slice(paddValue, false);
     while (pos < replaceOffset) {
       builder->add(paddVpValue);

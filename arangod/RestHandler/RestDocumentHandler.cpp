@@ -163,26 +163,28 @@ RestStatus RestDocumentHandler::insertDocument() {
     return RestStatus::DONE;
   }
 
+
   arangodb::OperationOptions opOptions;
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
 
   std::string const& mode = _request->value(StaticStrings::OverWriteMode);
   using namespace std::literals::string_literals;
-  if(mode == "update"s ) {
+  if (mode == "update"s) {
     opOptions.overwrite = true;
     opOptions.overwriteModeUpdate = true;
-  } else if(mode == "replace"s ) {
+    opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
+    opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
+  } else if (mode == "replace"s) {
     opOptions.overwrite = true;
   }
-  if(!opOptions.overwrite) {
+  if (!opOptions.overwrite) {
     opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
   }
 
-  opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
-  opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) &&
                         opOptions.overwrite;
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
@@ -436,6 +438,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);

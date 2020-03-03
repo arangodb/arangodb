@@ -251,7 +251,7 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
   TRI_ASSERT(it != nullptr);
   double startToJoin = it->weight();
   result._weight = startToJoin;
-  while (it != nullptr && it->getKey() != left.centre()) {
+  while (it != nullptr && it->getKey() != left.center()) {
     result._vertices.push_front(it->_pred);
     result._edges.push_front(it->_edge);
     result._weights.push_front(it->_weight);
@@ -264,7 +264,7 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
   TRI_ASSERT(it != nullptr);
   double joinToEnd = it->weight();
   result._weight += joinToEnd;
-  while (it != nullptr && it->getKey() != right.centre()) {
+  while (it != nullptr && it->getKey() != right.center()) {
     result._vertices.emplace_back(it->_pred);
     result._edges.emplace_back(it->_edge);
     it = right._frontier.find(it->_pred);

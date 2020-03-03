@@ -127,7 +127,7 @@ class parametric_state {
       }
     }
 
-    for (auto begin = positions_.begin(); begin != positions_.end(); ) {
+    for (auto begin = positions_.data(); begin != positions_.data() + positions_.size();) {
       if (subsumes(new_pos, *begin)) {
         std::swap(*begin, positions_.back());
         positions_.pop_back(); // removed positions subsumed by new_pos

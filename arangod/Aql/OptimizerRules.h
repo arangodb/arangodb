@@ -277,7 +277,8 @@ void createScatterGatherSnippet(ExecutionPlan& plan, TRI_vocbase_t* vocbase,
                                 std::vector<ExecutionNode*> const& nodeDependencies,
                                 std::vector<ExecutionNode*> const& nodeParents,
                                 SortElementVector const& elements, size_t numberOfShards,
-                                std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries);
+                                std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
+                                Collection const* collection);
 
 }  // namespace aql
 }  // namespace arangodb
