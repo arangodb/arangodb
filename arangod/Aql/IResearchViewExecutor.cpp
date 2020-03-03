@@ -890,7 +890,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
 
       TRI_voc_cid_t const cid = this->_reader->cid(_readerOffset);
       Query& query = this->infos().getQuery();
-      auto collection = lookupCollection(*query.trx(), cid, query);
+      auto collection = lookupCollection(*this->infos().trx(), cid, query);
 
       if (!collection) {
         std::stringstream msg;
@@ -1055,7 +1055,7 @@ size_t IResearchViewExecutor<ordered, materializeType>::skip(size_t limit) {
 
     TRI_voc_cid_t const cid = this->_reader->cid(_readerOffset);
     Query& query = this->infos().getQuery();
-    auto collection = lookupCollection(*query.trx(), cid, query);
+    auto collection = lookupCollection(*this->infos().trx(), cid, query);
 
     if (!collection) {
       std::stringstream msg;
@@ -1206,7 +1206,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
 
     TRI_voc_cid_t const cid = this->_reader->cid(i);
     Query& query = this->infos().getQuery();
-    auto collection = lookupCollection(*query.trx(), cid, query);
+    auto collection = lookupCollection(*this->infos().trx(), cid, query);
 
     if (!collection) {
       std::stringstream msg;
