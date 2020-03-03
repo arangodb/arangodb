@@ -23,6 +23,10 @@
 
 #include "RestHandler.h"
 
+#ifdef USE_DTRACE
+#include <sys/sdt.h>
+#endif
+
 #include <fuerte/jwt.h>
 #include <velocypack/Exception.h>
 
@@ -398,6 +402,11 @@ bool RestHandler::wakeupHandler() {
 }
 
 void RestHandler::executeEngine(bool isContinue) {
+
+#ifdef USE_DTRACE
+  DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
+#endif
+
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
 

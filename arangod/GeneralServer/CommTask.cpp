@@ -25,6 +25,10 @@
 
 #include "CommTask.h"
 
+#ifdef USE_DTRACE
+#include <sys/sdt.h>
+#endif
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
@@ -150,6 +154,11 @@ bool resolveRequestContext(GeneralRequest& req) {
 
 CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authToken,
                                           GeneralRequest& req) {
+
+#ifdef USE_DTRACE
+  DTRACE_PROBE1(arangod, CommTaskPrepareExecution, this);
+#endif
+
   // Step 1: In the shutdown phase we simply return 503:
   if (_server.server().isStopping()) {
     addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
@@ -324,7 +333,11 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
 
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                               std::unique_ptr<GeneralResponse> response) {
-  
+
+#ifdef USE_DTRACE
+  DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
+#endif
+
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
 
@@ -516,6 +529,11 @@ void CommTask::addErrorResponse(rest::ResponseCode code,
 // and scheduled later when the number of used threads decreases
 
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
+
+#ifdef USE_DTRACE
+  DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
+#endif
+
   RequestStatistics::SET_QUEUE_START(handler->statistics(), SchedulerFeature::SCHEDULER->queueStatistics()._queued);
 
   RequestLane lane = handler->getRequestLane();

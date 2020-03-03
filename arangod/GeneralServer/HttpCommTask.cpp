@@ -23,6 +23,10 @@
 
 #include "HttpCommTask.h"
 
+#ifdef USE_DTRACE
+#include <sys/sdt.h>
+#endif
+
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
 #include "Cluster/ServerState.h"
@@ -336,8 +340,20 @@ void HttpCommTask<T>::checkVSTPrefix() {
                       asio_ns::transfer_at_least(11), std::move(cb));
 }
 
+#ifdef USE_DTRACE
+// Moved here to prevent multiplicity by template
+static void __attribute__ ((noinline)) DTraceHttpCommTaskProcessRequest(size_t th) {
+  DTRACE_PROBE1(arangod, HttpCommTaskProcessRequest, th);
+}
+#endif
+
 template <SocketType T>
 void HttpCommTask<T>::processRequest() {
+
+#ifdef USE_DTRACE
+  DTraceHttpCommTaskProcessRequest((size_t) this);
+#endif
+
   TRI_ASSERT(_request);
   this->_protocol->timer.cancel();
 
@@ -414,9 +430,21 @@ void HttpCommTask<T>::processRequest() {
   this->executeRequest(std::move(_request), std::move(resp));
 }
 
+#ifdef USE_DTRACE
+// Moved here to prevent multiplicity by template
+static void __attribute__ ((noinline)) DTraceHttpCommTaskSendResponse(size_t th) {
+  DTRACE_PROBE1(arangod, HttpCommTaskSendResponse, th);
+}
+#endif
+
 template <SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
                                    RequestStatistics* stat) {
+
+#ifdef USE_DTRACE
+  DTraceHttpCommTaskSendResponse((size_t) this);
+#endif
+
   if (this->_stopped.load(std::memory_order_acquire)) {
     return;
   }
@@ -534,9 +562,24 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   });
 }
 
+#ifdef USE_DTRACE
+// Moved here to prevent multiplicity by template
+static void __attribute__ ((noinline)) DTraceHttpCommTaskWriteResponse(size_t th) {
+  DTRACE_PROBE1(arangod, HttpCommTaskWriteResponse, th);
+}
+static void __attribute__ ((noinline)) DTraceHttpCommTaskResponseWritten(size_t th) {
+  DTRACE_PROBE1(arangod, HttpCommTaskResponseWritten, th);
+}
+#endif
+
 // called on IO context thread
 template <SocketType T>
 void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
+
+#ifdef USE_DTRACE
+  DTraceHttpCommTaskWriteResponse((size_t) this);
+#endif
+
   TRI_ASSERT(!_header.empty());
 
   RequestStatistics::SET_WRITE_START(stat);
@@ -551,6 +594,11 @@ void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
   asio_ns::async_write(this->_protocol->socket, buffers,
                        [self = this->shared_from_this(),
                         stat](asio_ns::error_code ec, size_t nwrite) {
+
+#ifdef USE_DTRACE
+                         DTraceHttpCommTaskResponseWritten((size_t) self.get());
+#endif
+
                          auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
                          RequestStatistics::SET_WRITE_END(stat);
                          RequestStatistics::ADD_SENT_BYTES(stat, nwrite);
