@@ -106,6 +106,7 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
     }
   }
 
+  // Skip over the dependencies that are DONE
   while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
     advanceDependency();
   }
@@ -118,7 +119,7 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
     //      In which case of course it is important to look into the skip count
     //      of the input ranges above!
     auto callSet = AqlCallSet{};
-    callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), AqlCall{}});
+    callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
     return {input.upstreamState(currentDependency()), Stats{}, call.getSkipCount(), callSet};
   }
 }
