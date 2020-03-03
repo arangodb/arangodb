@@ -1259,6 +1259,7 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
     -> std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> {
   if constexpr (isNewStyleExecutor<Executor>) {
     if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>) {
+      input.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
       return _executor.produceRows(input, output);
     } else if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
       // The SubqueryExecutor has it's own special handling outside.
@@ -1654,9 +1655,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
         case ExecState::SKIP: {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          size_t offsetBefore = clientCall.getOffset();
+          auto const offsetBefore = clientCall.getOffset();
           TRI_ASSERT(offsetBefore > 0);
-          size_t canPassFullcount =
+          bool const canPassFullcount =
               clientCall.getLimit() == 0 && clientCall.needsFullCount();
 #endif
           LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
@@ -1669,7 +1670,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
             // NOTE: The subquery Executor will by itself call EXECUTE on it's
             // subquery. This can return waiting => we can get a WAITING state
-            // here. We can only get the waiting state for SUbquery executors.
+            // here. We can only get the waiting state for Subquery executors.
             ExecutionState subqueryState = ExecutionState::HASMORE;
             std::tie(subqueryState, stats, skippedLocal, call) =
                 _executor.skipRowsRange(_lastRange, clientCall);
