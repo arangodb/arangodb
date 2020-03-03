@@ -67,6 +67,7 @@ var _resilience = function(path) {
     let testCases = tu.scanTestPaths(testPaths[path], options);
     options.cluster = true;
     options.propagateInstanceInfo = true;
+    options.oneTestTimeout = 1800;
     if (options.test !== undefined) {
       // remove non ascii characters from our working directory:
       //                                       < A                           > Z && < a                   > z
