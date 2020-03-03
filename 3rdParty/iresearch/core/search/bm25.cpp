@@ -304,14 +304,16 @@ struct score_ctx : public irs::score_ctx {
       float_t k, 
       irs::boost_t boost,
       const bm25::stats& stats,
-      const frequency* freq) noexcept
-    : freq_(freq ? freq : &EMPTY_FREQ),
+      const frequency* freq,
+      const filter_boost* fb = nullptr) noexcept
+    : freq_(freq ? freq : &EMPTY_FREQ), filter_boost_(fb),
       num_(boost * (k + 1) * stats.idf),
-      norm_const_(k) {
+      norm_const_(k)  {
     assert(freq_);
   }
 
   const frequency* freq_; // document frequency
+  const filter_boost* filter_boost_;
   float_t num_; // partially precomputed numerator : boost * (k + 1) * idf
   float_t norm_const_; // 'k' factor
 }; // score_ctx
@@ -323,8 +325,9 @@ struct norm_score_ctx final : public score_ctx {
       irs::boost_t boost,
       const bm25::stats& stats,
       const frequency* freq,
-      irs::norm&& norm) noexcept
-    : score_ctx(k, boost, stats, freq),
+      irs::norm&& norm,
+      const filter_boost* fb = nullptr) noexcept
+    : score_ctx(k, boost, stats, freq, fb),
       norm_(std::move(norm)) {
     // if there is no norms, assume that b==0
     if (!norm_.empty()) {
@@ -417,6 +420,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     }
 
     auto& stats = stats_cast(query_stats);
+    auto& filter_boost = doc_attrs.get<irs::filter_boost>();
 
     if (b_ != 0.f) {
       irs::norm norm;
@@ -429,28 +433,55 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
       }
 
       if (norm.reset(segment, field.meta().norm, *doc)) {
-        return { 
-          memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm)),
-          [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
+        if (filter_boost) {
+          return {
+            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm), filter_boost.get()),
+            [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
             auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
-
+            assert(state.filter_boost_);
             const float_t tf = ::SQRT(state.freq_->value);
-            irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
-          }
-        };
+            irs::sort::score_cast<score_t>(score_buf) = state.filter_boost_->value *  
+                                                        state.num_ * 
+                                                        tf / 
+                                                        (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
+            }
+          };
+        } else {
+          return {
+            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm)),
+            [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
+              auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
+
+              const float_t tf = ::SQRT(state.freq_->value);
+              irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
+            }
+          };
+        }
       }
     }
 
-    // BM11
-    return { 
-      memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get()),
-      [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
+    // BM15
+    if (filter_boost) {
+      return {
+        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get(), filter_boost.get()),
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
         auto& state = *static_cast<const bm25::score_ctx*>(ctx);
-
+        assert(state.filter_boost_);
         const float_t tf = ::SQRT(state.freq_->value);
-        irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + tf);
-      }
-    };
+        irs::sort::score_cast<score_t>(score_buf) = state.filter_boost_->value *  state.num_ * tf / (state.norm_const_ + tf);
+        }
+      };
+    } else {
+      return {
+        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get()),
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
+          auto& state = *static_cast<const bm25::score_ctx*>(ctx);
+
+          const float_t tf = ::SQRT(state.freq_->value);
+          irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + tf);
+        }
+      };
+    }
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
