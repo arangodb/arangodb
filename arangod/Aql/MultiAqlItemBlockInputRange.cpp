@@ -67,10 +67,21 @@ auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
                      });
 }
 
+auto MultiAqlItemBlockInputRange::rangeForDependency(size_t const dependency)
+    -> AqlItemBlockInputRange& {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency);
+}
+
 auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).peekDataRow();
+}
+
+auto MultiAqlItemBlockInputRange::skipAll(size_t const dependency) noexcept -> std::size_t {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).skipAll();
 }
 
 auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
@@ -132,7 +143,7 @@ auto MultiAqlItemBlockInputRange::isDone() const -> bool {
   return res;
 }
 
-size_t MultiAqlItemBlockInputRange::skipAllRemainingDataRows() {
+auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   for (size_t i = 0; i < _inputs.size(); i++) {
     _inputs.at(i).skipAllRemainingDataRows();
     if (_inputs.at(i).upstreamState() == ExecutorState::HASMORE) {
@@ -140,4 +151,8 @@ size_t MultiAqlItemBlockInputRange::skipAllRemainingDataRows() {
     }
   }
   return 0;
+}
+
+auto MultiAqlItemBlockInputRange::numberDependencies() const noexcept -> size_t {
+  return _inputs.size();
 }
