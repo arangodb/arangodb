@@ -1126,9 +1126,11 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
 
   // JavaScript function (this includes user-defined functions)
   {
-    ISOLATE;
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    TRI_ASSERT(isolate != nullptr);
+
     v8::HandleScope scope(isolate);                                   \
-    auto context = TRI_IGETC;
+    auto context = isolate->GetCurrentContext();
 
     Query* query = expressionContext->query();
     TRI_ASSERT(query != nullptr);
