@@ -1,14 +1,18 @@
 devel
 -----
+
 * Added JSON-Schema (draft-4) document validation. The validation can be
-  specified by providing the new `validation` collection property.
+  specified by providing the new `validation` collection property when creating a
+  new collection or when updating the properties of an existing collection:
 
-      db.mycollection.properties({ validation: {
-        rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
-        message : "Json-Schema validation failed"
-      }})
+      db.mycollection.properties({ 
+        validation: {
+          rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
+          message : "Json-Schema validation failed"
+        }
+      });
 
-* Fix supervision mode detection when unlocking agency in hot backup
+* Fix supervision mode detection when unlocking agency in hot backup.
 
 * Make arangobench return a proper error message when its initial attempt to
   create the test collection fails.
