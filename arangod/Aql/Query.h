@@ -313,6 +313,8 @@ class Query {
   
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> transactionContext();
+  
+  Result commitOperations();
 
  private:
   /// @brief initializes the query

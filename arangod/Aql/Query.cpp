@@ -1520,6 +1520,13 @@ std::shared_ptr<transaction::Context> Query::transactionContext() {
   return _transactionContext;
 }
 
+Result Query::commitOperations() {
+  if (_trx->status() == transaction::Status::RUNNING) {
+    return _trx->commit();
+  }
+  return Result();
+}
+
 /// @brief pass-thru a resolver object from the transaction context
 CollectionNameResolver const& Query::resolver() {
   return transactionContext()->resolver();

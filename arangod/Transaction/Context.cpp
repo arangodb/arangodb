@@ -42,6 +42,7 @@
 
 using namespace arangodb;
 
+namespace {
 // custom type value handler, used for deciphering the _id attribute
 struct CustomTypeHandler final : public VPackCustomTypeHandler {
   CustomTypeHandler(TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver)
@@ -61,6 +62,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
   TRI_vocbase_t& vocbase;
   CollectionNameResolver const& resolver;
 };
+}
 
 /// @brief create the context
 transaction::Context::Context(TRI_vocbase_t& vocbase)
@@ -111,7 +113,7 @@ transaction::Context::~Context() {
 /// @brief factory to create a custom type handler, not managed
 VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(
     TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver) {
-  return new CustomTypeHandler(vocbase, resolver);
+  return new ::CustomTypeHandler(vocbase, resolver);
 }
 
 /// @brief pin data for the collection
