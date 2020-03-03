@@ -244,11 +244,8 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
       secondToLast->swapFirstDependency(consumer);
     }
     
-    
-    bool parallel = internalGather->isParallelizable();
-    TRI_ASSERT(internalScatter == nullptr || !parallel);
-    
-    if (parallel) { // hook in the async executor node
+    // hook in the async executor node, if required
+    if (internalGather->parallelism() == GatherNode::Parallelism::Async) {
       TRI_ASSERT(internalScatter == nullptr);
       auto async = std::make_unique<AsyncNode>(plan, plan->nextId());
       async->addDependency(_nodes.front());

@@ -45,8 +45,7 @@ ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, AsyncNode const* node, ExecutorInfos&& infos)
     : ExecutionBlock(engine, node),
       _infos(std::move(infos)),
-      _query(*engine->getQuery()),
-      _isResponsibleForInitializeCursor(true/*node->isResponsibleForInitializeCursor()*/) {}
+      _query(*engine->getQuery()) {}
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
@@ -56,15 +55,15 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecuto
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::getSomeWithoutTrace(size_t atMost) {
   // silence tests -- we need to introduce new failure tests for fetchers
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
+//  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+//    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+//  }
+//  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+//    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+//  }
+//  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+//    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+//  }
 
   if (getQuery().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -133,11 +132,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSomeWit
     if (isAsync) {
       guard.lock();
     }
-//    if (_internalState != AsyncState::InProgress) {
-//      LOG_DEVEL << "state no longer in progress";
-//    }
+    
     std::tie(_returnState, _returnSkipped) = _dependencies[0]->skipSome(atMost);
-//    LOG_DEVEL << "skipSome rows " << _returnSkipped;
     
     _internalState = AsyncState::GotResult;
   });
@@ -151,18 +147,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSomeWit
 
 std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::initializeCursor(
     InputAqlItemRow const& input) {
-  // For every call we simply forward via HTTP
-
-//  if (!_isResponsibleForInitializeCursor) {
-//    // do nothing...
-//    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-//  }
-//
-//  if (!input.isInitialized()) {
-//    // we simply ignore the initialCursor request, as the remote side
-//    // will initialize the cursor lazily
-//    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-//  }
 //
 //  if (getQuery().killed()) {
 //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -182,12 +166,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::initializeC
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::shutdown(int errorCode) {
-  // this should make the whole thing idempotent
-  if (!_isResponsibleForInitializeCursor) {
-    // do nothing...
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-  
   std::lock_guard<std::mutex> guard(_mutex);
   auto res = ExecutionBlock::shutdown(errorCode);
   _returnBlock = nullptr;

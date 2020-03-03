@@ -2510,7 +2510,7 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
      MaterializerExecutorInfos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                calcRegsToKeep(), inNmColPtrRegId, inNmDocIdRegId,
-                               outDocumentRegId, engine.getQuery()->copyTrx()));
+                               outDocumentRegId, engine.getQuery()->readOnlyTrx()));
 }
 
 ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan, bool withDependencies, bool withProperties) const {
@@ -2579,7 +2579,7 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
     MaterializerExecutorInfos<decltype(name)>(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                               getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                               calcRegsToKeep(), _collection->name(), inNmDocIdRegId,
-                                              outDocumentRegId, engine.getQuery()->copyTrx()));
+                                              outDocumentRegId, engine.getQuery()->readOnlyTrx()));
 }
 
 ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan * plan, bool withDependencies, bool withProperties) const {

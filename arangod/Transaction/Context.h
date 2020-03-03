@@ -130,6 +130,9 @@ class Context {
   /// @brief generate persisted transaction ID
   virtual TRI_voc_tid_t generateId() const;
   
+  /// @brief only supported on some contexts
+  virtual std::shared_ptr<Context> clone() const;
+  
   /// @brief generates correct ID based on server type
   static TRI_voc_tid_t makeTransactionId();
 

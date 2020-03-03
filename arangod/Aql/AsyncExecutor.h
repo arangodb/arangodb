@@ -87,10 +87,6 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
 
   Query const& _query;
 
-  /// @brief whether or not this block will forward initialize,
-  /// initializeCursor or shutDown requests
-  bool const _isResponsibleForInitializeCursor;
-  
   std::mutex _mutex;
   SharedAqlItemBlockPtr _returnBlock;
   ExecutionState _returnState = ExecutionState::HASMORE;

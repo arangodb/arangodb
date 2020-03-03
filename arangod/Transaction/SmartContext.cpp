@@ -106,7 +106,7 @@ void ManagedContext::unregisterTransaction() noexcept {
   _state = nullptr; // delete is handled by transaction::Methods
 }
 
-std::shared_ptr<SmartContext> ManagedContext::clone() const {
+std::shared_ptr<transaction::Context> ManagedContext::clone() const {
   auto clone = std::make_shared<transaction::ManagedContext>(_globalId, _state, _mode);
   clone->_state = _state;
   return clone;
@@ -139,7 +139,7 @@ void AQLStandaloneContext::unregisterTransaction() noexcept {
   mgr->unregisterAQLTrx(_globalId);
 }
 
-std::shared_ptr<SmartContext> AQLStandaloneContext::clone() const {
+std::shared_ptr<transaction::Context> AQLStandaloneContext::clone() const {
   auto clone = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, _globalId);
   clone->_state = _state;
   return clone;
@@ -166,11 +166,6 @@ void StandaloneSmartContext::registerTransaction(std::shared_ptr<TransactionStat
 void StandaloneSmartContext::unregisterTransaction() noexcept {
   TRI_ASSERT(_state != nullptr);
   _state = nullptr;
-}
-
-std::shared_ptr<SmartContext> StandaloneSmartContext::clone() const {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 }  // namespace transaction

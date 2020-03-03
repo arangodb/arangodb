@@ -284,7 +284,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                      [](auto& it) { return it.second.second; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
-      transaction::Methods* trxPtr = _plan->getAst()->query()->copyTrx();
+      transaction::Methods* trxPtr = _plan->getAst()->query()->readOnlyTrx();
       HashedCollectExecutorInfos infos(
           getRegisterPlan()->nrRegs[previousNode->getDepth()],
           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
@@ -339,7 +339,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           std::move(readableInputRegisters), std::move(writeableOutputRegisters),
           std::move(groupRegisters), collectRegister, expressionRegister,
           _expressionVariable, std::move(aggregateTypes), std::move(variables),
-          std::move(aggregateRegisters), _plan->getAst()->query()->copyTrx(), _count);
+          std::move(aggregateRegisters), _plan->getAst()->query()->readOnlyTrx(), _count);
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));
@@ -377,7 +377,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                                          std::move(readableInputRegisters),
                                          std::move(writeableOutputRegisters),
                                          std::move(groupRegisters),
-                                         _plan->getAst()->query()->copyTrx());
+                                         _plan->getAst()->query()->readOnlyTrx());
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(&engine, this,
                                                                            std::move(infos));
@@ -471,6 +471,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::ASYNC:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -512,6 +513,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::ASYNC:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -553,6 +555,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::ASYNC:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);

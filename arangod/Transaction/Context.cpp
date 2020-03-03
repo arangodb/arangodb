@@ -249,6 +249,12 @@ TRI_voc_tid_t transaction::Context::generateId() const {
   return Context::makeTransactionId();
 }
 
+std::shared_ptr<transaction::Context> transaction::Context::clone() const {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "transaction::Context::clone() is not implemented");
+}
+
 /*static*/ TRI_voc_tid_t transaction::Context::makeTransactionId() {
   auto role = ServerState::instance()->getRole();
   if (ServerState::isCoordinator(role)) {

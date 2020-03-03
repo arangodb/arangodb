@@ -84,7 +84,7 @@ Query* EnumerateCollectionExecutorInfos::getQuery() const {
 }
 
 transaction::Methods* EnumerateCollectionExecutorInfos::getTrx() const {
-  return _query->copyTrx();
+  return _query->readOnlyTrx();
 }
 
 Expression* EnumerateCollectionExecutorInfos::getFilter() const {

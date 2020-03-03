@@ -439,6 +439,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   ast->variables()->toVelocyPack(builder);
 
   CostEstimate estimate = _root->getCost();
+  // simon: who is reading this ?
   builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
   builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
   builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));

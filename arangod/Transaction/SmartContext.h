@@ -64,8 +64,6 @@ class SmartContext : public Context {
   /// @brief locally persisted transaction ID
   TRI_voc_tid_t generateId() const override final;
   
-  virtual std::shared_ptr<SmartContext> clone() const = 0;
-  
  protected:
   /// @brief ID of the transaction to use
   TRI_voc_tid_t const _globalId;
@@ -91,7 +89,7 @@ struct ManagedContext final : public SmartContext {
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
   
-  std::shared_ptr<SmartContext> clone() const override;
+  std::shared_ptr<Context> clone() const override;
   
 private:
   AccessMode::Type _mode;
@@ -113,7 +111,7 @@ struct AQLStandaloneContext final : public SmartContext {
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
   
-  std::shared_ptr<SmartContext> clone() const override;
+  std::shared_ptr<Context> clone() const override;
 };
   
 /// Can be used to reuse transaction state between multiple
@@ -131,8 +129,6 @@ struct StandaloneSmartContext final : public SmartContext {
   
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
-  
-  std::shared_ptr<SmartContext> clone() const override;
 };
 
 }  // namespace transaction

@@ -47,7 +47,7 @@ CalculationExecutorInfos::CalculationExecutorInfos(
                     std::move(registersToClear), std::move(registersToKeep)),
       _outputRegisterId(outputRegister),
       _query(query),
-      _trx(query.copyTrx()),
+      _trx(query.readOnlyTrx()),
       _expression(expression),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)) {

@@ -91,6 +91,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false),
+      _isAsyncQuery(false),
       _preparedV8Context(false),
       _queryHashCalculated(false),
       _state(QueryExecutionState::ValueType::INVALID_STATE),
@@ -169,6 +170,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false),
+      _isAsyncQuery(false),
       _preparedV8Context(false),
       _queryHashCalculated(false),
       _state(QueryExecutionState::ValueType::INVALID_STATE),
@@ -444,6 +446,9 @@ void Query::prepare(QueryRegistry* registry, SerializationFormat format) {
 
   TRI_ASSERT(plan != nullptr);
   plan->findVarUsage();
+  
+  _isAsyncQuery = plan->contains(ExecutionNode::ASYNC);
+  TRI_ASSERT(!_isModificationQuery || !_isAsyncQuery);
 
   TRI_ASSERT(_engine == nullptr);
   TRI_ASSERT(_trx != nullptr);
@@ -1548,21 +1553,18 @@ transaction::Methods* Query::trx() const {
   return _trx.get();
 }
 
-#include "Transaction/SmartContext.h"
-
-transaction::Methods* Query::copyTrx() {
+transaction::Methods* Query::readOnlyTrx() {
   TRI_ASSERT(this->_state != QueryExecutionState::ValueType::EXECUTION);
-  if (!ServerState::instance()->isDBServer()) {
+  if (!_isAsyncQuery) {
     return _trx.get();
   }
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
+  TRI_ASSERT(ServerState::instance()->isDBServer() ||
+             ServerState::instance()->isSingleServer());
+  TRI_ASSERT(!_isModificationQuery);
   
-  auto ctx = dynamic_cast<transaction::SmartContext*>(_transactionContext.get());
-  if (ctx == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "not supported in this place");
-  }
-  auto copy = ctx->clone();
+  auto copy = _transactionContext->clone();
   
   std::vector<std::string> empty;
   auto trxCopy = std::make_unique<transaction::Methods>(copy, empty, empty, empty, _queryOptions.transactionOptions);

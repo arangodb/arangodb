@@ -288,7 +288,12 @@ class GatherNode final : public ExecutionNode {
  public:
   enum class SortMode : uint32_t { MinElement, Heap, Default };
 
-  enum class Parallelism : uint32_t { Undefined, Parallel, Serial };
+  enum class Parallelism : uint8_t {
+    Undefined = 0,
+    Parallel = 2,
+    Async = 4,
+    Serial = 8
+  };
 
   /// @brief inspect dependencies starting from a specified 'node'
   /// and return first corresponding collection within
@@ -355,9 +360,9 @@ class GatherNode final : public ExecutionNode {
   bool isSortingGather() const noexcept;
   
   void setParallelism(Parallelism value);
-  
-  /// no modification nodes, ScatterNodes etc
-  bool isParallelizable() const;
+  Parallelism parallelism() const noexcept {
+    return _parallelism;
+  }
 
  private:
   /// @brief the underlying database

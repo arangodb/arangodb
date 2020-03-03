@@ -177,7 +177,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _ast(ast),
       _options(options),
       _query(query),
-      _trx(query->copyTrx()),
+      _trx(query->readOnlyTrx()),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),

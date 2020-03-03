@@ -453,7 +453,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   }
   auto opts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<Traverser> traverser;
-  auto trx = engine.getQuery()->copyTrx();
+  auto trx = engine.getQuery()->readOnlyTrx();
 
   if (pruneExpression() != nullptr) {
     std::vector<Variable const*> pruneVars;

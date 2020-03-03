@@ -4592,6 +4592,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
+        case EN::ASYNC: // should be added much later
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
           TRI_ASSERT(false);
@@ -6907,6 +6908,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
+    case ExecutionNode::ASYNC:
       return true;
     case ExecutionNode::GATHER:
       // sorting gather is allowed
@@ -7303,6 +7305,68 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+namespace {
+
+/// @brief is the node parallelizable?
+struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
+  bool const _parallelizeWrites;
+  bool _isParallelizable;
+
+  explicit ParallelizableFinder(/*TRI_vocbase_t const& _vocbase*/)
+      : _parallelizeWrites(true/*_vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites()*/),
+        _isParallelizable(true) {}
+
+  ~ParallelizableFinder() = default;
+
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    return false;
+  }
+
+  bool before(ExecutionNode* node) override final {
+    if (node->getType() == ExecutionNode::SCATTER ||
+        node->getType() == ExecutionNode::GATHER ||
+        node->getType() == ExecutionNode::DISTRIBUTE ||
+        node->getType() == ExecutionNode::TRAVERSAL ||
+        node->getType() == ExecutionNode::SHORTEST_PATH ||
+        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
+    }
+    // write operations of type REMOVE, REPLACE and UPDATE
+    // can be parallelized, provided the rest of the plan
+    // does not prohibit this
+    if (node->isModificationNode() &&
+        (!_parallelizeWrites ||
+         (node->getType() != ExecutionNode::REMOVE &&
+          node->getType() != ExecutionNode::REPLACE &&
+          node->getType() != ExecutionNode::UPDATE))) {
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
+    }
+
+    // continue inspecting
+    return false;
+  }
+};
+
+/// no modification nodes, ScatterNodes etc
+bool isParallelizable(GatherNode* node) {
+//  if (_parallelism == Parallelism::Serial) {
+//    // node already defined to be serial
+//    return false;
+//  }
+
+  ParallelizableFinder finder;
+  for (ExecutionNode* e : node->getDependencies()) {
+    e->walk(finder);
+    if (!finder._isParallelizable) {
+      return false;
+    }
+  }
+  return true;
+}
+}
+
 /// @brief parallelize coordinator GatherNodes
 void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                           OptimizerRule const& rule) {
@@ -7350,15 +7414,16 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<Execut
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && 
-      !plan->contains(EN::TRAVERSAL) && 
-      !plan->contains(EN::SHORTEST_PATH) && 
-      !plan->contains(EN::K_SHORTEST_PATHS)/* && 
-      !plan->contains(EN::DISTRIBUTE) && 
-      !plan->contains(EN::SCATTER)*/) {
+  if (nodes.size() == 1 &&
+      !plan->contains(EN::TRAVERSAL) &&
+      !plan->contains(EN::SHORTEST_PATH) &&
+      !plan->contains(EN::K_SHORTEST_PATHS) &&
+      !plan->contains(EN::DISTRIBUTE) &&
+      !plan->contains(EN::SCATTER)) {
     GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
 
-    if (!gn->isInSubquery() && gn->isParallelizable()) {
+    if (!gn->isInSubquery() && isParallelizable(gn)) {
+      // TODO do a cost estimation to enable async parallelism on DBServers
       gn->setParallelism(GatherNode::Parallelism::Parallel);
       modified = true;
     }
@@ -7398,6 +7463,7 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
+    case ExecutionNode::ASYNC:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
     case ExecutionNode::NORESULTS:

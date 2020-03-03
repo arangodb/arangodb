@@ -72,6 +72,8 @@ char const* toString(GatherNode::Parallelism value) {
   switch (value) {
     case GatherNode::Parallelism::Parallel:
       return "parallel";
+    case GatherNode::Parallelism::Async:
+      return "async";
     case GatherNode::Parallelism::Serial:
       return "serial";
     case GatherNode::Parallelism::Undefined:
@@ -83,6 +85,8 @@ char const* toString(GatherNode::Parallelism value) {
 GatherNode::Parallelism parallelismFromString(std::string const& value) {
   if (value == "parallel") {
     return GatherNode::Parallelism::Parallel;
+  } else if (value == "parallel") {
+    return GatherNode::Parallelism::Async;
   } else if (value == "serial") {
     return GatherNode::Parallelism::Serial;
   }
@@ -497,7 +501,8 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   if (_elements.empty()) {
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
-    if (/*ServerState::instance()->isCoordinator() &&*/ _parallelism == Parallelism::Parallel) {
+    if ((ServerState::instance()->isCoordinator() &&
+         _parallelism == Parallelism::Parallel) || _parallelism == Parallelism::Async) {
       ParallelUnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                                                 calcRegsToKeep(), getRegsToClear());
       return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
@@ -505,16 +510,15 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     } else {
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                             calcRegsToKeep(), getRegsToClear());
-
       return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
                                                                            std::move(infos));
     }
   }
   
   Parallelism p = _parallelism;
-//  if (ServerState::instance()->isDBServer()) {
-//    p = Parallelism::Serial; // not supported in v36
-//  }
+  if (ServerState::instance()->isDBServer() && p != Parallelism::Async) {
+    p = Parallelism::Serial; // not supported in v36
+  }
   
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
@@ -523,7 +527,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                    calcRegsToKeep(), std::move(sortRegister),
-                                   _plan->getAst()->query()->copyTrx(), sortMode(),
+                                   _plan->getAst()->query()->readOnlyTrx(), sortMode(),
                                    constrainedSortLimit(), p);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
@@ -547,67 +551,7 @@ bool GatherNode::isSortingGather() const noexcept {
   return !elements().empty();
 }
 
-/// @brief is the node parallelizable?
-struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
-  bool const _parallelizeWrites;
-  bool _isParallelizable;
-
-  explicit ParallelizableFinder(TRI_vocbase_t const& _vocbase)
-      : _parallelizeWrites(_vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites()),
-        _isParallelizable(true) {}
-
-  ~ParallelizableFinder() = default;
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return false;
-  }
-
-  bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER ||
-        node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE ||
-        node->getType() == ExecutionNode::TRAVERSAL ||
-        node->getType() == ExecutionNode::SHORTEST_PATH ||
-        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
-    }
-    // write operations of type REMOVE, REPLACE and UPDATE
-    // can be parallelized, provided the rest of the plan
-    // does not prohibit this
-    if (node->isModificationNode() &&
-        (!_parallelizeWrites ||
-         (node->getType() != ExecutionNode::REMOVE &&
-          node->getType() != ExecutionNode::REPLACE && 
-          node->getType() != ExecutionNode::UPDATE))) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
-    }
-
-    // continue inspecting
-    return false;
-  }
-};
-
-/// no modification nodes, ScatterNodes etc
-bool GatherNode::isParallelizable() const {
-  if (_parallelism == Parallelism::Serial) {
-    // node already defined to be serial
-    return false;
-  }
-
-  ParallelizableFinder finder(*_vocbase);
-  for (ExecutionNode* e : _dependencies) {
-    e->walk(finder);
-    if (!finder._isParallelizable) {
-      return false;
-    }
-  }
-  return true;
-}
-
 void GatherNode::setParallelism(GatherNode::Parallelism value) {
-  TRI_ASSERT(value != Parallelism::Parallel || isParallelizable());
   _parallelism = value;
 }
 
@@ -662,7 +606,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
       in, outputNew, outputOld, out,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->copyTrx(), std::move(options),
+      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
       _collection, ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,

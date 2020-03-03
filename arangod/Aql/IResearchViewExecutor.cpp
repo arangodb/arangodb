@@ -126,7 +126,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _numScoreRegisters(numScoreRegisters),
       _reader(std::move(reader)),
       _query(query),
-      _trx(_query.copyTrx()),
+      _trx(_query.readOnlyTrx()),
       _scorers(scorers),
       _sort(sort),
       _storedValues(storedValues),

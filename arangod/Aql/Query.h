@@ -256,7 +256,8 @@ class Query {
   /// @brief return the transaction, if prepared
   TEST_VIRTUAL transaction::Methods* trx() const;
   
-  transaction::Methods* copyTrx();
+  /// @brief on-demand copy of transaction, tries to be thread-safe
+  transaction::Methods* readOnlyTrx();
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
@@ -432,6 +433,9 @@ class Query {
 
   /// @brief whether or not the query is a data modification query
   bool _isModificationQuery;
+  
+  /// @brief does this query contain async execution nodes
+  bool _isAsyncQuery;
 
   /// @brief whether or not the preparation routine for V8 contexts was run
   /// once for this expression
