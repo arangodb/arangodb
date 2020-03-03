@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
 #include "Aql/AqlCall.h"
+#include "Aql/AqlCallSet.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
@@ -147,15 +148,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // multiple dependencies return a partial map depIndex -> AqlCall.
   // It may be empty. If the cardinality is greater than one, the calls will be
   // executed in parallel.
-  // IMPORTANT: Are expected to be saved in increasing order (regarding dependency)
-  struct AqlCallSet {
-    struct DepCallPair {
-      size_t dependency{};
-      AqlCall call;
-    };
-    std::vector<DepCallPair> calls;
-  };
-
   using AqlCallType = std::conditional_t<isMultiDepExecutor<Executor>, AqlCallSet, AqlCall>;
 
  public:
