@@ -141,7 +141,7 @@ basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize
 }
 
 /// @brief return a temporary StringBuffer object
-void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer) {
+void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer) noexcept {
   _stringBuffer.reset(stringBuffer);
 }
 
@@ -160,7 +160,7 @@ std::string* transaction::Context::leaseString() {
 }
 
 /// @brief return a temporary std::string object
-void transaction::Context::returnString(std::string* str) {
+void transaction::Context::returnString(std::string* str) noexcept {
   try {  // put string back into our vector of strings
     _strings.push_back(str);
   } catch (...) {
@@ -185,7 +185,7 @@ VPackBuilder* transaction::Context::leaseBuilder() {
 }
 
 /// @brief return a temporary Builder object
-void transaction::Context::returnBuilder(VPackBuilder* builder) {
+void transaction::Context::returnBuilder(VPackBuilder* builder) noexcept {
   try {
     // put builder back into our vector of builders
     _builders.push_back(builder);
