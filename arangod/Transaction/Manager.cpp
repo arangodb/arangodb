@@ -549,7 +549,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   if (state) {
     int level = state->increaseNesting();
     TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 1);
-    return std::make_shared<ManagedContext>(tid, state, mode);
+    return std::make_shared<ManagedContext>(tid, std::move(state), mode);
   }
   TRI_ASSERT(false);  // should be unreachable
   return nullptr;

@@ -83,7 +83,7 @@ TRI_voc_tid_t transaction::SmartContext::generateId() const {
 ManagedContext::ManagedContext(TRI_voc_tid_t globalId,
                                std::shared_ptr<TransactionState> state,
                                AccessMode::Type mode)
-  : SmartContext(state->vocbase(), globalId, std::move(state)), _mode(mode) {}
+  : SmartContext(state->vocbase(), globalId, state), _mode(mode) {}
   
 ManagedContext::~ManagedContext() {
   if (_state != nullptr) {
