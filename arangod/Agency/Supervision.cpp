@@ -866,8 +866,10 @@ void Supervision::run() {
 
               // wait 5 min or until next scheduled run or at least 5 minutes
               if (_agent->leaderFor() > 300 &&
-                  _nextServerCleanup < std::chrono::system_clock::now()) { 
+                  _nextServerCleanup < std::chrono::system_clock::now()) {
+                LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION) << "Begin cleanupExpiredServers";
                 cleanupExpiredServers(*_snapshot, _transient);
+                LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION) << "Finished cleanupExpiredServers";
               }
 
               try {
