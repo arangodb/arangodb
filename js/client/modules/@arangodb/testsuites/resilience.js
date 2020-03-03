@@ -25,8 +25,6 @@
 // @author Max Neunhoeffer
 // /////////////////////////////////////////////////////////////////////////////
 
-const _ = require("lodash");
-
 const functionsDocumentation = {
   'resilience_move': 'resilience "move" tests',
   'resilience_move_view': 'resilience "move view" tests',
