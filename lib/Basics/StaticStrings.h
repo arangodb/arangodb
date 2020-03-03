@@ -209,6 +209,7 @@ class StaticStrings {
   // collection attributes
   static std::string const NumberOfShards;
   static std::string const IsSmart;
+  static std::string const IsSatellite;
   static std::string const DistributeShardsLike;
   static std::string const CacheEnabled;
   static std::string const IndexBuckets;
@@ -227,6 +228,7 @@ class StaticStrings {
   // graph attribute names
   static std::string const GraphCollection;
   static std::string const GraphIsSmart;
+  static std::string const GraphIsSatellite;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
