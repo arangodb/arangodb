@@ -863,7 +863,7 @@ void Supervision::run() {
               // 55 seconds is less than a minute, which fits to the
               // 60 seconds timeout in /_admin/cluster/health
 
-              if (_agent->leaderFor() > 120) {
+              if (_agent->leaderFor() > 600) {
                 cleanupExpiredServers(*_snapshot, _transient);
               }
 
@@ -1025,17 +1025,21 @@ struct ServerLists {
 //      Remove coordinator everywhere
 //      Remove DB server everywhere, if not leader of a shard
 
-std::unordered_map<ServerID, uint64_t> deletionCandidates (
+std::unordered_map<ServerID, std::string> deletionCandidates (
   Node const& snapshot, Node const& transient, std::string const& type) {
   using namespace std::chrono;
-  std::unordered_map<ServerID, uint64_t> serverList;
+  std::unordered_map<ServerID, std::string> serverList;
   std::string const planPath = "/Plan/" + type;
+
   if (snapshot.has(planPath) && !snapshot(planPath).children().empty()) {
+
+    std::string persistedTimeStamp;
+
     for (auto const& serverId : snapshot(planPath).children()) {
       auto const& transientHeartbeat =
         transient.hasAsNode("/Supervision/Health/" + serverId.first);
       try {
-        // We have a transient heartbeat younger than a day
+        // Do we have a transient heartbeat younger than a day?
         if (transientHeartbeat.second) {
           auto const t = stringToTimepoint(
             transientHeartbeat.first("Timestamp").getString());
@@ -1043,13 +1047,18 @@ std::unordered_map<ServerID, uint64_t> deletionCandidates (
             continue;
           }
         }
+        // Else do we have a persistent heartbeat younger than a day?
         auto const& persistentHeartbeat =
           snapshot.hasAsNode("/Supervision/Health/" + serverId.first);
         if (persistentHeartbeat.second) {
-          auto const t = stringToTimepoint(
-            persistentHeartbeat.first("Timestamp").getString());
+          persistedTimeStamp = persistentHeartbeat.first("Timestamp").getString();
+          auto const t = stringToTimepoint(persistedTimeStamp);
           if (t > system_clock::now() - hours(24)) {
             continue;
+          }
+        } else {
+          if(!persistedTimeStamp.empty()) {
+            persistedTimeStamp.clear();
           }
         }
       } catch (std::exception const& e) {
@@ -1058,10 +1067,9 @@ std::unordered_map<ServerID, uint64_t> deletionCandidates (
       }
 
       // We are still here?
-      serverList.emplace(std::pair<ServerID, uint64_t>{serverId.first, 0});
+      serverList.emplace(std::pair<ServerID, std::string>{serverId.first, persistedTimeStamp});
     }
   }
-
 
   // Clear shard DB servers from the deletion candidates
   if (type == "DBServers") {
@@ -1096,17 +1104,18 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
 
   auto servers = deletionCandidates(snapshot, transient, "DBServers");
   auto const& currentDatabases = snapshot("Current/Databases");
-  LOG_DEVEL << servers.size();
 
   VPackBuilder del;
   { VPackObjectBuilder d(&del);
     del.add("op", VPackValue("delete")); }
 
-  VPackBuilder trxs;
+  VPackBuilder trxs; // Transactions
   { VPackArrayBuilder ta(&trxs);
-    { VPackObjectBuilder ts(&trxs);
-      for (auto const& server : servers) {
-        auto const serverName = server.first;
+    for (auto const& server : servers) {
+      auto const serverName = server.first;
+      LOG_TOPIC("fa76d", DEBUG, Logger::SUPERVISION) <<
+        "Removing long overdue db server " << serverName << "last seen: " << server.second;
+      { VPackObjectBuilder oper(&trxs); // Operation for one server
         trxs.add("/Supervision/Health/" + serverName, del.slice());
         trxs.add("/Plan/DBServers/" + serverName, del.slice());
         trxs.add("/Current/DBServers/" + serverName, del.slice());
@@ -1116,26 +1125,38 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
         for (auto const& j : currentDatabases.children()) {
           trxs.add("/Current/Databases/" + j.first + "/" + serverName, del.slice());
         }
-      }}}
-
+      }
+      if (!server.second.empty()) { // Timestamp unchanged only, if persistent entry
+        VPackObjectBuilder prec(&trxs);
+        trxs.add("/Supervision/Health/" + serverName + "/Timestamp", VPackValue(server.second));
+      }
+    }
+  }
   if (servers.size() > 0) {
     singleWriteTransaction(_agent, trxs, false);
   }
 
   trxs.clear();
   servers = deletionCandidates(snapshot, transient, "Coordinators");
-    { VPackArrayBuilder ta(&trxs);
+  { VPackArrayBuilder ta(&trxs);
+    for (auto const& server : servers) {
+      auto const serverName = server.first;
+      LOG_TOPIC("fa76d", DEBUG, Logger::SUPERVISION) <<
+        "Removing long overdue coordinator " << serverName << "last seen: " << server.second;
       { VPackObjectBuilder ts(&trxs);
-        for (auto const& server : servers) {
-        auto const serverName = server.first;
         trxs.add("/Supervision/Health/" + serverName, del.slice());
         trxs.add("/Plan/Coordinators/" + serverName, del.slice());
         trxs.add("/Current/Coordinators/" + serverName, del.slice());
         trxs.add("/Target/MapUniqueToShortID/" + serverName, del.slice());
         trxs.add("/Current/ServersKnown/" + serverName, del.slice());
         trxs.add("/Current/ServersRegistered/" + serverName, del.slice());
-      }}}
-
+      }
+      if (!server.second.empty()) { // Timestamp unchanged only, if persistent entry
+        VPackObjectBuilder prec(&trxs);
+        trxs.add("/Supervision/Health/" + serverName + "/Timestamp", VPackValue(server.second));
+      }
+    }
+  }
   if (servers.size() > 0) {
     singleWriteTransaction(_agent, trxs, false);
   }

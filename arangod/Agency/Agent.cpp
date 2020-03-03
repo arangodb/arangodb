@@ -874,6 +874,9 @@ void Agent::load() {
   }
 
   _loaded = true;
+  if (size() == 1) {
+    endPrepareLeadership();
+  }
 
 }
 
