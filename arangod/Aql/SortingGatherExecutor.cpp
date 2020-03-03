@@ -218,19 +218,18 @@ auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputR
     TRI_ASSERT(_numberDependencies == 0 ||
                _numberDependencies == inputRange.numberDependencies());
     _numberDependencies = inputRange.numberDependencies();
-    auto call = requiresMoreInput(inputRange);
-    if (call.has_value()) {
-      return call;
-    }
     // If we have collected all ranges once, we can prepare the local data-structure copy
     _inputRows.reserve(_numberDependencies);
     for (size_t dep = 0; dep < _numberDependencies; ++dep) {
       auto const [state, row] = inputRange.peekDataRow(dep);
       _inputRows.emplace_back(dep, row, state);
     }
+    auto call = requiresMoreInput(inputRange);
+    if (call.has_value()) {
+      return call;
+    }
     _strategy->prepare(_inputRows);
     _initialized = true;
-    _numberDependencies = inputRange.numberDependencies();
   }
   return {};
 }

@@ -52,6 +52,10 @@ class OutputAqlItemRow;
 class Query;
 class ShadowAqlItemRow;
 class SkipResult;
+class ParallelUnsortedGatherExecutor;
+
+template <typename T, typename... Es>
+constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 
 /**
  * @brief This is the implementation class of AqlExecutionBlocks.
@@ -135,6 +139,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     // Locally done, ready to return, will set state to resetted
     DONE
   };
+
+  static constexpr bool isParallelExecutor =
+      is_one_of_v<Executor, ParallelUnsortedGatherExecutor>;
 
  public:
   /**
@@ -363,6 +370,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   bool _hasUsedDataRangeBlock;
 
   bool _executorReturnedDone = false;
+
+  /// @brief Only needed for parallel executors; could be omitted otherwise
+  std::vector<std::optional<AqlCallStack>> _callsInFlight;
 };
 
 }  // namespace arangodb::aql

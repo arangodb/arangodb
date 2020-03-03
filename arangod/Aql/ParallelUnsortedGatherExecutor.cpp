@@ -43,8 +43,19 @@ ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher&, Infos& 
 
 ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
 
-auto ParallelUnsortedGatherExecutor::upstreamCall(AqlCall const& clientCall) const
+auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall) const
     noexcept -> AqlCall {
+  // Only skip, don't ask for rows
+  auto upstreamCall = clientCall;
+  upstreamCall.softLimit = 0;
+  upstreamCall.hardLimit = AqlCall::Infinity{};
+  upstreamCall.fullCount = false;
+  return upstreamCall;
+}
+
+auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCall) const
+    noexcept -> AqlCall {
+  TRI_ASSERT(clientCall.getOffset() == 0);
   return clientCall;
 }
 
@@ -87,7 +98,8 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
     TRI_ASSERT(waitingDep == input.numberDependencies());
     return {ExecutorState::DONE, NoStats{}, AqlCall{}, waitingDep};
   }
-  return {ExecutorState::HASMORE, NoStats{}, upstreamCall(output.getClientCall()), waitingDep};
+  return {ExecutorState::HASMORE, NoStats{},
+          upstreamCallProduce(output.getClientCall()), waitingDep};
 }
 
 auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
@@ -112,7 +124,7 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
       }
       if (range.hasDataRow()) {
         // We overfetched, skipLocally
-        // By gurantee we will only see data, if
+        // By guarantee we will only see data, if
         // we are past the offset phase.
         TRI_ASSERT(call.getOffset() == 0);
       } else {
@@ -131,5 +143,5 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}, waitingDep};
   }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
-          upstreamCall(call), waitingDep};
+          upstreamCallSkip(call), waitingDep};
 }

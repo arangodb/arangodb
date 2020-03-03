@@ -69,6 +69,7 @@ auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
 
 auto MultiAqlItemBlockInputRange::rangeForDependency(size_t const dependency)
     -> AqlItemBlockInputRange& {
+  TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency);
 }
 
