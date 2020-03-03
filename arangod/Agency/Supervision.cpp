@@ -864,8 +864,9 @@ void Supervision::run() {
               // 55 seconds is less than a minute, which fits to the
               // 60 seconds timeout in /_admin/cluster/health
 
-              // wait 5 min or until next scheduled run or at least 5 minutes
-              if (_agent->leaderFor() > 300) {
+              // wait 5 min or until next scheduled run
+              if (_agent->leaderFor() > 300 &&
+                  _nextServerCleanup < std::chrono::system_clock::now()) {
                 LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION) << "Begin cleanupExpiredServers";
                 cleanupExpiredServers(*_snapshot, _transient);
                 LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION) << "Finished cleanupExpiredServers";
@@ -1106,8 +1107,6 @@ std::unordered_map<ServerID, std::string> deletionCandidates (
 
 void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transient) {
 
-  _nextServerCleanup = std::chrono::system_clock::now() + std::chrono::seconds(3600);
-
   auto servers = deletionCandidates(snapshot, transient, "DBServers");
   auto const& currentDatabases = snapshot("Current/Databases");
 
@@ -1115,56 +1114,63 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
   { VPackObjectBuilder d(&del);
     del.add("op", VPackValue("delete")); }
 
-  VPackBuilder trxs; // Transactions
-  { VPackArrayBuilder ta(&trxs);
+  auto envelope = std::make_shared<VPackBuilder>();
+  VPackBuilder& trxs = *envelope; // Transactions
+  { VPackArrayBuilder t(&trxs);
     for (auto const& server : servers) {
-      auto const serverName = server.first;
-      LOG_TOPIC("fa76d", DEBUG, Logger::SUPERVISION) <<
-        "Removing long overdue db server " << serverName << "last seen: " << server.second;
-      { VPackObjectBuilder oper(&trxs); // Operation for one server
-        trxs.add("/Supervision/Health/" + serverName, del.slice());
-        trxs.add("/Plan/DBServers/" + serverName, del.slice());
-        trxs.add("/Current/DBServers/" + serverName, del.slice());
-        trxs.add("/Target/MapUniqueToShortID/" + serverName, del.slice());
-        trxs.add("/Current/ServersKnown/" + serverName, del.slice());
-        trxs.add("/Current/ServersRegistered/" + serverName, del.slice());
-        for (auto const& j : currentDatabases.children()) {
-          trxs.add("/Current/Databases/" + j.first + "/" + serverName, del.slice());
+      { VPackArrayBuilder ta(&trxs);
+        auto const serverName = server.first;
+        LOG_TOPIC("fa76d", DEBUG, Logger::SUPERVISION) <<
+          "Removing long overdue db server " << serverName << "last seen: " << server.second;
+        { VPackObjectBuilder oper(&trxs); // Operation for one server
+          trxs.add("/arango/Supervision/Health/" + serverName, del.slice());
+          trxs.add("/arango/Plan/DBServers/" + serverName, del.slice());
+          trxs.add("/arango/Current/DBServers/" + serverName, del.slice());
+          trxs.add("/arango/Target/MapUniqueToShortID/" + serverName, del.slice());
+          trxs.add("/arango/Current/ServersKnown/" + serverName, del.slice());
+          trxs.add("/arango/Current/ServersRegistered/" + serverName, del.slice());
+          for (auto const& j : currentDatabases.children()) {
+            trxs.add("/arango/Current/Databases/" + j.first + "/" + serverName, del.slice());
+          }
         }
-      }
-      if (!server.second.empty()) { // Timestamp unchanged only, if persistent entry
-        VPackObjectBuilder prec(&trxs);
-        trxs.add("/Supervision/Health/" + serverName + "/Timestamp", VPackValue(server.second));
+        if (!server.second.empty()) { // Timestamp unchanged only, if persistent entry
+          VPackObjectBuilder prec(&trxs);
+          trxs.add("/arango/Supervision/Health/" + serverName + "/Timestamp", VPackValue(server.second));
+        }
       }
     }
   }
   if (servers.size() > 0) {
-    singleWriteTransaction(_agent, trxs, false);
+    _nextServerCleanup = std::chrono::system_clock::now() + std::chrono::seconds(3600);
+    _agent->write(envelope);
   }
 
   trxs.clear();
   servers = deletionCandidates(snapshot, transient, "Coordinators");
-  { VPackArrayBuilder ta(&trxs);
+  { VPackArrayBuilder t(&trxs);
     for (auto const& server : servers) {
-      auto const serverName = server.first;
-      LOG_TOPIC("fa67d", DEBUG, Logger::SUPERVISION) <<
-        "Removing long overdue coordinator " << serverName << "last seen: " << server.second;
-      { VPackObjectBuilder ts(&trxs);
-        trxs.add("/Supervision/Health/" + serverName, del.slice());
-        trxs.add("/Plan/Coordinators/" + serverName, del.slice());
-        trxs.add("/Current/Coordinators/" + serverName, del.slice());
-        trxs.add("/Target/MapUniqueToShortID/" + serverName, del.slice());
-        trxs.add("/Current/ServersKnown/" + serverName, del.slice());
-        trxs.add("/Current/ServersRegistered/" + serverName, del.slice());
-      }
-      if (!server.second.empty()) { // Timestamp unchanged only, if persistent entry
-        VPackObjectBuilder prec(&trxs);
-        trxs.add("/Supervision/Health/" + serverName + "/Timestamp", VPackValue(server.second));
+      { VPackArrayBuilder ta(&trxs);
+        auto const serverName = server.first;
+        LOG_TOPIC("fa76d", DEBUG, Logger::SUPERVISION) <<
+          "Removing long overdue coordinator " << serverName << "last seen: " << server.second;
+        { VPackObjectBuilder ts(&trxs);
+          trxs.add("/arango/Supervision/Health/" + serverName, del.slice());
+          trxs.add("/arango/Plan/Coordinators/" + serverName, del.slice());
+          trxs.add("/arango/Current/Coordinators/" + serverName, del.slice());
+          trxs.add("/arango/Target/MapUniqueToShortID/" + serverName, del.slice());
+          trxs.add("/arango/Current/ServersKnown/" + serverName, del.slice());
+          trxs.add("/arango/Current/ServersRegistered/" + serverName, del.slice());
+        }
+        if (!server.second.empty()) { // Timestamp unchanged only, if persistent entry
+          VPackObjectBuilder prec(&trxs);
+          trxs.add("/arango/Supervision/Health/" + serverName + "/Timestamp", VPackValue(server.second));
+        }
       }
     }
   }
   if (servers.size() > 0) {
-    singleWriteTransaction(_agent, trxs, false);
+    _nextServerCleanup = std::chrono::system_clock::now() + std::chrono::seconds(3600);
+    _agent->write(envelope);
   }
 
 }
