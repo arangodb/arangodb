@@ -28,6 +28,7 @@
 #include "Cluster/ResultT.h"
 
 #include <cstddef>
+#include <iosfwd>
 #include <variant>
 
 namespace arangodb::velocypack {
@@ -243,22 +244,10 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
          left.skippedRows == right.skippedRows;
 }
 
-inline std::ostream& operator<<(std::ostream& out,
-                                const arangodb::aql::AqlCall::Limit& limit) {
-  return std::visit(arangodb::overload{[&out](size_t const& i) -> std::ostream& {
-                                         return out << i;
-                                       },
-                                       [&out](arangodb::aql::AqlCall::Infinity const&) -> std::ostream& {
-                                         return out << "unlimited";
-                                       }},
-                    limit);
-}
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::Limit& limit)
+    -> std::ostream&;
 
-inline std::ostream& operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) {
-  return out << "{ skip: " << call.getOffset() << ", softLimit: " << call.softLimit
-             << ", hardLimit: " << call.hardLimit
-             << ", fullCount: " << std::boolalpha << call.fullCount << " }";
-}
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;
 
 }  // namespace arangodb::aql
 
