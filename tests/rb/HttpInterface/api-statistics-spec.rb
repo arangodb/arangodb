@@ -39,8 +39,8 @@ describe ArangoDB do
     it "testing statistics correct cmd" do 
       cmd = "/_admin/statistics"
       doc = ArangoDB.log_get("#{prefix}", cmd) 
-  
       doc.code.should eq(200)
+      doc.parsed_response['server']['uptime'].should be > 0
     end
 
 ################################################################################

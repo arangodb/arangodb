@@ -55,7 +55,16 @@ class ExecutionBlock {
 
  public:
   /// @brief batch size value
-  [[nodiscard]] static constexpr inline size_t DefaultBatchSize() { return 1000; }
+  static constexpr size_t ProductionDefaultBatchSize = 1000;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // when we compile the tests, we want to make the batch size adjustable
+  static size_t DefaultBatchSize;
+  static void setDefaultBatchSize(size_t value) { DefaultBatchSize = value; }
+#else
+  // batch size is hard-coded for release builds
+  static constexpr size_t DefaultBatchSize = ProductionDefaultBatchSize;
+#endif
 
   /// @brief Number to use when we skip all. Should really be inf, but don't
   /// use something near std::numeric_limits<size_t>::max() to avoid overflows

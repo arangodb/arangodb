@@ -21,14 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "scorers.hpp"
+
+#include "shared.hpp"
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
   #include "tfidf.hpp"
   #include "bm25.hpp"
 #endif
-
 #include "utils/register.hpp"
-#include "scorers.hpp"
 
 NS_LOCAL
 
@@ -38,7 +39,7 @@ struct entry_key_t {
   entry_key_t(
       const irs::string_ref& name, const irs::text_format::type_id& args_format
   ): args_format_(args_format), name_(name) {}
-  bool operator==(const entry_key_t& other) const NOEXCEPT {
+  bool operator==(const entry_key_t& other) const noexcept {
     return &args_format_ == &other.args_format_ && name_ == other.name_;
   }
 };
@@ -100,7 +101,7 @@ NS_ROOT
     const irs::text_format::type_id& args_format,
     const string_ref& args,
     bool load_library /*= true*/
-) NOEXCEPT {
+) noexcept {
   try {
     auto* factory = scorer_register::instance().get(
       entry_key_t(name, args_format), load_library
@@ -188,7 +189,7 @@ scorer_registrar::scorer_registrar(
     IR_LOG_STACK_TRACE();
   }}
 
-scorer_registrar::operator bool() const NOEXCEPT {
+scorer_registrar::operator bool() const noexcept {
   return registered_;
 }
 

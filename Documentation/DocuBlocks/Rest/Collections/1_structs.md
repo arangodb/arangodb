@@ -27,32 +27,35 @@ of documents is considered an error.
 
 @RESTSTRUCT{lastValue,key_generator_type,integer,required,}
 
-
 @RESTSTRUCT{isVolatile,collection_info,boolean,required,}
 If *true* then the collection data will be
 kept in memory only and ArangoDB will not write or sync the data
 to disk. This option is only present for the MMFiles storage engine.
 
 @RESTSTRUCT{numberOfShards,collection_info,integer,optional,}
-The number of shards of the collection; *Cluster specific attribute.*
+The number of shards of the collection. _(cluster only)_
 
 @RESTSTRUCT{shardKeys,collection_info,array,optional,string}
 contains the names of document attributes that are used to
-determine the target shard for documents; *Cluster specific attribute.*
+determine the target shard for documents. _(cluster only)_
 
 @RESTSTRUCT{replicationFactor,collection_info,integer,optional,}
-contains how many copies of each shard are kept on different DBServers.; *Cluster specific attribute.*
+contains how many copies of each shard are kept on different DBServers.
+_(cluster only)_
 
-@RESTSTRUCT{minReplicationFactor,collection_info,integer,optional,}
-contains how many minimal copies of each shard need to be in sync on different DBServers.
-The shards will refuse to write, if we have less then these many copies in sync. *Cluster specific attribute.*
+@RESTSTRUCT{writeConcern,collection_info,integer,optional,}
+determines how many copies of each shard are required to be
+in sync on the different DBServers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTSTRUCT{shardingStrategy,collection_info,string,optional,}
-the sharding strategy selected for the collection; *Cluster specific attribute.*
-One of 'hash' or 'enterprise-hash-smart-edge'
+the sharding strategy selected for the collection.
+One of 'hash' or 'enterprise-hash-smart-edge'. _(cluster only)_
 
 @RESTSTRUCT{smartGraphAttribute,collection_info,string,optional,}
-Attribute that is used in smart graphs, *Cluster specific attribute.*
+Attribute that is used in smart graphs. _(cluster only)_
 
 @RESTSTRUCT{indexBuckets,collection_info,integer,optional,}
 the number of index buckets
@@ -74,7 +77,7 @@ The type of the collection:
   - 3: edge collection
 
 @RESTSTRUCT{status,collection_info,string,optional,}
-corrosponds to **statusString**; *Only relevant for the MMFiles storage engine*
+corresponds to **statusString**; *Only relevant for the MMFiles storage engine*
   - 0: "unknown" - may be corrupted
   - 1: (deprecated, maps to "unknown")
   - 2: "unloaded"
@@ -82,8 +85,6 @@ corrosponds to **statusString**; *Only relevant for the MMFiles storage engine*
   - 4: "unloading"
   - 5: "deleted"
   - 6: "loading"
-
-
 
 @RESTSTRUCT{statusString,collection_info,string,optional,}
 any of: ["unloaded", "loading", "loaded", "unloading", "deleted", "unknown"] *Only relevant for the MMFiles storage engine*

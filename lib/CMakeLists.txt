@@ -102,7 +102,6 @@ add_library(arango STATIC
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
-  ApplicationFeatures/PageSizeFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
@@ -113,7 +112,9 @@ add_library(arango STATIC
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
+  Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
+  Basics/EncodingUtils.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
@@ -122,7 +123,11 @@ add_library(arango STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
+  Basics/NumberUtils.cpp
+  Basics/PageSize.cpp
+  Basics/PhysicalMemory.cpp
   Basics/ReadWriteLock.cpp
+  Basics/ReadWriteSpinLock.cpp
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/RocksDBLogger.cpp
@@ -142,7 +147,6 @@ add_library(arango STATIC
   Basics/csv.cpp
   Basics/datetime.cpp
   Basics/debugging.cpp
-  Basics/EncodingUtils.cpp
   Basics/error.cpp
   Basics/fasthash.cpp
   Basics/files.cpp
@@ -153,6 +157,7 @@ add_library(arango STATIC
   Basics/memory.cpp
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
+  Basics/signals.cpp
   Basics/socket-utils.cpp
   Basics/system-functions.cpp
   Basics/terminal-utils.cpp
@@ -171,12 +176,11 @@ add_library(arango STATIC
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
-  Logger/LogBuffer.cpp
+  Logger/LogBufferFeature.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp
   Logger/LogTopic.cpp
   Logger/Logger.cpp
-  Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
   Logger/LogTimeFormat.cpp
@@ -202,10 +206,8 @@ add_library(arango STATIC
   Rest/VstResponse.cpp
   Rest/HttpRequest.cpp
   Rest/HttpResponse.cpp
-  Rest/InitializeRest.cpp
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
-  SimpleHttpClient/Communicator.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp

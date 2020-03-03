@@ -24,6 +24,7 @@
 #include "Inception.h"
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"

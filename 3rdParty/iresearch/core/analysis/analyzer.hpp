@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ANALYZER_H
@@ -48,11 +47,11 @@ class IRESEARCH_API analyzer: public token_stream {
     string_ref name_;
   };
 
-  explicit analyzer(const type_id& id) NOEXCEPT;
+  explicit analyzer(const type_id& id) noexcept;
 
   virtual bool reset(const string_ref& data) = 0;
 
-  const type_id& type() const NOEXCEPT { return *type_; }
+  const type_id& type() const noexcept { return *type_; }
 
 protected:
  

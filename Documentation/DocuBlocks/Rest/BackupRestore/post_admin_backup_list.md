@@ -8,7 +8,7 @@ Lists all locally found backups.
 
 @RESTBODYPARAM{id,string,optional,string}
 The body can either be empty (in which case all available backups are
-listed), or it can be an object with an attribute `id`, which 
+listed), or it can be an object with an attribute `id`, which
 is a string. In the latter case the returned list
 is restricted to the backup with the given id.
 
@@ -60,6 +60,6 @@ method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
-The result consists of a `list` object of hot backups by their `id`, where `id` uniquely identifies a specific hot backup, `version` depicts the version of ArangoDB, which was used to create any individual hot backup and `datetime` displays the time of creation of the hot backup. Further parameters are the size of the backup in bytes as `sizeInBytes`, the number of individual data files as `nrFiles`, the number of db servers at time of creation as `nrDBServers`, the number of backup parts, which are found on the currently reachable db servers as `nrPiecesPresent`. If the backup was created allowing inconsistences, it is so denoted as `potentiallyInconsistent`. The `available` boolean parameter is tightly connected to the backup to be present and ready to be restored on all db servers. It is `true` except, when the number of db servers currently reachable does not match to the number of db servers listed in the backup.   
+The result consists of a `list` object of hot backups by their `id`, where `id` uniquely identifies a specific hot backup, `version` depicts the version of ArangoDB, which was used to create any individual hot backup and `datetime` displays the time of creation of the hot backup. Further parameters are the size of the backup in bytes as `sizeInBytes`, the number of individual data files as `nrFiles`, the number of db servers at time of creation as `nrDBServers`, the number of backup parts, which are found on the currently reachable db servers as `nrPiecesPresent`. If the backup was created allowing inconsistences, it is so denoted as `potentiallyInconsistent`. The `available` boolean parameter is tightly connected to the backup to be present and ready to be restored on all db servers. It is `true` except, when the number of db servers currently reachable does not match to the number of db servers listed in the backup.
 
 @endDocuBlock

@@ -69,14 +69,14 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// When a response is received or an error occurs, the corresponding
   /// callbackis called. The callback is executed on a specific
   /// IO-Thread for this connection.
-  virtual MessageID sendRequest(std::unique_ptr<Request> r,
-                                RequestCallback cb) = 0;
+  virtual void sendRequest(std::unique_ptr<Request> r,
+                           RequestCallback cb) = 0;
 
   /// @brief Send a request to the server and return immediately.
   /// When a response is received or an error occurs, the corresponding
   /// callbackis called. The callback is executed on a specific
   /// IO-Thread for this connection.
-  MessageID sendRequest(Request const& r, RequestCallback cb) {
+  void sendRequest(Request const& r, RequestCallback cb) {
     auto copy = std::make_unique<Request>(r);
     return sendRequest(std::move(copy), cb);
   }
@@ -97,7 +97,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
 
   /// @brief Activate the connection.
-  virtual void startConnection() = 0;
+  virtual void start() = 0;
 
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {
@@ -132,14 +132,44 @@ class ConnectionBuilder {
 
   // Create an connection and start opening it.
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
+  
+  /// @brief connect timeout (15s default)
+  inline std::chrono::milliseconds connectTimeout() const {
+    return _conf._connectTimeout;
+  }
+  /// @brief set the connect connection timeout (15s default)
+  ConnectionBuilder& connectTimeout(std::chrono::milliseconds t) {
+    _conf._connectTimeout = t;
+    return *this;
+  }
 
-  /// @brief idle connection timeout (60s default)
+  /// @brief idle connection timeout (300s default)
   inline std::chrono::milliseconds idleTimeout() const {
     return _conf._idleTimeout;
   }
-  /// @brief set the idle connection timeout (60s default)
+  /// @brief set the idle connection timeout (300s default)
   ConnectionBuilder& idleTimeout(std::chrono::milliseconds t) {
     _conf._idleTimeout = t;
+    return *this;
+  }
+  
+  /// @brief connect retry pause (1s default)
+  inline std::chrono::milliseconds connectRetryPause() const {
+    return _conf._connectRetryPause;
+  }
+  /// @brief set the connect retry pause (1s default)
+  ConnectionBuilder& connectRetryPause(std::chrono::milliseconds p) {
+    _conf._connectRetryPause = p;
+    return *this;
+  }
+  
+  /// @brief connect retries (3 default)
+  inline unsigned maxConnectRetries() const {
+    return _conf._maxConnectRetries;
+  }
+  /// @brief set the max connect retries (3 default)
+  ConnectionBuilder& maxConnectRetries(unsigned r) {
+    _conf._maxConnectRetries = r;
     return *this;
   }
 

@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "filter.hpp"
@@ -50,7 +49,7 @@ NS_ROOT
 // --SECTION--                                                            filter
 // -----------------------------------------------------------------------------
 
-filter::filter(const type_id& type) NOEXCEPT
+filter::filter(const type_id& type) noexcept
   : boost_(irs::no_boost()), type_(&type) {
 }
 

@@ -21,7 +21,7 @@ existed.
 The request must body must contain a JSON document with at least the
 collection's shard key attributes set to some values.
 
-The response is a JSON object with a *shardId* attribute, which will 
+The response is a JSON object with a *shardId* attribute, which will
 contain the ID of the responsible shard.
 
 **Note** : This method is only available in a cluster coordinator.
@@ -56,7 +56,7 @@ is returned.
     var response = logCurlRequestRaw('PUT', "/_api/collection/" + cn + "/responsibleShard", body);
 
     assert(response.code === 200);
-    assert(JSON.parse(response.body).hasOwnProperty("shardId")); 
+    assert(JSON.parse(response.body).hasOwnProperty("shardId"));
 
     logJsonResponse(response);
     db._drop(cn);

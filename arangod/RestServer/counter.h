@@ -580,7 +580,7 @@ Integral strong_duplex< Integral >::load() const
     {
         std::lock_guard< std::mutex > _( serializer_ );
         iterator rollcall = children_.begin();
-        for ( ; rollcall != children_.end(); rollcall++ )
+        for ( ; rollcall != children_.end(); ++rollcall )
             tmp += (*rollcall)->poll();
     }
     return tmp + base_type::load();
@@ -594,7 +594,7 @@ Integral strong_duplex< Integral >::exchange( Integral to )
     {
         std::lock_guard< std::mutex > _( serializer_ );
         iterator rollcall = children_.begin();
-        for ( ; rollcall != children_.end(); rollcall++ )
+        for ( ; rollcall != children_.end(); ++rollcall )
             tmp += (*rollcall)->drain();
     }
     return tmp + base_type::exchange( to );
@@ -685,7 +685,7 @@ Integral weak_duplex< Integral >::load() const
     {
         std::lock_guard< std::mutex > _( serializer_ );
         iterator rollcall = children_.begin();
-        for ( ; rollcall != children_.end(); rollcall++ )
+        for ( ; rollcall != children_.end(); ++rollcall )
             tmp += (*rollcall)->poll();
         tmp += base_type::load();
     }

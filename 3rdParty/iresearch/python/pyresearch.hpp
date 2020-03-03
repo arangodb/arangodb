@@ -28,9 +28,9 @@
 #include "index/field_meta.hpp"
 
 #ifdef SWIG
-#define SWIG_NOEXCEPT
+#define SWIG_noexcept
 #else
-#define SWIG_NOEXCEPT NOEXCEPT
+#define SWIG_noexcept noexcept
 #endif
 
 struct invalid_feature { };
@@ -41,7 +41,7 @@ struct invalid_feature { };
 ///////////////////////////////////////////////////////////////////////////////
 class doc_iterator {
  public:
-  ~doc_iterator() SWIG_NOEXCEPT { }
+  ~doc_iterator() SWIG_noexcept { }
 
   bool next() { return it_->next(); }
 
@@ -58,7 +58,7 @@ class doc_iterator {
   friend class term_iterator;
   friend class segment_reader;
 
-  doc_iterator(irs::doc_iterator::ptr it) SWIG_NOEXCEPT 
+  doc_iterator(irs::doc_iterator::ptr it) SWIG_noexcept 
     : it_(it) {
   }
 
@@ -71,7 +71,7 @@ class doc_iterator {
 ///////////////////////////////////////////////////////////////////////////////
 class term_iterator {
  public:
-  ~term_iterator() SWIG_NOEXCEPT { }
+  ~term_iterator() SWIG_noexcept { }
 
   bool next() { return it_->next(); }
   doc_iterator postings(
@@ -97,7 +97,7 @@ class term_iterator {
  private:
   friend class field_reader;
 
-  term_iterator(irs::seek_term_iterator::ptr&& it) SWIG_NOEXCEPT 
+  term_iterator(irs::seek_term_iterator::ptr&& it) SWIG_noexcept 
     : it_(std::move(it)) {
   }
 
@@ -110,15 +110,15 @@ class term_iterator {
 ///////////////////////////////////////////////////////////////////////////////
 class column_meta {
  public:
-  ~column_meta() SWIG_NOEXCEPT { }
+  ~column_meta() SWIG_noexcept { }
 
-  irs::string_ref name() const SWIG_NOEXCEPT { return meta_->name; }
-  uint64_t id() const SWIG_NOEXCEPT { return meta_->id; }
+  irs::string_ref name() const SWIG_noexcept { return meta_->name; }
+  uint64_t id() const SWIG_noexcept { return meta_->id; }
 
  private:
   friend class column_iterator;
 
-  column_meta(const irs::column_meta* meta) SWIG_NOEXCEPT 
+  column_meta(const irs::column_meta* meta) SWIG_noexcept 
     : meta_(meta) {
   }
 
@@ -131,7 +131,7 @@ class column_meta {
 ///////////////////////////////////////////////////////////////////////////////
 class column_iterator {
  public:
-  ~column_iterator() SWIG_NOEXCEPT { }
+  ~column_iterator() SWIG_noexcept { }
 
   bool next() { return it_->next(); }
   bool seek(irs::string_ref column) {
@@ -142,7 +142,7 @@ class column_iterator {
  private:
   friend class segment_reader;
 
-  column_iterator(irs::column_iterator::ptr&& it) SWIG_NOEXCEPT 
+  column_iterator(irs::column_iterator::ptr&& it) SWIG_noexcept 
     : it_(it.release(), std::move(it.get_deleter())) {
   }
 
@@ -155,7 +155,7 @@ class column_iterator {
 ///////////////////////////////////////////////////////////////////////////////
 class column_values_reader {
  public:
-  ~column_values_reader() SWIG_NOEXCEPT { }
+  ~column_values_reader() SWIG_noexcept { }
 
   std::pair<bool, irs::bytes_ref> get(uint32_t key) {
     irs::bytes_ref value;
@@ -171,7 +171,7 @@ class column_values_reader {
  private:
   friend class column_reader;
 
-  column_values_reader(irs::columnstore_reader::values_reader_f&& reader) SWIG_NOEXCEPT 
+  column_values_reader(irs::columnstore_reader::values_reader_f&& reader) SWIG_noexcept 
     : reader_(std::move(reader)) {
   }
 
@@ -184,7 +184,7 @@ class column_values_reader {
 ///////////////////////////////////////////////////////////////////////////////
 class column_reader {
  public:
-  ~column_reader() SWIG_NOEXCEPT { }
+  ~column_reader() SWIG_noexcept { }
 
   doc_iterator iterator() const {
     assert(reader_);
@@ -196,14 +196,14 @@ class column_reader {
     return reader_->values();
   }
 
-  operator bool() const SWIG_NOEXCEPT {
+  operator bool() const SWIG_noexcept {
     return nullptr != reader_;
   }
 
  private:
   friend class segment_reader;
 
-  column_reader(const irs::columnstore_reader::column_reader* reader) SWIG_NOEXCEPT 
+  column_reader(const irs::columnstore_reader::column_reader* reader) SWIG_noexcept 
     : reader_(reader) {
   }
 
@@ -216,7 +216,7 @@ class column_reader {
 ///////////////////////////////////////////////////////////////////////////////
 class field_reader {
  public:
-  ~field_reader() SWIG_NOEXCEPT { }
+  ~field_reader() SWIG_noexcept { }
 
   size_t docs_count() const {
     assert(field_);
@@ -246,7 +246,7 @@ class field_reader {
     assert(field_);
     return field_->max();
   }
-  operator bool() const SWIG_NOEXCEPT {
+  operator bool() const SWIG_noexcept {
     return nullptr != field_; 
   }
 
@@ -254,7 +254,7 @@ class field_reader {
   friend class segment_reader;
   friend class field_iterator;
 
-  field_reader(const irs::term_reader* field) SWIG_NOEXCEPT 
+  field_reader(const irs::term_reader* field) SWIG_noexcept 
     : field_(field) {
   }
 
@@ -267,7 +267,7 @@ class field_reader {
 ///////////////////////////////////////////////////////////////////////////////
 class field_iterator {
  public:
-  ~field_iterator() SWIG_NOEXCEPT { }
+  ~field_iterator() SWIG_noexcept { }
 
   bool seek(irs::string_ref field) {
     return it_->seek(field);
@@ -278,7 +278,7 @@ class field_iterator {
  private:
   friend class segment_reader;
 
-  field_iterator(irs::field_iterator::ptr&& it) SWIG_NOEXCEPT
+  field_iterator(irs::field_iterator::ptr&& it) SWIG_noexcept
     : it_(it.release(), std::move(it.get_deleter())) {
   }
 
@@ -291,7 +291,7 @@ class field_iterator {
 ///////////////////////////////////////////////////////////////////////////////
 class segment_reader {
  public:
-  ~segment_reader() SWIG_NOEXCEPT { }
+  ~segment_reader() SWIG_noexcept { }
 
   column_iterator columns() const { return reader_->columns(); }
   column_reader column(uint64_t id) const { return reader_->column_reader(id); }
@@ -308,13 +308,13 @@ class segment_reader {
   field_iterator fields() const { return reader_->fields(); }
   size_t live_docs_count() const { return reader_->live_docs_count(); }
   doc_iterator live_docs_iterator() const { return reader_->docs_iterator(); }
-  bool valid() const SWIG_NOEXCEPT { return nullptr != reader_; }
+  bool valid() const SWIG_noexcept { return nullptr != reader_; }
 
  private:
   friend class index_reader;
   friend class segment_iterator;
 
-  segment_reader(irs::sub_reader::ptr reader) SWIG_NOEXCEPT
+  segment_reader(irs::sub_reader::ptr reader) SWIG_noexcept
     : reader_(std::move(reader)) {
   }
 
@@ -346,7 +346,7 @@ class segment_iterator {
 
   typedef std::vector<const irs::sub_reader*>::const_iterator iterator_t;
 
-  segment_iterator(iterator_t begin, iterator_t end) SWIG_NOEXCEPT
+  segment_iterator(iterator_t begin, iterator_t end) SWIG_noexcept
     : begin_(begin), end_(end) {
   }
 
@@ -362,14 +362,14 @@ class index_reader {
  public:
   static index_reader open(const char* path);
 
-  ~index_reader() SWIG_NOEXCEPT { }
+  ~index_reader() SWIG_noexcept { }
 
   segment_reader segment(size_t i) const;
   size_t docs_count() const { return reader_->docs_count(); }
   size_t live_docs_count() const { return reader_->live_docs_count(); }
   size_t size() const { return reader_->size(); }
 
-  segment_iterator iterator() const SWIG_NOEXCEPT {
+  segment_iterator iterator() const SWIG_noexcept {
     return segment_iterator(segments_.begin(), segments_.end());
   }
 

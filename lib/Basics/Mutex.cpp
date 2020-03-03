@@ -142,7 +142,7 @@ void Mutex::assertNotLockedByCurrentThread() {
 #elif defined(TRI_HAVE_WIN32_THREADS)
 
 Mutex::Mutex() : _mutex() { InitializeSRWLock(&_mutex); }
-Mutex::~Mutex() {}
+Mutex::~Mutex() = default;
 
 void Mutex::lock() { AcquireSRWLockExclusive(&_mutex); }
 

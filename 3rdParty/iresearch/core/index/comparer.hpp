@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_COMPARER_H
@@ -41,7 +40,7 @@ class comparer {
   virtual bool less(const bytes_ref& lhs, const bytes_ref& rhs) const = 0;
 }; // comparer
 
-inline bool use_dense_sort(size_t size, size_t total) NOEXCEPT {
+inline bool use_dense_sort(size_t size, size_t total) noexcept {
   // check: N*logN > K
   return std::isgreaterequal(
     static_cast<double_t>(size)*std::log(size),

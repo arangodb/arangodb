@@ -11,10 +11,10 @@ Gets an edge from the given collection.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection,string,required} 
+@RESTURLPARAM{collection,string,required}
 The name of the edge collection the edge belongs to.
 
-@RESTURLPARAM{edge,string,required} 
+@RESTURLPARAM{edge,string,required}
 The *_key* attribute of the edge.
 
 @RESTQUERYPARAMETERS
@@ -34,7 +34,7 @@ you can supply the Etag in an attribute rev in the URL.
 
 @RESTHEADERPARAM{if-none-match,string,optional}
 If the "If-None-Match" header is given, then it must contain exactly one Etag. The document is returned,
-only if it has a different revision as the given Etag. Otherwise a HTTP 304 is returned. 
+only if it has a different revision as the given Etag. Otherwise a HTTP 304 is returned.
 
 @RESTRETURNCODES
 
@@ -65,15 +65,14 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to update vertices in the graph  you at least need to have the following privileges:
-
+In order to update vertices in the graph  you at least need to have the following privileges:<br>
   1. `Read Only` access on the Database.
   2. `Read Only` access on the given collection.
 
@@ -85,7 +84,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -104,7 +103,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -120,7 +119,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -141,4 +140,3 @@ A message created for this error.
   examples.dropGraph("social");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

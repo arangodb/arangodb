@@ -105,6 +105,17 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       order.add<tests::sort::frequency_sort>(false);
       check_query(irs::by_prefix().field("prefix").term("a"), order, docs, rdr);
     }
+
+    // prefix
+    {
+      docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
+      costs_t costs{ docs.size() };
+      irs::order order;
+
+      order.add<tests::sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(true);
+      check_query(irs::by_prefix().field("prefix").term("a"), order, docs, rdr);
+    }
   }
 
   void by_prefix_sequential() {
@@ -215,7 +226,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
 
     check_query(irs::by_prefix().field("Name").term("Addr"), docs_t{1, 2, 77, 78}, rdr);
   }
-}; // filter_test_case_base
+}; // prefix_filter_test_case
 
 TEST(by_prefix_test, ctor) {
   irs::by_prefix q;
@@ -287,7 +298,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0")
+    ::testing::Values("1_0", "1_1", "1_2")
   ),
   tests::to_string
 );

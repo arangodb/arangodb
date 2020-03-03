@@ -429,6 +429,66 @@
         assertEqual(result[1].c, 0);
       },
 
+      testWildcardFilter : function() {
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_a_' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_ar' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(1, result.length);
+          assertEqual("bar", result[0].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_a__' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(0, result.length);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'ba_' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'b__' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'b%' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '%r' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(1, result.length);
+          assertEqual("bar", result[0].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'b%%' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '%a%' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+      },
+
       testPhraseFilter : function () {
         var result0 = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, 'quick brown fox jumps', 'text_en') OPTIONS { waitForSync: true } RETURN doc").toArray();
 
@@ -1558,6 +1618,134 @@
         {
           let result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a NONE <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
           assertEqual(28, result.length);
+        }
+      },
+      testQueryOptimizationOptions : function() {
+        let queryOptColl = "QueryOptOptionsCol";
+        let queryOptView = "QueryOptView";
+        try {
+          db._drop(queryOptColl);
+          db._dropView(queryOptView);
+          
+          let coll = db._create(queryOptColl);
+          let view = db._createView(queryOptView, 'arangosearch',
+                                   { links: { "QueryOptOptionsCol": { includeAllFields: true } } });
+          coll.save({ value1: "1", value2: "A",
+            valueArray: ["A", "B", "C"]
+          }); 
+          coll.save({ value1: "2", value2: "B",
+            valueArray: ["D", "B", "C"]
+          });
+          coll.save({ value1: "3", value2: "C",
+            valueArray: ["E", "D", "C"]
+          });          
+          coll.save({ value1: "4", value2: "D",
+            valueArray: ["A", "E", "D"]
+          });   
+          coll.save({ value1: "5", value2: "E",
+            valueArray: ["F", "G", "B"]
+          });   
+          
+          // 1 2 3 4 expected
+          let resAuto = db._query("FOR d IN " + queryOptView  + 
+            " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+            " OPTIONS { waitForSync : true, conditionOptimization: 'auto' } SORT d.value1 ASC RETURN d").toArray();
+          assertEqual(4, resAuto.length);  
+          let resNoDnf = db._query("FOR d IN " + queryOptView  + 
+            " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+            " OPTIONS { waitForSync : true, conditionOptimization: 'nodnf' } SORT d.value1 ASC RETURN d").toArray();
+          assertEqual(resNoDnf, resAuto); 
+          let resNoNeg = db._query("FOR d IN " + queryOptView  + 
+            " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+            " OPTIONS { waitForSync : true, conditionOptimization: 'noneg' } SORT d.value1 ASC RETURN d").toArray();
+          assertEqual(resNoNeg, resAuto);
+          let resNone = db._query("FOR d IN " + queryOptView  + 
+            " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+            " OPTIONS { waitForSync : true, conditionOptimization: 'none' } SORT d.value1 ASC RETURN d").toArray();
+          assertEqual(resNone, resAuto);         
+        } 
+        finally {
+          db._drop(queryOptColl);
+          db._dropView(queryOptView);
+        }
+      },
+      testNGramMatch : function() {
+        let queryColl = "NgramMatchCol";
+        let queryView = "NgramMatchView";
+        let queryAnalyzer = "ngram_match_myngram";
+        try {
+          db._drop(queryColl);
+          db._dropView(queryView);
+          analyzers.save(queryAnalyzer, 
+                         "ngram", 
+                         {
+                           "min":2, 
+                           "max":2, 
+                           "streamType":"utf8", 
+                           "preserveOriginal":false
+                         },
+                         ["frequency", "position", "norm"]);
+          let coll = db._create(queryColl);
+          let view = db._createView(queryView,
+                                    "arangosearch",
+                                    { 
+                                      links: { 
+                                              NgramMatchCol : { analyzers: [ queryAnalyzer],
+                                                                includeAllFields: true, 
+                                                                trackListPositions: true} 
+                                              }
+                                    });
+          coll.save({ value1: "1", value2: "Jack Daniels"}); 
+          coll.save({ value1: "2", value2: "Jack Sparrow"}); 
+          coll.save({ value1: "3", value2: "Jack The Reaper"}); 
+          coll.save({ value1: "4", value2: "Jackhammer"}); 
+          coll.save({ value1: "5", value2: "Jacky Chan"}); 
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH NGRAM_MATCH(d.value2, 'Jack Sparrow', 0.7, '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+            assertEqual(1, res.length);  
+            assertEqual('2', res[0].value1);
+          }
+          // same but with default threshold (0.7 also)
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH NGRAM_MATCH(d.value2, 'Jack Sparrow', '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+            assertEqual(1, res.length);  
+            assertEqual('2', res[0].value1);
+          }
+          // same but with default threshold (0.7 also) and analyzer via ANALYZER func
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH ANALYZER(NGRAM_MATCH(d.value2, 'Jack Sparrow'), '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+            assertEqual(1, res.length);  
+            assertEqual('2', res[0].value1);
+          }
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH NGRAM_MATCH(d.value2, 'Jack Doniels', 0.3, '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
+            assertEqual(3, res.length);  
+            assertEqual('1', res[0].value1);
+            assertEqual('3', res[1].value1);
+            assertEqual('2', res[2].value1);
+          }
+          {
+            let res = db._query("FOR d IN " + queryView  + 
+              " SEARCH NGRAM_MATCH(d.value2, 'Jack Doniels', 0.3, '" + queryAnalyzer + "') " + 
+              " OPTIONS { waitForSync : true} SORT TFIDF(d) DESC RETURN d").toArray();
+            assertEqual(3, res.length);  
+            assertEqual('1', res[0].value1);
+            assertEqual('2', res[1].value1);
+            assertEqual('3', res[2].value1);
+          }
+        } 
+        finally {
+          db._drop(queryColl);
+          db._dropView(queryView);
+          analyzers.remove(queryAnalyzer, true);
         }
       }
     };

@@ -39,9 +39,9 @@ struct aligned_value {
 
 template<typename ScoreType, typename StatsType>
 struct aligned_scorer : public irs::sort {
-  class prepared : public irs::sort::prepared_basic<ScoreType, StatsType> {
+  class prepared final : public irs::sort::prepared_basic<ScoreType, StatsType> {
    public:
-    explicit prepared(const irs::flags& features) NOEXCEPT
+    explicit prepared(const irs::flags& features) noexcept
       : features_(features) {
     }
 
@@ -59,13 +59,13 @@ struct aligned_scorer : public irs::sort {
     ) const override {
       // NOOP
     }
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         const irs::sub_reader& segment,
         const irs::term_reader& field,
         const irs::byte_type* stats,
         const irs::attribute_view& doc_attrs,
         irs::boost_t boost
-    ) const {
+    ) const override {
       return { nullptr, nullptr };
     }
     const irs::flags& features() const {

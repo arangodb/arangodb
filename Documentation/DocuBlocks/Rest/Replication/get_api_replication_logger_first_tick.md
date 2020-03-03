@@ -44,4 +44,3 @@ Returning the first available tick
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -111,7 +111,7 @@ std::unique_ptr<arangodb::aql::Query> prepareQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
-uint64_t getCurrentPlanVersion();
+uint64_t getCurrentPlanVersion(arangodb::application_features::ApplicationServer&);
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature);
 

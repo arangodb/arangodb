@@ -24,6 +24,7 @@
 
 #include "OptimizerRules.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Aggregator.h"
 #include "Aql/AstHelper.h"
 #include "Aql/ClusterNodes.h"
@@ -74,12 +75,20 @@
 namespace {
 
 bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
-                                arangodb::aql::CalculationNode const* node,
+                                arangodb::aql::ExecutionNode const* node,
                                 ::arangodb::containers::HashSet<arangodb::aql::Variable const*>& vars) {
   using EN = arangodb::aql::ExecutionNode;
 
-  vars.clear();
-  arangodb::aql::Ast::getReferencedVariables(node->expression()->node(), vars);
+  if (node->getType() == EN::CALCULATION) {
+    auto nn = EN::castTo<arangodb::aql::CalculationNode const*>(node);
+    vars.clear();
+    arangodb::aql::Ast::getReferencedVariables(nn->expression()->node(), vars);
+  } else if (node->getType() == EN::SUBQUERY) {
+    auto nn = EN::castTo<arangodb::aql::SubqueryNode const*>(node);
+    vars.clear();
+    nn->getVariablesUsedHere(vars);
+  }
+
   for (auto const& it : vars) {
     auto setter = plan->getVarSetBy(it->id);
     if (setter == nullptr) {
@@ -1685,7 +1694,7 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
                                              OptimizerRule const& rule) {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::CALCULATION, true);
+  plan->findNodesOfType(nodes, {EN::CALCULATION, EN::SUBQUERY}, true);
 
   std::vector<ExecutionNode*> stack;
   ::arangodb::containers::HashSet<Variable const*> vars;
@@ -1693,15 +1702,26 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto nn = ExecutionNode::castTo<CalculationNode*>(n);
-    if (!nn->expression()->isDeterministic()) {
-      // we will only move expressions down that cannot throw and that are
-      // deterministic
-      continue;
-    }
-
     // this is the variable that the calculation will set
-    auto variable = nn->outVariable();
+    Variable const* variable = nullptr;
+
+    if (n->getType() == EN::CALCULATION) {
+      auto nn = ExecutionNode::castTo<CalculationNode*>(n);
+      if (!nn->expression()->isDeterministic()) {
+        // we will only move expressions down that cannot throw and that are
+        // deterministic
+        continue;
+      }
+      variable = nn->outVariable();
+    } else if (n->getType() == EN::SUBQUERY) {
+      auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
+      if (!nn->isDeterministic() || nn->isModificationNode()) {
+        // we will only move subqueries down that are deterministic and are not
+        // modification subqueries
+        continue;
+      }
+      variable = nn->outVariable();
+    }
 
     stack.clear();
     n->parents(stack);
@@ -1745,7 +1765,7 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
           // however, if our calculation uses any data from a
           // collection/index/view, it probably makes sense to not move it,
           // because the result set may be huge
-          if (::accessesCollectionVariable(plan.get(), nn, vars)) {
+          if (::accessesCollectionVariable(plan.get(), n, vars)) {
             break;
           }
         }
@@ -3746,9 +3766,10 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
     // insert a gather node
     auto const sortMode = GatherNode::evaluateSortMode(collection->numberOfShards());
-    // single-sharded collections don't require any parallelism. collections with more than
-    // one shard are eligible for later parallelization (the Undefined allows this)
-    auto const parallelism = (collection->numberOfShards() <= 1 ? GatherNode::Parallelism::Serial : GatherNode::Parallelism::Undefined);
+    auto const parallelism = (((collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) || 
+                               (collection->numberOfShards() <= 1 && !collection->isSatellite())) ? 
+                              GatherNode::Parallelism::Serial : 
+                              GatherNode::Parallelism::Undefined);
     auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode, parallelism); 
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
@@ -4043,7 +4064,9 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
     auto current = node->getFirstDependency();
 
     while (current != nullptr) {
-      bool eligible = true;
+      if (current->getType() == EN::LIMIT) {
+        break;
+      }
 
       // check if any of the nodes we pass use a variable that will not be
       // available after we insert a new COLLECT on top of it (note: COLLECT
@@ -4053,6 +4076,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
         current->getVariablesUsedHere(allUsed);
       }
 
+      bool eligible = true;
       for (auto const& it : current->getVariablesSetHere()) {
         if (std::find(used.begin(), used.end(), it) != used.end()) {
           eligible = false;
@@ -5753,13 +5777,32 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
 
-    // note that we can NOT optimize away the vertex output variable
-    // yet, as many traversal internals depend on the number of vertices
-    // found/built
-    auto outVariable = traversal->edgeOutVariable();
     std::vector<Variable const*> pruneVars;
     traversal->getPruneVariables(pruneVars);
 
+    // note that we can NOT optimize away the vertex output variable
+    // yet, as many traversal internals depend on the number of vertices
+    // found/built
+    //
+    // however, we can turn off looking up vertices and producing them in the result set.
+    // we can do this if the traversal's vertex out variable is never used later and
+    // also the traversal's path out variable is not used later (note that the path
+    // out variable can contain the "vertices" sub attribute)
+    auto outVariable = traversal->vertexOutVariable();
+
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
+      outVariable = traversal->pathOutVariable();
+      if (outVariable == nullptr ||
+          (!n->isVarUsedLater(outVariable) &&
+           std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end())) {
+        // both traversal vertex and path outVariables not used later
+        traversal->options()->setProduceVertices(false);
+        modified = true;
+      }
+    }
+
+    outVariable = traversal->edgeOutVariable();
     if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
         std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal edge outVariable not used later
@@ -7223,12 +7266,13 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
         ExecutionNode* filterParent = current->getFirstParent();
         TRI_ASSERT(filterParent != nullptr);
         plan->unlinkNode(current);
-        current = filterParent;
-
+          
         if (!current->isVarUsedLater(cn->outVariable())) {
           // also remove the calculation node
           plan->unlinkNode(cn);
         }
+        
+        current = filterParent;
         modified = true;
       } else if (current->getType() == EN::CALCULATION) {
         // store all calculations we found
@@ -7264,13 +7308,55 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<Execut
   
   bool modified = false;
 
+  // find all GatherNodes in the main query, starting from the query's root node
+  // (the node most south when looking at the query execution plan).
+  // 
+  // for now, we effectively stop right after the first GatherNode we found, regardless
+  // of whether we can make that node use parallelism or not.
+  // the reason we have to stop here is that if we have multiple query snippets on a
+  // server they will use the same underlying transaction object. however,
+  // transactions are not thread-safe right now, so we must avoid any parallelism when
+  // there can be another snippet with the same transaction on the same server.
+  //
+  // for example consider the following query, joining the shards of two collections 
+  // on 2 database servers:
+  //
+  //   (4)      DBS1                            DBS2               database
+  //        users, shard 1                 users, shard 2          servers
+  //       --------------------------------------------------------
+  //   (3)                      Gather                             coordinator 
+  //       -------------------------------------------------------- 
+  //   (2)      DBS1            Scatter         DBS2               database
+  //       orders, shard 1                orders, shard 2          servers
+  //       -------------------------------------------------------- 
+  //   (1)                      Gather                             coordinator
+  //
+  // the query starts with a GatherNode (1). if we make that parallel, then it will 
+  // ask the shards of `orders` on the database servers in parallel (2). So there
+  // can be 2 threads in (2), on different servers. all is fine until here.
+  // however, if the thread for DBS1 fetches upstream data from the coordinator (3),
+  // then the coordinator may reach out to DBS2 to get more data from the `users`
+  // collection (4). so one thread will be on DBS2 and using the transaction. at
+  // the very same time we already have another thread working on the same server on
+  // (2). they are using the same transaction object, which currently is not 
+  // thread-safe.
+  // we need to avoid any such situation, and thus we cannot make any of the GatherNodes
+  // thread-safe here. the only case in which we currently can employ parallelization
+  // is when there is only a single GatherNode. all other restrictions for 
+  // parallelization (e.g. no DistributeNodes around) still apply.
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::GATHER, false);
+  plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  for (auto const& n : nodes) {
-    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(n);
-    if (gn->isParallelizable()) {
+  if (nodes.size() == 1 && 
+      !plan->contains(EN::TRAVERSAL) && 
+      !plan->contains(EN::SHORTEST_PATH) && 
+      !plan->contains(EN::K_SHORTEST_PATHS) && 
+      !plan->contains(EN::DISTRIBUTE) && 
+      !plan->contains(EN::SCATTER)) {
+    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
+
+    if (!gn->isInSubquery() && gn->isParallelizable()) {
       gn->setParallelism(GatherNode::Parallelism::Parallel);
       modified = true;
     }
@@ -7281,7 +7367,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<Execut
 
 namespace {
 
-bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
+bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* node) {
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:

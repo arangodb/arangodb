@@ -685,14 +685,8 @@ std::string tolower(std::string&& str) {
 }
 
 std::string tolower(std::string const& str) {
-  std::string result;
-  result.resize(str.size());
-
-  size_t i = 0;
-  for (auto& c : result) {
-    c = StringUtils::tolower(str[i++]);
-  }
-
+  std::string result = str;
+  tolowerInPlace(result);
   return result;
 }
 
@@ -995,24 +989,23 @@ std::string soundex(std::string const& str) {
   return soundex(str.data(), str.size());
 }
 
-unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
+unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size_t l2) {
   // convert input strings to vectors of (multi-byte) character numbers
-  std::vector<uint32_t> vect1 = characterCodes(str1);
-  std::vector<uint32_t> vect2 = characterCodes(str2);
+  std::vector<uint32_t> vect1 = characterCodes(s1, l1);
+  std::vector<uint32_t> vect2 = characterCodes(s2, l2);
 
   // calculate levenshtein distance on vectors of character numbers
   return static_cast<unsigned int>(::levenshteinDistance(vect1, vect2));
 }
 
-std::vector<uint32_t> characterCodes(std::string const& str) {
-  char const* s = str.data();
-  char const* e = s + str.size();
+std::vector<uint32_t> characterCodes(char const* s, size_t length) {
+  char const* e = s + length;
 
   std::vector<uint32_t> charNums;
   // be conservative, and reserve space for one number of input
   // string byte. this may be too much, but it avoids later
   // reallocation of the vector
-  charNums.reserve(str.size());
+  charNums.reserve(length);
 
   while (s < e) {
     // note: consume advances the *s* pointer by one byte
@@ -1052,6 +1045,14 @@ std::vector<uint32_t> characterCodes(std::string const& str) {
   }
 
   return charNums;
+}
+
+std::vector<uint32_t> characterCodes(std::string const& str) {
+  return characterCodes(str.data(), str.size());
+}
+
+unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
+  return levenshteinDistance(str1.data(), str1.size(), str2.data(), str2.size());
 }
 
 // .............................................................................
@@ -1404,6 +1405,68 @@ size_t itoa(uint64_t attr, char* buffer) {
   *p++ = char(attr % 10 + '0');
 
   return p - buffer;
+}
+
+void itoa(uint64_t attr, std::string& out) {
+  if (10000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000ULL) % 10 + '0'));
+  }
+  if (10000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000ULL) % 10 + '0'));
+  }
+  if (1000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000ULL) % 10 + '0'));
+  }
+  if (100000000ULL <= attr) {
+    out.push_back(char((attr / 100000000ULL) % 10 + '0'));
+  }
+  if (10000000ULL <= attr) {
+    out.push_back(char((attr / 10000000ULL) % 10 + '0'));
+  }
+  if (1000000ULL <= attr) {
+    out.push_back(char((attr / 1000000ULL) % 10 + '0'));
+  }
+  if (100000ULL <= attr) {
+    out.push_back(char((attr / 100000ULL) % 10 + '0'));
+  }
+  if (10000ULL <= attr) {
+    out.push_back(char((attr / 10000ULL) % 10 + '0'));
+  }
+  if (1000ULL <= attr) {
+    out.push_back(char((attr / 1000ULL) % 10 + '0'));
+  }
+  if (100ULL <= attr) {
+    out.push_back(char((attr / 100ULL) % 10 + '0'));
+  }
+  if (10ULL <= attr) {
+    out.push_back(char((attr / 10ULL) % 10 + '0'));
+  }
+
+  out.push_back(char(attr % 10 + '0'));
 }
 
 std::string ftoa(double i) {

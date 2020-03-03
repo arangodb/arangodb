@@ -56,6 +56,8 @@ function GeneralGraphClusterCreationSuite() {
         graph._drop(gn, true);
       } catch (ignore) {
       }
+      db._drop(vn);
+      db._drop(en);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

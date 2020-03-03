@@ -153,7 +153,7 @@ class ProgramOptions {
   // adds an option to the program options
   Option& addOption(std::string const& name, std::string const& description,
                     Parameter* parameter,
-                    std::underlying_type<Flags>::type flags = makeFlags(Flags::Normal)) {
+                    std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
     addOption(Option(name, description, parameter, flags));
     return getOption(name);
   }

@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_BM25_H
@@ -32,11 +31,11 @@ class bm25_sort : public sort {
  public:
   DECLARE_SORT_TYPE();
 
-  static CONSTEXPR float_t K() NOEXCEPT {
+  static constexpr float_t K() noexcept {
     return 1.2f;
   }
 
-  static CONSTEXPR float_t B() NOEXCEPT {
+  static constexpr float_t B() noexcept {
     return 0.75f;
   }
 
@@ -47,21 +46,21 @@ class bm25_sort : public sort {
 
   typedef float_t score_t;
 
-  explicit bm25_sort(float_t k = K(), float_t b = B()) NOEXCEPT;
+  explicit bm25_sort(float_t k = K(), float_t b = B()) noexcept;
 
-  float_t k() const NOEXCEPT { return k_; }
-  void k(float_t k) NOEXCEPT { k_ = k; }
+  float_t k() const noexcept { return k_; }
+  void k(float_t k) noexcept { k_ = k; }
 
-  float_t b() const NOEXCEPT { return b_; }
-  void b(float_t b) NOEXCEPT { b_ = b; }
+  float_t b() const noexcept { return b_; }
+  void b(float_t b) noexcept { b_ = b; }
 
   // returns 'true' if current scorer is 'bm11'
-  bool bm11() const NOEXCEPT {
+  bool bm11() const noexcept {
     return b_ == 1.f;
   }
 
   // returns 'true' if current scorer is 'bm15'
-  bool bm15() const NOEXCEPT {
+  bool bm15() const noexcept {
     return b_ == 0.f;
   }
 

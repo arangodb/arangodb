@@ -23,15 +23,21 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H 1
 
-#include "Basics/Common.h"
+#include <memory>
+#include <string>
+#include <typeindex>
+#include <unordered_set>
+#include <vector>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 
-#include <unordered_set>
-
 namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
 namespace application_features {
+class ApplicationServer;
 
 class ApplicationFeature {
   friend class ApplicationServer;

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
+/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -29,7 +29,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
-  let users = require("@arangodb/users");
+  return {
+    'server.harden': 'true',
+    'server.authentication': 'true',
+    'server.jwt-secret': 'abc123',
+    'runSetup': true
+  };
+}
+
+if (runSetup === true) {
+    let users = require("@arangodb/users");
   
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
@@ -37,12 +46,9 @@ if (getOptions === true) {
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
   
-  return {
-    'server.harden': 'true',
-    'server.authentication': 'true',
-    'server.jwt-secret': 'abc123'
-  };
+  return true;
 }
+
 var jsunity = require('jsunity');
 
 function testSuite() {
@@ -67,7 +73,7 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("version"));
       assertTrue(result.hasOwnProperty("license"));
     },
-    
+
     testCanAccessEngineRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_api/engine");
@@ -79,7 +85,7 @@ function testSuite() {
       let result = arango.GET("/_api/engine");
       assertTrue(result.hasOwnProperty("name"));
     },
-    
+
     testCanAccessEngineStatsRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_api/engine/stats");
@@ -92,7 +98,7 @@ function testSuite() {
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
-    
+
     testCanAccessAdminStatusRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/status");
@@ -114,7 +120,7 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("pid"));
       assertFalse(result.hasOwnProperty("foxxApi"));
     },
-    
+
     testCanAccessAdminMetricsRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/metrics");
@@ -126,7 +132,19 @@ function testSuite() {
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
-    
+
+    testCanAccessAdminSystemReportRw : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      let result = arango.GET("/_admin/system-report");
+    },
+
+    testCanAccessAdminSystemReportRo : function() {
+      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      let result = arango.GET("/_admin/system-report");
+      assertTrue(result.error);
+      assertEqual(403, result.code);
+    },
+
     testCanAccessAdminLogRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log");
@@ -146,7 +164,7 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("timestamp"));
       assertFalse(result.hasOwnProperty("text"));
     },
-    
+
     testCanAccessAdminLogLevelRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log/level");
@@ -162,7 +180,7 @@ function testSuite() {
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
-    
+
   };
 }
 jsunity.run(testSuite);

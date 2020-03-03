@@ -24,6 +24,7 @@
 #include "UserManager.h"
 
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Auth/Handler.h"
@@ -374,6 +375,8 @@ void auth::UserManager::createRootUser() {
     // No action
     LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
   }
+
+  triggerGlobalReload();
 }
 
 VPackBuilder auth::UserManager::allUsers() {
@@ -409,7 +412,7 @@ void auth::UserManager::triggerGlobalReload() {
   }
 
   // tell other coordinators to reload as well
-  AgencyComm agency;
+  AgencyComm agency(_server);
 
   AgencyWriteTransaction incrementVersion(
       {AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});

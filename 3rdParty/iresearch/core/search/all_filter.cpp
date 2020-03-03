@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "all_filter.hpp"
@@ -37,7 +36,8 @@ NS_ROOT
 class all_query: public filter::prepared {
  public:
   explicit all_query(bstring&& stats, boost_t boost)
-    : filter::prepared(std::move(stats), boost) {
+    : filter::prepared(boost),
+      stats_(std::move(stats)) {
   }
 
   virtual doc_iterator::ptr execute(
@@ -46,15 +46,18 @@ class all_query: public filter::prepared {
       const attribute_view& /*ctx*/
   ) const override {
     return doc_iterator::make<all_iterator>(
-      rdr, stats(), order, rdr.docs_count(), boost()
+      rdr, stats_.c_str(), order, rdr.docs_count(), boost()
     );
   }
+
+ private:
+  bstring stats_;
 };
 
 DEFINE_FILTER_TYPE(irs::all)
 DEFINE_FACTORY_DEFAULT(irs::all)
 
-all::all() NOEXCEPT
+all::all() noexcept
   : filter(all::type()) {
 }
 

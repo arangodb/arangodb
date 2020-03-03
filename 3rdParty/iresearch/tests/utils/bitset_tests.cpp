@@ -174,11 +174,11 @@ TEST(bitset_tests, reset) {
   ASSERT_FALSE(bs.any());
   ASSERT_FALSE(bs.all());
   bs.set(42);
-  ASSERT(1, bs.count());
+  ASSERT_EQ(1, bs.count());
   bs.set(42);
-  ASSERT(1, bs.count());
+  ASSERT_EQ(1, bs.count());
   bs.set(73);
-  ASSERT(2, bs.count());
+  ASSERT_EQ(2, bs.count());
   ASSERT_FALSE(bs.none() );
   ASSERT_TRUE(bs.any());
   ASSERT_FALSE(bs.all());
@@ -199,11 +199,11 @@ TEST(bitset_tests, reset) {
   ASSERT_FALSE(bs.any()); // content cleared
   ASSERT_FALSE(bs.all()); // content cleared
   bs.set(42);
-  ASSERT(1, bs.count());
+  ASSERT_EQ(1, bs.count());
   bs.set(42);
-  ASSERT(1, bs.count());
+  ASSERT_EQ(1, bs.count());
   bs.set(73); 
-  ASSERT(2, bs.count());
+  ASSERT_EQ(2, bs.count());
   ASSERT_FALSE(bs.none() );
   ASSERT_TRUE(bs.any());
   ASSERT_FALSE(bs.all());
@@ -223,11 +223,11 @@ TEST(bitset_tests, reset) {
   ASSERT_FALSE(bs.any()); // content cleared
   ASSERT_FALSE(bs.all()); // content cleared
   bs.set(42);
-  ASSERT(1, bs.count());
+  ASSERT_EQ(1, bs.count());
   bs.set(42);
-  ASSERT(1, bs.count());
+  ASSERT_EQ(1, bs.count());
   bs.set(73);
-  ASSERT(2, bs.count());
+  ASSERT_EQ(2, bs.count());
   ASSERT_FALSE(bs.none());
   ASSERT_TRUE(bs.any());
   ASSERT_FALSE(bs.all());
@@ -247,11 +247,11 @@ TEST(bitset_tests, clear_count) {
   ASSERT_FALSE(bs.all());
 
   bs.set(42);
-  ASSERT(1, bs.count());
+  ASSERT_EQ(1, bs.count());
   bs.set(42);
-  ASSERT(1, bs.count());
+  ASSERT_EQ(1, bs.count());
   bs.set(73);
-  ASSERT(2, bs.count());
+  ASSERT_EQ(2, bs.count());
   ASSERT_FALSE(bs.none());
   ASSERT_TRUE(bs.any());
   ASSERT_FALSE(bs.all());

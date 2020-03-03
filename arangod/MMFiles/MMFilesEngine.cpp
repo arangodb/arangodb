@@ -166,7 +166,7 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::make_unique<MMFilesIndexFactory>()),
+                    std::make_unique<MMFilesIndexFactory>(server)),
       _isUpgrade(false),
       _maxTick(0),
       _walAccess(new MMFilesWalAccess()),
@@ -1575,7 +1575,7 @@ void MMFilesEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t col
 static bool UnloadCollectionCallback(LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+  WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
 
   if (collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
     return false;

@@ -23,6 +23,7 @@
 
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
@@ -84,10 +85,6 @@ MMFilesPersistentIndexFeature::~MMFilesPersistentIndexFeature() {
   } catch (...) {
   }
 }
-
-void MMFilesPersistentIndexFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {}
-
-void MMFilesPersistentIndexFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {}
 
 void MMFilesPersistentIndexFeature::start() {
   Instance = this;

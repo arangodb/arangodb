@@ -36,4 +36,3 @@ is returned if the ttl value is invalid or the batch was not found.
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
 @endDocuBlock
-

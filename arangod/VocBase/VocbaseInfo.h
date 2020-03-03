@@ -93,6 +93,8 @@ class CreateDatabaseInfo {
     return _id;
   }
 
+  bool valid() const { return _valid; }
+
   bool validId() const { return _validId; }
 
   // shold be created with vaild id

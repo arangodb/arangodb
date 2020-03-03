@@ -148,11 +148,11 @@ RestStatus RestIndexHandler::getIndexes() {
     }
 
     std::string const& iid = suffixes[1];
-    VPackBuilder b;
-    b.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+    VPackBuilder tmp;
+    tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(coll.get(), b.slice(), output);
+    Result res = methods::Indexes::getIndex(coll.get(), tmp.slice(), output);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();

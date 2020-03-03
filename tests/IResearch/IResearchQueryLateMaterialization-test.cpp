@@ -50,7 +50,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
   void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
     auto updateJson = VPackParser::fromJson(
       std::string("{") +
-        "\"links\": {" +
+        "\"links\": {"
         "\"" + collectionName1 + "\": {\"includeAllFields\": true},"
         "\"" + collectionName2 + "\": {\"includeAllFields\": true}"
       "}}");
@@ -66,7 +66,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
+    EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
@@ -176,21 +176,17 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
 
       EXPECT_TRUE(trx.commit().ok());
 
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view1)
-                   ->commit()
-                   .ok()));
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view1)
+                  ->commit().ok());
 
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view1)
-                   ->commit()
-                   .ok()));
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view1)
+                  ->commit().ok());
 
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view2)
-                   ->commit()
-                   .ok()));
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view2)
+                  ->commit().ok());
 
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view2)
-                   ->commit()
-                   .ok()));
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view2)
+                  ->commit().ok());
     }
   }
 
@@ -220,8 +216,8 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                     arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                    arangodb::velocypack::Slice(*expectedDoc), resolved, true));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }

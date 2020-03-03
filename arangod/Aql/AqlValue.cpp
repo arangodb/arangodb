@@ -880,6 +880,7 @@ size_t AqlValue::sizeofDocvec() const {
 
 /// @brief construct a V8 value as input for the expression execution in V8
 v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods* trx) const {
+  auto context = TRI_IGETC;
   switch (type()) {
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -897,7 +898,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
-          result->Set(j++, it->getValueReference(i, 0).toV8(isolate, trx));
+          result->Set(context, j++, it->getValueReference(i, 0).toV8(isolate, trx)).FromMaybe(false);
 
           if (V8PlatformFeature::isOutOfMemory(isolate)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -913,8 +914,12 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
 
       for (uint32_t i = 0; i < n; ++i) {
         // is it safe to use a double here (precision loss)?
-        result->Set(i, v8::Number::New(isolate, static_cast<double>(_data.range->at(
-                                                    static_cast<size_t>(i)))));
+        result->Set(context,
+                    i,
+                    v8::Number::New(isolate,
+                                    static_cast<double>(_data.range->at(static_cast<size_t>(i)))
+                                    )
+                    ).FromMaybe(true);
 
         if (i % 1000 == 0) {
           if (V8PlatformFeature::isOutOfMemory(isolate)) {
@@ -1119,65 +1124,6 @@ VPackSlice AqlValue::slice() const {
   }
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-}
-
-/// @brief create an AqlValue from a vector of AqlItemBlock*s
-AqlValue AqlValue::CreateFromBlocks(transaction::Methods* trx,
-                                    std::vector<AqlItemBlock*> const& src,
-                                    std::vector<std::string> const& variableNames) {
-  bool shouldDelete = true;
-  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
-  VPackBuilder builder(buffer);
-  builder.openArray();
-
-  for (auto const& current : src) {
-    RegisterId const n = current->getNrRegs();
-
-    std::vector<RegisterId> registers;
-    for (RegisterId j = 0; j < n; ++j) {
-      // temporaries don't have a name and won't be included
-      if (!variableNames[j].empty()) {
-        registers.emplace_back(j);
-      }
-    }
-
-    for (size_t i = 0; i < current->size(); ++i) {
-      builder.openObject();
-
-      // only enumerate the registers that are left
-      for (auto const& reg : registers) {
-        builder.add(VPackValue(variableNames[reg]));
-        current->getValueReference(i, reg).toVelocyPack(trx, builder, false);
-      }
-
-      builder.close();
-    }
-  }
-
-  builder.close();
-  return AqlValue(buffer.get(), shouldDelete);
-}
-
-/// @brief create an AqlValue from a vector of AqlItemBlock*s
-AqlValue AqlValue::CreateFromBlocks(transaction::Methods* trx,
-                                    std::vector<AqlItemBlock*> const& src,
-                                    arangodb::aql::RegisterId expressionRegister) {
-  bool shouldDelete = true;
-  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
-  VPackBuilder builder(buffer);
-
-  builder.openArray();
-
-  for (auto const& current : src) {
-    for (size_t i = 0; i < current->size(); ++i) {
-      current->getValueReference(i, expressionRegister).toVelocyPack(trx, builder, false);
-    }
-  }
-
-  builder.close();
-  return AqlValue(buffer.get(), shouldDelete);
 }
 
 /// @brief comparison for AqlValue objects

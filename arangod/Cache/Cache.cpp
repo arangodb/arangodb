@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/Cache.h"
-#include "Basics/Common.h"
+
 #include "Basics/SharedPRNG.h"
 #include "Basics/fasthash.h"
 #include "Cache/CachedValue.h"
@@ -32,10 +32,10 @@
 #include "Cache/Table.h"
 #include "Random/RandomGenerator.h"
 
-#include <stdint.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <list>
 #include <thread>
 
@@ -45,8 +45,6 @@ const uint64_t Cache::minSize = 16384;
 const uint64_t Cache::minLogSize = 14;
 
 uint64_t Cache::_findStatsCapacity = 16384;
-
-Cache::ConstructionGuard::ConstructionGuard() {}
 
 Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id,
              Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
@@ -203,8 +201,8 @@ bool Cache::isBusy() {
   return busy;
 }
 
-void Cache::destroy(std::shared_ptr<Cache> cache) {
-  if (cache) {
+void Cache::destroy(std::shared_ptr<Cache> const& cache) {
+  if (cache != nullptr) {
     cache->shutdown();
   }
 }
@@ -330,7 +328,6 @@ Metadata* Cache::metadata() { return &_metadata; }
 std::shared_ptr<Table> Cache::table() const {
   return std::atomic_load(&_tableShrdPtr);
 }
-
 void Cache::shutdown() {
   _taskLock.writeLock();
   auto handle = shared_from_this();  // hold onto self-reference to prevent

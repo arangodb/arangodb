@@ -69,14 +69,27 @@ class SubqueryStartExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
+  enum class State {
+    READ_DATA_ROW,
+    PRODUCE_DATA_ROW,
+    PRODUCE_SHADOW_ROW,
+    PASS_SHADOW_ROW
+  };
+
+  auto static stateToString(State state) -> std::string;
+
+ private:
   // Fetcher to get data.
   Fetcher& _fetcher;
 
   // Upstream state, used to determine if we are done with all subqueries
-  ExecutionState _state;
+  ExecutionState _upstreamState{ExecutionState::HASMORE};
 
   // Cache for the input row we are currently working on
-  InputAqlItemRow _input;
+  InputAqlItemRow _input{CreateInvalidInputRowHint{}};
+
+  // Internal state
+  State _internalState{State::READ_DATA_ROW};
 };
 }  // namespace aql
 }  // namespace arangodb

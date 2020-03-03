@@ -5,7 +5,7 @@
 @RESTHEADER{PUT /_admin/cluster/maintenance, Enable or disable the supervision maintenance mode}
 
 @RESTDESCRIPTION
-This API allows you to temporarily enable the supervision maintenance mode. Be aware that no 
+This API allows you to temporarily enable the supervision maintenance mode. Be aware that no
 automatic failovers of any kind will take place while the maintenance mode is enabled.
 The _cluster_ supervision reactivates itself automatically _60 minutes_ after disabling it.
 

@@ -361,7 +361,7 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 
 /// 1202: ERROR_ARANGO_DOCUMENT_NOT_FOUND
 /// "document not found"
-/// Will be raised when a document with a given identifier or handle is unknown.
+/// Will be raised when a document with a given identifier is unknown.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
 /// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
@@ -376,8 +376,8 @@ constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            
 constexpr int TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING                     = 1204;
 
 /// 1205: ERROR_ARANGO_DOCUMENT_HANDLE_BAD
-/// "illegal document handle"
-/// Will be raised when a document handle is corrupt.
+/// "illegal document identifier"
+/// Will be raised when a document identifier is corrupt.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD                              = 1205;
 
 /// 1206: ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL
@@ -416,8 +416,8 @@ constexpr int TRI_ERROR_ARANGO_INDEX_NOT_FOUND                                  
 constexpr int TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST                         = 1213;
 
 /// 1214: ERROR_ARANGO_INDEX_HANDLE_BAD
-/// "illegal index handle"
-/// Will be raised when a index handle is corrupt.
+/// "illegal index identifier"
+/// Will be raised when a index identifier is corrupt.
 constexpr int TRI_ERROR_ARANGO_INDEX_HANDLE_BAD                                 = 1214;
 
 /// 1216: ERROR_ARANGO_DOCUMENT_TOO_LARGE
@@ -1158,6 +1158,16 @@ constexpr int TRI_ERROR_CURSOR_NOT_FOUND                                        
 /// Will be raised when a cursor is requested via its id but a concurrent
 /// request is still using the cursor.
 constexpr int TRI_ERROR_CURSOR_BUSY                                             = 1601;
+
+/// 1620: ERROR_VALIDATION_FAILED
+/// "validation failed"
+/// Will be raised when a document does not pass validation.
+constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 1620;
+
+/// 1621: ERROR_VALIDATION_BAD_PARAMETER
+/// "invalid validation parameter"
+/// Will be raised when the validator description is invalid.
+constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 1621;
 
 /// 1650: ERROR_TRANSACTION_INTERNAL
 /// "internal transaction error"

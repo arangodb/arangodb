@@ -22,6 +22,7 @@
 
 #include "VocbaseInfo.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -74,7 +75,7 @@ Result CreateDatabaseInfo::load(VPackSlice const& options, VPackSlice const& use
 #endif
 
   return checkOptions();
-};
+}
 
 Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
                                 VPackSlice const& users) {
@@ -138,7 +139,7 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
 #endif
 
   return checkOptions();
-};
+}
 
 void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) const {
   TRI_ASSERT(_validId);
@@ -287,8 +288,12 @@ Result CreateDatabaseInfo::checkOptions() {
     _validId = false;
   }
 
+  // we cannot use IsAllowedName for database name length validation alone, because
+  // IsAllowedName allows up to 256 characters. Database names are just up to 64
+  // chars long, as their names are also used as filesystem directories (for Foxx apps)
   if (_name.empty() ||
-      !TRI_vocbase_t::IsAllowedName(_isSystemDB, arangodb::velocypack::StringRef(_name))) {
+      !TRI_vocbase_t::IsAllowedName(_isSystemDB, arangodb::velocypack::StringRef(_name)) ||
+      _name.size() > 64) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 

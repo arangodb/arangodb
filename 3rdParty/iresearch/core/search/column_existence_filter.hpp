@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_COLUMN_EXISTENCE_FILTER_H
@@ -38,27 +37,27 @@ class IRESEARCH_API by_column_existence final : public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_column_existence() NOEXCEPT;
+  by_column_existence() noexcept;
 
   by_column_existence& field(const std::string& field) {
     field_ = field;
     return *this;
   }
 
-  by_column_existence& field(std::string&& field) NOEXCEPT {
+  by_column_existence& field(std::string&& field) noexcept {
     field_ = std::move(field);
     return *this;
   }
 
-  const std::string& field() const NOEXCEPT {
+  const std::string& field() const noexcept {
     return field_;
   }
 
-  bool prefix_match() const NOEXCEPT {
+  bool prefix_match() const noexcept {
     return prefix_match_;
   }
 
-  by_column_existence& prefix_match(bool value) NOEXCEPT {
+  by_column_existence& prefix_match(bool value) noexcept {
     prefix_match_ = value;
     return *this;
   }
@@ -72,10 +71,10 @@ class IRESEARCH_API by_column_existence final : public filter {
     const attribute_view& ctx
   ) const override;
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  virtual bool equals(const filter& rhs) const noexcept override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

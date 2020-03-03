@@ -33,11 +33,11 @@ NS_ROOT
 NS_BEGIN(compression)
 
 struct LZ4_stream_deleter {
-  void operator()(void* p) NOEXCEPT;
+  void operator()(void* p) noexcept;
 };
 
 struct LZ4_streamDecode_deleter {
-  void operator()(void* p) NOEXCEPT;
+  void operator()(void* p) noexcept;
 };
 
 typedef std::unique_ptr<void, LZ4_stream_deleter> lz4stream;
@@ -51,11 +51,11 @@ struct IRESEARCH_API lz4 {
 
   class IRESEARCH_API lz4compressor final : public compression::compressor {
    public:
-    explicit lz4compressor(int acceleration = 0) NOEXCEPT
+    explicit lz4compressor(int acceleration = 0) noexcept
       : acceleration_(acceleration) {
     }
 
-    int acceleration() const NOEXCEPT { return acceleration_; }
+    int acceleration() const noexcept { return acceleration_; }
 
     virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
 

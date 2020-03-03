@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Network/NetworkFeature.h"
 
 namespace arangodb {
 
@@ -56,7 +57,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string const& myRole() const noexcept { return _myRole; }
 
   void syncDBServerStatusQuo();
-  
+
   AgencyCallbackRegistry* agencyCallbackRegistry() const {
     return _agencyCallbackRegistry.get();
   }
@@ -100,7 +101,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
   std::uint32_t _writeConcern = 1;             // write concern
-  std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor 
+  std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor
   std::uint32_t _systemReplicationFactor = 2;
   std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
@@ -116,6 +117,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
+  std::unique_ptr<network::ConnectionPool> _pool;
 };
 
 }  // namespace arangodb

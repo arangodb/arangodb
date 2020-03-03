@@ -7,7 +7,6 @@
 #define FST_STRING_WEIGHT_H_
 
 #include <cstdlib>
-
 #include <list>
 #include <string>
 #include <vector>
@@ -19,9 +18,9 @@
 
 namespace fst {
 
-FST_CONSTEXPR const int kStringInfinity = -1;     // Label for the infinite string.
-FST_CONSTEXPR const int kStringBad = -2;          // Label for a non-string.
-FST_CONSTEXPR const char kStringSeparator = '_';  // Label separator in strings.
+constexpr int kStringInfinity = -1;     // Label for the infinite string.
+constexpr int kStringBad = -2;          // Label for a non-string.
+constexpr char kStringSeparator = '_';  // Label separator in strings.
 
 // Determines whether to use left or right string semiring.  Includes a
 // 'restricted' version that signals an error if proper prefixes/suffixes
@@ -30,20 +29,10 @@ FST_CONSTEXPR const char kStringSeparator = '_';  // Label separator in strings.
 // string semirings.
 enum StringType { STRING_LEFT = 0, STRING_RIGHT = 1, STRING_RESTRICT = 2 };
 
-inline FST_CONSTEXPR StringType ReverseStringType(StringType s) {
+constexpr StringType ReverseStringType(StringType s) {
   return s == STRING_LEFT ? STRING_RIGHT
                           : (s == STRING_RIGHT ? STRING_LEFT : STRING_RESTRICT);
 }
-
-// MSVC2013 doesn't support 'constexpr'
-#if defined _MSC_VER && _MSC_VER < 1900
-  #define REVERSE_STRING_TYPE(S)                               \
-   ((S) == STRING_LEFT ? STRING_RIGHT :                        \
-   ((S) == STRING_RIGHT ? STRING_LEFT :                        \
-     STRING_RESTRICT))
-#else
-  #define REVERSE_STRING_TYPE(S) ReverseStringType(S)
-#endif
 
 template <class>
 class StringWeightIterator;
@@ -55,7 +44,7 @@ template <typename Label_, StringType S = STRING_LEFT>
 class StringWeight {
  public:
   using Label = Label_;
-  using ReverseWeight = StringWeight<Label, REVERSE_STRING_TYPE(S)>;
+  using ReverseWeight = StringWeight<Label, ReverseStringType(S)>;
   using Iterator = StringWeightIterator<StringWeight>;
   using ReverseIterator = StringWeightReverseIterator<StringWeight>;
 
@@ -86,8 +75,8 @@ class StringWeight {
     return *no_weight;
   }
 
-  static const string &Type() {
-    static const string *const type = new string(
+  static const std::string &Type() {
+    static const std::string *const type = new std::string(
         S == STRING_LEFT
             ? "left_string"
             : (S == STRING_RIGHT ? "right_string" : "restricted_string"));
@@ -106,7 +95,7 @@ class StringWeight {
 
   ReverseWeight Reverse() const;
 
-  static FST_CONSTEXPR uint64 Properties() {
+  static constexpr uint64 Properties() {
     return kIdempotent |
            (S == STRING_LEFT ? kLeftSemiring
                              : (S == STRING_RIGHT
@@ -181,8 +170,8 @@ class StringWeightIterator {
  private:
   const Label &first_;
   const decltype(Weight::rest_) &rest_;
-  bool init_;  // In the initialized state?  
-  typename std::remove_reference<decltype (Weight::rest_)>::type::const_iterator iter_;
+  bool init_;  // In the initialized state?
+  typename decltype(Weight::rest_)::const_iterator iter_;
 };
 
 // Traverses string in backward direction.
@@ -217,9 +206,9 @@ class StringWeightReverseIterator {
 
  private:
   const Label &first_;
-  const decltype(Weight::rest_) &rest_;
+  const std::list<Label> &rest_;
   bool fin_;  // In the final state?
-  typename std::remove_reference<decltype (Weight::rest_)>::type::const_reverse_iterator iter_;
+  typename decltype(Weight::rest_)::const_reverse_iterator iter_;
 };
 
 // StringWeight member functions follow that require
@@ -321,7 +310,7 @@ inline std::ostream &operator<<(std::ostream &strm,
 template <typename Label, StringType S>
 inline std::istream &operator>>(std::istream &strm,
                                 StringWeight<Label, S> &weight) {
-  string str;
+  std::string str;
   strm >> str;
   using Weight = StringWeight<Label, S>;
   if (str == "Infinity") {
@@ -478,7 +467,7 @@ inline StringWeight<Label, STRING_LEFT> Divide(
     const StringWeight<Label, STRING_LEFT> &w2, DivideType divide_type) {
   if (divide_type != DIVIDE_LEFT) {
     FSTERROR() << "StringWeight::Divide: Only left division is defined "
-               << "for the left string semiring";
+               << "for the left std::string semiring";
     return StringWeight<Label, STRING_LEFT>::NoWeight();
   }
   return DivideLeft(w1, w2);
@@ -491,7 +480,7 @@ inline StringWeight<Label, STRING_RIGHT> Divide(
     const StringWeight<Label, STRING_RIGHT> &w2, DivideType divide_type) {
   if (divide_type != DIVIDE_RIGHT) {
     FSTERROR() << "StringWeight::Divide: Only right division is defined "
-               << "for the right string semiring";
+               << "for the right std::string semiring";
     return StringWeight<Label, STRING_RIGHT>::NoWeight();
   }
   return DivideRight(w1, w2);
@@ -545,13 +534,13 @@ enum GallicType {
   GALLIC = 4
 };
 
-inline FST_CONSTEXPR StringType GallicStringType(GallicType g) {
+constexpr StringType GallicStringType(GallicType g) {
   return g == GALLIC_LEFT
              ? STRING_LEFT
              : (g == GALLIC_RIGHT ? STRING_RIGHT : STRING_RESTRICT);
 }
 
-inline FST_CONSTEXPR GallicType ReverseGallicType(GallicType g) {
+constexpr GallicType ReverseGallicType(GallicType g) {
   return g == GALLIC_LEFT
              ? GALLIC_RIGHT
              : (g == GALLIC_RIGHT
@@ -561,29 +550,13 @@ inline FST_CONSTEXPR GallicType ReverseGallicType(GallicType g) {
                            : (g == GALLIC_MIN ? GALLIC_MIN : GALLIC)));
 }
 
-// MSVC2013 doesn't support 'constexpr'
-#if defined _MSC_VER && _MSC_VER < 1900
-  #define GALLIC_STRING_TYPE(G)                                   \
-     ((G) == GALLIC_LEFT ? STRING_LEFT :                          \
-      ((G) == GALLIC_RIGHT ? STRING_RIGHT : STRING_RESTRICT))
-
-  #define REVERSE_GALLIC_TYPE(G)                                  \
-   ((G) == GALLIC_LEFT ? GALLIC_RIGHT :                           \
-    ((G) == GALLIC_RIGHT ? GALLIC_LEFT :                          \
-     ((G) == GALLIC_RESTRICT ? GALLIC_RESTRICT :                  \
-      ((G) == GALLIC_MIN ? GALLIC_MIN : GALLIC))))
-#else
-  #define GALLIC_STRING_TYPE(G) GallicStringType(G)
-  #define REVERSE_GALLIC_TYPE(G) ReverseGallicType(G)
-#endif
-
 // Product of string weight and an arbitraryy weight.
 template <class Label, class W, GallicType G = GALLIC_LEFT>
 struct GallicWeight
-    : public ProductWeight<StringWeight<Label, GALLIC_STRING_TYPE(G)>, W> {
+    : public ProductWeight<StringWeight<Label, GallicStringType(G)>, W> {
   using ReverseWeight =
-      GallicWeight<Label, typename W::ReverseWeight, REVERSE_GALLIC_TYPE(G)>;
-  using SW = StringWeight<Label, GALLIC_STRING_TYPE(G)>;
+      GallicWeight<Label, typename W::ReverseWeight, ReverseGallicType(G)>;
+  using SW = StringWeight<Label, GallicStringType(G)>;
 
   using ProductWeight<SW, W>::Properties;
 
@@ -591,7 +564,7 @@ struct GallicWeight
 
   GallicWeight(SW w1, W w2) : ProductWeight<SW, W>(w1, w2) {}
 
-  explicit GallicWeight(const string &s, int *nread = nullptr)
+  explicit GallicWeight(const std::string &s, int *nread = nullptr)
       : ProductWeight<SW, W>(s, nread) {}
 
   explicit GallicWeight(const ProductWeight<SW, W> &w)
@@ -612,8 +585,8 @@ struct GallicWeight
     return no_weight;
   }
 
-  static const string &Type() {
-    static const string *const type = new string(
+  static const std::string &Type() {
+    static const std::string *const type = new std::string(
         G == GALLIC_LEFT
             ? "left_gallic"
             : (G == GALLIC_RIGHT
@@ -670,11 +643,11 @@ inline GallicWeight<Label, W, G> Divide(const GallicWeight<Label, W, G> &w,
 template <class Label, class W, GallicType G>
 class WeightGenerate<GallicWeight<Label, W, G>>
     : public WeightGenerate<
-          ProductWeight<StringWeight<Label, GALLIC_STRING_TYPE(G)>, W>> {
+          ProductWeight<StringWeight<Label, GallicStringType(G)>, W>> {
  public:
   using Weight = GallicWeight<Label, W, G>;
   using Generate = WeightGenerate<
-      ProductWeight<StringWeight<Label, GALLIC_STRING_TYPE(G)>, W>>;
+      ProductWeight<StringWeight<Label, GallicStringType(G)>, W>>;
 
   explicit WeightGenerate(bool allow_zero = true) : generate_(allow_zero) {}
 
@@ -689,7 +662,7 @@ template <class Label, class W>
 struct GallicUnionWeightOptions {
   using ReverseOptions = GallicUnionWeightOptions<Label, W>;
   using GW = GallicWeight<Label, W, GALLIC_RESTRICT>;
-  using SW = StringWeight<Label, GALLIC_STRING_TYPE(GALLIC_RESTRICT)>;
+  using SW = StringWeight<Label, GallicStringType(GALLIC_RESTRICT)>;
   using SI = StringWeightIterator<SW>;
 
   // Military order.
@@ -727,7 +700,7 @@ struct GallicWeight<Label, W, GALLIC>
     : public UnionWeight<GallicWeight<Label, W, GALLIC_RESTRICT>,
                          GallicUnionWeightOptions<Label, W>> {
   using GW = GallicWeight<Label, W, GALLIC_RESTRICT>;
-  using SW = StringWeight<Label, GALLIC_STRING_TYPE(GALLIC_RESTRICT)>;
+  using SW = StringWeight<Label, GallicStringType(GALLIC_RESTRICT)>;
   using SI = StringWeightIterator<SW>;
   using UW = UnionWeight<GW, GallicUnionWeightOptions<Label, W>>;
   using UI = UnionWeightIterator<GW, GallicUnionWeightOptions<Label, W>>;
@@ -747,7 +720,7 @@ struct GallicWeight<Label, W, GALLIC>
 
   GallicWeight(SW w1, W w2) : UW(GW(w1, w2)) {}
 
-  explicit GallicWeight(const string &str, int *nread = nullptr)
+  explicit GallicWeight(const std::string &str, int *nread = nullptr)
       : UW(str, nread) {}
 
   static const GallicWeight<Label, W, GALLIC> &Zero() {
@@ -765,8 +738,8 @@ struct GallicWeight<Label, W, GALLIC>
     return no_weight;
   }
 
-  static const string &Type() {
-    static const string *const type = new string("gallic");
+  static const std::string &Type() {
+    static const std::string *const type = new std::string("gallic");
     return *type;
   }
 

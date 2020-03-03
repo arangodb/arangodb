@@ -135,12 +135,12 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
   options.database = databaseName;
   options.timeout = network::Timeout(3.0);
   options.skipScheduler = true; // hack to speed up future.get()
-  
+
   std::string const url = "/_api/replication/set-the-leader";
 
   std::vector<network::FutureRes> futures;
   futures.reserve(currentServers.size());
-  
+
   for (auto const& srv : currentServers) {
     if (srv == sid) {
       continue; // ignore ourself
@@ -242,11 +242,11 @@ bool TakeoverShardLeadership::first() {
   try {
     DatabaseGuard guard(database);
     auto& vocbase = guard.database();
-    
+
     std::shared_ptr<LogicalCollection> coll;
     Result found = methods::Collections::lookup(vocbase, shard, coll);
     if (found.ok()) {
-      
+
       TRI_ASSERT(coll);
       LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
           << "trying to become leader of shard '" << database << "/" << shard;

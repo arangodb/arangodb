@@ -43,7 +43,7 @@ VersionFeature::VersionFeature(application_features::ApplicationServer& server)
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--version", "reports the version and exits",
                      new BooleanParameter(&_printVersion),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Command));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
 }
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

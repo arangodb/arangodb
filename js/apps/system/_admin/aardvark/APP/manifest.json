@@ -28,7 +28,7 @@
     "/static": "react/build/static",
     "/img": "frontend/img",
     "/static/css/static/media": "react/build/static/media",
-    "/js/arango/aqltemplates.json": "react/public/assets/aqltemplates.json",
+    "/js/arango/aqltemplates.json": "react/build/assets/aqltemplates.json",
     "/favicon.ico": {
       "path": "react/build/favicon.ico",
       "gzip": false

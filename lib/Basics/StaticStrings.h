@@ -62,12 +62,14 @@ class StaticStrings {
   static std::string const ReturnOldString;
   static std::string const SilentString;
   static std::string const WaitForSyncString;
+  static std::string const SkipDocumentValidation;
   static std::string const IsSynchronousReplicationString;
   static std::string const Group;
   static std::string const Namespace;
   static std::string const ReplaceExisting;
   static std::string const Prefix;
   static std::string const OverWrite;
+  static std::string const OverWriteMode;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -101,9 +103,6 @@ class StaticStrings {
   static std::string const DatabaseId;
   static std::string const DatabaseName;
   static std::string const DatabaseOptions;
-  static std::string const DatabaseCoordinator;
-  static std::string const DatabaseCoordinatorRebootId;
-  static std::string const DatabaseIsBuilding;
   static std::string const Properties;
 
   // LogicalDataSource definition fields
@@ -223,6 +222,7 @@ class StaticStrings {
   static std::string const Sharding;
   static std::string const Satellite;
   static std::string const WriteConcern;
+  static std::string const Validation;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -241,14 +241,29 @@ class StaticStrings {
   static std::string const GraphInitialCid;
   static std::string const GraphName;
 
+  // Query Strings
+  static std::string const QuerySortASC;
+  static std::string const QuerySortDESC;
+
+  // Graph Query Strings
+  static std::string const GraphQueryEdges;
+  static std::string const GraphQueryVertices;
+  static std::string const GraphQueryPath;
+  static std::string const GraphQueryGlobal;
+  static std::string const GraphQueryNone;
+
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
 
+  // generic attribute names
+  static std::string const AttrCoordinator;
+  static std::string const AttrCoordinatorRebootId;
+  static std::string const AttrIsBuilding;
+
   // misc strings
   static std::string const LastValue;
   static std::string const checksumFileJs;
-  static std::string const IsBuilding;
   static std::string const RebootId;
   static std::string const New;
   static std::string const Old;
@@ -256,6 +271,21 @@ class StaticStrings {
   static std::string const BackupToDeleteName;
   static std::string const BackupSearchToDeleteName;
   static std::string const SerializationFormat;
+
+  // validation
+  static std::string const ValidatorLevelNone;
+  static std::string const ValidatorLevelNew;
+  static std::string const ValidatorLevelModerate;
+  static std::string const ValidatorLevelStrict;
+
+  static std::string const ValidatorParameterMessage;
+  static std::string const ValidatorParameterLevel;
+  static std::string const ValidatorParameterType;
+  static std::string const ValidatorParameterRule;
+
+  static std::string const ValidatorTypeJsonSchema;
+  static std::string const ValidatorTypeAQL;
+  static std::string const ValidatorTypeBool;
 };
 }  // namespace arangodb
 

@@ -23,6 +23,7 @@
 
 #include "EngineInfoContainerDBServerServerBased.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"

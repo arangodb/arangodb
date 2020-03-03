@@ -717,7 +717,7 @@ int MMFilesCollection::close() {
 
     // give the cleanup thread more time to clean up
     {
-      WRITE_UNLOCKER(unlocker, _logicalCollection.lock());
+      WRITE_UNLOCKER(unlocker, _logicalCollection.statusLock());
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
@@ -1706,7 +1706,8 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
   auto poster = [](std::function<void()> fn) -> bool {
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
-  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);
+  auto& server = _logicalCollection.vocbase().server();
+  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(server, poster);
 
   try {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());

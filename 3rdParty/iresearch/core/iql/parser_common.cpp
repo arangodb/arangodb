@@ -176,7 +176,7 @@ function_arg::function_arg(const iresearch::bytes_ref& value):
   function_arg(fn_args_t(), value, NOT_IMPLEMENTED_BRANCH) {
 }
 
-function_arg::function_arg(function_arg&& other) NOEXCEPT
+function_arg::function_arg(function_arg&& other) noexcept
   : m_fnArgs(std::move(other.m_fnArgs)),
     m_bFnBranchRef(std::move(other.m_bFnBranchRef)),
     m_bFnValueRef(std::move(other.m_bFnValueRef)),
@@ -195,7 +195,7 @@ function_arg::function_arg():
 // --SECTION--                                                  public operators
 // -----------------------------------------------------------------------------
 
-function_arg& function_arg::operator=(function_arg&& other) NOEXCEPT {
+function_arg& function_arg::operator=(function_arg&& other) noexcept {
   if (this != &other) {
     m_fnArgs = std::move(other.m_fnArgs);
     m_bFnBranchRef = std::move(other.m_bFnBranchRef);

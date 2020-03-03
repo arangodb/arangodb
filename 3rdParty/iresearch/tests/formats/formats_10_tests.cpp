@@ -139,12 +139,16 @@ class format_10_test_case : public tests::format_test_case {
 
       auto in = dir->open("attributes", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
-      irs::read_string<std::string>(*in);
+      const auto tmp = irs::read_string<std::string>(*in);
 
       // prepare reader
       auto reader = codec->get_postings_reader();
       ASSERT_NE(nullptr, reader);
       reader->prepare(*in, state, field.features);
+
+      irs::bstring in_data(in->length() - in->file_pointer(), 0);
+      in->read_bytes(&in_data[0], in_data.size());
+      const auto* begin = in_data.c_str();
 
       // cumulative attributes
       irs::frequency freq;
@@ -159,7 +163,7 @@ class format_10_test_case : public tests::format_test_case {
       {
         irs::version10::term_meta read_meta;
         read_attrs.emplace(read_meta);
-        reader->decode(*in, field.features, read_attrs, read_meta);
+        begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
         // check term_meta
         {
@@ -290,6 +294,8 @@ class format_10_test_case : public tests::format_test_case {
           ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it->value()));
         }
       }
+
+      ASSERT_EQ(begin, in_data.data() + in_data.size());
     }
   }
 }; // format_10_test_case
@@ -389,12 +395,16 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     ASSERT_NE(nullptr, reader);
     reader->prepare(*in, state, field.features);
 
+    irs::bstring in_data(in->length() - in->file_pointer(), 0);
+    in->read_bytes(&in_data[0], in_data.size());
+    const auto* begin = in_data.c_str();
+
     // read term0 attributes & postings
     {
       irs::version10::term_meta read_meta;
       irs::attribute_view read_attrs;
       read_attrs.emplace(read_meta);
-      reader->decode(*in, field.features, read_attrs, read_meta);
+      begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
       // check term_meta for term0
       {
@@ -420,7 +430,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
       irs::version10::term_meta read_meta;
       irs::attribute_view read_attrs;
       read_attrs.emplace(read_meta);
-      reader->decode(*in, field.features, read_attrs, read_meta);
+      begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
       {
         auto& typed_meta1 = dynamic_cast<const irs::version10::term_meta&>(*meta1);
@@ -440,6 +450,8 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
         ASSERT_EQ(docs1[i++], it->value());
       }
     }
+
+    ASSERT_EQ(begin, in_data.data() + in_data.size());
   }
 }
 
@@ -520,6 +532,10 @@ TEST_P(format_10_test_case, postings_read_write) {
     ASSERT_NE(nullptr, reader);
     reader->prepare(*in, state, field.features);
 
+    irs::bstring in_data(in->length() - in->file_pointer(), 0);
+    in->read_bytes(&in_data[0], in_data.size());
+    const auto* begin = in_data.c_str();
+
     // cumulative attribute
     irs::version10::term_meta read_meta;
     irs::attribute_view read_attrs;
@@ -527,7 +543,7 @@ TEST_P(format_10_test_case, postings_read_write) {
 
     // read term0 attributes
     {
-      reader->decode(*in, field.features, read_attrs, read_meta);
+      begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
       // check term_meta
       {
@@ -550,7 +566,7 @@ TEST_P(format_10_test_case, postings_read_write) {
 
     // read term1 attributes
     {
-      reader->decode(*in, field.features, read_attrs, read_meta);
+      begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
       // check term_meta
       {
@@ -570,6 +586,8 @@ TEST_P(format_10_test_case, postings_read_write) {
         ASSERT_EQ(docs1[i++], it->value());
       }
     }
+
+    ASSERT_EQ(begin, in_data.data() + in_data.size());
   }
 }
 

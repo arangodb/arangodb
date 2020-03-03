@@ -180,8 +180,14 @@ bool RestBatchHandler::executeNextHandler() {
   LOG_TOPIC("910e9", TRACE, arangodb::Logger::REPLICATION)
       << "part header is: " << std::string(headerStart, headerLength);
 
-  std::unique_ptr<HttpRequest> request(
-      new HttpRequest(_request->connectionInfo(), headerStart, headerLength, false));
+  auto request = std::make_unique<HttpRequest>(_request->connectionInfo(), /*messageId*/1,
+                                               /*allowMethodOverride*/false);
+  if (0 < headerLength) {
+    auto buff = std::make_unique<char[]>(headerLength + 1);
+    memcpy(buff.get(), headerStart, headerLength);
+    (buff.get())[headerLength] = 0;
+    request->parseHeader(buff.get(), headerLength);
+  }
 
   // inject the request context from the framing (batch) request
   // the "false" means the context is not responsible for resource handling
@@ -208,7 +214,7 @@ bool RestBatchHandler::executeNextHandler() {
   std::shared_ptr<RestHandler> handler;
 
   {
-    auto response = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
+    auto response = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1,
                                                    std::make_unique<StringBuffer>(false));
     handler.reset(GeneralServerFeature::HANDLER_FACTORY->createHandler(
         server(), std::move(request), std::move(response)));

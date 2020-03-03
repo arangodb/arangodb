@@ -56,7 +56,7 @@ class Buffer {
   Buffer(Buffer const& that) : Buffer() {
     if (that._size > 0) {
       if (that._size > sizeof(that._local)) {
-        _buffer = static_cast<T*>(malloc(checkOverflow(that._size)));
+        _buffer = static_cast<T*>(velocypack_malloc(checkOverflow(that._size)));
         ensureValidPointer(_buffer);
         _capacity = that._size;
       } else {
@@ -76,13 +76,13 @@ class Buffer {
         memcpy(_buffer, that._buffer, checkOverflow(that._size));
       } else {
         // our own buffer is not big enough to hold the data
-        T* buffer = static_cast<T*>(malloc(checkOverflow(that._size)));
+        T* buffer = static_cast<T*>(velocypack_malloc(checkOverflow(that._size)));
         ensureValidPointer(buffer);
         buffer[0] = '\x00';
         memcpy(buffer, that._buffer, checkOverflow(that._size));
 
         if (_buffer != _local) {
-          free(_buffer);
+          velocypack_free(_buffer);
         }
         _buffer = buffer;
         _capacity = that._size;
@@ -113,7 +113,7 @@ class Buffer {
   Buffer& operator=(Buffer&& that) noexcept {
     if (this != &that) {
       if (_buffer != _local) {
-        free(_buffer);
+        velocypack_free(_buffer);
       }
       if (that._buffer == that._local) {
         _buffer = _local;
@@ -135,7 +135,7 @@ class Buffer {
 
   ~Buffer() { 
     if (_buffer != _local) {
-      free(_buffer);
+      velocypack_free(_buffer);
     }
   }
 
@@ -187,7 +187,7 @@ class Buffer {
   void clear() noexcept {
     _size = 0;
     if (_buffer != _local) {
-      free(_buffer);
+      velocypack_free(_buffer);
       _buffer = _local;
       _capacity = sizeof(_local);
       poison(_buffer, _capacity);
@@ -289,11 +289,11 @@ class Buffer {
     VELOCYPACK_ASSERT(newLen > 0);
     T* p;
     if (_buffer != _local) {
-      p = static_cast<T*>(realloc(_buffer, checkOverflow(newLen)));
+      p = static_cast<T*>(velocypack_realloc(_buffer, checkOverflow(newLen)));
       ensureValidPointer(p);
       // realloc will have copied the old data
     } else {
-      p = static_cast<T*>(malloc(checkOverflow(newLen)));
+      p = static_cast<T*>(velocypack_malloc(checkOverflow(newLen)));
       ensureValidPointer(p);
       // copy existing data into buffer
       memcpy(p, _buffer, checkOverflow(_size));

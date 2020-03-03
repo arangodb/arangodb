@@ -18,20 +18,19 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_PHRASE_ITERATOR_H
 #define IRESEARCH_PHRASE_ITERATOR_H
 
 #include "shared.hpp"
-#include "conjunction.hpp"
 
 NS_ROOT
 
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
-class phrase_iterator final : public basic_doc_iterator_base {
+template<typename Conjunction>
+class phrase_iterator final : public doc_iterator_base {
  public:
   typedef std::pair<
     position::ref, // position attribute
@@ -40,7 +39,7 @@ class phrase_iterator final : public basic_doc_iterator_base {
   typedef std::vector<position_t> positions_t;
 
   phrase_iterator(
-      conjunction::doc_iterators_t&& itrs,
+      typename Conjunction::doc_iterators_t&& itrs,
       positions_t&& pos,
       const sub_reader& segment,
       const term_reader& field,
@@ -60,7 +59,7 @@ class phrase_iterator final : public basic_doc_iterator_base {
     // set attributes
     attrs_.emplace(phrase_freq_); // phrase frequency
     doc_ = (attrs_.emplace<irs::document>()
-             = approx_.attributes().get<irs::document>()).get(); // document (required by scorers)
+             = approx_.attributes().template get<irs::document>()).get(); // document (required by scorers)
     assert(doc_);
 
     // set scorers
@@ -139,7 +138,7 @@ class phrase_iterator final : public basic_doc_iterator_base {
     return freq;
   }
 
-  conjunction approx_; // first approximation (conjunction over all words in a phrase)
+  Conjunction approx_; // first approximation (conjunction over all words in a phrase)
   const document* doc_{}; // document itself
   frequency phrase_freq_; // freqency of the phrase in a document
   positions_t pos_; // list of desired positions along with corresponding attributes

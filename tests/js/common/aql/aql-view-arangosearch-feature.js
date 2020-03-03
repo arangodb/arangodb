@@ -154,6 +154,35 @@ function iResearchFeatureAqlTestSuite () {
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
+    testAnalyzerUseOnDBServer_InDb: function() {
+      let dbName = "analyzerUseOnDbServer";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+
+      // NOOPT guarantees that TOKENS function will be executed on DB server
+      let res = db._query("FOR d IN _analyzers FILTER NOOPT(LENGTH(TOKENS('foobar', 'MyTrigram')) > 0) RETURN d").toArray();
+      assertEqual(1, res.length);
+      assertEqual("_analyzers/MyTrigram", res[0]._id);
+      assertEqual("MyTrigram", res[0]._key);
+      assertEqual("MyTrigram", res[0].name);
+      assertEqual("ngram", res[0].type);
+      assertEqual(6, Object.keys(res[0].properties).length);
+      assertEqual("", res[0].properties.startMarker);
+      assertEqual("", res[0].properties.endMarker);
+      assertEqual("binary", res[0].properties.streamType);
+      assertEqual(2, res[0].properties.min);
+      assertEqual(3, res[0].properties.max);
+      assertTrue(res[0].properties.preserveOriginal);
+      assertTrue(Array === res[0].features.constructor);
+      assertEqual(0, res[0].features.length);
+      assertEqual([ ], res[0].features);
+
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
     testAnalyzerCreateRemovalWithDatabaseName_InSystem: function() {
       let dbName = "analyzerWrongDbName3";
       db._useDatabase("_system");

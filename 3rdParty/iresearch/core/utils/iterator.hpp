@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ITERATOR_H
@@ -26,6 +25,7 @@
 
 #include "noncopyable.hpp"
 #include "ebo.hpp"
+#include "std.hpp"
 
 #include <memory>
 #include <cassert>
@@ -74,16 +74,16 @@ template<
       end_(end) {
   }
 
-  const_reference value() const NOEXCEPT override {
+  const_reference value() const noexcept override {
     return *cur_;
   }
 
-  bool seek(const key_type& key) NOEXCEPT override {
+  bool seek(const key_type& key) noexcept override {
     begin_ = std::lower_bound(cur_, end_, key, comparer_t::get());
     return next();
   }
 
-  bool next() NOEXCEPT override {
+  bool next() noexcept override {
     if (begin_ == end_) {
       cur_ = begin_; // seal iterator
       return false;
@@ -119,20 +119,6 @@ struct extract_element_type<const SmartPtr> {
   typedef const typename SmartPtr::element_type* pointer;
 };
 
-template<typename In, typename Out>
-struct adjust_const {
-  typedef Out value_type;
-  typedef Out& reference;
-  typedef Out* pointer;
-};
-
-template<typename In, typename Out>
-struct adjust_const<const In, Out> {
-  typedef const Out value_type;
-  typedef const Out& reference;
-  typedef const Out* pointer;
-};
-
 NS_END
 
 //////////////////////////////////////////////////////////////////////////////
@@ -165,7 +151,7 @@ class ptr_iterator
   
   template<typename T>
   struct adjust_const 
-    : detail::adjust_const<typename element_type::value_type, T> { };
+    : irstd::adjust_const<typename element_type::value_type, T> { };
   
  public:
   typedef typename iterator_facade::reference reference;

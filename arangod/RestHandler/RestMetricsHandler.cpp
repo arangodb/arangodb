@@ -48,8 +48,7 @@ RestMetricsHandler::RestMetricsHandler(
   : RestBaseHandler(server, request, response) {}
 
 RestStatus RestMetricsHandler::execute() {
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -57,7 +56,12 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  MetricsFeature& metrics = server.getFeature<MetricsFeature>();
+  if (_request->requestType() != RequestType::GET) {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  MetricsFeature& metrics = server().getFeature<MetricsFeature>();
   if (!metrics.exportAPI()) {
     // dont export metrics, if so desired
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND); 

@@ -375,10 +375,20 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
       // afford the inefficiency to convert the node to VPack
       // for comparison (this saves us from writing our own compare function
       // for array AstNodes)
-      auto l = lhs->toVelocyPackValue();
-      auto r = rhs->toVelocyPackValue();
+      VPackBuilder builder;
+      // add the first Slice to the Builder
+      lhs->toVelocyPackValue(builder);
 
-      return basics::VelocyPackHelper::compare(l->slice(), r->slice(), compareUtf8);
+      // note the length of the first Slice
+      VPackValueLength split = builder.size();
+
+      // add the second Slice to the same Builder
+      rhs->toVelocyPackValue(builder);
+
+      return basics::VelocyPackHelper::compare(
+          builder.slice() /*lhs*/, 
+          VPackSlice(builder.start() + split) /*rhs*/, 
+          compareUtf8);
     }
 
     default: {
@@ -862,7 +872,9 @@ std::ostream& AstNode::toStream(std::ostream& os, int level) const {
   os << "- " << getTypeString();
 
   if (type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY) {
-    os << ": " << toVelocyPackValue().get()->toJson();
+    VPackBuilder b;
+    toVelocyPackValue(b);
+    os << ": " << b.toJson();
   } else if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     os << ": " << getString();
   } else if (type == NODE_TYPE_REFERENCE) {
@@ -971,16 +983,6 @@ AstNodeType AstNode::getNodeTypeFromVPack(arangodb::velocypack::Slice const& sli
   return static_cast<AstNodeType>(type);
 }
 
-/// @brief return a VelocyPack representation of the node value
-std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
-  auto builder = std::make_shared<VPackBuilder>();
-  if (builder == nullptr) {
-    return nullptr;
-  }
-  toVelocyPackValue(*builder);
-  return builder;
-}
-
 /// @brief build a VelocyPack representation of the node value
 ///        Can throw Out of Memory Error
 void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
@@ -1045,18 +1047,18 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
 
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // TODO Could this be done more efficiently in the builder in place?
-    auto tmp = getMember(0)->toVelocyPackValue();
-    if (tmp != nullptr) {
-      VPackSlice slice = tmp->slice();
-      if (slice.isObject()) {
-        slice = slice.get(getString());
-        if (!slice.isNone()) {
-          builder.add(slice);
-          return;
-        }
+    VPackBuilder tmp;
+    getMember(0)->toVelocyPackValue(tmp);
+
+    VPackSlice slice = tmp.slice();
+    if (slice.isObject()) {
+      slice = slice.get(getString());
+      if (!slice.isNone()) {
+        builder.add(slice);
+        return;
       }
-      builder.add(VPackValue(VPackValueType::Null));
     }
+    builder.add(VPackValue(VPackValueType::Null));
   }
 
   // Do not add anything.
@@ -2187,9 +2189,14 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
   if (type == NODE_TYPE_OPERATOR_TERNARY) {
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar('?');
-    getMember(1)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(':');
-    getMember(2)->stringify(buffer, verbose, failIfLong);
+    if (numMembers() == 3) {
+      getMember(1)->stringify(buffer, verbose, failIfLong);
+      buffer->appendChar(':');
+      getMember(2)->stringify(buffer, verbose, failIfLong);
+    } else {
+      buffer->appendChar(':');
+      getMember(1)->stringify(buffer, verbose, failIfLong);
+    }
     return;
   }
 
@@ -2591,27 +2598,6 @@ void AstNode::stealComputedValue() {
   }
 }
 
-/// @brief Removes all members from the current node that are also
-///        members of the other node (ignoring ording)
-///        Can only be applied if this and other are of type
-///        n-ary-and
-void AstNode::removeMembersInOtherAndNode(AstNode const* other) {
-  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND);
-  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_AND);
-  for (size_t i = 0; i < other->numMembers(); ++i) {
-    auto theirs = other->getMemberUnchecked(i);
-    for (size_t j = 0; j < numMembers(); ++j) {
-      auto ours = getMemberUnchecked(j);
-      // NOTE: Pointer comparison on purpose.
-      // We do not want to reduce equivalent but identical nodes
-      if (ours == theirs) {
-        removeMemberUnchecked(j);
-        break;
-      }
-    }
-  }
-}
-
 void AstNode::markFinalized(AstNode* subtreeRoot) {
   if ((nullptr == subtreeRoot) || subtreeRoot->hasFlag(AstNodeFlagType::FLAG_FINALIZED)) {
     return;
@@ -2771,9 +2757,10 @@ void AstNode::removeMemberUnchecked(size_t i) {
   members.erase(members.begin() + i);
 }
 
-void AstNode::removeMembers() {
+void AstNode::removeMemberUncheckedUnordered(size_t i) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  members.clear();
+  std::swap(members[i], members.back());
+  members.pop_back();
 }
 
 AstNode* AstNode::getMember(size_t i) const {
@@ -2858,14 +2845,20 @@ void AstNode::setStringValue(char const* v, size_t length) {
   value.length = static_cast<uint32_t>(length);
 }
 
-bool AstNode::stringEquals(char const* other, bool caseInsensitive) const {
-  if (caseInsensitive) {
-    return (strncasecmp(getStringValue(), other, getStringLength()) == 0);
-  }
-  return (strncmp(getStringValue(), other, getStringLength()) == 0);
+bool AstNode::stringEqualsCaseInsensitive(std::string const& other) const {
+  // Since we're not sure in how much trouble we are with unicode
+  // strings, we assert here that strings we use are 7-bit ASCII
+  TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                          [](const char c) { return c & 0x80; }));
+  return (other.size() == getStringLength() &&
+          strncasecmp(other.c_str(), getStringValue(), getStringLength()) == 0);
 }
 
 bool AstNode::stringEquals(std::string const& other) const {
+  // Since we're not sure in how much trouble we are with unicode
+  // strings, we assert here that strings we use are 7-bit ASCII
+  TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                          [](const char c) { return c & 0x80; }));
   return (other.size() == getStringLength() &&
           memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
 }

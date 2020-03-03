@@ -100,11 +100,9 @@ void RestExplainHandler::explainQuery() {
     return;
   }
 
-  auto bindBuilder = std::make_shared<VPackBuilder>();
-  bindBuilder->add(bindSlice);
+  auto bindBuilder = std::make_shared<VPackBuilder>(bindSlice);
 
-  auto optionsBuilder = std::make_shared<VPackBuilder>();
-  optionsBuilder->add(optionsSlice);
+  auto optionsBuilder = std::make_shared<VPackBuilder>(optionsSlice);
 
   arangodb::aql::Query query(false, _vocbase, aql::QueryString(queryString),
                              bindBuilder, optionsBuilder, arangodb::aql::PART_MAIN);

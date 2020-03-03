@@ -38,14 +38,34 @@
 #include "MockScheduler.h"
 #include "gtest/gtest.h"
 
-#include <stdint.h>
-#include <queue>
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
 
 using namespace arangodb;
 using namespace arangodb::cache;
+
+struct ThreadGuard {
+  ThreadGuard(ThreadGuard&&) noexcept = default;
+  ThreadGuard& operator=(ThreadGuard&&) noexcept = default; 
+
+  ThreadGuard(std::unique_ptr<std::thread> thread)
+      : thread(std::move(thread)) {}
+  ~ThreadGuard() {
+    join();
+  }
+
+  void join() {
+    if (thread != nullptr) {
+      thread->join();
+      thread.reset();
+    }
+  }
+
+  std::unique_ptr<std::thread> thread;
+};
 
 // long-running
 
@@ -77,7 +97,8 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
       }
     }
   };
-  auto rebalancerThread = new std::thread(rebalanceWorker);
+
+  ThreadGuard rebalancerThread(std::make_unique<std::thread>(rebalanceWorker));
 
   uint64_t chunkSize = 4 * 1024 * 1024;
   uint64_t initialInserts = 1 * 1024 * 1024;
@@ -148,23 +169,19 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
     }
   };
 
-  std::vector<std::thread*> threads;
+  std::vector<ThreadGuard> threads;
   // dispatch threads
   for (size_t i = 0; i < threadCount; i++) {
     uint64_t lower = i * chunkSize;
     uint64_t upper = ((i + 1) * chunkSize) - 1;
-    threads.push_back(new std::thread(worker, lower, upper));
+    threads.emplace_back(std::make_unique<std::thread>(worker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   doneRebalancing = true;
-  rebalancerThread->join();
-  delete rebalancerThread;
+  rebalancerThread.join();
 
   for (auto cache : caches) {
     manager.destroyCache(cache);
@@ -201,7 +218,8 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
       }
     }
   };
-  auto rebalancerThread = new std::thread(rebalanceWorker);
+  
+  ThreadGuard rebalancerThread(std::make_unique<std::thread>(rebalanceWorker));
 
   uint64_t chunkSize = 4 * 1024 * 1024;
   uint64_t initialInserts = 1 * 1024 * 1024;
@@ -285,24 +303,20 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
     }
     manager.endTransaction(tx);
   };
-
-  std::vector<std::thread*> threads;
+  
+  std::vector<ThreadGuard> threads;
   // dispatch threads
   for (size_t i = 0; i < threadCount; i++) {
     uint64_t lower = i * chunkSize;
     uint64_t upper = ((i + 1) * chunkSize) - 1;
-    threads.push_back(new std::thread(worker, lower, upper));
+    threads.emplace_back(std::make_unique<std::thread>(worker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   doneRebalancing = true;
-  rebalancerThread->join();
-  delete rebalancerThread;
+  rebalancerThread.join();
 
   for (auto cache : caches) {
     manager.destroyCache(cache);

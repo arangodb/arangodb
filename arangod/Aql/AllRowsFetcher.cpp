@@ -170,7 +170,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForModificationExecutor(
-    std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
+    std::size_t limit = ExecutionBlock::DefaultBatchSize) {
   // TODO this method is considered obsolete.
   // It cannot yet be removed as we need modification on the calling Executors which is ongoing
   // However this method will not be fixed and updated for ShadowRows

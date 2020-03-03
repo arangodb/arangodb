@@ -40,6 +40,7 @@ struct ModificationOptions {
   ModificationOptions()
       : ignoreErrors(false),
         waitForSync(false),
+        validate(true),
         nullMeansRemove(false),
         mergeObjects(true),
         ignoreDocumentNotFound(false),
@@ -48,12 +49,14 @@ struct ModificationOptions {
         consultAqlWriteFilter(false),
         exclusive(false),
         overwrite(false),
+        overwriteModeUpdate(false),
         ignoreRevs(true) {}
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   bool ignoreErrors;
   bool waitForSync;
+  bool validate;
   bool nullMeansRemove;
   bool mergeObjects;
   bool ignoreDocumentNotFound;
@@ -62,6 +65,7 @@ struct ModificationOptions {
   bool consultAqlWriteFilter;
   bool exclusive;
   bool overwrite;
+  bool overwriteModeUpdate;
   bool ignoreRevs;
 };
 

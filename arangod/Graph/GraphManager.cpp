@@ -31,6 +31,7 @@
 #include <boost/range/join.hpp>
 #include <utility>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
@@ -103,7 +104,7 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
 
   if (ServerState::instance()->isCoordinator()) {
     Result res =
-        ShardingInfo::validateShardsAndReplicationFactor(options, vocbase.server());
+        ShardingInfo::validateShardsAndReplicationFactor(options, vocbase.server(), true);
     if (res.fail()) {
       return OperationResult(res);
     }
@@ -994,7 +995,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
       // validate numberOfShards and replicationFactor
       Result res =
           ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),
-                                                           _vocbase.server());
+                                                           _vocbase.server(), true);
       if (res.fail()) {
         return res;
       }

@@ -184,7 +184,7 @@ static void fillStringBuffer(int fd, std::string const& filename,
     if (result.reserve(chunkSize) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-    ssize_t n = TRI_READ(fd, result.end(), static_cast<TRI_read_t>(chunkSize));
+    TRI_read_return_t n = TRI_READ(fd, result.end(), static_cast<TRI_read_t>(chunkSize));
 
     if (n == 0) {
       break;
@@ -432,9 +432,9 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   std::string rcs;
   std::string flt = source + "\\*";
 
-  UnicodeString f(flt.c_str());
+  icu::UnicodeString f(flt.c_str());
 
-  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
+  handle = _wfindfirst(reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + " not found";
@@ -443,7 +443,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 
   do {
     rcs.clear();
-    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 #else
@@ -538,8 +538,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
   std::string rcs;
 
   std::string filter = directory + "\\*";
-  UnicodeString f(filter.c_str());
-  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
+  icu::UnicodeString f(filter.c_str());
+  handle = _wfindfirst(reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -552,7 +552,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   do {
     rcs.clear();
-    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 
@@ -731,8 +731,8 @@ static void throwProgramError(std::string const& filename) {
 
 std::string slurpProgram(std::string const& program) {
 #ifdef _WIN32
-  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
+  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif
@@ -765,8 +765,8 @@ std::string slurpProgram(std::string const& program) {
 
 int slurpProgramWithExitcode(std::string const& program, std::string& output) {
 #ifdef _WIN32
-  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
+  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif

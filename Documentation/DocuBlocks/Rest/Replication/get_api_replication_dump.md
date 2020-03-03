@@ -137,4 +137,3 @@ Non-empty collection *(One JSON document per line)*:
     c.drop();
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

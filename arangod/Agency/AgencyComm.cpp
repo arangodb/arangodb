@@ -102,7 +102,15 @@ void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
         case AgencyPrecondition::Type::VALUE:
           builder.add("old", value);
           break;
-          // mop: useless compiler warning :S
+        case AgencyPrecondition::Type::TIN:
+          builder.add("in", value);
+          break;
+        case AgencyPrecondition::Type::NOTIN:
+          builder.add("notin", value);
+          break;
+        case AgencyPrecondition::Type::INTERSECTION_EMPTY:
+          builder.add("intersectionEmpty", value);
+          break;
         case AgencyPrecondition::Type::NONE:
           break;
       }
@@ -115,7 +123,7 @@ void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
     VPackObjectBuilder preconditionDefinition(&builder);
     builder.add(VPackValue(key));
     {
-      VPackObjectBuilder preconditionDefinition(&builder);
+      VPackObjectBuilder preconditionDefinitionGuard(&builder);
       switch (type) {
         case AgencyPrecondition::Type::EMPTY:
           builder.add("oldEmpty", VPackValue(empty));
@@ -123,7 +131,15 @@ void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
         case AgencyPrecondition::Type::VALUE:
           builder.add("old", value);
           break;
-          // mop: useless compiler warning :S
+        case AgencyPrecondition::Type::TIN:
+          builder.add("in", value);
+          break;
+        case AgencyPrecondition::Type::NOTIN:
+          builder.add("notin", value);
+          break;
+        case AgencyPrecondition::Type::INTERSECTION_EMPTY:
+          builder.add("intersectionEmpty", value);
+          break;
         case AgencyPrecondition::Type::NONE:
           break;
       }
@@ -369,8 +385,8 @@ AgencyCommResult::AgencyCommResult(int code, std::string const& message,
       _statusCode(code),
       _connected(false),
       _sent(false) {}
-  
-AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept 
+
+AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
     : _location(std::move(other._location)),
       _message(std::move(other._message)),
       _body(std::move(other._body)),
@@ -394,7 +410,7 @@ AgencyCommResult& AgencyCommResult::operator=(AgencyCommResult&& other) noexcept
     _connected = other._connected;
     _sent = other._sent;
     _vpack = std::move(other._vpack);
-    
+
     other._statusCode = 0;
     other._connected = false;
     other._sent = false;
@@ -530,8 +546,9 @@ std::unique_ptr<AgencyCommManager> AgencyCommManager::MANAGER;
 
 AgencyConnectionOptions AgencyCommManager::CONNECTION_OPTIONS(15.0, 120.0, 120.0, 100);
 
-void AgencyCommManager::initialize(std::string const& prefix) {
-  MANAGER.reset(new AgencyCommManager(prefix));
+void AgencyCommManager::initialize(application_features::ApplicationServer& server,
+                                   std::string const& prefix) {
+  MANAGER.reset(new AgencyCommManager(server, prefix));
 }
 
 void AgencyCommManager::shutdown() { MANAGER.reset(); }
@@ -583,7 +600,7 @@ std::string AgencyCommManager::generateStamp() {
 }
 
 bool AgencyCommManager::start() {
-  AgencyComm comm;
+  AgencyComm comm(_server);
   bool ok = comm.ensureStructureInitialized();
 
   LOG_TOPIC("d8ce6", DEBUG, Logger::AGENCYCOMM)
@@ -817,7 +834,7 @@ std::unique_ptr<GeneralClientConnection> AgencyCommManager::createNewConnection(
   }
 
   return std::unique_ptr<GeneralClientConnection>(
-      GeneralClientConnection::factory(endpoint, CONNECTION_OPTIONS._requestTimeout,
+      GeneralClientConnection::factory(_server, endpoint, CONNECTION_OPTIONS._requestTimeout,
                                        CONNECTION_OPTIONS._connectTimeout,
                                        CONNECTION_OPTIONS._connectRetries, 0));
 }
@@ -843,7 +860,10 @@ void AgencyCommManager::switchCurrentEndpoint() {
 
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
-AgencyCommResult AgencyComm::sendServerState(double ttl) {
+AgencyComm::AgencyComm(application_features::ApplicationServer& server)
+    : _server(server) {}
+
+AgencyCommResult AgencyComm::sendServerState() {
   // construct JSON value { "status": "...", "time": "..." }
   VPackBuilder builder;
 
@@ -861,7 +881,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 
   AgencyCommResult result(
       setTransient("Sync/ServerStates/" + ServerState::instance()->getId(),
-                   builder.slice(), ttl));
+                   builder.slice(), 0));
 
   return result;
 }
@@ -912,9 +932,9 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
 AgencyCommResult AgencyComm::setTransient(std::string const& key,
                                           arangodb::velocypack::Slice const& slice,
-                                          double ttl) {
+                                          uint64_t ttl) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
-  operation._ttl = static_cast<uint64_t>(ttl);
+  operation._ttl = ttl;
   AgencyTransientTransaction transaction(operation);
 
   return sendTransactionWithFailover(transaction);
@@ -1261,11 +1281,14 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
   return result;
 }
 
+application_features::ApplicationServer& AgencyComm::server() {
+  return _server;
+}
+
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  auto& server = application_features::ApplicationServer::server();
-  while (!server.isStopping() && shouldInitializeStructure()) {
+  while (!_server.isStopping() && shouldInitializeStructure()) {
     LOG_TOPIC("17e16", TRACE, Logger::AGENCYCOMM)
       << "Agency is fresh. Needs initial structure.";
 
@@ -1414,9 +1437,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   int tries = 0;
 
-  auto waitSomeTime = [&waitInterval, &result]() -> bool {
+  auto waitSomeTime = [&waitInterval, &result, &server = _server]() -> bool {
     // Returning true means timeout because of shutdown:
-    auto& server = application_features::ApplicationServer::server();
     if (server.isStopping()) {
       LOG_TOPIC("53e58", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
@@ -1482,8 +1504,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // Some reporting:
     if (tries > 20) {
-      auto& server = application_features::ApplicationServer::server();
-      std::string serverState = server.stringifyState();
+      std::string serverState = _server.stringifyState();
       LOG_TOPIC("2f181", INFO, Logger::AGENCYCOMM)
           << "Flaky agency communication to " << endpoint
           << ". Unsuccessful consecutive tries: " << tries << " (" << elapsed
@@ -1525,8 +1546,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       }
 
       // got a result or shutdown, we are done
-      auto& server = application_features::ApplicationServer::server();
-      if (result.successful() || server.isStopping()) {
+      if (result.successful() || _server.isStopping()) {
         AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
         break;
       }
@@ -1641,7 +1661,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
         << " errorCode: " << result.errorCode()
         << " errorMessage: " << result.errorMessage()
         << " errorDetails: " << result.errorDetails();
-  } 
+  }
 
   return result;
 }
@@ -1767,7 +1787,7 @@ bool AgencyComm::tryInitializeStructure() {
       addEmptyVPackObject("Singles", builder);
       builder.add(VPackValue("ServersRegistered"));
       {
-        VPackObjectBuilder c(&builder);
+        VPackObjectBuilder c2(&builder);
         builder.add("Version", VPackValue(1));
       }
       addEmptyVPackObject("Databases", builder);
@@ -1887,8 +1907,7 @@ bool AgencyComm::shouldInitializeStructure() {
 
   size_t nFail = 0;
 
-  auto& server = application_features::ApplicationServer::server();
-  while (!server.isStopping()) {
+  while (!_server.isStopping()) {
     auto result = getValues("Plan");
 
     if (!result.successful()) { // Not 200 - 299

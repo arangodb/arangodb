@@ -179,20 +179,22 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-SslClientConnection::SslClientConnection(Endpoint* endpoint, double requestTimeout,
+SslClientConnection::SslClientConnection(application_features::ApplicationServer& server,
+                                         Endpoint* endpoint, double requestTimeout,
                                          double connectTimeout,
                                          size_t connectRetries, uint64_t sslProtocol)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout, connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
   init(sslProtocol);
 }
 
-SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
+SslClientConnection::SslClientConnection(application_features::ApplicationServer& server,
+                                         std::unique_ptr<Endpoint>& endpoint,
                                          double requestTimeout, double connectTimeout,
                                          size_t connectRetries, uint64_t sslProtocol)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout, connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {

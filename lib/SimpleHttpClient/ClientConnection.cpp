@@ -49,13 +49,17 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
+ClientConnection::ClientConnection(application_features::ApplicationServer& server,
+                                   Endpoint* endpoint, double requestTimeout,
                                    double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {}
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+                              connectRetries) {}
 
-ClientConnection::ClientConnection(std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+ClientConnection::ClientConnection(application_features::ApplicationServer& server,
+                                   std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
                                    double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {}
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+                              connectRetries) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection
@@ -124,9 +128,6 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 #elif defined(_WIN32)
   // MSG_NOSIGNAL not supported on windows platform
   long status = TRI_send(_socket, buffer, length, 0);
-#elif defined(__sun)
-  // MSG_NOSIGNAL not supported on solaris platform
-  long status = TRI_send(_socket, buffer, length, 0);
 #else
   long status = TRI_send(_socket, buffer, length, MSG_NOSIGNAL);
 #endif
@@ -170,7 +171,7 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& co
       return false;
     }
 
-    int lenRead = TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
+    TRI_read_return_t  lenRead = TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
 
     if (lenRead == -1) {
       // error occurred
@@ -184,7 +185,7 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& co
       return true;
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    _read += (uint64_t)lenRead;
+    _read += static_cast<uint64_t>(lenRead);
 #endif
     stringBuffer.increaseLength(lenRead);
   } while (readable());

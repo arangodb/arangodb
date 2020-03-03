@@ -587,15 +587,11 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
   Result res;
   if (s.ok()) {  // detected conflicting primary key
-    std::string existingId = keySlice.copyString();
-
     if (mode == OperationMode::internal) {
-      return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, std::move(existingId));
+      return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
     }
-
     res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-
-    return addErrorMsg(res, existingId);
+    return addErrorMsg(res, keySlice.copyString());
   } else if (!s.IsNotFound()) {
     // IsBusy(), IsTimedOut() etc... this indicates a conflict
     return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
@@ -608,8 +604,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
     blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
   }
 
+  TRI_ASSERT(revision != 0);
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
-
   s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/true);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));

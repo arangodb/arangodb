@@ -506,6 +506,9 @@ function printTraversalDetails(traversals) {
       uniqueVertices: options.uniqueVertices,
       uniqueEdges: options.uniqueEdges
     };
+    if (options.vertexCollections !== undefined) {
+      opts.vertexCollections = options.vertexCollections;
+    }
 
     var result = '';
     for (var att in opts) {
@@ -701,7 +704,7 @@ function processQuery(query, explain, planIndex) {
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
-  
+
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
@@ -766,17 +769,22 @@ function processQuery(query, explain, planIndex) {
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id)) {
-        nodes[n.id].calls = n.calls;
-        nodes[n.id].items = n.items;
-        nodes[n.id].runtime = n.runtime;
+        nodes[n.id].calls = (n.calls === undefined ? "n/a" : n.calls);
+        nodes[n.id].items = (n.items === undefined ? "n/a" : n.items);
+        nodes[n.id].runtime = (n.runtime === undefined ? "n/a" : n.runtime);
 
-        if (String(n.calls).length > maxCallsLen) {
-          maxCallsLen = String(n.calls).length;
+        if (String(nodes[n.id].calls).length > maxCallsLen) {
+          maxCallsLen = String(nodes[n.id].calls).length;
         }
-        if (String(n.items).length > maxItemsLen) {
-          maxItemsLen = String(n.items).length;
+        if (String(nodes[n.id].items).length > maxItemsLen) {
+          maxItemsLen = String(nodes[n.id].items).length;
         }
-        let l = String(nodes[n.id].runtime.toFixed(3)).length;
+        let l;
+        if (typeof nodes[n.id].runtime === 'number') {
+          l = String(nodes[n.id].runtime.toFixed(3)).length;
+        } else {
+          l = nodes[n.id].runtime.length;
+        }
         if (l > maxRuntimeLen) {
           maxRuntimeLen = l;
         }
@@ -785,10 +793,14 @@ function processQuery(query, explain, planIndex) {
     // by design the runtime is cumulative right now.
     // by subtracting the dependencies from parent runtime we get the runtime per node
     stats.nodes.forEach(n => {
-      if (parents.hasOwnProperty(n.id)) {
-        parents[n.id].forEach(pid => {
-          nodes[pid].runtime -= n.runtime;
-        });
+      if (typeof n.runtime === 'number') {
+        if (parents.hasOwnProperty(n.id)) {
+          parents[n.id].forEach(pid => {
+            if (typeof nodes[pid].runtime === 'number') {
+              nodes[pid].runtime -= n.runtime;
+            }
+          });
+        }
       }
     });
   }
@@ -957,6 +969,9 @@ function processQuery(query, explain, planIndex) {
       case 'logical and':
         return '(' + binaryOperator(node, '&&') + ')';
       case 'ternary':
+        if (node.subNodes.length === 2) {
+          return '(' + buildExpression(node.subNodes[0]) + ' ?: ' + buildExpression(node.subNodes[1]) + ')';
+        }
         return '(' + buildExpression(node.subNodes[0]) + ' ? ' + buildExpression(node.subNodes[1]) + ' : ' + buildExpression(node.subNodes[2]) + ')';
       case 'n-ary or':
         if (node.hasOwnProperty('subNodes')) {
@@ -1131,16 +1146,24 @@ function processQuery(query, explain, planIndex) {
           }).join('');
         }
         let viewAnnotation = '/* view query';
-        let viewVariables = '';
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
           viewAnnotation += ' with late materialization';
-          if (node.hasOwnProperty('ViewValuesVars') && node.ViewValuesVars.length > 0) {
-            viewVariables = node.ViewValuesVars.map(function (ViewValuesVar) {
-              return keyword(' LET ') + variableName(ViewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(ViewValuesVar.field);
-            }).join('');
-          }
+        } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
+          viewAnnotation += ' without materialization';
         }
         viewAnnotation += ' */';
+        let viewVariables = '';
+        if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
+          viewVariables = node.viewValuesVars.map(function (viewValuesColumn) {
+            if (viewValuesColumn.hasOwnProperty('field')) {
+              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesColumn.field);
+            } else {
+              return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
+                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+              }).join('');
+            }
+          }).join('');
+        }
         return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
                view(node.view) + condition + sortCondition + scorers + viewVariables +
                '   ' + annotation(viewAnnotation);
@@ -1153,9 +1176,9 @@ function processQuery(query, explain, planIndex) {
         let indexVariables = '';
         if (node.hasOwnProperty('outNmDocId')) {
           indexAnnotation += '/* with late materialization */';
-          if (node.hasOwnProperty('IndexValuesVars') && node.IndexValuesVars.length > 0) {
-            indexVariables = node.IndexValuesVars.map(function (IndexValuesVar) {
-              return keyword(' LET ') + variableName(IndexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(IndexValuesVar.field);
+          if (node.hasOwnProperty('indexValuesVars') && node.indexValuesVars.length > 0) {
+            indexVariables = node.indexValuesVars.map(function (indexValuesVar) {
+              return keyword(' LET ') + variableName(indexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(indexValuesVar.field);
             }).join('');
           }
         }
@@ -1175,7 +1198,13 @@ function processQuery(query, explain, planIndex) {
 
         rc = keyword('FOR ');
         if (node.hasOwnProperty('vertexOutVariable')) {
-          parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
+          if (node.options.hasOwnProperty('produceVertices') && !node.options.produceVertices) {
+            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex optimized away */'));
+          } else {
+            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
+          }
+        } else {
+          parts.push(annotation('/* vertex optimized away */'));
         }
         if (node.hasOwnProperty('edgeOutVariable')) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
@@ -1190,17 +1219,13 @@ function processQuery(query, explain, planIndex) {
         directions = [];
         for (i = 0; i < node.edgeCollections.length; ++i) {
           isLast = (i + 1 === node.edgeCollections.length);
-          d = node.directions[i];
           if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
             // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
             // on the same collection
-            d = 0; // ANY
-          }
-          directions.push({ collection: node.edgeCollections[i], direction: d });
-
-          if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
-            // don't print same collection twice
+            directions.push({ collection: node.edgeCollections[i], direction: 0 /* ANY */ });
             ++i;
+          } else {
+            directions.push({ collection: node.edgeCollections[i], direction: node.directions[i] });
           }
         }
         var allIndexes = [];
@@ -1240,7 +1265,7 @@ function processQuery(query, explain, planIndex) {
           return 0;
         });
 
-        rc += keyword(translate[directions[0].direction]);
+        rc += keyword(translate[node.defaultDirection]);
         if (node.hasOwnProperty('vertexId')) {
           rc += " '" + value(node.vertexId) + "' ";
         } else {
@@ -1249,9 +1274,13 @@ function processQuery(query, explain, planIndex) {
         rc += annotation('/* startnode */') + '  ';
 
         if (Array.isArray(node.graph)) {
-          rc += collection(directions[0].collection);
-          for (i = 1; i < directions.length; ++i) {
-            rc += ', ' + keyword(translate[directions[i].direction]) + ' ' + collection(directions[i].collection);
+          if (directions.length > 0) {
+            rc += collection(directions[0].collection);
+            for (i = 1; i < directions.length; ++i) {
+              rc += ', ' + keyword(translate[directions[i].direction]) + ' ' + collection(directions[i].collection);
+            }
+          } else {
+            rc += annotation('/* no edge collections */');
           }
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
@@ -1489,7 +1518,7 @@ function processQuery(query, explain, planIndex) {
       case 'SubqueryStartNode':
         return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
       case 'SubqueryEndNode':
-        return `) ${annotation(`/* subquery end */`)}`;
+        return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1699,12 +1728,12 @@ function processQuery(query, explain, planIndex) {
     if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
     }
-    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
-      level = subqueries.pop();
-    }
   };
 
   var postHandle = function (node) {
+    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
+      level = subqueries.pop();
+    }
     var isLeafNode = !parents.hasOwnProperty(node.id);
 
     if (['EnumerateCollectionNode',
@@ -1745,7 +1774,6 @@ function processQuery(query, explain, planIndex) {
 
   var printNode = function (node) {
     preHandle(node);
-    node.runtime = Math.abs(node.runtime);
     var line = ' ' +
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
@@ -1755,9 +1783,22 @@ function processQuery(query, explain, planIndex) {
     }
 
     if (profileMode) {
+      if (node.calls === undefined) {
+        node.calls = 'n/a';
+      }
+      if (node.items === undefined) {
+        node.items = 'n/a';
+      }
+      let runtime = node.runtime;
+      if (runtime === undefined) {
+        runtime = 'n/a';
+      } else {
+        runtime = String(Math.abs(node.runtime).toFixed(5));
+      }
+  
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-        pad(1 + maxRuntimeLen - String(node.runtime.toFixed(5)).length) + value(node.runtime.toFixed(5)) + '   ' +
+        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node);
     } else {
       line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +

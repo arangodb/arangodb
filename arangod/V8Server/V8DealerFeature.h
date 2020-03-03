@@ -23,6 +23,8 @@
 #ifndef APPLICATION_FEATURES_V8_DEALER_FEATURE_H
 #define APPLICATION_FEATURES_V8_DEALER_FEATURE_H 1
 
+#include <atomic>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/ConditionVariable.h"

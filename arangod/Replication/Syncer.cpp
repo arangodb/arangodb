@@ -490,7 +490,7 @@ Syncer::~Syncer() {
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   Syncer* s = static_cast<Syncer*>(data);
   TRI_ASSERT(s != nullptr);
-  if (location.substr(0, 5) == "/_db/") {
+  if (location.compare(0, 5, "/_db/", 5) == 0) {
     // location already contains /_db/
     return location;
   }
@@ -971,8 +971,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
                                                /*nullMeansRemove*/ true);
 
   try {
-    LogicalView::ptr view;  // ignore result
-    return LogicalView::create(view, vocbase, merged.slice());
+    LogicalView::ptr empty;  // ignore result
+    return LogicalView::create(empty, vocbase, merged.slice());
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

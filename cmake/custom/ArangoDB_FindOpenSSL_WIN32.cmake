@@ -53,7 +53,7 @@ if (${CMAKE_GENERATOR} MATCHES "2017")
 elseif (${CMAKE_GENERATOR} MATCHES "2019")
     set(VS_VERSION "2019")
 else()
-    message(FATAL_ERROR "Generator not supported")
+    message(FATAL_ERROR "Generator not supported: ${CMAKE_GENERATOR}")
 endif()
 
 #store original suffixes

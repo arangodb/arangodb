@@ -21,7 +21,7 @@
     "joi": "14.3.1",
     "joi-to-json-schema": "4.0.1",
     "js-yaml": "3.13.1",
-    "lodash": "4.17.11",
+    "lodash": "4.17.13",
     "marked": "0.6.2",
     "media-typer": "0.3.0",
     "mime-types": "2.1.22",

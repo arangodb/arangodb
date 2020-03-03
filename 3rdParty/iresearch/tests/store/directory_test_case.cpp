@@ -296,6 +296,33 @@ TEST_P(directory_test_case, lock_obtain_release) {
   }
 }
 
+#ifdef _MSC_VER
+TEST_P(directory_test_case, create_many_files) {
+  std::vector<index_output::ptr> openedFiles;
+  std::vector<std::string> names;
+  constexpr size_t count = 2048;
+  names.reserve(count);
+
+  for (size_t i = 0; i < count; ++i) {
+    std::string name = "t";
+    name += std::to_string(i);
+    names.push_back(std::move(name));
+  }
+
+  openedFiles.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    SCOPED_TRACE(testing::Message("File count ") << i);
+    auto out = dir_->create(names[i]);
+    ASSERT_FALSE(!out);
+    openedFiles.push_back(std::move(out));
+  }
+  openedFiles.clear();
+  for (size_t i = 0; i < count; ++i) {
+    dir_->remove(names[i]);
+  }
+}
+#endif
+
 TEST_P(directory_test_case, read_multiple_streams) {
   // write data
   {

@@ -36,7 +36,8 @@ R"=(
         "follower2": "none",
         "free": "none",
         "leader": "none"
-      }
+      },
+      "Version" : 1
     },
     "Supervision": {
       "DBServers": {},

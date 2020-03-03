@@ -1,7 +1,7 @@
 @startDocuBlock delete_remove_document_MULTI
 @brief removes multiple document
 
-@RESTHEADER{DELETE /_api/document/{collection},Removes multiple documents, removeDocument}
+@RESTHEADER{DELETE /_api/document/{collection},Removes multiple documents,removeDocuments}
 
 @RESTALLBODYPARAM{array,json,required}
 A JSON array of strings or documents.
@@ -17,7 +17,7 @@ Collection from which documents are removed.
 Wait until deletion operation has been synced to disk.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
-Return additionally the complete previous revision of the changed 
+Return additionally the complete previous revision of the changed
 document under the attribute *old* in the result.
 
 @RESTQUERYPARAM{ignoreRevs,boolean,optional}
@@ -27,7 +27,7 @@ revision check is performed.
 @RESTDESCRIPTION
 The body of the request is an array consisting of selectors for
 documents. A selector can either be a string with a key or a string
-with a document handle or an object with a *_key* attribute. This
+with a document identifier or an object with a *_key* attribute. This
 API call removes all specified documents from *collection*. If the
 selector is an object and has a *_rev* attribute, it is a
 precondition that the actual revision of the removed document in the
@@ -37,7 +37,7 @@ The body of the response is an array of the same length as the input
 array. For each input selector, the output contains a JSON object
 with the information about the outcome of the operation. If no error
 occurred, an object is built in which the attribute *_id* contains
-the known *document-handle* of the removed document, *_key* contains
+the known *document-id* of the removed document, *_key* contains
 the key which uniquely identifies a document in a given collection,
 and the attribute *_rev* contains the document revision. In case of
 an error, an object with the attribute *error* set to *true* and
@@ -75,7 +75,7 @@ The response body contains an error document in this case.
 
 @EXAMPLES
 
-Using document handle:
+Using document identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentMulti}
     var cn = "products";
@@ -93,7 +93,7 @@ Using document handle:
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Unknown document handle:
+Unknown document identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentUnknownHandleMulti}
     var cn = "products";

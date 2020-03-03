@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -27,7 +26,7 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
-analyzer::analyzer(const analyzer::type_id& type) NOEXCEPT
+analyzer::analyzer(const analyzer::type_id& type) noexcept
   : type_(&type) {
 }
 

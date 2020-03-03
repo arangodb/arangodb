@@ -18,32 +18,36 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "same_position_filter.hpp"
-#include "term_query.hpp"
-#include "conjunction.hpp"
-
-#include "index/field_meta.hpp"
-
-#include "analysis/token_attributes.hpp"
-#include "utils/misc.hpp"
 
 #include <boost/functional/hash.hpp>
 
+#include "shared.hpp"
+#include "term_query.hpp"
+#include "conjunction.hpp"
+#include "index/field_meta.hpp"
+#include "analysis/token_attributes.hpp"
+#include "utils/misc.hpp"
+
+NS_LOCAL
+
+typedef irs::conjunction<irs::doc_iterator::ptr> conjunction_t;
+
+NS_END
+
 NS_ROOT
 
-class same_position_iterator final : public conjunction {
+class same_position_iterator final : public conjunction_t {
  public:
   typedef std::vector<position::ref> positions_t;
 
   same_position_iterator(
-      conjunction::doc_iterators_t&& itrs,
+      conjunction_t::doc_iterators_t&& itrs,
       const order::prepared& ord,
       positions_t&& pos)
-    : conjunction(std::move(itrs), ord),
+    : conjunction_t(std::move(itrs), ord),
       pos_(std::move(pos)) {
     assert(!pos_.empty());
   }
@@ -57,7 +61,7 @@ class same_position_iterator final : public conjunction {
 
   virtual bool next() override {
     bool next = false;
-    while (true == (next = conjunction::next()) && !find_same_position()) {}
+    while (true == (next = conjunction_t::next()) && !find_same_position()) {}
     return next;
   }
 
@@ -68,7 +72,7 @@ class same_position_iterator final : public conjunction {
 #endif
 
   virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = conjunction::seek(target);
+    const auto doc = conjunction_t::seek(target);
 
     if (doc_limits::eof(doc) || find_same_position()) {
       return doc; 
@@ -155,25 +159,24 @@ class same_position_query final : public filter::prepared {
 
       // get postings
       auto docs = term->postings(features);
+      auto& attrs = docs->attributes();
 
       // get needed postings attributes
-      auto& pos = docs->attributes().get<position>();
+      auto& pos = attrs.get<position>();
       if (!pos) {
         // positions not found
         return doc_iterator::empty();
       }
       positions.emplace_back(std::ref(*pos));
 
-      // add base iterator
-      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
-        segment,
-        *term_state.reader,
-        term_stats->c_str(),
-        std::move(docs), 
-        ord, 
-        term_state.estimation,
-        boost()
-      ));
+      // set score
+      auto& score = attrs.get<irs::score>();
+      if (score) {
+        score->prepare(ord, ord.prepare_scorers(segment, *term_state.reader, term_stats->c_str(), attrs, boost()));
+      }
+
+      // add iterator
+      itrs.emplace_back(std::move(docs));
 
       ++term_stats;
     }
@@ -200,12 +203,12 @@ by_same_position::by_same_position()
   : filter(by_same_position::type()) {
 }
 
-bool by_same_position::equals(const filter& rhs) const NOEXCEPT {
+bool by_same_position::equals(const filter& rhs) const noexcept {
   const auto& trhs = static_cast<const by_same_position&>(rhs);
   return filter::equals(rhs) && terms_ == trhs.terms_;
 }
 
-size_t by_same_position::hash() const NOEXCEPT {
+size_t by_same_position::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   for (auto& term : terms_) {
@@ -289,8 +292,6 @@ filter::prepared::ptr by_same_position::prepare(
 
       // find terms
       seek_term_iterator::ptr term = field->iterator();
-      // get term metadata
-      auto& meta = term->attributes().get<term_meta>();
 
       if (!term->seek(branch.second)) {
         if (ord.empty()) {
@@ -309,7 +310,6 @@ filter::prepared::ptr by_same_position::prepare(
       auto& state = term_states.back();
 
       state.cookie = term->cookie();
-      state.estimation = meta ? meta->docs_count : cost::MAX;
       state.reader = field;
     }
 

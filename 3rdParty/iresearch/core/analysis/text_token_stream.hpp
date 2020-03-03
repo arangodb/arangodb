@@ -19,6 +19,8 @@
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
+/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_IQL_TEXT_TOKEN_STREAM_H

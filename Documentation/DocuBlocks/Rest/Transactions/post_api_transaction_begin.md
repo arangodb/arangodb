@@ -17,11 +17,11 @@ deadlocks.
 See [locking and isolation](../../Manual/Transactions/LockingAndIsolation.html)
 for more information.
 
-@RESTBODYPARAM{waitForSync,boolean,optional,boolean}
+@RESTBODYPARAM{waitForSync,boolean,optional,}
 an optional boolean flag that, if set, will force the
 transaction to write all data to disk before returning.
 
-@RESTBODYPARAM{allowImplicit,boolean,optional,boolean}
+@RESTBODYPARAM{allowImplicit,boolean,optional,}
 Allow reading from undeclared collections.
 
 @RESTBODYPARAM{lockTimeout,integer,optional,int64}
@@ -35,7 +35,7 @@ Transaction size limit in bytes. Honored by the RocksDB storage engine only.
 
 @RESTDESCRIPTION
 The transaction description must be passed in the body of the POST request.
-If the transaction can be started on the server, *HTTP 201* will be returned. 
+If the transaction can be started on the server, *HTTP 201* will be returned.
 
 For successfully started transactions, the returned JSON object has the
 following properties:
@@ -62,7 +62,6 @@ details. The object has the following attributes:
 - *errorNum*: the server error number
 
 - *errorMessage*: a descriptive error message
-
 
 @RESTRETURNCODES
 
@@ -120,4 +119,3 @@ Referring to a non-existing collection
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

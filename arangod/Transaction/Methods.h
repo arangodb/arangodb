@@ -152,9 +152,6 @@ class Methods {
   /// feature
   static void clearDataSourceRegistrationCallbacks();
 
-  /// @brief default batch size for index and other operations
-  static constexpr uint64_t defaultBatchSize() { return 1000; }
-
   /// @brief Type of cursor
   enum class CursorType { ALL = 0, ANY };
 

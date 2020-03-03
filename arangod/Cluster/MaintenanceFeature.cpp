@@ -104,25 +104,25 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       "--server.maintenance-threads",
       "maximum number of threads available for maintenance actions",
       new UInt32Parameter(&_maintenanceThreadsMax),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                    arangodb::options::Flags::Dynamic));
 
   options->addOption(
       "--server.maintenance-actions-block",
       "minimum number of seconds finished Actions block duplicates",
       new Int32Parameter(&_secondsActionsBlock),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--server.maintenance-actions-linger",
       "minimum number of seconds finished Actions remain in deque",
       new Int32Parameter(&_secondsActionsLinger),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--cluster.resign-leadership-on-shutdown",
                     "create resign leader ship job for this dbsever on shutdown",
                     new BooleanParameter(&_resignLeadershipOnShutdown),
-                    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                    arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
 }  // MaintenanceFeature::collectOptions
 
@@ -188,7 +188,7 @@ void MaintenanceFeature::beginShutdown() {
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     auto shared = std::make_shared<callback_data>(ci.uniqid());
 
-    AgencyComm am;
+    AgencyComm am(server());
 
     std::string serverId = ServerState::instance()->getId();
     VPackBuilder jobDesc;
@@ -441,14 +441,12 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
 }
 
 std::shared_ptr<Action> MaintenanceFeature::createAction(std::shared_ptr<ActionDescription> const& description) {
-  // write lock via _actionRegistryLock is assumed held
-  std::shared_ptr<Action> newAction;
-
   // name should already be verified as existing ... but trust no one
   std::string name = description->get(NAME);
 
   // call factory
-  newAction = std::make_shared<Action>(*this, *description);
+  // write lock via _actionRegistryLock is assumed held
+  std::shared_ptr<Action> newAction = std::make_shared<Action>(*this, *description);
 
   // if a new action constructed successfully
   if (!newAction->ok()) {
@@ -674,6 +672,7 @@ arangodb::Result MaintenanceFeature::storeShardError(
     auto emplaced = _shardErrors.try_emplace(std::move(key), std::move(error)).second;
     if (!emplaced) {
       std::stringstream error;
+      // cppcheck-suppress accessMoved; try_emplace leaves the movables intact
       error << "shard " << key << " already has pending error";
       LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
       return Result(TRI_ERROR_FAILED, error.str());

@@ -50,58 +50,58 @@ class directory_mock: public irs::directory {
 
   using directory::attributes;
 
-  virtual irs::attribute_store& attributes() NOEXCEPT override {
+  virtual irs::attribute_store& attributes() noexcept override {
     return impl_.attributes();
   }
 
   virtual irs::index_output::ptr create(
     const std::string& name
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.create(name);
   }
 
   virtual bool exists(
     bool& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.exists(result, name);
   }
 
   virtual bool length(
     uint64_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.length(result, name);
   }
 
   virtual irs::index_lock::ptr make_lock(
     const std::string& name
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.make_lock(name);
   }
 
   virtual bool mtime(
     std::time_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual irs::index_input::ptr open(
     const std::string& name,
     irs::IOAdvice advice
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.open(name, advice);
   }
 
-  virtual bool remove(const std::string& name) NOEXCEPT override {
+  virtual bool remove(const std::string& name) noexcept override {
     return impl_.remove(name);
   }
 
   virtual bool rename(
     const std::string& src, const std::string& dst
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.rename(src, dst);
   }
 
-  virtual bool sync(const std::string& name) NOEXCEPT override {
+  virtual bool sync(const std::string& name) noexcept override {
     return impl_.sync(name);
   }
 
@@ -118,7 +118,7 @@ struct blocking_directory : directory_mock {
     : tests::directory_mock(impl), blocker(blocker) {
   }
 
-  irs::index_output::ptr create(const std::string& name) NOEXCEPT {
+  irs::index_output::ptr create(const std::string& name) noexcept {
     auto stream = tests::directory_mock::create(name);
 
     if (name == blocker) {
@@ -200,13 +200,14 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     return irs::directory_reader::open(*dir_, codec_);
   }
 
-  void assert_index(const irs::flags& features, size_t skip = 0) const {
-    tests::assert_index(dir(), codec_, index(), features, skip);
+  void assert_index(const irs::flags& features,
+                    size_t skip = 0,
+                    irs::automaton_table_matcher* matcher = nullptr) const {
+    tests::assert_index(dir(), codec_, index(), features, skip, matcher);
   }
 
   virtual void SetUp() {
     test_base::SetUp();
-    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
 
     // set directory
     dir_ = get_directory(*this);
@@ -294,7 +295,7 @@ class token_stream_payload: public irs::token_stream {
   explicit token_stream_payload(irs::token_stream* impl);
   bool next(); 
 
-  const irs::attribute_view& attributes() const NOEXCEPT {
+  const irs::attribute_view& attributes() const noexcept {
     return impl_->attributes();
   }
 
@@ -336,7 +337,7 @@ class text_field : public tests::field_base {
     this->name(name);
   }
 
-  text_field(text_field&& other) NOEXCEPT
+  text_field(text_field&& other) noexcept
     : pay_stream_(std::move(other.pay_stream_)),
       token_stream_(std::move(other.token_stream_)),
       value_(std::move(other.value_)) {

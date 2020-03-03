@@ -21,24 +21,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterCollectionCreationInfo.h"
+
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
+#include <utility>
 
-arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
-    std::string const cID, uint64_t shards, uint64_t replicationFactor, 
-    uint64_t writeConcern, bool waitForRep, velocypack::Slice const& slice)
+using namespace arangodb;
+
+ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
+    std::string cID, uint64_t shards, uint64_t replicationFactor,
+    uint64_t writeConcern, bool waitForRep, velocypack::Slice const& slice,
+    std::string coordinatorId, RebootId rebootId)
     : collectionID(std::move(cID)),
       numberOfShards(shards),
       replicationFactor(replicationFactor),
       writeConcern(writeConcern),
       waitForReplication(waitForRep),
       json(slice),
-      name(arangodb::basics::VelocyPackHelper::getStringValue(json, arangodb::StaticStrings::DataSourceName,
+      name(basics::VelocyPackHelper::getStringValue(json, StaticStrings::DataSourceName,
                                                               StaticStrings::Empty)),
-      state(State::INIT) {
+      state(ClusterCollectionCreationState::INIT),
+      creator(std::in_place, std::move(coordinatorId), rebootId) {
+  TRI_ASSERT(creator);
+  TRI_ASSERT(creator->rebootId().initialized());
   if (numberOfShards == 0) {
 // Nothing to do this cannot fail
 // Deactivated this assertion, our testing mock for coordinator side
@@ -46,36 +55,58 @@ arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
 // shard collections (non-smart). We do not want to loose these test.
 // So we will loose this assertion for now.
 #ifndef ARANGODB_USE_GOOGLE_TESTS
-    TRI_ASSERT(arangodb::basics::VelocyPackHelper::getBooleanValue(json, arangodb::StaticStrings::IsSmart,
+    TRI_ASSERT(basics::VelocyPackHelper::getBooleanValue(json, StaticStrings::IsSmart,
                                                                    false));
 #endif
-    state = State::DONE;
+    state = ClusterCollectionCreationState::DONE;
   }
   TRI_ASSERT(!name.empty());
   if (needsBuildingFlag()) {
     VPackBuilder tmp;
     tmp.openObject();
-    tmp.add(StaticStrings::IsBuilding, VPackValue(true));
+    tmp.add(StaticStrings::AttrIsBuilding, VPackValue(true));
+    if (creator) {
+      creator->toVelocyPack(tmp);
+    }
     tmp.close();
     _isBuildingJson = VPackCollection::merge(json, tmp.slice(), true, false);
   }
 }
 
-VPackSlice arangodb::ClusterCollectionCreationInfo::isBuildingSlice() const {
+VPackSlice ClusterCollectionCreationInfo::isBuildingSlice() const {
   if (needsBuildingFlag()) {
     return _isBuildingJson.slice();
   }
   return json;
 }
 
-bool arangodb::ClusterCollectionCreationInfo::needsBuildingFlag() const {
+bool ClusterCollectionCreationInfo::needsBuildingFlag() const {
   // Deactivated the smart graph check, our testing mock for coordinator side
   // tries to get away without other servers by initially adding only 0
   // shard collections (non-smart). We do not want to loose these test.
   // So we will loose the more precise check for now.
   /*
   return numberOfShards > 0 ||
-         arangodb::basics::VelocyPackHelper::getBooleanValue(json, StaticStrings::IsSmart, false);
+         basics::VelocyPackHelper::getBooleanValue(json, StaticStrings::IsSmart, false);
   */
   return numberOfShards > 0;
+}
+
+void ClusterCollectionCreationInfo::CreatorInfo::toVelocyPack(
+    velocypack::Builder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(StaticStrings::AttrCoordinator, VPackValue(coordinatorId()));
+  builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(rebootId().value()));
+}
+
+ClusterCollectionCreationInfo::CreatorInfo::CreatorInfo(std::string coordinatorId,
+                                                                  RebootId rebootId)
+    : _coordinatorId(std::move(coordinatorId)), _rebootId(rebootId) {}
+
+RebootId ClusterCollectionCreationInfo::CreatorInfo::rebootId() const noexcept {
+  return _rebootId;
+}
+
+std::string const& ClusterCollectionCreationInfo::CreatorInfo::coordinatorId() const noexcept {
+  return _coordinatorId;
 }

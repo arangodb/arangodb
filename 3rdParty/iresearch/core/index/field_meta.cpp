@@ -32,7 +32,7 @@ NS_ROOT
 
 /*static*/ const field_meta field_meta::EMPTY;
 
-field_meta::field_meta(field_meta&& rhs) NOEXCEPT
+field_meta::field_meta(field_meta&& rhs) noexcept
   : features(std::move(rhs.features)),
     name(std::move(rhs.name)),
     norm(rhs.norm) {
@@ -48,7 +48,7 @@ field_meta::field_meta(
     norm(norm) {
 }
 
-field_meta& field_meta::operator=(field_meta&& rhs) NOEXCEPT {
+field_meta& field_meta::operator=(field_meta&& rhs) noexcept {
   if (this != &rhs) {
     features = std::move(rhs.features);
     name = std::move(rhs.name);
@@ -67,7 +67,7 @@ bool field_meta::operator==(const field_meta& rhs) const {
 // --SECTION--                                        column_meta implementation
 // -----------------------------------------------------------------------------
 
-column_meta::column_meta(column_meta&& rhs) NOEXCEPT
+column_meta::column_meta(column_meta&& rhs) noexcept
   : name(std::move(rhs.name)), id(rhs.id) {
   rhs.id = field_limits::invalid();
 }
@@ -76,7 +76,7 @@ column_meta::column_meta(const string_ref& name, field_id id)
   : name(name.c_str(), name.size()), id(id) {
 }
 
-column_meta& column_meta::operator=(column_meta&& rhs) NOEXCEPT {
+column_meta& column_meta::operator=(column_meta&& rhs) noexcept {
   if (this != &rhs) {
     name = std::move(rhs.name);
     id = rhs.id;

@@ -73,14 +73,14 @@ void busywait_mutex::unlock() {
   }
 }
 
-read_write_mutex::read_write_mutex() NOEXCEPT
+read_write_mutex::read_write_mutex() noexcept
   : concurrent_count_(0),
     exclusive_count_(0),
     exclusive_owner_(std::thread::id()),
     exclusive_owner_recursion_count_(0) {
 }
 
-read_write_mutex::~read_write_mutex() NOEXCEPT {
+read_write_mutex::~read_write_mutex() noexcept {
 #ifdef IRESEARCH_DEBUG
   // ensure mutex is not locked before destroying it
   TRY_SCOPED_LOCK_NAMED(mutex_, lock);
@@ -131,7 +131,7 @@ void read_write_mutex::lock_write() {
   lock.release(); // disassociate the associated mutex without unlocking it
 }
 
-bool read_write_mutex::owns_write() NOEXCEPT {
+bool read_write_mutex::owns_write() noexcept {
   VALGRIND_ONLY(SCOPED_LOCK(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   return exclusive_owner_.load() == std::this_thread::get_id();
 }
@@ -334,7 +334,7 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
   // wait for all threads to terminate
   while(!pool_.empty()) {
     cond_.notify_all(); // wake all threads
-    cond_.wait_for(lock, std::chrono::milliseconds(1000));
+    cond_.wait_for(lock, std::chrono::milliseconds(100));
   }
 }
 

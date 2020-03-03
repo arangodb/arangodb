@@ -204,11 +204,12 @@ void RestTasksHandler::registerTask(bool byId) {
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
     V8ContextGuard guard(&_vocbase, securityContext);
    
-    v8::Isolate* isolate = guard.isolate(); 
+    v8::Isolate* isolate = guard.isolate();
     v8::HandleScope scope(isolate);
+    auto context = TRI_IGETC;
     v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
 
-    if (bv8->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
+    if (bv8->Get(context, TRI_V8_ASCII_STRING(isolate, "command")).FromMaybe(v8::Handle<v8::Value>())->IsFunction()) {
       // need to add ( and ) around function because call will otherwise break
       command = "(" + cmdSlice.copyString() + ")(params)";
     } else {

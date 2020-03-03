@@ -163,8 +163,12 @@ bool parentIsReturnOrConstCalc(ExecutionNode const* node) {
 
 void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode) {
   if (oldNode == plan->root()) {
-    for (auto* dep : oldNode->getDependencies()) {
-      newNode->addDependency(dep);
+    // intentional copy, the dependencies are changed in the loop
+    std::vector<ExecutionNode*> deps = oldNode->getDependencies();
+    for (auto* x : deps) {
+      TRI_ASSERT(x != nullptr);
+      newNode->addDependency(x);
+      oldNode->removeDependency(x);
     }
     plan->root(newNode, true);
   } else {
@@ -252,10 +256,10 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           }
         }
 
-        ExecutionNode* singleOperationNode = plan->registerNode(new SingleRemoteOperationNode(
+        ExecutionNode* singleOperationNode = plan->createNode<SingleRemoteOperationNode>(
             plan, plan->nextId(), parentType, true, key, mod->collection(),
             mod->getOptions(), update, indexNode->outVariable(),
-            mod->getOutVariableOld(), mod->getOutVariableNew()));
+            mod->getOutVariableOld(), mod->getOutVariableNew());
 
         ::replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);

@@ -82,7 +82,6 @@ RestStatus MaintenanceRestHandler::execute() {
 }
 
 RestStatus MaintenanceRestHandler::postAction() {
-  auto& server = ApplicationServer::server();
   std::stringstream es;
 
   std::shared_ptr<VPackBuilder> bptr;
@@ -112,12 +111,12 @@ RestStatus MaintenanceRestHandler::postAction() {
           // Pause maintenance
           LOG_TOPIC("1ee7a", DEBUG, Logger::MAINTENANCE)
             << "Maintenance is paused for " << dur.count() << " seconds";
-          server.getFeature<MaintenanceFeature>().pause(dur);
+          server().getFeature<MaintenanceFeature>().pause(dur);
         }
       } else if (ex == "proceed") {
         LOG_TOPIC("6c38a", DEBUG, Logger::MAINTENANCE)
           << "Maintenance is prceeded "  << dur.count() << " seconds";
-        server.getFeature<MaintenanceFeature>().proceed();
+        server().getFeature<MaintenanceFeature>().proceed();
       } else {
         es << "invalid POST command";
           }
@@ -181,8 +180,7 @@ void MaintenanceRestHandler::putAction() {
     Result result;
 
     // build the action
-    auto& server = ApplicationServer::server();
-    auto& maintenance = server.getFeature<MaintenanceFeature>();
+    auto& maintenance = server().getFeature<MaintenanceFeature>();
     result = maintenance.addAction(_actionDesc);
 
     if (!result.ok()) {
@@ -230,8 +228,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
 
 void MaintenanceRestHandler::getAction() {
   // build the action
-  auto& server = ApplicationServer::server();
-  auto& maintenance = server.getFeature<MaintenanceFeature>();
+  auto& maintenance = server().getFeature<MaintenanceFeature>();
 
   bool found;
   std::string const& detailsStr = _request->value("details", found);
@@ -245,7 +242,7 @@ void MaintenanceRestHandler::getAction() {
     if (found && StringUtils::boolean(detailsStr)) {
       builder.add(VPackValue("state"));
 
-      auto& cluster = server.getFeature<ClusterFeature>();
+      auto& cluster = server().getFeature<ClusterFeature>();
       auto thread = cluster.heartbeatThread();
       if (thread) {
         thread->agencySync().getLocalCollections(builder);
@@ -258,8 +255,7 @@ void MaintenanceRestHandler::getAction() {
 }  // MaintenanceRestHandler::getAction
 
 void MaintenanceRestHandler::deleteAction() {
-  auto& server = ApplicationServer::server();
-  auto& maintenance = server.getFeature<MaintenanceFeature>();
+  auto& maintenance = server().getFeature<MaintenanceFeature>();
 
   std::vector<std::string> const& suffixes = _request->suffixes();
 

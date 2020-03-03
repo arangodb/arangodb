@@ -260,7 +260,7 @@ describe('Replication factor constraints', function() {
 
     it('distributeShardsLike should ignore additional parameters', function() {
         db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
-        db._create(cn2, {distributeShardsLike: cn1, replicationFactor: 5, numberOfShards: 99}, {waitForSyncReplication: true});
+        db._create(cn2, {distributeShardsLike: cn1, replicationFactor: 5, numberOfShards: 99, enforceReplicationFactor: false}, {waitForSyncReplication: true});
         expect(db[cn1].properties()['replicationFactor']).to.equal(db[cn2].properties()['replicationFactor']);
         expect(db[cn1].properties()['numberOfShards']).to.equal(db[cn2].properties()['numberOfShards']);
         expect(db[cn2].properties()['distributeShardsLike']).to.equal(cn1);

@@ -98,7 +98,7 @@ checkBrowsers(paths.appPath, isInteractive)
         clearConsole();
       }
       console.log(chalk.cyan('Starting the development server...\n'));
-      openBrowser(urls.localUrlForBrowser);
+      openBrowser(urls.localUrlForBrowser + '_db/_system/_admin/aardvark/index.html');
     });
 
     ['SIGINT', 'SIGTERM'].forEach(function(sig) {

@@ -56,6 +56,9 @@ void IllegalDocumentOperation(GeneralRequest const&, int result) {}
 void QueryDocument(std::string const& db, std::string const&, std::string const&, int code) {}
 void QueryDocument(std::string const& db, VPackSlice const&, int code) {}
 void QueryDocument(GeneralRequest const&, GeneralResponse const*, VPackSlice const&) {}
+void CreateHotbackup(std::string const& id, int result) {}
+void RestoreHotbackup(std::string const& id, int result) {}
+void DeleteHotbackup(std::string const& id, int result) {}
 
 }  // namespace events
 }  // namespace arangodb

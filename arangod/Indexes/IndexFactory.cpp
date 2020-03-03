@@ -21,6 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IndexFactory.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FloatingPoint.h"
@@ -28,7 +30,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "IndexFactory.h"
 #include "Indexes/Index.h"
 #include "RestServer/BootstrapFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -44,6 +45,9 @@
 namespace {
 
 struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
+  InvalidIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : IndexTypeFactory(server) {}
+
   bool equal(arangodb::velocypack::Slice const&,
              arangodb::velocypack::Slice const&) const override {
     return false;  // invalid definitions are never equal
@@ -70,11 +74,12 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
   }
 };
 
-InvalidIndexFactory const INVALID;
-
 }  // namespace
 
 namespace arangodb {
+
+IndexTypeFactory::IndexTypeFactory(application_features::ApplicationServer& server)
+    : _server(server) {}
 
 bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
                              arangodb::velocypack::Slice const& lhs,
@@ -169,12 +174,16 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
   return true;
 }
 
+IndexFactory::IndexFactory(application_features::ApplicationServer& server)
+    : _server(server),
+      _factories(),
+      _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
+
 void IndexFactory::clear() { _factories.clear(); }
 
 Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& factory) {
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if (server.hasFeature<BootstrapFeature>()) {
-    auto& feature = server.getFeature<BootstrapFeature>();
+  if (_server.hasFeature<BootstrapFeature>()) {
+    auto& feature = _server.getFeature<BootstrapFeature>();
     // ensure new factories are not added at runtime since that would require
     // additional locks
     if (feature.isReady()) {
@@ -263,7 +272,7 @@ const IndexTypeFactory& IndexFactory::factory(std::string const& type) const noe
   auto itr = _factories.find(type);
   TRI_ASSERT(itr == _factories.end() || false == !(itr->second));  // IndexFactory::emplace(...) inserts non-nullptr
 
-  return itr == _factories.end() ? INVALID : *(itr->second);
+  return itr == _factories.end() ? *_invalid : *(itr->second);
 }
 
 std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice definition,
