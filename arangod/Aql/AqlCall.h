@@ -50,14 +50,14 @@ struct AqlCall {
 
   AqlCall() = default;
   // Replacements for struct initialization
-  explicit AqlCall(size_t offset, Limit softLimit = Infinity{},
+  explicit constexpr AqlCall(size_t offset, Limit softLimit = Infinity{},
                    Limit hardLimit = Infinity{}, bool fullCount = false)
       : offset{offset}, softLimit{softLimit}, hardLimit{hardLimit}, fullCount{fullCount} {}
 
   enum class LimitType { SOFT, HARD };
-  AqlCall(size_t offset, bool fullCount, Infinity)
+  constexpr AqlCall(size_t offset, bool fullCount, Infinity)
       : offset{offset}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fullCount} {}
-  AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
+  constexpr AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
       : offset{offset},
         softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},
         hardLimit{limitType == LimitType::HARD ? Limit{limit} : Limit{Infinity{}}},

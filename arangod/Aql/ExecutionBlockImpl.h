@@ -51,10 +51,14 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
 class ShadowAqlItemRow;
-class ParallelUnsortedGatherExecutor;
+class MultiDependencySingleRowFetcher;
 
 template <typename T, typename... Es>
 constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
+
+template <typename Executor>
+static constexpr bool isMultiDepExecutor =
+    std::is_same_v<typename Executor::Fetcher, MultiDependencySingleRowFetcher>;
 
 /**
  * @brief This is the implementation class of AqlExecutionBlocks.
@@ -139,8 +143,20 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     DONE
   };
 
-  static constexpr bool isParallelExecutor =
-      is_one_of_v<Executor, ParallelUnsortedGatherExecutor>;
+  // Where Executors with a single dependency return an AqlCall, Executors with
+  // multiple dependencies return a partial map depIndex -> AqlCall.
+  // It may be empty. If the cardinality is greater than one, the calls will be
+  // executed in parallel.
+  // IMPORTANT: Are expected to be saved in increasing order (regarding dependency)
+  struct AqlCallSet {
+    struct DepCallPair {
+      size_t dependency{};
+      AqlCall call;
+    };
+    std::vector<DepCallPair> calls;
+  };
+
+  using AqlCallType = std::conditional_t<isMultiDepExecutor<Executor>, AqlCallSet, AqlCall>;
 
  public:
   /**
@@ -241,17 +257,17 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
   std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> executeFetcher(
-      AqlCallStack& stack, size_t const dependency);
+      AqlCallStack& stack, AqlCallType const& aqlCall);
 
-  std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> executeProduceRows(
+  std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);
 
   // execute a skipRowsRange call
   auto executeSkipRowsRange(typename Fetcher::DataRange& inputRange, AqlCall& call)
-      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType>;
 
   auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
-      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType>;
 
   /**
    * @brief Inner getSome() part, without the tracing calls.
@@ -348,11 +364,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   ExecState _execState;
 
-  AqlCall _upstreamRequest;
+  AqlCallType _upstreamRequest;
 
   AqlCall _clientRequest;
-
-  size_t _requestedDependency;
 
   // Only used in passthrough variant.
   // We track if we have reference the range's block

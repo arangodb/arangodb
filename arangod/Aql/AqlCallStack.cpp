@@ -87,6 +87,12 @@ void AqlCallStack::pushCall(AqlCall&& call) {
   _operations.push(call);
 }
 
+void AqlCallStack::pushCall(AqlCall const& call) {
+  // TODO is this correct on subqueries?
+  TRI_ASSERT(isRelevant());
+  _operations.push(call);
+}
+
 void AqlCallStack::stackUpMissingCalls() {
   while (!isRelevant()) {
     // For every depth, we add an additional default call.
