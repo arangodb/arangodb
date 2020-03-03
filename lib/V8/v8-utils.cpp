@@ -22,10 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
-#ifndef __cpp_lib_chrono
-// this macro is a c++20 feature... 
-#define __cpp_lib_chrono 1
-#endif
+#define arangodb_have_cpp_lib_chrono 1
 
 #include "v8-utils.h"
 

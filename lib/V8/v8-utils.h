@@ -110,7 +110,7 @@ void setConnectionToBeDeadInMS(uint64_t timeout);
 bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args);
 double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds);
 // You will only see this function if you #include <chrono>
-#ifdef __cpp_lib_chrono
+#ifdef arangodb_have_cpp_lib_chrono
 std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout);
 #endif
 
