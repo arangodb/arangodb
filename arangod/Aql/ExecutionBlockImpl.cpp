@@ -1229,14 +1229,7 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
   }
   // TODO: We only need to do this is the executor actually require to call.
   // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (is_one_of_v<Executor, LimitExecutor, ModificationExecutor<AllRowsFetcher, InsertModifier>,
-                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
-                            ModificationExecutor<AllRowsFetcher, RemoveModifier>,
-                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
-                            ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
-                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-                            ModificationExecutor<AllRowsFetcher, UpsertModifier>,
-                            ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>) {
+  if constexpr (std::is_same_v<Executor, LimitExecutor> || executorHasSideEffects<Executor>) {
     return FastForwardVariant::EXECUTOR;
   }
   return FastForwardVariant::FETCHER;
@@ -1676,6 +1669,16 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         case ExecState::CHECKCALL: {
           LOG_QUERY("cfe46", DEBUG)
               << printTypeInfo() << " determine next action on call " << clientCall;
+
+          if constexpr (executorHasSideEffects<Executor>) {
+            // If the executor has sideEffects, and we need to skip the results we would
+            // produce here because we actually skip the subquery, we instead do a
+            // hardLimit 0 (aka FastForward) call instead to the local Executor
+            if (stack.needToSkipSubquery()) {
+              _execState = ExecState::FASTFORWARD;
+              break;
+            }
+          }
           _execState = nextState(clientCall);
           break;
         }
@@ -1830,8 +1833,25 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         case ExecState::FASTFORWARD: {
           LOG_QUERY("96e2c", DEBUG)
               << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
+          AqlCall callCopy = clientCall;
+          if constexpr (executorHasSideEffects<Executor>) {
+            if (stack.needToSkipSubquery()) {
+              // Fast Forward call.
+              callCopy = AqlCall{0, false, 0, AqlCall::LimitType::HARD};
+            }
+          }
           auto [state, stats, skippedLocal, call, dependency] =
-              executeFastForward(_lastRange, clientCall);
+              executeFastForward(_lastRange, callCopy);
+          if constexpr (executorHasSideEffects<Executor>) {
+            if (!stack.needToSkipSubquery()) {
+              // We need to modify the original call.
+              clientCall = callCopy;
+            }
+            // else: We are bypassing the results.
+            // Do not count them here.
+          } else {
+            clientCall = callCopy;
+          }
 
           _requestedDependency = dependency;
           _skipped.didSkip(skippedLocal);
