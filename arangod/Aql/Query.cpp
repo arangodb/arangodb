@@ -1555,6 +1555,7 @@ transaction::Methods* Query::trx() const {
 
 transaction::Methods* Query::readOnlyTrx() {
   TRI_ASSERT(this->_state != QueryExecutionState::ValueType::EXECUTION);
+  TRI_ASSERT(_trx != nullptr);
   if (!_isAsyncQuery) {
     return _trx.get();
   }
