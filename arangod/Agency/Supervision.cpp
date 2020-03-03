@@ -176,7 +176,8 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _lastUpdateIndex(0),
       _haveAborts(false),
       _selfShutdown(false),
-      _upgraded(false) {}
+      _upgraded(false),
+      _nextServerCleanup() {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
@@ -863,7 +864,9 @@ void Supervision::run() {
               // 55 seconds is less than a minute, which fits to the
               // 60 seconds timeout in /_admin/cluster/health
 
-              if (_agent->leaderFor() > 600) {
+              // wait 5 min or until next scheduled run or at least 5 minutes
+              if (_agent->leaderFor() > 300 &&
+                  _nextServerCleanup < std::chrono::system_clock::now()) { 
                 cleanupExpiredServers(*_snapshot, _transient);
               }
 
@@ -1101,6 +1104,8 @@ std::unordered_map<ServerID, std::string> deletionCandidates (
 }
 
 void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transient) {
+
+  _nextServerCleanup = std::chrono::system_clock::now() + std::chrono::seconds(3600);
 
   auto servers = deletionCandidates(snapshot, transient, "DBServers");
   auto const& currentDatabases = snapshot("Current/Databases");

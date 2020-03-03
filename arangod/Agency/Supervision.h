@@ -253,7 +253,7 @@ class Supervision : public arangodb::CriticalThread {
   bool _selfShutdown;
 
   std::atomic<bool> _upgraded;
-
+  std::chrono::system_clock::time_point _nextServerCleanup;
 
   std::string serverHealth(std::string const&);
 
