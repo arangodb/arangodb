@@ -44,51 +44,81 @@
       }
 
       if (id === 'smartGraph') {
-        // TODO: to be implemented properly
-        // add css class to entry
-        $('#createGraph').addClass('active'); // TODO: check addClass?
-        this.setCacheModeState(true);
-        this.showSmartGraphRows();
+        this.setSmartGraphRows(true);
       } else if (id === 'satelliteGraph') {
-        // TODO: to be implemented properly
-        this.setCacheModeState(true);
-        this.hideSmartGraphRows();
+        this.setSatelliteGraphRows(true);
       } else if (id === 'createGraph') {
-        // TODO: to be implemented properly
-        this.setCacheModeState(false);
-        this.hideSmartGraphRows();
-        this.hideSatelliteGraphRows();
+        this.setGeneralGraphRows(false);
       }
     },
 
-    smartGraphRows: [
+    // rows that are valid for general, smart & satellite
+    generalGraphRows: [
       'row_general-numberOfShards',
       'row_general-replicationFactor',
-      'row_general-writeConcern',
-      'smartGraphInfo',
-      'row_new-numberOfShards',
-      'row_new-replicationFactor',
-      'row_new-writeConcern',
-      'row_new-smartGraphAttribute'
+      'row_general-writeConcern'
     ],
 
-    hideSatelliteGraphRows: function () {
-      // TODO: to be implemented
+    // rows that needs to be added while creating smarties
+    neededSmartGraphRows: [
+      'smartGraphInfo',
+      'row_new-smartGraphAttribute',
+      'row_new-numberOfShards',
+      'row_new-replicationFactor',
+      'row_new-writeConcern'
+    ],
+
+    // rows that needs to be hidden while creating satellites
+    notNeededSatelliteGraphRows: [
+      'row_general-numberOfShards',
+      'row_general-replicationFactor',
+      'row_general-writeConcern'
+    ],
+
+    setGeneralGraphRows: function (cache) {
+      this.setCacheModeState(cache);
+      this.hideSmartGraphRows();
+      _.each(this.generalGraphRows, function (rowId) {
+        $('#' + rowId).show();
+      });
     },
 
-    showSatelliteGraphRows: function () {
-      // TODO: to be implemented
-    },
+    setSatelliteGraphRows: function (cache) {
+      $('#createGraph').addClass('active');
+      this.setCacheModeState(cache);
 
-    hideSmartGraphRows: function () {
-      _.each(this.smartGraphRows, function (rowId) {
+      this.showGeneralGraphRows();
+      this.hideSmartGraphRows();
+      _.each(this.notNeededSatelliteGraphRows, function (rowId) {
         $('#' + rowId).hide();
       });
     },
 
-    showSmartGraphRows: function () {
-      _.each(this.smartGraphRows, function (rowId) {
+    setSmartGraphRows: function (cache) {
+      $('#createGraph').addClass('active');
+      this.setCacheModeState(cache);
+
+      this.hideGeneralGraphRows();
+      _.each(this.neededSmartGraphRows, function (rowId) {
         $('#' + rowId).show();
+      });
+    },
+
+    hideSmartGraphRows: function () {
+      _.each(this.neededSmartGraphRows, function (rowId) {
+        $('#' + rowId).hide();
+      });
+    },
+
+    showGeneralGraphRows: function () {
+      _.each(this.generalGraphRows, function (rowId) {
+        $('#' + rowId).show();
+      });
+    },
+
+    hideGeneralGraphRows: function () {
+      _.each(this.generalGraphRows, function (rowId) {
+        $('#' + rowId).hide();
       });
     },
 
@@ -715,6 +745,8 @@
             minReplicationFactor: parseInt($('#new-writeConcern').val()),
           };
         }
+      } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
+        newCollectionObject.replicationFactor = "satellite";
       } else {
         if (frontendConfig.isCluster) {
           if ($('#general-numberOfShards').val().length > 0) {
@@ -796,10 +828,11 @@
       });
       this.counter = 0;
 
+      // edit graph section
       if (graph) {
         if (isSmart) {
           title = 'Edit Smart Graph';
-        } else if (isSatelite) {
+        } else if (isSatellite) {
           title = 'Edit Satellite Graph';
         } else {
           title = 'Edit Graph';
@@ -876,6 +909,7 @@
           window.modalView.createSuccessButton('Save', this.saveEditedGraph.bind(this))
         );
       } else {
+        // create graph section
         title = 'Create Graph';
 
         tableContent.push(
@@ -1107,6 +1141,7 @@
 
       if ($('#tab-createGraph').parent().hasClass('active')) {
         // hide them by default, as we're showing general graph as default
+        // satellite does not need to appear here as it has no additional input fields
         self.hideSmartGraphRows();
       }
 
