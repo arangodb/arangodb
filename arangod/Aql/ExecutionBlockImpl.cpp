@@ -126,9 +126,6 @@ class TestLambdaSkipExecutor;
 }  // namespace arangodb
 #endif
 
-template <typename T, typename... Es>
-constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
-
 /*
  * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
@@ -1230,12 +1227,23 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
       //       to fit all inputs, in particular the one executed below
       TRI_ASSERT(dependency < _dependencies.size());
       _lastRange.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
-
-      auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, stack);
-
-      _lastRange.setDependency(dependency, range);
-
-      return {state, skipped, _lastRange};
+      if constexpr (!isParallelExecutor) {
+        auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, stack);
+        _lastRange.setDependency(dependency, range);
+        return {state, skipped, _lastRange};
+      } else {
+        _callsInFlight.resize(_dependencyProxy.numberDependencies());
+        if (!_callsInFlight[dependency].has_value()) {
+          _callsInFlight[dependency] = stack;
+        }
+        TRI_ASSERT(_callsInFlight[dependency].has_value());
+        auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, _callsInFlight[dependency].value());
+        if (state != ExecutionState::WAITING) {
+          _callsInFlight[dependency] = std::nullopt;
+        }
+        _lastRange.setDependency(dependency, range);
+        return {state, skipped, _lastRange};
+      }
     } else {
       return _rowFetcher.execute(stack);
     }
@@ -1251,6 +1259,7 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
     -> std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> {
   if constexpr (isNewStyleExecutor<Executor>) {
     if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>) {
+      input.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
       return _executor.produceRows(input, output);
     } else if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
       // The SubqueryExecutor has it's own special handling outside.
@@ -1646,9 +1655,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
         case ExecState::SKIP: {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          size_t offsetBefore = clientCall.getOffset();
+          auto const offsetBefore = clientCall.getOffset();
           TRI_ASSERT(offsetBefore > 0);
-          size_t canPassFullcount =
+          bool const canPassFullcount =
               clientCall.getLimit() == 0 && clientCall.needsFullCount();
 #endif
           LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
@@ -1661,7 +1670,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
             // NOTE: The subquery Executor will by itself call EXECUTE on it's
             // subquery. This can return waiting => we can get a WAITING state
-            // here. We can only get the waiting state for SUbquery executors.
+            // here. We can only get the waiting state for Subquery executors.
             ExecutionState subqueryState = ExecutionState::HASMORE;
             std::tie(subqueryState, stats, skippedLocal, call) =
                 _executor.skipRowsRange(_lastRange, clientCall);

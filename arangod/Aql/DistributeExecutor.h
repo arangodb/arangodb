@@ -116,9 +116,9 @@ class DistributeExecutor {
 
     std::deque<std::pair<SharedAqlItemBlockPtr, std::vector<size_t>>> _queue;
 
-    // This is unique_ptr to get away with everything beeing forward declared...
+    // This is unique_ptr to get away with everything being forward declared...
     std::unique_ptr<ExecutionBlock> _executor;
-    bool _executorHasMore;
+    bool _executorHasMore = false;
   };
 
   DistributeExecutor(DistributeExecutorInfos const& infos);

@@ -100,7 +100,8 @@ class ParallelUnsortedGatherExecutor {
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t>;
 
  private:
-  auto upstreamCall(AqlCall const& clientCall) const noexcept -> AqlCall;
+  auto upstreamCallSkip(AqlCall const& clientCall) const noexcept -> AqlCall;
+  auto upstreamCallProduce(AqlCall const& clientCall) const noexcept -> AqlCall;
 };
 
 }  // namespace aql
