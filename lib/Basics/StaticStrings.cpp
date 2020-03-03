@@ -239,7 +239,7 @@ std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::Satellite("satellite");
 std::string const StaticStrings::WriteConcern("writeConcern");
-std::string const StaticStrings::Validators("validators");
+std::string const StaticStrings::Validation("validation");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

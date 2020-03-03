@@ -1,5 +1,12 @@
 devel
 -----
+* Added JSON-Schema (draft-4) document validation. The validation can be
+  specified by providing the new `validation` collection property.
+
+      db.mycollection.properties({ validation: {
+        rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
+        message : "Json-Schema validation failed"
+      }})
 
 * Fix supervision mode detection when unlocking agency in hot backup
 

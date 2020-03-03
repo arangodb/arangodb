@@ -21,17 +21,14 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#include <Logger/LogMacros.h>
-#include <tao/json/jaxn/to_string.hpp>
-static bool debug = false;
-#endif
 
 #include "Validators.h"
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
+#include <Logger/LogMacros.h>
 
 #include <tao/json/contrib/schema.hpp>
+#include <tao/json/jaxn/to_string.hpp>
 #include <validation/validation.hpp>
 
 namespace arangodb {
@@ -146,9 +143,7 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
   }
 
   auto taoRuleValue = validation::slice_to_value(ruleBuilder.slice());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_DEVEL_IF(debug) << tao::json::jaxn::to_string(taoRuleValue,2);
-#endif
+  LOG_TOPIC("aa245", TRACE, arangodb::Logger::VALIDATION) << "using schema: " << tao::json::jaxn::to_string(taoRuleValue,2);
   _schema = std::make_shared<tao::json::schema>(taoRuleValue);
   _builder.add(rule);
 }

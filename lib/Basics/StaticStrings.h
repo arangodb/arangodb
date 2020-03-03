@@ -222,7 +222,7 @@ class StaticStrings {
   static std::string const Sharding;
   static std::string const Satellite;
   static std::string const WriteConcern;
-  static std::string const Validators;
+  static std::string const Validation;
 
   // graph attribute names
   static std::string const GraphCollection;
