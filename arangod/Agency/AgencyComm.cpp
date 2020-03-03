@@ -975,7 +975,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
     transaction.toVelocyPack(builder);
   }
 
-  LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM)
+  LOG_TOPIC("4e477", TRACE, Logger::AGENCYCOMM)
       << "sending " << builder.toJson() << "'" << url << "'";
 
   AgencyCommResult result =
@@ -1206,7 +1206,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   if (method == arangodb::rest::RequestType::POST) {
     if (isWriteTrans) {
-      LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+      LOG_TOPIC("4e44e", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
           << "sending write transaction with POST " << inBody.toJson() << " '"
           << initialUrl << "'";
       result = comm.withSkipScheduler(true)
@@ -1214,7 +1214,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                                          std::move(buffer))
                    .get();
     } else {
-      LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+      LOG_TOPIC("4e44f", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
           << "sending non-write transaction with POST " << inBody.toJson()
           << " '" << initialUrl << "'";
       result = comm.withSkipScheduler(true)
@@ -1224,7 +1224,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                    .get();
     }
   } else if (method == arangodb::rest::RequestType::GET) {
-    LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+    LOG_TOPIC("4e448", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
         << "sending transaction with GET " << inBody.toJson() << " '"
         << initialUrl << "'";
     result = comm.withSkipScheduler(true)

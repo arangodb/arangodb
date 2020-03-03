@@ -144,12 +144,12 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
   // check for conditions to abort
   auto waitTime = agencyAsyncWaitTime(meta);
   if (agencyAsyncShouldCancel(man, meta)) {
-    LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
+    LOG_TOPIC("aac82", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because cancelled";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
-    LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
+    LOG_TOPIC("aac81", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because timeout";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
@@ -228,12 +228,12 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
   // check for conditions to abort
   auto waitTime = agencyAsyncWaitTime(meta);
   if (agencyAsyncShouldCancel(man, meta)) {
-    LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
+    LOG_TOPIC("aac84", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because cancelled";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
-    LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
+    LOG_TOPIC("aac85", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because timeout";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
@@ -274,7 +274,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
       switch (result.error) {
         case fuerte::Error::NoError:
 
-          LOG_TOPIC("aac84", TRACE, Logger::AGENCYCOMM)
+          LOG_TOPIC("aac88", TRACE, Logger::AGENCYCOMM)
               << "agencyAsyncSend [" << meta.requestId
               << "] communication successful, statusCode: " << resp->statusCode();
 
@@ -316,7 +316,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
           [[fallthrough]];
         case fuerte::Error::CouldNotConnect:
           if (meta.isRetryOnNoResponse()) {
-            LOG_TOPIC("aac81", TRACE, Logger::AGENCYCOMM)
+            LOG_TOPIC("aac90", TRACE, Logger::AGENCYCOMM)
                 << "agencyAsyncSend [" << meta.requestId << "] retry request soon";
             // retry to send the request
             man.reportError(endpoint);
@@ -328,7 +328,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
       }
 
       // return the result as is
-      LOG_TOPIC("aac82", DEBUG, Logger::AGENCYCOMM)
+      LOG_TOPIC("aac8a", DEBUG, Logger::AGENCYCOMM)
           << "agencyAsyncSend [" << meta.requestId << "] finished agency request";
       return futures::makeFuture(AsyncAgencyCommResult{result.error, std::move(resp)});
     });
@@ -360,12 +360,12 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
                          std::move(body))
       .then([requestId](futures::Try<AsyncAgencyCommResult>&& e) {
         if (e.hasException()) {
-          LOG_TOPIC("aac82", DEBUG, Logger::AGENCYCOMM)
+          LOG_TOPIC("aac8b", DEBUG, Logger::AGENCYCOMM)
               << "sendWithFailover [" << requestId << "] had exception during request";
           try {
             e.throwIfFailed();
           } catch (const std::exception& e) {
-            LOG_TOPIC("aac82", DEBUG, Logger::AGENCYCOMM)
+            LOG_TOPIC("aac8c", DEBUG, Logger::AGENCYCOMM)
                 << "sendWithFailover [" << requestId << "] message: " << e.what();
             throw e;
           }

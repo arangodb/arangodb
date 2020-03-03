@@ -335,7 +335,7 @@ function ActiveFailoverSuite() {
           return ;
         }
         print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
-        internal.wait(5); // settle down
+        internal.wait(1); // settle down
       } while(i --> 0);
 
       let endpoints = getClusterEndpoints();
