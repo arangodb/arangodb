@@ -1278,7 +1278,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
           _lastRange.setDependency(dependency, range);
         }
       }
-      auto const state = std::invoke([&](){
+      auto const state = std::invoke([&]() {
         TRI_ASSERT(!(allAskedDepsAreWaiting && allUpstreamDepsAreDone));
         if (allAskedDepsAreWaiting) {
           return ExecutionState::WAITING;
@@ -1852,6 +1852,19 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             clientCall = _outputItemRow->getClientCall();
           }
 
+          auto const executorNeedsCall = [&]() -> bool {
+            if constexpr (isMultiDepExecutor<Executor>) {
+              // call is an AqlCallSet. We need to call upstream if it's not empty.
+              return !call.empty();
+            } else {
+              // call is an AqlCall, unconditionally. The current convention is
+              // to call upstream when there is no input left.
+              // This could be made unnecessary by returning an optional AqlCall
+              // for single-dependency executors.
+              return !lastRangeHasDataRow();
+            }
+          };
+
           if (state == ExecutorState::DONE) {
             _execState = ExecState::FASTFORWARD;
           } else if ((Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable ||
@@ -1861,7 +1874,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // In all other branches only if the client Still needs more data.
             _execState = ExecState::DONE;
             break;
-          } else if (clientCall.getLimit() > 0 && !lastRangeHasDataRow()) {
+          } else if (clientCall.getLimit() > 0 && executorNeedsCall()) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
             _upstreamRequest = call;
