@@ -184,15 +184,18 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     // traverser now has next v, e, p values
     if (_infos.useVertexOutput()) {
       AqlValue vertex = _traverser.lastVertexToAqlValue();
+      AqlValueGuard guard{vertex, true};
       output.cloneValueInto(_infos.vertexRegister(), _inputRow, vertex);
     }
     if (_infos.useEdgeOutput()) {
       AqlValue edge = _traverser.lastEdgeToAqlValue();
+      AqlValueGuard guard{edge, true};
       output.cloneValueInto(_infos.edgeRegister(), _inputRow, edge);
     }
     if (_infos.usePathOutput()) {
       transaction::BuilderLeaser tmp(_traverser.trx());
       AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
+      AqlValueGuard guard{path, true};
       output.cloneValueInto(_infos.pathRegister(), _inputRow, path);
     }
     output.advanceRow();
