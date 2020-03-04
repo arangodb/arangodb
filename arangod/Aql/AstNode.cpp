@@ -1585,12 +1585,33 @@ bool AstNode::willUseV8() const {
     // check if the called function is one of them
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
-
+    
     if (func->implementation == nullptr) {
-      // a function without a V8 implementation
+      // a function without a C++ implementation
       setFlag(DETERMINED_V8, VALUE_V8);
       return true;
     }
+    
+    if (func->name == "CALL" || func->name == "APPLY") {
+      // CALL and APPLY can call arbitrary other functions...
+      if (numMembers() > 0 && getMemberUnchecked(0)->isStringValue()) {
+        auto s = getMemberUnchecked(0)->getStringRef();
+        if (s.find(':') != std::string::npos) {
+          // a user-defined function.
+          // this will use V8
+          setFlag(DETERMINED_V8, VALUE_V8);
+          return true;
+        }
+        // fallthrough intentional
+      } else {
+        // we are unsure about what function will be called by 
+        // CALL and APPLY. We cannot rule out user-defined functions,
+        // so we assume the worst case here
+        setFlag(DETERMINED_V8, VALUE_V8);
+        return true;
+      }
+    }
+
   }
 
   size_t const n = numMembers();
