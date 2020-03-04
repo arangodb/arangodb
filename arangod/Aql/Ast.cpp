@@ -1149,7 +1149,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
     cache.try_emplace(slice, member);
   }
 
-  auto node = createNodeArray(cache.size() + nr);
+  auto node = createNodeArray(nl);
 
   for (size_t i = 0; i < nr; ++i) {
     auto member = rhs->getMemberUnchecked(i);
@@ -1157,8 +1157,12 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
 
     auto it = cache.find(slice);
 
-    if (it != cache.end()) {
+    if (it != cache.end() &&
+        (*it).second != nullptr) {
+      // add to output
       node->addMember((*it).second);
+      // make sure we don't add the same value again
+      (*it).second = nullptr;
     }
   }
 
@@ -3736,13 +3740,7 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t
   // convert name to upper case
   std::transform(functionName.begin(), functionName.end(), functionName.begin(), ::toupper);
 
-  if (functionName.find(':') == std::string::npos) {
-    // prepend default namespace for internal functions
-    return std::make_pair(std::move(functionName), true);
-  }
-
-  // user-defined function
-  return std::make_pair(std::move(functionName), false);
+  return std::make_pair(std::move(functionName), functionName.find(':') == std::string::npos);
 }
 
 /// @brief create a node of the specified type

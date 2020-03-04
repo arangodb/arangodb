@@ -18,19 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_PLAIN_BUCKET_H
 #define ARANGODB_CACHE_PLAIN_BUCKET_H
 
-#include "Basics/Common.h"
+#include <atomic>
+#include <cstdint>
+
 #include "Cache/BucketState.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
-
-#include <stdint.h>
-#include <atomic>
 
 namespace arangodb {
 namespace cache {
@@ -47,11 +46,11 @@ namespace cache {
 struct PlainBucket {
   BucketState _state;
 
-  uint32_t _paddingExplicit;  // fill 4-byte gap for alignment purposes
+  std::uint32_t _paddingExplicit;  // fill 4-byte gap for alignment purposes
 
   // actual cached entries
-  static constexpr size_t slotsData = 10;
-  uint32_t _cachedHashes[slotsData];
+  static constexpr std::size_t slotsData = 10;
+  std::uint32_t _cachedHashes[slotsData];
   CachedValue* _cachedData[slotsData];
 
 // padding, if necessary?
@@ -67,7 +66,7 @@ struct PlainBucket {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempt to lock bucket (failing after maxTries attempts).
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(uint64_t maxTries);
+  bool lock(std::uint64_t maxTries);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlock the bucket. Requires bucket to be locked.
@@ -100,7 +99,8 @@ struct PlainBucket {
   /// bucket to allow basic LRU semantics. If no matching entry is found,
   /// nothing will be changed and a nullptr will be returned.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* find(uint32_t hash, void const* key, size_t keySize, bool moveToFront = true);
+  CachedValue* find(std::uint32_t hash, void const* key, std::size_t keySize,
+                    bool moveToFront = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts a given value. Requires state to be locked.
@@ -113,7 +113,7 @@ struct PlainBucket {
   /// the bucket is full, the user should evict an item and specify the
   /// optimizeForInsertion flag to be true.
   //////////////////////////////////////////////////////////////////////////////
-  void insert(uint32_t hash, CachedValue* value);
+  void insert(std::uint32_t hash, CachedValue* value);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Removes an item with the given key if one exists. Requires state to
@@ -124,7 +124,7 @@ struct PlainBucket {
   /// to the value. Upon removal, the empty slot generated is moved to the back
   /// of the bucket (to remove the gap).
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* remove(uint32_t hash, void const* key, size_t keySize);
+  CachedValue* remove(std::uint32_t hash, void const* key, std::size_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Searches for the best candidate in the bucket to evict. Requires
@@ -154,7 +154,7 @@ struct PlainBucket {
   void clear();
 
  private:
-  void moveSlot(size_t slot, bool moveToFront);
+  void moveSlot(std::size_t slot, bool moveToFront);
 };
 
 // ensure that PlainBucket is exactly BUCKET_SIZE

@@ -41,7 +41,13 @@ class ArrayIterator : public std::iterator<std::forward_iterator_tag, Slice> {
  public:
   using iterator_category = std::forward_iterator_tag;
 
+  struct Empty {};
+
   ArrayIterator() = delete;
+
+  // optimization for an empty array
+  explicit ArrayIterator(Empty) noexcept
+      : _slice(Slice::emptyArraySlice()), _size(0), _position(0), _current(nullptr), _first(nullptr) {}
 
   explicit ArrayIterator(Slice slice)
       : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
