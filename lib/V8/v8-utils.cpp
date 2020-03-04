@@ -205,37 +205,37 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
 ////////////////////////////////////////////////////////////////////////////////
-static std::atomic<double> connectionToBeDeadAt(0.0);
-void setConnectionToBeDeadInMS(uint64_t timeout) {
+static std::atomic<double> executionDeadline(0.0);
+void setExecutionDeadlineInMS(uint64_t timeout) {
   if (timeout == 0) {
-    connectionToBeDeadAt = 0.0;
+    executionDeadline = 0.0;
   } else {
-    connectionToBeDeadAt = TRI_microtime() + timeout / 1000;
+    executionDeadline = TRI_microtime() + timeout / 1000;
   }
 }
 
-static void JS_SetConnectionsToBeDeadIn(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_SetExecutionDeatlineTo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // extract arguments
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("SetConnectionsToBeDeadIn(<timeout>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("SetGlobalExecutionDeadlineTo(<timeout>)");
   }
 
-  auto when = connectionToBeDeadAt.load();
+  auto when = executionDeadline.load();
   auto now = TRI_microtime();
 
   auto n = TRI_ObjectToUInt64(isolate, args[0], false);
-  setConnectionToBeDeadInMS(n);
+  setExecutionDeadlineInMS(n);
 
-  TRI_V8_RETURN_BOOL((when != 0.0) && (now - when > 0.0) );
+  TRI_V8_RETURN_BOOL((when > 0.00001) && (now - when > 0.0) );
   TRI_V8_TRY_CATCH_END
 }
 
-bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  auto when = connectionToBeDeadAt.load();
-  if (when == 0.0) {
+bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  auto when = executionDeadline.load();
+  if (when < 0.00001) {
     return false;
   }
   auto now = TRI_microtime();
@@ -244,13 +244,13 @@ bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto isolate = args.GetIsolate();
-  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, "Timeout for remote!", true);
+  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, "Deadline for remote reached!", true);
   return true;
 }
 
-double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds) {
-  auto when = connectionToBeDeadAt.load();
-  if (when == 0.0) {
+double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
+  auto when = executionDeadline.load();
+  if (when < 0.00001) {
     return timeoutSeconds;
   }
   auto now = TRI_microtime();
@@ -261,11 +261,11 @@ double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds) {
   return delta;
 }
 
-std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout) {
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout) {
   using namespace std::chrono;
 
-  double epochDoubleWhen = connectionToBeDeadAt.load();
-  if (epochDoubleWhen == 0.0) {
+  double epochDoubleWhen = executionDeadline.load();
+  if (epochDoubleWhen < 0.00001) {
     return timeout;
   }
 
@@ -744,7 +744,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
   TRI_GET_GLOBALS();
@@ -890,7 +890,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                                               options, "timeout"));
       }
     }
-    timeout = getMaxTimeoutConnectionToBeDeadS(timeout);
+    timeout = correctTimeoutToExecutionDeadlineS(timeout);
 
     // return body as a buffer?
     if (TRI_HasProperty(context, isolate, options, "returnBodyAsBuffer")) {
@@ -3961,7 +3961,7 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -3970,7 +3970,7 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sleep(<seconds>)");
   }
 
-  double n = TRI_ObjectToDouble(isolate, args[0]);
+  double n = correctTimeoutToExecutionDeadlineS(TRI_ObjectToDouble(isolate, args[0]));
   double until = TRI_microtime() + n;
 
   while (true) {
@@ -4018,7 +4018,7 @@ static void JS_Time(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -4027,7 +4027,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("wait(<seconds>, <gc>)");
   }
 
-  double n = TRI_ObjectToDouble(isolate, args[0]);
+  double n = correctTimeoutToExecutionDeadlineS(TRI_ObjectToDouble(isolate, args[0]));
 
   bool gc = true;  // default is to trigger the gc
   if (args.Length() > 1) {
@@ -5704,8 +5704,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_DOWNLOAD"), JS_Download);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_UNTIL"),
-                               JS_SetConnectionsToBeDeadIn);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
+                               JS_SetExecutionDeatlineTo);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_EXECUTE"), JS_Execute);
   TRI_AddGlobalFunctionVocbase(isolate,

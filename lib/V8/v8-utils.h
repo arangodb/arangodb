@@ -107,10 +107,10 @@ static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
 ////////////////////////////////////////////////////////////////////////////////
-void setConnectionToBeDeadInMS(uint64_t timeout);
-bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args);
-double getMaxTimeoutConnectionToBeDeadS(double timeoutSeconds);
-std::chrono::milliseconds getMaxTimeoutConnectionToBeDead(std::chrono::milliseconds timeout);
+void setExecutionDeadlineInMS(uint64_t timeout);
+bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args);
+double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reports an exception

@@ -455,7 +455,7 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
 static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -567,7 +567,7 @@ static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
   // get the connection
@@ -620,7 +620,7 @@ static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> con
                                          bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -675,7 +675,7 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
                                            bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -734,7 +734,7 @@ static void ClientConnection_httpOptionsAny(v8::FunctionCallbackInfo<v8::Value> 
                                             bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -789,7 +789,7 @@ static void ClientConnection_httpPostAny(v8::FunctionCallbackInfo<v8::Value> con
                                          bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -843,7 +843,7 @@ static void ClientConnection_httpPutAny(v8::FunctionCallbackInfo<v8::Value> cons
                                         bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -899,7 +899,7 @@ static void ClientConnection_httpPatchAny(v8::FunctionCallbackInfo<v8::Value> co
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
   // get the connection
@@ -952,7 +952,7 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1010,7 +1010,7 @@ static void ClientConnection_getEndpoint(v8::FunctionCallbackInfo<v8::Value> con
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
   // get the connection
@@ -1044,7 +1044,7 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
   if (args.Length() < 2) {
@@ -1155,7 +1155,7 @@ static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
   if (args.Length() < 2) {
@@ -1232,7 +1232,7 @@ static void ClientConnection_lastHttpReturnCode(v8::FunctionCallbackInfo<v8::Val
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1261,7 +1261,7 @@ static void ClientConnection_lastErrorMessage(v8::FunctionCallbackInfo<v8::Value
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1290,7 +1290,7 @@ static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> con
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1321,7 +1321,7 @@ static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1359,7 +1359,7 @@ static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1400,7 +1400,7 @@ static void ClientConnection_toString(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1440,7 +1440,7 @@ static void ClientConnection_getVersion(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1468,7 +1468,7 @@ static void ClientConnection_getMode(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1496,7 +1496,7 @@ static void ClientConnection_getRole(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1524,7 +1524,7 @@ static void ClientConnection_getDatabaseName(v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1552,7 +1552,7 @@ static void ClientConnection_setDatabaseName(v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (isConnectionToBeDead(args)) {
+  if (isExecutionDeadlineReached(args)) {
     return;
   }
 
@@ -1749,7 +1749,7 @@ again:
     }
   }
   req->timeout(
-      getMaxTimeoutConnectionToBeDead(
+      correctTimeoutToExecutionDeadline(
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
@@ -1833,7 +1833,7 @@ again:
     req->header.acceptType(fu::ContentType::VPack);
   }
   req->timeout(
-      getMaxTimeoutConnectionToBeDead(
+      correctTimeoutToExecutionDeadline(
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();

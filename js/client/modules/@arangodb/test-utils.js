@@ -37,7 +37,7 @@ const sleep = require('internal').sleep;
 const download = require('internal').download;
 const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
-const setTotalTimeout = require('internal').setTotalTimeout;
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -889,9 +889,9 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
   
   try {
-    setTotalTimeout(options.oneTestTimeout * 1000);
+    SetGlobalExecutionDeadlineTo(options.oneTestTimeout * 1000);
     let result = testFunc();
-    let timeout = setTotalTimeout(0.0);
+    let timeout = SetGlobalExecutionDeadlineTo(0.0);
     if (timeout) {
       return {
         timeout: true,
