@@ -28,6 +28,10 @@ attribute(s)
   additional journals or datafiles that are created. Already
   existing journals or datafiles will not be affected.
 
+- *validation*: Object that specifies the collection level document valiation.
+  The keys `rule`, `level` and `message` must follow the rules documented in
+  [Document Validation](document-validation.html)
+
 On success an object with the following attributes is returned:
 
 - *id*: The identifier of the collection.
@@ -61,6 +65,9 @@ On success an object with the following attributes is returned:
     *false*, then the key generator is solely responsible for
     generating keys and supplying own key values in the *_key* attribute
     of documents is considered an error.
+
+- *validation*: Object describing the document validation used for this
+  collection.
 
 **Note**: except for *waitForSync*, *journalSize* and *name*, collection
 properties **cannot be changed** once a collection is created. To rename

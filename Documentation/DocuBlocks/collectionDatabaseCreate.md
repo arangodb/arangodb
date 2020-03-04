@@ -112,6 +112,11 @@ to the [naming conventions](../NamingConventions/README.md).
   time.
   This option is meaningful for the MMFiles storage engine only.
 
+* *validation* (optional, default is *null*, **rocksdb-only**): 
+  Object that specifies the collection level document valiation. The keys
+  `rule`, `level` and `message` must follow the rules documented in
+  [Document Validation](document-validation.html)
+
 `db._create(collection-name, properties, type)`
 
 Specifies the optional *type* of the collection, it can either be *document* 

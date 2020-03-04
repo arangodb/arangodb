@@ -44,6 +44,11 @@ Returns an object containing all collection properties.
   Changes (see below) are applied when the collection is loaded the next
   time.
 
+* *validation* (optional, default is *null*, **rocksdb-only**): 
+  Object that specifies the collection level document valiation. The keys
+  `rule`, `level` and `message` must follow the rules documented in
+  [Document Validation](document-validation.html)
+
 In a cluster setup, the result will also contain the following attributes:
 
 * *numberOfShards*: the number of shards of the collection.
