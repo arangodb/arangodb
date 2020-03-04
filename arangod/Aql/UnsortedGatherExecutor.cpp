@@ -94,30 +94,38 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   // First try to skip upstream.
   auto skipped = size_t{0};
 
-  if (call.needSkipMore()) {
-    skipped = input.skipForDependency(currentDependency(), call.getOffset());
+  while (call.needSkipMore()) {
+    LOG_DEVEL << "need to skip more: " << call.getOffset();
+
+    auto skippedHere = input.skipForDependency(currentDependency(), call.getOffset());
+    call.didSkip(skippedHere);
+    skipped += skippedHere;
+
+    LOG_DEVEL << "skipped: " << skipped << " " << call.getOffset();
 
     // Skip over dependencies that are DONE, they cannot skip more
     while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+      LOG_DEVEL << " advance dep";
       advanceDependency();
     }
 
-    // If we have not hit the last dependency and need to skip more still, let
-    // upstream handle the skip
-    if (!done() && call.needSkipMore()) {
-      auto callSet = AqlCallSet{};
-      callSet.calls.emplace_back(
-          AqlCallSet::DepCallPair{currentDependency(), AqlCall{call.getOffset(), 0, 0}});
-      return {ExecutorState::HASMORE, Stats{}, 0, callSet};
-    }
-
-    // We are done() or don't need to skip more
     if (done()) {
-      return {ExecutorState::DONE, Stats{}, 0, AqlCallSet{}};
+      return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
     } else {
-      return {ExecutorState::HASMORE, Stats{}, 0, callSet};
+      // Ask for more skips
+      if (call.needSkipMore()) {
+        LOG_DEVEL << " skipping some more, asking dep " << call.getOffset();
+        auto callSet = AqlCallSet{};
+        callSet.calls.emplace_back(
+            AqlCallSet::DepCallPair{currentDependency(), AqlCall{call.getOffset(), 0, 0}});
+        return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
+      } else {
+        return {ExecutorState::HASMORE, Stats{}, skipped, AqlCallSet{}};
+      }
     }
   }
+  TRI_ASSERT(false);
+  return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
 }
 
 auto UnsortedGatherExecutor::numDependencies() const
