@@ -32,7 +32,6 @@ namespace arangodb {
 
 namespace graph {
 struct BaseOptions;
-class SingleServerEdgeCursor;
 }  // namespace graph
 
 namespace traverser {

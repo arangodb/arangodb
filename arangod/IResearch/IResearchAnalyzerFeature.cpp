@@ -74,7 +74,6 @@
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Methods/Collections.h"
 

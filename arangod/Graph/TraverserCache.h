@@ -32,8 +32,6 @@
 #include <unordered_set>
 
 namespace arangodb {
-class ManagedDocumentResult;
-class StringHeap;
 
 namespace transaction {
 class Methods;

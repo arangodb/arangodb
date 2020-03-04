@@ -107,6 +107,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
   }
 
   // Add all Edge shards to the transaction
+  TRI_ASSERT(edgesSlice.isArray());
   for (VPackSlice const shardList : VPackArrayIterator(edgesSlice)) {
     TRI_ASSERT(shardList.isArray());
     for (VPackSlice const shard : VPackArrayIterator(shardList)) {
@@ -116,8 +117,10 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
   }
 
   // Add all Vertex shards to the transaction
+  TRI_ASSERT(vertexSlice.isObject());
   for (auto const& collection : VPackObjectIterator(vertexSlice)) {
     std::vector<std::string> shards;
+    TRI_ASSERT(collection.value.isArray());
     for (VPackSlice const shard : VPackArrayIterator(collection.value)) {
       TRI_ASSERT(shard.isString());
       std::string name = shard.copyString();
@@ -288,6 +291,15 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
+graph::EdgeCursor* BaseTraverserEngine::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
+  if (currentDepth >= _cursors.size()) {
+    _cursors.emplace_back(_opts->buildCursor(currentDepth));
+  }
+  graph::EdgeCursor* cursor = _cursors.at(currentDepth).get();
+  cursor->rearm(nextVertex, currentDepth);
+  return cursor;
+}
+
 void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
@@ -295,10 +307,9 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
   auto outputVertex = [this, depth](VPackBuilder& builder, VPackSlice vertex) {
     TRI_ASSERT(vertex.isString());
 
-    std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
-        _opts->nextCursor(arangodb::velocypack::StringRef(vertex), depth));
-      
-    edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
+    graph::EdgeCursor* cursor = getCursor(arangodb::velocypack::StringRef(vertex), depth);
+
+    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
         edge = _opts->cache()->lookupToken(eid);
       }
@@ -313,8 +324,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
 
   TRI_ASSERT(vertex.isString() || vertex.isArray());
   builder.openObject();
-  builder.add(VPackValue("edges"));
-  builder.openArray();
+  builder.add("edges", VPackValue(VPackValueType::Array));
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       outputVertex(builder, v);
@@ -409,6 +419,7 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
                                        std::shared_ptr<transaction::Context> const& ctx,
                                        arangodb::velocypack::Slice info, bool needToLock)
     : BaseEngine(vocbase, ctx, info, needToLock) {
+
   VPackSlice optsSlice = info.get(OPTIONS);
   if (optsSlice.isNone() || !optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -427,6 +438,9 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   _opts.reset(new ShortestPathOptions(_query, optsSlice, edgesSlice));
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
+  
+  _forwardCursor = _opts->buildCursor(false);
+  _backwardCursor = _opts->buildCursor(true);
 }
 
 ShortestPathEngine::~ShortestPathEngine() = default;
@@ -436,52 +450,18 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
   // Thanks locking
   TRI_ASSERT(vertex.isString() || vertex.isArray());
 
-  std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor;
-
   builder.openObject();
-  builder.add(VPackValue("edges"));
-  builder.openArray();
+  builder.add("edges", VPackValue(VPackValueType::Array));
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
-      if (!vertex.isString()) {
+      if (!v.isString()) {
         continue;
       }
-      TRI_ASSERT(v.isString());
-      // result.clear();
-      arangodb::velocypack::StringRef vertexId(v);
-      if (backward) {
-        edgeCursor.reset(_opts->nextReverseCursor(vertexId));
-      } else {
-        edgeCursor.reset(_opts->nextCursor(vertexId));
-      }
-
-      edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
-        if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid);
-        }
-        if (edge.isNull()) {
-          return;
-        }
-        builder.add(edge);
-      });
+      addEdgeData(builder, backward, arangodb::velocypack::StringRef(v));
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
-    arangodb::velocypack::StringRef vertexId(vertex);
-    if (backward) {
-      edgeCursor.reset(_opts->nextReverseCursor(vertexId));
-    } else {
-      edgeCursor.reset(_opts->nextCursor(vertexId));
-    }
-    edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
-      if (edge.isString()) {
-        edge = _opts->cache()->lookupToken(eid);
-      }
-      if (edge.isNull()) {
-        return;
-      }
-      builder.add(edge);
-    });
+    addEdgeData(builder, backward, arangodb::velocypack::StringRef(vertex));
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -490,6 +470,21 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
   builder.add("readIndex", VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
   builder.add("filtered", VPackValue(0));
   builder.close();
+}
+
+void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward, arangodb::velocypack::StringRef v) {
+  graph::EdgeCursor* cursor = backward ? _backwardCursor.get() : _forwardCursor.get();
+  cursor->rearm(v, 0);
+
+  cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
+    if (edge.isString()) {
+      edge = _opts->cache()->lookupToken(eid);
+    }
+    if (edge.isNull()) {
+      return;
+    }
+    builder.add(edge);
+  });
 }
 
 TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
