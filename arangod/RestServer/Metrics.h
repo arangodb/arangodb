@@ -40,7 +40,8 @@
 #include "counter.h"
 
 class Counter;
-template<typename T> class Histogram;
+enum Scale {LINEAR, LOGARITHMIC};
+template<typename T, Scale S> class Histogram;
 
 class Metric {
 public:
@@ -136,10 +137,19 @@ private:
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
+
+//template<typename T, Scale S> size_t bin(T const& t);
+
+template<typename T, Scale S>
+std::enable_if<std::is_same<S, LINEAR>::value, void>::type size_t bin() { return 0; }
+template<typename T, Scale S>
+std::enable_if<std::is_same<S, LOGARITHMIC>::value, void>::type size_t bin() { return 1; }
+
+
 /**
  * @brief Histogram functionality
  */
-template<typename T> class Histogram : public Metric {
+template<typename T, Scale S=LINEAR> class Histogram : public Metric {
 
 public:
 
@@ -228,7 +238,6 @@ private:
   size_t _n;
 
 };
-
 
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);
 template<typename T>
