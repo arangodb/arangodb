@@ -100,10 +100,6 @@ TYPED_TEST_P(EnumerateVectorLikeTest, test_vector_no_copy) {
 
 REGISTER_TYPED_TEST_CASE_P(EnumerateVectorLikeTest, test_vector_iterate, test_vector_modify, test_vector_no_copy);
 
-template<typename TT>
-class EnumerateVectorLikeTest : public ::testing::Test {};
-TYPED_TEST_CASE_P(EnumerateVectorLikeTest);
-
 using VectorLikeTypes = ::testing::Types<TemplateTemplateType<std::vector>, TemplateTemplateType<std::list>, TemplateTemplateType<std::deque>>;
 INSTANTIATE_TYPED_TEST_CASE_P(EnumerateVectorLikeTestInstant, EnumerateVectorLikeTest, VectorLikeTypes);
 #endif
