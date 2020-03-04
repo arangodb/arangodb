@@ -1151,7 +1151,7 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
     for (auto const& server : servers) {
       { VPackArrayBuilder ta(&trxs);
         auto const serverName = server.first;
-        LOG_TOPIC("fa76d", DEBUG, Logger::SUPERVISION) <<
+        LOG_TOPIC("f6a7d", DEBUG, Logger::SUPERVISION) <<
           "Removing long overdue coordinator " << serverName << "last seen: " << server.second;
         { VPackObjectBuilder ts(&trxs);
           trxs.add("/arango/Supervision/Health/" + serverName, del.slice());
