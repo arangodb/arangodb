@@ -166,7 +166,7 @@ Supervision::Supervision(application_features::ApplicationServer& server)
     : arangodb::CriticalThread(server, "Supervision"),
       _agent(nullptr),
       _spearhead(server, _agent),
-      _snapshot(_spearhead.node("/")),
+      _snapshot(nullptr),
       _transient("Transient"),
       _frequency(1.),
       _gracePeriod(10.),
@@ -832,7 +832,7 @@ void Supervision::run() {
       {
         MUTEX_LOCKER(locker, _lock);
 
-        if (isShuttingDown()) {
+        if (_snapshot != nullptr && isShuttingDown()) {
           handleShutdown();
         } else if (_selfShutdown) {
           shutdown = true;

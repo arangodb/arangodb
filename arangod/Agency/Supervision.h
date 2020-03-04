@@ -227,7 +227,7 @@ class Supervision : public arangodb::CriticalThread {
   Mutex _lock;   // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent; /**< @brief My agent */
   Store _spearhead;
-  std::shared_ptr<Node const> _snapshot;
+  Node const* _snapshot;
   Node _transient;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread

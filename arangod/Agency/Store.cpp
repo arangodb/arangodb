@@ -1051,6 +1051,6 @@ std::vector<std::string> Store::split(std::string const& str) {
 }
 
 
-std::shared_ptr<Node const> Store::node(std::string const& path) const {
-  return std::make_shared<Node const>(_node(path));
+Node const* Store::node(std::string const& path) const {
+  return &_node(path);
 }
