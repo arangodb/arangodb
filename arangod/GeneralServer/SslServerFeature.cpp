@@ -73,7 +73,8 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
       _sslProtocol(TLS_GENERIC),
       _sslOptions(asio_ns::ssl::context::default_workarounds |
                   asio_ns::ssl::context::single_dh_use),
-      _ecdhCurve("prime256v1") {
+      _ecdhCurve("prime256v1"),
+      _allowHttpProtocolNegotiation(true) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 }
@@ -116,6 +117,11 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--ssl.ecdh-curve",
       "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"",
       new StringParameter(&_ecdhCurve));
+
+  options->addOption(
+      "--ssl.allow-http-protocol-negotiation",
+      "Allows that the TLS handshake negotiates the HTTP protocol version",
+      new BooleanParameter(&_allowHttpProtocolNegotiation));
 }
 
 void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -334,7 +340,9 @@ std::shared_ptr<asio_ns::ssl::context> SslServerFeature::createSslContext() {
 
     sslContext->set_verify_mode(SSL_VERIFY_NONE);
 
-    SSL_CTX_set_alpn_select_cb(sslContext->native_handle(), alpn_select_proto_cb, NULL);
+    if (_allowHttpProtocolNegotiation) {
+      SSL_CTX_set_alpn_select_cb(sslContext->native_handle(), alpn_select_proto_cb, NULL);
+    }
 
     return sslContext;
   } catch (std::exception const& ex) {
