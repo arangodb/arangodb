@@ -472,6 +472,8 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -514,6 +516,8 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -556,6 +560,8 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);

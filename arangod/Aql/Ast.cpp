@@ -605,6 +605,16 @@ AstNode* Ast::createNodeSortElement(AstNode const* expression, AstNode const* as
   return node;
 }
 
+/// @brief create an AST parallel start
+AstNode* Ast::createNodeParallelStart() {
+  return createNode(NODE_TYPE_PARALLEL_START);
+}
+
+/// @brief create an AST parallel end
+AstNode* Ast::createNodeParallelEnd() {
+  return createNode(NODE_TYPE_PARALLEL_END);
+}
+
 /// @brief create an AST limit node
 AstNode* Ast::createNodeLimit(AstNode const* offset, AstNode const* count) {
   AstNode* node = createNode(NODE_TYPE_LIMIT);

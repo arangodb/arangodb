@@ -1517,6 +1517,11 @@ function processQuery(query, explain, planIndex) {
         return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
       case 'SubqueryEndNode':
         return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
+      case 'ParallelStartNode':
+        return keyword('PARALLEL');
+      case 'ParallelEndNode':
+        // nothing to print - line will be skipped
+        return '';
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1740,6 +1745,7 @@ function processQuery(query, explain, planIndex) {
       'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
+      'ParallelStartNode',
       'SubqueryStartNode',
       'SubqueryNode'].indexOf(node.type) !== -1) {
       level++;
@@ -1747,6 +1753,8 @@ function processQuery(query, explain, planIndex) {
       level = subqueries.pop();
     } else if (node.type === 'SingletonNode') {
       level++;
+    } else if (node.type === 'ParallelEndNode') {
+      --level;
     }
   };
 
@@ -1779,6 +1787,8 @@ function processQuery(query, explain, planIndex) {
     if (isCoordinator) {
       line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
     }
+        
+    let nodeLabel = label(node);
 
     if (profileMode) {
       if (node.calls === undefined) {
@@ -1796,17 +1806,20 @@ function processQuery(query, explain, planIndex) {
   
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
-        indent(level, node.type === 'SingletonNode') + label(node);
+        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ';
     } else {
-      line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
-        indent(level, node.type === 'SingletonNode') + label(node);
+      line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ';
     }
+        
+    line += indent(level, node.type === 'SingletonNode') + nodeLabel;
 
     if (node.type === 'CalculationNode') {
       line += variablesUsed() + constNess();
     }
-    stringBuilder.appendLine(line);
+    if (nodeLabel !== '') {
+      // don't print lines for ParallelEndNodes, as they are empty anyway
+      stringBuilder.appendLine(line);
+    }
     postHandle(node);
   };
 

@@ -1642,6 +1642,10 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
         break;
       }
 
+      if (current->getType() == EN::PARALLEL_START || current->getType() == EN::PARALLEL_END) {
+        break;
+      }
+
       if (current->getType() == EN::LIMIT) {
         if (!arangodb::ServerState::instance()->isCoordinator()) {
           // do not move calculations beyond a LIMIT on a single server,
@@ -1751,6 +1755,10 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
       }
 
       auto const currentType = current->getType();
+      
+      if (currentType == EN::PARALLEL_START || currentType == EN::PARALLEL_END) {
+        break;
+      }
 
       if (currentType == EN::FILTER || currentType == EN::SORT ||
           currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
@@ -4550,6 +4558,8 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
+        case EN::PARALLEL_START:
+        case EN::PARALLEL_END:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -6909,6 +6919,8 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       return true;
     case ExecutionNode::GATHER:
       // sorting gather is allowed
@@ -7464,6 +7476,8 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
     case ExecutionNode::NORESULTS:

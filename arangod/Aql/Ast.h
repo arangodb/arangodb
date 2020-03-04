@@ -184,6 +184,12 @@ class Ast {
 
   /// @brief create an AST sort element node
   AstNode* createNodeSortElement(AstNode const*, AstNode const*);
+  
+  /// @brief create an AST parallel start node
+  AstNode* createNodeParallelStart();
+  
+  /// @brief create an AST parallel end node
+  AstNode* createNodeParallelEnd();
 
   /// @brief create an AST limit node
   AstNode* createNodeLimit(AstNode const*, AstNode const*);

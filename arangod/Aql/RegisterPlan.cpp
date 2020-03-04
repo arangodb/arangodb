@@ -250,6 +250,8 @@ void RegisterPlan::after(ExecutionNode* en) {
     case ExecutionNode::GATHER:
     case ExecutionNode::REMOTE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
     case ExecutionNode::NORESULTS: {
       // these node types do not produce any new registers
       break;

@@ -314,7 +314,7 @@ bool RestAqlHandler::registerSnippets(
     }
 
     try {
-#warning NECESSARY?
+//#warning NECESSARY?
       /*if (needToLock) {
         // Directly try to lock only the first snippet is required to be locked.
         // For all others locking is pointless

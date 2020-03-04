@@ -164,6 +164,8 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
+    {static_cast<int>(NODE_TYPE_PARALLEL_START), "parallel start"},
+    {static_cast<int>(NODE_TYPE_PARALLEL_END), "parallel end"},
 };
 
 /// @brief names for AST node value types
@@ -581,6 +583,8 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_WITH:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_PARALLEL_START:
+    case NODE_TYPE_PARALLEL_END:
       break;
   }
 
@@ -701,7 +705,9 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_WITH:
-    case NODE_TYPE_FOR_VIEW: {
+    case NODE_TYPE_FOR_VIEW: 
+    case NODE_TYPE_PARALLEL_START:
+    case NODE_TYPE_PARALLEL_END: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -2363,6 +2369,8 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_PARALLEL_START:
+    case NODE_TYPE_PARALLEL_END:
       break;
   }
 
@@ -2539,6 +2547,8 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_PARALLEL_START:
+    case NODE_TYPE_PARALLEL_END:
       break;
   }
   return ret;

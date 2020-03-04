@@ -307,6 +307,12 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST LET node
   ExecutionNode* fromNodeLet(ExecutionNode*, AstNode const*);
+  
+  /// @brief create an execution plan element from an AST PARALLEL start node
+  ExecutionNode* fromNodeParallelStart(ExecutionNode*, AstNode const*);
+  
+  /// @brief create an execution plan element from an AST PARALLEL end node
+  ExecutionNode* fromNodeParallelEnd(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST SORT node
   ExecutionNode* fromNodeSort(ExecutionNode*, AstNode const*);
