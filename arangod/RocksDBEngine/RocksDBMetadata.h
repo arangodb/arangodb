@@ -118,7 +118,7 @@ struct RocksDBMetadata final {
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,
                                  bool force, arangodb::velocypack::Builder&,
-                                 rocksdb::SequenceNumber& appliedSeq,
+                                 rocksdb::SequenceNumber& appliedSeq, std::string& output,
                                  std::chrono::milliseconds maxWorkTime);
 
   /// @brief deserialize collection metadata, only called on startup

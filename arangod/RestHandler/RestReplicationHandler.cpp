@@ -3018,7 +3018,8 @@ void RestReplicationHandler::handleCommandRevisionTree() {
                   "could not generate revision tree");
     return;
   }
-  std::string result = tree->serialize();
+  std::string result;
+  tree->serialize(result);
 
   resetResponse(rest::ResponseCode::OK);
   _response->setContentType("application/octet-stream");

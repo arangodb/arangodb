@@ -452,10 +452,10 @@ std::string MerkleTree<BranchingBits, LockStripes>::toString() const {
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
-std::string MerkleTree<BranchingBits, LockStripes>::serialize() const {
+void MerkleTree<BranchingBits, LockStripes>::serialize(std::string& output) const {
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
-  return std::string(reinterpret_cast<char*>(_buffer.get()),
-                     allocationSize(meta().maxDepth));
+  TRI_ASSERT(output.empty());
+  output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>

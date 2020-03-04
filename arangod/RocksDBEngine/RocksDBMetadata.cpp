@@ -230,6 +230,7 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                       LogicalCollection& coll, bool force,
                                       VPackBuilder& tmp, rocksdb::SequenceNumber& appliedSeq,
+                                      std::string& output,
                                       std::chrono::milliseconds maxWorkTime) {
   TRI_ASSERT(appliedSeq != UINT64_MAX);
   TRI_ASSERT(appliedSeq > 0);
@@ -287,7 +288,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 3. store the index estimates
-  std::string output;
   auto indexes = coll.getIndexes();
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
@@ -326,6 +326,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   // Step 4. store the revision tree
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
     if (coll.syncByRevision()) {
+      output.clear();
       rocksdb::SequenceNumber seq =
           rcoll->serializeRevisionTree(output, maxCommitSeq, maxWorkTime);
       appliedSeq = std::min(appliedSeq, seq);

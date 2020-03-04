@@ -222,7 +222,7 @@ class MerkleTree {
    *
    * @return The serialization as a string
    */
-  std::string serialize() const;
+  void serialize(std::string& output) const;
 
  protected:
   explicit MerkleTree(std::string_view buffer);

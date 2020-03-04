@@ -462,7 +462,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (_logicalCollection.syncByRevision()) {
     auto appliedSeq = applyUpdates(commitSeq, maxWorkTime);
-    output = _revisionTree->serialize();
+    _revisionTree->serialize(output);
     return appliedSeq;
   }
   // mark as don't persist again, tree should be deleted now

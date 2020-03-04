@@ -438,7 +438,8 @@ TEST(MerkleTreeTest, test_fromBuffer) {
     t1.insert(2 * i, TRI_FnvHashPod(2 * i));
   }
 
-  std::string t1s = t1.serialize();
+  std::string t1s;
+  t1.serialize(t1s);
   std::unique_ptr<::arangodb::containers::MerkleTree<3, 64>> t2 =
       ::arangodb::containers::MerkleTree<3, 64>::fromBuffer(t1s);
   ASSERT_NE(t2, nullptr);
