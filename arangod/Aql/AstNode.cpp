@@ -769,9 +769,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
 
 /// @brief destroy the node
 AstNode::~AstNode() {
-  if (computedValue != nullptr) {
-    delete[] computedValue;
-  }
+  freeComputedValue();
 }
 
 /// @brief return the string value of a node, as an std::string
@@ -2590,14 +2588,6 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   }
 }
 
-void AstNode::stealComputedValue() {
-  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  if (computedValue != nullptr) {
-    delete[] computedValue;
-    computedValue = nullptr;
-  }
-}
-
 void AstNode::markFinalized(AstNode* subtreeRoot) {
   if ((nullptr == subtreeRoot) || subtreeRoot->hasFlag(AstNodeFlagType::FLAG_FINALIZED)) {
     return;
@@ -2828,6 +2818,8 @@ void AstNode::setIntValue(int64_t v) {
 
 void AstNode::setDoubleValue(double v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  
+  freeComputedValue();
   value.value._double = v;
 }
 
@@ -2838,6 +2830,8 @@ size_t AstNode::getStringLength() const {
 
 void AstNode::setStringValue(char const* v, size_t length) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+
+  freeComputedValue();
   // note: v may contain the NUL byte and is not necessarily
   // null-terminated itself (if from VPack)
   value.type = VALUE_TYPE_STRING;
@@ -2873,6 +2867,13 @@ void AstNode::setData(void* v) {
 void AstNode::setData(void const* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   value.value._data = const_cast<void*>(v);
+}
+
+void AstNode::freeComputedValue() {
+  if (computedValue != nullptr) {
+    delete[] computedValue;
+    computedValue = nullptr;
+  }
 }
 
 /// @brief append the AstNode to an output stream
