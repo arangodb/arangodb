@@ -380,7 +380,7 @@ auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependen
       state == ExecutionState::DONE ? ExecutorState::DONE : ExecutorState::HASMORE;
 
   _dependencyStates.at(dependency) = state;
-  state = upstreamState();
+
   if (block == nullptr) {
     return {state, skipped, AqlItemBlockInputRange{execState, skipped}};
   }

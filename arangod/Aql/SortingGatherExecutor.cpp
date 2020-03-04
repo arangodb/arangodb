@@ -186,8 +186,7 @@ SortingGatherExecutorInfos::SortingGatherExecutorInfos(SortingGatherExecutorInfo
 SortingGatherExecutorInfos::~SortingGatherExecutorInfos() = default;
 
 SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _initialized(false),
-      _numberDependencies(0),
+    : _numberDependencies(0),
       _inputRows(),
       _limit(infos.limit()),
       _rowsReturned(0),
@@ -220,13 +219,27 @@ auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputR
     _numberDependencies = inputRange.numberDependencies();
     // If we have collected all ranges once, we can prepare the local data-structure copy
     _inputRows.reserve(_numberDependencies);
+    if (_inputRows.empty()) {
+      for (size_t dep = 0; dep < _numberDependencies; ++dep) {
+        _inputRows.emplace_back(dep);
+      }
+    }
+
+    auto callSet = AqlCallSet{};
     for (size_t dep = 0; dep < _numberDependencies; ++dep) {
       auto const [state, row] = inputRange.peekDataRow(dep);
-      _inputRows.emplace_back(dep, row, state);
+      _inputRows[dep] = {dep, row, state};
+      if (!row && state != ExecutorState::DONE) {
+        // This dependency requires input
+        // TODO: This call requires limits
+        callSet.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCall{}});
+        if (!_fetchParallel) {
+          break;
+        }
+      }
     }
-    auto call = requiresMoreInput(inputRange);
-    if (!call.empty()) {
-      return call;
+    if (!callSet.empty()) {
+      return callSet;
     }
     _strategy->prepare(_inputRows);
     _initialized = true;
@@ -237,21 +250,23 @@ auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputR
 auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const& inputRange)
     -> AqlCallSet {
   auto callSet = AqlCallSet{};
-  for (size_t dep = 0; dep < _numberDependencies; ++dep) {
-    auto const& [state, input] = inputRange.peekDataRow(dep);
-    // Update the local copy, just to be sure it is up to date
-    // We might do too many copies here, but most likely this
-    // will not be a performance bottleneck.
-    ValueType& localDep = _inputRows[dep];
-    localDep.row = input;
-    localDep.state = state;
-    if (!input && state != ExecutorState::DONE) {
-      // This dependency requires input
+
+  if (_depToUpdate.has_value()) {
+    auto const dependency = _depToUpdate.value();
+    auto const& [state, row] = inputRange.peekDataRow(dependency);
+    auto const needMoreInput = !row && state != ExecutorState::DONE;
+    if (needMoreInput) {
+      // Still waiting for input
       // TODO: This call requires limits
-      callSet.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCall{}});
-      if (!_fetchParallel) {
-        break;
-      }
+      callSet.calls.emplace_back(AqlCallSet::DepCallPair{dependency, AqlCall{}});
+    } else {
+
+      // We got an answer, save it
+      ValueType& localDep = _inputRows[dependency];
+      localDep.row = row;
+      localDep.state = state;
+      // We don't need to update this dep anymore
+      _depToUpdate = std::nullopt;
     }
   }
 
@@ -259,7 +274,7 @@ auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const&
 }
 
 auto SortingGatherExecutor::isDone(typename Fetcher::DataRange const& input) const -> bool {
-  // TODO: Include contrained sort
+  // TODO: Include constrained sort
   return input.isDone();
 }
 
@@ -269,6 +284,7 @@ auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> Input
     // If we requested data from upstream, but all if it is done.
     return InputAqlItemRow{CreateInvalidInputRowHint{}};
   }
+  TRI_ASSERT(!_depToUpdate.has_value());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool oneWithContent = false;
   for (size_t dep = 0; dep < _numberDependencies; ++dep) {
@@ -283,13 +299,16 @@ auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> Input
   _rowsReturned++;
   {
     // Consume the row, and set it to next input
-    std::ignore = input.nextDataRow(nextVal.dependencyIndex);
-    auto const& [state, row] = input.peekDataRow(nextVal.dependencyIndex);
-    _inputRows[nextVal.dependencyIndex].state = state;
-    _inputRows[nextVal.dependencyIndex].row = row;
+    auto const dependency = nextVal.dependencyIndex;
+    std::ignore = input.nextDataRow(dependency);
+    auto const& [state, row] = input.peekDataRow(dependency);
+    _inputRows[dependency].state = state;
+    _inputRows[dependency].row = row;
 
-    // TODO we might do some short-cuts here to maintain a list of requests
-    // to send in order to improve requires input
+    auto const needMoreInput = !row && state != ExecutorState::DONE;
+    if (needMoreInput) {
+      _depToUpdate = dependency;
+    }
   }
 
   return nextVal.row;
@@ -320,17 +339,24 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     }
   }
 
-  while (!isDone(input) && !output.isFull()) {
-    TRI_ASSERT(!maySkip());
+  {
     auto const callSet = requiresMoreInput(input);
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, callSet};
     }
+  }
+
+  while (!isDone(input) && !output.isFull()) {
+    TRI_ASSERT(!maySkip());
     auto row = nextRow(input);
     TRI_ASSERT(row.isInitialized() || isDone(input));
     if (row) {
       output.copyRow(row);
       output.advanceRow();
+    }
+    auto const callSet = requiresMoreInput(input);
+    if (!callSet.empty()) {
+      return {ExecutorState::HASMORE, NoStats{}, callSet};
     }
   }
 
@@ -350,13 +376,14 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
     }
   }
 
-  while (!isDone(input) && call.needSkipMore()) {
-    {
-      auto const callSet = requiresMoreInput(input);
-      if (!callSet.empty()) {
-        return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
-      }
+  {
+    auto const callSet = requiresMoreInput(input);
+    if (!callSet.empty()) {
+      return {ExecutorState::HASMORE, NoStats{}, 0, callSet};
     }
+  }
+
+  while (!isDone(input) && call.needSkipMore()) {
     if (call.getOffset() > 0) {
       TRI_ASSERT(!maySkip());
       // We need to sort still
@@ -365,6 +392,10 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
       TRI_ASSERT(row.isInitialized() || isDone(input));
       if (row) {
         call.didSkip(1);
+      }
+      auto const callSet = requiresMoreInput(input);
+      if (!callSet.empty()) {
+        return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
       }
     } else {
       // We are only called with fullcount.

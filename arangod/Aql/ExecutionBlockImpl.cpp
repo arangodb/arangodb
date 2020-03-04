@@ -1252,6 +1252,9 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
             maybeCallInFlight = depStack;
           }
           ++depCallIdx;
+          if (depCallIdx < aqlCall.calls.size()) {
+            TRI_ASSERT(aqlCall.calls[depCallIdx-1].dependency < aqlCall.calls[depCallIdx].dependency);
+          }
         }
 
         if (maybeCallInFlight.has_value()) {

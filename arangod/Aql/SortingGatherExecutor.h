@@ -147,7 +147,7 @@ class SortingGatherExecutor {
   [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const -> std::pair<ExecutionState, size_t>;
 
  private:
   [[nodiscard]] auto constrainedSort() const noexcept -> bool;
@@ -200,12 +200,12 @@ class SortingGatherExecutor {
 
  private:
   // Flag if we are past the initialize phase (fetched one block for every dependency).
-  bool _initialized;
+  bool _initialized = false;
 
   // Total Number of dependencies
   size_t _numberDependencies;
 
-  // Input data to process
+  // Input data to process, indexed by dependency, referenced by the SortingStrategy
   std::vector<ValueType> _inputRows;
 
   /// @brief If we do a constrained sort, it holds the limit > 0. Otherwise, it's 0.
@@ -220,6 +220,8 @@ class SortingGatherExecutor {
   std::unique_ptr<SortingStrategy> _strategy;
 
   const bool _fetchParallel;
+
+  std::optional<size_t> _depToUpdate = std::nullopt;
 };
 
 }  // namespace aql
