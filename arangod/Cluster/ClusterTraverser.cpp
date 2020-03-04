@@ -32,6 +32,8 @@
 #include "Cluster/ClusterMethods.h"
 #include "Graph/BreadthFirstEnumerator.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/EdgeCursor.h"
+#include "Graph/PathEnumerator.h"
 #include "Graph/TraverserCache.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"

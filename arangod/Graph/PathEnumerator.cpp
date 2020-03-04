@@ -30,6 +30,8 @@
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
+using namespace arangodb;
+
 using PathEnumerator = arangodb::traverser::PathEnumerator;
 using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
 using Traverser = arangodb::traverser::Traverser;
@@ -40,6 +42,8 @@ PathEnumerator::PathEnumerator(Traverser* traverser, TraverserOptions* opts)
       _isFirst(true), 
       _opts(opts),
       _httpRequests(0) {}
+
+PathEnumerator::~PathEnumerator() = default;
 
 void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   _enumeratedPath.edges.clear();
@@ -69,8 +73,19 @@ bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
   return _opts->destinationCollectionAllowed(edge, sourceVertex);
 }
 
+graph::EdgeCursor* PathEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
+  if (currentDepth >= _cursors.size()) {
+    _cursors.emplace_back(_opts->buildCursor(currentDepth));
+  }
+  graph::EdgeCursor* cursor = _cursors.at(currentDepth).get();
+  cursor->rearm(nextVertex, currentDepth);
+  return cursor;
+}
+
 DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : PathEnumerator(traverser, opts), _pruneNext(false) {}
+    : PathEnumerator(traverser, opts), 
+      _activeCursors(0),
+      _pruneNext(false) {}
 
 DepthFirstEnumerator::~DepthFirstEnumerator() = default;
 
@@ -99,13 +114,9 @@ bool DepthFirstEnumerator::next() {
     if (_enumeratedPath.edges.size() < _opts->maxDepth && !_pruneNext) {
       // We are not done with this path, so
       // we reserve the cursor for next depth
-      auto cursor = _opts->nextCursor(arangodb::velocypack::StringRef(
-                                          _enumeratedPath.vertices.back()),
-                                      _enumeratedPath.edges.size());
-      if (cursor != nullptr) {
-        incHttpRequests(cursor->httpRequests());
-        _edgeCursors.emplace_back(cursor);
-      }
+      graph::EdgeCursor* cursor = getCursor(arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()), _enumeratedPath.edges.size());
+      incHttpRequests(cursor->httpRequests());
+      ++_activeCursors;
     } else {
       if (!_enumeratedPath.edges.empty()) {
         // This path is at the end. cut the last step
@@ -167,14 +178,13 @@ bool DepthFirstEnumerator::next() {
 
         _enumeratedPath.edges.push_back(std::move(eid));
         foundPath = true;
-        return;
       }
       // Vertex Invalid. Do neither insert edge nor vertex
     };
 
-    while (!_edgeCursors.empty()) {
-      TRI_ASSERT(_edgeCursors.size() == _enumeratedPath.edges.size() + 1);
-      auto& cursor = _edgeCursors.back();
+    while (_activeCursors > 0) {
+      TRI_ASSERT(_activeCursors == _enumeratedPath.edges.size() + 1);
+      auto& cursor = _cursors[_activeCursors - 1];
 
       if (cursor->next(callback)) {
         if (foundPath) {
@@ -189,7 +199,8 @@ bool DepthFirstEnumerator::next() {
         }
       } else {
         // cursor is empty.
-        _edgeCursors.pop_back();
+        TRI_ASSERT(_activeCursors > 0);
+        --_activeCursors;
         if (!_enumeratedPath.edges.empty()) {
           _enumeratedPath.edges.pop_back();
           _enumeratedPath.vertices.pop_back();
@@ -197,7 +208,7 @@ bool DepthFirstEnumerator::next() {
       }
     }
 
-    if (_edgeCursors.empty()) {
+    if (_activeCursors == 0) {
       // If we get here all cursors are exhausted.
       _enumeratedPath.edges.clear();
       _enumeratedPath.vertices.clear();
@@ -215,23 +226,19 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
   if (_enumeratedPath.edges.empty()) {
     return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
   }
-  // FIXME: add some asserts back into this
-  // TRI_ASSERT(_enumeratedPath.edges.back() != nullptr);
   return _opts->cache()->fetchEdgeAqlResult(_enumeratedPath.edges.back());
 }
 
 VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result) {
   result.clear();
   result.openObject();
-  result.add(VPackValue("edges"));
-  result.openArray();
+  result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
   for (auto const& it : _enumeratedPath.edges) {
     // TRI_ASSERT(it != nullptr);
     _opts->cache()->insertEdgeIntoResult(it, result);
   }
   result.close();
-  result.add(VPackValue("vertices"));
-  result.openArray();
+  result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
   for (auto const& it : _enumeratedPath.vertices) {
     _traverser->addVertexToVelocyPack(VPackStringRef(it), result);
   }
@@ -247,28 +254,31 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(VPackBuilder& resul
 
 bool DepthFirstEnumerator::shouldPrune() {
   // We need to call prune here
-  if (_opts->usesPrune()) {
-    // evaluator->evaluate() might access these, so they have to live long
-    // enough. To make that perfectly clear, I added a scope.
-    transaction::BuilderLeaser pathBuilder(_opts->trx());
-    aql::AqlValue vertex, edge;
-    aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
-    {
-      aql::PruneExpressionEvaluator* evaluator = _opts->getPruneEvaluator();
-      if (evaluator->needsVertex()) {
-        vertex = lastVertexToAqlValue();
-        evaluator->injectVertex(vertex.slice());
-      }
-      if (evaluator->needsEdge()) {
-        edge = lastEdgeToAqlValue();
-        evaluator->injectEdge(edge.slice());
-      }
-      if (evaluator->needsPath()) {
-        VPackSlice path = pathToSlice(*pathBuilder.get());
-        evaluator->injectPath(path);
-      }
-      return evaluator->evaluate();
-    }
+  if (!_opts->usesPrune()) {
+    return false;
   }
-  return false;
+  
+  transaction::BuilderLeaser pathBuilder(_opts->trx());
+  // evaluator->evaluate() might access these, so they have to live long
+  // enough
+  aql::AqlValue vertex, edge;
+  aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+  
+  aql::PruneExpressionEvaluator* evaluator = _opts->getPruneEvaluator();
+  TRI_ASSERT(evaluator != nullptr);
+
+  if (evaluator->needsVertex()) {
+    vertex = lastVertexToAqlValue();
+    evaluator->injectVertex(vertex.slice());
+  }
+  if (evaluator->needsEdge()) {
+    edge = lastEdgeToAqlValue();
+    evaluator->injectEdge(edge.slice());
+  }
+  if (evaluator->needsPath()) {
+    VPackSlice path = pathToSlice(*pathBuilder.get());
+    evaluator->injectPath(path);
+  }
+  return evaluator->evaluate();
 }
+

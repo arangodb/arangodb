@@ -32,6 +32,7 @@ namespace arangodb {
 
 namespace velocypack {
 class Slice;
+class StringRef;
 }
 
 namespace graph {
@@ -55,6 +56,8 @@ class EdgeCursor {
   virtual void readAll(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> const& callback) = 0;
 
   virtual size_t httpRequests() const = 0;
+
+  virtual void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) = 0;
 };
 
 }  // namespace graph
