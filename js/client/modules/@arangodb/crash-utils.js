@@ -69,13 +69,13 @@ let GDB_OUTPUT = '';
 function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   let gdbOutputFile = fs.getTempFile();
 
-  let command;
-  command = '(';
+  let command = 'ulimit -c 0; (';
   command += 'printf \'' +
     'set logging file ' + gdbOutputFile + '\\n' +
     'set logging on\\n' +
-    'bt full\\n' +
+    'bt\\n' +
     'thread apply all bt\\n'+
+    'bt full\\n' +
     '\';';
 
   command += 'sleep 10;';
