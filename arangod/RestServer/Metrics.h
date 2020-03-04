@@ -138,29 +138,39 @@ private:
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
 
-//template<typename T, Scale S> size_t bin(T const& t);
-
-template<typename T, Scale S>
-std::enable_if<std::is_same<S, LINEAR>::value, void>::type size_t bin() { return 0; }
-template<typename T, Scale S>
-std::enable_if<std::is_same<S, LOGARITHMIC>::value, void>::type size_t bin() { return 1; }
-
-
 /**
  * @brief Histogram functionality
  */
-template<typename T, Scale S=LINEAR> class Histogram : public Metric {
+
+template<typename T, Scale S = LINEAR> class Histogram : public Metric {
 
 public:
 
   Histogram() = delete;
 
-  Histogram (size_t const& buckets, T const& low, T const& high, std::string const& name, std::string const& help = "")
+  Histogram (size_t const& buckets, T const& low, T const& high,
+             std::string const& name, std::string const& help = "")
     : Metric(name, help), _c(Metrics::hist_type(buckets)), _low(low), _high(high),
       _lowr(std::numeric_limits<T>::max()), _highr(std::numeric_limits<T>::min()) {
     TRI_ASSERT(_c.size() > 0);
     _n = _c.size() - 1;
-    _div = (high - low) / (double)_c.size();
+    _delim.resize(_c.size());
+    if constexpr (S == LINEAR) {
+      _div = (high - low) / (T)_c.size();
+      T le = low;
+      for (auto& i : _delim) {
+        i = le;
+        le += _div;
+      }
+    } else if constexpr (S == LOGARITHMIC) {
+      double n = -1. * (_c.size()-1);
+      for (auto& i : _delim) {
+        i = (high-low) * std::pow(10.0, n++) + low;
+      }
+      _div = _delim.front() - _low;
+    } else {
+      TRI_ASSERT(false);
+    }
     TRI_ASSERT(_div != 0);
   }
 
@@ -175,7 +185,14 @@ public:
   }
 
   size_t pos(T const& t) const {
-    return static_cast<size_t>(std::floor((t - _low)/ _div));
+    if constexpr(S == LINEAR) {
+      return static_cast<size_t>(std::floor((t - _low)/ _div));
+    } else if constexpr (S == LOGARITHMIC) {
+      return static_cast<size_t>(std::floor(log10f((t - _low)/_div)));
+    } else {
+      TRI_ASSERT(false);
+      return 0;
+    }
   }
 
   void count(T const& t) {
@@ -208,6 +225,10 @@ public:
     return v;
   }
 
+  Scale scale() const {
+    return S;
+  }
+
   uint64_t load(size_t i) const { return _c.load(i); };
 
   size_t size() const { return _c.size(); }
@@ -215,14 +236,12 @@ public:
   virtual void toPrometheus(std::string& result) const override {
     result += "#TYPE " + name() + " histogram\n";
     result += "#HELP " + name() + " " + help() + "\n";
-    T le = _low;
     T sum = T(0);
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{le=\"" + std::to_string(le) + "\"} " +
+      result += name() + "_bucket{le=\"" + std::to_string(_delim[i]) + "\"} " +
         std::to_string(n) + "\n";
-      le += _div;
     }
     result += name() + "_count " + std::to_string(sum) + "\n";
   }
@@ -235,7 +254,9 @@ public:
 private:
   Metrics::hist_type _c;
   T _low, _high, _div, _lowr, _highr;
+  std::vector<T> _delim;
   size_t _n;
+  Scale s;
 
 };
 

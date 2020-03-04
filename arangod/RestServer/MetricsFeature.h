@@ -46,13 +46,11 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-
-
-  template<typename T> Histogram<T>&
+  template<typename T, Scale S = LINEAR> Histogram<T,S>&
   histogram (std::string const& name, size_t const& buckets, T const& low,
              T const& high, std::string const& help = std::string()) {
 
-    auto metric = std::make_shared<Histogram<T>>(buckets, low, high, name, help);
+    auto metric = std::make_shared<Histogram<T,S>>(buckets, low, high, name, help);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
@@ -67,16 +65,16 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   };
 
-  template<typename T> Histogram<T>& histogram (std::string const& name) {
+  template<typename T, Scale S = LINEAR> Histogram<T,S>& histogram (std::string const& name) {
 
-    std::shared_ptr<Histogram<T>> metric = nullptr;
+    std::shared_ptr<Histogram<T,S>> metric = nullptr;
     std::string error;
     {
       std::lock_guard<std::mutex> guard(_lock);
       registry_type::const_iterator it = _registry.find(name);
 
       try {
-        metric = std::dynamic_pointer_cast<Histogram<T>>(*it->second);
+        metric = std::dynamic_pointer_cast<Histogram<T,S>>(*it->second);
         if (metric == nullptr) {
           error = std::string("Failed to retrieve histogram ") + name;
         }
