@@ -746,7 +746,9 @@
           };
         }
       } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
-        newCollectionObject.replicationFactor = "satellite";
+        newCollectionObject.options = {
+          replicationFactor: "satellite"
+        }
       } else {
         if (frontendConfig.isCluster) {
           if ($('#general-numberOfShards').val().length > 0) {
