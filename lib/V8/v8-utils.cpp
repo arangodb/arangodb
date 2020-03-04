@@ -983,14 +983,15 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (!isLocalUrl && !v8security.isAllowedToConnectToEndpoint(isolate, endpoint)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "not allowed to connect to this endpoint");
+                                     std::string("not allowed to connect to this endpoint: ") +
+                                     endpoint);
     }
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
     if (ep == nullptr) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     std::string("invalid URL ") + url);
+                                     std::string("invalid URL: ") + url);
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
