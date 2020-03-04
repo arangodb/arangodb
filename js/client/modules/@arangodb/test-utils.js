@@ -902,7 +902,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     }
     return result;
   } catch (ex) {
-    let timeout = setTotalTimeout(0.0);
+    let timeout = SetGlobalExecutionDeadlineTo(0.0);
     return {
       timeout: timeout,
       forceTerminate: true,
