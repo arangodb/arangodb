@@ -327,8 +327,8 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
   void validatorsToVelocyPack(VPackBuilder&) const;
-  Result validate(VPackSlice newDoc) const; // insert
-  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc) const; // update / replace
+  Result validate(VPackSlice newDoc, VPackOptions const*) const; // insert
+  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const; // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.

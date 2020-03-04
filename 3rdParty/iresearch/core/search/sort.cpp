@@ -373,6 +373,13 @@ bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
   return false;
 }
 
+filter_boost::filter_boost() noexcept
+  : basic_attribute<boost_t>(1.f) {
+}
+
+REGISTER_ATTRIBUTE(filter_boost);
+DEFINE_ATTRIBUTE_TYPE(filter_boost);
+
 NS_END
 
 // -----------------------------------------------------------------------------

@@ -87,14 +87,14 @@ struct LogMessage {
   LogMessage(LogMessage const&) = delete;
   LogMessage& operator=(LogMessage const&) = delete;
 
-  LogMessage(char const* function, char const* file, int line, 
+  LogMessage(char const* function, char const* file, int line,
              LogLevel level, size_t topicId, std::string&& message, size_t offset)
       : _function(function),
         _file(file),
         _line(line),
-        _level(level), 
-        _topicId(topicId), 
-        _message(std::move(message)), 
+        _level(level),
+        _topicId(topicId),
+        _message(std::move(message)),
         _offset(offset) {}
 
   char const* _function;
@@ -184,6 +184,7 @@ class Logger {
   static LogTopic THREADS;
   static LogTopic TRANSACTIONS;
   static LogTopic TTL;
+  static LogTopic VALIDATION;
   static LogTopic V8;
   static LogTopic VIEWS;
 
