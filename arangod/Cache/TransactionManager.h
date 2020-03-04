@@ -18,18 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_TRANSACTION_WINDOW_H
 #define ARANGODB_CACHE_TRANSACTION_WINDOW_H
 
-#include "Basics/Common.h"
-#include "Basics/ReadWriteSpinLock.h"
-#include "Cache/Transaction.h"
-
 #include <atomic>
 #include <cstdint>
+
+#include "Basics/ReadWriteSpinLock.h"
+#include "Cache/Transaction.h"
 
 namespace arangodb {
 namespace cache {
@@ -68,13 +67,13 @@ class TransactionManager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return the current window identifier.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t term();
+  std::uint64_t term();
 
  private:
-  std::atomic<uint64_t> _openReads;
-  std::atomic<uint64_t> _openSensitive;
-  std::atomic<uint64_t> _openWrites;
-  std::atomic<uint64_t> _term;
+  std::atomic<std::uint64_t> _openReads;
+  std::atomic<std::uint64_t> _openSensitive;
+  std::atomic<std::uint64_t> _openWrites;
+  std::atomic<std::uint64_t> _term;
   std::atomic<bool> _lock;
 
   void lock();

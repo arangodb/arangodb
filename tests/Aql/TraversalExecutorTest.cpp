@@ -193,11 +193,12 @@ class GraphEnumerator : public PathEnumerator {
 class TraverserHelper : public Traverser {
  public:
   TraverserHelper(TraverserOptions* opts, transaction::Methods* trx, TestGraph const& g)
-      : Traverser(opts, trx), _graph(g) {}
+      : Traverser(opts, trx), _graph(g) {
+    _enumerator.reset(new GraphEnumerator(this, _opts, _graph));
+  }
 
   void setStartVertex(std::string const& value) override {
     _usedVertexAt.push_back(value);
-    _enumerator.reset(new GraphEnumerator(this, _opts, _graph));
     _enumerator->setStartVertex(arangodb::velocypack::StringRef(_usedVertexAt.back()));
     _done = false;
   }

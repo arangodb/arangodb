@@ -111,13 +111,14 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   VPackSlice data = slice.get("data");
   VPackSlice raw = slice.get("raw");
 
+  VPackArrayIterator rawIterator(raw);
+
   std::vector<AqlValue> madeHere;
-  madeHere.reserve(static_cast<size_t>(raw.length()));
+  madeHere.reserve(static_cast<size_t>(rawIterator.size()));
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
 
   VPackArrayIterator dataIterator(data);
-  VPackArrayIterator rawIterator(raw);
 
   auto storeSingleValue = [this](size_t row, RegisterId column, VPackArrayIterator& it,
                                  std::vector<AqlValue>& madeHere) {
@@ -302,7 +303,8 @@ void AqlItemBlock::destroy() noexcept {
       return;
     }
 
-    for (size_t i = 0; i < numEntries(); i++) {
+    size_t const n = numEntries();
+    for (size_t i = 0; i < n; i++) {
       auto& it = _data[i];
       if (it.requiresDestruction()) {
         auto it2 = _valueCount.find(it);
@@ -354,7 +356,8 @@ void AqlItemBlock::shrink(size_t nrItems) {
   // adjust the size of the block
   _nrItems = nrItems;
 
-  for (size_t i = numEntries(); i < _data.size(); ++i) {
+  size_t const n = numEntries();
+  for (size_t i = n; i < _data.size(); ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
       auto it = _valueCount.find(a);
