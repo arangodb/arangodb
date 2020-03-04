@@ -117,7 +117,7 @@ class AqlCallStack {
    *
    * @return size_t Depth of the subquery that asks to be skipped.
    */
-  auto shadowRowDepthToSkip() const noexcept -> size_t;
+  auto shadowRowDepthToSkip() const -> size_t;
 
   /**
    * @brief Get a reference to the call at the given shadowRowDepth

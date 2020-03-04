@@ -184,7 +184,7 @@ auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
   });
 }
 
-auto AqlCallStack::shadowRowDepthToSkip() const noexcept -> size_t {
+auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   TRI_ASSERT(needToSkipSubquery());
   for (size_t i = 0; i < _operations.size(); ++i) {
     auto& call = _operations.at(i);
