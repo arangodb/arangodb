@@ -25,6 +25,7 @@
 
 // for size_t
 #include <cstddef>
+#include <ostream>
 #include <vector>
 
 namespace arangodb {
@@ -47,6 +48,7 @@ class SkipResult {
   ~SkipResult() = default;
 
   SkipResult(SkipResult const& other);
+  SkipResult& operator=(const SkipResult&) = default;
 
   auto getSkipCount() const noexcept -> size_t;
 
