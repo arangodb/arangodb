@@ -21,39 +21,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TransactionalStore.h"
-#include "Basics/Common.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/files.h"
-#include "Cache/Common.h"
-#include "Cache/Manager.h"
-#include "Cache/TransactionalCache.h"
+#include <chrono>
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 
-#include <chrono>
+#include "Basics/StringBuffer.h"
+#include "Basics/files.h"
+#include "Cache/Common.h"
+#include "Cache/Manager.h"
+#include "Cache/TransactionalCache.h"
+
+#include "TransactionalStore.h"
 
 using namespace arangodb::cache;
 
-std::atomic<uint32_t> TransactionalStore::_sequence(0);
+std::atomic<std::uint32_t> TransactionalStore::_sequence(0);
 
 TransactionalStore::Document::Document() : Document(0) {}
 
-TransactionalStore::Document::Document(uint64_t k)
+TransactionalStore::Document::Document(std::uint64_t k)
     : key(k),
-      timestamp(static_cast<uint64_t>(
+      timestamp(static_cast<std::uint64_t>(
           std::chrono::steady_clock::now().time_since_epoch().count())),
       sequence(0) {}
 
 void TransactionalStore::Document::advance() {
-  timestamp = static_cast<uint64_t>(
+  timestamp = static_cast<std::uint64_t>(
       std::chrono::steady_clock::now().time_since_epoch().count());
   sequence++;
 }
@@ -148,11 +148,11 @@ bool TransactionalStore::insert(TransactionalStore::Transaction* tx,
   Document d = lookup(tx, document.key);
   if (d.empty()) {  // ensure document with this key does not exist
     // blacklist in cache first
-    _cache->blacklist(&(document.key), sizeof(uint64_t));
+    _cache->blacklist(&(document.key), sizeof(std::uint64_t));
 
     // now write to rocksdb
     rocksdb::Slice kSlice(reinterpret_cast<char const*>(&(document.key)),
-                          sizeof(uint64_t));
+                          sizeof(std::uint64_t));
     rocksdb::Slice vSlice(reinterpret_cast<char const*>(&document),
                           sizeof(Document));
     auto status = tx->rocks->Put(kSlice, vSlice);
@@ -181,11 +181,11 @@ bool TransactionalStore::update(TransactionalStore::Transaction* tx,
   Document d = lookup(tx, document.key);
   if (!d.empty()) {  // ensure document with this key exists
     // blacklist in cache first
-    _cache->blacklist(&(document.key), sizeof(uint64_t));
+    _cache->blacklist(&(document.key), sizeof(std::uint64_t));
 
     // now write to rocksdb
     rocksdb::Slice kSlice(reinterpret_cast<char const*>(&(document.key)),
-                          sizeof(uint64_t));
+                          sizeof(std::uint64_t));
     rocksdb::Slice vSlice(reinterpret_cast<char const*>(&document),
                           sizeof(Document));
     auto status = tx->rocks->Put(kSlice, vSlice);
@@ -203,8 +203,7 @@ bool TransactionalStore::update(TransactionalStore::Transaction* tx,
   return updated;
 }
 
-bool TransactionalStore::remove(TransactionalStore::Transaction* tx,
-                                uint64_t key) {
+bool TransactionalStore::remove(TransactionalStore::Transaction* tx, std::uint64_t key) {
   bool useInternalTransaction = (tx == nullptr);
   if (useInternalTransaction) {
     tx = beginTransaction(false);
@@ -214,10 +213,10 @@ bool TransactionalStore::remove(TransactionalStore::Transaction* tx,
   Document d = lookup(tx, key);
   if (!d.empty()) {  // ensure document with this key exists
     // blacklist in cache first
-    _cache->blacklist(&key, sizeof(uint64_t));
+    _cache->blacklist(&key, sizeof(std::uint64_t));
 
     // now write to rocksdb
-    rocksdb::Slice kSlice(reinterpret_cast<char*>(&key), sizeof(uint64_t));
+    rocksdb::Slice kSlice(reinterpret_cast<char*>(&key), sizeof(std::uint64_t));
     auto status = tx->rocks->Delete(kSlice);
     removed = status.ok();
   }
@@ -233,8 +232,8 @@ bool TransactionalStore::remove(TransactionalStore::Transaction* tx,
   return removed;
 }
 
-TransactionalStore::Document TransactionalStore::lookup(
-    TransactionalStore::Transaction* tx, uint64_t key) {
+TransactionalStore::Document TransactionalStore::lookup(TransactionalStore::Transaction* tx,
+                                                        std::uint64_t key) {
   bool useInternalTransaction = (tx == nullptr);
   if (useInternalTransaction) {
     tx = beginTransaction(true);
@@ -242,7 +241,7 @@ TransactionalStore::Document TransactionalStore::lookup(
 
   Document result;
   {
-    Finding f = _cache->find(&key, sizeof(uint64_t));
+    Finding f = _cache->find(&key, sizeof(std::uint64_t));
     if (f.found()) {
       CachedValue const* cv = f.value();
       memcpy(&result, cv->value(), sizeof(Document));
@@ -251,12 +250,12 @@ TransactionalStore::Document TransactionalStore::lookup(
   if (result.empty()) {
     auto readOptions = rocksdb::ReadOptions();
     readOptions.snapshot = tx->rocks->GetSnapshot();
-    rocksdb::Slice kSlice(reinterpret_cast<char*>(&key), sizeof(uint64_t));
+    rocksdb::Slice kSlice(reinterpret_cast<char*>(&key), sizeof(std::uint64_t));
     std::string buffer;
     auto status = tx->rocks->Get(readOptions, kSlice, &buffer);
     if (status.ok()) {
       memcpy(&result, buffer.data(), sizeof(Document));
-      CachedValue* value = CachedValue::construct(&key, sizeof(uint64_t),
+      CachedValue* value = CachedValue::construct(&key, sizeof(std::uint64_t),
                                                   &result, sizeof(Document));
       if (value) {
         auto status = _cache->insert(value);
