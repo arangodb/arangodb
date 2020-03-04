@@ -3640,7 +3640,6 @@ void arangodb::aql::createScatterGatherSnippet(
     SortElementVector const& elements, size_t const numberOfShards,
     std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
     Collection const* collection) {
-  collection = ExecutionNode::castTo<ModificationNode*>(node)->collection();
   // insert a scatter node
   auto* scatterNode =
       new ScatterNode(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
