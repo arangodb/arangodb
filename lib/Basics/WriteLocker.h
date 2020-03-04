@@ -132,7 +132,7 @@ class WriteLocker {
 
   [[nodiscard]] bool tryLock() {
     TRI_ASSERT(!_isLocked);
-    if (_readWriteLock->tryWriteLock()) {
+    if (_readWriteLock->tryLockWrite()) {
       _isLocked = true;
     }
     return _isLocked;
@@ -141,7 +141,7 @@ class WriteLocker {
   /// @brief acquire the write lock, blocking
   void lock() {
     TRI_ASSERT(!_isLocked);
-    _readWriteLock->writeLock();
+    _readWriteLock->lockWrite();
     _isLocked = true;
   }
 

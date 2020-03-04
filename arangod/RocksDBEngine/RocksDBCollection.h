@@ -102,14 +102,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
 
-  Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
-              ManagedDocumentResult& result, bool locked) override {
-    if (!key.isString()) {
-      return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-    }
-    return this->read(trx, arangodb::velocypack::StringRef(key), result, locked);
-  }
-
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
 

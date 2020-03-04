@@ -423,19 +423,20 @@ void IndexExecutor::CursorReader::reset() {
   if (iterator != nullptr && iterator->canRearm()) {
     bool didRearm =
         iterator->rearm(_condition, _infos.getOutVariable(), _infos.getOptions());
-    if (!didRearm) {
+    if (didRearm) {
+      _cursor->reset();
+    } else {
       // iterator does not support the condition
       // It will not create any results
       _cursor->rearm(std::make_unique<EmptyIndexIterator>(iterator->collection(),
                                                           _infos.getTrxPtr()));
     }
-    _cursor->reset();
-    return;
+  } else {
+    // We need to build a fresh search and cannot go the rearm shortcut
+    _cursor->rearm(_infos.getTrxPtr()->indexScanForCondition(_index, _condition,
+                                                             _infos.getOutVariable(),
+                                                             _infos.getOptions()));
   }
-  // We need to build a fresh search and cannot go the rearm shortcut
-  _cursor->rearm(_infos.getTrxPtr()->indexScanForCondition(_index, _condition,
-                                                           _infos.getOutVariable(),
-                                                           _infos.getOptions()));
 }
 
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)

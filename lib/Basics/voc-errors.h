@@ -178,16 +178,6 @@ constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    
 /// Will be raised when a requested resource is not enabled.
 constexpr int TRI_ERROR_DISABLED                                                = 36;
 
-/// 37: ERROR_VALIDATION_FAILED
-/// "validation failed"
-/// Will be raised when document does not pass validation.
-constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 37;
-
-/// 38: ERROR_VALIDATION_BAD_PARAMETER
-/// "invalid validation parameter"
-/// Will be raised when values in validator array are not valid.
-constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 38;
-
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -1168,6 +1158,16 @@ constexpr int TRI_ERROR_CURSOR_NOT_FOUND                                        
 /// Will be raised when a cursor is requested via its id but a concurrent
 /// request is still using the cursor.
 constexpr int TRI_ERROR_CURSOR_BUSY                                             = 1601;
+
+/// 1620: ERROR_VALIDATION_FAILED
+/// "validation failed"
+/// Will be raised when a document does not pass validation.
+constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 1620;
+
+/// 1621: ERROR_VALIDATION_BAD_PARAMETER
+/// "invalid validation parameter"
+/// Will be raised when the validator description is invalid.
+constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 1621;
 
 /// 1650: ERROR_TRANSACTION_INTERNAL
 /// "internal transaction error"

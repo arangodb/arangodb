@@ -21,9 +21,15 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+
 #include "Validators.h"
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
+#include <Logger/LogMacros.h>
+
+#include <tao/json/contrib/schema.hpp>
+#include <tao/json/jaxn/to_string.hpp>
+#include <validation/validation.hpp>
 
 namespace arangodb {
 
@@ -74,7 +80,7 @@ ValidatorBase::ValidatorBase(VPackSlice params)
   }
 }
 
-bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert) const {
+bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert, VPackOptions const* options) const {
   // This function performs the validation depending on operation (Insert /
   // Update / Replace) and requested validation level (None / Insert / New /
   // Strict / Moderate).
@@ -84,7 +90,7 @@ bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert
   }
 
   if (isInsert) {
-    return this->validateDerived(newDoc);
+    return this->validateDerived(newDoc, options);
   }
 
   /* update replace case */
@@ -95,13 +101,13 @@ bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert
 
   if (this->_level == ValidationLevel::Strict) {
     // Changed document must be good!
-    return validateDerived(newDoc);
+    return validateDerived(newDoc, options);
   }
 
   TRI_ASSERT(this->_level == ValidationLevel::Moderate);
   // Changed document must be good IIF the unmodified
   // document passed validation.
-  return (this->validateDerived(newDoc) || !this->validateDerived(oldDoc));
+  return (this->validateDerived(newDoc, options) || !this->validateDerived(oldDoc, options));
 }
 
 void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
@@ -117,7 +123,7 @@ void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
 ValidatorBool::ValidatorBool(VPackSlice params) : ValidatorBase(params) {
   _result = params.get(StaticStrings::ValidatorParameterRule).getBool();
 }
-bool ValidatorBool::validateDerived(VPackSlice slice) const { return _result; }
+bool ValidatorBool::validateDerived(VPackSlice slice, VPackOptions const* options) const { return _result; }
 void ValidatorBool::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidatorParameterRule, VPackValue(_result));
 }
@@ -127,13 +133,21 @@ std::string const ValidatorBool::type() const {
 
 /////////////////////////////////////////////////////////////////////////////
 
-ValidatorAQL::ValidatorAQL(VPackSlice params) : ValidatorBase(params) {}
-bool ValidatorAQL::validateDerived(VPackSlice slice) const { return true; }
-void ValidatorAQL::toVelocyPackDerived(VPackBuilder& b) const {
-  b.add(StaticStrings::ValidatorParameterRule, VPackValue(std::string("test")));
+ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(params) {
+  auto rule = params.get(StaticStrings::ValidatorParameterRule);
+  auto taoRuleValue = validation::slice_to_value(rule);
+  LOG_TOPIC("aa245", TRACE, arangodb::Logger::VALIDATION) << "using schema: " << tao::json::jaxn::to_string(taoRuleValue,2);
+  _schema = std::make_shared<tao::json::schema>(taoRuleValue);
+  _builder.add(rule);
 }
-std::string const ValidatorAQL::type() const {
-  return StaticStrings::ValidatorTypeAQL;
+bool ValidatorJsonSchema::validateDerived(VPackSlice slice, VPackOptions const* options) const {
+  return validation::validate(slice, options, *_schema);
+}
+void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
+  b.add(StaticStrings::ValidatorParameterRule, _builder.slice());
+}
+std::string const ValidatorJsonSchema::type() const {
+  return StaticStrings::ValidatorTypeJsonSchema;
 }
 
 }  // namespace arangodb

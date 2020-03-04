@@ -217,15 +217,15 @@ class StaticStrings {
   static std::string const DoCompact;
   static std::string const ReplicationFactor;
   static std::string const MinReplicationFactor;
+  static std::string const MinRevision;
   static std::string const ShardKeys;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
-  static std::string const WriteConcern;
   static std::string const UsesRevisionsAsDocumentIds;
-  static std::string const MinRevision;
-  static std::string const Validators;
+  static std::string const Validation;
+  static std::string const WriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -288,6 +288,7 @@ class StaticStrings {
   static std::string const ValidatorParameterType;
   static std::string const ValidatorParameterRule;
 
+  static std::string const ValidatorTypeJsonSchema;
   static std::string const ValidatorTypeAQL;
   static std::string const ValidatorTypeBool;
 };

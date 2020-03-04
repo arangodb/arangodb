@@ -374,7 +374,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'shardingStrategy': false,
     'cacheEnabled': true,
     'usesRevisionsAsDocumentIds': false,
-    'validators' : [ ]
+    'validation' : null
   };
   var a;
 
@@ -388,7 +388,6 @@ ArangoCollection.prototype.properties = function (properties) {
 
     for (a in attributes) {
       if (attributes.hasOwnProperty(a) &&
-        attributes[a] &&
         properties.hasOwnProperty(a)) {
         body[a] = properties[a];
       }
