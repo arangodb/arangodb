@@ -201,7 +201,6 @@ template <typename FetcherType, typename ModifierType>
     doCollect(input, output.numRowsLeft());
     upstreamState = input.upstreamState();
   }
-
   if (_modifier.nrOfOperations() > 0) {
     _modifier.transact();
 
@@ -234,7 +233,10 @@ template <typename FetcherType, typename ModifierType>
 
   // only produce at most output.numRowsLeft() many results
   ExecutorState upstreamState = input.upstreamState();
-  while (input.hasDataRow() && call.needSkipMore()) {
+  // These executors need to be executed on HARD LIMIT 0.
+  // If we do a fullCount or not.
+  while (input.hasDataRow() &&
+         (call.getOffset() > 0 || (call.getLimit() == 0 && call.hasHardLimit()))) {
     _modifier.reset();
     size_t toSkip = call.getOffset();
     if (call.getLimit() == 0 && call.hasHardLimit()) {
@@ -266,8 +268,10 @@ template <typename FetcherType, typename ModifierType>
         stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
         stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
       }
-
-      call.didSkip(_modifier.nrOfOperations());
+      if (call.needSkipMore()) {
+        // We only need to report skip, if we actually skip.
+        call.didSkip(_modifier.nrOfOperations());
+      }
     }
   }
 
