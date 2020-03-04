@@ -321,7 +321,19 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // as soon as we reach a place where there is no skip
   // ordered in the outer shadow rows, this call
   // will fall back to shadowRowForwardning.
-  [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack) -> ExecState;
+  [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
+                                                   SkipResult& skipResult) -> ExecState;
+
+  /**
+   * @brief Transition to the next state after shadowRows
+   *
+   * @param state the state returned by the getShadowRowCall
+   * @param range the current data range
+   * @return ExecState The next state
+   */
+  [[nodiscard]] auto nextStateAfterShadowRows(ExecutorState const& state,
+                                              DataRange const& range) const
+      noexcept -> ExecState;
 
  private:
   /**

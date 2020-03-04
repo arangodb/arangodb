@@ -109,6 +109,24 @@ class AqlCallStack {
    */
   auto needToSkipSubquery() const noexcept -> bool;
 
+  /**
+   * @brief This is only valid if needToSkipSubquery is true.
+   *        It will resolve to the heighest subquery level
+   *        (outermost) that needs to be skipped.
+   *
+   *
+   * @return size_t Depth of the subquery that asks to be skipped.
+   */
+  auto shadowRowDepthToSkip() const noexcept -> size_t;
+
+  /**
+   * @brief Get a reference to the call at the given shadowRowDepth
+   *
+   * @param depth ShadowRow depth we need to work on
+   * @return AqlCall& reference to the call, can be modified.
+   */
+  auto modifyCallAtDepth(size_t depth) -> AqlCall&;
+
  private:
   explicit AqlCallStack(std::vector<AqlCall>&& operations);
 

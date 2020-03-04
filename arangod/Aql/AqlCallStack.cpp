@@ -179,11 +179,28 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
 }
 
 auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
-  if (subqueryLevel() > 1) {
-    return std::any_of(_operations.begin(), _operations.end() - 1,
-                       [](AqlCall const& call) -> bool {
-                         return call.needSkipMore();
-                       });
+  return std::any_of(_operations.begin(), _operations.end(), [](AqlCall const& call) -> bool {
+    return call.needSkipMore();
+  });
+}
+
+auto AqlCallStack::shadowRowDepthToSkip() const noexcept -> size_t {
+  TRI_ASSERT(needToSkipSubquery());
+  for (size_t i = 0; i < _operations.size(); ++i) {
+    auto& call = _operations.at(i);
+    if (call.needSkipMore()) {
+      return _operations.size() - i - 1;
+    }
   }
-  return false;
+  // unreachable
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+}
+
+auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
+  // depth 0 is back of vector
+  TRI_ASSERT(_operations.size() > depth);
+  // Take the depth-most from top of the vector.
+  auto& call = *(_operations.rbegin() + depth);
+  return call;
 }

@@ -1462,7 +1462,35 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding() -> ExecState
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& stack)
+auto ExecutionBlockImpl<Executor>::nextStateAfterShadowRows(ExecutorState const& state,
+                                                            DataRange const& range) const
+    noexcept -> ExecState {
+  if (state == ExecutorState::DONE) {
+    // We have consumed everything, we are
+    // Done with this query
+    return ExecState::DONE;
+  } else if (range.hasDataRow()) {
+    // Multiple concatenated Subqueries
+    // This case is disallowed for now, as we do not know the
+    // look-ahead call
+    TRI_ASSERT(false);
+    // If we would know we could now go into a continue with next subquery
+    // state.
+    return ExecState::DONE;
+  } else if (range.hasShadowRow()) {
+    // We still have shadowRows, we
+    // need to forward them
+    return ExecState::SHADOWROWS;
+  } else {
+    // End of input, we are done for now
+    // Need to call again
+    return ExecState::DONE;
+  }
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& stack,
+                                                                 SkipResult& skipResult)
     -> ExecState {
   TRI_ASSERT(executorHasSideEffects<Executor>);
   if (!stack.needToSkipSubquery()) {
@@ -1470,8 +1498,75 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     // fall back to original version as any other executor.
     return shadowRowForwarding();
   }
-  // TODO implemenet ShadowRowHandling
-  return shadowRowForwarding();
+  TRI_ASSERT(_outputItemRow);
+  TRI_ASSERT(_outputItemRow->isInitialized());
+  TRI_ASSERT(!_outputItemRow->allRowsUsed());
+  if (!_lastRange.hasShadowRow()) {
+    // We got back without a ShadowRow in the LastRange
+    // Let client call again
+    return ExecState::DONE;
+  }
+
+  auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+  TRI_ASSERT(shadowRow.isInitialized());
+  uint64_t depthSkippingNow = static_cast<uint64_t>(stack.shadowRowDepthToSkip());
+  uint64_t shadowDepth = shadowRow.getDepth();
+
+  bool didWriteRow = false;
+  if (shadowRow.isRelevant()) {
+    LOG_QUERY("1b257", DEBUG) << printTypeInfo() << " init executor.";
+    // We found a relevant shadow Row.
+    // We need to reset the Executor
+    resetExecutor();
+  }
+  if (depthSkippingNow > shadowDepth) {
+    // We are skipping the outermost Subquery.
+    // Simply drop this ShadowRow
+  } else if (depthSkippingNow == shadowDepth) {
+    // We are skipping on this subquery level.
+    // Skip the row, but report skipped 1.
+    AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
+    TRI_ASSERT(shadowCall.needSkipMore());
+    shadowCall.didSkip(1);
+    skipResult.didSkipSubquery(1, shadowDepth);
+  } else {
+    // We got a shadowRow of a subquery we are not skipping here.
+    // Do proper reporting on it's call.
+    AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
+    TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
+    _outputItemRow->copyRow(shadowRow);
+    shadowCall.didProduce(1);
+
+    TRI_ASSERT(_outputItemRow->produced());
+    _outputItemRow->advanceRow();
+    didWriteRow = true;
+  }
+  if (state == ExecutorState::DONE) {
+    // We have consumed everything, we are
+    // Done with this query
+    return ExecState::DONE;
+  } else if (_lastRange.hasDataRow()) {
+    // Multiple concatenated Subqueries
+    // This case is disallowed for now, as we do not know the
+    // look-ahead call
+    TRI_ASSERT(false);
+    // If we would know we could now go into a continue with next subquery
+    // state.
+    return ExecState::DONE;
+  } else if (_lastRange.hasShadowRow()) {
+    // We still have shadowRows, we
+    // need to forward them
+    return ExecState::SHADOWROWS;
+  } else if (didWriteRow) {
+    // End of input, we are done for now
+    // Need to call again
+    return ExecState::DONE;
+  } else {
+    // Done with this subquery.
+    // We did not write any output yet.
+    // So we can continue with upstream.
+    return ExecState::UPSTREAM;
+  }
 }
 
 template <class Executor>
@@ -1499,7 +1594,6 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
 
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
-
   if (state == ExecutorState::DONE) {
     // We have consumed everything, we are
     // Done with this query
@@ -1541,17 +1635,11 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
   auto type = fastForwardType(clientCall, _executor);
 
   switch (type) {
-    case FastForwardVariant::FULLCOUNT:
-    case FastForwardVariant::EXECUTOR: {
+    case FastForwardVariant::FULLCOUNT: {
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
       auto [state, stats, skippedLocal, call, dependency] =
           executeSkipRowsRange(_lastRange, clientCall);
       _requestedDependency = dependency;
-
-      if (type == FastForwardVariant::EXECUTOR) {
-        // We do not report the skip
-        skippedLocal = 0;
-      }
 
       if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix, MultiAqlItemBlockInputRange>) {
         // The executor will have used all Rows.
@@ -1561,6 +1649,24 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       }
 
       return {state, stats, skippedLocal, call, dependency};
+    }
+    case FastForwardVariant::EXECUTOR: {
+      LOG_QUERY("2890e", DEBUG) << printTypeInfo() << " fast forward.";
+      // We use a DUMMY Call to simulate fullCount.
+      AqlCall dummy;
+      dummy.hardLimit = 0;
+      dummy.fullCount = true;
+      auto [state, stats, skippedLocal, call, dependency] =
+          executeSkipRowsRange(_lastRange, dummy);
+      _requestedDependency = dependency;
+      if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix, MultiAqlItemBlockInputRange>) {
+        // The executor will have used all Rows.
+        // However we need to drop them from the input
+        // here.
+        inputRange.skipAllRemainingDataRows();
+      }
+
+      return {state, stats, 0, call, dependency};
     }
     case FastForwardVariant::FETCHER: {
       LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
@@ -1953,16 +2059,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             TRI_ASSERT(skippedLocal.getSkipCount() == 0);
             skippedLocal.decrementSubquery();
           }
-
-          /*
-                    {
-                      VPackBuilder in;
-                      VPackBuilder ex;
-                      _skipped.toVelocyPack(ex);
-                      skippedLocal.toVelocyPack(in);
-                      LOG_DEVEL << "merging " << in.toJson() << " -> " << ex.toJson();
-                    }
-          */
           if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
             // We skipped through passthrough, so count that a skip was solved.
             _skipped.merge(skippedLocal, false);
@@ -2025,10 +2121,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
           TRI_ASSERT(!_outputItemRow->allRowsUsed());
           if constexpr (executorHasSideEffects<Executor>) {
-            _execState = sideEffectShadowRowForwarding(stack);
+            _execState = sideEffectShadowRowForwarding(stack, _skipped);
+          } else {
+            // This may write one or more rows.
+            _execState = shadowRowForwarding();
           }
-          // This may write one or more rows.
-          _execState = shadowRowForwarding();
           if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
             // Produce might have modified the clientCall
             // But only do this if we are not subquery.
@@ -2055,13 +2152,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
     // We return skipped here, reset member
     SkipResult skipped = _skipped;
-/*
-    {
-      VPackBuilder skippor;
-      skipped.toVelocyPack(skippor);
-      LOG_DEVEL << getPlanNode()->getTypeString() << " -> " << skippor.toJson();
-    }
-*/
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (!stack.is36Compatible()) {
       if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
