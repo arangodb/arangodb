@@ -10,6 +10,9 @@ documents, graphs, and key-values. Build high performance applications using a
 convenient SQL-like query language or JavaScript extensions. Use ACID
 transactions if you require them. Scale horizontally with a few mouse clicks.
 
+ArangoDB runs everywhere: On-prem, in the cloud and also on
+[ArangoDBs Cloud Service Oasis](https://cloud.arangodb.com/home).
+
 The supported data models can be mixed in queries and allow ArangoDB to be the
 aggregation point for your data.
 

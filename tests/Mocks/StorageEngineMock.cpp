@@ -1253,13 +1253,6 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
-arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods* trx,
-                                              arangodb::velocypack::Slice const& key,
-                                              arangodb::ManagedDocumentResult& result,
-                                              bool unusedFlag) {
-  return read(trx, arangodb::velocypack::StringRef(key), result, unusedFlag);
-}
-
 bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,
                                           arangodb::LocalDocumentId const& token,
                                           arangodb::ManagedDocumentResult& result) const {

@@ -25,6 +25,7 @@
 #define ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H 1
 
 #include "Graph/BaseOptions.h"
+#include <memory>
 
 namespace arangodb {
 
@@ -38,6 +39,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 namespace graph {
+class EdgeCursor;
 
 struct ShortestPathOptions : public BaseOptions {
  public:
@@ -69,7 +71,9 @@ struct ShortestPathOptions : public BaseOptions {
 
   arangodb::velocypack::Slice getStart() const;
   arangodb::velocypack::Slice getEnd() const;
-
+  
+  std::unique_ptr<EdgeCursor> buildCursor(bool backward);
+  
   /// @brief  Test if we have to use a weight attribute
   bool useWeight() const;
 
@@ -90,18 +94,10 @@ struct ShortestPathOptions : public BaseOptions {
 
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;
-
-  EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid);
-
-  EdgeCursor* nextReverseCursor(arangodb::velocypack::StringRef vid);
-
+  
   void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
 
   void isQueryKilledCallback() const;
-
- private:
-  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid);
-  EdgeCursor* nextReverseCursorCoordinator(arangodb::velocypack::StringRef vid);
 
  private:
   /// @brief Lookup info to find all reverse edges.
