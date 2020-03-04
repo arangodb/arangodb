@@ -506,6 +506,9 @@ function printTraversalDetails(traversals) {
       uniqueVertices: options.uniqueVertices,
       uniqueEdges: options.uniqueEdges
     };
+    if (options.vertexCollections !== undefined) {
+      opts.vertexCollections = options.vertexCollections;
+    }
 
     var result = '';
     for (var att in opts) {
@@ -701,7 +704,7 @@ function processQuery(query, explain, planIndex) {
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
-  
+
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
@@ -1200,6 +1203,8 @@ function processQuery(query, explain, planIndex) {
           } else {
             parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
           }
+        } else {
+          parts.push(annotation('/* vertex optimized away */'));
         }
         if (node.hasOwnProperty('edgeOutVariable')) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));

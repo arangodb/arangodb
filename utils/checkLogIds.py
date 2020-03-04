@@ -204,4 +204,4 @@ if __name__ == "__main__":
             ,[".", "lib/Logger/LogMacros.h",
               "arangod/StorageEngine/TransactionState.h"]    #dirs and files to exclude (does not purge the dir)
             , dict()                                         #database
-            ));
+            ))

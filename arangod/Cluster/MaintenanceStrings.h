@@ -29,6 +29,7 @@ namespace maintenance {
 
 constexpr char const* ACTIONS = "actions";
 constexpr char const* AGENCY = "agency";
+constexpr char const* CACHE_ENABLED = "cacheEnabled";
 constexpr char const* COLLECTION = "collection";
 constexpr char const* CREATE_COLLECTION = "CreateCollection";
 constexpr char const* CREATE_DATABASE = "CreateDatabase";
@@ -68,7 +69,7 @@ constexpr char const* TAKEOVER_SHARD_LEADERSHIP = "TakeoverShardLeadership";
 constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
-constexpr char const* VALIDATORS = "validators";
+constexpr char const* VALIDATION = "validation";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
 constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
 

@@ -669,7 +669,7 @@ std::string extractCollectionName(transaction::Methods* trx,
     VPackSlice slice = materializer.slice(value, true);
     VPackSlice id = slice;
 
-    if (slice.isObject() && slice.hasKey(StaticStrings::IdString)) {
+    if (slice.isObject()) {
       id = slice.get(StaticStrings::IdString);
     }
     if (id.isString()) {
@@ -683,7 +683,8 @@ std::string extractCollectionName(transaction::Methods* trx,
     size_t pos = identifier.find('/');
 
     if (pos != std::string::npos) {
-      return identifier.substr(0, pos);
+      // this is superior to  identifier.substr(0, pos)
+      identifier.resize(pos);
     }
 
     return identifier;
@@ -875,16 +876,20 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
     searchBuilder->add(VPackValue(identifier));
   } else {
     if (collectionName.empty()) {
-      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
+      char const* p = identifier.data() + pos + 1;
+      size_t l = identifier.size() - pos - 1;
+      searchBuilder->add(VPackValuePair(p, l, VPackValueType::String));
       collectionName = identifier.substr(0, pos);
-    } else if (identifier.substr(0, pos) != collectionName) {
+    } else if (identifier.compare(0, pos, collectionName) != 0) {
       // Requesting an _id that cannot be stored in this collection
       if (ignoreError) {
         return;
       }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     } else {
-      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
+      char const* p = identifier.data() + pos + 1;
+      size_t l = identifier.size() - pos - 1;
+      searchBuilder->add(VPackValuePair(p, l, VPackValueType::String));
     }
   }
 
@@ -1553,19 +1558,22 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
   AqlValue const& value1 = extractFunctionParameterValue(parameters, 0);
   AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
 
-  // FIXME: there is only one shared stringbuffer instance
-  transaction::StringBufferLeaser buffer1(trx);
-  transaction::StringBufferLeaser buffer2(trx);
+  // we use one buffer to stringify both arguments
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
-  arangodb::basics::VPackStringBufferAdapter adapter1(buffer1->stringBuffer());
-  arangodb::basics::VPackStringBufferAdapter adapter2(buffer2->stringBuffer());
+  // stringify argument 1
+  ::appendAsString(trx, adapter, value1);
 
-  ::appendAsString(trx, adapter1, value1);
-  ::appendAsString(trx, adapter2, value2);
+  // note split position
+  size_t const split = buffer->length();
+
+  // stringify argument 2
+  ::appendAsString(trx, adapter, value2);
 
   int encoded = basics::StringUtils::levenshteinDistance(
-      std::string(buffer1->begin(), buffer1->length()),
-      std::string(buffer2->begin(), buffer2->length()));
+      buffer->begin(), split,
+      buffer->begin() + split, buffer->length() - split);
 
   return AqlValue(AqlValueHintInt(encoded));
 }
