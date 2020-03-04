@@ -185,9 +185,9 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     merge.add("journalSize", VPackValue(journalSize));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    bool def = Helper::getBooleanValue(_info.slice(), "cacheEnabled", false);
-    merge.add("cacheEnabled",
-              VPackValue(Helper::getBooleanValue(slice, "cacheEnabled", def)));
+    bool def = Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled, false);
+    merge.add(StaticStrings::CacheEnabled,
+              VPackValue(Helper::getBooleanValue(slice, StaticStrings::CacheEnabled, def)));
 
     auto validators = slice.get(StaticStrings::Validation);
     if(!validators.isNone()) {
@@ -247,8 +247,8 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
                                                    TRI_JOURNAL_DEFAULT_SIZE)));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    result.add("cacheEnabled",
-               VPackValue(Helper::getBooleanValue(_info.slice(), "cacheEnabled", false)));
+    result.add(StaticStrings::CacheEnabled,
+               VPackValue(Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled, false)));
 
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
