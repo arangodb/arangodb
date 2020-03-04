@@ -88,39 +88,35 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
   // TODO call input.skip()!
-  while (call.needSkipMore() && !done()) {
-    if (input.hasDataRow(currentDependency())) {
-      auto [state, inputRow] = input.nextDataRow(currentDependency());
-      call.didSkip(1);
+  // If we need to skip we can just tell our current dependency to skip
+  // directly.
 
-      if (state == ExecutorState::DONE) {
-        advanceDependency();
-      }
-    } else {
-      if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
-        advanceDependency();
-      } else {
-        // We need to fetch more first
-        break;
-      }
+  // First try to skip upstream.
+  auto skipped = size_t{0};
+
+  if (call.needSkipMore()) {
+    skipped = input.skipForDependency(currentDependency(), call.getOffset());
+
+    // Skip over dependencies that are DONE, they cannot skip more
+    while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+      advanceDependency();
     }
-  }
 
-  // Skip over the dependencies that are DONE
-  while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
-    advanceDependency();
-  }
+    // If we have not hit the last dependency and need to skip more still, let
+    // upstream handle the skip
+    if (!done() && call.needSkipMore()) {
+      auto callSet = AqlCallSet{};
+      callSet.calls.emplace_back(
+          AqlCallSet::DepCallPair{currentDependency(), AqlCall{call.getOffset(), 0, 0}});
+      return {ExecutorState::HASMORE, Stats{}, 0, callSet};
+    }
 
-  if (done()) {
-    return {ExecutorState::DONE, Stats{}, call.getSkipCount(), AqlCallSet{}};
-  } else {
-    // TODO Should we not generate a call that only skips, with a soft limit of 0,
-    //      based off `call` rather than just asking for everything?
-    //      In which case of course it is important to look into the skip count
-    //      of the input ranges above!
-    auto callSet = AqlCallSet{};
-    callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
-    return {input.upstreamState(currentDependency()), Stats{}, call.getSkipCount(), callSet};
+    // We are done() or don't need to skip more
+    if (done()) {
+      return {ExecutorState::DONE, Stats{}, 0, AqlCallSet{}};
+    } else {
+      return {ExecutorState::HASMORE, Stats{}, 0, callSet};
+    }
   }
 }
 
