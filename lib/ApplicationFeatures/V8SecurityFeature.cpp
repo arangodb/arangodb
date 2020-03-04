@@ -175,7 +175,9 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       ->addOption("--javascript.allow-port-testing",
                   "allow testing of ports from within JavaScript actions",
                   new BooleanParameter(&_allowPortTesting),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
 
   options
@@ -183,61 +185,87 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   "allow execution and control of external processes from "
                   "within JavaScript actions",
                   new BooleanParameter(&_allowProcessControl),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.harden",
                   "disables access to JavaScript functions in the internal "
                   "module: getPid() and logLevel()",
-                  new BooleanParameter(&_hardenInternalModule))
+                  new BooleanParameter(&_hardenInternalModule),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.startup-options-whitelist",
                   "startup options whose names match this regular "
                   "expression will be whitelisted and exposed to JavaScript",
-                  new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec))
+                  new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
   options
       ->addOption("--javascript.startup-options-blacklist",
                   "startup options whose names match this regular "
                   "expression will not be exposed (if not whitelisted) to "
                   "JavaScript actions",
-                  new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec))
+                  new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.environment-variables-whitelist",
                   "environment variables that will be accessible in JavaScript",
-                  new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec))
+                  new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
   options
       ->addOption("--javascript.environment-variables-blacklist",
                   "environment variables that will be inaccessible in "
                   "JavaScript if not whitelisted",
-                  new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec))
+                  new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.endpoints-whitelist",
                   "endpoints that can be connected to via "
                   "@arangodb/request module in JavaScript actions",
-                  new VectorParameter<StringParameter>(&_endpointsWhitelistVec))
+                  new VectorParameter<StringParameter>(&_endpointsWhitelistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
   options
       ->addOption("--javascript.endpoints-blacklist",
                   "endpoints that cannot be connected to via @arangodb/request "
                   "module in "
                   "JavaScript actions if not whitelisted",
-                  new VectorParameter<StringParameter>(&_endpointsBlacklistVec))
+                  new VectorParameter<StringParameter>(&_endpointsBlacklistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.files-whitelist",
                   "filesystem paths that will be accessible from within "
                   "JavaScript actions",
-                  new VectorParameter<StringParameter>(&_filesWhitelistVec))
+                  new VectorParameter<StringParameter>(&_filesWhitelistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30500);
 }
 
