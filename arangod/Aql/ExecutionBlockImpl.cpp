@@ -1232,7 +1232,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
 
       auto depCallIdx = size_t{0};
       auto allAskedDepsAreWaiting = true;
-      bool allUpstreamDepsAreDone = false;
+      auto askedAtLeastOneDep = false;
       auto skippedTotal = size_t{0};
       // Iterate in parallel over `_callsInFlight` and `aqlCall.calls`.
       // _callsInFlight[i] corresponds to aqlCalls.calls[k] iff
@@ -1260,6 +1260,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
           auto& callInFlight = maybeCallInFlight.value();
           auto [state, skipped, range] =
               _rowFetcher.executeForDependency(dependency, callInFlight);
+          askedAtLeastOneDep = true;
           if (state != ExecutionState::WAITING) {
             // Got a result, call is no longer in flight
             maybeCallInFlight = std::nullopt;
@@ -1268,24 +1269,15 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
             TRI_ASSERT(skipped == 0);
           }
           skippedTotal += skipped;
-          // Note that we rely on the MultiDependencySingleRowFetcher to return
-          // DONE only when all dependencies are done.
-          // TODO When this is moved into the MultiDependencySingleRowFetcher,
-          //      the logic should be refactored to be more clear.
-          if (state == ExecutionState::DONE) {
-            allUpstreamDepsAreDone = true;
-          }
           _lastRange.setDependency(dependency, range);
         }
       }
+
       auto const state = std::invoke([&]() {
-        TRI_ASSERT(!(allAskedDepsAreWaiting && allUpstreamDepsAreDone));
-        if (allAskedDepsAreWaiting) {
+        if (askedAtLeastOneDep && allAskedDepsAreWaiting) {
           return ExecutionState::WAITING;
-        } else if (allUpstreamDepsAreDone) {
-          return ExecutionState::DONE;
         } else {
-          return ExecutionState::HASMORE;
+          return _rowFetcher.upstreamState();
         }
       });
 
