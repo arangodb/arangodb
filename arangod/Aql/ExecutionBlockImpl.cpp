@@ -528,38 +528,17 @@ static SkipVariants constexpr skipType() {
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
-  if constexpr (isNewStyleExecutor<Executor>) {
-    AqlCallStack stack{AqlCall::SimulateSkipSome(atMost)};
-    auto const [state, skipped, block] = execute(stack);
+  AqlCallStack stack{AqlCall::SimulateSkipSome(atMost)};
+  auto const [state, skipped, block] = execute(stack);
 
-    // execute returns ExecutionState::DONE here, which stops execution after simulating a skip.
-    // If we indiscriminately return ExecutionState::HASMORE, then we end up in an infinite loop
-    //
-    // luckily we can dispose of this kludge once executors have been ported.
-    if (skipped.getSkipCount() < atMost && state == ExecutionState::DONE) {
-      return {ExecutionState::DONE, skipped.getSkipCount()};
-    } else {
-      return {ExecutionState::HASMORE, skipped.getSkipCount()};
-    }
+  // execute returns ExecutionState::DONE here, which stops execution after simulating a skip.
+  // If we indiscriminately return ExecutionState::HASMORE, then we end up in an infinite loop
+  //
+  // luckily we can dispose of this kludge once executors have been ported.
+  if (skipped.getSkipCount() < atMost && state == ExecutionState::DONE) {
+    return {ExecutionState::DONE, skipped.getSkipCount()};
   } else {
-    traceSkipSomeBegin(atMost);
-    auto state = ExecutionState::HASMORE;
-
-    while (state == ExecutionState::HASMORE && _skipped < atMost) {
-      auto res = skipSomeOnceWithoutTrace(atMost - _skipped);
-      TRI_ASSERT(state != ExecutionState::WAITING || res.second == 0);
-      state = res.first;
-      _skipped += res.second;
-      TRI_ASSERT(_skipped <= atMost);
-    }
-
-    size_t skipped = 0;
-    if (state != ExecutionState::WAITING) {
-      std::swap(skipped, _skipped);
-    }
-
-    TRI_ASSERT(skipped <= atMost);
-    return traceSkipSomeEnd(state, skipped);
+    return {ExecutionState::HASMORE, skipped.getSkipCount()};
   }
 }
 
