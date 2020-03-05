@@ -205,14 +205,14 @@ VPackArrayIterator UpsertModifier::getUpdateResultsIterator() const {
   if (_updateResults.hasSlice() && _updateResults.slice().isArray()) {
     return VPackArrayIterator(_updateResults.slice());
   }
-  return VPackArrayIterator(VPackSlice::emptyArraySlice());
+  return VPackArrayIterator(VPackArrayIterator::Empty{});
 }
 
 VPackArrayIterator UpsertModifier::getInsertResultsIterator() const {
   if (_insertResults.hasSlice() && _insertResults.slice().isArray()) {
     return VPackArrayIterator(_insertResults.slice());
   }
-  return VPackArrayIterator(VPackSlice::emptyArraySlice());
+  return VPackArrayIterator(VPackArrayIterator::Empty{});
 }
 
 Result UpsertModifier::accumulate(InputAqlItemRow& row) {

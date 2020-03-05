@@ -21,17 +21,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Cache/Transaction.h"
-#include "Cache/TransactionManager.h"
-
 #include "gtest/gtest.h"
 
-#include <stdint.h>
+#include <cstdint>
+
+#include "Cache/Transaction.h"
+#include "Cache/TransactionManager.h"
 
 using namespace arangodb::cache;
 

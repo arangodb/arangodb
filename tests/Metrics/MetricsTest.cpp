@@ -55,10 +55,9 @@ TEST_F(MetricsTest, test_counter) {
   c.store(0);
   ASSERT_EQ(c.load(),  0);
 
-  std::string s;
-  c.toPrometheus(s);
-  LOG_DEVEL << s;
-
+  //std::string s;
+  //c.toPrometheus(s);
+  //LOG_DEVEL << s;
 }
 
 template<typename T> void gauge_test() {
@@ -79,10 +78,9 @@ template<typename T> void gauge_test() {
   g -= g.load();
   ASSERT_DOUBLE_EQ(g.load(),  zero);
 
-  std::string s;
-  g.toPrometheus(s);
-  LOG_DEVEL << s;
-
+  //std::string s;
+  //g.toPrometheus(s);
+  //LOG_DEVEL << s;
 }
 
 TEST_F(MetricsTest, long_double) {
@@ -132,10 +130,9 @@ template<typename T> void histogram_test(
   ASSERT_DOUBLE_EQ(h.load(buckets-1), 5);
 
   // dump
-  std::string s;
-  h.toPrometheus(s);
-  LOG_DEVEL << s;
-
+  //std::string s;
+  //h.toPrometheus(s);
+  //LOG_DEVEL << s;
 }
 
 
