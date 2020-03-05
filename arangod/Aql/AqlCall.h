@@ -176,6 +176,10 @@ struct AqlCall {
     std::visit(minus, hardLimit);
   }
 
+  bool hasLimit() const {
+    return hasHardLimit() || hasSoftLimit();
+  }
+
   bool hasHardLimit() const {
     return !std::holds_alternative<AqlCall::Infinity>(hardLimit);
   }

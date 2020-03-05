@@ -147,6 +147,10 @@ auto MultiAqlItemBlockInputRange::isDone() const -> bool {
   return res;
 }
 
+auto MultiAqlItemBlockInputRange::state() const -> ExecutorState {
+  return isDone() ? ExecutorState::DONE : ExecutorState::HASMORE;
+}
+
 auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   for (size_t i = 0; i < _inputs.size(); i++) {
     _inputs.at(i).skipAllRemainingDataRows();

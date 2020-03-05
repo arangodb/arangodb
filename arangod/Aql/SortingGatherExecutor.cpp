@@ -444,11 +444,9 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
     }
   }
 
-  auto const state = input.isDone() ? ExecutorState::DONE : ExecutorState::HASMORE;
-
   TRI_ASSERT(!input.isDone() || callSet.empty());
 
-  return {state, NoStats{}, call.getSkipCount(), callSet};
+  return {input.state(), NoStats{}, call.getSkipCount(), callSet};
 }
 
 bool SortingGatherExecutor::constrainedSort() const noexcept {

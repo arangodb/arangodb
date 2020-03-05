@@ -76,8 +76,12 @@ auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCa
 auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                                  OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCallSet> {
-  // Illegal dependency, on purpose to trigger asserts
-  size_t waitingDep = input.numberDependencies();
+
+  auto const& clientCall = output.getClientCall();
+  TRI_ASSERT(clientCall.getOffset() == 0);
+
+  auto callSet = AqlCallSet{};
+
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
     while (!output.isFull()) {
       auto [state, row] = input.nextDataRow(dep);
@@ -87,27 +91,24 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
       } else {
         // This output did not produce anything
         if (state == ExecutorState::HASMORE) {
-          waitingDep = dep;
+          callSet.calls.emplace_back(
+              AqlCallSet::DepCallPair{dep, upstreamCallProduce(clientCall)});
         }
         break;
       }
     }
   }
-  if (input.isDone()) {
-    // We cannot have one that we are waiting on, if we are done.
-    TRI_ASSERT(waitingDep == input.numberDependencies());
-    return {ExecutorState::DONE, NoStats{}, AqlCallSet{}};
-  }
-  // TODO This currently does not request in parallel
-  auto callSet = AqlCallSet{};
-  callSet.calls.emplace_back(
-      AqlCallSet::DepCallPair{waitingDep, upstreamCallProduce(output.getClientCall())});
-  return {ExecutorState::HASMORE, NoStats{}, callSet};
+
+  // We cannot have one that we are waiting on, if we are done.
+  TRI_ASSERT(!input.isDone() || callSet.empty());
+
+  return {input.state(), NoStats{}, callSet};
 }
 
 auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
                                                    AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
+  // TODO skipping is currently not parallelized, but should be
   size_t waitingDep = input.numberDependencies();
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
     auto& range = input.rangeForDependency(dep);

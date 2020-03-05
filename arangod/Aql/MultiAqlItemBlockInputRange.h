@@ -70,6 +70,7 @@ class MultiAqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
   auto isDone() const -> bool;
+  auto state() const -> ExecutorState;
 
   auto resizeOnce(ExecutorState state, size_t skipped, size_t nrInputRanges) -> void;
 
