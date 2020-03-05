@@ -77,6 +77,18 @@ AqlCall AqlCallStack::popCall() {
 
 AqlCall const& AqlCallStack::peek() const {
   TRI_ASSERT(isRelevant());
+  TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
+  if (is36Compatible() && _operations.empty()) {
+    // This is only for compatibility with 3.6
+    // there we do not have the stack beeing passed-through
+    // in AQL, we only have a single call.
+    // We can only get into this state in the abscence of
+    // LIMIT => we always do an unlimted softLimit call
+    // to the upwards subquery.
+    // => Simply put another fetchAll Call on the stack.
+    // This code is to be removed in the next version after 3.7
+    _operations.emplace_back(AqlCall{});
+  }
   TRI_ASSERT(!_operations.empty());
   return _operations.back();
 }

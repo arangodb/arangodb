@@ -131,8 +131,11 @@ class AqlCallStack {
   explicit AqlCallStack(std::vector<AqlCall>&& operations);
 
  private:
-  // The list of operations, stacked by depth (e.g. bottom element is from main query)
-  std::vector<AqlCall> _operations;
+  // The list of operations, stacked by depth (e.g. bottom element is from main
+  // query) NOTE: This is only mutable on 3.6 compatibility mode. We need to
+  // inject an additional call in any const operation here just to pretend we
+  // are not empty. Can be removed after 3.7.
+  mutable std::vector<AqlCall> _operations;
 
   // The depth of subqueries that have not issued calls into operations,
   // as they have been skipped.
