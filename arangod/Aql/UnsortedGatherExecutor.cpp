@@ -63,8 +63,8 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
         advanceDependency();
       } else {
         auto callSet = AqlCallSet{};
-        // TODO shouldn't we use `output.getClientCall()` instead of `AqlCall{}` here?
-        callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), AqlCall{}});
+        callSet.calls.emplace_back(
+            AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
         return {input.upstreamState(currentDependency()), Stats{}, callSet};
       }
     }
@@ -79,33 +79,23 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     return {ExecutorState::DONE, Stats{}, AqlCallSet{}};
   } else {
     auto callSet = AqlCallSet{};
-    // TODO shouldn't we use `output.getClientCall()` instead of `AqlCall{}` here?
-    callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), AqlCall{}});
+    callSet.calls.emplace_back(
+        AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
     return {input.upstreamState(currentDependency()), Stats{}, callSet};
   }
 }
 
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
-  // TODO call input.skip()!
-  // If we need to skip we can just tell our current dependency to skip
-  // directly.
-
-  // First try to skip upstream.
   auto skipped = size_t{0};
 
   while (call.needSkipMore()) {
-    LOG_DEVEL << "need to skip more: " << call.getOffset();
-
     auto skippedHere = input.skipForDependency(currentDependency(), call.getOffset());
     call.didSkip(skippedHere);
     skipped += skippedHere;
 
-    LOG_DEVEL << "skipped: " << skipped << " " << call.getOffset();
-
     // Skip over dependencies that are DONE, they cannot skip more
     while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
-      LOG_DEVEL << " advance dep";
       advanceDependency();
     }
 
@@ -114,10 +104,8 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
     } else {
       // Ask for more skips
       if (call.needSkipMore()) {
-        LOG_DEVEL << " skipping some more, asking dep " << call.getOffset();
         auto callSet = AqlCallSet{};
-        callSet.calls.emplace_back(
-            AqlCallSet::DepCallPair{currentDependency(), AqlCall{call.getOffset(), 0, 0}});
+        callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
         return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
       } else {
         return {ExecutorState::HASMORE, Stats{}, skipped, AqlCallSet{}};
