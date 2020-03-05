@@ -871,8 +871,6 @@ void Supervision::run() {
                                              "initialize its data.";
   }
 
-  bool maintenanceKeyErrorReported = false;
-
   bool shutdown = false;
   {
     CONDITION_LOCKER(guard, _cv);
@@ -911,15 +909,20 @@ void Supervision::run() {
 
           bool maintenanceMode = false;
           if (_snapshot.has(supervisionMaintenance)) {
-            TRI_ASSERT(_snapshot.get(supervisionMaintenance).isString());
+
             try {
-              auto const maintenanceExpires =
-                stringToTimepoint(_snapshot.get(supervisionMaintenance).getString());
-              if (maintenanceExpires >= std::chrono::system_clock::now()) {
+              if (_snapshot.get(supervisionMaintenance).isString()) {
+                std::string tmp = _snapshot.get(supervisionMaintenance).getString();
+                if (tmp == "on") { // legacy behaviour
+                  maintenanceMode = true;
+                } else {
+                  auto const maintenanceExpires = stringToTimepoint(tmp);
+                  if (maintenanceExpires >= std::chrono::system_clock::now()) {
+                    maintenanceMode = true;
+                  }
+                }
+              } else { // legacy behaviour
                 maintenanceMode = true;
-              }
-              if (maintenanceKeyErrorReported) {
-                maintenanceKeyErrorReported = true;
               }
             } catch (std::exception const& e) {
               if (!maintenanceKeyErrorReported) {
