@@ -176,10 +176,6 @@ constexpr bool isNewStyleExecutor = is_one_of_v<
     SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>,
     MaterializeExecutor<RegisterId>, MaterializeExecutor<std::string const&>>;
 
-template <typename Executor>
-static constexpr bool isParallelExecutor =
-    is_one_of_v<Executor, ParallelUnsortedGatherExecutor>;
-
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
