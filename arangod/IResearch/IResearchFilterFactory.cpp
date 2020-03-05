@@ -307,22 +307,6 @@ arangodb::Result getAnalyzerByName(
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-  ScopedAqlValue analyzerValue(*analyzerArg);
-  irs::string_ref analyzerId;
-
-  auto rv = evaluateArg(analyzerId, analyzerValue, funcName, args, i, filter != nullptr, ctx);
-
-  if (rv.fail()) {
-    return rv;
-  }
-
-  if (!filter && !analyzerValue.isConstant()) {
-    return {};
-  }
-
-  auto& analyzer = out._pool;
-  auto& shortName = out._shortName;
-
   auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
     ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
     : nullptr;
