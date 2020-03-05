@@ -1,7 +1,7 @@
 devel
 -----
 
-* Supervision maintenance mode from "on" and TTL to expiry string.
+* Supervision hot backup and supervision maintenance modes ttl fix.
 
 * Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
   AQL functions when invoking an AQL query from the arangosh or a client application.
