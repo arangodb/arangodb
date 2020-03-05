@@ -3,6 +3,14 @@ v3.6.2 (XXXX-XX-XX)
 
 * Legacy behaviour for maintenance mode in supervision.
 
+* Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
+  AQL functions when invoking an AQL query from the arangosh or a client application.
+  Previously, invoking an AQL query and using the `CALL` or `APPLY` AQL functions
+  to call user-defined AQL function caused undefined behavior.
+
+* Fix nullptr deference in index skipping mode, which produced an address
+  sanitizer (ASan) warning.
+
 * Fix supervision mode detection while unlocking agency in cluster
   hot backups.
 
@@ -31,9 +39,9 @@ v3.6.2 (XXXX-XX-XX)
 
 * Fixed queries having the following structure
 
-      FOR doc IN collection
-	FILTER doc.nonIndexedAttribute     // expression
-	FOR sub IN doc.nonIndexedAttribute // same expression
+  FOR doc IN collection
+  FILTER doc.nonIndexedAttribute     // expression
+  FOR sub IN doc.nonIndexedAttribute // same expression
 
   For such queries, the FILTER was moved into the first FOR loop for early
   pruning. Afterwards, the leftover CalculationNode that evaluated

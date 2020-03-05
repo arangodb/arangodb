@@ -95,10 +95,6 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       return true;
     }
 
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
-
     transaction::BuilderLeaser b(context.getTrxPtr());
     b->openObject(true);
 
@@ -106,6 +102,10 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
                       *b.get(), context.getUseRawDocumentPointers());
 
     b->close();
+    
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
 
     AqlValue v(b.get());
     AqlValueGuard guard{v, true};
@@ -423,9 +423,6 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       checkFilter = false;
     }
 
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
-
     transaction::BuilderLeaser b(context.getTrxPtr());
     b->openObject(true);
 
@@ -473,8 +470,10 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       context.incrFiltered();
       return false;
     }
-
+    
     if constexpr (!skip) {
+      InputAqlItemRow const& input = context.getInputRow();
+      OutputAqlItemRow& output = context.getOutputRow();
       RegisterId registerId = context.getOutputRegister();
       AqlValue v(b.get());
       AqlValueGuard guard{v, true};
