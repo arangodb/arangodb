@@ -1,6 +1,8 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Legacy behaviour for maintenance mode in supervision.
+
 * Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
   AQL functions when invoking an AQL query from the arangosh or a client application.
   Previously, invoking an AQL query and using the `CALL` or `APPLY` AQL functions
