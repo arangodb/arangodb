@@ -161,6 +161,17 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   return 0;
 }
 
+// Subtract up to count rows from the local _skipped state
+auto MultiAqlItemBlockInputRange::skipForDependency(size_t const dependency,
+                                                    size_t count) -> size_t {
+  return _inputs.at(dependency).skip(count);
+}
+
+// Skipp all that is available
+auto MultiAqlItemBlockInputRange::skipAllForDependency(size_t const dependency) -> size_t {
+  return _inputs.at(dependency).skipAll();
+}
+
 auto MultiAqlItemBlockInputRange::numberDependencies() const noexcept -> size_t {
   return _inputs.size();
 }
