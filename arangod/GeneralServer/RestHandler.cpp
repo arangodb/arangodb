@@ -23,16 +23,15 @@
 
 #include "RestHandler.h"
 
-#ifdef USE_DTRACE
-#include <sys/sdt.h>
-#endif
-
 #include <fuerte/jwt.h>
 #include <velocypack/Exception.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
+#ifdef USE_DTRACE
+#include "Basics/sdt.h"
+#endif
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"

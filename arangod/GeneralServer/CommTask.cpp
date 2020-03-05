@@ -25,15 +25,14 @@
 
 #include "CommTask.h"
 
-#ifdef USE_DTRACE
-#include <sys/sdt.h>
-#endif
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/compile-time-strlen.h"
+#ifdef USE_DTRACE
+#include "Basics/sdt.h"
+#endif
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/AuthenticationFeature.h"

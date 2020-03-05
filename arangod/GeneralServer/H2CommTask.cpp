@@ -22,13 +22,12 @@
 
 #include "H2CommTask.h"
 
-#ifdef USE_DTRACE
-#include <sys/sdt.h>
-#endif
-
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
+#ifdef USE_DTRACE
+#include "Basics/sdt.h"
+#endif
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
