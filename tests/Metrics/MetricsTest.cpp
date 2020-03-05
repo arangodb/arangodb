@@ -101,7 +101,7 @@ template<typename T> void histogram_test(
   T span = mx - mn,  step = span/(T)buckets,
     mmin = (std::is_floating_point<T>::value) ? span / T(1.e6) : T(1),
     one = T(1), ten = T(10), thousand(10);
-  Histogram h(buckets, mn, mx, "hist_test", "Hist test");
+  Histogram h(lin_scale_t<T>(mn, mx, buckets), "hist_test", "Hist test");
 
   //lower bucket bounds
   for (size_t i = 0; i < buckets; ++i) {
@@ -133,23 +133,25 @@ template<typename T> void histogram_test(
   //std::string s;
   //h.toPrometheus(s);
   //LOG_DEVEL << s;
+  std::cout << h << std::endl;
+
 }
 
 
 TEST_F(MetricsTest, test_float_histogram) {
-  histogram_test<long double>( 9,  1.,  2.);
-  histogram_test<long double>(10, -1.,  1.);
-  histogram_test<long double>( 8, -2., -1.);
+  histogram_test<double>( 9,  1.,  2.);
+  histogram_test<double>(10, -1.,  1.);
+  histogram_test<double>( 8, -2., -1.);
 }
 TEST_F(MetricsTest, test_double_histogram) {
-  histogram_test<long double>(12,  1.,  2.);
-  histogram_test<long double>(11, -1.,  1.);
-  histogram_test<long double>(13, -2., -1.);
+  histogram_test<double>(12,  1.,  2.);
+  histogram_test<double>(11, -1.,  1.);
+  histogram_test<double>(13, -2., -1.);
 }
 TEST_F(MetricsTest, test_long_double_histogram) {
-  histogram_test<long double>(12,  1.,  2.);
-  histogram_test<long double>(17, -1.,  1.);
-  histogram_test<long double>( 7, -2., -1.);
+  histogram_test<double>(12,  1.,  2.);
+  histogram_test<double>(17, -1.,  1.);
+  histogram_test<double>( 7, -2., -1.);
 }
 TEST_F(MetricsTest, test_short_histogram) {
   histogram_test<short>(6, -17, 349);

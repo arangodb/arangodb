@@ -145,8 +145,10 @@ public:
 
   scale_t(T const& low, T const& high, size_t n) :
     _low(low), _high(high) {
+    TRI_ASSERT(n > 0);
     _delim.resize(n);
   }
+  virtual ~scale_t() {}
   /**
    * @brief number of buckets
    */
@@ -171,11 +173,41 @@ public:
   std::vector<T> const& delim() const {
     return _delim;
   }
-
+  /**
+   * @brief dump to builder
+   */
+  virtual void toVelocyPack(VPackBuilder& b) const {
+    TRI_ASSERT(b.isOpenObject());
+    b.add("lower-limit", VPackValue(_low));
+    b.add("upper-limit", VPackValue(_high));
+    b.add("value-type", VPackValue(typeid(T).name()));
+    b.add(VPackValue("range"));
+    VPackArrayBuilder abb(&b);
+    for (auto const& i : _delim) {
+      b.add(VPackValue(i));
+    }
+  }
+  /**
+   * @brief dump to
+   */
+  std::ostream& print(std::ostream& o) const {
+    VPackBuilder b;
+    {
+      VPackObjectBuilder bb(&b);
+      this->toVelocyPack(b);
+    }
+    o << b.toJson();
+    return o; 
+  }
 protected:
   T _low, _high;
   std::vector<T> _delim;
 };
+
+template<typename T>
+std::ostream& operator<< (std::ostream& o, scale_t<T> const& s) {
+  return s.print(o);
+}
 
 template<typename T>
 struct log_scale_t : public scale_t<T> {
@@ -184,21 +216,33 @@ public:
   using value_type = T;
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
-    scale_t<T>(low, high, n), _base(base) { // Assertions
+    scale_t<T>(low, high, n), _base(base) {
     double nn = -1.0*n;
     for (auto& i : this->_delim) {
       i = (high-low) * std::pow(base, ++nn) + low;
     }
     _div = this->_delim.front() - low;
+    TRI_ASSERT(_div > 0);
     _ldiv = logf(_div);
   }
+  virtual ~log_scale_t() {}
   /**
    * @brief index for val
    * @param val value
    * @return    index
    */
   size_t pos(T const& val) const {
-    return static_cast<size_t>(std::floor(logf((val - this->_low)/_div)/logf(_base)));
+    return static_cast<size_t>(std::floor(logf((val - this->_low)/_base)/logf(_base)));
+  }
+
+  /**
+   * @brief Dump to builder
+   * @param b Envelope
+   */
+  virtual void toVelocyPack(VPackBuilder& b) const {
+    b.add("scale-type", VPackValue("logarithmic"));
+    b.add("base", VPackValue(_base));
+    scale_t<T>::toVelocyPack(b);
   }
 private:
   T _base, _div, _ldiv;
@@ -211,15 +255,17 @@ public:
   using value_type = T;
 
   lin_scale_t(T const& low, T const& high, size_t n) :
-    scale_t<T>(low, high, n) { // Assertions
+    scale_t<T>(low, high, n) {
     this->_delim.resize(n);
     _div = (high - low) / (T)n;
+    TRI_ASSERT(_div > 0);
     T le = low;
     for (auto& i : this->_delim) {
       i = le;
       le += _div;
     }
   }
+  virtual ~lin_scale_t() {}
   /**
    * @brief index for val
    * @param val value
@@ -227,6 +273,11 @@ public:
    */
   size_t pos(T const& val) const {
     return static_cast<size_t>(std::floor((val - this->_low)/ _div));
+  }
+
+  virtual void toVelocyPack(VPackBuilder& b) const {
+    b.add("scale-type", VPackValue("linear"));
+    scale_t<T>::toVelocyPack(b);
   }
 private:
   T _base, _div;
@@ -312,7 +363,7 @@ public:
   }
 
   std::ostream& print(std::ostream& o) const {
-//    o << "_div: " << _div << ", _c: " << _c << ", _r: [" << _lowr << ", " << _highr << "] " << name();
+    o << name() << " scale: " <<  _scale << " extremes: [" << _lowr << ", " << _highr << "]";
     return o;
   }
 
@@ -329,6 +380,5 @@ template<typename T>
 std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {
   return h.print(o);
 }
-
 
 #endif
