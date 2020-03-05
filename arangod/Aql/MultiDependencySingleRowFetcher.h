@@ -89,6 +89,8 @@ class MultiDependencySingleRowFetcher {
   explicit MultiDependencySingleRowFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~MultiDependencySingleRowFetcher() = default;
 
+  void init();
+
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   MultiDependencySingleRowFetcher();

@@ -176,10 +176,12 @@ void MultiDependencySingleRowFetcher::initDependencies() {
 }
 
 size_t MultiDependencySingleRowFetcher::numberDependencies() {
-  if (_dependencyInfos.empty()) {
-    initDependencies();
-  }
   return _dependencyInfos.size();
+}
+
+void MultiDependencySingleRowFetcher::init() {
+  TRI_ASSERT(_dependencyInfos.empty());
+  initDependencies();
 }
 
 std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRows(size_t atMost) {
@@ -368,9 +370,6 @@ auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> voi
 auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependency,
                                                            AqlCallStack& stack)
     -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange> {
-  if (_dependencyStates.empty()) {
-    initDependencies();
-  }
   auto [state, skipped, block] = _dependencyProxy->executeForDependency(dependency, stack);
 
   if (state == ExecutionState::WAITING) {

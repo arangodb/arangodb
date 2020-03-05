@@ -654,6 +654,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
     TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    initOnce();
 
     auto res = executeWithoutTrace(stack);
     return traceExecuteEnd(res);
@@ -1225,10 +1226,8 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
     // TODO The logic in the MultiDependencySingleRowFetcher branch should be
     //      moved into the MultiDependencySingleRowFetcher.
     if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher>) {
-      // TODO: This is a hack to guarantee we have enough space in our range
-      //       to fit all inputs, in particular the one executed below
-      _lastRange.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
-      _callsInFlight.resize(_dependencies.size());
+      TRI_ASSERT(_lastRange.numberDependencies() == _dependencies.size());
+      TRI_ASSERT(_callsInFlight.size() == _dependencies.size());
 
       auto depCallIdx = size_t{0};
       auto allAskedDepsAreWaiting = true;
@@ -1321,7 +1320,7 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
     -> std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> {
   if constexpr (isNewStyleExecutor<Executor>) {
     if constexpr (isMultiDepExecutor<Executor>) {
-      input.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
+      TRI_ASSERT(input.numberDependencies() == _dependencies.size());
       return _executor.produceRows(input, output);
     } else if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
       // The SubqueryExecutor has it's own special handling outside.
@@ -1344,7 +1343,8 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
   if constexpr (isNewStyleExecutor<Executor>) {
     call.skippedRows = 0;
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
-      if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>) {
+      if constexpr (isMultiDepExecutor<Executor>) {
+        TRI_ASSERT(inputRange.numberDependencies() == _dependencies.size());
         // If the executor has a method skipRowsRange, to skip outputs.
         // Every non-passthrough executor needs to implement this.
         auto res = _executor.skipRowsRange(inputRange, call);
@@ -2091,6 +2091,24 @@ template <>
 RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const
     noexcept {
   return _infos.getOutputRegister();
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::init() {
+  if constexpr (isMultiDepExecutor<Executor>) {
+    _lastRange.resizeOnce(ExecutorState::HASMORE, 0, _dependencies.size());
+    _callsInFlight.resize(_dependencies.size());
+    _rowFetcher.init();
+  }
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::initOnce() {
+  if constexpr (isMultiDepExecutor<Executor>) {
+    if (_callsInFlight.empty()) {
+      init();
+    }
+  }
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;

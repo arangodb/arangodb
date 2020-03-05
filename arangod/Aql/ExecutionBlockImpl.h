@@ -165,6 +165,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   ~ExecutionBlockImpl() override;
 
+  /// @brief Must be called exactly once after the plan is instantiated (i.e.,
+  ///        all blocks are created and dependencies are injected), but before
+  ///        the first execute() call.
+  ///        Is currently called conditionally in execute() itself, but should
+  ///        better be called in instantiateFromPlan and similar methods.
+  void init();
+
   /**
    * @brief Produce atMost many output rows, or less.
    *        May return waiting if I/O has to be performed
@@ -322,6 +329,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void resetExecutor();
 
+  void initOnce();
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
@@ -369,6 +378,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   bool _executorReturnedDone = false;
 
   /// @brief Only needed for parallel executors; could be omitted otherwise
+  ///        It's size is >0 after init() is called, and this is currently used
+  ///        in initOnce() to make sure that init() is called exactly once.
   std::vector<std::optional<AqlCallStack>> _callsInFlight;
 };
 
