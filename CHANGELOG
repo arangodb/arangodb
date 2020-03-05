@@ -1,6 +1,9 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Fix nullptr deference in index skipping mode, which produced an address
+  sanitizer (ASan) warning.
+
 * Fix supervision mode detection while unlocking agency in cluster
   hot backups.
 
