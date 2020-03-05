@@ -65,11 +65,16 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+using CalculationExecutorTestHelper = ExecutorTestHelper<2, 2>;
+using CalculationExecutorSplitType = CalculationExecutorTestHelper::SplitType;
+using CalculationExecutorInputParam = std::tuple<CalculationExecutorSplitType>;
+
 // TODO Add tests for both
 // CalculationExecutor<CalculationType::V8Condition> and
 // CalculationExecutor<CalculationType::Reference>!
 
-class CalculationExecutorTest : public AqlExecutorTestCase<false> {
+class CalculationExecutorTest
+    : public AqlExecutorTestCaseWithParam<CalculationExecutorInputParam> {
  protected:
   ExecutionState state;
   AqlItemBlockManager itemBlockManager;
@@ -101,7 +106,44 @@ class CalculationExecutorTest : public AqlExecutorTestCase<false> {
               *fakedQuery.get() /*query*/, expr /*expression*/,
               std::vector<Variable const*>{&var} /*expression in variables*/,
               std::vector<RegisterId>{inRegID} /*expression in registers*/) {}
+
+  auto getSplit() -> CalculationExecutorSplitType {
+    auto [split] = GetParam();
+    return split;
+  }
+
+  auto buildInfos() -> CalculationExecutorInfos {
+    return CalculationExecutorInfos{0, 2, 2, {}, {0, 1}};
+  }
 };
+
+template <size_t... vs>
+const CalculationExecutorSplitType splitIntoBlocks =
+    CalculationExecutorSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const CalculationExecutorSplitType splitStep = CalculationExecutorSplitType{step};
+
+INSTANTIATE_TEST_CASE_P(CalculationExecutor, CalculationExecutorTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<1>, splitStep<2>));
+
+TEST_P(CalculationExecutorTest, empty_input) {
+  auto infos = buildInfos();
+  AqlCall call{};
+  ExecutionStats stats{};
+
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+      .setInputValue({})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+#if 0
 
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
@@ -355,6 +397,7 @@ TEST_F(CalculationExecutorTest, DISABLED_test_produce_datarange_has_more) {  // 
   }
   EXPECT_FALSE(input.hasDataRow());
 }
+#endif
 
 }  // namespace aql
 }  // namespace tests
