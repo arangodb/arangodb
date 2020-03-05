@@ -113,7 +113,8 @@ class CalculationExecutorTest
   }
 
   auto buildInfos() -> CalculationExecutorInfos {
-    return CalculationExecutorInfos{0, 2, 2, {}, {0, 1}};
+    return CalculationExecutorInfos{0,    1,      1,  {}, {}, *fakedQuery.get(),
+                                    expr, {&var}, {0}};
   }
 };
 
@@ -143,261 +144,23 @@ TEST_P(CalculationExecutorTest, empty_input) {
       .expectedState(ExecutionState::DONE)
       .run();
 }
-#if 0
 
-TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
-      itemBlockManager, input.steal(), false);
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
+TEST_P(CalculationExecutorTest, some_input) {
+  auto infos = buildInfos();
+  AqlCall call{};
+  ExecutionStats stats{};
 
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+      .setInputValueList(0, 1, 2, 3, 4, 5, 6, 7, 8)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
-
-TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
-      itemBlockManager, input.steal(), true);
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
-
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-}
-
-TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
-      itemBlockManager, input->steal(), false);
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  NoStats stats{};
-
-  OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear()};
-
-  // 1
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  // 2
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  // 3
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(row.produced());
-
-  // verify calculation
-  {
-    AqlValue value;
-    auto block = row.stealBlock();
-    for (std::size_t index = 0; index < 3; index++) {
-      value = block->getValue(index, outRegID);
-      ASSERT_TRUE(value.isNumber());
-      ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
-    }
-  }
-}
-
-TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
-      itemBlockManager, input->steal(), true);
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  NoStats stats{};
-
-  OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear()};
-
-  // waiting
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-
-  // 1
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  // waiting
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-
-  // 2
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  // waiting
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-
-  // 3
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(row.produced());
-}
-
-TEST_F(CalculationExecutorTest, test_produce_datarange) {
-  // This fetcher will not be called!
-  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
-      itemBlockManager, fakeUnusedBlock->steal(), false);
-
-  // This is the relevant part of the test
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  SharedAqlItemBlockPtr inBlock =
-      buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}});
-
-  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
-  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
-  EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(input, output);
-  EXPECT_EQ(output.numRowsWritten(), 3);
-
-  EXPECT_EQ(state, ExecutorState::DONE);
-  // verify calculation
-  {
-    AqlValue value;
-    auto block = output.stealBlock();
-    for (std::size_t index = 0; index < 3; index++) {
-      value = block->getValue(index, outRegID);
-      ASSERT_TRUE(value.isNumber());
-      ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
-    }
-  }
-}
-
-TEST_F(CalculationExecutorTest, test_produce_datarange_need_more) {
-  // This fetcher will not be called!
-  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
-      itemBlockManager, fakeUnusedBlock->steal(), false);
-
-  // This is the relevant part of the test
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  SharedAqlItemBlockPtr inBlock =
-      buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}});
-
-  AqlItemBlockInputRange input{ExecutorState::HASMORE, 0, inBlock, 0};
-  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear(),
-                          AqlCall{0, 3, AqlCall::Infinity{}, false});
-
-  auto myCall = output.getClientCall();
-  EXPECT_EQ(myCall.getLimit(), 3);
-  EXPECT_EQ(output.numRowsWritten(), 0);
-
-  auto const [state, stats, outputCall] = testee.produceRows(input, output);
-  EXPECT_EQ(output.numRowsWritten(), 3);
-
-  EXPECT_EQ(state, ExecutorState::HASMORE);
-  // verify calculation
-  {
-    AqlValue value;
-    auto block = output.stealBlock();
-    for (std::size_t index = 0; index < 3; index++) {
-      value = block->getValue(index, outRegID);
-      ASSERT_TRUE(value.isNumber());
-      ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
-    }
-  }
-  // Test the Call we send to upstream
-  EXPECT_EQ(outputCall.offset, 0);
-  EXPECT_FALSE(outputCall.hasHardLimit());
-  // Avoid overfetching. I do not have a strong requirement on this
-  // test, however this is what we do right now.
-  EXPECT_EQ(outputCall.getLimit(), 0);
-  EXPECT_FALSE(outputCall.fullCount);
-}
-
-TEST_F(CalculationExecutorTest, DISABLED_test_produce_datarange_has_more) {  // TODO: fix and re-enable after this executor newStyle is active
-  // This fetcher will not be called!
-  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
-      itemBlockManager, fakeUnusedBlock->steal(), false);
-
-  // This is the relevant part of the test
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  SharedAqlItemBlockPtr inBlock =
-      buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}, {R"(3)"}, {R"(4)"}});
-
-  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
-  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
-  EXPECT_EQ(output.numRowsWritten(), 0);
-  AqlCall myCall{0, 3, AqlCall::Infinity{}, false};
-  output.setCall(std::move(myCall));
-
-  auto const [state, stats, call] = testee.produceRows(input, output);
-  EXPECT_EQ(output.numRowsWritten(), 3);
-
-  EXPECT_EQ(state, ExecutorState::HASMORE);
-  EXPECT_TRUE(input.hasDataRow());
-  // We still have two values in block: 3 and 4
-  {
-    // pop 3
-    auto const [state, row] = input.nextDataRow();
-    EXPECT_EQ(state, ExecutorState::HASMORE);
-    EXPECT_EQ(row.getValue(0).toInt64(), 3);
-  }
-  {
-    // pop 4
-    auto const [state, row] = input.nextDataRow();
-    EXPECT_EQ(state, ExecutorState::DONE);
-    EXPECT_EQ(row.getValue(0).toInt64(), 4);
-  }
-  EXPECT_FALSE(input.hasDataRow());
-}
-#endif
 
 }  // namespace aql
 }  // namespace tests
