@@ -1203,9 +1203,10 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
     TRI_ASSERT(call.hasHardLimit());
     return FastForwardVariant::FULLCOUNT;
   }
-  // TODO: We only need to do this is the executor actually require to call.
-  // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (std::is_same_v<Executor, LimitExecutor> || executorHasSideEffects<Executor>) {
+  // TODO: We only need to do this if the executor is required to call.
+  // e.g. Modifications and SubqueryStart will always need to be called. Limit only if it needs to report fullCount
+  if constexpr (is_one_of_v<Executor, LimitExecutor, SubqueryStartExecutor> ||
+                executorHasSideEffects<Executor>) {
     return FastForwardVariant::EXECUTOR;
   }
   return FastForwardVariant::FETCHER;
@@ -1601,16 +1602,6 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
                                                       AqlCall& clientCall)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t> {
   TRI_ASSERT(isNewStyleExecutor<Executor>);
-  if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-    if (clientCall.needsFullCount() && clientCall.getOffset() == 0 &&
-        clientCall.getLimit() == 0) {
-      // We can savely call skipRows.
-      // It will not report anything if the row is already consumed
-      return executeSkipRowsRange(_lastRange, clientCall);
-    }
-    // Do not fastForward anything, the Subquery start will handle it by itself
-    return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}, 0};
-  }
   auto type = fastForwardType(clientCall, _executor);
 
   switch (type) {
