@@ -261,7 +261,6 @@ auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const&
       // TODO: This call requires limits
       callSet.calls.emplace_back(AqlCallSet::DepCallPair{dependency, AqlCall{}});
     } else {
-
       // We got an answer, save it
       ValueType& localDep = _inputRows[dependency];
       localDep.row = row;
@@ -349,7 +348,6 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
   while (!input.isDone() && !output.isFull() && !limitReached()) {
     TRI_ASSERT(!maySkip());
     auto row = nextRow(input);
-    TRI_ASSERT(row.isInitialized() || input.isDone());
     if (row) {
       output.copyRow(row);
       output.advanceRow();
