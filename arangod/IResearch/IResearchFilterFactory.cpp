@@ -2069,11 +2069,9 @@ arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
                                            char const* subFuncName,
                                            irs::by_phrase* filter,
                                            QueryContext const& ctx,
-                                           arangodb::aql::AstNode const& array,
+                                           arangodb::aql::AstNode const& elem,
                                            irs::string_ref& term) {
-  TRI_ASSERT(array.isArray());
-
-  if (!array.isDeterministic()) {
+  if (!elem.isDeterministic()) {
     auto res = error::nondeterministicArgs(subFuncName);
     return {
       res.errorNumber(),
@@ -2081,7 +2079,7 @@ arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
     };
   }
 
-  if (array.numMembers() != 1) {
+  if (elem.numMembers() != 1) {
     auto res = error::invalidArgsCount<error::ExactValue<1>>(subFuncName);
     return {
       res.errorNumber(),
@@ -2090,7 +2088,7 @@ arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
   }
 
   ScopedAqlValue termValue;
-  auto res = evaluateArg(term, termValue, subFuncName, array, 0, filter != nullptr, ctx);
+  auto res = evaluateArg(term, termValue, subFuncName, elem, 0, filter != nullptr, ctx);
 
   if (res.fail()) {
     return {
@@ -2107,10 +2105,10 @@ arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
                                           char const* subFuncName,
                                           irs::by_phrase* filter,
                                           QueryContext const& ctx,
-                                          arangodb::aql::AstNode const& array,
+                                          arangodb::aql::AstNode const& elem,
                                           size_t firstOffset) {
   irs::string_ref term;
-  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName, filter, ctx, array, term);
+  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName, filter, ctx, elem, term);
   if (res.fail()) {
     return res;
   }
@@ -2127,10 +2125,10 @@ arangodb::Result fromFuncPhraseLike(char const* funcName,
                                     char const* subFuncName,
                                     irs::by_phrase* filter,
                                     QueryContext const& ctx,
-                                    arangodb::aql::AstNode const& array,
+                                    arangodb::aql::AstNode const& elem,
                                     size_t firstOffset) {
   irs::string_ref term;
-  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName, filter, ctx, array, term);
+  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName, filter, ctx, elem, term);
   if (res.fail()) {
     return res;
   }
@@ -2252,7 +2250,15 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
                                                 QueryContext const& ctx,
                                                 arangodb::aql::AstNode const& array,
                                                 size_t firstOffset) {
-  TRI_ASSERT(array.isArray());
+  if (!array.isArray()) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function: '")
+          .append(subFuncName)
+          .append("' arguments must be in an array at position '")
+          .append(std::to_string(funcArgumentPosition + 1)).append("'")
+    };
+  }
 
   ScopedAqlValue targetValue;
   irs::string_ref target;
@@ -2285,7 +2291,15 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
                                      QueryContext const& ctx,
                                      arangodb::aql::AstNode const& array,
                                      size_t firstOffset) {
-  TRI_ASSERT(array.isArray());
+  if (!array.isArray()) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function: '")
+          .append(subFuncName)
+          .append("' arguments must be in an array at position '")
+          .append(std::to_string(funcArgumentPosition + 1)).append("'")
+    };
+  }
 
   if (!array.isDeterministic()) {
     auto res = error::nondeterministicArgs(subFuncName);
@@ -2342,30 +2356,24 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
                                             arangodb::aql::AstNode const& object,
                                             size_t firstOffset) {
   TRI_ASSERT(object.isObject() && object.numMembers() == 1);
-  auto const& objectElem = *object.getMember(0);
-  std::string name = objectElem.getStringValue();
+  auto const* objectElem = object.getMember(0);
+  std::string name = objectElem->getStringValue();
   arangodb::basics::StringUtils::toupperInPlace(name);
   auto const entry = FCallSystemConversionPhraseHandlers.find(name);
   if (FCallSystemConversionPhraseHandlers.cend() == entry) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "'"s.append(funcName).append("' AQL function: Unknown '")
-          .append(objectElem.getStringValue()).append("' at position '")
+          .append(objectElem->getStringValue()).append("' at position '")
           .append(std::to_string(funcArgumentPosition + 1)).append("'")
     };
   }
-  TRI_ASSERT(objectElem.numMembers() == 1);
-  auto const& elem = *objectElem.getMember(0);
-  if (!elem.isArray()) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "'"s.append(funcName).append("' AQL function: '")
-          .append(entry->first.c_str())
-          .append("' arguments must be in an array at position '")
-          .append(std::to_string(funcArgumentPosition + 1)).append("'")
-    };
+  TRI_ASSERT(objectElem->numMembers() == 1);
+  auto const* elem = objectElem->getMember(0);
+  if (!elem->isArray()) {
+    elem = objectElem;
   }
-  return entry->second(funcName, funcArgumentPosition, entry->first.c_str(), filter, ctx, elem, firstOffset);
+  return entry->second(funcName, funcArgumentPosition, entry->first.c_str(), filter, ctx, *elem, firstOffset);
 }
 
 arangodb::Result processPhraseArgs(

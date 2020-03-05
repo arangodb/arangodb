@@ -1337,35 +1337,35 @@ TEST_F(IResearchQueryPhraseTest, test) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
-  // test invalid input for starts_with (no array)
+  // test invalid input for starts_with (object)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d['value'], {starts_with: '1'}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+      "FOR d IN testView SEARCH PHRASE(d['value'], {starts_with: {a: '1'}}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
-  // test invalid input for starts_with (no array) via []
+  // test invalid input for starts_with (object) via []
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d['value'], [{starts_with: '1'}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{starts_with: {a: '1'}}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
-  // test invalid input for wildcard (no array)
+  // test invalid input for wildcard (object)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d['value'], {wildcard: '1'}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+      "FOR d IN testView SEARCH PHRASE(d['value'], {wildcard: {a: '1'}}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
-  // test invalid input for wildcard (no array) via []
+  // test invalid input for wildcard (object) via []
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d['value'], [{wildcard: '1'}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{wildcard: {a: '1'}}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -1385,6 +1385,22 @@ TEST_F(IResearchQueryPhraseTest, test) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for levenshtein_match (object)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], {levenshtein_match: {a: '1'}}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (object) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{levenshtein_match: {a: '1'}}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for terms (no array)
   {
     auto result = arangodb::tests::executeQuery(
@@ -1398,6 +1414,22 @@ TEST_F(IResearchQueryPhraseTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], [{terms: '1'}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for terms (object)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], {terms: {a: '1'}}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for terms (object) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{terms: {a: '1'}}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -1469,11 +1501,27 @@ TEST_F(IResearchQueryPhraseTest, test) {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], {starts_with: 1}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for starts_with (wrong type in an array)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], {starts_with: [1]}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input for starts_with (wrong type) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{starts_with: 1}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for starts_with (wrong type in an array) via []
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
@@ -1485,11 +1533,27 @@ TEST_F(IResearchQueryPhraseTest, test) {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], {wildcard: 1}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for wildcard (wrong type in an array)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], {wildcard: [1]}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input for wildcard (wrong type) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{wildcard: 1}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for wildcard (wrong type in an array) via []
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
@@ -2627,6 +2691,32 @@ TEST_F(IResearchQueryPhraseTest, test) {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, {starts_with: 'a'}, 0, 'b', 0, 'c', 0, 'd', "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with starts_with (in an array)
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
       "FOR d IN testView SEARCH PHRASE(d.duplicated, {starts_with: ['a']}, 0, 'b', 0, 'c', 0, 'd', "
       "'test_analyzer') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -2645,6 +2735,32 @@ TEST_F(IResearchQueryPhraseTest, test) {
   }
 
   // test custom analyzer with starts_with via []
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, [{starts_with: 'a'}, 'b', 'c', 'd'], "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with starts_with (in an array) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
       insertedDocs[6].slice(), insertedDocs[10].slice(),
@@ -2679,6 +2795,32 @@ TEST_F(IResearchQueryPhraseTest, test) {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, {wildcard: '_'}, 0, 'b', 0, 'c', 0, 'd', "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with wildcard (in an array)
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
       "FOR d IN testView SEARCH PHRASE(d.duplicated, {wildcard: ['_']}, 0, 'b', 0, 'c', 0, 'd', "
       "'test_analyzer') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -2697,6 +2839,32 @@ TEST_F(IResearchQueryPhraseTest, test) {
   }
 
   // test custom analyzer with wildcard via []
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, [{wildcard: '_'}, 'b', 'c', 'd'], "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with wildcard (in an array) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
       insertedDocs[6].slice(), insertedDocs[10].slice(),
@@ -2965,7 +3133,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d.duplicated, [['a', 'b'], {starts_with: ['b']}, 0, {wildcard: ['%']}, {levenshtein_match: ['f', 1, true]}], "
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, [['a', 'b'], {starts_with: ['b']}, 0, {wildcard: '%'}, {levenshtein_match: ['f', 1, true]}], "
       "'test_analyzer') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
