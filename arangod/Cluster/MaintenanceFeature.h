@@ -31,6 +31,7 @@
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
 #include "Cluster/MaintenanceWorker.h"
+#include "RestServer/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <queue>
@@ -450,6 +451,11 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief  counter for load_current requests.
   uint64_t _currentCounter;
+
+
+ public:
+  std::optional<std::reference_wrapper<Histogram<uint64_t>>> _phase1_runtime_msec;
+  std::optional<std::reference_wrapper<Histogram<uint64_t>>> _phase2_runtime_msec;
 };
 
 }  // namespace arangodb

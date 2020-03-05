@@ -76,6 +76,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   // line of code is not required. For philosophical reasons we added it to the
   // ClusterPhase and let it start after `Cluster`.
   startsAfter<ClusterFeature>();
+  startsAfter<MetricsFeature>();
 
   init();
 }  // MaintenanceFeature::MaintenanceFeature
@@ -105,7 +106,7 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       "maximum number of threads available for maintenance actions",
       new UInt32Parameter(&_maintenanceThreadsMax),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                   arangodb::options::Flags::Dynamic));
+                                          arangodb::options::Flags::Dynamic));
 
   options->addOption(
       "--server.maintenance-actions-block",
@@ -119,10 +120,11 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       new Int32Parameter(&_secondsActionsLinger),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--cluster.resign-leadership-on-shutdown",
-                    "create resign leader ship job for this dbsever on shutdown",
-                    new BooleanParameter(&_resignLeadershipOnShutdown),
-                    arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--cluster.resign-leadership-on-shutdown",
+      "create resign leader ship job for this dbsever on shutdown",
+      new BooleanParameter(&_resignLeadershipOnShutdown),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
 }  // MaintenanceFeature::collectOptions
 
@@ -152,6 +154,15 @@ void MaintenanceFeature::start() {
     return;
   }
 
+  _phase1_runtime_msec =
+      server().getFeature<arangodb::MetricsFeature>().histogram<uint64_t>(
+          "maintenance_phase1_runtime_msec", 10, 50., 5.0e4,
+          "Maintenance Phase 1 runtime histogram [ms]");
+  _phase2_runtime_msec =
+      server().getFeature<arangodb::MetricsFeature>().histogram<uint64_t>(
+          "maintenance_phase2_runtime_msec", 10, 50., 5.0e4,
+          "Maintenance Phase 2 runtime histogram [ms]");
+
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
     // First worker will be available only to fast track
@@ -172,16 +183,15 @@ void MaintenanceFeature::start() {
 }  // MaintenanceFeature::start
 
 void MaintenanceFeature::beginShutdown() {
-
   if (_resignLeadershipOnShutdown && ServerState::instance()->isDBServer()) {
-
     struct callback_data {
-      uint64_t _jobId;              // initialised before callback
-      bool _completed;              // populated by the callback
-      std::mutex _mutex;            // mutex used by callback and loop to sync access to callback_data
+      uint64_t _jobId;  // initialised before callback
+      bool _completed;  // populated by the callback
+      std::mutex _mutex;  // mutex used by callback and loop to sync access to callback_data
       std::condition_variable _cv;  // signaled if callback has found something
 
-      explicit callback_data(uint64_t jobId) : _jobId(jobId), _completed(false) {}
+      explicit callback_data(uint64_t jobId)
+          : _jobId(jobId), _completed(false) {}
     };
 
     // create common shared memory with jobid
@@ -197,12 +207,13 @@ void MaintenanceFeature::beginShutdown() {
       jobDesc.add("type", VPackValue("resignLeadership"));
       jobDesc.add("server", VPackValue(serverId));
       jobDesc.add("jobId", VPackValue(std::to_string(shared->_jobId)));
-      jobDesc.add("timeCreated", VPackValue(timepointToString(std::chrono::system_clock::now())));
+      jobDesc.add("timeCreated",
+                  VPackValue(timepointToString(std::chrono::system_clock::now())));
       jobDesc.add("creator", VPackValue(serverId));
     }
 
-    LOG_TOPIC("deaf5", INFO, arangodb::Logger::CLUSTER) <<
-      "Starting resigning leadership of shards";
+    LOG_TOPIC("deaf5", INFO, arangodb::Logger::CLUSTER)
+        << "Starting resigning leadership of shards";
     am.setValue("Target/ToDo/" + std::to_string(shared->_jobId), jobDesc.slice(), 0.0);
 
     using clock = std::chrono::steady_clock;
@@ -214,16 +225,20 @@ void MaintenanceFeature::beginShutdown() {
 
     auto checkAgencyPathExists = [&am](std::string const& path, uint64_t jobId) -> bool {
       try {
-        AgencyCommResult result = am.getValues("Target/" + path + "/" + std::to_string(jobId));
+        AgencyCommResult result =
+            am.getValues("Target/" + path + "/" + std::to_string(jobId));
         if (result.successful()) {
-          VPackSlice value = result.slice()[0].get(std::vector<std::string>{AgencyCommManager::path(), "Target", path, std::to_string(jobId)});
-          if (value.isObject() && value.hasKey("jobId") && value.get("jobId").isEqualString(std::to_string(jobId))) {
+          VPackSlice value = result.slice()[0].get(
+              std::vector<std::string>{AgencyCommManager::path(), "Target",
+                                       path, std::to_string(jobId)});
+          if (value.isObject() && value.hasKey("jobId") &&
+              value.get("jobId").isEqualString(std::to_string(jobId))) {
             return true;
           }
         }
-      } catch(...) {
-        LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER) <<
-          "Exception when checking for job completion";
+      } catch (...) {
+        LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
+            << "Exception when checking for job completion";
       }
 
       return false;
@@ -231,9 +246,8 @@ void MaintenanceFeature::beginShutdown() {
 
     // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
     while (clock::now() < endtime) {
-
-      bool completed = checkAgencyPathExists ("Failed", shared->_jobId)
-        || checkAgencyPathExists ("Finished", shared->_jobId);
+      bool completed = checkAgencyPathExists("Failed", shared->_jobId) ||
+                       checkAgencyPathExists("Finished", shared->_jobId);
 
       if (completed) {
         break;
@@ -243,12 +257,12 @@ void MaintenanceFeature::beginShutdown() {
       shared->_cv.wait_for(lock, std::chrono::seconds(1));
 
       if (shared->_completed) {
-        break ;
+        break;
       }
     }
 
-    LOG_TOPIC("deaf7", INFO, arangodb::Logger::CLUSTER) <<
-      "Resigning leadership completed (finished, failed or timed out)";
+    LOG_TOPIC("deaf7", INFO, arangodb::Logger::CLUSTER)
+        << "Resigning leadership completed (finished, failed or timed out)";
   }
 
   _isShuttingDown = true;
@@ -723,7 +737,7 @@ arangodb::Result MaintenanceFeature::storeIndexError(
 
   MUTEX_LOCKER(guard, _ieLock);
 
-  decltype (_indexErrors.emplace(key)) emplace_result;
+  decltype(_indexErrors.emplace(key)) emplace_result;
   try {
     emplace_result = _indexErrors.try_emplace(key, std::map<std::string, buffer_t>());
   } catch (std::exception const& e) {
@@ -842,11 +856,10 @@ bool MaintenanceFeature::isPaused() const {
 }
 
 void MaintenanceFeature::pause(std::chrono::seconds const& s) {
-  _pauseUntil =
-    std::chrono::steady_clock::now().time_since_epoch() + s;
+  _pauseUntil = std::chrono::steady_clock::now().time_since_epoch() + s;
 }
 
- void MaintenanceFeature::proceed() {
+void MaintenanceFeature::proceed() {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 

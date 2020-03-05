@@ -174,7 +174,10 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _jobIdMax(0),
       _haveAborts(false),
       _selfShutdown(false),
-      _upgraded(false) {}
+      _upgraded(false),
+      _supervision_runtime_msec(
+          server.getFeature<arangodb::MetricsFeature>().histogram<uint64_t>(
+              "agency_supervision_runtime_msec", 10, 0., 1.0e4, "Agency Supervision runtime histogram [ms]")){}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
@@ -903,6 +906,8 @@ void Supervision::run() {
 
       auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - lapStart).count();
+
+      _supervision_runtime_msec.count(lapTime / 1000);
 
       if (lapTime < 1000000) {
         _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));

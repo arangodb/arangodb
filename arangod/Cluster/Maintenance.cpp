@@ -655,6 +655,8 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
                                                  std::string const& serverId,
                                                  MaintenanceFeature& feature,
                                                  VPackBuilder& report) {
+  auto start = std::chrono::steady_clock::now();
+
   arangodb::Result result;
 
   report.add(VPackValue(PHASE_ONE));
@@ -675,6 +677,11 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
     VPackObjectBuilder p(&report);
     report.add("Version", plan.get("Version"));
   }
+
+
+  auto end = std::chrono::steady_clock::now();
+  feature._phase1_runtime_msec->get().count(std::chrono::duration_cast<std::chrono::milliseconds>(
+      end - start).count());
 
   return result;
 }
@@ -1198,6 +1205,9 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
                                                  std::string const& serverId,
                                                  MaintenanceFeature& feature,
                                                  VPackBuilder& report) {
+
+  auto start = std::chrono::steady_clock::now();
+
   MaintenanceFeature::errors_t allErrors;
   feature.copyAllErrors(allErrors);
 
@@ -1245,6 +1255,10 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
     VPackObjectBuilder p(&report);
     report.add("Version", cur.get("Version"));
   }
+
+  auto end = std::chrono::steady_clock::now();
+  feature._phase2_runtime_msec->get().count(std::chrono::duration_cast<std::chrono::milliseconds>(
+      end - start).count());
 
   return result;
 }
