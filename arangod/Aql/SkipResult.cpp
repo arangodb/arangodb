@@ -160,10 +160,11 @@ auto SkipResult::operator==(SkipResult const& b) const noexcept -> bool {
 auto SkipResult::operator!=(SkipResult const& b) const noexcept -> bool {
   return !(*this == b);
 }
-
+namespace arangodb::aql {
 std::ostream& operator<<(std::ostream& stream, arangodb::aql::SkipResult const& result) {
   VPackBuilder temp;
   result.toVelocyPack(temp);
   stream << temp.toJson();
   return stream;
 }
+}  // namespace arangodb::aql

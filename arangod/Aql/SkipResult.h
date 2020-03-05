@@ -79,8 +79,8 @@ class SkipResult {
   std::vector<size_t> _skipped{0};
 };
 
-}  // namespace arangodb::aql
-
 std::ostream& operator<<(std::ostream&, arangodb::aql::SkipResult const&);
+
+}  // namespace arangodb::aql
 
 #endif
