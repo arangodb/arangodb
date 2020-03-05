@@ -1221,65 +1221,17 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
   if constexpr (isNewStyleExecutor<Executor>) {
     // TODO The logic in the MultiDependencySingleRowFetcher branch should be
     //      moved into the MultiDependencySingleRowFetcher.
+    static_assert(isMultiDepExecutor<Executor> ==
+                  std::is_same_v<Fetcher, MultiDependencySingleRowFetcher>);
     if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher>) {
+      // Note the aqlCall is an AqlCallSet in this case:
+      static_assert(std::is_same_v<AqlCallSet, std::decay_t<decltype(aqlCall)>>);
       TRI_ASSERT(_lastRange.numberDependencies() == _dependencies.size());
-      TRI_ASSERT(_callsInFlight.size() == _dependencies.size());
-
-      auto depCallIdx = size_t{0};
-      auto allAskedDepsAreWaiting = true;
-      auto askedAtLeastOneDep = false;
-      auto skippedTotal = size_t{0};
-      // Iterate in parallel over `_callsInFlight` and `aqlCall.calls`.
-      // _callsInFlight[i] corresponds to aqlCalls.calls[k] iff
-      // aqlCalls.calls[k].dependency = i.
-      // So there is not always a matching entry in aqlCall.calls.
-      for (auto dependency = size_t{0}; dependency < _callsInFlight.size(); ++dependency) {
-        auto& maybeCallInFlight = _callsInFlight[dependency];
-
-        // See if there is an entry for `dependency` in `aqlCall.calls`
-        if (depCallIdx < aqlCall.calls.size() &&
-            aqlCall.calls[depCallIdx].dependency == dependency) {
-          // If there is a call in flight, we *must not* change the call,
-          // no matter what we got. Otherwise, we save the current call.
-          if (!maybeCallInFlight.has_value()) {
-            auto depStack = stack;
-            depStack.pushCall(aqlCall.calls[depCallIdx].call);
-            maybeCallInFlight = depStack;
-          }
-          ++depCallIdx;
-          if (depCallIdx < aqlCall.calls.size()) {
-            TRI_ASSERT(aqlCall.calls[depCallIdx-1].dependency < aqlCall.calls[depCallIdx].dependency);
-          }
-        }
-
-        if (maybeCallInFlight.has_value()) {
-          // We either need to make a new call, or check whether we got a result
-          // for a call in flight.
-          auto& callInFlight = maybeCallInFlight.value();
-          auto [state, skipped, range] =
-              _rowFetcher.executeForDependency(dependency, callInFlight);
-          askedAtLeastOneDep = true;
-          if (state != ExecutionState::WAITING) {
-            // Got a result, call is no longer in flight
-            maybeCallInFlight = std::nullopt;
-            allAskedDepsAreWaiting = false;
-          } else {
-            TRI_ASSERT(skipped == 0);
-          }
-          skippedTotal += skipped;
-          _lastRange.setDependency(dependency, range);
-        }
+      auto const& [state, skipped, ranges] = _rowFetcher.execute(stack, aqlCall);
+      for (auto const& [dependency, range] : ranges) {
+        _lastRange.setDependency(dependency, range);
       }
-
-      auto const state = std::invoke([&]() {
-        if (askedAtLeastOneDep && allAskedDepsAreWaiting) {
-          return ExecutionState::WAITING;
-        } else {
-          return _rowFetcher.upstreamState();
-        }
-      });
-
-      return {state, skippedTotal, _lastRange};
+      return {state, skipped, _lastRange};
     } else {
       // If we are SubqueryStart, we remove the top element of the stack
       // which belongs to the subquery enclosed by this
@@ -2091,19 +2043,18 @@ RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enab
 
 template <class Executor>
 void ExecutionBlockImpl<Executor>::init() {
+  TRI_ASSERT(!_initialized);
   if constexpr (isMultiDepExecutor<Executor>) {
     _lastRange.resizeOnce(ExecutorState::HASMORE, 0, _dependencies.size());
-    _callsInFlight.resize(_dependencies.size());
     _rowFetcher.init();
   }
 }
 
 template <class Executor>
 void ExecutionBlockImpl<Executor>::initOnce() {
-  if constexpr (isMultiDepExecutor<Executor>) {
-    if (_callsInFlight.empty()) {
-      init();
-    }
+  if (!_initialized) {
+    init();
+    _initialized = true;
   }
 }
 

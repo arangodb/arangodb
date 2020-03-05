@@ -182,6 +182,7 @@ size_t MultiDependencySingleRowFetcher::numberDependencies() {
 void MultiDependencySingleRowFetcher::init() {
   TRI_ASSERT(_dependencyInfos.empty());
   initDependencies();
+  _callsInFlight.resize(numberDependencies());
 }
 
 std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRows(size_t atMost) {
@@ -386,6 +387,71 @@ auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependen
   TRI_ASSERT(block != nullptr);
   auto [start, end] = block->getRelevantRange();
   return {state, skipped, AqlItemBlockInputRange{execState, skipped, block, start}};
+}
+
+auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
+                                              AqlCallSet const& aqlCallSet)
+    -> std::tuple<ExecutionState, size_t, std::vector<std::pair<size_t, AqlItemBlockInputRange>>> {
+  TRI_ASSERT(_callsInFlight.size() == numberDependencies());
+
+  auto ranges = std::vector<std::pair<size_t, AqlItemBlockInputRange>>{};
+  ranges.reserve(aqlCallSet.size());
+
+  auto depCallIdx = size_t{0};
+  auto allAskedDepsAreWaiting = true;
+  auto askedAtLeastOneDep = false;
+  auto skippedTotal = size_t{0};
+  // Iterate in parallel over `_callsInFlight` and `aqlCall.calls`.
+  // _callsInFlight[i] corresponds to aqlCalls.calls[k] iff
+  // aqlCalls.calls[k].dependency = i.
+  // So there is not always a matching entry in aqlCall.calls.
+  for (auto dependency = size_t{0}; dependency < _callsInFlight.size(); ++dependency) {
+    auto& maybeCallInFlight = _callsInFlight[dependency];
+
+    // See if there is an entry for `dependency` in `aqlCall.calls`
+    if (depCallIdx < aqlCallSet.calls.size() &&
+        aqlCallSet.calls[depCallIdx].dependency == dependency) {
+      // If there is a call in flight, we *must not* change the call,
+      // no matter what we got. Otherwise, we save the current call.
+      if (!maybeCallInFlight.has_value()) {
+        auto depStack = stack;
+        depStack.pushCall(aqlCallSet.calls[depCallIdx].call);
+        maybeCallInFlight = depStack;
+      }
+      ++depCallIdx;
+      if (depCallIdx < aqlCallSet.calls.size()) {
+        TRI_ASSERT(aqlCallSet.calls[depCallIdx - 1].dependency <
+                   aqlCallSet.calls[depCallIdx].dependency);
+      }
+    }
+
+    if (maybeCallInFlight.has_value()) {
+      // We either need to make a new call, or check whether we got a result
+      // for a call in flight.
+      auto& callInFlight = maybeCallInFlight.value();
+      auto [state, skipped, range] = executeForDependency(dependency, callInFlight);
+      askedAtLeastOneDep = true;
+      if (state != ExecutionState::WAITING) {
+        // Got a result, call is no longer in flight
+        maybeCallInFlight = std::nullopt;
+        allAskedDepsAreWaiting = false;
+      } else {
+        TRI_ASSERT(skipped == 0);
+      }
+      skippedTotal += skipped;
+      ranges.emplace_back(dependency, range);
+    }
+  }
+
+  auto const state = std::invoke([&]() {
+    if (askedAtLeastOneDep && allAskedDepsAreWaiting) {
+      return ExecutionState::WAITING;
+    } else {
+      return upstreamState();
+    }
+  });
+
+  return {state, skippedTotal, ranges};
 }
 
 auto MultiDependencySingleRowFetcher::upstreamState() const -> ExecutionState {

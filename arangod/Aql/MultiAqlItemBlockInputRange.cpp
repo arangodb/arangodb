@@ -128,7 +128,7 @@ auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const
 }
 
 auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
-                                                AqlItemBlockInputRange& range) -> void {
+                                                AqlItemBlockInputRange const& range) -> void {
   TRI_ASSERT(dependency < _inputs.size());
   _inputs.at(dependency) = range;
 }

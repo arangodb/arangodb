@@ -44,3 +44,11 @@ auto aql::operator<<(std::ostream& out, AqlCallSet const& callSet) -> std::ostre
   out << " ]";
   return out;
 }
+
+auto AqlCallSet::empty() const noexcept -> bool {
+  return calls.empty();
+}
+
+auto AqlCallSet::size() const noexcept -> size_t {
+  return calls.size();
+}

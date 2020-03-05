@@ -377,10 +377,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   bool _executorReturnedDone = false;
 
-  /// @brief Only needed for parallel executors; could be omitted otherwise
-  ///        It's size is >0 after init() is called, and this is currently used
-  ///        in initOnce() to make sure that init() is called exactly once.
-  std::vector<std::optional<AqlCallStack>> _callsInFlight;
+  bool _initialized = false;
 };
 
 }  // namespace arangodb::aql

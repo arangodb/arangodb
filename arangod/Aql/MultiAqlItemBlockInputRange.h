@@ -71,9 +71,9 @@ class MultiAqlItemBlockInputRange {
 
   auto resizeOnce(ExecutorState state, size_t skipped, size_t nrInputRanges) -> void;
 
-  auto getBlock(size_t const dependency = 0) const noexcept -> SharedAqlItemBlockPtr;
+  [[nodiscard]] auto getBlock(size_t dependency = 0) const noexcept -> SharedAqlItemBlockPtr;
 
-  auto setDependency(size_t const dependency, AqlItemBlockInputRange& range) -> void;
+  auto setDependency(size_t dependency, AqlItemBlockInputRange const& range) -> void;
 
   auto skipAllRemainingDataRows() -> size_t;
 

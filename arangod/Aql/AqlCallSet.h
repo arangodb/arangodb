@@ -39,9 +39,9 @@ struct AqlCallSet {
   };
   std::vector<DepCallPair> calls;
 
-  [[nodiscard]] auto empty() const noexcept -> bool {
-    return calls.empty();
-  }
+  [[nodiscard]] auto empty() const noexcept -> bool;
+
+  [[nodiscard]] auto size() const noexcept -> size_t;
 };
 
 auto operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
