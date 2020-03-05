@@ -231,12 +231,12 @@ target_link_libraries(arango
   boost_boost
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
-  ${SNAPPY_LIB}
 )
 
 add_dependencies(arango snappy-static)
 
-target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+include_directories(${SNAPPY_INCLUDE_DIR})
 
 # Rebuild generated error files so they are up-to-date when all
 # dependent stuff is built
