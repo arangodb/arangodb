@@ -1766,7 +1766,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(!_executorReturnedDone);
           ExecutorState state = ExecutorState::HASMORE;
           typename Executor::Stats stats;
-          AqlCallType call{};
+          auto call = AqlCallType{};
           if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
             // NOTE: The subquery Executor will by itself call EXECUTE on it's
             // subquery. This can return waiting => we can get a WAITING state
@@ -1795,7 +1795,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             clientCall = _outputItemRow->getClientCall();
           }
 
-          auto const executorNeedsCall = [&]() -> bool {
+          auto const executorNeedsCall = [this,&call]() -> bool {
             if constexpr (isMultiDepExecutor<Executor>) {
               // call is an AqlCallSet. We need to call upstream if it's not empty.
               return !call.empty();
