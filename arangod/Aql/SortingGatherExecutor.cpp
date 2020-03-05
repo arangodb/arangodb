@@ -346,7 +346,7 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     }
   }
 
-  while (!isDone(input) && !output.isFull()) {
+  while (!isDone(input) && !output.isFull() && !limitReached()) {
     TRI_ASSERT(!maySkip());
     auto row = nextRow(input);
     TRI_ASSERT(row.isInitialized() || isDone(input));
@@ -455,4 +455,8 @@ auto SortingGatherExecutor::rowsLeftToWrite() const noexcept -> size_t {
   TRI_ASSERT(constrainedSort());
   TRI_ASSERT(_limit >= _rowsReturned);
   return _limit - std::min(_limit, _rowsReturned);
+}
+
+auto SortingGatherExecutor::limitReached() const noexcept -> bool {
+  return constrainedSort() && rowsLeftToWrite() > 0;
 }

@@ -198,6 +198,8 @@ class SortingGatherExecutor {
 
   [[nodiscard]] auto rowsLeftToWrite() const noexcept -> size_t;
 
+  [[nodiscard]] auto limitReached() const noexcept -> bool;
+
  private:
   // Flag if we are past the initialize phase (fetched one block for every dependency).
   bool _initialized = false;
