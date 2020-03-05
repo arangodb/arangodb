@@ -192,7 +192,7 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
 
 auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
   return std::any_of(_operations.begin(), _operations.end(), [](AqlCall const& call) -> bool {
-    return call.needSkipMore();
+    return call.needSkipMore() || call.hardLimit == 0;
   });
 }
 
@@ -200,7 +200,7 @@ auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   TRI_ASSERT(needToSkipSubquery());
   for (size_t i = 0; i < _operations.size(); ++i) {
     auto& call = _operations.at(i);
-    if (call.needSkipMore()) {
+    if (call.needSkipMore() || call.hardLimit == 0) {
       return _operations.size() - i - 1;
     }
   }

@@ -1506,9 +1506,13 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     // We are skipping on this subquery level.
     // Skip the row, but report skipped 1.
     AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-    TRI_ASSERT(shadowCall.needSkipMore());
-    shadowCall.didSkip(1);
-    skipResult.didSkipSubquery(1, shadowDepth);
+    if (shadowCall.needSkipMore()) {
+      shadowCall.didSkip(1);
+      skipResult.didSkipSubquery(1, shadowDepth);
+    } else {
+      TRI_ASSERT(shadowCall.hardLimit == 0);
+      // Simply drop this shadowRow!
+    }
   } else {
     // We got a shadowRow of a subquery we are not skipping here.
     // Do proper reporting on it's call.
