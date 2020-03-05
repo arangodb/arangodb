@@ -171,7 +171,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--javascript.copy-installation",
       "copy contents of 'javascript.startup-directory' on first start",
-      new BooleanParameter(&_copyInstallation)
+      new BooleanParameter(&_copyInstallation),
       arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator));
