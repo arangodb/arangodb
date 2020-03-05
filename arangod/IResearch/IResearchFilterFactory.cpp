@@ -2099,7 +2099,7 @@ arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
   return {};
 }
 
-// {<STARTS_WITH>: '[' <term> ']'}
+// {<STARTS_WITH>: [ '[' ] <term> [ ']' ] }
 arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
                                           size_t funcArgumentPosition,
                                           char const* subFuncName,
@@ -2119,7 +2119,7 @@ arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
   return {};
 }
 
-// {<WILDCARD>: '[' <term> ']'}
+// {<WILDCARD>: [ '[' ] <term> [ ']' ] }
 arangodb::Result fromFuncPhraseLike(char const* funcName,
                                     size_t const funcArgumentPosition,
                                     char const* subFuncName,
