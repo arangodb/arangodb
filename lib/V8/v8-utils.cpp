@@ -773,7 +773,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE(signature);
   }
 
-  std::string url = TRI_ObjectToString(isolate, args[0]);
+  std::string const inputUrl = TRI_ObjectToString(isolate, args[0]);
+  std::string url = inputUrl;
   std::vector<std::string> endpoints;
 
   bool isLocalUrl = false;
@@ -994,9 +995,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     LOG_TOPIC("d6bdb", TRACE, arangodb::Logger::FIXME)
       << "downloading file. endpoint: " << endpoint << ", relative URL: " << url;
 
-    if (!isLocalUrl && !v8security.isAllowedToConnectToEndpoint(isolate, endpoint, url)) {
+    if (!isLocalUrl && !v8security.isAllowedToConnectToEndpoint(isolate, endpoint, inputUrl)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                       "not allowed to connect to this URL: " + url);
+                                       "not allowed to connect to this URL: " + inputUrl);
     }
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
