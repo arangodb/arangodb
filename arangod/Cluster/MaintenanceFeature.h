@@ -456,6 +456,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   std::optional<std::reference_wrapper<Histogram<uint64_t>>> _phase1_runtime_msec;
   std::optional<std::reference_wrapper<Histogram<uint64_t>>> _phase2_runtime_msec;
+  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _num_out_of_sync_shards;
 };
 
 }  // namespace arangodb

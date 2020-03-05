@@ -154,14 +154,17 @@ void MaintenanceFeature::start() {
     return;
   }
 
-  _phase1_runtime_msec =
-      server().getFeature<arangodb::MetricsFeature>().histogram<uint64_t>(
-          "maintenance_phase1_runtime_msec", 10, 50., 5.0e4,
-          "Maintenance Phase 1 runtime histogram [ms]");
-  _phase2_runtime_msec =
-      server().getFeature<arangodb::MetricsFeature>().histogram<uint64_t>(
-          "maintenance_phase2_runtime_msec", 10, 50., 5.0e4,
-          "Maintenance Phase 2 runtime histogram [ms]");
+  auto& metricsFeature = server().getFeature<arangodb::MetricsFeature>();
+
+  _phase1_runtime_msec = metricsFeature.histogram<uint64_t>(
+      "maintenance_phase1_runtime_msec", 10, 50., 5.0e4,
+      "Maintenance Phase 1 runtime histogram [ms]");
+  _phase2_runtime_msec = metricsFeature.histogram<uint64_t>(
+      "maintenance_phase2_runtime_msec", 10, 50., 5.0e4,
+      "Maintenance Phase 2 runtime histogram [ms]");
+
+  _num_out_of_sync_shards =
+      metricsFeature.gauge<uint64_t>("out_of_sync_shards", 0, "Number of leader shards not fully replicated");
 
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
