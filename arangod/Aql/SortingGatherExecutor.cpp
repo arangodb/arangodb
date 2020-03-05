@@ -346,6 +346,10 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     }
   }
 
+  // produceRows should not be called again when the limit is reached;
+  // the downstream limit should see to that.
+  TRI_ASSERT(!limitReached());
+
   while (!isDone(input) && !output.isFull() && !limitReached()) {
     TRI_ASSERT(!maySkip());
     auto row = nextRow(input);
@@ -360,10 +364,17 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     }
   }
 
-  if (isDone(input)) {
-    return {ExecutorState::DONE, NoStats{}, AqlCallSet{}};
-  }
-  return {ExecutorState::HASMORE, NoStats{}, AqlCallSet{}};
+  auto const state = std::invoke([&]() {
+    if (isDone(input)) {
+      return ExecutorState::DONE;
+    } else if (limitReached() && !output.getClientCall().needsFullCount()) {
+      return ExecutorState::DONE;
+    } else {
+      return ExecutorState::HASMORE;
+    }
+  });
+
+  return {state, NoStats{}, AqlCallSet{}};
 }
 
 auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
