@@ -925,11 +925,8 @@ void Supervision::run() {
                 maintenanceMode = true;
               }
             } catch (std::exception const& e) {
-              if (!maintenanceKeyErrorReported) {
                 LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
                   << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups. " << e.what();
-                maintenanceKeyErrorReported = true;
-              }
               return;
             }
           }
