@@ -76,7 +76,7 @@ usdt:build/bin/arangod:arangod:VstCommTaskProcess* {
 }
 
 usdt:build/bin/arangod:arangod:VstCommTaskSendResponse* {
-  printf("%llu H2CommTask::sendResponse this=%llx\n",
+  printf("%llu VstCommTask::sendResponse this=%llx\n",
          (nsecs-@START)/1000, arg0);
 }
 
