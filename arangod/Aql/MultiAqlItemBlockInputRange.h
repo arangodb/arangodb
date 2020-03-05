@@ -62,6 +62,8 @@ class MultiAqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(size_t const dependency);
   auto skipAll(size_t const dependency) noexcept -> std::size_t;
 
+  [[nodiscard]] auto skippedInFlight(size_t dependency) const noexcept -> std::size_t;
+
   bool hasShadowRow() const noexcept;
 
   arangodb::aql::ShadowAqlItemRow peekShadowRow() const;

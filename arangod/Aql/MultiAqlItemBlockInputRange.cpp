@@ -83,6 +83,11 @@ auto MultiAqlItemBlockInputRange::skipAll(size_t const dependency) noexcept -> s
   return _inputs.at(dependency).skipAll();
 }
 
+auto MultiAqlItemBlockInputRange::skippedInFlight(size_t const dependency) const noexcept -> std::size_t {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).skippedInFlight();
+}
+
 auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
   TRI_ASSERT(dependency < _inputs.size());

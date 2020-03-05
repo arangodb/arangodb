@@ -22,6 +22,8 @@
 
 #include "SortingGatherExecutor.h"
 
+#include <utility>
+
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
@@ -124,10 +126,7 @@ class HeapSorting final : public SortingGatherExecutor::SortingStrategy, private
 
   virtual void reset() noexcept override { _heap.clear(); }
 
-  bool operator()(SortingGatherExecutor::ValueType const& lhs,
-                  SortingGatherExecutor::ValueType const& rhs) const {
-    return OurLessThan::operator()(rhs, lhs);
-  }
+  using OurLessThan::operator();
 
  private:
   std::vector<std::reference_wrapper<SortingGatherExecutor::ValueType>> _heap;
@@ -138,7 +137,7 @@ class HeapSorting final : public SortingGatherExecutor::SortingStrategy, private
 /// @brief "MinElement" sorting strategy
 ////////////////////////////////////////////////////////////////////////////////
 class MinElementSorting final : public SortingGatherExecutor::SortingStrategy,
-                                public OurLessThan {
+                                private OurLessThan {
  public:
   MinElementSorting(arangodb::transaction::Methods* trx,
                     std::vector<SortRegister>& sortRegisters) noexcept
@@ -155,6 +154,8 @@ class MinElementSorting final : public SortingGatherExecutor::SortingStrategy,
 
   virtual void reset() noexcept override { _blockPos = nullptr; }
 
+  using OurLessThan::operator();
+
  private:
   std::vector<SortingGatherExecutor::ValueType> const* _blockPos;
 };
@@ -164,7 +165,7 @@ SortingGatherExecutor::ValueType::ValueType(size_t index)
     : dependencyIndex{index}, row{CreateInvalidInputRowHint()}, state{ExecutorState::HASMORE} {}
 
 SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow, ExecutorState pstate)
-    : dependencyIndex{index}, row{prow}, state{pstate} {}
+    : dependencyIndex{index}, row{std::move(prow)}, state{pstate} {}
 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
@@ -273,13 +274,8 @@ auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const&
   return callSet;
 }
 
-auto SortingGatherExecutor::isDone(typename Fetcher::DataRange const& input) const -> bool {
-  // TODO: Include constrained sort
-  return input.isDone();
-}
-
 auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> InputAqlItemRow {
-  if (isDone(input)) {
+  if (input.isDone()) {
     // No rows, there is a chance we get into this.
     // If we requested data from upstream, but all if it is done.
     return InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -350,10 +346,10 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
   // the downstream limit should see to that.
   TRI_ASSERT(!limitReached());
 
-  while (!isDone(input) && !output.isFull() && !limitReached()) {
+  while (!input.isDone() && !output.isFull() && !limitReached()) {
     TRI_ASSERT(!maySkip());
     auto row = nextRow(input);
-    TRI_ASSERT(row.isInitialized() || isDone(input));
+    TRI_ASSERT(row.isInitialized() || input.isDone());
     if (row) {
       output.copyRow(row);
       output.advanceRow();
@@ -365,7 +361,7 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
   }
 
   auto const state = std::invoke([&]() {
-    if (isDone(input)) {
+    if (input.isDone()) {
       return ExecutorState::DONE;
     } else if (limitReached() && !output.getClientCall().needsFullCount()) {
       return ExecutorState::DONE;
@@ -394,57 +390,65 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
     }
   }
 
-  while (!isDone(input) && call.needSkipMore()) {
-    if (call.getOffset() > 0) {
-      TRI_ASSERT(!maySkip());
-      // We need to sort still
-      // And account the row in the limit
-      auto row = nextRow(input);
-      TRI_ASSERT(row.isInitialized() || isDone(input));
-      if (row) {
-        call.didSkip(1);
+  // skip offset
+  while (!input.isDone() && call.getOffset() > 0) {
+    TRI_ASSERT(!maySkip());
+    // We need to sort still
+    // And account the row in the limit
+    auto row = nextRow(input);
+    TRI_ASSERT(row.isInitialized() || input.isDone());
+    if (row) {
+      call.didSkip(1);
+    }
+    auto const callSet = requiresMoreInput(input);
+    if (!callSet.empty()) {
+      return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
+    }
+  }
+
+  TRI_ASSERT(input.isDone() || call.getOffset() == 0);
+
+  auto callSet = AqlCallSet{};
+
+  // skip fullCount
+  if (!input.isDone() && call.needsFullCount() && call.getLimit() == 0) {
+    TRI_ASSERT(call.getOffset() == 0);
+    TRI_ASSERT(call.hasHardLimit());
+    TRI_ASSERT(call.hasHardLimit());
+    // We are only called with fullcount.
+    // sorting does not matter.
+    // Start simply skip all from upstream.
+    for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
+      auto state = ExecutorState::HASMORE;
+      while (state == ExecutorState::HASMORE) {
+        auto row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        std::tie(state, row) = input.nextDataRow(dep);
+        if (row) {
+          call.didSkip(1);
+        } else {
+          // We have consumed all overfetched rows.
+          // We may still have a skip counter within the range.
+          call.didSkip(input.skipAll(dep));
+        }
       }
-      auto const callSet = requiresMoreInput(input);
-      if (!callSet.empty()) {
-        return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
-      }
-    } else {
-      // We are only called with fullcount.
-      // sorting does not matter.
-      // Start simply skip all from upstream.
-      for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
-        ExecutorState state = ExecutorState::HASMORE;
-        InputAqlItemRow row{CreateInvalidInputRowHint{}};
-        while (state == ExecutorState::HASMORE) {
-          std::tie(state, row) = input.nextDataRow(dep);
-          if (row) {
-            call.didSkip(1);
-          } else {
-            // We have consumed all overfetched rows.
-            // We may still have a skip counter within the range.
-            call.didSkip(input.skipAll(dep));
-            if (state == ExecutorState::HASMORE) {
-              // We need to fetch more data, but can fullCount now
-              auto callSet = AqlCallSet{};
-              AqlCall request{0, true, 0, AqlCall::LimitType::HARD};
-              callSet.calls.emplace_back(AqlCallSet::DepCallPair{dep, request});
-              // TODO don't make parallel requests here
-              return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
-            }
-          }
+      if (state == ExecutorState::HASMORE) {
+        TRI_ASSERT(!input.hasDataRow(dep));
+        TRI_ASSERT(input.skippedInFlight(dep) == 0);
+        // We need to fetch more data, but can fullCount now
+        AqlCall request{0, true, 0, AqlCall::LimitType::HARD};
+        callSet.calls.emplace_back(AqlCallSet::DepCallPair{dep, request});
+        if (!_fetchParallel) {
+          break;
         }
       }
     }
   }
 
-  if (isDone(input)) {
-    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCallSet{}};
-  }
-  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCallSet{}};
-}
+  auto const state = input.isDone() ? ExecutorState::DONE : ExecutorState::HASMORE;
 
-std::pair<ExecutionState, size_t> SortingGatherExecutor::expectedNumberOfRows(size_t const atMost) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  TRI_ASSERT(!input.isDone() || callSet.empty());
+
+  return {state, NoStats{}, call.getSkipCount(), callSet};
 }
 
 bool SortingGatherExecutor::constrainedSort() const noexcept {

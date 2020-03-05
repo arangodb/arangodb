@@ -980,12 +980,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
                   "Executors should implement the method "
                   "fetchBlockForPassthrough() iff "
                   "Properties::allowsBlockPassthrough is true");
+    static_assert(
+        Executor::Properties::inputSizeRestrictsOutputSize ==
+            hasExpectedNumberOfRows<Executor>::value,
+        "Executors should implement the method expectedNumberOfRows() iff "
+        "Properties::inputSizeRestrictsOutputSize is true");
   }
-  static_assert(
-      Executor::Properties::inputSizeRestrictsOutputSize ==
-          hasExpectedNumberOfRows<Executor>::value,
-      "Executors should implement the method expectedNumberOfRows() iff "
-      "Properties::inputSizeRestrictsOutputSize is true");
 
   constexpr RequestWrappedBlockVariant variant =
       isNewStyleExecutor<Executor>

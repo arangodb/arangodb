@@ -147,8 +147,6 @@ class SortingGatherExecutor {
   [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
-  [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const -> std::pair<ExecutionState, size_t>;
-
  private:
   [[nodiscard]] auto constrainedSort() const noexcept -> bool;
 
@@ -178,15 +176,6 @@ class SortingGatherExecutor {
    * @return InputAqlItemRow best fit row. Might be invalid if all input is done.
    */
   [[nodiscard]] auto nextRow(MultiAqlItemBlockInputRange& input) -> InputAqlItemRow;
-
-  /**
-   * @brief Tests if this Executor is done producing
-   *        => All inputs are fully consumed
-   *
-   * @return true we are done
-   * @return false we have more
-   */
-  [[nodiscard]] auto isDone(MultiAqlItemBlockInputRange const& input) const -> bool;
 
   /**
    * @brief Initialize the Sorting strategy with the given input.
