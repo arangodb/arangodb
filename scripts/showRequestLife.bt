@@ -1,5 +1,10 @@
 #!/usr/bin/env bpftrace
 
+// To use this you have to install bpftrace and compile with -DUSE_DTRACE.
+// Then simply execute this script. It will output a single line for each
+// DTRACE point that is currently in the source. This is basically for
+// illustration purposes only.
+
 BEGIN {
   @START = nsecs;
   printf("Tracing timings for requests in arangod...\n");
