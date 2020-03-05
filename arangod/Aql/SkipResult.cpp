@@ -67,7 +67,7 @@ auto SkipResult::toVelocyPack(VPackBuilder& builder) const noexcept -> void {
   }
 }
 
-auto SkipResult::fromVelocyPack(VPackSlice slice) -> ResultT<SkipResult> {
+auto SkipResult::fromVelocyPack(VPackSlice slice) -> arangodb::ResultT<SkipResult> {
   if (!slice.isArray()) {
     auto message = std::string{
         "When deserializating AqlExecuteResult: When reading skipped: "

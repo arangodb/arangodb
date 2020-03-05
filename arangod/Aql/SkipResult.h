@@ -41,7 +41,7 @@ namespace arangodb::aql {
 
 class SkipResult {
  public:
-  static auto fromVelocyPack(velocypack::Slice) -> ResultT<SkipResult>;
+  static auto fromVelocyPack(velocypack::Slice) -> arangodb::ResultT<SkipResult>;
 
   SkipResult();
 
