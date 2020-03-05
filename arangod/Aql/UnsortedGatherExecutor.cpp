@@ -102,14 +102,15 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
     if (done()) {
       return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
     } else {
+      // TODO: CHECK ME AGAIN!
       // Ask for more skips
-      if (call.needSkipMore()) {
-        auto callSet = AqlCallSet{};
-        callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
-        return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
-      } else {
-        return {ExecutorState::HASMORE, Stats{}, skipped, AqlCallSet{}};
-      }
+      //      if (call.needSkipMore()) {
+      auto callSet = AqlCallSet{};
+      callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
+      return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
+      // } else {
+      //   return {ExecutorState::HASMORE, Stats{}, skipped, AqlCallSet{}};
+      // }
     }
   }
   TRI_ASSERT(false);
