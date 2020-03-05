@@ -236,6 +236,8 @@ target_link_libraries(arango
 
 add_dependencies(arango snappy-static)
 
+target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/snappy/snappy-${SNAPPY_VERSION}")
+
 # Rebuild generated error files so they are up-to-date when all
 # dependent stuff is built
 if (USE_MAINTAINER_MODE)
