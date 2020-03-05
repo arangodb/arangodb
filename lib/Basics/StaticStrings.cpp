@@ -279,8 +279,13 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
-std::string const StaticStrings::RevisionCount("count");
-std::string const StaticStrings::RevisionHash("hash");
+std::string const StaticStrings::RevisionTreeCount("count");
+std::string const StaticStrings::RevisionTreeHash("hash");
+std::string const StaticStrings::RevisionTreeMaxDepth("maxDepth");
+std::string const StaticStrings::RevisionTreeNodes("nodes");
+std::string const StaticStrings::RevisionTreeRangeMax("rangeMax");
+std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
+std::string const StaticStrings::RevisionTreeVersion("version");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");

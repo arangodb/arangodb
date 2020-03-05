@@ -37,18 +37,17 @@
 #include <utility>
 #include <vector>
 
-#include <chrono>
-#include <thread>
+#include <snappy.h>
+
+#include <velocypack/Iterator.h>
 
 #include "MerkleTree.h"
 
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
-
-#include "Logger/LogMacros.h"
-
-#include <snappy.h>
 
 namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
@@ -205,6 +204,87 @@ MerkleTree<BranchingBits, LockStripes>::fromBuffer(std::string_view buffer) {
 
   return std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>(
       new MerkleTree<BranchingBits, LockStripes>(buffer));
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
+std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>
+MerkleTree<BranchingBits, LockStripes>::deserialize(velocypack::Slice slice) {
+  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> tree{nullptr};
+
+  if (!slice.isObject()) {
+    return tree;
+  }
+
+  velocypack::Slice read = slice.get(StaticStrings::RevisionTreeVersion);
+  if (!read.isNumber() || read.getNumber<std::uint8_t>() != ::CurrentVersion) {
+    return tree;
+  }
+
+  read = slice.get(StaticStrings::RevisionTreeMaxDepth);
+  if (!read.isNumber()) {
+    return tree;
+  }
+  std::size_t maxDepth = read.getNumber<std::size_t>();
+
+  read = slice.get(StaticStrings::RevisionTreeRangeMax);
+  if (!read.isString()) {
+    return tree;
+  }
+  velocypack::ValueLength l;
+  char const* p = read.getString(l);
+  std::size_t rangeMax = basics::HybridLogicalClock::decodeTimeStamp(p, l);
+  if (rangeMax == std::numeric_limits<std::size_t>::max()) {
+    return tree;
+  }
+
+  read = slice.get(StaticStrings::RevisionTreeRangeMin);
+  if (!read.isString()) {
+    return tree;
+  }
+  p = read.getString(l);
+  std::size_t rangeMin = basics::HybridLogicalClock::decodeTimeStamp(p, l);
+  if (rangeMin == std::numeric_limits<std::size_t>::max()) {
+    return tree;
+  }
+
+  velocypack::Slice nodes = slice.get(StaticStrings::RevisionTreeNodes);
+  if (!nodes.isArray() || nodes.length() < nodeCountUpToDepth(maxDepth)) {
+    return tree;
+  }
+
+  // allocate the tree
+  tree.reset(new MerkleTree<BranchingBits, LockStripes>(maxDepth, rangeMin, rangeMax));
+
+  std::size_t index = 0;
+  for (velocypack::Slice nodeSlice : velocypack::ArrayIterator(nodes)) {
+    read = nodeSlice.get(StaticStrings::RevisionTreeCount);
+    if (!read.isNumber()) {
+      tree.reset();
+      return tree;
+    }
+    std::size_t count = read.getNumber<std::size_t>();
+
+    read = nodeSlice.get(StaticStrings::RevisionTreeHash);
+    if (!read.isString()) {
+      tree.reset();
+      return tree;
+    }
+    p = nodeSlice.get(StaticStrings::RevisionTreeHash).getString(l);
+    std::size_t hash = basics::HybridLogicalClock::decodeTimeStamp(p, l);
+    if (hash == std::numeric_limits<std::size_t>::max()) {
+      tree.reset();
+      return tree;
+    }
+
+    std::unique_lock<std::mutex> guard(tree->lock(index));
+    Node& node = tree->node(index);
+    node.hash = hash;
+    node.count = count;
+
+    ++index;
+  }
+
+  return tree;
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
@@ -474,6 +554,32 @@ std::string MerkleTree<BranchingBits, LockStripes>::toString() const {
   }
   output.append("}");
   return output;
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
+void MerkleTree<BranchingBits, LockStripes>::serialize(velocypack::Builder& output,
+                                                       std::size_t maxDepth) const {
+  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+  TRI_ASSERT(output.isEmpty());
+  char ridBuffer[11];
+  std::size_t depth = std::min(maxDepth, meta().maxDepth);
+
+  velocypack::ObjectBuilder topLevelGuard(&output);
+  output.add(StaticStrings::RevisionTreeVersion, velocypack::Value(::CurrentVersion));
+  output.add(StaticStrings::RevisionTreeMaxDepth, velocypack::Value(depth));
+  output.add(StaticStrings::RevisionTreeRangeMax,
+             basics::HybridLogicalClock::encodeTimeStampToValuePair(meta().rangeMax, ridBuffer));
+  output.add(StaticStrings::RevisionTreeRangeMin,
+             basics::HybridLogicalClock::encodeTimeStampToValuePair(meta().rangeMin, ridBuffer));
+  velocypack::ArrayBuilder nodeArrayGuard(&output, StaticStrings::RevisionTreeNodes);
+  for (std::size_t index = 0; index < nodeCountUpToDepth(depth); ++index) {
+    velocypack::ObjectBuilder nodeGuard(&output);
+    std::unique_lock<std::mutex> guard(this->lock(index));
+    Node& node = this->node(index);
+    output.add(StaticStrings::RevisionTreeHash,
+               basics::HybridLogicalClock::encodeTimeStampToValuePair(node.hash, ridBuffer));
+    output.add(StaticStrings::RevisionTreeCount, velocypack::Value(node.count));
+  }
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>

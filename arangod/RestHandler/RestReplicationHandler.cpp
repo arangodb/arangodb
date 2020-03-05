@@ -3018,12 +3018,11 @@ void RestReplicationHandler::handleCommandRevisionTree() {
                   "could not generate revision tree");
     return;
   }
-  std::string result;
-  tree->serializeBinary(result, false);
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder result(buffer);
+  tree->serialize(result);
 
-  resetResponse(rest::ResponseCode::OK);
-  _response->setContentType("application/octet-stream");
-  _response->addRawPayload(VPackStringRef(result.data(), result.size()));
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
 void RestReplicationHandler::handleCommandRebuildRevisionTree() {
@@ -3230,7 +3229,8 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     }
   }
 
-  generateResult(rest::ResponseCode::OK, std::move(buffer));
+  auto ctxt = transaction::StandaloneContext::Create(_vocbase);
+  generateResult(rest::ResponseCode::OK, std::move(buffer), ctxt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

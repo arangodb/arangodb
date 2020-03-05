@@ -558,8 +558,8 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   VPackObjectBuilder obj(&builder);
-  obj->add(StaticStrings::RevisionCount, VPackValue(_revisionTree->count()));
-  obj->add(StaticStrings::RevisionHash, VPackValue(_revisionTree->rootValue()));
+  obj->add(StaticStrings::RevisionTreeCount, VPackValue(_revisionTree->count()));
+  obj->add(StaticStrings::RevisionTreeHash, VPackValue(_revisionTree->rootValue()));
 }
 
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {

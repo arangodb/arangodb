@@ -33,6 +33,8 @@
 #include <string_view>
 #include <vector>
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace containers {
 
@@ -91,6 +93,14 @@ class MerkleTree {
    * @return A newly allocated tree constructed from the input
    */
   static std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> fromBuffer(std::string_view buffer);
+
+  /**
+   * @brief Construct a tree from a portable serialized tree
+   *
+   * @param slice A slice containing a serialized tree
+   * @return A newly allocated tree constructed from the input
+   */
+  static std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> deserialize(velocypack::Slice slice);
 
   /**
    * @brief Construct a Merkle tree of a given depth with a given minimum key
@@ -212,6 +222,15 @@ class MerkleTree {
    * @return String representing the tree
    */
   std::string toString() const;
+
+  /**
+   * @brief Serialize the tree for transport or storage in portable format
+   *
+   * @param output    VPackBuilder for output
+   * @param depth     Maximum depth to serialize
+   */
+  void serialize(velocypack::Builder& output,
+                 std::size_t maxDepth = std::numeric_limits<std::size_t>::max()) const;
 
   /**
    * @brief Serialize the tree for transport or storage in binary format

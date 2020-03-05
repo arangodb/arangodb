@@ -1275,8 +1275,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       return replutils::buildHttpError(response.get(), url, _config.connection);
     }
 
-    treeMaster = containers::RevisionTree::fromBuffer(
-        std::string_view(response->getBody().begin(), response->getBody().length()));
+    auto body = response->getBodyVelocyPack();
+    if (!body) {
+      return Result(
+          TRI_ERROR_INTERNAL,
+          "received improperly formed response when fetching revision tree");
+    }
+    treeMaster = containers::RevisionTree::deserialize(body->slice());
     if (!treeMaster) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
