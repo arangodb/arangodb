@@ -210,7 +210,7 @@ struct ExecutorTestHelper {
   ExecutorTestHelper(ExecutorTestHelper const&) = delete;
   ExecutorTestHelper(ExecutorTestHelper&&) = delete;
   explicit ExecutorTestHelper(arangodb::aql::Query& query)
-      : _expectedSkip{0},
+      : _expectedSkip{},
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
         _unorderedOutput{false},
@@ -300,8 +300,24 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto expectSkipped(std::size_t skip) -> ExecutorTestHelper& {
-    _expectedSkip = skip;
+  /**
+   * @brief
+   *
+   * @tparam Ts numeric type, can actually only be size_t
+   * @param skipOnLevel List of skip counters returned per level. subquery skips first, the last entry is the skip on the executor
+   * @return ExecutorTestHelper& chaining!
+   */
+  template <typename T, typename... Ts>
+  auto expectSkipped(T skipFirst, Ts const... skipOnHigherLevel) -> ExecutorTestHelper& {
+    _expectedSkip = SkipResult{};
+    // This is obvious, proof: Homework.
+    (_expectedSkip.didSkip(static_cast<size_t>(skipFirst)), ...,
+     (_expectedSkip.incrementSubquery(),
+      _expectedSkip.didSkip(static_cast<size_t>(skipOnHigherLevel))));
+
+    // NOTE: the above will increment didSkip by the first entry.
+    // For all following entries it will first increment the subquery depth
+    // and then add the didSkip on them.
     return *this;
   }
 
@@ -377,7 +393,7 @@ struct ExecutorTestHelper {
 
     auto inputBlock = generateInputRanges(itemBlockManager);
 
-    auto skippedTotal = size_t{0};
+    auto skippedTotal = SkipResult{};
     auto finalState = ExecutionState::HASMORE;
 
     TRI_ASSERT(!_pipeline.empty());
@@ -387,7 +403,7 @@ struct ExecutorTestHelper {
 
     if (!loop) {
       auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
-      skippedTotal = skipped.getSkipCount();
+      skippedTotal.merge(skipped, false);
       finalState = state;
       if (result != nullptr) {
         allResults.add(result);
@@ -397,7 +413,7 @@ struct ExecutorTestHelper {
         auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
         finalState = state;
         auto call = _callStack.popCall();
-        skippedTotal += skipped.getSkipCount();
+        skippedTotal.merge(skipped, false);
         call.didSkip(skipped.getSkipCount());
         if (result != nullptr) {
           call.didProduce(result->size());
@@ -409,7 +425,6 @@ struct ExecutorTestHelper {
                (!_callStack.peek().hasSoftLimit() ||
                 (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
     }
-
     EXPECT_EQ(skippedTotal, _expectedSkip);
     EXPECT_EQ(finalState, _expectedState);
     SharedAqlItemBlockPtr result = allResults.steal();
@@ -500,7 +515,7 @@ struct ExecutorTestHelper {
   MatrixBuilder<outputColumns> _output;
   std::vector<std::pair<size_t, uint64_t>> _outputShadowRows{};
   std::array<RegisterId, outputColumns> _outputRegisters;
-  std::size_t _expectedSkip;
+  SkipResult _expectedSkip;
   ExecutionState _expectedState;
   ExecutionStats _expectedStats;
   bool _testStats;
