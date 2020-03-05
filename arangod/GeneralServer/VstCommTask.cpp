@@ -197,7 +197,7 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
 #ifdef USE_DTRACE
 // Moved here to prevent multiplicity by template
 static void __attribute__ ((noinline)) DTraceVstCommTaskProcessMessage(size_t th) {
-  DTRACE_PROBE1(arangod, HttpCommTaskProcessRequest, th);
+  DTRACE_PROBE1(arangod, VstCommTaskProcessMessage, th);
 }
 #endif
 

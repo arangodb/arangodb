@@ -9,6 +9,7 @@ BEGIN {
   @ProcessRequest = 0;
   @ProcessStream = 0;
   @ProcessMessage = 0;
+  @ExecuteRequest = 0;
   printf("Measuring timings for requests in arangod...\n");
   printf("Values are (in this order per line):\n");
   printf("  Absolute time since script start (all times in nanoseconds)\n");
@@ -104,7 +105,7 @@ usdt:build/bin/arangod:arangod:H2CommTaskAfterAsyncWrite* {
   @ProcessStream = 0;
 }
 
-usdt:build/bin/arangod:arangod:VstCommTaskProcessMessage* {
+usdt:build/bin/arangod:arangod:VstCommTaskProcess* {
   @ProcessMessage = nsecs;
 }
 
@@ -118,7 +119,7 @@ usdt:build/bin/arangod:arangod:VstCommTaskBeforeAsyncWrite* {
 
 usdt:build/bin/arangod:arangod:VstCommTaskAfterAsyncWrite* {
   $t = nsecs;
-  if (@ProcessMessage != 0) {
+  if (@ProcessMessage != 0 && @ExecuteRequest != 0) {
       printf("%lld %lld %lld %lld %lld %lld ",
              $t - @START,
              @PrepareExecution - @ProcessMessage,
@@ -135,5 +136,6 @@ usdt:build/bin/arangod:arangod:VstCommTaskAfterAsyncWrite* {
       printf("%lld AfterAsyncWrite\n", $t - @START);
   }
   @ProcessMessage = 0;
+  @ExecuteRequest = 0;
 }
 
