@@ -862,7 +862,7 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertEqual("SubqueryNode", nodeTypes[1], query);
+      assertEqual("SubqueryStartNode", nodeTypes[1], query);
 
       var subNodeTypes = plan.nodes[1].subquery.nodes.map(function(node) {
         return node.type;
@@ -3784,7 +3784,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
       assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
 
-      var sub = nodeTypes.indexOf("SubqueryNode");
+      var sub = nodeTypes.indexOf("SubqueryStartNode");
       assertNotEqual(-1, sub);
 
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
@@ -3815,7 +3815,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
       assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
 
-      var sub = nodeTypes.indexOf("SubqueryNode");
+      var sub = nodeTypes.indexOf("SubqueryStartNode");
       assertNotEqual(-1, sub);
 
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
@@ -3847,7 +3847,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
       assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
 
-      var sub = nodeTypes.indexOf("SubqueryNode");
+      var sub = nodeTypes.indexOf("SubqueryStartNode");
       assertNotEqual(-1, sub);
 
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
@@ -3879,7 +3879,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
       assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
 
-      var sub = nodeTypes.indexOf("SubqueryNode");
+      var sub = nodeTypes.indexOf("SubqueryStartNode");
       assertNotEqual(-1, sub);
 
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
@@ -3911,7 +3911,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
       assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
 
-      var sub = nodeTypes.indexOf("SubqueryNode");
+      var sub = nodeTypes.indexOf("SubqueryStartNode");
       assertNotEqual(-1, sub);
 
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
@@ -3943,7 +3943,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
       assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
 
-      var sub = nodeTypes.indexOf("SubqueryNode");
+      var sub = nodeTypes.indexOf("SubqueryStartNode");
       assertNotEqual(-1, sub);
 
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
