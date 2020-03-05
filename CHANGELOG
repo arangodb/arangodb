@@ -1,7 +1,7 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
-* Legacy behaviour for maintenance mode in supervision. 
+* Legacy behaviour for maintenance mode in supervision.
 
 * Fix supervision mode detection while unlocking agency in cluster
   hot backups.
