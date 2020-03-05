@@ -188,14 +188,16 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->request = std::move(req);
 
   // Prepare a new request
+  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   if (!_queue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(q > 0);
     item->invokeOnError(Error::QueueCapacityExceeded);
     return;
   }
   item.release();  // queue owns this now
 
-  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
 
   // _state.load() after queuing request, to prevent race with connect
@@ -222,9 +224,10 @@ size_t H1Connection<ST>::requestsLeft() const {
 
 template <SocketType ST>
 void H1Connection<ST>::finishConnect() {
-  FUERTE_ASSERT(this->state() == Connection::State::Connecting);
-  this->_state.store(Connection::State::Connected);
-  startWriting();  // starts writing queue if non-empty
+  auto exp = Connection::State::Connecting;
+  if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
+    startWriting();  // starts writing queue if non-empty
+  }
 }
 
 // Thread-Safe: activate the combined write-read loop
@@ -440,10 +443,10 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     size_t n = http_parser_execute(&_parser, &_parserSettings, data, buffer.size());
     if (n != buffer.size()) {
       /* Handle error. Usually just close the connection. */
-      FUERTE_LOG_ERROR << "Invalid HTTP response in parser: '"
-                       << http_errno_description(HTTP_PARSER_ERRNO(&_parser))
-                       << "', this=" << this << "\n";
-      this->shutdownConnection(Error::ProtocolError);  // will cleanup _item
+      std::string msg = "Invalid HTTP response in parser: '";
+      msg.append(http_errno_description(HTTP_PARSER_ERRNO(&_parser))).append("'");
+      FUERTE_LOG_ERROR << msg << ", this=" << this << "\n";
+      this->shutdownConnection(Error::ProtocolError, msg);  // will cleanup _item
       return;
     }
     nparsed += n;

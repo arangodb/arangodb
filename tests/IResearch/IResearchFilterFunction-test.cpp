@@ -36,6 +36,7 @@
 #include "search/term_filter.hpp"
 #include "search/wildcard_filter.hpp"
 #include "search/levenshtein_filter.hpp"
+#include "search/ngram_similarity_filter.hpp"
 
 #include "IResearch/ExpressionContextMock.h"
 #include "IResearch/common.h"
@@ -5556,4 +5557,388 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
       vocbase(),
       "FOR d IN myView FILTER in_range(d.name, 'abc', true, 'z', false, false) "
       "RETURN d");
+}
+
+TEST_F(IResearchFilterFunctionTest, ngramMatch) {
+  // NGRAM_MATCH with default analyzer default threshold
+  {
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
+      .threshold(0.7f)
+      .push_back("foo");
+
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo') RETURN d",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo') RETURN d",
+      expected);
+  }
+
+  // NGRAM_MATCH with default analyzer default threshold value by var 
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("strVal", arangodb::aql::AqlValue("foo"));
+
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
+      .threshold(0.7f)
+      .push_back("foo");
+
+    assertFilterSuccess(
+      vocbase(),
+      "LET strVal = 'foo' FOR d IN myView FILTER NGRAM_MATCH(d.name, strVal) RETURN d",
+      expected, &ctx);
+    assertFilterSuccess(
+      vocbase(),
+      "LET strVal = 'foo' FOR d IN myView FILTER NGRAM_match(d['name'], strVal) RETURN d",
+      expected, &ctx);
+  }
+
+  // NGRAM_MATCH with boost
+  {
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
+      .threshold(0.7f)
+      .push_back("foo").boost(1.5);
+
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER BOOST(NGRAM_MATCH(d.name, 'foo'), 1.5) RETURN d",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER BOOST(NGRAM_match(d['name'], 'foo'), 1.5) RETURN d",
+      expected);
+  }
+
+  // NGRAM_MATCH with default analyzer explicit threshold
+  {
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
+      .threshold(0.8f)
+      .push_back("foo");
+
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', 0.8) RETURN d",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', 0.8) RETURN d",
+      expected);
+  }
+
+  // NGRAM_MATCH with default analyzer explicit threshold via variable
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(0.8)));
+
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
+      .threshold(0.8f)
+      .push_back("foo");
+
+    assertFilterSuccess(
+      vocbase(),
+      "LET numVal = 0.8 FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', numVal) RETURN d",
+      expected, &ctx);
+    assertFilterSuccess(
+      vocbase(),
+      "LET numVal = 0.8 FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', numVal) RETURN d",
+      expected, &ctx);
+  }
+  // variables + function calls
+  {
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleString("name.foo", "test_analyzer"))
+      .threshold(0.5)
+      .push_back("f").push_back("o").push_back("o").push_back("o");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{ 0.5 }));
+    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{ "o" }));
+    ctx.vars.emplace("idx", arangodb::aql::AqlValue("foo"));
+
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name[_FORWARD_('foo')], 'fooo', 0.5), 'test_analyzer') RETURN d",
+      expected, &ctx);
+    assertFilterSuccess(
+      vocbase(),
+      "LET y='o' LET idx='foo' LET x=0.5 FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name[idx], CONCAT('foo', y), x), 'test_analyzer') RETURN d",
+      expected,
+      &ctx);
+  }
+
+
+  // NGRAM_MATCH with explicit analyzer default threshold
+  {
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleString("name", "test_analyzer"))
+      .threshold(0.7f)
+      .push_back("f").push_back("o").push_back("o");
+
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', 'test_analyzer') RETURN d",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', 'test_analyzer') RETURN d",
+      expected);
+  }
+
+  // NGRAM_MATCH with explicit analyzer via ANALYZER default threshold
+  {
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleString("name", "test_analyzer"))
+      .threshold(0.7f)
+      .push_back("f").push_back("o").push_back("o");
+
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name, 'foo'), 'test_analyzer') RETURN d",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER ANALYZER(NGRAM_match(d['name'], 'foo'), 'test_analyzer') RETURN d",
+      expected);
+  }
+
+  // NGRAM_MATCH with explicit analyzer explicit threshold
+  {
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleString("name", "test_analyzer"))
+      .threshold(0.25f)
+      .push_back("f").push_back("o").push_back("o");
+
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', 0.25, 'test_analyzer') RETURN d",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', 0.25, 'test_analyzer') RETURN d",
+      expected);
+  }
+
+  // NGRAM_MATCH with explicit analyzer via ANALYZER explicit threshold
+  {
+    irs::Or expected;
+    expected.add<irs::by_ngram_similarity>().field(mangleString("name", "test_analyzer"))
+      .threshold(0.25f)
+      .push_back("f").push_back("o").push_back("o");
+
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name, 'foo', 0.25), 'test_analyzer') RETURN d",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER ANALYZER(NGRAM_match(d['name'], 'foo', 0.25), 'test_analyzer') RETURN d",
+      expected);
+  }
+
+  // wrong number of arguments
+  assertFilterParseFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name) RETURN d");
+  assertFilterParseFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name']) RETURN d");
+  assertFilterParseFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 1, 2, 3, 4) RETURN d");
+
+  // invalid parameter order (overload with default analyzer)
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 0.5, 'foo') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 0.5, 'foo') RETURN d");
+
+  // invalid parameter order (overload with default threshold)
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH('foo', d.name, 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH('foo', d['name'], 'test_analyzer') RETURN d");
+
+  // wrong first arg type
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d[*], 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH('a', 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_match('a', 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(1, 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_match(1, 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(null, 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_match(null, 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(['a'], 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_match(['a'], 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH({a:1}, 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER ANALYZER(NGRAM_match({a:1}, 'foo', 0.25), 'test_analyzer') RETURN d");
+
+  // wrong second arg type
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 0.5) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 0.5) RETURN d");
+
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, [1, 2]) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], [1, 2]) RETURN d");
+
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, {a: 1 }) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], {a: 1 }) RETURN d");
+
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, true) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], true) RETURN d");
+
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, null) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], null) RETURN d");
+
+  // wrong third argument type (may be only string or double)
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', null) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', null) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', true) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', true) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', [1, 2]) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', [1, 2]) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', {a:1}) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', {a:1}) RETURN d");
+
+  // invalid threshold value
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 1.1) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 1.1) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0) RETURN d");
+
+  // invalid analyzer arg type
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, true) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, true) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, null) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, null) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, 0.5) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, 0.5) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, [1, 2]) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, [1,2]) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, {a:1}) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, {a:1}) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 'test_analyzer', 'test_analyzer') RETURN d");
+
+  // non-deterministic arg
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(RAND() ? d.pui : d.name, 'def') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(RAND() ? d['pui'] : d['name'], 'def') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, RAND() ? 'abc' : 'def') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], RAND() ? 'abc' : 'def') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc',  RAND() ? 0.5 : 0.6) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc',  RAND() ? 0.5 : 0.6) RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5,  RAND() ? 'identity' : 'test_analyzer') RETURN d");
+  assertFilterFail(
+    vocbase(),
+    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, RAND() ? 'identity' : 'test_analyzer') RETURN d");
+  
 }

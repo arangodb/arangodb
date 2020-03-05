@@ -30,6 +30,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
@@ -45,6 +46,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/Validators.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/StringRef.h>
@@ -173,6 +175,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
 
+  auto res = updateValidators(info.get(StaticStrings::Validation));
+  if(res.fail()){
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
   TRI_ASSERT(!guid().empty());
 
   // update server's tick value
@@ -251,6 +258,28 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   static const Category category;
 
   return category;
+}
+
+Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
+  using namespace std::literals::string_literals;
+  if(validatorSlice.isNone() || validatorSlice.isNull()) {
+    return { TRI_ERROR_NO_ERROR };
+  } else if (!validatorSlice.isObject()) {
+    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
+  }
+
+  std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
+
+  try {
+    auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
+    newVec->push_back(std::move(validator));
+  } catch (std::exception const& ex) {
+    return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+  }
+
+  std::atomic_store_explicit(&_validators, newVec, std::memory_order_relaxed);
+
+  return { TRI_ERROR_NO_ERROR };
 }
 
 LogicalCollection::~LogicalCollection() = default;
@@ -665,6 +694,12 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   };
   getIndexesVPack(result, filter);
 
+  // Validators
+  {
+    result.add(VPackValue(StaticStrings::Validation));
+    validatorsToVelocyPack(result);
+  }
+
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
 
@@ -714,8 +749,7 @@ void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
 
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
-arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
-                                               bool partialUpdate) {
+arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, bool) {
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
@@ -741,32 +775,37 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
 
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
-  size_t rf = _sharding->replicationFactor();
-  size_t wc = _sharding->writeConcern();
-  VPackSlice rfSl = slice.get(StaticStrings::ReplicationFactor);
-
-  VPackSlice wcSl = slice.get(StaticStrings::WriteConcern);
-  if (wcSl.isNone()) { // deprecated in 3.6
-    wcSl = slice.get(StaticStrings::MinReplicationFactor);
+  auto res = updateValidators(slice.get(StaticStrings::Validation));
+  if(res.fail()){
+    THROW_ARANGO_EXCEPTION(res);
   }
 
-  if (!rfSl.isNone()) {
-    if (rfSl.isInteger()) {
-      int64_t rfTest = rfSl.getNumber<int64_t>();
-      if (rfTest < 0) {
+  size_t replicationFactor = _sharding->replicationFactor();
+  size_t writeConcern = _sharding->writeConcern();
+  VPackSlice replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
+
+  VPackSlice writeConcernSlice = slice.get(StaticStrings::WriteConcern);
+  if (writeConcernSlice.isNone()) { // deprecated in 3.6
+    writeConcernSlice = slice.get(StaticStrings::MinReplicationFactor);
+  }
+
+  if (!replicationFactorSlice.isNone()) {
+    if (replicationFactorSlice.isInteger()) {
+      int64_t replicationFactorTest = replicationFactorSlice.getNumber<int64_t>();
+      if (replicationFactorTest < 0) {
         // negative value for replication factor... not good
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for replicationFactor");
       }
 
-      rf = rfSl.getNumber<size_t>();
-      if ((!isSatellite() && rf == 0) || rf > 10) {
+      replicationFactor = replicationFactorSlice.getNumber<size_t>();
+      if ((!isSatellite() && replicationFactor == 0) || replicationFactor > 10) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for replicationFactor");
       }
 
       if (ServerState::instance()->isCoordinator() &&
-          rf != _sharding->replicationFactor()) {  // sanity checks
+          replicationFactor != _sharding->replicationFactor()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "cannot change replicationFactor for a collection using 'distributeShardsLike'");
@@ -779,8 +818,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
                         "cannot change replicationFactor of a satellite collection");
         }
       }
-    } else if (rfSl.isString()) {
-      if (rfSl.compareString(StaticStrings::Satellite) != 0) {
+    } else if (replicationFactorSlice.isString()) {
+      if (replicationFactorSlice.compareString(StaticStrings::Satellite) != 0) {
         // only the string "satellite" is allowed here
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
       }
@@ -797,29 +836,29 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
 #endif
       // fallthrough here if we set the string "satellite" for a satellite
       // collection
-      TRI_ASSERT(isSatellite() && _sharding->replicationFactor() == 0 && rf == 0);
+      TRI_ASSERT(isSatellite() && _sharding->replicationFactor() == 0 && replicationFactor == 0);
     } else {
       return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
     }
   }
 
-  if (!wcSl.isNone()) {
-    if (wcSl.isInteger()) {
-      int64_t wcTest = wcSl.getNumber<int64_t>();
-      if (wcTest < 0) {
+  if (!writeConcernSlice.isNone()) {
+    if (writeConcernSlice.isInteger()) {
+      int64_t writeConcernTest = writeConcernSlice.getNumber<int64_t>();
+      if (writeConcernTest < 0) {
         // negative value for writeConcern... not good
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for writeConcern");
       }
 
-      wc = wcSl.getNumber<size_t>();
-      if (wc > rf) {
+      writeConcern = writeConcernSlice.getNumber<size_t>();
+      if (writeConcern > replicationFactor) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for writeConcern");
       }
 
       if (ServerState::instance()->isCoordinator() &&
-          rf != _sharding->writeConcern()) {  // sanity checks
+          replicationFactor != _sharding->writeConcern()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "Cannot change writeConcern, please change " +
@@ -838,21 +877,21 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "bad value for writeConcern");
     }
-    TRI_ASSERT((wc <= rf && !isSatellite()) || (wc == 0 && isSatellite()));
+    TRI_ASSERT((writeConcern <= replicationFactor && !isSatellite()) || (writeConcern == 0 && isSatellite()));
   }
 
   auto doSync = !engine.inRecovery() && databaseFeature.forceSyncProperties();
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  Result res = getPhysical()->updateProperties(slice, doSync);
+  res = getPhysical()->updateProperties(slice, doSync);
   if (!res.ok()) {
     return res;
   }
 
-  TRI_ASSERT(!isSatellite() || rf == 0);
+  TRI_ASSERT(!isSatellite() || replicationFactor == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
-  _sharding->setWriteConcernAndReplicationFactor(wc, rf);
+  _sharding->setWriteConcernAndReplicationFactor(writeConcern, replicationFactor);
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
@@ -961,13 +1000,6 @@ Result LogicalCollection::read(transaction::Methods* trx,
   return getPhysical()->read(trx, key, result, lock);
 }
 
-Result LogicalCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::Slice const& key,
-                               ManagedDocumentResult& result, bool lock) {
-  TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
-  return getPhysical()->read(trx, key, result, lock);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a truncate operation (note: currently this only clears
 /// the read-cache
@@ -1064,4 +1096,35 @@ VPackSlice LogicalCollection::keyOptions() const {
     return arangodb::velocypack::Slice::nullSlice();
   }
   return VPackSlice(_keyOptions->data());
+}
+
+void LogicalCollection::validatorsToVelocyPack(VPackBuilder& b) const {
+  auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
+  if(vals == nullptr || vals->empty()){
+    b.add(VPackSlice::nullSlice());
+    return;
+  }
+  vals->front()->toVelocyPack(b);
+}
+
+Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) const {
+  auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
+  if (vals == nullptr) { return {}; }
+  for(auto const& validator : *vals) {
+    if(!validator->validate(s, VPackSlice::noneSlice(), true, options)) {
+      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
+    }
+  }
+  return {};
+}
+
+Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const* options) const {
+  auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
+  if (vals == nullptr) { return {}; }
+  for(auto const& validator : *vals) {
+    if(!validator->validate(modifiedDoc, oldDoc, false, options)) {
+      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
+    }
+  }
+  return {};
 }

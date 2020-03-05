@@ -628,6 +628,9 @@ struct TRI_v8_global_t {
   /// @brief "overwriteMode" key
   v8::Persistent<v8::String> OverwriteModeKey;
 
+  /// @brief "overwriteMode" key
+  v8::Persistent<v8::String> SkipDocumentValidationKey;
+
   /// @brief "parameters" key name
   v8::Persistent<v8::String> ParametersKey;
 

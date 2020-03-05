@@ -400,14 +400,12 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
       TRI_ASSERT(_documentNonProducer != nullptr);
       return _cursor->next(_documentNonProducer, output.numRowsLeft());
     case Type::Covering:
+    case Type::LateMaterialized:
       TRI_ASSERT(_documentProducer != nullptr);
       return _cursor->nextCovering(_documentProducer, output.numRowsLeft());
     case Type::Document:
       TRI_ASSERT(_documentProducer != nullptr);
       return _cursor->nextDocument(_documentProducer, output.numRowsLeft());
-    case Type::LateMaterialized:
-      TRI_ASSERT(_documentProducer != nullptr);
-      return _cursor->nextCovering(_documentProducer, output.numRowsLeft());
   }
   // The switch above is covering all values and this code
   // cannot be reached
@@ -425,19 +423,20 @@ void IndexExecutor::CursorReader::reset() {
   if (iterator != nullptr && iterator->canRearm()) {
     bool didRearm =
         iterator->rearm(_condition, _infos.getOutVariable(), _infos.getOptions());
-    if (!didRearm) {
+    if (didRearm) {
+      _cursor->reset();
+    } else {
       // iterator does not support the condition
       // It will not create any results
       _cursor->rearm(std::make_unique<EmptyIndexIterator>(iterator->collection(),
                                                           _infos.getTrxPtr()));
     }
-    _cursor->reset();
-    return;
+  } else {
+    // We need to build a fresh search and cannot go the rearm shortcut
+    _cursor->rearm(_infos.getTrxPtr()->indexScanForCondition(_index, _condition,
+                                                             _infos.getOutVariable(),
+                                                             _infos.getOptions()));
   }
-  // We need to build a fresh search and cannot go the rearm shortcut
-  _cursor->rearm(_infos.getTrxPtr()->indexScanForCondition(_index, _condition,
-                                                           _infos.getOutVariable(),
-                                                           _infos.getOptions()));
 }
 
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
@@ -474,7 +473,18 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
 
   uint64_t skipped = 0;
   if (_infos.getFilter() != nullptr) {
-    _cursor->nextDocument(_documentSkipper, toSkip);
+    switch (_type) {
+      case Type::Covering:
+      case Type::LateMaterialized:
+        TRI_ASSERT(_documentSkipper != nullptr);
+        _cursor->nextCovering(_documentSkipper, toSkip);
+        break;
+      case Type::NoResult:
+      case Type::Document:
+        TRI_ASSERT(_documentSkipper != nullptr);
+        _cursor->nextDocument(_documentSkipper, toSkip);
+        break;;
+    }
     skipped = _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
   } else {
     _cursor->skip(toSkip, skipped);

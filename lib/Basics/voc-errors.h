@@ -1159,6 +1159,16 @@ constexpr int TRI_ERROR_CURSOR_NOT_FOUND                                        
 /// request is still using the cursor.
 constexpr int TRI_ERROR_CURSOR_BUSY                                             = 1601;
 
+/// 1620: ERROR_VALIDATION_FAILED
+/// "validation failed"
+/// Will be raised when a document does not pass validation.
+constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 1620;
+
+/// 1621: ERROR_VALIDATION_BAD_PARAMETER
+/// "invalid validation parameter"
+/// Will be raised when the validator description is invalid.
+constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 1621;
+
 /// 1650: ERROR_TRANSACTION_INTERNAL
 /// "internal transaction error"
 /// Will be raised when a wrong usage of transactions is detected. this is an

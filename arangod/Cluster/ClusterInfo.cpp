@@ -2626,6 +2626,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   temp.add(StaticStrings::ReplicationFactor, VPackValue(info->replicationFactor()));
   temp.add(StaticStrings::MinReplicationFactor, VPackValue(info->writeConcern())); // deprecated in 3.6
   temp.add(StaticStrings::WriteConcern, VPackValue(info->writeConcern()));
+  temp.add(VPackValue(StaticStrings::Validation));
+  info->validatorsToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
@@ -4686,9 +4688,13 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
         "invalid agency result while releasing backup lock");
   }
 
+  if (supervisionOff) {
+    return arangodb::Result();
+  }
+
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    result = _agency.getValues("/arango/Supervision/State/Mode");
+    result = _agency.getValues("Supervision/State/Mode");
     if (result.successful()) {
       if (!result.slice().isArray() || result.slice().length() != 1 ||
           !result.slice()[0].hasKey(modepv) || !result.slice()[0].get(modepv).isString()) {

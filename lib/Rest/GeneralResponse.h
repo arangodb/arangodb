@@ -56,6 +56,9 @@ class GeneralResponse {
   // converts the response code to a string for delivering to a http client.
   static std::string responseString(ResponseCode);
 
+  // returns true if code will become a valid http response.
+  static bool isValidResponseCode(uint64_t code);
+
   // converts the response code string to the internal code
   static ResponseCode responseCode(std::string const& str);
 
@@ -138,11 +141,10 @@ class GeneralResponse {
   // Payload needs to be of type: VPackSlice const&
   // or VPackBuffer<uint8_t>&&
   template <typename Payload>
-  void setPayload(Payload&& payload, bool generateBody,
+  void setPayload(Payload&& payload,
                   velocypack::Options const& options = velocypack::Options::Defaults,
                   bool resolveExternals = true) {
     TRI_ASSERT(isResponseEmpty());
-    _generateBody = generateBody;
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 

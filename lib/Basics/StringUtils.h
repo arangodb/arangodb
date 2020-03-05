@@ -215,9 +215,11 @@ std::string soundex(std::string const& str);
 std::string soundex(char const* src, size_t len);
 
 /// @brief converts input string to vector of character codes
+std::vector<uint32_t> characterCodes(char const* s, size_t length);
 std::vector<uint32_t> characterCodes(std::string const& str);
 
 /// @brief calculates the levenshtein distance between the input strings
+unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size_t l2);
 unsigned int levenshteinDistance(std::string const& str1, std::string const& str2);
 
 /// @brief calculates the levenshtein distance between the input strings

@@ -34,6 +34,7 @@
 #include "Utils/OperationResult.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/Validators.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -269,8 +270,6 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief reads an element from the document collection
   Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& mdr, bool lock);
-  Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
-              ManagedDocumentResult& result, bool lock);
 
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);
@@ -327,6 +326,9 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
+  void validatorsToVelocyPack(VPackBuilder&) const;
+  Result validate(VPackSlice newDoc, VPackOptions const*) const; // insert
+  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const; // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -339,6 +341,8 @@ class LogicalCollection : public LogicalDataSource {
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;
+
+  Result updateValidators(VPackSlice validatorArray);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
@@ -374,7 +378,7 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Flag if this collection is a smart one. (Enterprise only)
   bool const _isSmart;
 #endif
-  
+
   // SECTION: Properties
   bool _waitForSync;
 
@@ -399,6 +403,11 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
+
+  using ValidatorVec = std::vector<std::unique_ptr<arangodb::ValidatorBase>>;
+  // `_validators` must be used with atomic accessors only!!
+  // We use relaxed access (load/store) as we only care about atomicity.
+  std::shared_ptr<ValidatorVec> _validators;
 };
 
 }  // namespace arangodb

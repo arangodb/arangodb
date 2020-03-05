@@ -95,10 +95,6 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       return true;
     }
 
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
-
     transaction::BuilderLeaser b(context.getTrxPtr());
     b->openObject(true);
 
@@ -106,6 +102,10 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
                       *b.get(), context.getUseRawDocumentPointers());
 
     b->close();
+    
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
 
     AqlValue v(b.get());
     AqlValueGuard guard{v, true};
@@ -423,10 +423,6 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       checkFilter = false;
     }
 
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
-
     transaction::BuilderLeaser b(context.getTrxPtr());
     b->openObject(true);
 
@@ -469,22 +465,23 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     }
 
     b->close();
-
+    
     if (checkFilter && !context.checkFilter(b->slice())) {
       context.incrFiltered();
       return false;
     }
-
-    if constexpr (skip) {
-      return true;
+    
+    if constexpr (!skip) {
+      InputAqlItemRow const& input = context.getInputRow();
+      OutputAqlItemRow& output = context.getOutputRow();
+      RegisterId registerId = context.getOutputRegister();
+      AqlValue v(b.get());
+      AqlValueGuard guard{v, true};
+      TRI_ASSERT(!output.isFull());
+      output.moveValueInto(registerId, input, guard);
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
     }
-
-    AqlValue v(b.get());
-    AqlValueGuard guard{v, true};
-    TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, guard);
-    TRI_ASSERT(output.produced());
-    output.advanceRow();
 
     return true;
   };
