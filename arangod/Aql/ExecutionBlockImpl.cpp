@@ -2095,6 +2095,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           } else {
             // This may write one or more rows.
             _execState = shadowRowForwarding();
+            if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+              // we need to update the Top of the stack now
+              std::ignore = stack.popCall();
+              // Copy the call
+              AqlCall modifiedCall = _outputItemRow->getClientCall();
+              stack.pushCall(std::move(modifiedCall));
+            }
           }
           if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
             // Produce might have modified the clientCall

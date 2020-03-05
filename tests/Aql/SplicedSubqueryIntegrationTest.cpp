@@ -236,24 +236,34 @@ class SplicedSubqueryIntegrationTest
   auto createSkipCall() -> SkipCall {
     return [](AqlItemBlockInputRange& input,
               AqlCall& call) -> std::tuple<ExecutorState, LambdaExe::Stats, size_t, AqlCall> {
-      auto skipped = size_t{0};
+      while (call.shouldSkip() && input.skippedInFlight() > 0) {
+        if (call.getOffset() > 0) {
+          call.didSkip(input.skip(call.getOffset()));
+        } else {
+          EXPECT_TRUE(call.needsFullCount());
+          EXPECT_EQ(call.getLimit(), 0);
+          EXPECT_TRUE(call.hasHardLimit());
+          call.didSkip(input.skipAll());
+        }
+      }
+      // If we overfetched and have data, throw it away
       while (input.hasDataRow() && call.shouldSkip()) {
         auto const& [state, inputRow] = input.nextDataRow();
         EXPECT_TRUE(inputRow.isInitialized());
         call.didSkip(1);
-        skipped++;
       }
       auto upstreamCall = AqlCall{call};
-      return {input.upstreamState(), NoStats{}, skipped, upstreamCall};
+      return {input.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
     };
   };
 
   // Asserts if called. This is to check that when we use skip to
   // skip over a subquery, the subquery's produce is not invoked
+  // with data
   auto createAssertCall() -> ProduceCall {
     return [](AqlItemBlockInputRange& input,
               OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
-      EXPECT_TRUE(false);
+      EXPECT_FALSE(input.hasDataRow());
       NoStats stats{};
       AqlCall call{};
 
@@ -333,7 +343,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery) {
       .run();
 };
 
-TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_and_produce) {
+TEST_P(SplicedSubqueryIntegrationTest, single_subquery_skip_and_produce) {
   auto call = AqlCall{5};
   auto pipeline = createSubquery();
   ExecutorTestHelper<1, 2>{*fakedQuery}
@@ -347,7 +357,7 @@ TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_and_produce
       .run();
 };
 
-TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_all) {
+TEST_P(SplicedSubqueryIntegrationTest, single_subquery_skip_all) {
   auto call = AqlCall{20};
   auto pipeline = createSubquery();
   ExecutorTestHelper<1, 2>{*fakedQuery}
@@ -361,7 +371,7 @@ TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_all) {
       .run();
 };
 
-TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_fullcount) {
+TEST_P(SplicedSubqueryIntegrationTest, single_subquery_fullcount) {
   auto call = AqlCall{0, true, 0, AqlCall::LimitType::HARD};
   auto pipeline = createSubquery();
   ExecutorTestHelper<1, 2>{*fakedQuery}
@@ -375,6 +385,8 @@ TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_fullcount) {
       .run();
 };
 
+// NOTE: This test can be enabled if we can continue
+// working on the second subquery without returning to consumer
 TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_produce_count) {
   auto call = AqlCall{2, true, 2, AqlCall::LimitType::HARD};
   auto pipeline = createSubquery();
@@ -442,7 +454,7 @@ TEST_P(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
       .run();
 };
 
-TEST_P(SplicedSubqueryIntegrationTest, DISABLED_check_call_passes_subquery) {
+TEST_P(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
   auto call = AqlCall{10};
   auto pipeline = concatPipelines(createCallAssertPipeline(call), createSubquery());
 
@@ -456,8 +468,9 @@ TEST_P(SplicedSubqueryIntegrationTest, DISABLED_check_call_passes_subquery) {
       .run();
 };
 
-TEST_P(SplicedSubqueryIntegrationTest, DISABLED_check_skipping_subquery) {
+TEST_P(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
   auto call = AqlCall{10};
+  LOG_DEVEL << call;
   auto pipeline = createSubquery(createAssertPipeline());
 
   executorTestHelper.setPipeline(std::move(pipeline))
@@ -465,7 +478,23 @@ TEST_P(SplicedSubqueryIntegrationTest, DISABLED_check_skipping_subquery) {
       .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0}, {})
-      .expectSkipped(0)
+      .expectSkipped(8)
       .expectedState(ExecutionState::DONE)
+      .run();
+};
+
+TEST_P(SplicedSubqueryIntegrationTest, check_soft_limit_subquery) {
+  auto call = AqlCall{0, false, 4, AqlCall::LimitType::SOFT};
+  LOG_DEVEL << call;
+  auto pipeline = createSubquery(createAssertPipeline());
+
+  ExecutorTestHelper<1, 2>{*fakedQuery}
+      .setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, {{1, R"([])"}, {2, R"([])"}, {5, R"([])"}, {2, R"([])"}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::HASMORE)
       .run();
 };
