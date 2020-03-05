@@ -135,7 +135,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new DoubleParameter(&_gcFrequency),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.gc-interval",
@@ -143,14 +144,16 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_gcInterval),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.app-path", "directory for Foxx applications",
       new StringParameter(&_appPath),
       arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.startup-directory",
@@ -158,7 +161,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new StringParameter(&_startupDirectory),
       arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.module-directory",
@@ -166,7 +170,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new VectorParameter<StringParameter>(&_moduleDirectories),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.copy-installation",
@@ -174,7 +179,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_copyInstallation),
       arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.v8-contexts",
@@ -183,7 +189,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_nrMaxContexts),
       arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.v8-contexts-minimum",
@@ -192,7 +199,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_nrMinContexts),
       arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.v8-contexts-max-invocations",
@@ -200,7 +208,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_maxContextInvocations),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.v8-contexts-max-age",
@@ -208,7 +217,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new DoubleParameter(&_maxContextAge),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.allow-admin-execute",
@@ -216,14 +226,16 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_allowAdminExecute),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.enabled", "enable the V8 JavaScript engine",
       new BooleanParameter(&_enableJS),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
       arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator));
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

@@ -177,7 +177,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new BooleanParameter(&_allowPortTesting),
                   arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
@@ -187,7 +188,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new BooleanParameter(&_allowProcessControl),
                   arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
@@ -197,7 +199,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new BooleanParameter(&_hardenInternalModule),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
@@ -207,7 +210,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
   options
       ->addOption("--javascript.startup-options-blacklist",
@@ -217,7 +221,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
@@ -226,7 +231,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
   options
       ->addOption("--javascript.environment-variables-blacklist",
@@ -235,7 +241,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
@@ -245,7 +252,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new VectorParameter<StringParameter>(&_endpointsWhitelistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
   options
       ->addOption("--javascript.endpoints-blacklist",
@@ -255,7 +263,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new VectorParameter<StringParameter>(&_endpointsBlacklistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
@@ -265,7 +274,8 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   new VectorParameter<StringParameter>(&_filesWhitelistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 }
 
