@@ -913,7 +913,7 @@ void Supervision::run() {
             try {
               if (_snapshot.get(supervisionMaintenance).isString()) {
                 std::string tmp = _snapshot.get(supervisionMaintenance).getString();
-                if (tmp == "on") { // legacy behaviour
+                if (tmp.size() < 18) { // legacy behaviour
                   maintenanceMode = true;
                 } else {
                   auto const maintenanceExpires = stringToTimepoint(tmp);
