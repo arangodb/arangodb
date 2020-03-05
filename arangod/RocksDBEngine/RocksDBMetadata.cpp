@@ -230,8 +230,7 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                       LogicalCollection& coll, bool force,
                                       VPackBuilder& tmp, rocksdb::SequenceNumber& appliedSeq,
-                                      std::string& output,
-                                      std::chrono::milliseconds maxWorkTime) {
+                                      std::string& output) {
   TRI_ASSERT(appliedSeq != UINT64_MAX);
   TRI_ASSERT(appliedSeq > 0);
 
@@ -327,20 +326,21 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
     if (coll.syncByRevision()) {
       output.clear();
-      rocksdb::SequenceNumber seq =
-          rcoll->serializeRevisionTree(output, maxCommitSeq, maxWorkTime);
+      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
       appliedSeq = std::min(appliedSeq, seq);
 
-      rocksutils::uint64ToPersistent(output, seq);
+      if (!output.empty()) {
+        rocksutils::uint64ToPersistent(output, seq);
 
-      key.constructRevisionTreeValue(rcoll->objectId());
-      rocksdb::Slice value(output);
+        key.constructRevisionTreeValue(rcoll->objectId());
+        rocksdb::Slice value(output);
 
-      rocksdb::Status s = batch.Put(cf, key.string(), value);
-      if (!s.ok()) {
-        LOG_TOPIC("ff234", WARN, Logger::ENGINES)
-            << "writing revision tree failed";
-        return res.reset(rocksutils::convertStatus(s));
+        rocksdb::Status s = batch.Put(cf, key.string(), value);
+        if (!s.ok()) {
+          LOG_TOPIC("ff234", WARN, Logger::ENGINES)
+              << "writing revision tree failed";
+          return res.reset(rocksutils::convertStatus(s));
+        }
       }
     } else {
       key.constructRevisionTreeValue(rcoll->objectId());

@@ -30,6 +30,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -52,7 +53,9 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
-      _revisionTreeApplied(0) {
+      _revisionTreeApplied(0),
+      _revisionTreeSerializedSeq(0),
+      _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
@@ -362,7 +365,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  applyUpdates(safeSeq, std::chrono::minutes(20));
+  applyUpdates(safeSeq);
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
   auto tree = _revisionTree->clone();
@@ -405,7 +408,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  applyUpdates(safeSeq, std::chrono::minutes(20));
+  applyUpdates(safeSeq);
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
   auto tree = _revisionTree->clone();
@@ -457,13 +460,21 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
 }
 
 rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
-    std::string& output, rocksdb::SequenceNumber commitSeq,
-    std::chrono::milliseconds maxWorkTime) {
+    std::string& output, rocksdb::SequenceNumber commitSeq) {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (_logicalCollection.syncByRevision()) {
-    auto appliedSeq = applyUpdates(commitSeq, maxWorkTime);
-    _revisionTree->serialize(output);
-    return appliedSeq;
+    auto appliedSeq = applyUpdates(commitSeq);  // always apply updates...
+    bool neverDone = _revisionTreeSerializedSeq.load() == 0;
+    bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
+    bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
+                                std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
+                                .count();
+    if (neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
+      _revisionTree->serializeBinary(output, true);
+      _revisionTreeSerializedSeq.store(appliedSeq);
+      _revisionTreeSerializedTime = std::chrono::steady_clock::now();
+    }
+    return _revisionTreeSerializedSeq.load();
   }
   // mark as don't persist again, tree should be deleted now
   _revisionTreeApplied.store(std::numeric_limits<rocksdb::SequenceNumber>::max());
@@ -603,14 +614,11 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
   return res;
 }
 
-rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq,
-                                                            std::chrono::milliseconds maxWorkTime) {
+rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
   if (!_logicalCollection.syncByRevision()) {
     return 0;
   }
   TRI_ASSERT(_revisionTree);
-
-  auto start = std::chrono::high_resolution_clock::now();
 
   rocksdb::SequenceNumber appliedSeq = 0;
   Result res = basics::catchVoidToResult([&]() -> void {
@@ -647,7 +655,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
       }
     }
 
-    while (std::chrono::high_resolution_clock::now() - start < maxWorkTime) {
+    while (true) {
       std::vector<std::size_t> inserts;
       std::vector<std::size_t> removals;
       // find out if we have buffers to apply

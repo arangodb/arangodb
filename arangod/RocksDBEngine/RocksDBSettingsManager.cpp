@@ -166,14 +166,10 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
   TRI_ASSERT(!engine->inRecovery()); // just don't
 
-  // amount of time to allow for applying and serializing updates
-  std::chrono::milliseconds workTime(1000);
-
   bool didWork = false;
   auto mappings = engine->collectionMappings();
   std::string scratch;
-  scratch.reserve(10485760);  // reserve 10MB of scratch space so we should
-                              // never have to reallocate
+  scratch.reserve(10485760);  // reserve 10MB of scratch space to work with
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     TRI_voc_cid_t cid = pair.second;
@@ -197,12 +193,8 @@ Result RocksDBSettingsManager::sync(bool force) {
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
-    auto start = std::chrono::high_resolution_clock::now();
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder,
-                                             appliedSeq, scratch, workTime / 2);
-    auto spentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::high_resolution_clock::now() - start);
-    workTime = workTime - spentTime;
+                                             appliedSeq, scratch);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
     const std::string err = "could not sync metadata for collection '";

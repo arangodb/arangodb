@@ -52,21 +52,17 @@ class MerkleTree {
 
     bool operator==(Node const& other);
   };
-  static_assert(sizeof(Node) > CacheLineSize / 8,
+  static_assert(sizeof(Node) == 16, "Node size assumptions invalid.");
+  static_assert(CacheLineSize % sizeof(Node) == 0,
                 "Node size assumptions invalid.");
-  static_assert(sizeof(Node) <= CacheLineSize,
-                "Node size assumptions invalid.");
-  static constexpr std::size_t NodeSize =
-      sizeof(Node) > (CacheLineSize / 2)
-          ? (CacheLineSize*((sizeof(Node) + (CacheLineSize - 1)) / CacheLineSize))
-          : (sizeof(Node) > (CacheLineSize / 4) ? (CacheLineSize / 2)
-                                                : (CacheLineSize / 4));
+  static constexpr std::size_t NodeSize = sizeof(Node);
 
   struct Meta {
     std::size_t rangeMin;
     std::size_t rangeMax;
     std::size_t maxDepth;
   };
+  static_assert(sizeof(Meta) == 24, "Meta size assumptions invalid.");
   static constexpr std::size_t MetaSize =
       (CacheLineSize * ((sizeof(Meta) + (CacheLineSize - 1)) / CacheLineSize));
 
@@ -91,7 +87,7 @@ class MerkleTree {
   /**
    * @brief Construct a tree from a buffer containing a serialized tree
    *
-   * @param buffer  A buffer containing a serialized tree
+   * @param buffer      A buffer containing a serialized tree
    * @return A newly allocated tree constructed from the input
    */
   static std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> fromBuffer(std::string_view buffer);
@@ -218,11 +214,12 @@ class MerkleTree {
   std::string toString() const;
 
   /**
-   * @brief Serialize the tree for transport or storage
+   * @brief Serialize the tree for transport or storage in binary format
    *
-   * @return The serialization as a string
+   * @param output    String for output
+   * @param compress  Whether or not to compress the output
    */
-  void serialize(std::string& output) const;
+  void serializeBinary(std::string& output, bool compress) const;
 
  protected:
   explicit MerkleTree(std::string_view buffer);

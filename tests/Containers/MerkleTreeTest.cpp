@@ -439,7 +439,7 @@ TEST(MerkleTreeTest, test_fromBuffer) {
   }
 
   std::string t1s;
-  t1.serialize(t1s);
+  t1.serializeBinary(t1s, true);
   std::unique_ptr<::arangodb::containers::MerkleTree<3, 64>> t2 =
       ::arangodb::containers::MerkleTree<3, 64>::fromBuffer(t1s);
   ASSERT_NE(t2, nullptr);

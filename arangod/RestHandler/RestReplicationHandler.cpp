@@ -3019,7 +3019,7 @@ void RestReplicationHandler::handleCommandRevisionTree() {
     return;
   }
   std::string result;
-  tree->serialize(result);
+  tree->serializeBinary(result, false);
 
   resetResponse(rest::ResponseCode::OK);
   _response->setContentType("application/octet-stream");

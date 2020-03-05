@@ -48,6 +48,14 @@
 
 #include "Logger/LogMacros.h"
 
+#include <snappy.h>
+
+namespace {
+static constexpr std::uint8_t CurrentVersion = 0x01;
+static constexpr char CompressedCurrent = '1';
+static constexpr char UncompressedCurrent = '2';
+}  // namespace
+
 namespace arangodb {
 namespace containers {
 
@@ -167,6 +175,23 @@ std::size_t MerkleTree<BranchingBits, LockStripes>::defaultRange(std::size_t max
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
 std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>
 MerkleTree<BranchingBits, LockStripes>::fromBuffer(std::string_view buffer) {
+  bool compressed = false;
+  std::uint8_t version = static_cast<uint8_t>(buffer[buffer.size() - 1]);
+  if (version == 0x01) {
+    compressed = ::CompressedCurrent == buffer[buffer.size() - 2];
+  } else {
+    throw std::invalid_argument(
+        "Buffer does not contain a properly versioned tree.");
+  }
+
+  std::string scratch;
+  if (compressed) {
+    snappy::Uncompress(buffer.data(), buffer.size() - 2, &scratch);
+    buffer = std::string_view(scratch);
+  } else {
+    buffer = std::string_view(buffer.data(), buffer.size() - 2);
+  }
+
   if (buffer.size() < MetaSize) {
     // not enough space to even store the meta info, can't proceed
     return nullptr;
@@ -452,10 +477,19 @@ std::string MerkleTree<BranchingBits, LockStripes>::toString() const {
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
-void MerkleTree<BranchingBits, LockStripes>::serialize(std::string& output) const {
+void MerkleTree<BranchingBits, LockStripes>::serializeBinary(std::string& output,
+                                                             bool compress) const {
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
   TRI_ASSERT(output.empty());
-  output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
+  if (compress) {
+    snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
+                     allocationSize(meta().maxDepth), &output);
+    output.push_back(::CompressedCurrent);
+  } else {
+    output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
+    output.push_back(::UncompressedCurrent);
+  }
+  output.push_back(static_cast<char>(::CurrentVersion));
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
