@@ -469,5 +469,5 @@ auto SortingGatherExecutor::rowsLeftToWrite() const noexcept -> size_t {
 }
 
 auto SortingGatherExecutor::limitReached() const noexcept -> bool {
-  return constrainedSort() && rowsLeftToWrite() > 0;
+  return constrainedSort() && rowsLeftToWrite() == 0;
 }
