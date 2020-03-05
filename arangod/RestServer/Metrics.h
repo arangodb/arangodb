@@ -40,8 +40,8 @@
 #include "counter.h"
 
 class Counter;
-enum Scale {LINEAR, LOGARITHMIC};
-template<typename T, Scale S> class Histogram;
+
+template<typename Scale> class Histogram;
 
 class Metric {
 public:
@@ -137,72 +137,141 @@ private:
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
+template<typename T>
+struct scale_t {
+public:
+
+  using value_type = T;
+
+  scale_t(T const& low, T const& high, size_t n) :
+    _low(low), _high(high) {
+    _delim.resize(n);
+  }
+  /**
+   * @brief number of buckets
+   */
+  size_t n() const {
+    return _delim.size();
+  }
+  /**
+   * @brief number of buckets
+   */
+  T low() const {
+    return _low;
+  }
+  /**
+   * @brief number of buckets
+   */
+  T high() const {
+    return _high;
+  }
+  /**
+   * @brief number of buckets
+   */
+  std::vector<T> const& delim() const {
+    return _delim;
+  }
+
+protected:
+  T _low, _high;
+  std::vector<T> _delim;
+};
+
+template<typename T>
+struct log_scale_t : public scale_t<T> {
+public:
+
+  using value_type = T;
+
+  log_scale_t(T const& base, T const& low, T const& high, size_t n) :
+    scale_t<T>(low, high, n), _base(base) { // Assertions
+    double nn = -1.0*n;
+    for (auto& i : this->_delim) {
+      i = (high-low) * std::pow(base, ++nn) + low;
+    }
+    _div = this->_delim.front() - low;
+    _ldiv = logf(_div);
+  }
+  /**
+   * @brief index for val
+   * @param val value
+   * @return    index
+   */
+  size_t pos(T const& val) const {
+    return static_cast<size_t>(std::floor(logf((val - this->_low)/_div)/logf(_base)));
+  }
+private:
+  T _base, _div, _ldiv;
+};
+
+template<typename T>
+struct lin_scale_t : public scale_t<T> {
+public:
+
+  using value_type = T;
+
+  lin_scale_t(T const& low, T const& high, size_t n) :
+    scale_t<T>(low, high, n) { // Assertions
+    this->_delim.resize(n);
+    _div = (high - low) / (T)n;
+    T le = low;
+    for (auto& i : this->_delim) {
+      i = le;
+      le += _div;
+    }
+  }
+  /**
+   * @brief index for val
+   * @param val value
+   * @return    index
+   */
+  size_t pos(T const& val) const {
+    return static_cast<size_t>(std::floor((val - this->_low)/ _div));
+  }
+private:
+  T _base, _div;
+};
+
 
 /**
  * @brief Histogram functionality
  */
-
-template<typename T, Scale S = LINEAR> class Histogram : public Metric {
+template<typename Scale> class Histogram : public Metric {
 
 public:
 
+  using value_type = typename Scale::value_type;
+
   Histogram() = delete;
 
-  Histogram (size_t const& buckets, T const& low, T const& high,
-             std::string const& name, std::string const& help = "")
-    : Metric(name, help), _c(Metrics::hist_type(buckets)), _low(low), _high(high),
-      _lowr(std::numeric_limits<T>::max()), _highr(std::numeric_limits<T>::min()) {
-    TRI_ASSERT(_c.size() > 0);
-    _n = _c.size() - 1;
-    _delim.resize(_c.size());
-    if constexpr (S == LINEAR) {
-      _div = (high - low) / (T)_c.size();
-      T le = low;
-      for (auto& i : _delim) {
-        i = le;
-        le += _div;
-      }
-    } else if constexpr (S == LOGARITHMIC) {
-      double n = -1. * (_c.size()-1);
-      for (auto& i : _delim) {
-        i = (high-low) * std::pow(10.0, n++) + low;
-      }
-      _div = _delim.front() - _low;
-    } else {
-      TRI_ASSERT(false);
-    }
-    TRI_ASSERT(_div != 0);
-  }
+  Histogram (Scale scale, std::string const& name, std::string const& help = "")
+    : Metric(name, help), _c(Metrics::hist_type(scale.n())), _scale(scale),
+      _lowr(std::numeric_limits<value_type>::max()),
+      _highr(std::numeric_limits<value_type>::min()),
+      _n(scale.n()-1) {}
 
   ~Histogram() = default;
 
-  void records(T const& t) {
-    if(t < _lowr) {
-      _lowr = t;
-    } else if (t > _highr) {
-      _highr = t;
+  void records(value_type const& val) {
+    if(val < _lowr) {
+      _lowr = val;
+    } else if (val > _highr) {
+      _highr = val;
     }
   }
 
-  size_t pos(T const& t) const {
-    if constexpr(S == LINEAR) {
-      return static_cast<size_t>(std::floor((t - _low)/ _div));
-    } else if constexpr (S == LOGARITHMIC) {
-      return static_cast<size_t>(std::floor(log10f((t - _low)/_div)));
-    } else {
-      TRI_ASSERT(false);
-      return 0;
-    }
+  size_t pos(value_type const& t) const {
+    return _scale.pos(t);
   }
 
-  void count(T const& t) {
+  void count(value_type const& t) {
     count(t, 1);
   }
 
-  void count(T const& t, uint64_t n) {
-    if (t < _low) {
+  void count(value_type const& t, uint64_t n) {
+    if (t < _scale.low()) {
       _c[0] += n;
-    } else if (t >= _high) {
+    } else if (t >= _scale.high()) {
       _c[_n] += n;
     } else {
       _c[pos(t)] += n;
@@ -210,8 +279,8 @@ public:
     records(t);
   }
 
-  T const& low() const { return _low; }
-  T const& high() const { return _high; }
+  value_type const& low() const { return _scale.low(); }
+  value_type const& high() const { return _scale.high(); }
 
   Metrics::hist_type::value_type& operator[](size_t n) {
     return _c[n];
@@ -225,10 +294,6 @@ public:
     return v;
   }
 
-  Scale scale() const {
-    return S;
-  }
-
   uint64_t load(size_t i) const { return _c.load(i); };
 
   size_t size() const { return _c.size(); }
@@ -236,27 +301,26 @@ public:
   virtual void toPrometheus(std::string& result) const override {
     result += "#TYPE " + name() + " histogram\n";
     result += "#HELP " + name() + " " + help() + "\n";
-    T sum = T(0);
+    value_type sum(0);
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{le=\"" + std::to_string(_delim[i]) + "\"} " +
+      result += name() + "_bucket{le=\"" + std::to_string(_scale.delim()[i]) + "\"} " +
         std::to_string(n) + "\n";
     }
     result += name() + "_count " + std::to_string(sum) + "\n";
   }
 
   std::ostream& print(std::ostream& o) const {
-    o << "_div: " << _div << ", _c: " << _c << ", _r: [" << _lowr << ", " << _highr << "] " << name();
+//    o << "_div: " << _div << ", _c: " << _c << ", _r: [" << _lowr << ", " << _highr << "] " << name();
     return o;
   }
 
 private:
   Metrics::hist_type _c;
-  T _low, _high, _div, _lowr, _highr;
-  std::vector<T> _delim;
+  Scale _scale;
+  value_type _lowr, _highr;
   size_t _n;
-  Scale s;
 
 };
 
