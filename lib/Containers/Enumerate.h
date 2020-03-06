@@ -25,6 +25,7 @@
 #include <functional>
 #include <iterator>
 
+namespace arangodb {
 
 template <typename T, typename C>
 struct enumerate_wrapper;
@@ -42,8 +43,6 @@ struct enumerate_wrapper;
  */
 template <typename T, typename C = unsigned int>
 enumerate_wrapper<T, C> enumerate(T&& v, C c = C());
-
-
 
 template <typename T, typename C = unsigned int>
 struct enumerate_iterator;
@@ -126,5 +125,6 @@ template <typename T, typename C>
 enumerate_wrapper<T, C> enumerate(T&& v, C c) {
   return enumerate_wrapper<T, C>{std::forward<T>(v), c};
 }
+};  // namespace arangodb
 
 #endif

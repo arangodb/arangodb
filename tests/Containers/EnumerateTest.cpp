@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <list>
 #include <vector>
-#include <set>
-#include <unordered_set>
 #include <deque>
 
 #include "gtest/gtest.h"
@@ -31,9 +29,11 @@
 #include "Containers/Enumerate.h"
 #if GTEST_HAS_TYPED_TEST_P
 
+using namespace arangodb;
+
 template<typename T>
 struct NonCopyableType {
-  explicit NonCopyableType(T t) : t(std::move(t)) {};
+  explicit NonCopyableType(T t) : t(std::move(t)) {}
   NonCopyableType(NonCopyableType const&) = delete;
   NonCopyableType(NonCopyableType &&) noexcept = default;
 
