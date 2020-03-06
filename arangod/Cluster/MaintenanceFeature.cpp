@@ -163,8 +163,14 @@ void MaintenanceFeature::start() {
       "maintenance_phase2_runtime_msec", 10, 50., 5.0e4,
       "Maintenance Phase 2 runtime histogram [ms]");
 
-  _num_out_of_sync_shards =
-      metricsFeature.gauge<uint64_t>("out_of_sync_shards", 0, "Number of leader shards not fully replicated");
+  _shards_out_of_sync =
+      metricsFeature.gauge<uint64_t>("shards_out_of_sync", 0, "Number of leader shards not fully replicated");
+  _shards_total_count =
+      metricsFeature.gauge<uint64_t>("shards_total_count", 0, "Number of shards on this machine");
+  _shards_leader_count =
+      metricsFeature.gauge<uint64_t>("shards_leader_count", 0, "Number of leader shards on this machine");
+  _shards_not_replicated_count =
+      metricsFeature.gauge<uint64_t>("shards_not_replicated", 0, "Number of shards not replicated at all");
 
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {

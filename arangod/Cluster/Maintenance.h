@@ -147,11 +147,18 @@ arangodb::Result phaseTwo(VPackSlice const& plan, VPackSlice const& cur,
  *
  * @return         Result
  */
+struct ShardStatistics {
+  uint64_t numShards;
+  uint64_t numLeaderShards;
+  uint64_t numOutOfSyncShards;
+  uint64_t numNotReplicated;
+};
+
 arangodb::Result reportInCurrent(VPackSlice const& plan, VPackSlice const& cur,
                                  VPackSlice const& local,
                                  MaintenanceFeature::errors_t const& allErrors,
                                  std::string const& serverId, VPackBuilder& report,
-                                 size_t& numOutOfSyncShards);
+                                 ShardStatistics& shardStats);
 
 /**
  * @brief            Schedule synchroneous replications

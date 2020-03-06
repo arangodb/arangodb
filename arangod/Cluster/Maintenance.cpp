@@ -692,7 +692,7 @@ static VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
                                                              {SELECTIVITY_ESTIMATE}));
 }
 
-static std::pair<VPackBuilder, bool> assembleLocalCollectionInfo(
+static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     VPackSlice const& info, VPackSlice const& planServers,
     std::string const& database, std::string const& shard,
     std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors) {
@@ -701,7 +701,8 @@ static std::pair<VPackBuilder, bool> assembleLocalCollectionInfo(
   try {
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
-    bool shardInSync = false;
+    bool shardInSync;
+    bool shardReplicated;
 
     auto collection = vocbase->lookupCollection(shard);
     if (collection == nullptr) {
@@ -711,7 +712,7 @@ static std::pair<VPackBuilder, bool> assembleLocalCollectionInfo(
       errorMsg += shard;
       LOG_TOPIC("33a3b", DEBUG, Logger::MAINTENANCE) << errorMsg;
       { VPackObjectBuilder o(&ret); }
-      return {ret, true};
+      return {ret, true, true};
     }
 
     std::string errorKey =
@@ -764,8 +765,9 @@ static std::pair<VPackBuilder, bool> assembleLocalCollectionInfo(
       size_t numFollowers;
       std::tie(numFollowers, std::ignore) = collection->followers()->injectFollowerInfo(ret);
       shardInSync = planServers.length() == numFollowers + 1;
+      shardReplicated = numFollowers > 0;
     }
-    return {ret, shardInSync};
+    return {ret, shardInSync, shardReplicated};
   } catch (std::exception const& e) {
     ret.clear();
     std::string errorMsg(
@@ -777,7 +779,7 @@ static std::pair<VPackBuilder, bool> assembleLocalCollectionInfo(
     errorMsg += " (this is expected if the database was recently deleted).";
     LOG_TOPIC("7fe5d", WARN, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }
-    return {ret, true};
+    return {ret, true, true};
   }
 }
 
@@ -838,7 +840,7 @@ static VPackBuilder assembleLocalDatabaseInfo(std::string const& database,
 arangodb::Result arangodb::maintenance::reportInCurrent(
     VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
-    VPackBuilder& report, size_t& numOutOfSyncShards) {
+    VPackBuilder& report, ShardStatistics& shardStats) {
   arangodb::Result result;
 
   auto shardMap = getShardMap(plan.get(COLLECTIONS));
@@ -867,6 +869,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       auto const shName = shard.key.copyString();
       auto const shSlice = shard.value;
       auto const colName = shSlice.get(StaticStrings::DataSourcePlanId).copyString();
+      shardStats.numShards += 1;
 
       VPackBuilder error;
       if (shSlice.get(THE_LEADER).copyString().empty()) {  // Leader
@@ -898,7 +901,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           continue;
         }
 
-        auto const [localCollectionInfo, shardInSync] =
+        auto const [localCollectionInfo, shardInSync, shardReplicated] =
             assembleLocalCollectionInfo(shSlice, shardMap.slice().get(shName),
                                         dbName, shName, serverId, allErrors);
         // Collection no longer exists
@@ -908,8 +911,12 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           continue;
         }
 
+        shardStats.numLeaderShards += 1;
         if (!shardInSync) {
-          numOutOfSyncShards += 1;
+          shardStats.numOutOfSyncShards += 1;
+        }
+        if (!shardReplicated) {
+          shardStats.numNotReplicated += 1;
         }
 
         auto cp = std::vector<std::string>{COLLECTIONS, dbName, colName, shName};
@@ -1220,7 +1227,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
   feature.copyAllErrors(allErrors);
 
   arangodb::Result result;
-  size_t numOutOfSyncShards = 0;
+  ShardStatistics shardStats{}; // zero initialize
 
   report.add(VPackValue(PHASE_TWO));
   {
@@ -1232,7 +1239,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
       VPackObjectBuilder agency(&report);
       // Update Current
       try {
-        result = reportInCurrent(plan, cur, local, allErrors, serverId, report, numOutOfSyncShards);
+        result = reportInCurrent(plan, cur, local, allErrors, serverId, report, shardStats);
       } catch (std::exception const& e) {
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
             << "Error reporting in current: " << e.what() << ". " << __FILE__
@@ -1269,7 +1276,10 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
   feature._phase2_runtime_msec->get().count(std::chrono::duration_cast<std::chrono::milliseconds>(
       end - start).count());
 
-  feature._num_out_of_sync_shards->get().operator=(numOutOfSyncShards);
+  feature._shards_out_of_sync->get().operator=(shardStats.numOutOfSyncShards);
+  feature._shards_total_count->get().operator=(shardStats.numShards);
+  feature._shards_leader_count->get().operator=(shardStats.numLeaderShards);
+  feature._shards_not_replicated_count->get().operator=(shardStats.numNotReplicated);
 
   return result;
 }
