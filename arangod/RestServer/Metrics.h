@@ -137,6 +137,8 @@ private:
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
+enum ScaleType {LINEAR, LOGARITHMIC};
+
 template<typename T>
 struct scale_t {
 public:
@@ -144,16 +146,16 @@ public:
   using value_type = T;
 
   scale_t(T const& low, T const& high, size_t n) :
-    _low(low), _high(high) {
-    TRI_ASSERT(n > 0);
-    _delim.resize(n);
+    _low(low), _high(high), _n(n) {
+    TRI_ASSERT(n > 1);
+    _delim.resize(n-1);
   }
   virtual ~scale_t() {}
   /**
    * @brief number of buckets
    */
   size_t n() const {
-    return _delim.size();
+    return _n;
   }
   /**
    * @brief number of buckets
@@ -197,11 +199,12 @@ public:
       this->toVelocyPack(b);
     }
     o << b.toJson();
-    return o; 
+    return o;
   }
 protected:
   T _low, _high;
   std::vector<T> _delim;
+  size_t _n;
 };
 
 template<typename T>
@@ -214,16 +217,17 @@ struct log_scale_t : public scale_t<T> {
 public:
 
   using value_type = T;
+  static constexpr ScaleType scale_type = LOGARITHMIC;
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
     double nn = -1.0*n;
     for (auto& i : this->_delim) {
-      i = (high-low) * std::pow(base, ++nn) + low;
+      i = (high-low) * std::pow(base, nn++) + low;
     }
     _div = this->_delim.front() - low;
     TRI_ASSERT(_div > 0);
-    _ldiv = logf(_div);
+    _lbase = logf(_base);
   }
   virtual ~log_scale_t() {}
   /**
@@ -232,9 +236,8 @@ public:
    * @return    index
    */
   size_t pos(T const& val) const {
-    return static_cast<size_t>(std::floor(logf((val - this->_low)/_base)/logf(_base)));
+    return static_cast<size_t>(1+std::floor(logf((val - this->_low)/_div)/_lbase));
   }
-
   /**
    * @brief Dump to builder
    * @param b Envelope
@@ -244,8 +247,15 @@ public:
     b.add("base", VPackValue(_base));
     scale_t<T>::toVelocyPack(b);
   }
+  /**
+   * @brief Base
+   * @return base
+   */
+  T base() const {
+    return _base;
+  }
 private:
-  T _base, _div, _ldiv;
+  T _base, _div, _lbase;
 };
 
 template<typename T>
@@ -253,16 +263,19 @@ struct lin_scale_t : public scale_t<T> {
 public:
 
   using value_type = T;
+  static constexpr ScaleType scale_type = LINEAR;
 
   lin_scale_t(T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n) {
-    this->_delim.resize(n);
+    this->_delim.resize(n-1);
     _div = (high - low) / (T)n;
+    if (_div <= 0) {
+    }
     TRI_ASSERT(_div > 0);
     T le = low;
     for (auto& i : this->_delim) {
-      i = le;
       le += _div;
+      i = le;
     }
   }
   virtual ~lin_scale_t() {}
@@ -282,6 +295,19 @@ public:
 private:
   T _base, _div;
 };
+
+
+template<typename ... Args>
+std::string strfmt (std::string const& format, Args ... args) {
+  size_t size = snprintf( nullptr, 0, format.c_str(), args ... ) + 1;
+  if( size <= 0 ) {
+    throw std::runtime_error( "Error during formatting." );
+  }
+  std::unique_ptr<char[]> buf(new char[size]);
+  snprintf(buf.get(), size, format.c_str(), args ...);
+  return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
+}
+
 
 
 /**
@@ -320,9 +346,9 @@ public:
   }
 
   void count(value_type const& t, uint64_t n) {
-    if (t < _scale.low()) {
+    if (t < _scale.delim().front()) {
       _c[0] += n;
-    } else if (t >= _scale.high()) {
+    } else if (t >= _scale.delim().back()) {
       _c[_n] += n;
     } else {
       _c[pos(t)] += n;
