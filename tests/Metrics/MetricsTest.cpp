@@ -100,7 +100,7 @@ template<typename Scale> void histogram_test(Scale const& scale) {
   T mx = scale.high(), mn = scale.low(), d, base = 0.;
   T span = mx - mn, step = span/static_cast<T>(buckets),
     mmin = (std::is_floating_point<T>::value) ? span / T(1.e6) : T(1),
-    one(1), ten(10), thousand(10);
+    one(1), ten(10), thousand(1000);
   if constexpr (!linear) {
     base = scale.base();
   }
