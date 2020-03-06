@@ -3779,14 +3779,14 @@ function optimizerIndexesMultiCollectionTestSuite () {
         let inSubquery = false;
         for (const node of plan.nodes) {
           const n = node.type;
-          if (n == "SubqueryStartNode" ) {
+          if (n === "SubqueryStartNode" ) {
             nodeTypes.push(n);
             inSubquery = true;
-          } else if (n == "SubqueryEndNode" ) {
+          } else if (n === "SubqueryEndNode" ) {
             nodeTypes.push(n);
             inSubquery = false;
           } else if (inSubquery) {
-            if (n == "IndexNode") {
+            if (n === "IndexNode") {
               idx = node;
             }
             subqueryTypes.push(n);
@@ -3823,14 +3823,14 @@ function optimizerIndexesMultiCollectionTestSuite () {
         let inSubquery = false;
         for (const node of plan.nodes) {
           const n = node.type;
-          if (n == "SubqueryStartNode" ) {
+          if (n === "SubqueryStartNode" ) {
             nodeTypes.push(n);
             inSubquery = true;
-          } else if (n == "SubqueryEndNode" ) {
+          } else if (n === "SubqueryEndNode" ) {
             nodeTypes.push(n);
             inSubquery = false;
           } else if (inSubquery) {
-            if (n == "IndexNode") {
+            if (n === "IndexNode") {
               idx = node;
             }
             subqueryTypes.push(n);
@@ -3868,14 +3868,14 @@ function optimizerIndexesMultiCollectionTestSuite () {
         let inSubquery = false;
         for (const node of plan.nodes) {
           const n = node.type;
-          if (n == "SubqueryStartNode" ) {
+          if (n === "SubqueryStartNode" ) {
             nodeTypes.push(n);
             inSubquery = true;
-          } else if (n == "SubqueryEndNode" ) {
+          } else if (n === "SubqueryEndNode" ) {
             nodeTypes.push(n);
             inSubquery = false;
           } else if (inSubquery) {
-            if (n == "IndexNode") {
+            if (n === "IndexNode") {
               idx = node;
             }
             subqueryTypes.push(n);
@@ -3914,14 +3914,14 @@ function optimizerIndexesMultiCollectionTestSuite () {
         let inSubquery = false;
         for (const node of plan.nodes) {
           const n = node.type;
-          if (n == "SubqueryStartNode" ) {
+          if (n === "SubqueryStartNode" ) {
             nodeTypes.push(n);
             inSubquery = true;
-          } else if (n == "SubqueryEndNode" ) {
+          } else if (n === "SubqueryEndNode" ) {
             nodeTypes.push(n);
             inSubquery = false;
           } else if (inSubquery) {
-            if (n == "IndexNode") {
+            if (n === "IndexNode") {
               idx = node;
             }
             subqueryTypes.push(n);
@@ -3960,14 +3960,14 @@ function optimizerIndexesMultiCollectionTestSuite () {
         let inSubquery = false;
         for (const node of plan.nodes) {
           const n = node.type;
-          if (n == "SubqueryStartNode" ) {
+          if (n === "SubqueryStartNode" ) {
             nodeTypes.push(n);
             inSubquery = true;
-          } else if (n == "SubqueryEndNode" ) {
+          } else if (n === "SubqueryEndNode" ) {
             nodeTypes.push(n);
             inSubquery = false;
           } else if (inSubquery) {
-            if (n == "IndexNode") {
+            if (n === "IndexNode") {
               idx = node;
             }
             subqueryTypes.push(n);
@@ -4006,14 +4006,14 @@ function optimizerIndexesMultiCollectionTestSuite () {
         let inSubquery = false;
         for (const node of plan.nodes) {
           const n = node.type;
-          if (n == "SubqueryStartNode" ) {
+          if (n === "SubqueryStartNode" ) {
             nodeTypes.push(n);
             inSubquery = true;
-          } else if (n == "SubqueryEndNode" ) {
+          } else if (n === "SubqueryEndNode" ) {
             nodeTypes.push(n);
             inSubquery = false;
           } else if (inSubquery) {
-            if (n == "IndexNode") {
+            if (n === "IndexNode") {
               idx = node;
             }
             subqueryTypes.push(n);
