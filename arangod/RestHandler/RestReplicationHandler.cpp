@@ -1712,24 +1712,23 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
       if (type == REPLICATION_MARKER_DOCUMENT) {
         VPackSlice const doc = marker.get(::dataString);
         TRI_ASSERT(doc.isObject());
-        if (isUsersOnCoordinator) {
-          // In the _users case we silently remove the _key value.
-          VPackObjectBuilder guard(&builder);
-          for (auto it : VPackObjectIterator(doc)) {
-            if (isUsersOnCoordinator &&
-                (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString &&
-                arangodb::velocypack::StringRef(it.key) == StaticStrings::IdString)) {
-              continue;
-            }
+        // In the _users case we silently remove the _key value.
+        VPackObjectBuilder guard(&builder);
+        for (auto it : VPackObjectIterator(doc)) {
+          if (isUsersOnCoordinator &&
+              (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString &&
+               arangodb::velocypack::StringRef(it.key) == StaticStrings::IdString)) {
+            continue;
+          }
 
-            builder.add(it.key);
+          builder.add(it.key);
 
-            if (generateNewRevisionIds && arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
-              TRI_voc_rid_t newRid = physical->newRevisionId();
-              builder.add(TRI_RidToValuePair(newRid, ridBuffer));
-            } else {
-              builder.add(it.value);
-            }
+          if (generateNewRevisionIds && arangodb::velocypack::StringRef(it.key) ==
+                                            StaticStrings::RevString) {
+            TRI_voc_rid_t newRid = physical->newRevisionId();
+            builder.add(TRI_RidToValuePair(newRid, ridBuffer));
+          } else {
+            builder.add(it.value);
           }
         }
       }
