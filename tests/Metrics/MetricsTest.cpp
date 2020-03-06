@@ -105,7 +105,6 @@ template<typename Scale> void histogram_test(Scale const& scale) {
     base = scale.base();
   }
   Histogram h(scale, "hist_test", "Hist test");
-  std::cout << h << std::endl;
 
   //lower bucket bounds
   for (int i = 0; i < buckets; ++i) {
@@ -173,12 +172,21 @@ TEST_F(MetricsTest, test_long_histogram) {
   histogram_test(lin_scale_t<long>(-63, -11, 8));
 }
 
-TEST_F(MetricsTest, test_double_lin20_histogram) {
-  histogram_test(lin_scale_t<double>(0.,  2000.,  5));
+TEST_F(MetricsTest, test_double_log_10_histogram) {
+  histogram_test(log_scale_t(10., 0.,  2000.,  5));
 }
-TEST_F(MetricsTest, test_double_log_histogram) {
-  histogram_test(log_scale_t<double>(10., 0.,  2000.,  5));
+TEST_F(MetricsTest, test_float_log_10_histogram) {
+  histogram_test(log_scale_t(10.f, 0.f,  2000.f,  5));
 }
-TEST_F(MetricsTest, test_float_log_histogram) {
-  histogram_test(log_scale_t<float>(10., 0.,  2000.,  5));
+TEST_F(MetricsTest, test_double_log_2_histogram) {
+  histogram_test(log_scale_t(2., 0.,  2000.,  10));
+}
+TEST_F(MetricsTest, test_float_log_2_histogram) {
+  histogram_test(log_scale_t(2.f, 0.f,  2000.f,  10));
+}
+TEST_F(MetricsTest, test_double_log_e_histogram) {
+  histogram_test(log_scale_t(std::exp(1.), 0.,  2000.,  10));
+}
+TEST_F(MetricsTest, test_float_log_e_histogram) {
+  histogram_test(log_scale_t(std::exp(1.f), 0.f,  2000.f,  10));
 }
