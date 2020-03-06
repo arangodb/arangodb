@@ -172,7 +172,13 @@ public:
   /**
    * @brief number of buckets
    */
-  std::vector<T> const& delim() const {
+  T const& delim(size_t const& s) const {
+    return (s < _delim.size()) ? _delim.at(s) : _high;
+  }
+  /**
+   * @brief number of buckets
+   */
+  std::vector<T> const& delims() const {
     return _delim;
   }
   /**
@@ -322,7 +328,7 @@ public:
   Histogram() = delete;
 
   Histogram (Scale scale, std::string const& name, std::string const& help = "")
-    : Metric(name, help), _c(Metrics::hist_type(scale.n())), _scale(scale),
+    : Metric(name, help), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
       _n(scale.n()-1) {}
@@ -346,9 +352,9 @@ public:
   }
 
   void count(value_type const& t, uint64_t n) {
-    if (t < _scale.delim().front()) {
+    if (t < _scale.delims().front()) {
       _c[0] += n;
-    } else if (t >= _scale.delim().back()) {
+    } else if (t >= _scale.delims().back()) {
       _c[_n] += n;
     } else {
       _c[pos(t)] += n;
@@ -382,7 +388,7 @@ public:
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{le=\"" + std::to_string(_scale.delim()[i]) + "\"} " +
+      result += name() + "_bucket{le=\"" + std::to_string(_scale.delim(i)) + "\"} " +
         std::to_string(n) + "\n";
     }
     result += name() + "_count " + std::to_string(sum) + "\n";
