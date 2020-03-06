@@ -522,7 +522,6 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
           int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
           if (replicationFactorProbe == 0) {
             // TODO: Which configuration for satellites are valid regarding minRepl and writeConcern
-            LOG_DEVEL << "will create satellite collection - remove me after cleanup";
             // valid for creating a satellite collection
             return Result();
           }
