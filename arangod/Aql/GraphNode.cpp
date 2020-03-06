@@ -466,7 +466,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _directions(other._directions),
       _options(std::move(options)),
       _optionsBuilt(false),
-      _isSmart(false) {
+      _isSmart(other.isSmart()) {
   setGraphInfoAndCopyColls(other.edgeColls(), other.vertexColls());
 }
 
