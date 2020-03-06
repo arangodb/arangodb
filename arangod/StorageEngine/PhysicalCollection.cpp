@@ -23,14 +23,18 @@
 
 #include "PhysicalCollection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/KeyGenerator.h"
@@ -170,6 +174,13 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxNam
 }
 
 TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
+  if (_logicalCollection.hasClusterWideUniqueRevs()) {
+    application_features::ApplicationServer& server =
+        _logicalCollection.vocbase().server();
+    ClusterFeature& cf = server.getFeature<ClusterFeature>();
+    ClusterInfo& ci = cf.clusterInfo();
+    return static_cast<TRI_voc_rid_t>(ci.uniqid());
+  }
   return TRI_HybridLogicalClock();
 }
 
@@ -517,6 +528,27 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
   return Result();
 }
 
+std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(
+    transaction::Methods& trx) {
+  return nullptr;
+}
+
+std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(uint64_t batchId) {
+  return nullptr;
+}
+
+Result PhysicalCollection::rebuildRevisionTree() {
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+void PhysicalCollection::placeRevisionTreeBlocker(TRI_voc_tid_t) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+void PhysicalCollection::removeRevisionTreeBlocker(TRI_voc_tid_t) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 /// @brief checks the revision of a document
 int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                                       TRI_voc_rid_t found) const {
@@ -585,6 +617,24 @@ futures::Future<OperationResult> PhysicalCollection::figures() {
   return OperationResult(Result(), std::move(buffer));
 }
 
+std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
+    ReplicationIterator::Ordering, uint64_t batchId) {
+  return nullptr;
+}
+
+std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
+    ReplicationIterator::Ordering, transaction::Methods&) {
+  return nullptr;
+}
+
+void PhysicalCollection::adjustNumberDocuments(transaction::Methods&, int64_t) {}
+
+Result PhysicalCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
+                                  ManagedDocumentResult& previous, OperationOptions& options,
+                                  bool lock, KeyLockInfo* keyLockInfo,
+                                  std::function<void()> const& cbDuringLock) {
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
 
 bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& left,
                                                 const std::shared_ptr<Index>& right) const {
