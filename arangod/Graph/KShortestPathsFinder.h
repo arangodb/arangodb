@@ -33,6 +33,7 @@
 #include <velocypack/StringRef.h>
 
 #include <list>
+#include <memory>
 #include <optional>
 
 namespace arangodb {
@@ -42,7 +43,7 @@ class Slice;
 }
 
 namespace graph {
-
+class EdgeCursor;
 struct ShortestPathOptions;
 
 // Inherit from ShortestPathfinder to get destroyEngines and not copy it
@@ -267,6 +268,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
   std::vector<Path> _shortestPaths;
 
   std::list<Path> _candidatePaths;
+
+  std::unique_ptr<EdgeCursor> _forwardCursor;
+  std::unique_ptr<EdgeCursor> _backwardCursor;
 };
 
 }  // namespace graph
