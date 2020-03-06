@@ -135,14 +135,7 @@ std::string const ValidatorBool::type() const {
 
 ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(params) {
   auto rule = params.get(StaticStrings::ValidatorParameterRule);
-  VPackBuilder ruleBuilder;
-  {
-    VPackObjectBuilder guard(&ruleBuilder);
-    ruleBuilder.add(VPackValue("properties"));
-    ruleBuilder.add(rule);
-  }
-
-  auto taoRuleValue = validation::slice_to_value(ruleBuilder.slice());
+  auto taoRuleValue = validation::slice_to_value(rule);
   LOG_TOPIC("aa245", TRACE, arangodb::Logger::VALIDATION) << "using schema: " << tao::json::jaxn::to_string(taoRuleValue,2);
   _schema = std::make_shared<tao::json::schema>(taoRuleValue);
   _builder.add(rule);

@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
+  AQL functions when invoking an AQL query from the arangosh or a client application.
+  Previously, invoking an AQL query and using the `CALL` or `APPLY` AQL functions
+  to call user-defined AQL function caused undefined behavior.
+
 * Improved graph traversal performance via some internal code refactoring:
 
   - Traversal cursors are reused instead of recreated from scratch, if possible.
