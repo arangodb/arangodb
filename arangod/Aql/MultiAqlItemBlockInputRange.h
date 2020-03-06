@@ -89,8 +89,6 @@ class MultiAqlItemBlockInputRange {
   auto numberDependencies() const noexcept -> size_t;
 
  private:
-  ExecutorState _finalState{ExecutorState::HASMORE};
-
   std::vector<AqlItemBlockInputRange> _inputs;
 };
 

@@ -22,13 +22,13 @@
 
 #include "SortingGatherExecutor.h"
 
-#include <utility>
-
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -126,7 +126,13 @@ class HeapSorting final : public SortingGatherExecutor::SortingStrategy, private
 
   virtual void reset() noexcept override { _heap.clear(); }
 
-  using OurLessThan::operator();
+  // The STL heap (regarding push_heap, pop_heap, make_heap) is a max heap, but
+  // we want a min heap!
+  bool operator()(SortingGatherExecutor::ValueType const& left,
+                  SortingGatherExecutor::ValueType const& right) const {
+    // Note that right and left are swapped!
+    return OurLessThan::operator()(right, left);
+  }
 
  private:
   std::vector<std::reference_wrapper<SortingGatherExecutor::ValueType>> _heap;
@@ -291,6 +297,7 @@ auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> Input
   TRI_ASSERT(oneWithContent);
 #endif
   auto nextVal = _strategy->nextValue();
+  TRI_ASSERT(nextVal.row);
   _rowsReturned++;
   {
     // Consume the row, and set it to next input
