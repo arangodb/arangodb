@@ -30,6 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
 
@@ -85,11 +86,13 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   ClusterInfo& clusterInfo();
 
+  Counter& getDroppedFollowerCounter() { return _dropped_follower_counter->get(); }
+
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                             std::string const& endpoints);
-  
+
   void shutdownHeartbeatThread();
 
  private:
@@ -118,6 +121,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   std::unique_ptr<network::ConnectionPool> _pool;
+  std::optional<std::reference_wrapper<Counter>> _dropped_follower_counter;
 };
 
 }  // namespace arangodb
