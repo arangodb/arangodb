@@ -584,7 +584,8 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
   }
 
   std::string const url = "/_api/replication/restore-data?collection=" + urlEncode(cname) +
-                          "&force=" + (options.force ? "true" : "false");
+                          "&force=" + (options.force ? "true" : "false") +
+                          (options.preserveRevisionIds ? "&preserveRevisionIds=true" : "");
   
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
@@ -1363,6 +1364,14 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
           arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
+
+  options
+      ->addOption(
+          "--preserve-revision-ids",
+          "preserve `_rev` values for the documents (potentially unsafe)",
+          new BooleanParameter(&_options.preserveRevisionIds),
+          arangodb::options::makeDefaultFlags(options::Flags::Hidden))
+      .setIntroducedIn(30700);
 }
 
 void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
