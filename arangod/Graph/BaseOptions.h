@@ -138,6 +138,8 @@ struct BaseOptions {
                      std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
 
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
+  
+  void setTrx(transaction::Methods* trx) { _trx = trx; }
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;

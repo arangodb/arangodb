@@ -555,6 +555,16 @@ void GatherNode::setParallelism(GatherNode::Parallelism value) {
   _parallelism = value;
 }
 
+void GatherNode::cloneRegisterPlan(ExecutionNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  setVarsUsedLater(dependency->getVarsUsedLater());
+  setVarsValid(dependency->getVarsValid());
+  setVarUsageValid();
+}
+
 SingleRemoteOperationNode::SingleRemoteOperationNode(
     ExecutionPlan* plan, size_t id, NodeType mode, bool replaceIndexNode,
     std::string const& key, Collection const* collection,

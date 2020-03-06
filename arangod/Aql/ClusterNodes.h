@@ -363,6 +363,8 @@ class GatherNode final : public ExecutionNode {
   Parallelism parallelism() const noexcept {
     return _parallelism;
   }
+  
+  void cloneRegisterPlan(ExecutionNode* dependency);
 
  private:
   /// @brief the underlying database

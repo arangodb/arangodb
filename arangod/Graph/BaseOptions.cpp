@@ -166,6 +166,7 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::
   return std::make_unique<TraverserOptions>(query, definition);
 }
 
+#warning pass in trx externally ?
 BaseOptions::BaseOptions(arangodb::aql::Query* query)
     : _query(query),
       _ctx(_query),

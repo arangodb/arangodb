@@ -267,6 +267,8 @@ class Query {
 
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
+  
+  void setIsAsyncQuery() { _isAsyncQuery = true; }
 
   /// @brief prepare a V8 context for execution for this expression
   /// this needs to be called once before executing any V8 function in this

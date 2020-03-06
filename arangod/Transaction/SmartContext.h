@@ -129,6 +129,8 @@ struct StandaloneSmartContext final : public SmartContext {
   
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
+  
+  std::shared_ptr<Context> clone() const override;
 };
 
 }  // namespace transaction

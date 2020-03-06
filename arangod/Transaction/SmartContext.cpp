@@ -168,5 +168,11 @@ void StandaloneSmartContext::unregisterTransaction() noexcept {
   _state = nullptr;
 }
 
+std::shared_ptr<Context> StandaloneSmartContext::clone() const {
+  auto clone = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+  clone->_state = _state;
+  return clone;
+}
+
 }  // namespace transaction
 }  // namespace arangodb

@@ -607,6 +607,8 @@ void TraversalNode::prepareOptions() {
   }
   TRI_ASSERT(!_optionsBuilt);
   _options->setVariable(_tmpObjVariable);
+#warning TODO hack hack
+  _options->setTrx(_plan->getAst()->query()->readOnlyTrx());
 
   size_t numEdgeColls = _edgeColls.size();
   TraversalEdgeConditionBuilder globalEdgeConditionBuilder(this);

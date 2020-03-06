@@ -235,7 +235,9 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
         auto const nodeType = en->getType();
 
         if (nodeType == ExecutionNode::DISTRIBUTE ||
-            nodeType == ExecutionNode::SCATTER || nodeType == ExecutionNode::GATHER) {
+            nodeType == ExecutionNode::SCATTER ||
+            (nodeType == ExecutionNode::GATHER &&
+             (static_cast<GatherNode*>(en)->parallelism() != GatherNode::Parallelism::Async))) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL,
               "logic error, got cluster node in local query");
@@ -654,6 +656,93 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
   return {state, res};
 }
 
+namespace {
+
+void parallelizeQuery(Query& q, ExecutionPlan& plan) {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+
+#warning TODO fix this shit
+  constexpr int numParallel = 4;
+  
+  plan.findNodesOfType(nodes, ExecutionNode::NodeType::PARALLEL_END, true);
+  for (ExecutionNode* endNode : nodes) {
+    TRI_ASSERT(endNode->getParents().size() == 1);
+    
+    ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a2;
+    ::arangodb::containers::SmallVector<ExecutionNode*> toCopy{a2};
+    
+    ExecutionNode* tmp = endNode->getFirstDependency();
+    while(tmp->getType() != ExecutionNode::NodeType::PARALLEL_START &&
+          tmp->getType() != ExecutionNode::NodeType::SINGLETON) {
+      TRI_ASSERT(tmp->getDependencies().size() == 1);
+      toCopy.push_back(tmp);
+//      if (parent->getType() == ExecutionNode::NodeType::CALCULATION &&
+//          static_cast<CalculationNode*>(parent)->expression()->willUseV8()) {
+//        return;
+//      }
+      tmp = tmp->getFirstDependency();
+    }
+    
+    if (tmp->getType() != ExecutionNode::NodeType::PARALLEL_START) {
+      TRI_ASSERT(false);
+      continue; // skip
+    }
+    ExecutionNode* startNode = tmp;
+    
+    auto* endNodeParent = endNode->getFirstParent();
+    auto* dep = endNode->getFirstDependency();
+    TRI_ASSERT(endNode->getParents().size() == 1);
+    TRI_ASSERT(endNode->getDependencies().size() == 1);
+
+    endNode->removeDependency(dep);
+    endNodeParent->removeDependency(endNode);
+    
+    auto async = std::make_unique<AsyncNode>(&plan, plan.nextId());
+    async->addDependency(dep);
+    async->setIsInSplicedSubquery(dep->isInSplicedSubquery());
+    async->cloneRegisterPlan(dep);
+    toCopy.insert(toCopy.begin(), async.get());
+    
+    auto gather = std::make_unique<GatherNode>(&plan, plan.nextId(), GatherNode::SortMode::Default);
+    gather->setIsInSplicedSubquery(dep->isInSplicedSubquery());
+//  gather->setRegsToClear({});
+    gather->setParallelism(GatherNode::Parallelism::Async);
+    
+    gather->addDependency(async.get());
+    gather->cloneRegisterPlan(async.get());
+
+    plan.registerNode(async.release());
+    
+    for (int i = 1; i < numParallel; i++) {
+      
+      ExecutionNode* previous = startNode;
+      for (auto enIt = toCopy.rbegin(), end = toCopy.rend(); enIt != end; ++enIt) {
+        ExecutionNode* current = *enIt;
+
+        ExecutionNode* clone = current->clone(&plan, false, false);
+        if (previous != nullptr) {
+          clone->addDependency(previous);
+        }
+        TRI_ASSERT(clone->id() != current->id());
+//        nodeAliases.try_emplace(clone->id(), current->id());
+        previous = clone;
+      }
+      TRI_ASSERT(previous != nullptr);
+      TRI_ASSERT(previous->getType() == ExecutionNode::ASYNC);
+      gather->addDependency(previous);
+    }
+    
+    TRI_ASSERT(endNodeParent->getDependencies().size() == 0);
+    
+    endNodeParent->addDependency(gather.get());
+    plan.registerNode(gather.release());
+    
+    q.setIsAsyncQuery();
+  }
+}
+}
+
 /// @brief create an execution engine from a plan
 ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegistry,
                                                       Query& query, ExecutionPlan& plan,
@@ -693,6 +782,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
   } else {
     // instantiate the engine on a local server
     engine.reset(new ExecutionEngine(query, format));
+    
+    parallelizeQuery(query, plan);
 
     SingleServerQueryInstanciator inst(*engine);
     plan.root()->walk(inst);

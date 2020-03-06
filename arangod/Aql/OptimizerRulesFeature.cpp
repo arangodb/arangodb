@@ -306,8 +306,10 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // prepare traversal info
+#if 0
   registerRule("prepare-traversals", prepareTraversalsRule, OptimizerRule::prepareTraversalsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::Hidden));
+#endif
 
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,

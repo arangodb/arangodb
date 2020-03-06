@@ -310,6 +310,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/OptimizerRulesFeature.cpp
   Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OutputAqlItemRow.cpp
+  Aql/ParallelStartExecutor.cpp
+  Aql/ParallelEndExecutor.cpp
   Aql/Parser.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp

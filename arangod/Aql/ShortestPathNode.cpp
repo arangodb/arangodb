@@ -348,6 +348,9 @@ void ShortestPathNode::prepareOptions() {
   auto opts = static_cast<ShortestPathOptions*>(options());
 
   opts->setVariable(getTemporaryVariable());
+  
+  #warning TODO hack hack
+  opts->setTrx(_plan->getAst()->query()->readOnlyTrx());
 
   // Compute Indexes.
   for (size_t i = 0; i < numEdgeColls; ++i) {

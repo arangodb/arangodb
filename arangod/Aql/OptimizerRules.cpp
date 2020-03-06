@@ -3319,6 +3319,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::GATHER:
       case EN::REMOTE:
       case EN::LIMIT:  // LIMIT is criterion to stop
+      case EN::PARALLEL_START:
+      case EN::PARALLEL_END:
         return true;   // abort.
 
       case EN::SORT:  // pulling two sorts together is done elsewhere.

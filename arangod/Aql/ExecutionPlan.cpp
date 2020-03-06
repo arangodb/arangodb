@@ -86,9 +86,11 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
   }
 
   bool done(ExecutionNode* en) override final {
-    if (!arangodb::ServerState::instance()->isDBServer() ||
+    if ((!arangodb::ServerState::instance()->isDBServer() &&
+         en->getType() != ExecutionNode::PARALLEL_START) ||
         (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
-         en->getType() != ExecutionNode::DISTRIBUTE)) {
+         en->getType() != ExecutionNode::DISTRIBUTE &&
+          en->getType() != ExecutionNode::PARALLEL_START)) {
       return WalkerWorker<ExecutionNode>::done(en);
     }
     return false;
@@ -264,7 +266,7 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if 0
   // On coordinator there are temporary nodes injected into the Plan, that are NOT part
   // of the full execution tree. This is in order to reuse a lot of the nodes
   // for each DBServer instead of having all nodes copy everything once again.

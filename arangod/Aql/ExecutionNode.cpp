@@ -49,6 +49,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
+#include "Aql/ParallelStartExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
@@ -2373,6 +2374,11 @@ std::unique_ptr<ExecutionBlock> AsyncNode::createBlock(
 
   // Everything that is cleared here could and should have been cleared before
   TRI_ASSERT(regsToClear.empty());
+  
+  if (ServerState::instance()->isCoordinator()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "AsyncExecutor not supported on coordinator");
+  }
 
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
@@ -2466,8 +2472,8 @@ std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
 
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
- 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "createBlock not implemented for ParallelStartNode");
+  
+  return std::make_unique<ExecutionBlockImpl<ParallelStartExecutor>>(&engine, this, std::move(infos));
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
