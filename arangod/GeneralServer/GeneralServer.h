@@ -29,6 +29,7 @@
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
 #include "GeneralServer/IoContext.h"
+#include "GeneralServer/SslServerFeature.h"
 
 #include <mutex>
 
@@ -62,7 +63,7 @@ class GeneralServer {
   void stopWorking();
 
   IoContext& selectIoContext();
-  std::shared_ptr<std::vector<std::unique_ptr<asio_ns::ssl::context>>> sslContext();
+  SslServerFeature::SslContextList sslContexts();
   SSL_CTX* getSSL_CTX(size_t index);
 
   application_features::ApplicationServer& server() const;
@@ -84,7 +85,7 @@ class GeneralServer {
   /// protect ssl context creation
   std::mutex _sslContextMutex;
   /// global SSL context to use here
-  std::shared_ptr<std::vector<std::unique_ptr<asio_ns::ssl::context>>> _sslContexts;
+  SslServerFeature::SslContextList _sslContexts;
 };
 }  // namespace rest
 }  // namespace arangodb

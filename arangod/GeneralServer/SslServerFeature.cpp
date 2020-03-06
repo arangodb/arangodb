@@ -177,7 +177,7 @@ void SslServerFeature::verifySslOptions() {
   }
 
   try {
-    createSslContext();   // just to test if everything works
+    createSslContexts();   // just to test if everything works
   } catch (...) {
     LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL)
         << "cannot create SSL context";
@@ -209,7 +209,7 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
   return SSL_TLSEXT_ERR_OK;
 }
 
-std::unique_ptr<asio_ns::ssl::context> SslServerFeature::createSslContextInternal(
+asio_ns::ssl::context SslServerFeature::createSslContextInternal(
     std::string keyfilename, std::string& content) {
   // This method creates an SSL context using the keyfile in `keyfilename`
   // It is used internally if the public method `createSslContext`
@@ -219,11 +219,11 @@ std::unique_ptr<asio_ns::ssl::context> SslServerFeature::createSslContextInterna
   try {
     std::string keyfileContent = FileUtils::slurp(keyfilename);
     // create context
-    std::unique_ptr<asio_ns::ssl::context> sslContext = ::sslContext(SslProtocol(_sslProtocol), keyfilename);
+    asio_ns::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), keyfilename);
     content = std::move(keyfileContent);
 
     // and use this native handle
-    asio_ns::ssl::context::native_handle_type nativeContext = sslContext->native_handle();
+    asio_ns::ssl::context::native_handle_type nativeContext = sslContext.native_handle();
 
     // set cache mode
     SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache ? SSL_SESS_CACHE_SERVER
@@ -235,7 +235,7 @@ std::unique_ptr<asio_ns::ssl::context> SslServerFeature::createSslContextInterna
     }
 
     // set options
-    sslContext->set_options(static_cast<long>(_sslOptions));
+    sslContext.set_options(static_cast<long>(_sslOptions));
 
     if (!_cipherList.empty()) {
       if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
@@ -338,9 +338,9 @@ std::unique_ptr<asio_ns::ssl::context> SslServerFeature::createSslContextInterna
       SSL_CTX_set_client_CA_list(nativeContext, certNames);
     }
 
-    sslContext->set_verify_mode(SSL_VERIFY_NONE);
+    sslContext.set_verify_mode(SSL_VERIFY_NONE);
 
-    SSL_CTX_set_alpn_select_cb(sslContext->native_handle(), alpn_select_proto_cb, NULL);
+    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
 
     return sslContext;
   } catch (std::exception const& ex) {
@@ -354,8 +354,8 @@ std::unique_ptr<asio_ns::ssl::context> SslServerFeature::createSslContextInterna
   }
 }
 
-std::shared_ptr<std::vector<std::unique_ptr<asio_ns::ssl::context>>> SslServerFeature::createSslContext() {
-  auto result = std::make_shared<std::vector<std::unique_ptr<asio_ns::ssl::context>>>();
+SslServerFeature::SslContextList SslServerFeature::createSslContexts() {
+  auto result = std::make_shared<std::vector<asio_ns::ssl::context>>();
   for (size_t i = 0; i < _sniEntries.size(); ++i) {
     auto res = createSslContextInternal(_sniEntries[i].keyfileName, _sniEntries[i].keyfileContent);
     result->emplace_back(std::move(res));
@@ -363,7 +363,7 @@ std::shared_ptr<std::vector<std::unique_ptr<asio_ns::ssl::context>>> SslServerFe
   return result;
 }
 
-size_t SslServerFeature::chooseSslContext(std::string const& serverName) {
+size_t SslServerFeature::chooseSslContext(std::string const& serverName) const {
   // Note that the map _sniServerIndex is basically immutable after the
   // startup phase, since the number of SNI entries cannot be changed
   // at runtime. Therefore, we do not need any protection here.

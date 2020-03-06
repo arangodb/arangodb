@@ -51,6 +51,8 @@ class SslServerFeature : public application_features::ApplicationFeature {
  public:
   static SslServerFeature* SSL;
 
+  typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
+
   explicit SslServerFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -59,11 +61,8 @@ class SslServerFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
   virtual void verifySslOptions();
 
-  std::unique_ptr<asio_ns::ssl::context> createSslContextInternal(std::string keyfileName,
-                                                                  std::string& content);
-
-  virtual std::shared_ptr<std::vector<std::unique_ptr<asio_ns::ssl::context>>> createSslContext();
-  size_t chooseSslContext(std::string const& serverName);
+  virtual SslContextList createSslContexts();
+  size_t chooseSslContext(std::string const& serverName) const;
 
   // Dump all SSL related data into a builder, private keys
   // are hashed.
@@ -93,6 +92,9 @@ class SslServerFeature : public application_features::ApplicationFeature {
   std::string _ecdhCurve;
 
  private:
+  asio_ns::ssl::context createSslContextInternal(std::string keyfileName,
+                                                 std::string& content);
+
   std::string stringifySslOptions(uint64_t opts) const;
 
   std::string _rctx;

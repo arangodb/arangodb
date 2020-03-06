@@ -153,7 +153,6 @@ function TLSRotation() {
       expect(res.json.result.keyfile).to.have.property('SHA256');
       expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
     }
-
   };
 }
 

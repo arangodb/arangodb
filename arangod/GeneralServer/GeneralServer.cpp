@@ -33,7 +33,6 @@
 #include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -189,14 +188,14 @@ IoContext& GeneralServer::selectIoContext() {
 extern int clientHelloCallback(SSL* ssl, int* al, void* arg);
 #endif
 
-std::shared_ptr<std::vector<std::unique_ptr<asio_ns::ssl::context>>> GeneralServer::sslContext() {
+SslServerFeature::SslContextList GeneralServer::sslContexts() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContexts) {
-    _sslContexts = SslServerFeature::SSL->createSslContext();
+    _sslContexts = SslServerFeature::SSL->createSslContexts();
 #ifdef USE_ENTERPRISE
     if (_sslContexts->size() > 0) {
       // Set a client hello callback such that we have a chance to change the SSL context:
-      SSL_CTX_set_client_hello_cb((*_sslContexts)[0]->native_handle(), &clientHelloCallback, (void*) this);
+      SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
     }
 #endif
   }
@@ -205,18 +204,18 @@ std::shared_ptr<std::vector<std::unique_ptr<asio_ns::ssl::context>>> GeneralServ
 
 SSL_CTX* GeneralServer::getSSL_CTX(size_t index) {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
-  return (*_sslContexts)[index]->native_handle();
+  return (*_sslContexts)[index].native_handle();
 }
 
 Result GeneralServer::reloadTLS() {
   try {
     {
       std::lock_guard<std::mutex> guard(_sslContextMutex);
-      _sslContexts = SslServerFeature::SSL->createSslContext();
+      _sslContexts = SslServerFeature::SSL->createSslContexts();
 #ifdef USE_ENTERPRISE
       if (_sslContexts->size() > 0) {
         // Set a client hello callback such that we have a chance to change the SSL context:
-        SSL_CTX_set_client_hello_cb((*_sslContexts)[0]->native_handle(), &clientHelloCallback, (void*) this);
+        SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
       }
 #endif
     }
