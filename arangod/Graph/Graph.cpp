@@ -313,15 +313,17 @@ void Graph::toPersistence(VPackBuilder& builder) const {
   builder.add(StaticStrings::KeyString, VPackValue(_graphName));
 
   // Cluster Information
-  builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
-  if (isSatellite()) {
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
-  } else {
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-    builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));  // deprecated
-    builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
+  if (arangodb::ServerState::instance()->isRunningInCluster()) {
+    builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
+    if (isSatellite()) {
+      builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
+    } else {
+      builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
+      builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));  // deprecated
+      builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
+    }
+    builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
   }
-  builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
 
   // EdgeDefinitions
   builder.add(VPackValue(StaticStrings::GraphEdgeDefinitions));
