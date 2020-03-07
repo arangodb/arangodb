@@ -325,11 +325,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
-  [[nodiscard]] auto lastRangeHasDataRow() const -> bool;
+  [[nodiscard]] auto lastRangeHasDataRow() const noexcept -> bool;
 
   void resetExecutor();
 
   void initOnce();
+
+  [[nodiscard]] auto executorNeedsCall(AqlCallType& call) const noexcept -> bool;
 
  private:
   /**

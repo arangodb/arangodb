@@ -110,7 +110,6 @@ class UnsortedGatherExecutor {
  private:
   Fetcher& _fetcher;
   size_t _currentDependency{0};
-  size_t _skipped{0};
 };
 
 }  // namespace arangodb::aql

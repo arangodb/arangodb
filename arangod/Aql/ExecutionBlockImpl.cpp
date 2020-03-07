@@ -1217,7 +1217,6 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> {
-
   if constexpr (isNewStyleExecutor<Executor>) {
     // TODO The logic in the MultiDependencySingleRowFetcher branch should be
     //      moved into the MultiDependencySingleRowFetcher.
@@ -1501,8 +1500,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
     case FastForwardVariant::FULLCOUNT:
     case FastForwardVariant::EXECUTOR: {
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
-      auto [state, stats, skippedLocal, call] =
-          executeSkipRowsRange(_lastRange, clientCall);
+      auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
 
       if (type == FastForwardVariant::EXECUTOR) {
         // We do not report the skip
@@ -1783,8 +1781,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             }
           } else {
             // Execute getSome
-            std::tie(state, stats, call) =
-                executeProduceRows(_lastRange, *_outputItemRow);
+            std::tie(state, stats, call) = executeProduceRows(_lastRange, *_outputItemRow);
           }
           _executorReturnedDone = state == ExecutorState::DONE;
           _engine->_stats += stats;
@@ -1795,19 +1792,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             clientCall = _outputItemRow->getClientCall();
           }
 
-          auto const executorNeedsCall = [this,&call]() -> bool {
-            if constexpr (isMultiDepExecutor<Executor>) {
-              // call is an AqlCallSet. We need to call upstream if it's not empty.
-              return !call.empty();
-            } else {
-              // call is an AqlCall, unconditionally. The current convention is
-              // to call upstream when there is no input left.
-              // This could be made unnecessary by returning an optional AqlCall
-              // for single-dependency executors.
-              return !lastRangeHasDataRow();
-            }
-          };
-
           if (state == ExecutorState::DONE) {
             _execState = ExecState::FASTFORWARD;
           } else if ((Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable ||
@@ -1817,7 +1801,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // In all other branches only if the client Still needs more data.
             _execState = ExecState::DONE;
             break;
-          } else if (clientCall.getLimit() > 0 && executorNeedsCall()) {
+          } else if (clientCall.getLimit() > 0 && executorNeedsCall(call)) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
             _upstreamRequest = call;
@@ -2028,9 +2012,8 @@ auto ExecutionBlockImpl<Executor>::outputIsFull() const noexcept -> bool {
          _outputItemRow->allRowsUsed();
 }
 
-// TODO: remove again
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const -> bool {
+auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const noexcept -> bool {
   return _lastRange.hasDataRow();
 }
 
@@ -2057,6 +2040,20 @@ void ExecutionBlockImpl<Executor>::initOnce() {
     _initialized = true;
   }
 }
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const
+    noexcept -> bool {
+  if constexpr (isMultiDepExecutor<Executor>) {
+    // call is an AqlCallSet. We need to call upstream if it's not empty.
+    return !call.empty();
+  } else {
+    // call is an AqlCall, unconditionally. The current convention is
+    // to call upstream when there is no input left.
+    // This could be made unnecessary by returning an optional AqlCall
+    // for single-dependency executors.
+    return !lastRangeHasDataRow();
+  }
+};
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
