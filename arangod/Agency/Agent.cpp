@@ -83,13 +83,13 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
           "agency_agent_write_no_leader", 0, "Agency write no leader")),
       _read_ok(
         _server.getFeature<arangodb::MetricsFeature>().counter(
-          "agency_agent_read_ok", 0, "Agency write ok")),
+          "agency_agent_read_ok", 0, "Agency read ok")),
       _read_no_leader(
         _server.getFeature<arangodb::MetricsFeature>().counter(
-          "agency_agent_read_no_leader", 0, "Agency write no leader")),
+          "agency_agent_read_no_leader", 0, "Agency read no leader")),
       _write_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram<log_scale_t<float>>(
-          "agency_agent_write_hist", log_scale_t<float>(2., 0.2, 200., 20),
+          "agency_agent_write_hist", log_scale_t<float>(2., 0., 200., 20),
           "Agency write histogram [ms]")) {
   _state.configure(this);
   _constituent.configure(this);
@@ -1277,7 +1277,7 @@ read_ret_t Agent::read(query_t const& query) {
   // Retrieve data from readDB
   std::vector<bool> success = _readDB.read(query, result);
 
-  ++_read_no_leader;
+  ++_read_ok;
   return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 

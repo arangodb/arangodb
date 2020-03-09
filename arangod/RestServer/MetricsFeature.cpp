@@ -106,7 +106,11 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 Counter& MetricsFeature::counter (
   std::string const& name, uint64_t const& val, std::string const& help) {
 
-  auto metric = std::make_shared<Counter>(val, name, help);
+  std::string labels;
+  if (ServerState::instance() != nullptr) {
+    labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+  }
+  auto metric = std::make_shared<Counter>(val, name, help, labels);
   bool success = false;
   {
     std::lock_guard<std::mutex> guard(_lock);
