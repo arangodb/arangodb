@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
+  AQL functions when invoking an AQL query from the arangosh or a client application.
+  Previously, invoking an AQL query and using the `CALL` or `APPLY` AQL functions
+  to call user-defined AQL function caused undefined behavior.
+
 * Improved graph traversal performance via some internal code refactoring:
 
   - Traversal cursors are reused instead of recreated from scratch, if possible.
@@ -11,11 +16,11 @@ devel
 
   The traversal speedups observed by these changes alone were around 8 to 10% for
   single-server traversals and traversals in OneShard setups. Cluster traversals
-  will also benefit from these changes, but to a lesser extent. This is because the 
+  will also benefit from these changes, but to a lesser extent. This is because the
   network roundtrips have a higher share of the total query execution times there.
 
 * Traversal performance can also be improved by not fetching the visited vertices
-  from the storage engine in case the traversal query does not refer to them. 
+  from the storage engine in case the traversal query does not refer to them.
   For example, in the query
 
       FOR v, e, p IN 1..3 OUTBOUND 'collection/startVertex' edges
@@ -51,7 +56,7 @@ devel
   specified by providing the new `validation` collection property when creating a
   new collection or when updating the properties of an existing collection:
 
-      db.mycollection.properties({ 
+      db.mycollection.properties({
         validation: {
           rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
           message : "Json-Schema validation failed"

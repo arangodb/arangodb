@@ -831,6 +831,9 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"bytesReceivedCount",
    {"arangodb_client_connection_statistics_bytes_received_count ", "gauge",
     "Bytes received for a request.\n"}},
+  {"bytesReceivedCounts",
+   {"arangodb_client_connection_statistics_bytes_received_count ", "gauge",
+    "Bytes received for a request.\n"}},
   {"bytesReceivedSum",
    {"arangodb_client_connection_statistics_bytes_received_sum ", "gauge",
     "Bytes received for a request.\n"}},
@@ -838,6 +841,9 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_bytes_sent_bucket ", "gauge",
     "Bytes sent for a request.\n"}},
   {"bytesSentCount",
+   {"arangodb_client_connection_statistics_bytes_sent_count ", "gauge",
+    "Bytes sent for a request.\n"}},
+  {"bytesSentCounts",
    {"arangodb_client_connection_statistics_bytes_sent_count ", "gauge",
     "Bytes sent for a request.\n"}},
   {"bytesSentSum",
@@ -863,12 +869,12 @@ std::map<std::string, std::vector<std::string>> statStrings{
     "Number of threads in the arangod process.\n"}},
   {"residentSize",
    {"arangodb_process_statistics_resident_set_size ", "gauge", "The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes.\n"}},
-  {"residentSizePercent", 
+  {"residentSizePercent",
    {"arangodb_process_statistics_resident_set_size_percent ", "gauge", "The relative size of the number of pages the process has in real memory compared to system memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The value is a ratio between 0.00 and 1.00.\n"}},
   {"virtualSize",
    {"arangodb_process_statistics_virtual_memory_size ", "gauge", "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using.\n"}},
   {"clientHttpConnections",
-   {"arangodb_client_connection_statistics_client_connections ", "guage",
+   {"arangodb_client_connection_statistics_client_connections ", "gauge",
     "The number of client connections that are currently open.\n"}},
   {"connectionTimeCounts",
    {"arangodb_client_connection_statistics_connection_time_bucket", "gauge",
@@ -878,7 +884,43 @@ std::map<std::string, std::vector<std::string>> statStrings{
     "Total connection time of a client.\n"}},
   {"connectionTimeSum",
    {"arangodb_client_connection_statistics_connection_time_sum ", "gauge",
-    "Total connection time of a client.\n"}}
+    "Total connection time of a client.\n"}},
+  {"totalTimeCounts",
+   {"arangodb_client_connection_statistics_total_time_bucket", "gauge",
+    "Total time needed to answer a request.\n"}},
+  {"totalTimeCount",
+   {"arangodb_client_connection_statistics_total_time_count ", "gauge",
+    "Total time needed to answer a request.\n"}},
+  {"totalTimeSum",
+   {"arangodb_client_connection_statistics_total_time_sum ", "gauge",
+    "Total time needed to answer a request.\n"}},
+  {"requestTimeCounts",
+   {"arangodb_client_connection_statistics_request_time_bucket", "gauge",
+    "Request time needed to answer a request.\n"}},
+  {"requestTimeCount",
+   {"arangodb_client_connection_statistics_request_time_count ", "gauge",
+    "Request time needed to answer a request.\n"}},
+  {"requestTimeSum",
+   {"arangodb_client_connection_statistics_request_time_sum ", "gauge",
+    "Request time needed to answer a request.\n"}},
+  {"queueTimeCounts",
+   {"arangodb_client_connection_statistics_queue_time_bucket", "gauge",
+    "Request time needed to answer a request.\n"}},
+  {"queueTimeCount",
+   {"arangodb_client_connection_statistics_queue_time_count ", "gauge",
+    "Request time needed to answer a request.\n"}},
+  {"queueTimeSum",
+   {"arangodb_client_connection_statistics_queue_time_sum ", "gauge",
+    "Request time needed to answer a request.\n"}},
+  {"ioTimeCounts",
+   {"arangodb_client_connection_statistics_io_time_bucket", "gauge",
+    "Request time needed to answer a request.\n"}},
+  {"ioTimeCount",
+   {"arangodb_client_connection_statistics_io_time_count ", "gauge",
+    "Request time needed to answer a request.\n"}},
+  {"ioTimeSum",
+   {"arangodb_client_connection_statistics_io_time_sum ", "gauge",
+    "Request time needed to answer a request.\n"}}
   /*{"",
     {"", "",
     ""}}*/
@@ -913,76 +955,264 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
 
   // processStatistics()
   result +=
-    TYPE_ + statStrings.at("minorPageFaults")[0] + statStrings.at("minorPageFaults")[1] +
-    HELP_ + statStrings.at("minorPageFaults")[0] + statStrings.at("minorPageFaults")[2] +
-    statStrings.at("minorPageFaults")[0] + std::to_string(info._minorPageFaults);
+    TYPE_ + statStrings.at("minorPageFaults").at(0) + statStrings.at("minorPageFaults")[1] +
+    HELP_ + statStrings.at("minorPageFaults").at(0) + statStrings.at("minorPageFaults")[2] +
+    statStrings.at("minorPageFaults").at(0) + std::to_string(info._minorPageFaults);
   result +=
-    TYPE_ + statStrings.at("majorPageFaults")[0] + statStrings.at("majorPageFaults")[1] +
-    HELP_ + statStrings.at("majorPageFaults")[0] + statStrings.at("majorPageFaults")[2] +
-    statStrings.at("majorPageFaults")[0] + std::to_string(info._majorPageFaults);
+    TYPE_ + statStrings.at("majorPageFaults").at(0) + statStrings.at("majorPageFaults")[1] +
+    HELP_ + statStrings.at("majorPageFaults").at(0) + statStrings.at("majorPageFaults")[2] +
+    statStrings.at("majorPageFaults").at(0) + std::to_string(info._majorPageFaults);
 
   if (info._scClkTck != 0) {  // prevent division by zero
     result +=
-      TYPE_ + statStrings.at("userTime")[0] + statStrings.at("userTime")[1] +
-      HELP_ + statStrings.at("userTime")[0] + statStrings.at("userTime")[2] +
-      statStrings.at("userTime")[0] +
+      TYPE_ + statStrings.at("userTime").at(0) + statStrings.at("userTime")[1] +
+      HELP_ + statStrings.at("userTime").at(0) + statStrings.at("userTime")[2] +
+      statStrings.at("userTime").at(0) +
       std::to_string(static_cast<double>(info._userTime) / static_cast<double>(info._scClkTck));
     result +=
-      TYPE_ + statStrings.at("systemTime")[0] + statStrings.at("systemTime")[1] +
-      HELP_ + statStrings.at("systemTime")[0] + statStrings.at("systemTime")[2] +
-      statStrings.at("systemTime")[0] +
+      TYPE_ + statStrings.at("systemTime").at(0) + statStrings.at("systemTime")[1] +
+      HELP_ + statStrings.at("systemTime").at(0) + statStrings.at("systemTime")[2] +
+      statStrings.at("systemTime").at(0) +
       std::to_string(static_cast<double>(info._systemTime) / static_cast<double>(info._scClkTck));
   }
 
   result +=
-    TYPE_ + statStrings.at("numberOfThreads")[0] + statStrings.at("numberOfThreads")[1] +
-    HELP_ + statStrings.at("numberOfThreads")[0] + statStrings.at("numberOfThreads")[2] +
-    statStrings.at("numberOfThreads")[0] + std::to_string(info._numberThreads);
+    TYPE_ + statStrings.at("numberOfThreads").at(0) + statStrings.at("numberOfThreads")[1] +
+    HELP_ + statStrings.at("numberOfThreads").at(0) + statStrings.at("numberOfThreads")[2] +
+    statStrings.at("numberOfThreads").at(0) + std::to_string(info._numberThreads);
   result +=
-    TYPE_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[1] +
-    HELP_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[2] +
-    statStrings.at("residentSize")[0] + std::to_string(rss);
+    TYPE_ + statStrings.at("residentSize").at(0) + statStrings.at("residentSize")[1] +
+    HELP_ + statStrings.at("residentSize").at(0) + statStrings.at("residentSize")[2] +
+    statStrings.at("residentSize").at(0) + std::to_string(rss);
   result +=
-    TYPE_ + statStrings.at("residentSizePercent")[0] + statStrings.at("residentSizePercent")[1] +
-    HELP_ + statStrings.at("residentSizePercent")[0] + statStrings.at("residentSizePercent")[2] +
-    statStrings.at("residentSizePercent")[0] + std::to_string(rssp);
+    TYPE_ + statStrings.at("residentSizePercent").at(0) + statStrings.at("residentSizePercent")[1] +
+    HELP_ + statStrings.at("residentSizePercent").at(0) + statStrings.at("residentSizePercent")[2] +
+    statStrings.at("residentSizePercent").at(0) + std::to_string(rssp);
   result +=
-    TYPE_ + statStrings.at("virtualSize")[0] + statStrings.at("virtualSize")[1] +
-    HELP_ + statStrings.at("virtualSize")[0] + statStrings.at("virtualSize")[2] +
-    statStrings.at("virtualSize")[0] + std::to_string(info._virtualSize);
+    TYPE_ + statStrings.at("virtualSize").at(0) + statStrings.at("virtualSize")[1] +
+    HELP_ + statStrings.at("virtualSize").at(0) + statStrings.at("virtualSize")[2] +
+    statStrings.at("virtualSize").at(0) + std::to_string(info._virtualSize);
 
 
-  // _clientStatistics()    
+  // _clientStatistics()
   result +=
-    TYPE_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[1] +
-    HELP_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[2] +
-    statStrings.at("clientHttpConnections")[0] + std::to_string(httpConnections._count);
+    TYPE_ + statStrings.at("clientHttpConnections").at(0) + statStrings.at("clientHttpConnections")[1] +
+    HELP_ + statStrings.at("clientHttpConnections").at(0) + statStrings.at("clientHttpConnections")[2] +
+    statStrings.at("clientHttpConnections").at(0) + std::to_string(httpConnections._count);
 
   VPackBuilder tmp = fillDistribution(connectionTime);
   VPackSlice slc = tmp.slice();
 
+  VPackSlice counts = slc.get("counts");
+  LOG_DEVEL << slc.toJson();
+
   result +=
-    TYPE_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[1] +
-    HELP_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[2] +
-    statStrings.at("connectionTimeCounts")[0] + "{le=\"0.1\"}"  + " " +
+    TYPE_ + statStrings.at("connectionTimeCounts").at(0) + statStrings.at("connectionTimeCounts")[1] +
+    HELP_ + statStrings.at("connectionTimeCounts").at(0) + statStrings.at("connectionTimeCounts")[2] +
+    statStrings.at("connectionTimeCounts").at(0) + "{le=\"0.1\"}"  + " " +
+    std::to_string(counts.at(0).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("connectionTimeCounts").at(0) + "{le=\"1\"}"    + " " +
+    std::to_string(counts.at(1).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("connectionTimeCounts").at(0) + "{le=\"60\"}"   + " " +
+    std::to_string(counts.at(2).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("connectionTimeCounts").at(0) + "{le=\"+Inf\"}" + " " +
+    std::to_string(counts.at(3).getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("connectionTimeCount").at(0) + statStrings.at("connectionTimeCount")[1] +
+    HELP_ + statStrings.at("connectionTimeCount").at(0) + statStrings.at("connectionTimeCount")[2] +
+    statStrings.at("connectionTimeCount").at(0) + std::to_string(slc.get("count").template getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("connectionTimeSum").at(0) + statStrings.at("connectionTimeSum")[1] +
+    HELP_ + statStrings.at("connectionTimeSum").at(0) + statStrings.at("connectionTimeSum")[2] +
+    statStrings.at("connectionTimeSum").at(0) + std::to_string(slc.get("sum").template getNumber<uint64_t>());
+
+
+  tmp = fillDistribution(totalTime);
+  slc = tmp.slice();
+
+  result +=
+    TYPE_ + statStrings.at("totalTimeCounts").at(0) + statStrings.at("totalTimeCounts")[1] +
+    HELP_ + statStrings.at("totalTimeCounts").at(0) + statStrings.at("totalTimeCounts")[2] +
+    statStrings.at("totalTimeCounts").at(0) + "{le=\"0.01\"}"  + " " +
     std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
-    statStrings.at("connectionTimeCounts")[0] + "{le=\"1\"}"    + " " +
+    statStrings.at("totalTimeCounts").at(0) + "{le=\"0.05\"}"  + " " +
     std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-    statStrings.at("connectionTimeCounts")[0] + "{le=\"60\"}"   + " " +
-    std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-    statStrings.at("connectionTimeCounts")[0] + "{le=\"+Inf\"}" + " " +
-    std::to_string(slc.get("counts").at(3).getNumber<uint64_t>());
+    statStrings.at("totalTimeCounts").at(0) + "{le=\"0.1\"}"  + " " +
+    std::to_string(slc.get("counts").at(2).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("totalTimeCounts").at(0) + "{le=\"0.2\"}"  + " " +
+    std::to_string(slc.get("counts").at(3).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("totalTimeCounts").at(0) + "{le=\"0.5\"}"  + " " +
+    std::to_string(slc.get("counts").at(4).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("totalTimeCounts").at(0) + "{le=\"1\"}"    + " " +
+    std::to_string(slc.get("counts").at(5).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("totalTimeCounts").at(0) + "{le=\"+Inf\"}" + " " +
+    std::to_string(slc.get("counts").at(6).getNumber<uint64_t>());
 
   result +=
-    TYPE_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[1] +
-    HELP_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[2] +
-    statStrings.at("connectionTimeCount")[0] + std::to_string(slc.get("count").template getNumber<uint64_t>());
+    TYPE_ + statStrings.at("totalTimeCount").at(0) + statStrings.at("totalTimeCount")[1] +
+    HELP_ + statStrings.at("totalTimeCount").at(0) + statStrings.at("totalTimeCount")[2] +
+    statStrings.at("totalTimeCount").at(0) + std::to_string(slc.get("count").template getNumber<uint64_t>());
 
   result +=
-    TYPE_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[1] +
-    HELP_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[2] +
-    statStrings.at("connectionTimeSum")[0] + std::to_string(slc.get("sum").template getNumber<uint64_t>());
+    TYPE_ + statStrings.at("totalTimeSum").at(0) + statStrings.at("totalTimeSum")[1] +
+    HELP_ + statStrings.at("totalTimeSum").at(0) + statStrings.at("totalTimeSum")[2] +
+    statStrings.at("totalTimeSum").at(0) + std::to_string(slc.get("sum").template getNumber<uint64_t>());
 
+  tmp = fillDistribution(requestTime);
+  slc = tmp.slice();
+
+  result +=
+    TYPE_ + statStrings.at("requestTimeCounts").at(0) + statStrings.at("requestTimeCounts")[1] +
+    HELP_ + statStrings.at("requestTimeCounts").at(0) + statStrings.at("requestTimeCounts")[2] +
+    statStrings.at("requestTimeCounts").at(0) + "{le=\"0.01\"}"  + " " +
+    std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("requestTimeCounts").at(0) + "{le=\"0.05\"}"  + " " +
+    std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("requestTimeCounts").at(0) + "{le=\"0.1\"}"  + " " +
+    std::to_string(slc.get("counts").at(2).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("requestTimeCounts").at(0) + "{le=\"0.2\"}"  + " " +
+    std::to_string(slc.get("counts").at(3).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("requestTimeCounts").at(0) + "{le=\"0.5\"}"  + " " +
+    std::to_string(slc.get("counts").at(4).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("requestTimeCounts").at(0) + "{le=\"1\"}"    + " " +
+    std::to_string(slc.get("counts").at(5).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("requestTimeCounts").at(0) + "{le=\"+Inf\"}" + " " +
+    std::to_string(slc.get("counts").at(6).getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("requestTimeCount").at(0) + statStrings.at("requestTimeCount")[1] +
+    HELP_ + statStrings.at("requestTimeCount").at(0) + statStrings.at("requestTimeCount")[2] +
+    statStrings.at("requestTimeCount").at(0) + std::to_string(slc.get("count").template getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("requestTimeSum").at(0) + statStrings.at("requestTimeSum")[1] +
+    HELP_ + statStrings.at("requestTimeSum").at(0) + statStrings.at("requestTimeSum")[2] +
+    statStrings.at("requestTimeSum").at(0) + std::to_string(slc.get("sum").template getNumber<uint64_t>());
+
+
+  tmp = fillDistribution(queueTime);
+  slc = tmp.slice();
+
+  result +=
+    TYPE_ + statStrings.at("queueTimeCounts").at(0) + statStrings.at("queueTimeCounts")[1] +
+    HELP_ + statStrings.at("queueTimeCounts").at(0) + statStrings.at("queueTimeCounts")[2] +
+    statStrings.at("queueTimeCounts").at(0) + "{le=\"0.01\"}"  + " " +
+    std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("queueTimeCounts").at(0) + "{le=\"0.05\"}"  + " " +
+    std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("queueTimeCounts").at(0) + "{le=\"0.1\"}"  + " " +
+    std::to_string(slc.get("counts").at(2).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("queueTimeCounts").at(0) + "{le=\"0.2\"}"  + " " +
+    std::to_string(slc.get("counts").at(3).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("queueTimeCounts").at(0) + "{le=\"0.5\"}"  + " " +
+    std::to_string(slc.get("counts").at(4).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("queueTimeCounts").at(0) + "{le=\"1\"}"    + " " +
+    std::to_string(slc.get("counts").at(5).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("queueTimeCounts").at(0) + "{le=\"+Inf\"}" + " " +
+    std::to_string(slc.get("counts").at(6).getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("queueTimeCount").at(0) + statStrings.at("queueTimeCount")[1] +
+    HELP_ + statStrings.at("queueTimeCount").at(0) + statStrings.at("queueTimeCount")[2] +
+    statStrings.at("queueTimeCount").at(0) + std::to_string(slc.get("count").template getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("queueTimeSum").at(0) + statStrings.at("queueTimeSum")[1] +
+    HELP_ + statStrings.at("queueTimeSum").at(0) + statStrings.at("queueTimeSum")[2] +
+    statStrings.at("queueTimeSum").at(0) + std::to_string(slc.get("sum").template getNumber<uint64_t>());
+
+  tmp = fillDistribution(ioTime);
+  slc = tmp.slice();
+
+  result +=
+    TYPE_ + statStrings.at("ioTimeCounts").at(0) + statStrings.at("ioTimeCounts")[1] +
+    HELP_ + statStrings.at("ioTimeCounts").at(0) + statStrings.at("ioTimeCounts")[2] +
+    statStrings.at("ioTimeCounts").at(0) + "{le=\"0.01\"}"  + " " +
+    std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("ioTimeCounts").at(0) + "{le=\"0.05\"}"  + " " +
+    std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("ioTimeCounts").at(0) + "{le=\"0.1\"}"  + " " +
+    std::to_string(slc.get("counts").at(2).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("ioTimeCounts").at(0) + "{le=\"0.2\"}"  + " " +
+    std::to_string(slc.get("counts").at(3).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("ioTimeCounts").at(0) + "{le=\"0.5\"}"  + " " +
+    std::to_string(slc.get("counts").at(4).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("ioTimeCounts").at(0) + "{le=\"1\"}"    + " " +
+    std::to_string(slc.get("counts").at(5).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("ioTimeCounts").at(0) + "{le=\"+Inf\"}" + " " +
+    std::to_string(slc.get("counts").at(6).getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("ioTimeCount").at(0) + statStrings.at("ioTimeCount")[1] +
+    HELP_ + statStrings.at("ioTimeCount").at(0) + statStrings.at("ioTimeCount")[2] +
+    statStrings.at("ioTimeCount").at(0) + std::to_string(slc.get("count").template getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("ioTimeSum").at(0) + statStrings.at("ioTimeSum")[1] +
+    HELP_ + statStrings.at("ioTimeSum").at(0) + statStrings.at("ioTimeSum")[2] +
+    statStrings.at("ioTimeSum").at(0) + std::to_string(slc.get("sum").template getNumber<uint64_t>());
+
+  tmp = fillDistribution(bytesSent);
+  slc = tmp.slice();
+
+  result +=
+    TYPE_ + statStrings.at("bytesSentCounts").at(0) + statStrings.at("bytesSentCounts")[1] +
+    HELP_ + statStrings.at("bytesSentCounts").at(0) + statStrings.at("bytesSentCounts")[2] +
+    statStrings.at("bytesSentCounts").at(0) + "{le=\"250\"}"  + " " +
+    std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesSentCounts").at(0) + "{le=\"1000\"}"  + " " +
+    std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesSentCounts").at(0) + "{le=\"2000\"}"  + " " +
+    std::to_string(slc.get("counts").at(2).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesSentCounts").at(0) + "{le=\"5000\"}"    + " " +
+    std::to_string(slc.get("counts").at(3).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesSentCounts").at(0) + "{le=\"10000\"}"   + " " +
+    std::to_string(slc.get("counts").at(4).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesSentCounts").at(0) + "{le=\"+Inf\"}" + " " +
+    std::to_string(slc.get("counts").at(5).getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("bytesSentCount").at(0) + statStrings.at("bytesSentCount")[1] +
+    HELP_ + statStrings.at("bytesSentCount").at(0) + statStrings.at("bytesSentCount")[2] +
+    statStrings.at("bytesSentCount").at(0) + std::to_string(slc.get("count").template getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("bytesSentSum").at(0) + statStrings.at("bytesSentSum")[1] +
+    HELP_ + statStrings.at("bytesSentSum").at(0) + statStrings.at("bytesSentSum")[2] +
+    statStrings.at("bytesSentSum").at(0) + std::to_string(slc.get("sum").template getNumber<uint64_t>());
+
+
+  tmp = fillDistribution(bytesReceived);
+  slc = tmp.slice();
+
+  result +=
+    TYPE_ + statStrings.at("bytesReceivedCounts").at(0) + statStrings.at("bytesReceivedCounts")[1] +
+    HELP_ + statStrings.at("bytesReceivedCounts").at(0) + statStrings.at("bytesReceivedCounts")[2] +
+    statStrings.at("bytesReceivedCounts").at(0) + "{le=\"250\"}"  + " " +
+    std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesReceivedCounts").at(0) + "{le=\"1000\"}"  + " " +
+    std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesReceivedCounts").at(0) + "{le=\"2000\"}"  + " " +
+    std::to_string(slc.get("counts").at(2).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesReceivedCounts").at(0) + "{le=\"5000\"}"    + " " +
+    std::to_string(slc.get("counts").at(3).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesReceivedCounts").at(0) + "{le=\"10000\"}"   + " " +
+    std::to_string(slc.get("counts").at(4).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("bytesReceivedCounts").at(0) + "{le=\"+Inf\"}" + " " +
+    std::to_string(slc.get("counts").at(5).getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("bytesReceivedCount").at(0) + statStrings.at("bytesReceivedCount")[1] +
+    HELP_ + statStrings.at("bytesReceivedCount").at(0) + statStrings.at("bytesReceivedCount")[2] +
+    statStrings.at("bytesReceivedCount").at(0) + std::to_string(slc.get("count").template getNumber<uint64_t>());
+
+  result +=
+    TYPE_ + statStrings.at("bytesReceivedSum").at(0) + statStrings.at("bytesReceivedSum")[1] +
+    HELP_ + statStrings.at("bytesReceivedSum").at(0) + statStrings.at("bytesReceivedSum")[2] +
+    statStrings.at("bytesReceivedSum").at(0) + std::to_string(slc.get("sum").template getNumber<uint64_t>());
+  
   result += "\n";
 }
 
