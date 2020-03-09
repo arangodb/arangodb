@@ -186,7 +186,7 @@ function server_secrets(options) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./UnitTests/tls.keyfile";
   }
-  return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, );
+  return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, additionalArguments);
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
