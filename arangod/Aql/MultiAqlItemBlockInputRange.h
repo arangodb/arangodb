@@ -88,6 +88,8 @@ class MultiAqlItemBlockInputRange {
 
   auto numberDependencies() const noexcept -> size_t;
 
+  auto reset() -> void;
+
  private:
   std::vector<AqlItemBlockInputRange> _inputs;
 };

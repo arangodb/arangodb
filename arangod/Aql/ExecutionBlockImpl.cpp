@@ -603,12 +603,18 @@ template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
-  _lastRange = DataRange(ExecutorState::HASMORE);
   _hasUsedDataRangeBlock = false;
-
+  initOnce();
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_dependencyProxy);
+
+  if constexpr (isMultiDepExecutor<Executor>) {
+    _lastRange.reset();
+    _rowFetcher.init();
+  } else {
+    _lastRange = DataRange(ExecutorState::HASMORE);
+  }
 
   TRI_ASSERT(_skipped == 0);
   _skipped = 0;
@@ -1539,6 +1545,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
           return inputRange.upstreamState();
         }
       });
+
       return {state, typename Executor::Stats{}, 0, call};
     }
   }
