@@ -24,6 +24,7 @@
 #define ARANGODB_REST_SERVER_METRICS_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -50,7 +51,12 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   histogram (std::string const& name, Scale const& scale,
              std::string const& help = std::string()) {
 
-    auto metric = std::make_shared<Histogram<Scale>>(scale, name, help);
+    std::string labels;
+    if (ServerState::instance() != nullptr) {
+      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\",";
+    }
+
+    auto metric = std::make_shared<Histogram<Scale>>(scale, name, help, labels);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
@@ -93,7 +99,12 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   template<typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-    auto metric = std::make_shared<Gauge<T>>(t, name, help);
+
+    std::string labels;
+    if (ServerState::instance() != nullptr) {
+      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+    }
+    auto metric = std::make_shared<Gauge<T>>(t, name, help, labels);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);

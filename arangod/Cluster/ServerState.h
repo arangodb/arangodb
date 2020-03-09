@@ -212,6 +212,9 @@ class ServerState {
   /// @brief set the server short id
   void setShortId(uint32_t);
 
+  /// @brief set the server short id
+  std::string getShortName() const;
+
   RebootId getRebootId() const;
 
   void setRebootId(RebootId rebootId);
