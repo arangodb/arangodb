@@ -323,23 +323,23 @@ std::string const StaticStrings::ValidatorTypeJsonSchema("json");
 std::string const StaticStrings::ValidatorTypeBool("bool");
 
 // metrics prometheus labels
-std::string const StaticStrings::HeartbeatSendTimeMs("heartbeat_send_time_msec");
-std::string const StaticStrings::HeartbeatFailureCounter("heartbeat_failures");
+std::string const StaticStrings::HeartbeatSendTimeMs("arangodb_heartbeat_send_time_msec");
+std::string const StaticStrings::HeartbeatFailureCounter("arangodb_heartbeat_failures");
 
-std::string const StaticStrings::MaintenancePhaseOneRuntimeMs("maintenance_phase1_runtime_msec");
-std::string const StaticStrings::MaintenancePhaseTwoRuntimeMs("maintenance_phase2_runtime_msec");
-std::string const StaticStrings::MaintenanceAgencySyncRuntimeMs("maintenance_agency_sync_runtime_msec");
+std::string const StaticStrings::MaintenancePhaseOneRuntimeMs("arangodb_maintenance_phase1_runtime_msec");
+std::string const StaticStrings::MaintenancePhaseTwoRuntimeMs("arangodb_maintenance_phase2_runtime_msec");
+std::string const StaticStrings::MaintenanceAgencySyncRuntimeMs("arangodb_maintenance_agency_sync_runtime_msec");
 
-std::string const StaticStrings::MaintenancePhaseOneAccumRuntimeMs("maintenance_phase1_accum_runtime_msec");
-std::string const StaticStrings::MaintenancePhaseTwoAccumRuntimeMs("maintenance_phase2_accum_runtime_msec");
-std::string const StaticStrings::MaintenanceAgencySyncAccumRuntimeMs("maintenance_agency_sync_accum_runtime_msec");
+std::string const StaticStrings::MaintenancePhaseOneAccumRuntimeMs("arangodb_maintenance_phase1_accum_runtime_msec");
+std::string const StaticStrings::MaintenancePhaseTwoAccumRuntimeMs("arangodb_maintenance_phase2_accum_runtime_msec");
+std::string const StaticStrings::MaintenanceAgencySyncAccumRuntimeMs("arangodb_maintenance_agency_sync_accum_runtime_msec");
 
-std::string const StaticStrings::ShardsOutOfSync("shards_out_of_sync");
-std::string const StaticStrings::ShardsTotalCount("shards_total_count");
-std::string const StaticStrings::ShardsLeaderCount("shards_leader_count");
-std::string const StaticStrings::ShardsNotReplicated("shards_not_replicated");
+std::string const StaticStrings::ShardsOutOfSync("arangodb_shards_out_of_sync");
+std::string const StaticStrings::ShardsTotalCount("arangodb_shards_total_count");
+std::string const StaticStrings::ShardsLeaderCount("arangodb_shards_leader_count");
+std::string const StaticStrings::ShardsNotReplicated("arangodb_shards_not_replicated");
 
-std::string const StaticStrings::AgencyCommRequestTimeMs("agencycomm_request_time_ms");
+std::string const StaticStrings::AgencyCommRequestTimeMs("arangodb_agencycomm_request_time_ms");
 
 std::string const StaticStrings::AqlQueryRuntimeMs("arangodb_aql_total_query_time_ms");
 
