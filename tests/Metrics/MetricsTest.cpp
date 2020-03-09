@@ -111,7 +111,7 @@ template<typename Scale> void histogram_test(Scale const& scale) {
     if constexpr (linear) {
       d = mn + step*i + mmin;
     } else {
-      d = mn + (mx-mn) * pow(base, i-buckets-1) + mmin;
+      d = mn + (mx-mn) * pow(base, i-buckets) + mmin;
     }
     h.count(d);
     ASSERT_DOUBLE_EQ(h.load(i), 1);
@@ -122,7 +122,7 @@ template<typename Scale> void histogram_test(Scale const& scale) {
     if constexpr (linear) {
       d = mn + step*(i+1) - mmin;
     } else {
-      d = mn + (mx-mn) * pow(base, i-buckets) - mmin;
+      d = mn + (mx-mn) * pow(base, i-buckets+1) - mmin;
     }
     h.count(d);
     ASSERT_DOUBLE_EQ(h.load(i), 2);

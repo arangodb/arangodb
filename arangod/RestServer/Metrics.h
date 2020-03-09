@@ -45,15 +45,17 @@ template<typename Scale> class Histogram;
 
 class Metric {
 public:
-  Metric(std::string const& name, std::string const& help);
+  Metric(std::string const& name, std::string const& help, std::string const& labels);
   virtual ~Metric();
   std::string const& help() const;
   std::string const& name() const;
+  std::string const& labels() const;
   virtual void toPrometheus(std::string& result) const = 0;
   void header(std::string& result) const;
 protected:
   std::string const _name;
   std::string const _help;
+  std::string const _labels;
 };
 
 struct Metrics {
@@ -72,7 +74,7 @@ struct Metrics {
  */
 class Counter : public Metric {
 public:
-  Counter(uint64_t const& val, std::string const& name, std::string const& help);
+  Counter(uint64_t const& val, std::string const& name, std::string const& help, std::string const& labels = std::string());
   Counter(Counter const&) = delete;
   ~Counter();
   std::ostream& print (std::ostream&) const;
@@ -95,8 +97,9 @@ private:
 template<typename T> class Gauge : public Metric {
 public:
   Gauge() = delete;
-  Gauge(T const& val, std::string const& name, std::string const& help)
-    : Metric(name, help) {
+  Gauge(T const& val, std::string const& name, std::string const& help,
+        std::string const& labels = std::string())
+    : Metric(name, help, labels) {
     _g.store(val);
   }
   Gauge(Gauge const&) = delete;
@@ -129,7 +132,7 @@ public:
   virtual void toPrometheus(std::string& result) const override {
     result += "#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n";
-    result += name() + " " + std::to_string(load()) + "\n";
+    result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
   };
 private:
   std::atomic<T> _g;
@@ -172,8 +175,8 @@ public:
   /**
    * @brief number of buckets
    */
-  T const& delim(size_t const& s) const {
-    return (s < _delim.size()) ? _delim.at(s) : _high;
+  std::string const delim(size_t const& s) const {
+    return (s < _n-1) ? std::to_string(_delim.at(s)) : "+Inf";
   }
   /**
    * @brief number of buckets
@@ -227,12 +230,13 @@ public:
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
-    double nn = -1.0*n;
+    TRI_ASSERT(base > T(0));
+    double nn = -1.0*(n-1);
     for (auto& i : this->_delim) {
       i = (high-low) * std::pow(base, nn++) + low;
     }
-    _div = this->_delim.front() - low;
-    TRI_ASSERT(_div > 0);
+    _div = this->_delim.front();
+    TRI_ASSERT(_div > T(0));
     _lbase = logf(_base);
   }
   virtual ~log_scale_t() {}
@@ -327,8 +331,9 @@ public:
 
   Histogram() = delete;
 
-  Histogram (Scale scale, std::string const& name, std::string const& help = "")
-    : Metric(name, help), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
+  Histogram (Scale scale, std::string const& name, std::string const& help,
+             std::string const& labels = std::string())
+    : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
       _n(scale.n()-1) {}
@@ -388,7 +393,7 @@ public:
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{le=\"" + std::to_string(_scale.delim(i)) + "\"} " +
+      result += name() + "_bucket{" + labels() + "le=\"" + _scale.delim(i) + "\"} " +
         std::to_string(n) + "\n";
     }
     result += name() + "_count " + std::to_string(sum) + "\n";
