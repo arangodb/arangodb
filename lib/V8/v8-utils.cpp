@@ -205,7 +205,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
 ////////////////////////////////////////////////////////////////////////////////
-static std::atomic<double> executionDeadline(0.0);
+static double executionDeadline = 0.0;
 void setExecutionDeadlineInMS(uint64_t timeout) {
   if (timeout == 0) {
     executionDeadline = 0.0;
@@ -223,7 +223,7 @@ static void JS_SetExecutionDeatlineTo(v8::FunctionCallbackInfo<v8::Value> const&
     TRI_V8_THROW_EXCEPTION_USAGE("SetGlobalExecutionDeadlineTo(<timeout>)");
   }
 
-  auto when = executionDeadline.load();
+  auto when = executionDeadline;
   auto now = TRI_microtime();
 
   auto n = TRI_ObjectToUInt64(isolate, args[0], false);
@@ -234,7 +234,7 @@ static void JS_SetExecutionDeatlineTo(v8::FunctionCallbackInfo<v8::Value> const&
 }
 
 bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  auto when = executionDeadline.load();
+  auto when = executionDeadline;
   if (when < 0.00001) {
     return false;
   }
@@ -249,7 +249,7 @@ bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args)
 }
 
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
-  auto when = executionDeadline.load();
+  auto when = executionDeadline;
   if (when < 0.00001) {
     return timeoutSeconds;
   }
@@ -264,7 +264,7 @@ double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
 std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout) {
   using namespace std::chrono;
 
-  double epochDoubleWhen = executionDeadline.load();
+  double epochDoubleWhen = executionDeadline;
   if (epochDoubleWhen < 0.00001) {
     return timeout;
   }
@@ -5592,8 +5592,11 @@ static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& 
 
 extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
-void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                     std::string const& startupPath, std::string const& modules) {
+void TRI_InitV8Utils(v8::Isolate* isolate,
+                     v8::Handle<v8::Context> context,
+                     std::string const& startupPath,
+                     std::string const& modules,
+                     bool server) {
   v8::HandleScope scope(isolate);
 
   // check the isolate
@@ -5703,9 +5706,11 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_CreateNonce);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_DOWNLOAD"), JS_Download);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
-                               JS_SetExecutionDeatlineTo);
+  if (!server) {
+    TRI_AddGlobalFunctionVocbase(isolate,
+                                 TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
+                                 JS_SetExecutionDeatlineTo);
+  }
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_EXECUTE"), JS_Execute);
   TRI_AddGlobalFunctionVocbase(isolate,
