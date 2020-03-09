@@ -206,6 +206,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 /// @brief set a point in time after which we will abort external connection
 ////////////////////////////////////////////////////////////////////////////////
 static double executionDeadline = 0.0;
+// arangosh only: set a deadline
 void setExecutionDeadlineInMS(uint64_t timeout) {
   if (timeout == 0) {
     executionDeadline = 0.0;
