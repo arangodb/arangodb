@@ -111,7 +111,7 @@ template<typename Scale> void histogram_test(Scale const& scale) {
     if constexpr (linear) {
       d = mn + step*i + mmin;
     } else {
-      d = mn + (mx-mn) * pow(base, i-buckets-1) + mmin;
+      d = mn + (mx-mn) * pow(base, i-buckets) + mmin;
     }
     h.count(d);
     ASSERT_DOUBLE_EQ(h.load(i), 1);
@@ -122,7 +122,7 @@ template<typename Scale> void histogram_test(Scale const& scale) {
     if constexpr (linear) {
       d = mn + step*(i+1) - mmin;
     } else {
-      d = mn + (mx-mn) * pow(base, i-buckets) - mmin;
+      d = mn + (mx-mn) * pow(base, i-buckets+1) - mmin;
     }
     h.count(d);
     ASSERT_DOUBLE_EQ(h.load(i), 2);
@@ -142,20 +142,24 @@ template<typename Scale> void histogram_test(Scale const& scale) {
 
   // dump
   std::cout << h << std::endl;
+  std::string s;
+  h.toPrometheus(s);
+  std::cout << s << std::endl;
 
 }
 
 
 TEST_F(MetricsTest, test_double_histogram) {
-  histogram_test(lin_scale_t<double>( 1.,  2.,  9));
-  histogram_test(lin_scale_t<double>(-1.,  1., 10));
-  histogram_test(lin_scale_t<double>(-2., -1.,  8));
+  histogram_test(lin_scale_t( 1.,  2.,  9));
+  histogram_test(lin_scale_t(-1.,  1., 10));
+  histogram_test(lin_scale_t(-2., -1.,  8));
 }
 TEST_F(MetricsTest, test_float_histogram) {
-  histogram_test(lin_scale_t<float>( 1.,  2.,  9));
-  histogram_test(lin_scale_t<float>(-1.,  1., 10));
-  histogram_test(lin_scale_t<float>(-2., -1.,  8));
+  histogram_test(lin_scale_t( 1.f,  2.f,  9));
+  histogram_test(lin_scale_t(-1.f,  1.f, 10));
+  histogram_test(lin_scale_t(-2.f, -1.f,  8));
 }
+
 TEST_F(MetricsTest, test_short_histogram) {
   histogram_test(lin_scale_t<short>(-17, 349, 6));
   histogram_test(lin_scale_t<short>( 20,  40, 7));
