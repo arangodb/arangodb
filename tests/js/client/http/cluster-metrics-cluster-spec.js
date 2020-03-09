@@ -255,11 +255,6 @@ describe('_admin/metrics', () => {
       return servers.get(role).map((_, i) => loadMetrics(role, i)).reduce(joinMetrics, {});
      };
 
-     const loadAllMetricsFiltered = (role, keys) => {
-       const mets = loadAllMetrics(role);
-       return Object.assign({}, ...keys.map(key => key in mets ? {[key]: mets[key]} : {}));
-     };
-
     const runTest = (action, watchers) => {
       const coordBefore = loadAllMetrics("coordinator");
       watchers.forEach(w => {w.beforeCoordinator(coordBefore);});
