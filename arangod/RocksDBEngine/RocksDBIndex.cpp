@@ -251,7 +251,9 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
   if (!res.ok()) {
     return res;
   }
-  return insert(trx, mthd, newDocumentId, newDoc, mode);
+  OperationOptions options;
+  options.indexOperationMode = mode;
+  return insert(trx, mthd, newDocumentId, newDoc, options);
 }
 
 /// @brief return the memory usage of the index
