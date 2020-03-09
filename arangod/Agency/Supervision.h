@@ -253,7 +253,7 @@ class Supervision : public arangodb::CriticalThread {
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
 
-  Histogram<uint64_t>& _supervision_runtime_msec;
+  Histogram<log_scale_t<uint64_t>>& _supervision_runtime_msec;
 };
 
 /**

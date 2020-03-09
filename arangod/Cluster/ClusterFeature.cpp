@@ -420,6 +420,10 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+  server().getFeature<arangodb::MetricsFeature>().histogram(
+      "agencycomm_request_time_ms", lin_scale_t<uint64_t>(4.0, 2e3, 20),
+      "Request time for Agency requests");
+
   // create callback registery
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
 

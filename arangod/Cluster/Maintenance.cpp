@@ -677,8 +677,9 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
   }
 
   auto end = std::chrono::steady_clock::now();
-  feature._phase1_runtime_msec->get().count(
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+  uint64_t total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  feature._phase1_runtime_msec->get().count(total_ms);
+  feature._phase1_accum_runtime_msec->get().count(total_ms);
 
   return result;
 }
@@ -1269,11 +1270,10 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
   }
 
   auto end = std::chrono::steady_clock::now();
-  feature._phase2_runtime_msec->get().count(
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
-  LOG_DEVEL
-      << "PhaseTwo time = "
-      << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+  uint64_t total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  feature._phase2_runtime_msec->get().count(total_ms);
+  feature._phase2_runtime_msec_lin->get().count(total_ms);
+  feature._phase2_accum_runtime_msec->get().count(total_ms);
 
   feature._shards_out_of_sync->get().operator=(shardStats.numOutOfSyncShards);
   feature._shards_total_count->get().operator=(shardStats.numShards);

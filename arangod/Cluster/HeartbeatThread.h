@@ -335,7 +335,7 @@ class HeartbeatThread : public CriticalThread,
   /// @brief Sync job
   DBServerAgencySync _agencySync;
 
-  Histogram<uint64_t>& _heartbeat_send_time_ms;
+  Histogram<log_scale_t<uint64_t>>& _heartbeat_send_time_ms;
   Counter& _heartbeat_failure_counter;
 };
 }  // namespace arangodb

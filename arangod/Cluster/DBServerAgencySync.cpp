@@ -331,7 +331,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     result.errorMessage = "Report from phase 1 and 2 was not closed.";
   }
 
-  auto took = duration<double>(clock::now() - start).count();
+  auto end = clock::now();
+  auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  mfeature._agency_sync_total_runtime_msec->get().count(total_ms);
+  mfeature._agency_sync_total_accum_runtime_msec->get().count(total_ms);
+  auto took = duration<double>(end - start).count();
   if (took > 30.0) {
     LOG_TOPIC("83cb8", WARN, Logger::MAINTENANCE)
         << "DBServerAgencySync::execute "

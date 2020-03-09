@@ -211,8 +211,8 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _lastCurrentVersionNoticed(0),
       _DBServerUpdateCounter(0),
       _agencySync(_server, this),
-      _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram<uint64_t>(
-          "heartbeat_send_time_msec", 10, 50, 20000,
+      _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
+          "heartbeat_send_time_msec", log_scale_t<uint64_t>(2, 4., 8.0e3, 10),
           "Time required to send heartbeat [ms]")),
       _heartbeat_failure_counter(server.getFeature<arangodb::MetricsFeature>().counter(
           "heartbeat_failures", 0, "Counting failed heartbeat transmissions")) {}

@@ -74,7 +74,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       registry_type::const_iterator it = _registry.find(name);
 
       try {
-        metric = std::dynamic_pointer_cast<Histogram<Scale>>(*it->second);
+        metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
         if (metric == nullptr) {
           error = std::string("Failed to retrieve histogram ") + name;
         }

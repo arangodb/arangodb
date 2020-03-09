@@ -454,8 +454,15 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
 
  public:
-  std::optional<std::reference_wrapper<Histogram<uint64_t>>> _phase1_runtime_msec;
-  std::optional<std::reference_wrapper<Histogram<uint64_t>>> _phase2_runtime_msec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase2_runtime_msec;
+  std::optional<std::reference_wrapper<Histogram<lin_scale_t<uint64_t>>>> _phase2_runtime_msec_lin;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _agency_sync_total_runtime_msec;
+
+  std::optional<std::reference_wrapper<Counter>> _phase1_accum_runtime_msec;
+  std::optional<std::reference_wrapper<Counter>> _phase2_accum_runtime_msec;
+  std::optional<std::reference_wrapper<Counter>> _agency_sync_total_accum_runtime_msec;
+
   std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_out_of_sync;
   std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_total_count;
   std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_leader_count;
