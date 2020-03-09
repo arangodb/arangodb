@@ -434,6 +434,10 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
           // We have consumed all overfetched rows.
           // We may still have a skip counter within the range.
           call.didSkip(input.skipAll(dep));
+          // Need to leave the while loop here.
+          // the state could still be HASMORE
+          // e.g. if we have not yet fetched all.
+          break;
         }
       }
       if (state == ExecutorState::HASMORE) {
