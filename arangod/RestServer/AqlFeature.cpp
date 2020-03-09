@@ -20,6 +20,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Basics/StaticStrings.h>
 #include <thread>
 
 #include "RestServer/AqlFeature.h"
@@ -81,7 +82,7 @@ void AqlFeature::start() {
 
   // register query time metrics
   server().getFeature<arangodb::MetricsFeature>().counter(
-      "arangodb_aql_total_query_time_ms", 0,
+      StaticStrings::AqlQueryRuntimeMs, 0,
       "Total execution time of all queries");
 
   LOG_TOPIC("cf921", DEBUG, Logger::QUERIES) << "AQL feature started";

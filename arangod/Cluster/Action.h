@@ -161,22 +161,22 @@ class Action {
   bool runable() const { return _action->runable(); }
 
   /// @brief When object was constructed
-  std::chrono::system_clock::time_point getCreateTime() const {
+  std::chrono::steady_clock::time_point getCreateTime() const {
     return _action->getCreateTime();
   }
 
   /// @brief When object was first started
-  std::chrono::system_clock::time_point getStartTime() const {
+  std::chrono::steady_clock::time_point getStartTime() const {
     return _action->getStartTime();
   }
 
   /// @brief When object most recently iterated
-  std::chrono::system_clock::time_point getLastStatTime() const {
+  std::chrono::steady_clock::time_point getLastStatTime() const {
     return _action->getLastStatTime();
   }
 
   /// @brief When object finished executing
-  std::chrono::system_clock::time_point getDoneTime() const {
+  std::chrono::steady_clock::time_point getDoneTime() const {
     return _action->getDoneTime();
   }
 

@@ -26,6 +26,7 @@
 
 #include "Basics/Thread.h"
 #include "Cluster/Action.h"
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
 

@@ -157,6 +157,9 @@ void MaintenanceWorker::nextState(bool actionMore) {
     // finish the current action
     if (_curAction) {
       _lastResult = _curAction->result();
+      _curAction->endStats();
+
+
 
       // if action's state not set, assume it succeeded when result ok
       if (_curAction->result().ok() && FAILED != _curAction->getState()) {

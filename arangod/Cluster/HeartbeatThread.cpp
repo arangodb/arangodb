@@ -212,10 +212,10 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _DBServerUpdateCounter(0),
       _agencySync(_server, this),
       _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
-          "heartbeat_send_time_msec", log_scale_t<uint64_t>(2, 4., 8.0e3, 10),
+          StaticStrings::HeartbeatSendTimeMs, log_scale_t<uint64_t>(2, 4., 8.0e3, 10),
           "Time required to send heartbeat [ms]")),
       _heartbeat_failure_counter(server.getFeature<arangodb::MetricsFeature>().counter(
-          "heartbeat_failures", 0, "Counting failed heartbeat transmissions")) {}
+          StaticStrings::HeartbeatFailureCounter, 0, "Counting failed heartbeat transmissions")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -1327,8 +1327,6 @@ bool HeartbeatThread::sendServerState() {
   auto const start = std::chrono::steady_clock::now();
   TRI_DEFER({
     auto timeDiff = std::chrono::steady_clock::now() - start;
-    LOG_DEVEL << "Heartbeat time = "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff).count();
     _heartbeat_send_time_ms.count(
         std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff).count());
 

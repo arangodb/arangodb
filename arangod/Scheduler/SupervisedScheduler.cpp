@@ -25,6 +25,7 @@
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Basics/StaticStrings.h>
 #include <memory>
 
 #include "Scheduler.h"
@@ -164,13 +165,13 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _fifo1Size(fifo1Size),
       _fifo2Size(fifo2Size),
       _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_queue_length", 0,
+          StaticStrings::SchedulerQueueLength, 0,
           "Servers internal queue length")),
       _metricsAwakeThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_awake_threads", 0,
+          StaticStrings::SchedulerAwakeWorkers, 0,
           "Number of awake worker threads")),
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_num_worker_threads", 0,
+          StaticStrings::SchedulerNumWorker, 0,
           "Number of worker threads")) {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);

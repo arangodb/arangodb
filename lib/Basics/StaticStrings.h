@@ -296,6 +296,32 @@ class StaticStrings {
   static std::string const ValidatorTypeJsonSchema;
   static std::string const ValidatorTypeAQL;
   static std::string const ValidatorTypeBool;
+
+  // metrics prometheus labels
+  static std::string const HeartbeatSendTimeMs;
+  static std::string const HeartbeatFailureCounter;
+
+  static std::string const MaintenancePhaseOneRuntimeMs;
+  static std::string const MaintenancePhaseTwoRuntimeMs;
+  static std::string const MaintenanceAgencySyncRuntimeMs;
+
+  static std::string const MaintenancePhaseOneAccumRuntimeMs;
+  static std::string const MaintenancePhaseTwoAccumRuntimeMs;
+  static std::string const MaintenanceAgencySyncAccumRuntimeMs;
+
+  static std::string const ShardsOutOfSync;
+  static std::string const ShardsTotalCount;
+  static std::string const ShardsLeaderCount;
+  static std::string const ShardsNotReplicated;
+
+  static std::string const AgencyCommRequestTimeMs;
+
+  static std::string const AqlQueryRuntimeMs;
+
+  static std::string const SchedulerQueueLength;
+  static std::string const SchedulerAwakeWorkers;
+  static std::string const SchedulerNumWorker;
+
 };
 }  // namespace arangodb
 

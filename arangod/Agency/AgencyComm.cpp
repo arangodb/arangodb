@@ -874,7 +874,7 @@ std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
     : _server(server),
       _agency_comm_request_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram<lin_scale_t<uint64_t>>(
-          "agencycomm_request_time_ms")) {}
+          StaticStrings::AgencyCommRequestTimeMs)) {}
 
 AgencyCommResult AgencyComm::sendServerState() {
   // construct JSON value { "status": "...", "time": "..." }

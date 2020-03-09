@@ -157,11 +157,11 @@ void MaintenanceFeature::start() {
   auto& metricsFeature = server().getFeature<arangodb::MetricsFeature>();
 
   _phase1_runtime_msec =
-      metricsFeature.histogram("maintenance_phase1_runtime_msec",
+      metricsFeature.histogram(StaticStrings::MaintenancePhaseOneRuntimeMs,
                                log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
                                "Maintenance Phase 1 runtime histogram [ms]");
   _phase2_runtime_msec =
-      metricsFeature.histogram("maintenance_phase2_runtime_msec",
+      metricsFeature.histogram(StaticStrings::MaintenancePhaseTwoRuntimeMs,
                                log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
                                "Maintenance Phase 2 runtime histogram [ms]");
   _phase2_runtime_msec_lin =
@@ -169,30 +169,30 @@ void MaintenanceFeature::start() {
                                lin_scale_t<uint64_t>(50., 1.0e3, 10),
                                "Maintenance Phase 2 runtime histogram [ms]");
   _agency_sync_total_runtime_msec =
-      metricsFeature.histogram("maintenance_agency_sync_runtime_msec",
+      metricsFeature.histogram(StaticStrings::MaintenanceAgencySyncRuntimeMs,
                                log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
                                "Total time spend on agency sync [ms]");
 
   _phase1_accum_runtime_msec =
-      metricsFeature.counter("maintenance_phase1_accum_runtime_ms", 0,
+      metricsFeature.counter(StaticStrings::MaintenancePhaseOneAccumRuntimeMs, 0,
                              "Accumulated runtime of phase one");
   _phase2_accum_runtime_msec =
-      metricsFeature.counter("maintenance_phase2_accum_runtime_ms", 0,
+      metricsFeature.counter(StaticStrings::MaintenancePhaseTwoAccumRuntimeMs, 0,
                              "Accumulated runtime of phase two");
   _agency_sync_total_accum_runtime_msec =
-      metricsFeature.counter("maintenance_agency_sync_total_accum_runtime_ms",
+      metricsFeature.counter(StaticStrings::MaintenanceAgencySyncAccumRuntimeMs,
                              0, "Accumulated runtime of agency sync phase");
 
   _shards_out_of_sync = metricsFeature.gauge<uint64_t>(
-      "shards_out_of_sync", 0, "Number of leader shards not fully replicated");
+      StaticStrings::ShardsOutOfSync, 0, "Number of leader shards not fully replicated");
   _shards_total_count =
-      metricsFeature.gauge<uint64_t>("shards_total_count", 0,
+      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsTotalCount, 0,
                                      "Number of shards on this machine");
   _shards_leader_count =
-      metricsFeature.gauge<uint64_t>("shards_leader_count", 0,
+      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsLeaderCount, 0,
                                      "Number of leader shards on this machine");
   _shards_not_replicated_count =
-      metricsFeature.gauge<uint64_t>("shards_not_replicated", 0,
+      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsNotReplicated, 0,
                                      "Number of shards not replicated at all");
 
   // start threads
