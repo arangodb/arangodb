@@ -3116,8 +3116,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     VPackObjectBuilder obj(&response);
     TRI_voc_rid_t resumeNext = ctx.resume;
     VPackSlice range;
-    std::uint64_t left;
-    std::uint64_t right;
+    std::size_t left;
+    std::size_t right;
     auto setRange = [&body, &range, &left, &right](std::size_t index) -> void {
       range = body.at(index);
       left = basics::HybridLogicalClock::decodeTimeStamp(range.at(0));
