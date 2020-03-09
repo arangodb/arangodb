@@ -177,7 +177,7 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _upgraded(false),
       _supervision_runtime_msec(
           server.getFeature<arangodb::MetricsFeature>().histogram<uint64_t>(
-              "agency_supervision_runtime_msec", 10, 0., 1.0e4, "Agency Supervision runtime histogram [ms]")){}
+              "agency_supervision_runtime_msec", 10, 0., 1.0e3, "Agency Supervision runtime histogram [ms]")){}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
