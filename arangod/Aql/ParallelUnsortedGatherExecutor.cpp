@@ -45,12 +45,19 @@ ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
 
 auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall) const
     noexcept -> AqlCall {
+  TRI_ASSERT(clientCall.needSkipMore());
   // Only skip, don't ask for rows
-  auto upstreamCall = clientCall;
-  upstreamCall.softLimit = 0;
-  upstreamCall.hardLimit = AqlCall::Infinity{};
-  upstreamCall.fullCount = false;
-  return upstreamCall;
+  if (clientCall.getOffset() > 0) {
+    auto upstreamCall = clientCall;
+    upstreamCall.softLimit = 0;
+    upstreamCall.hardLimit = AqlCall::Infinity{};
+    upstreamCall.fullCount = false;
+    return upstreamCall;
+  }
+  TRI_ASSERT(clientCall.getLimit() == 0 && clientCall.hasHardLimit());
+  // This can onyl be fullCount or fastForward call.
+  // Send it upstream.
+  return clientCall;
 }
 
 auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCall) const
@@ -76,7 +83,6 @@ auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCa
 auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                                  OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCallSet> {
-
   auto const& clientCall = output.getClientCall();
   TRI_ASSERT(clientCall.getOffset() == 0);
 
