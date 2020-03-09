@@ -50,7 +50,9 @@ const MetricNames = {
   SHARD_COUNT: "shards_total_count",
   SHARD_LEADER_COUNT: "shards_leader_count",
   HEARTBEAT_BUCKET: "heartbeat_send_time_msec_bucket",
-  HEARTBEAT_COUNT: "heartbeat_send_time_msec_count"
+  HEARTBEAT_COUNT: "heartbeat_send_time_msec_count",
+  SUPERVISION_BUCKET: "agency_supervision_runtime_msec_bucket",
+  SUPERVISION_COUNT: "agency_supervision_runtime_msec_count"
 };
 
 class Watcher {
@@ -128,6 +130,42 @@ class DBServerBucketWatcher extends Watcher {
   };
 
   afterDBServer(metrics) {
+    const after =  metrics[this._metric];
+    expectOneBucketChanged(after, this._before);
+  };
+}
+
+
+class AgentValueWatcher extends Watcher {
+  constructor(metric) {
+    super();
+    this._metric = metric
+    this._before = null;
+  }
+
+  beforeAgent(metrics) {
+    this._before = metrics[this._metric];
+  };
+
+  afterAgent(metrics) {
+    const after =  metrics[this._metric];
+    expect(after).to.be.greaterThan(this._before);
+  };
+}
+
+
+class AgentBucketWatcher extends Watcher {
+  constructor(metric) {
+    super();
+    this._metric = metric
+    this._before = null;
+  }
+
+  beforeAgent(metrics) {
+    this._before = metrics[this._metric];
+  };
+
+  afterAgent(metrics) {
     const after =  metrics[this._metric];
     expectOneBucketChanged(after, this._before);
   };
@@ -222,6 +260,25 @@ class HeartBeatWatcher extends Watcher {
     this._coordhbBucketWatcher.afterCoordinator(metrics);
   };
 }
+
+class SupervisionWatcher extends Watcher {
+  constructor() {
+    super();
+    this._svValueWatcher = new AgentValueWatcher(MetricNames.SUPERVISION_COUNT);
+    this._svBucketWatcher = new AgentBucketWatcher(MetricNames.SUPERVISION_BUCKET);
+  }
+
+
+  beforeAgent(metrics) {
+    this._svValueWatcher.beforeAgent(metrics);
+    this._svBucketWatcher.beforeAgent(metrics);
+  };
+
+  afterAgent(metrics) {
+    this._svValueWatcher.afterAgent(metrics);
+    this._svBucketWatcher.afterAgent(metrics);
+  };
+};
 
 
 
@@ -356,11 +413,9 @@ describe('_admin/metrics', () => {
       }
     });
 
-    it('at least 1 heartbeat per second', () => {
+    it('at least 1 heartbeat and supervision per second', () => {
       runTest(() => {
         require("internal").wait(1.0);
-      }, [new HeartBeatWatcher()]);
+      }, [new HeartBeatWatcher(), new SupervisionWatcher()]);
     });
-
-    
 });
