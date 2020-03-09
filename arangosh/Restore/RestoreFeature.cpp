@@ -586,7 +586,9 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
   std::string const url =
       "/_api/replication/restore-data?collection=" + urlEncode(cname) +
       "&force=" + (options.force ? "true" : "false") +
-      (options.preserveRevisionIds ? ("&" + StaticStrings::PreserveRevisionIds + "=true") : "");
+      (options.preserveRevisionIds
+           ? ("&" + arangodb::StaticStrings::PreserveRevisionIds + "=true")
+           : "");
 
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
