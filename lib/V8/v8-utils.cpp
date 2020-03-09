@@ -214,6 +214,7 @@ void setExecutionDeadlineInMS(uint64_t timeout) {
   }
 }
 
+// arangosh only: set a deadline
 static void JS_SetExecutionDeatlineTo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
