@@ -127,3 +127,37 @@ ServerStatistics& MetricsFeature::serverStatistics() {
   _serverStatistics->_uptime = StatisticsFeature::time() - _serverStatistics->_startTime;
   return *_serverStatistics;
 }
+
+
+metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
+  TRI_ASSERT(il.size() > 0);
+  TRI_ASSERT(il.size() < 3);
+  name = *il.begin();
+  if (il.size() == 2) { 
+    labels = *(il.begin()+1);
+  }
+  _hash = std::hash<std::string>{}(name + labels);
+}
+
+metrics_key::metrics_key(std::string const& name) : name(name) {
+  _hash = std::hash<std::string>{}(name);
+}
+
+metrics_key::metrics_key(std::string const& name, std::string const& labels) :
+  name(name), labels(labels) {
+  _hash = std::hash<std::string>{}(name + labels);
+}
+
+std::size_t metrics_key::hash() const noexcept {
+  return _hash;
+}
+
+bool metrics_key::operator== (metrics_key const& other) const {
+  return name == other.name && labels == other.labels;
+}
+
+namespace std {
+std::size_t hash<arangodb::metrics_key>::operator()(arangodb::metrics_key const& m) const noexcept {
+  return m.hash();
+}
+}

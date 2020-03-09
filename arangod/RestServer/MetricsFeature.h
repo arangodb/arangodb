@@ -33,6 +33,17 @@
 
 namespace arangodb {
 
+struct metrics_key {
+  std::string name;
+  std::string labels;
+  std::size_t _hash;
+  metrics_key(std::string const& name);
+  metrics_key(std::string const& name, std::string const& labels);
+  metrics_key(std::initializer_list<std::string> const& il);
+  std::size_t hash() const noexcept;
+  bool operator== (metrics_key const& other) const;
+};
+
 class MetricsFeature final : public application_features::ApplicationFeature {
  public:
 
@@ -160,5 +171,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
+
+namespace std {
+template<> struct hash<arangodb::metrics_key> {
+  typedef arangodb::metrics_key argument_t;
+  typedef std::size_t result_t;
+  result_t operator()(argument_t const& r) const noexcept; 
+};
+}
 
 #endif

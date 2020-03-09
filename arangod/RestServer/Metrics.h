@@ -231,13 +231,13 @@ public:
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
     TRI_ASSERT(base > T(0));
-    double nn = -1.0*(n-1);
+    T nn = -1.0*(n-1);
     for (auto& i : this->_delim) {
       i = (high-low) * std::pow(base, nn++) + low;
     }
-    _div = this->_delim.front();
+    _div = this->_delim.front() - low;
     TRI_ASSERT(_div > T(0));
-    _lbase = logf(_base);
+    _lbase = log(_base);
   }
   virtual ~log_scale_t() {}
   /**
@@ -246,7 +246,8 @@ public:
    * @return    index
    */
   size_t pos(T const& val) const {
-    return static_cast<size_t>(1+std::floor(logf((val - this->_low)/_div)/_lbase));
+    LOG_DEVEL << "val:" << val << " low:" << this->_low << " _div:" << _div << " _lbase: " << _lbase <<  1 + std::floor(log((val - this->_low)/_div)/_lbase);
+    return static_cast<size_t>(1+std::floor(log((val - this->_low)/_div)/_lbase));
   }
   /**
    * @brief Dump to builder
@@ -265,7 +266,8 @@ public:
     return _base;
   }
 private:
-  T _base, _div, _lbase;
+  T _base, _div;
+  double _lbase;
 };
 
 template<typename T>
