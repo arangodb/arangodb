@@ -215,11 +215,13 @@ globalApplier.properties = function (config) { return applierProperties(true, co
 var waitForResult = function (config, id) {
   const db = internal.db;
 
+  let sleepTime = 0.05;
+
   if (!config.hasOwnProperty('progress')) {
     config.progress = true;
   }
 
-  internal.sleep(1);
+  internal.sleep(sleepTime);
   var iterations = 0;
 
   while (true) {
@@ -235,10 +237,10 @@ var waitForResult = function (config, id) {
     }
 
     ++iterations;
-    if (iterations < 6) {
-      internal.sleep(2);
+    if (iterations > 6) {
+      internal.sleep(sleepTime);
     } else {
-      internal.sleep(3);
+      internal.sleep(sleepTime);
     }
 
     if (config.progress && iterations % 3 === 0) {
