@@ -207,7 +207,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         if (!continueTesting) {
 
           if (!results.hasOwnProperty('SKIPPED')) {
-            print('oops! Skipping remaining tests, server is gone.');
+            print('oops! Skipping remaining tests, server is unavailable for testing.');
 
             results['SKIPPED'] = {
               status: false,
@@ -215,7 +215,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             };
             results[te] = {
               status: false,
-              message: 'server crashed'
+              message: 'server unavailable for testing: ' + results[te].message
             };
           } else {
             if (results['SKIPPED'].message !== '') {
@@ -233,6 +233,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         let reply = runFn(options, instanceInfo, te, env);
 
         if (reply.hasOwnProperty('forceTerminate')) {
+          results[te] = reply;
           continueTesting = false;
           forceTerminate = true;
           continue;
@@ -342,7 +343,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           continueTesting = false;
           results[te] = {
             status: false,
-            message: 'server is dead.'
+            message: 'server is dead: + ' + results[te].message
           };
         }
         
