@@ -1424,7 +1424,8 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
-  bool generateNewRevisionIds = !_request->parsedValue("preserveRevisionIds", false);
+  bool generateNewRevisionIds =
+      !_request->parsedValue(StaticStrings::PreserveRevisionIds, false);
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
@@ -1716,7 +1717,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
         VPackObjectBuilder guard(&builder);
         for (auto it : VPackObjectIterator(doc)) {
           if (isUsersOnCoordinator &&
-              (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString &&
+              (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString ||
                arangodb::velocypack::StringRef(it.key) == StaticStrings::IdString)) {
             continue;
           }

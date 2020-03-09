@@ -583,10 +583,11 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
     bufferSize = cleaned.length();
   }
 
-  std::string const url = "/_api/replication/restore-data?collection=" + urlEncode(cname) +
-                          "&force=" + (options.force ? "true" : "false") +
-                          (options.preserveRevisionIds ? "&preserveRevisionIds=true" : "");
-  
+  std::string const url =
+      "/_api/replication/restore-data?collection=" + urlEncode(cname) +
+      "&force=" + (options.force ? "true" : "false") +
+      (options.preserveRevisionIds ? ("&" + StaticStrings::PreserveRevisionIds + "=true") : "");
+
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
                   arangodb::StaticStrings::MimeTypeDump);
