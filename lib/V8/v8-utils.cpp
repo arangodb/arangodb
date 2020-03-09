@@ -65,6 +65,7 @@
 #include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -79,6 +80,7 @@
 #include "Basics/memory.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/signals.h"
 #include "Basics/socket-utils.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
@@ -909,7 +911,29 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         endpoint.append(":443");
       }
       endpoint = "ssl://" + endpoint;
-    } else if (url.substr(0, 6) == "srv://") {
+    } else if (url.substr(0, 5) == "h2://") {
+      endpoint = GetEndpointFromUrl(url).substr(5);
+      relative = url.substr(5 + endpoint.length());
+
+      if (relative.empty() || relative[0] != '/') {
+        relative = "/" + relative;
+      }
+      if (endpoint.find(':') == std::string::npos) {
+        endpoint.append(":80");
+      }
+      endpoint = "tcp://" + endpoint;
+    }  else if (url.substr(0, 6) == "h2s://") {
+         endpoint = GetEndpointFromUrl(url).substr(6);
+         relative = url.substr(6 + endpoint.length());
+
+         if (relative.empty() || relative[0] != '/') {
+           relative = "/" + relative;
+         }
+         if (endpoint.find(':') == std::string::npos) {
+           endpoint.append(":80");
+         }
+         endpoint = "tcp://" + endpoint;
+       } else if (url.substr(0, 6) == "srv://") {
       size_t found = url.find('/', 6);
 
       relative = "/";
@@ -949,7 +973,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         endpoint = "ssl:" + endpoint;
       }
     } else {
-      TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
+      std::string msg("unsupported URL specified: '");
+      msg.append(url).append("'");
+      TRI_V8_THROW_ERROR(msg.c_str());
     }
 
     LOG_TOPIC("d6bdb", TRACE, arangodb::Logger::FIXME)
@@ -967,7 +993,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      std::string("invalid URL ") + url);
     }
 
-    TRI_GET_GLOBALS();
     std::unique_ptr<GeneralClientConnection> connection(
         GeneralClientConnection::factory(v8g->_server, ep.get(), timeout,
                                          timeout, 3, sslProtocol));
@@ -2836,8 +2861,8 @@ static void ProcessStatisticsToV8(v8::FunctionCallbackInfo<v8::Value> const& arg
   double rss = (double)info._residentSize;
   double rssp = 0;
 
-  if (TRI_PhysicalMemory != 0) {
-    rssp = rss / TRI_PhysicalMemory;
+  if (PhysicalMemory::getValue() != 0) {
+    rssp = rss / PhysicalMemory::getValue();
   }
 
   auto context = TRI_IGETC;
@@ -4597,7 +4622,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() >= 3) {
     isTerminating = TRI_ObjectToBoolean(isolate, args[2]);
   } else {
-    isTerminating = TRI_IsDeadlySignal(signal);
+    isTerminating = arangodb::signals::isDeadly(signal);
   }
 
   ExternalId pid;

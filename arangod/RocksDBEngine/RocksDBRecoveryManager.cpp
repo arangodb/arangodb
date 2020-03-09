@@ -317,7 +317,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
             transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
         coll->meta().loadInitialNumberDocuments();
       }
-
+      if (coll) {
+        std::vector<std::size_t> inserts;
+        std::vector<std::size_t> removes;
+        inserts.emplace_back(RocksDBKey::documentId(key).id());
+        coll->bufferUpdates(_currentSequence, std::move(inserts), std::move(removes));
+      }
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hashval = 0;
@@ -365,6 +370,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           cc._revisionId = _lastRemovedDocRid;
         }
         coll->meta().loadInitialNumberDocuments();
+      }
+      if (coll) {
+        std::vector<std::size_t> inserts;
+        std::vector<std::size_t> removes;
+        removes.emplace_back(RocksDBKey::documentId(key).id());
+        coll->bufferUpdates(_currentSequence, std::move(inserts), std::move(removes));
       }
       _lastRemovedDocRid = 0;  // reset in any case
 

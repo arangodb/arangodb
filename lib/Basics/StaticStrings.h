@@ -62,6 +62,7 @@ class StaticStrings {
   static std::string const ReturnOldString;
   static std::string const SilentString;
   static std::string const WaitForSyncString;
+  static std::string const SkipDocumentValidation;
   static std::string const IsSynchronousReplicationString;
   static std::string const Group;
   static std::string const Namespace;
@@ -208,6 +209,7 @@ class StaticStrings {
   // collection attributes
   static std::string const NumberOfShards;
   static std::string const IsSmart;
+  static std::string const IsSmartChild;
   static std::string const DistributeShardsLike;
   static std::string const CacheEnabled;
   static std::string const IndexBuckets;
@@ -215,11 +217,14 @@ class StaticStrings {
   static std::string const DoCompact;
   static std::string const ReplicationFactor;
   static std::string const MinReplicationFactor;
+  static std::string const MinRevision;
   static std::string const ShardKeys;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
+  static std::string const UsesRevisionsAsDocumentIds;
+  static std::string const Validation;
   static std::string const WriteConcern;
 
   // graph attribute names
@@ -253,6 +258,13 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
+  static std::string const RevisionTreeCount;
+  static std::string const RevisionTreeHash;
+  static std::string const RevisionTreeMaxDepth;
+  static std::string const RevisionTreeNodes;
+  static std::string const RevisionTreeRangeMax;
+  static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeVersion;
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -269,6 +281,21 @@ class StaticStrings {
   static std::string const BackupToDeleteName;
   static std::string const BackupSearchToDeleteName;
   static std::string const SerializationFormat;
+
+  // validation
+  static std::string const ValidatorLevelNone;
+  static std::string const ValidatorLevelNew;
+  static std::string const ValidatorLevelModerate;
+  static std::string const ValidatorLevelStrict;
+
+  static std::string const ValidatorParameterMessage;
+  static std::string const ValidatorParameterLevel;
+  static std::string const ValidatorParameterType;
+  static std::string const ValidatorParameterRule;
+
+  static std::string const ValidatorTypeJsonSchema;
+  static std::string const ValidatorTypeAQL;
+  static std::string const ValidatorTypeBool;
 };
 }  // namespace arangodb
 

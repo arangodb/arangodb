@@ -47,9 +47,6 @@ class HttpResponse : public GeneralResponse {
   ~HttpResponse() = default;
 
  public:
-  bool isHeadResponse() const { return _isHeadResponse; }
-
- public:
   void setCookie(std::string const& name, std::string const& value,
                  int lifeTimeSeconds, std::string const& path,
                  std::string const& domain, bool secure, bool httpOnly);
@@ -69,6 +66,10 @@ class HttpResponse : public GeneralResponse {
     return *_body;
   }
   size_t bodySize() const;
+
+  void sealBody() {
+    _bodySize = _body->length();
+  }
 
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
@@ -111,7 +112,6 @@ class HttpResponse : public GeneralResponse {
   std::vector<std::string> _cookies;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;
-  bool _isHeadResponse;
 };
 }  // namespace arangodb
 

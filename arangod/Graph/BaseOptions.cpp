@@ -31,6 +31,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
 #include "Containers/HashSet.h"
+#include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
@@ -168,30 +169,25 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query)
     : _query(query),
-      _ctx(new aql::FixedVarExpressionContext(_query)),
+      _ctx(_query),
       _trx(_query->trx()),
-      _tmpVar(nullptr),
+      _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(nullptr) {}
+      _tmpVar(nullptr) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other)
     : _query(other._query),
-      _ctx(new aql::FixedVarExpressionContext(_query)),
+      _ctx(_query),
       _trx(other._trx),
-      _tmpVar(nullptr),
+      _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(nullptr) {
+      _tmpVar(nullptr) {
   TRI_ASSERT(other._baseLookupInfos.empty());
   TRI_ASSERT(other._tmpVar == nullptr);
 }
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
-    : _query(query),
-      _ctx(new aql::FixedVarExpressionContext(_query)),
-      _trx(_query->trx()),
-      _tmpVar(nullptr),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(nullptr) {
+    : BaseOptions(query) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -205,19 +201,40 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlic
                                    "The options require a baseLookupInfos");
   }
 
-  size_t length = read.length();
-  TRI_ASSERT(read.length() == collections.length());
-  _baseLookupInfos.reserve(length);
-  for (size_t j = 0; j < length; ++j) {
-    _baseLookupInfos.emplace_back(query, read.at(j), collections.at(j));
+  VPackArrayIterator itLookup(read);
+  VPackArrayIterator itCollections(collections);
+  _baseLookupInfos.reserve(itLookup.size());
+
+  TRI_ASSERT(itLookup.size() == itCollections.size());
+
+  while (itLookup.valid() && itCollections.valid()) {
+    _baseLookupInfos.emplace_back(query, itLookup.value(), itCollections.value());
+
+    itLookup.next();
+    itCollections.next();
+  }
+
+  TRI_ASSERT(_produceVertices);
+  read = info.get("produceVertices");
+  if (read.isBool() && !read.getBool()) {
+    _produceVertices = false;
   }
 }
 
-BaseOptions::~BaseOptions() { delete _ctx; }
+BaseOptions::~BaseOptions() = default;
 
 void BaseOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.openObject();
-  injectVelocyPackIndexes(builder);
+  // base indexes
+  builder.add("base", VPackValue(VPackValueType::Array));
+  for (auto const& it : _baseLookupInfos) {
+    for (auto const& it2 : it.idxHandles) {
+      builder.openObject();
+      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+      builder.close();
+    }
+  }
+  builder.close(); // base
   builder.close();
 }
 
@@ -304,15 +321,15 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   list.emplace_back(std::move(info));
 }
 
-void BaseOptions::clearVariableValues() { _ctx->clearVariableValues(); }
+void BaseOptions::clearVariableValues() { _ctx.clearVariableValues(); }
 
 void BaseOptions::setVariableValue(aql::Variable const* var, aql::AqlValue const value) {
-  _ctx->setVariableValue(var, value);
+  _ctx.setVariableValue(var, value);
 }
 
 void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
-  _ctx->serializeAllVariables(_trx, builder);
+  _ctx.serializeAllVariables(_trx, builder);
 }
 
 void BaseOptions::setCollectionToShard(std::map<std::string, std::string> const& in) {
@@ -322,25 +339,6 @@ void BaseOptions::setCollectionToShard(std::map<std::string, std::string> const&
 arangodb::transaction::Methods* BaseOptions::trx() const { return _trx; }
 
 arangodb::aql::Query* BaseOptions::query() const { return _query; }
-
-arangodb::graph::TraverserCache* BaseOptions::cache() const {
-  return _cache.get();
-}
-
-void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-
-  // base indexes
-  builder.add("base", VPackValue(VPackValueType::Array));
-  for (auto const& it : _baseLookupInfos) {
-    for (auto const& it2 : it.idxHandles) {
-      builder.openObject();
-      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
-      builder.close();
-    }
-  }
-  builder.close();
-}
 
 void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   TRI_ASSERT(result.isOpenObject());
@@ -365,7 +363,7 @@ arangodb::aql::Expression* BaseOptions::getEdgeExpression(size_t cursorId,
 }
 
 bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
-                                     VPackSlice value) const {
+                                     VPackSlice value) {
   if (expression == nullptr) {
     return true;
   }
@@ -373,7 +371,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   TRI_ASSERT(value.isObject() || value.isNull());
   expression->setVariable(_tmpVar, value);
   bool mustDestroy = false;
-  aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
+  aql::AqlValue res = expression->execute(_trx, &_ctx, mustDestroy);
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
   expression->clearVariable(_tmpVar);
@@ -396,40 +394,16 @@ double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> c
   return cost;
 }
 
-EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
-                                         std::vector<LookupInfo> const& list) {
-  auto allCursor = std::make_unique<SingleServerEdgeCursor>(this, list.size());
-  auto& opCursors = allCursor->getCursors();
-  for (auto& info : list) {
-    auto& node = info.indexCondition;
-    TRI_ASSERT(node->numMembers() > 0);
-    if (info.conditionNeedUpdate) {
-      // We have to inject _from/_to iff the condition needs it
-      auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
-      TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-      TRI_ASSERT(dirCmp->numMembers() == 2);
-
-      auto idNode = dirCmp->getMemberUnchecked(1);
-      TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-      TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-      // must edit node in place; TODO replace node?
-      TEMPORARILY_UNLOCK_NODE(idNode);
-      idNode->setStringValue(vid.data(), vid.length());
-    }
-    std::vector<OperationCursor*> csrs;
-    csrs.reserve(info.idxHandles.size());
-    IndexIteratorOptions opts;
-    for (auto const& it : info.idxHandles) {
-      // the emplace_back cannot throw here, as we reserved enough space before
-      csrs.emplace_back(
-          new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
-    }
-    opCursors.emplace_back(std::move(csrs));
-  }
-  return allCursor.release();
+arangodb::graph::TraverserCache* BaseOptions::cache() const {
+  return _cache.get();
 }
 
 TraverserCache* BaseOptions::cache() {
+  ensureCache();
+  return _cache.get();
+}
+
+void BaseOptions::ensureCache() {
   if (_cache == nullptr) {
     // If the Coordinator does NOT activate the Cache
     // the datalake is not created and cluster data cannot
@@ -440,14 +414,13 @@ TraverserCache* BaseOptions::cache() {
     activateCache(false, nullptr);
   }
   TRI_ASSERT(_cache != nullptr);
-  return _cache.get();
 }
 
 void BaseOptions::activateCache(bool enableDocumentCache,
                                 std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
+  _cache.reset(CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
 }
 
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {

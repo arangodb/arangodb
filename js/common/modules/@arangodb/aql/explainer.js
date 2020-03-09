@@ -502,10 +502,14 @@ function printTraversalDetails(traversals) {
 
   var optify = function (options, colorize) {
     var opts = {
-      bfs: options.bfs || undefined, /* only print if set to true to space room */
+      bfs: options.bfs || undefined, /* only print if set to true to save room */
+      neighbors: options.neighbors || undefined, /* only print if set to true to save room */
       uniqueVertices: options.uniqueVertices,
       uniqueEdges: options.uniqueEdges
     };
+    if (options.vertexCollections !== undefined) {
+      opts.vertexCollections = options.vertexCollections;
+    }
 
     var result = '';
     for (var att in opts) {
@@ -701,7 +705,7 @@ function processQuery(query, explain, planIndex) {
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
-  
+
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
@@ -1195,7 +1199,13 @@ function processQuery(query, explain, planIndex) {
 
         rc = keyword('FOR ');
         if (node.hasOwnProperty('vertexOutVariable')) {
-          parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
+          if (node.options.hasOwnProperty('produceVertices') && !node.options.produceVertices) {
+            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex optimized away */'));
+          } else {
+            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
+          }
+        } else {
+          parts.push(annotation('/* vertex optimized away */'));
         }
         if (node.hasOwnProperty('edgeOutVariable')) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
@@ -1210,17 +1220,13 @@ function processQuery(query, explain, planIndex) {
         directions = [];
         for (i = 0; i < node.edgeCollections.length; ++i) {
           isLast = (i + 1 === node.edgeCollections.length);
-          d = node.directions[i];
           if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
             // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
             // on the same collection
-            d = 0; // ANY
-          }
-          directions.push({ collection: node.edgeCollections[i], direction: d });
-
-          if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
-            // don't print same collection twice
+            directions.push({ collection: node.edgeCollections[i], direction: 0 /* ANY */ });
             ++i;
+          } else {
+            directions.push({ collection: node.edgeCollections[i], direction: node.directions[i] });
           }
         }
         var allIndexes = [];
@@ -1260,7 +1266,7 @@ function processQuery(query, explain, planIndex) {
           return 0;
         });
 
-        rc += keyword(translate[directions[0].direction]);
+        rc += keyword(translate[node.defaultDirection]);
         if (node.hasOwnProperty('vertexId')) {
           rc += " '" + value(node.vertexId) + "' ";
         } else {
@@ -1269,9 +1275,13 @@ function processQuery(query, explain, planIndex) {
         rc += annotation('/* startnode */') + '  ';
 
         if (Array.isArray(node.graph)) {
-          rc += collection(directions[0].collection);
-          for (i = 1; i < directions.length; ++i) {
-            rc += ', ' + keyword(translate[directions[i].direction]) + ' ' + collection(directions[i].collection);
+          if (directions.length > 0) {
+            rc += collection(directions[0].collection);
+            for (i = 1; i < directions.length; ++i) {
+              rc += ', ' + keyword(translate[directions[i].direction]) + ' ' + collection(directions[i].collection);
+            }
+          } else {
+            rc += annotation('/* no edge collections */');
           }
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";

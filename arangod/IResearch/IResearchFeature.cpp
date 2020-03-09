@@ -96,7 +96,7 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
                                         arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter functions EXISTS, IN_RANGE, PHRASE "
+      "ArangoSearch filter functions EXISTS, IN_RANGE, PHRASE, NGRAM_MATCH "
       " are designed to be used only within a corresponding SEARCH statement "
       "of ArangoSearch view."
       " Please ensure function signature is correct.");
@@ -407,6 +407,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &minMatchFunc });  // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, { "BOOST", ".,.", flags, &contextFunc });  // (filter expression, boost)
   addFunction(functions, { "ANALYZER", ".,.", flags, &contextFunc });  // (filter expression, analyzer)
+  addFunction(functions, { "NGRAM_MATCH", ".,.|.,.", flags, &dummyFilterFunc }); // (attribute, target, threshold, [analyzer]) OR (attribute, target, [analyzer])
 }
 
 namespace {
@@ -647,7 +648,7 @@ class IResearchFeature::Async {
           _terminate(nullptr),
           _wasNotified(false) {}
     ~Thread() { shutdown(); }
-    virtual bool isSystem() override {
+    virtual bool isSystem() const override {
       return true;
     }  // or start(...) will fail
     virtual void run() override;

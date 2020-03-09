@@ -224,8 +224,9 @@ class pos_iterator final: public irs::position {
       pay_.resize(size);
       prox_in_.read(pay_.data(), size);
     }
-
+    
     value_ += pos;
+    assert(pos_limits::valid(value_));
 
     if (has_offs_) {
       offs_.start += irs::vread<uint32_t>(prox_in_);
@@ -778,7 +779,7 @@ void field_data::reset(doc_id_t doc_id) {
     return; // nothing to do
   }
 
-  pos_ = integer_traits<uint32_t>::const_max;
+  pos_ = pos_limits::invalid();
   last_pos_ = 0;
   len_ = 0;
   num_overlap_ = 0;

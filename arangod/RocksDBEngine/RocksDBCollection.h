@@ -83,6 +83,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
+  std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
+                                                              uint64_t batchId) override;
+  std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
+                                                              transaction::Methods&) override;
+
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
@@ -96,14 +101,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
-
-  Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
-              ManagedDocumentResult& result, bool locked) override {
-    if (!key.isString()) {
-      return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-    }
-    return this->read(trx, arangodb::velocypack::StringRef(key), result, locked);
-  }
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
@@ -130,7 +127,19 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 bool lock, KeyLockInfo* keyLockInfo,
                 std::function<void()> const& cbDuringLock) override;
 
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                ManagedDocumentResult& previous, OperationOptions& options,
+                bool lock, KeyLockInfo* keyLockInfo,
+                std::function<void()> const& cbDuringLock) override;
+
   inline bool cacheEnabled() const { return _cacheEnabled; }
+
+  void adjustNumberDocuments(transaction::Methods&, int64_t) override;
+
+ protected:
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                LocalDocumentId expectedId, ManagedDocumentResult& previous,
+                OperationOptions& options, std::function<void()> const& cbDuringLock);
 
  private:
   /// @brief return engine-specific figures

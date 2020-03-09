@@ -777,23 +777,19 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 network::Headers getForwardableRequestHeaders(arangodb::GeneralRequest* request) {
-  std::unordered_map<std::string, std::string> const& headers = request->headers();
-  std::unordered_map<std::string, std::string>::const_iterator it = headers.begin();
-
   network::Headers result;
 
-  while (it != headers.end()) {
-    std::string const& key = (*it).first;
+  for (auto const& it : request->headers()) {
+    std::string const& key = it.first;
 
     // ignore the following headers
     if (key != "x-arango-async" && key != "authorization" &&
         key != "content-length" && key != "connection" && key != "expect" &&
         key != "host" && key != "origin" && key != StaticStrings::HLCHeader &&
         key != StaticStrings::ErrorCodes &&
-        key.substr(0, 14) != "access-control") {
-      result.try_emplace(key, (*it).second);
+        key.compare(0, 14, "access-control", 14) != 0) {
+      result.try_emplace(key, it.second);
     }
-    ++it;
   }
 
   result["content-length"] = StringUtils::itoa(request->contentLength());
@@ -1300,7 +1296,8 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
            .param(StaticStrings::KeepNullString, (options.keepNull ? "true" : "false"))
            .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
-           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
+           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"))
+           .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"));
     if(options.overwriteModeUpdate) {
       reqOpts.parameters.insert_or_assign(StaticStrings::OverWriteMode,  "update" );
     }
@@ -1797,13 +1794,13 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 ///        only and do not run out of scope unless
 ///        the lake is cleared.
 
-int fetchEdgesFromEngines(transaction::Methods& trx,
-                          std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-                          VPackSlice const vertexId, size_t depth,
-                          std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
-                          std::vector<VPackSlice>& result,
-                          std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
-                          size_t& filtered, size_t& read) {
+Result fetchEdgesFromEngines(transaction::Methods& trx,
+                             std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                             VPackSlice const vertexId, size_t depth,
+                             std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
+                             std::vector<VPackSlice>& result,
+                             std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
+                             size_t& filtered, size_t& read) {
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -1840,16 +1837,21 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-
+    
     auto payload = r.response->stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
+    
+    Result res = network::resultFromBody(resSlice, TRI_ERROR_NO_ERROR);
+    if (res.fail()) {
+      return res;
+    }
     filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
-
+          
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
@@ -1875,7 +1877,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
       datalake.emplace_back(std::move(payload));
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 /// @brief fetch edges from TraverserEngines
@@ -1889,13 +1891,12 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
 ///        only and do not run out of scope unless
 ///        the lake is cleared.
 
-int fetchEdgesFromEngines(
-    transaction::Methods& trx,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    VPackSlice const vertexId, bool backward,
-    std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
-    std::vector<VPackSlice>& result,
-    std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake, size_t& read) {
+Result fetchEdgesFromEngines(transaction::Methods& trx,
+                             std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                             VPackSlice const vertexId, bool backward,
+                             std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
+                             std::vector<VPackSlice>& result,
+                             std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake, size_t& read) {
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -1932,12 +1933,16 @@ int fetchEdgesFromEngines(
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-
+    
     auto payload = r.response->stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    }
+    Result res = network::resultFromBody(resSlice, TRI_ERROR_NO_ERROR);
+    if (res.fail()) {
+      return res;
     }
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
@@ -1965,7 +1970,7 @@ int fetchEdgesFromEngines(
       datalake.emplace_back(std::move(payload));
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 /// @brief fetch vertices from TraverserEngines
@@ -2132,6 +2137,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.retryNotFound = true;
   reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
+         .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
          .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"));
 
   fuerte::RestVerb restVerb;
@@ -2380,6 +2386,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());
+
     for (auto& col : collections) {
       // We can only serve on Database at a time with this call.
       // We have the vocbase context around this calls anyways, so this is save.
@@ -2454,7 +2461,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         std::shuffle(dbServers.begin(), dbServers.end(), g);
         shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
                                       dbServers, !col->system());
-      }
+      } // if - distributeShardsLike.empty()
 
 
       if (shards->empty() && !col->isSmart()) {
@@ -2477,7 +2484,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           col->writeConcern(), waitForSyncReplication, velocy.slice(),
           serverState->getId(), serverState->getRebootId()});
       vpackData.emplace_back(velocy.steal());
-    }
+    } // for col : collections
 
     // pass in the *endTime* here, not a timeout!
     Result res = ci.createCollectionsCoordinator(dbName, infos, endTime,
@@ -3074,9 +3081,9 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     return result;
   }
   
-  // no need to keep connections to shut-down servers
+  // no need to keep connections to shut-down servers, they auto close when unused
   if (pool) {
-    pool->shutdownConnections();
+    pool->drainConnections();
   }
   
   auto startTime = std::chrono::steady_clock::now();
@@ -3797,6 +3804,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       });
 
+      // we have to reset the timeout, otherwise the code below will exit too soon
+      end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000 * timeout));
+
       // send the locks
       result = hotbackupAsyncLockDBServersTransactions(pool, backupId, dbServers, lockWait, lockJobIds);
       if (result.fail()) {
@@ -3807,6 +3817,11 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       transaction::Manager* mgr = transaction::ManagerFeature::manager();
 
       while (!lockJobIds.empty()) {
+        if (steady_clock::now() > end) {
+          return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
+                                  "hot backup timeout before locking phase");
+        }
+
         // kill all transactions
         result = mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
         if (result.fail()) {

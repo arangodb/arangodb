@@ -23,7 +23,6 @@
 #ifndef ARANGODB_PREGEL_GRAPH_STORE_H
 #define ARANGODB_PREGEL_GRAPH_STORE_H 1
 
-#include "Basics/StringHeap.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"

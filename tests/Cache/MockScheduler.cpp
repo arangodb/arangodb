@@ -21,12 +21,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MockScheduler.h"
-#include "Basics/Common.h"
+#include <memory>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/bind.hpp>
@@ -34,14 +33,14 @@
 #undef sleep
 #include <boost/thread/thread.hpp>
 
-#include <memory>
+#include "MockScheduler.h"
 
 using namespace arangodb::cache;
 
-MockScheduler::MockScheduler(size_t threads)
+MockScheduler::MockScheduler(std::size_t threads)
     : _ioService(new asio_ns::io_context()),
       _serviceGuard(new asio_ns::io_context::work(*_ioService)) {
-  for (size_t i = 0; i < threads; i++) {
+  for (std::size_t i = 0; i < threads; i++) {
     auto worker = std::bind(static_cast<size_t (asio_ns::io_context::*)()>(
                                 &asio_ns::io_context::run),
                             _ioService.get());
