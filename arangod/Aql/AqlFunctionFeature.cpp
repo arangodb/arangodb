@@ -24,6 +24,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "RestServer/AqlFeature.h"
@@ -82,6 +83,7 @@ Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
 }
 
 void AqlFunctionFeature::add(Function const& func) {
+  TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
   TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
   // add function to the map
   _functionNames.try_emplace(func.name, func);

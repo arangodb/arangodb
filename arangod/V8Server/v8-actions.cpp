@@ -624,18 +624,23 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_ASSERT(request != nullptr);
 
-  rest::ResponseCode code = rest::ResponseCode::OK;
-
   using arangodb::Endpoint;
 
   // set response code
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (TRI_HasProperty(context, isolate, res, ResponseCodeKey)) {
-    // Windows has issues with converting from a double to an enumeration type
-    code = (rest::ResponseCode)(
-        (int)(TRI_ObjectToDouble(isolate, res->Get(ResponseCodeKey))));
+    uint64_t foxxcode = TRI_ObjectToInt64(isolate, res->Get(ResponseCodeKey));
+    if (GeneralResponse::isValidResponseCode(foxxcode)) {
+      response->setResponseCode(static_cast<rest::ResponseCode>(foxxcode));
+    } else {
+      response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
+      LOG_TOPIC("37d37", ERR, Logger::V8)
+        << "invalid http status code specified " << foxxcode
+        << " diverting to 500";
+    }
+  } else {
+    response->setResponseCode(rest::ResponseCode::OK);
   }
-  response->setResponseCode(code);
 
   // string should not be used
   std::string contentType = StaticStrings::MimeTypeJsonNoEncoding;
@@ -718,6 +723,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
           // what type is out? always json?
           httpResponse->body().appendText(out);
+          httpResponse->sealBody();
         } else {
           TRI_GET_GLOBAL_STRING(BodyKey);
           v8::Handle<v8::Value> b = res->Get(BodyKey);
@@ -726,6 +732,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             auto obj = b.As<v8::Object>();
             httpResponse->body().appendText(V8Buffer::data(isolate, obj),
                                             V8Buffer::length(isolate, obj));
+            httpResponse->sealBody();
           } else if (autoContent && request->contentTypeResponse() == rest::ContentType::VPACK) {
             // use velocypack
             try {
@@ -738,10 +745,12 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               httpResponse->setPayload(std::move(buffer), true);
             } catch (...) {
               httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(BodyKey)));
+              httpResponse->sealBody();
             }
           } else {
             // treat body as a string
             httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(BodyKey)));
+            httpResponse->sealBody();
           }
         }
       } break;
@@ -857,7 +866,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         TRI_FreeString(content);
 
         // create vpack from file
-        response->setContentType(rest::ContentType::TEXT);
+        response->setContentType(rest::ContentType::VPACK);
         response->setPayload(std::move(buffer), true);
       }
       break;
@@ -989,11 +998,10 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
       errorMessage = TRI_errno_string(errorCode);
     }
 
-    // TODO (obi)
-    if (response->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
-      ((HttpResponse*)response)->body().appendText(errorMessage);
-    }
-
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder b(buffer);
+    b.add(VPackValue(errorMessage));
+    response->addPayload(std::move(buffer));
   }
 
   else if (v8g->_canceled) {
@@ -1009,10 +1017,9 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
       LOG_TOPIC("b8286", WARN, arangodb::Logger::V8)
           << "Caught an error while executing an action: " << jsError;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // TODO how to generalize this?
-      if (response->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
-        ((HttpResponse*)response)->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
-      }
+      VPackBuilder b;
+      b.add(VPackValue(TRI_StringifyV8Exception(isolate, &tryCatch)));
+      response->addPayload(b.slice());
 #endif
     } else {
       v8g->_canceled = true;

@@ -31,6 +31,10 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+bool GeneralResponse::isValidResponseCode(uint64_t code) {
+  return ((code >= 100) && (code < 600));
+}
+
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
     //  Informational 1xx
@@ -152,13 +156,18 @@ std::string GeneralResponse::responseString(ResponseCode code) {
           return StringUtils::itoa((int)code) + " Client error";
         case 5:
           return StringUtils::itoa((int)code) + " Server error";
+        case 0:
+          if (static_cast<int>(code) != 0) {
+            return StringUtils::itoa(500) + " Internal Server error";
+          }
+          break;
         default:
           break;
       }
     }
   }
 
-  return StringUtils::itoa((int)code) + " Unknown";
+  return StringUtils::itoa(500) + " Internal Server error - Unknown";
 }
 
 rest::ResponseCode GeneralResponse::responseCode(std::string const& str) {
