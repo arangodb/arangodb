@@ -29,6 +29,8 @@
 #include <chrono>
 #include <string>
 
+#include <velocypack/Value.h>
+
 #include "Basics/Common.h"
 
 namespace arangodb {
@@ -122,6 +124,11 @@ class HybridLogicalClock {
       t >>= 6;
     }
     return std::make_pair(pos, 11 - pos);
+  }
+
+  static velocypack::ValuePair encodeTimeStampToValuePair(uint64_t t, char* r) {
+    auto p = encodeTimeStamp(t, r);
+    return velocypack::ValuePair(&r[0] + p.first, p.second, velocypack::ValueType::String);
   }
 
   static uint64_t decodeTimeStamp(std::string const& s) {
