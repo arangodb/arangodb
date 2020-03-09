@@ -46,7 +46,11 @@ const MetricNames = {
   PHASE_1_BUCKET: "maintenance_phase1_runtime_msec_bucket",
   PHASE_1_COUNT: "maintenance_phase1_runtime_msec_count",
   PHASE_2_BUCKET: "maintenance_phase2_runtime_msec_bucket",
-  PHASE_2_COUNT: "maintenance_phase2_runtime_msec_count", 
+  PHASE_2_COUNT: "maintenance_phase2_runtime_msec_count",
+  SHARD_COUNT: "shards_total_count",
+  SHARD_LEADER_COUNT: "shards_leader_count",
+  HEARTBEAT_BUCKET: "heartbeat_send_time_msec_bucket",
+  HEARTBEAT_COUNT: "heartbeat_send_time_msec_count"
 };
 
 class Watcher {
@@ -129,7 +133,6 @@ class DBServerBucketWatcher extends Watcher {
   };
 }
 
-
 class QueryTimeWatcher extends CoordinatorValueWatcher {
   constructor(minChange) {
     super(MetricNames.QUERY_TIME);
@@ -142,29 +145,82 @@ class QueryTimeWatcher extends CoordinatorValueWatcher {
   };
 }
 
+class ShardCountWatcher extends DBServerValueWatcher {
+  constructor(change) {
+    super(MetricNames.SHARD_COUNT);
+    this._change = change;
+  }
+
+  afterDBServer(metrics) {
+    const after =  metrics[this._metric];
+    expect(after).to.be.equal(this._before + this._change);
+  };
+}
+
+class ShardLeaderCountWatcher extends DBServerValueWatcher {
+  constructor(change) {
+    super(MetricNames.SHARD_LEADER_COUNT);
+    this._change = change;
+  }
+
+  afterDBServer(metrics) {
+    const after =  metrics[this._metric];
+    expect(after).to.be.equal(this._before + this._change);
+  };
+}
+
 class MaintenanceWatcher extends Watcher {
   constructor() {
     super();
     this._p1ValueWatcher = new DBServerValueWatcher(MetricNames.PHASE_1_COUNT);
     this._p2ValueWatcher = new DBServerValueWatcher(MetricNames.PHASE_2_COUNT);
-    this._p1BuckerWatcher = new DBServerBucketWatcher(MetricNames.PHASE_1_BUCKET);
-    this._p2BuckerWatcher = new DBServerBucketWatcher(MetricNames.PHASE_2_BUCKET);
+    this._p1BucketWatcher = new DBServerBucketWatcher(MetricNames.PHASE_1_BUCKET);
+    this._p2BucketWatcher = new DBServerBucketWatcher(MetricNames.PHASE_2_BUCKET);
   }
 
   beforeDBServer(metrics) {
     this._p1ValueWatcher.beforeDBServer(metrics);
     this._p2ValueWatcher.beforeDBServer(metrics);
-    this._p1BuckerWatcher.beforeDBServer(metrics);
-    this._p2BuckerWatcher.beforeDBServer(metrics);
+    this._p1BucketWatcher.beforeDBServer(metrics);
+    this._p2BucketWatcher.beforeDBServer(metrics);
   };
 
   afterDBServer(metrics) {
     this._p1ValueWatcher.afterDBServer(metrics);
     this._p2ValueWatcher.afterDBServer(metrics);
-    this._p1BuckerWatcher.afterDBServer(metrics);
-    this._p2BuckerWatcher.afterDBServer(metrics);
+    this._p1BucketWatcher.afterDBServer(metrics);
+    this._p2BucketWatcher.afterDBServer(metrics);
+  };
+}
+
+class HeartBeatWatcher extends Watcher {
+  constructor() {
+    super();
+    this._dbhbValueWatcher = new DBServerValueWatcher(MetricNames.HEARTBEAT_COUNT);
+    this._dbhbBucketWatcher = new DBServerBucketWatcher(MetricNames.HEARTBEAT_BUCKET);
+    this._coordhbValueWatcher = new CoordinatorValueWatcher(MetricNames.HEARTBEAT_COUNT);
+    this._coordhbBucketWatcher = new CoordinatorBucketWatcher(MetricNames.HEARTBEAT_BUCKET);
+  }
+
+  beforeDBServer(metrics) {
+    this._dbhbValueWatcher.beforeDBServer(metrics);
+    this._dbhbBucketWatcher.beforeDBServer(metrics);
   };
 
+  afterDBServer(metrics) {
+    this._dbhbValueWatcher.afterDBServer(metrics);
+    this._dbhbBucketWatcher.afterDBServer(metrics);
+  };
+
+  beforeCoordinator(metrics) {
+    this._coordhbValueWatcher.beforeCoordinator(metrics);
+    this._coordhbBucketWatcher.beforeCoordinator(metrics);
+  };
+
+  afterCoordinator(metrics) {
+    this._coordhbValueWatcher.afterCoordinator(metrics);
+    this._coordhbBucketWatcher.afterCoordinator(metrics);
+  };
 }
 
 
@@ -283,12 +339,12 @@ describe('_admin/metrics', () => {
       }, [new QueryTimeWatcher(1000)]);
     });
 
-    it('maintenance', () => {
+    it('collection and index', () => {
       try {
         runTest(() => {
-          db._create("UnitTestCollection", {numberOfShards: 9});
+          db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2});
         },
-        [new MaintenanceWatcher()]
+        [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)]
         );
         runTest(() => {
           db["UnitTestCollection"].ensureHashIndex("temp");
@@ -298,7 +354,13 @@ describe('_admin/metrics', () => {
       } finally {
         db._drop("UnitTestCollection");
       }
-
-
     });
+
+    it('at least 1 heartbeat per second', () => {
+      runTest(() => {
+        require("internal").wait(1.0);
+      }, [new HeartBeatWatcher()]);
+    });
+
+    
 });
