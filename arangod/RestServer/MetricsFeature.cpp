@@ -114,7 +114,8 @@ Counter& MetricsFeature::counter (
   bool success = false;
   {
     std::lock_guard<std::mutex> guard(_lock);
-    success = _registry.emplace(name, std::dynamic_pointer_cast<Metric>(metric)).second;
+    success = _registry.emplace(
+      metrics_key(name), std::dynamic_pointer_cast<Metric>(metric)).second;
   }
   if (!success) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
