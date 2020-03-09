@@ -563,7 +563,7 @@ void ClusterFeature::start() {
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
     _dropped_follower_counter = server().getFeature<arangodb::MetricsFeature>().counter(
-        "dropped_followers_count", 0, "Number of drop-follower events");
+        StaticStrings::DroppedFollowerCount, 0, "Number of drop-follower events");
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)

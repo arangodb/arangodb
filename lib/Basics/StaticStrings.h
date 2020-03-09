@@ -322,6 +322,8 @@ class StaticStrings {
   static std::string const SchedulerAwakeWorkers;
   static std::string const SchedulerNumWorker;
 
+  static std::string const DroppedFollowerCount;
+
 };
 }  // namespace arangodb
 
