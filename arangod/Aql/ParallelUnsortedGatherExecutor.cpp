@@ -46,6 +46,7 @@ ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
 auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall) const
     noexcept -> AqlCall {
   TRI_ASSERT(clientCall.needSkipMore());
+
   // Only skip, don't ask for rows
   if (clientCall.getOffset() > 0) {
     auto upstreamCall = clientCall;
@@ -55,6 +56,7 @@ auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall)
     return upstreamCall;
   }
   TRI_ASSERT(clientCall.getLimit() == 0 && clientCall.hasHardLimit());
+
   // This can onyl be fullCount or fastForward call.
   // Send it upstream.
   return clientCall;
@@ -153,6 +155,10 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCallSet{}};
   }
   auto callSet = AqlCallSet{};
-  callSet.calls.emplace_back(AqlCallSet::DepCallPair{waitingDep, upstreamCallSkip(call)});
+  if (call.needSkipMore()) {
+    // We are not done with skipping.
+    // Prepare next call.
+    callSet.calls.emplace_back(AqlCallSet::DepCallPair{waitingDep, upstreamCallSkip(call)});
+  }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
 }
