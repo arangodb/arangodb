@@ -185,16 +185,23 @@ function printModificationFlags(flags) {
     return;
   }
   stringBuilder.appendLine(section('Write query options:'));
-  var keys = Object.keys(flags), maxLen = 'Option'.length;
-  keys.forEach(function (k) {
-    if (k.length > maxLen) {
-      maxLen = k.length;
-    }
-  });
-  stringBuilder.appendLine(' ' + header('Option') + pad(1 + maxLen - 'Option'.length) + '   ' + header('Value'));
-  keys.forEach(function (k) {
-    stringBuilder.appendLine(' ' + keyword(k) + pad(1 + maxLen - k.length) + '   ' + value(JSON.stringify(flags[k])));
-  });
+  try {
+    var keys = Object.keys(flags), maxLen = 'Option'.length;
+    keys.forEach(function (k) {
+      if (k.length > maxLen) {
+        maxLen = k.length;
+      }
+    });
+    stringBuilder.appendLine(' ' + header('Option') + pad(1 + maxLen - 'Option'.length) + '   ' + header('Value'));
+    keys.forEach(function (k) {
+      stringBuilder.appendLine(' ' + keyword(k) + pad(1 + maxLen - k.length) + '   ' + value(JSON.stringify(flags[k])));
+    });
+  } catch (ex) {
+    throw new Error(ex.message +
+                    " while printing flags: " +
+                    JSON.stringify(flags) +
+                    " - " + ex.stack);
+  }
   stringBuilder.appendLine();
 }
 
@@ -205,12 +212,21 @@ function printRules(rules) {
   stringBuilder.appendLine(section('Optimization rules applied:'));
   if (rules.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
-  } else {
+  } else try {
     var maxIdLen = String('Id').length;
-    stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' + header('RuleName'));
+    stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Id').length) +
+                             header('Id') + '   ' +
+                             header('RuleName'));
     for (var i = 0; i < rules.length; ++i) {
-      stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + '   ' + keyword(rules[i]));
+      stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(i + 1).length) +
+                               variable(String(i + 1)) + '   ' +
+                               keyword(rules[i]));
     }
+  } catch (ex) {
+    throw new Error(ex.message +
+                    " while printing rules: " +
+                    JSON.stringify(rules) +
+                    " - " + ex.stack);
   }
   stringBuilder.appendLine();
 }
@@ -221,12 +237,22 @@ function printWarnings(warnings) {
   if (!Array.isArray(warnings) || warnings.length === 0) {
     return;
   }
-
-  stringBuilder.appendLine(section('Warnings:'));
-  var maxIdLen = String('Code').length;
-  stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Code').length) + header('Code') + '   ' + header('Message'));
-  for (var i = 0; i < warnings.length; ++i) {
-    stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + '   ' + keyword(warnings[i].message));
+  try {
+    stringBuilder.appendLine(section('Warnings:'));
+    var maxIdLen = String('Code').length;
+    stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Code').length) +
+                             header('Code') + '   ' +
+                             header('Message'));
+    for (var i = 0; i < warnings.length; ++i) {
+      stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(warnings[i].code).length) +
+                               variable(warnings[i].code) + '   ' +
+                               keyword(warnings[i].message));
+    }
+  } catch (ex) {
+    throw new Error(ex.message +
+                    " while printing warnings: " +
+                    JSON.stringify(warnings) +
+                    " - " + ex.stack);
   }
   stringBuilder.appendLine();
 }
@@ -239,22 +265,41 @@ function printStats(stats) {
   }
 
   stringBuilder.appendLine(section('Query Statistics:'));
-  var maxWELen = String('Writes Exec').length;
-  var maxWILen = String('Writes Ign').length;
-  var maxSFLen = String('Scan Full').length;
-  var maxSILen = String('Scan Index').length;
-  var maxFLen = String('Filtered').length;
-  var maxETen = String('Exec Time [s]').length;
+  const maxWELen = String('Writes Exec').length;
+  const maxWILen = String('Writes Ign').length;
+  const maxSFLen = String('Scan Full').length;
+  const maxSILen = String('Scan Index').length;
+  const maxFLen = String('Filtered').length;
+  const maxETen = String('Exec Time [s]').length;
+  try {
   stats.executionTime = stats.executionTime.toFixed(5);
-  stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
+    stringBuilder.appendLine(' ' +
+                             header('Writes Exec') + '   ' +
+                             header('Writes Ign') + '   ' +
+                             header('Scan Full') + '   ' +
+                             header('Scan Index') + '   ' +
+                             header('Filtered') + '   ' +
+                             header('Exec Time [s]'));
 
-  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
-    pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
-    pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
-    pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
-    pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
-    pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
+    stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) +
+                             value(stats.writesExecuted) + '   ' +
+                             pad(1 + maxWILen - String(stats.writesIgnored).length) +
+                             value(stats.writesIgnored) + '   ' +
+                             pad(1 + maxSFLen - String(stats.scannedFull).length) +
+                             value(stats.scannedFull) + '   ' +
+                             pad(1 + maxSILen - String(stats.scannedIndex).length) +
+                             value(stats.scannedIndex) + '   ' +
+                             pad(1 + maxFLen - String(stats.filtered).length) +
+                             value(stats.filtered) + '   ' +
+                             pad(1 + maxETen - String(stats.executionTime).length) +
+                             value(stats.executionTime));
+  } catch (ex) {
+    throw new Error(ex.message +
+                    " while printing stats: " +
+                    JSON.stringify(stats) +
+                    " - " + ex.stack);
+  }
+
   stringBuilder.appendLine();
 }
 
@@ -267,18 +312,25 @@ function printProfile(profile) {
   stringBuilder.appendLine(section('Query Profile:'));
   let maxHeadLen = 0;
   let maxDurLen = 'Duration [s]'.length;
-  Object.keys(profile).forEach(key => {
-    if (key.length > maxHeadLen) {
-      maxHeadLen = key.length;
-    }
-    if (profile[key].toFixed(5).length > maxDurLen) {
-      maxDurLen = profile[key].toFixed(5).length;
-    }
-  });
-  stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + pad(1 + maxDurLen - 'Duration [s]'.length) + header('Duration [s]'));
-  Object.keys(profile).forEach(key => {
-    stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + pad(1 + maxDurLen - profile[key].toFixed(5).length) + value(profile[key].toFixed(5)));
-  });
+  try {
+    Object.keys(profile).forEach(key => {
+      if (key.length > maxHeadLen) {
+        maxHeadLen = key.length;
+      }
+      if (profile[key].toFixed(5).length > maxDurLen) {
+        maxDurLen = profile[key].toFixed(5).length;
+      }
+    });
+    stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + pad(1 + maxDurLen - 'Duration [s]'.length) + header('Duration [s]'));
+    Object.keys(profile).forEach(key => {
+      stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + pad(1 + maxDurLen - profile[key].toFixed(5).length) + value(profile[key].toFixed(5)));
+    });
+  } catch (ex) {
+    throw new Error(ex.message +
+                    " while printing profiles: " +
+                    JSON.stringify(profile) +
+                    " - " + ex.stack);
+  }
   stringBuilder.appendLine();
 }
 
@@ -290,7 +342,7 @@ function printIndexes(indexes) {
 
   if (indexes.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
-  } else {
+  } else try {
     var maxIdLen = String('By').length;
     var maxCollectionLen = String('Collection').length;
     var maxUniqueLen = String('Unique').length;
@@ -368,6 +420,11 @@ function printIndexes(indexes) {
 
       stringBuilder.appendLine(line);
     }
+  } catch (ex) {
+    throw new Error(ex.message +
+                    " while printing indices: " +
+                    JSON.stringify(indexes) +
+                    " - " + ex.stack);
   }
 }
 
@@ -385,36 +442,43 @@ function printFunctions(functions) {
   stringBuilder.appendLine();
   stringBuilder.appendLine(section('Functions used:'));
 
-  let maxNameLen = String('Name').length;
-  let maxDeterministicLen = String('Deterministic').length;
-  let maxCacheableLen = String('Cacheable').length;
-  let maxV8Len = String('Uses V8').length;
-  funcArray.forEach(function (f) {
-    let l = String(f.name).length;
-    if (l > maxNameLen) {
-      maxNameLen = l;
-    }
-  });
-  let line = ' ' +
-    header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
-    header('Deterministic') + pad(1 + maxDeterministicLen - 'Deterministic'.length) + '   ' +
-    header('Cacheable') + pad(1 + maxCacheableLen - 'Cacheable'.length) + '   ' +
-    header('Uses V8') + pad(1 + maxV8Len - 'Uses V8'.length);
-
-  stringBuilder.appendLine(line);
-
-  for (var i = 0; i < funcArray.length; ++i) {
-    // prevent "undefined"
-    let deterministic = String(funcArray[i].isDeterministic || false);
-    let cacheable = String(funcArray[i].cacheable || false);
-    let usesV8 = String(funcArray[i].usesV8 || false);
-    line = ' ' +
-      variable(funcArray[i].name) + pad(1 + maxNameLen - funcArray[i].name.length) + '   ' +
-      value(deterministic) + pad(1 + maxDeterministicLen - deterministic.length) + '   ' +
-      value(cacheable) + pad(1 + maxCacheableLen - cacheable.length) + '   ' +
-      value(usesV8) + pad(1 + maxV8Len - usesV8.length);
+  try {
+    let maxNameLen = String('Name').length;
+    let maxDeterministicLen = String('Deterministic').length;
+    let maxCacheableLen = String('Cacheable').length;
+    let maxV8Len = String('Uses V8').length;
+    funcArray.forEach(function (f) {
+      let l = String(f.name).length;
+      if (l > maxNameLen) {
+        maxNameLen = l;
+      }
+    });
+    let line = ' ' +
+        header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
+        header('Deterministic') + pad(1 + maxDeterministicLen - 'Deterministic'.length) + '   ' +
+        header('Cacheable') + pad(1 + maxCacheableLen - 'Cacheable'.length) + '   ' +
+        header('Uses V8') + pad(1 + maxV8Len - 'Uses V8'.length);
 
     stringBuilder.appendLine(line);
+
+    for (var i = 0; i < funcArray.length; ++i) {
+      // prevent "undefined"
+      let deterministic = String(funcArray[i].isDeterministic || false);
+      let cacheable = String(funcArray[i].cacheable || false);
+      let usesV8 = String(funcArray[i].usesV8 || false);
+      line = ' ' +
+        variable(funcArray[i].name) + pad(1 + maxNameLen - funcArray[i].name.length) + '   ' +
+        value(deterministic) + pad(1 + maxDeterministicLen - deterministic.length) + '   ' +
+        value(cacheable) + pad(1 + maxCacheableLen - cacheable.length) + '   ' +
+        value(usesV8) + pad(1 + maxV8Len - usesV8.length);
+
+      stringBuilder.appendLine(line);
+    }
+  } catch (ex) {
+    throw new Error(ex.message +
+                    " while printing functions: " +
+                    JSON.stringify(functions) +
+                    " - " + ex.stack);
   }
 }
 
@@ -499,64 +563,70 @@ function printTraversalDetails(traversals) {
   outTable.setHeader(4, 'Options');
   outTable.setHeader(5, 'Filter / Prune Conditions');
 
+  try {
+    var optify = function (options, colorize) {
+      var opts = {
+        bfs: options.bfs || undefined, /* only print if set to true to save room */
+        neighbors: options.neighbors || undefined, /* only print if set to true to save room */
+        uniqueVertices: options.uniqueVertices,
+        uniqueEdges: options.uniqueEdges
+      };
+      if (options.vertexCollections !== undefined) {
+        opts.vertexCollections = options.vertexCollections;
+      }
 
-  var optify = function (options, colorize) {
-    var opts = {
-      bfs: options.bfs || undefined, /* only print if set to true to save room */
-      neighbors: options.neighbors || undefined, /* only print if set to true to save room */
-      uniqueVertices: options.uniqueVertices,
-      uniqueEdges: options.uniqueEdges
+      var result = '';
+      for (var att in opts) {
+        if (result.length > 0) {
+          result += ', ';
+        }
+        if (opts[att] === undefined) {
+          continue;
+        }
+        if (colorize) {
+          result += keyword(att) + ': ';
+          if (typeof opts[att] === 'boolean') {
+            result += value(opts[att] ? 'true' : 'false');
+          } else {
+            result += value(String(opts[att]));
+          }
+        } else {
+          result += att + ': ';
+          if (typeof opts[att] === 'boolean') {
+            result += opts[att] ? 'true' : 'false';
+          } else {
+            result += String(opts[att]);
+          }
+        }
+      }
+      return result;
     };
-    if (options.vertexCollections !== undefined) {
-      opts.vertexCollections = options.vertexCollections;
-    }
 
-    var result = '';
-    for (var att in opts) {
-      if (result.length > 0) {
-        result += ', ';
+    traversals.forEach(node => {
+      outTable.alignNewEntry();
+      outTable.addCell(0, String(node.id));
+      outTable.addCell(1, node.minMaxDepth);
+      outTable.addCell(2, node.vertexCollectionNameStr, node.vertexCollectionNameStrLen);
+      outTable.addCell(3, node.edgeCollectionNameStr, node.edgeCollectionNameStrLen);
+      if (node.hasOwnProperty('options')) {
+        outTable.addCell(4, optify(node.options, true), optify(node.options, false).length);
+      } else if (node.hasOwnProperty('traversalFlags')) {
+        outTable.addCell(4, optify(node.traversalFlags, true), optify(node.options, false).length);
       }
-      if (opts[att] === undefined) {
-        continue;
+      // else do not add a cell in 4
+      if (node.hasOwnProperty('ConditionStr')) {
+        outTable.addCell(5, 'FILTER ' + node.ConditionStr);
       }
-      if (colorize) {
-        result += keyword(att) + ': ';
-        if (typeof opts[att] === 'boolean') {
-          result += value(opts[att] ? 'true' : 'false');
-        } else {
-          result += value(String(opts[att]));
-        }
-      } else {
-        result += att + ': ';
-        if (typeof opts[att] === 'boolean') {
-          result += opts[att] ? 'true' : 'false';
-        } else {
-          result += String(opts[att]);
-        }
+      if (node.hasOwnProperty('PruneConditionStr')) {
+        outTable.addCell(5, 'PRUNE ' + node.PruneConditionStr);
       }
-    }
-    return result;
-  };
-
-  traversals.forEach(node => {
-    outTable.alignNewEntry();
-    outTable.addCell(0, String(node.id));
-    outTable.addCell(1, node.minMaxDepth);
-    outTable.addCell(2, node.vertexCollectionNameStr, node.vertexCollectionNameStrLen);
-    outTable.addCell(3, node.edgeCollectionNameStr, node.edgeCollectionNameStrLen);
-    if (node.hasOwnProperty('options')) {
-      outTable.addCell(4, optify(node.options, true), optify(node.options, false).length);
-    } else if (node.hasOwnProperty('traversalFlags')) {
-      outTable.addCell(4, optify(node.traversalFlags, true), optify(node.options, false).length);
-    }
-    // else do not add a cell in 4
-    if (node.hasOwnProperty('ConditionStr')) {
-      outTable.addCell(5, 'FILTER ' + node.ConditionStr);
-    }
-    if (node.hasOwnProperty('PruneConditionStr')) {
-      outTable.addCell(5, 'PRUNE ' + node.PruneConditionStr);
-    }
-  });
+    });
+  } catch (ex) {
+        throw new Error(ex.message +
+                    " while printing traversal details: " +
+                    JSON.stringify(traversals) +
+                    " - " + ex.stack);
+  }
   outTable.print(stringBuilder);
 }
 
@@ -574,52 +644,59 @@ function printShortestPathDetails(shortestPaths) {
   var maxVertexCollectionNameStrLen = String('Vertex collections').length;
   var maxEdgeCollectionNameStrLen = String('Edge collections').length;
 
-  shortestPaths.forEach(function (node) {
-    var l = String(node.id).length;
-    if (l > maxIdLen) {
-      maxIdLen = l;
-    }
-
-    if (node.hasOwnProperty('vertexCollectionNameStr')) {
-      if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
-        maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
+  try {
+    shortestPaths.forEach(function (node) {
+      var l = String(node.id).length;
+      if (l > maxIdLen) {
+        maxIdLen = l;
       }
-    }
-    if (node.hasOwnProperty('edgeCollectionNameStr')) {
-      if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
-        maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
+
+      if (node.hasOwnProperty('vertexCollectionNameStr')) {
+        if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
+          maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
+        }
       }
-    }
-  });
+      if (node.hasOwnProperty('edgeCollectionNameStr')) {
+        if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
+          maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
+        }
+      }
+    });
 
-  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
-    header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
-    header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
-
-  stringBuilder.appendLine(line);
-
-  for (let sp of shortestPaths) {
-    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
-
-    if (sp.hasOwnProperty('vertexCollectionNameStr')) {
-      line += sp.vertexCollectionNameStr +
-        pad(1 + maxVertexCollectionNameStrLen - sp.vertexCollectionNameStrLen) + '   ';
-    } else {
-      line += pad(1 + maxVertexCollectionNameStrLen) + '   ';
-    }
-
-    if (sp.hasOwnProperty('edgeCollectionNameStr')) {
-      line += sp.edgeCollectionNameStr +
-        pad(1 + maxEdgeCollectionNameStrLen - sp.edgeCollectionNameStrLen) + '   ';
-    } else {
-      line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
-    }
-
-    if (sp.hasOwnProperty('ConditionStr')) {
-      line += sp.ConditionStr;
-    }
+    var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
+        header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
+        header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
 
     stringBuilder.appendLine(line);
+
+    for (let sp of shortestPaths) {
+      line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
+
+      if (sp.hasOwnProperty('vertexCollectionNameStr')) {
+        line += sp.vertexCollectionNameStr +
+          pad(1 + maxVertexCollectionNameStrLen - sp.vertexCollectionNameStrLen) + '   ';
+      } else {
+        line += pad(1 + maxVertexCollectionNameStrLen) + '   ';
+      }
+
+      if (sp.hasOwnProperty('edgeCollectionNameStr')) {
+        line += sp.edgeCollectionNameStr +
+          pad(1 + maxEdgeCollectionNameStrLen - sp.edgeCollectionNameStrLen) + '   ';
+      } else {
+        line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
+      }
+
+      if (sp.hasOwnProperty('ConditionStr')) {
+        line += sp.ConditionStr;
+      }
+
+      stringBuilder.appendLine(line);
+    }
+  } catch (ex) {
+    throw new Error(ex.message +
+                    " while printing shortest paths: " +
+                    JSON.stringify(shortestPaths) +
+                    " - " + ex.stack);
   }
 }
 
@@ -636,52 +713,59 @@ function printKShortestPathsDetails(shortestPaths) {
   var maxVertexCollectionNameStrLen = String('Vertex collections').length;
   var maxEdgeCollectionNameStrLen = String('Edge collections').length;
 
-  shortestPaths.forEach(function (node) {
-    var l = String(node.id).length;
-    if (l > maxIdLen) {
-      maxIdLen = l;
-    }
-
-    if (node.hasOwnProperty('vertexCollectionNameStr')) {
-      if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
-        maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
+  try {
+    shortestPaths.forEach(function (node) {
+      var l = String(node.id).length;
+      if (l > maxIdLen) {
+        maxIdLen = l;
       }
-    }
-    if (node.hasOwnProperty('edgeCollectionNameStr')) {
-      if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
-        maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
+
+      if (node.hasOwnProperty('vertexCollectionNameStr')) {
+        if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
+          maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
+        }
       }
-    }
-  });
+      if (node.hasOwnProperty('edgeCollectionNameStr')) {
+        if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
+          maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
+        }
+      }
+    });
 
-  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
-    header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
-    header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
-
-  stringBuilder.appendLine(line);
-
-  for (let sp of shortestPaths) {
-    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
-
-    if (sp.hasOwnProperty('vertexCollectionNameStr')) {
-      line += sp.vertexCollectionNameStr +
-        pad(1 + maxVertexCollectionNameStrLen - sp.vertexCollectionNameStrLen) + '   ';
-    } else {
-      line += pad(1 + maxVertexCollectionNameStrLen) + '   ';
-    }
-
-    if (sp.hasOwnProperty('edgeCollectionNameStr')) {
-      line += sp.edgeCollectionNameStr +
-        pad(1 + maxEdgeCollectionNameStrLen - sp.edgeCollectionNameStrLen) + '   ';
-    } else {
-      line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
-    }
-
-    if (sp.hasOwnProperty('ConditionStr')) {
-      line += sp.ConditionStr;
-    }
+    var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
+        header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
+        header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
 
     stringBuilder.appendLine(line);
+
+    for (let sp of shortestPaths) {
+      line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
+
+      if (sp.hasOwnProperty('vertexCollectionNameStr')) {
+        line += sp.vertexCollectionNameStr +
+          pad(1 + maxVertexCollectionNameStrLen - sp.vertexCollectionNameStrLen) + '   ';
+      } else {
+        line += pad(1 + maxVertexCollectionNameStrLen) + '   ';
+      }
+
+      if (sp.hasOwnProperty('edgeCollectionNameStr')) {
+        line += sp.edgeCollectionNameStr +
+          pad(1 + maxEdgeCollectionNameStrLen - sp.edgeCollectionNameStrLen) + '   ';
+      } else {
+        line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
+      }
+
+      if (sp.hasOwnProperty('ConditionStr')) {
+        line += sp.ConditionStr;
+      }
+
+      stringBuilder.appendLine(line);
+    }
+  } catch (ex) {
+    throw new Error(ex.message +
+                    " while printing k - shortest paths: " +
+                    JSON.stringify(shortestPaths) +
+                    " - " + ex.stack);
   }
 }
 
@@ -1844,12 +1928,19 @@ function processQuery(query, explain, planIndex) {
   while (walk.length > 0) {
     var id = walk.pop();
     var node = nodes[id];
-    printNode(node);
-    if (parents.hasOwnProperty(id)) {
-      walk = walk.concat(parents[id]);
-    }
-    if (node.type === 'SubqueryNode') {
-      walk = walk.concat([node.subquery.nodes[0].id]);
+    try {
+      printNode(node);
+      if (parents.hasOwnProperty(id)) {
+        walk = walk.concat(parents[id]);
+      }
+      if (node.type === 'SubqueryNode') {
+        walk = walk.concat([node.subquery.nodes[0].id]);
+      }
+    } catch (ex) {
+      throw new Error(ex.message +
+                      " while working with this node: " +
+                      JSON.stringify(node) +
+                      " - " + ex.stack);
     }
   }
 
