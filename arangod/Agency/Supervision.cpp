@@ -177,7 +177,12 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _upgraded(false),
       _supervision_runtime_msec(server.getFeature<arangodb::MetricsFeature>().histogram(
           StaticStrings::SupervisionRuntimeMs, log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
-          "Agency Supervision runtime histogram [ms]")) {}
+          "Agency Supervision runtime histogram [ms]")),
+      _supervision_runtime_wait_for_sync_msec(
+          server.getFeature<arangodb::MetricsFeature>().histogram(
+              StaticStrings::SupervisionRuntimeWaitForSyncMs,
+              log_scale_t<uint64_t>(2, 10., 2.0e3, 10),
+              "Agency Supervision wait for replication time [ms]")) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
@@ -890,6 +895,8 @@ void Supervision::run() {
       if (_agent->leading()) {
         index_t leaderIndex = _agent->index();
         if (leaderIndex != 0) {
+          auto wait_for_repl_start = std::chrono::steady_clock::now();
+
           while (!this->isStopping() && _agent->leading()) {
             auto result = _agent->waitFor(leaderIndex);
             if (result == Agent::raft_commit_t::TIMEOUT) {  // Oh snap
@@ -902,6 +909,11 @@ void Supervision::run() {
               break;
             }
           }
+
+          auto wait_for_repl_end = std::chrono::steady_clock::now();
+          _supervision_runtime_wait_for_sync_msec.count(
+              std::chrono::duration_cast<std::chrono::milliseconds>(wait_for_repl_end - wait_for_repl_start)
+                  .count());
         }
       }
 

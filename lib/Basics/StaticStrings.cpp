@@ -349,4 +349,5 @@ std::string const StaticStrings::SchedulerNumWorker("arangodb_scheduler_num_work
 
 std::string const StaticStrings::DroppedFollowerCount("arangodb_dropped_followers_count");
 
-std::string const StaticStrings::SupervisionRuntimeMs("agency_supervision_runtime_msec");
+std::string const StaticStrings::SupervisionRuntimeMs("arangodb_agency_supervision_runtime_msec");
+std::string const StaticStrings::SupervisionRuntimeWaitForSyncMs("arangodb_agency_supervision_runtime_wait_for_replication_msec");

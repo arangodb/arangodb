@@ -81,12 +81,15 @@ class MetricsFeature final : public application_features::ApplicationFeature {
                               Scale const& scale,
                               std::string const& help = std::string()) {
     metrics_key mk(key);
+    std::string labels = mk.labels;
     if (ServerState::instance() != nullptr) {
-      mk.labels +=
-          "shortname=\"" + ServerState::instance()->getShortName() + "\",";
+      if (!labels.empty()) {
+        labels += ",";
+      }
+      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\",";
     }
 
-    auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, mk.labels);
+    auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
@@ -134,16 +137,20 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   Counter& counter(std::initializer_list<std::string> const& key,
                    uint64_t const& val, std::string const& help);
   Counter& counter(std::string const& name);
+  Counter& counter(std::initializer_list<std::string> const& key);
 
   template <typename T>
   Gauge<T>& gauge(std::initializer_list<std::string> const& key, T const& t,
                   std::string const& help) {
     metrics_key mk(key);
+    std::string labels = mk.labels;
     if (ServerState::instance() != nullptr) {
-      mk.labels +=
-          ",shortname=\"" + ServerState::instance()->getShortName() + "\"";
+      if (!labels.empty()) {
+        labels += ",";
+      }
+      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
-    auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, mk.labels);
+    auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, labels);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
@@ -159,11 +166,11 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   template <typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-    return guage({name}, t, help);
+    return gauge({name}, t, help);
   }
 
   template <typename Scale>
-  Gauge<Scale>& guage(std::string const& name) {
+  Gauge<Scale>& gauge(std::string const& name) {
     return gauge<Scale>({name});
   }
 
