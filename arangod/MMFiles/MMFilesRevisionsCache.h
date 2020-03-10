@@ -29,7 +29,7 @@
 #include "Basics/fasthash.h"
 #include "Containers/AssocUnique.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesMarker;

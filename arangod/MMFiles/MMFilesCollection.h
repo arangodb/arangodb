@@ -35,8 +35,8 @@
 #include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesRevisionsCache.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 
 struct MMFilesDatafile;

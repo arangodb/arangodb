@@ -30,7 +30,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 #include "Indexes/IndexIterator.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <iosfwd>

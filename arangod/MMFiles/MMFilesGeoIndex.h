@@ -27,7 +27,7 @@
 #include "Geo/GeoParams.h"
 #include "GeoIndex/Index.h"
 #include "MMFiles/MMFilesIndex.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 #include <s2/s2cell_id.h>
 #include <s2/s2point.h>
