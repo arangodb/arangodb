@@ -33,81 +33,76 @@
 namespace arangodb::cache {
 
 TransactionManager::TransactionManager()
-    : _openReads(0), _openSensitive(0), _openWrites(0), _term(0), _lock(false) {}
+    : _data({{0,0,0}, 0}) {}
 
 Transaction* TransactionManager::begin(bool readOnly) {
   Transaction* tx = new Transaction(readOnly);
 
-  lock();
-
+  Data newData;
   if (readOnly) {
-    _openReads++;
-    if (_openWrites.load() > 0) {
-      tx->sensitive = true;
-      _openSensitive++;
+    auto data = _data.load(std::memory_order_relaxed);
+    for (;;) {
+      tx->sensitive = false;
+      newData = data;
+      newData.counters.openReads++;
+      if (newData.counters.openWrites > 0) {
+        tx->sensitive = true;
+        newData.counters.openSensitive++;
+      }
+      if (_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed)) {
+        break;
+      }
     }
   } else {
     tx->sensitive = true;
-    if (_openSensitive.load() == 0) {
-      _term++;
+    auto data = _data.load(std::memory_order_relaxed);
+    for (;;) {
+      newData = data;
+      newData.counters.openWrites++;
+      if (newData.counters.openSensitive == 0) {
+        newData.term++;
+      }
+      if (newData.counters.openWrites++ == 0) {
+        newData.counters.openSensitive = data.counters.openReads + 1;
+      } else {
+        newData.counters.openSensitive++;
+      }
+      if (_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed)) {
+        break;
+      }
     }
-    if (_openWrites.load() == 0) {
-      _openSensitive = _openReads.load() + _openWrites.load();
-    }
-    _openWrites++;
-    _openSensitive++;
   }
-
-  tx->term = _term.load();
-
-  unlock();
-
+  tx->term = newData.term;
   return tx;
 }
 
 void TransactionManager::end(Transaction* tx) noexcept {
   TRI_ASSERT(tx != nullptr);
-  lock();
 
-  // if currently in sensitive phase, and transaction term is old, it was
-  // upgraded to sensitive status
-  if (((_term & static_cast<uint64_t>(1)) > 0) && (_term > tx->term)) {
-    tx->sensitive = true;
+  for (;;) {
+    auto data = _data.load(std::memory_order_relaxed);
+    if (((data.term & static_cast<uint64_t>(1)) > 0) && (data.term > tx->term)) {
+      tx->sensitive = true;
+    }
+
+    auto newData = data;
+    if (tx->readOnly) {
+      newData.counters.openReads--;
+    } else {
+      newData.counters.openWrites--;
+    }
+
+    if (tx->sensitive && (--newData.counters.openSensitive == 0)) {
+      newData.term++;
+    }
+    if (_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed)) {
+      break;
+    }
   }
-
-  if (tx->readOnly) {
-    _openReads--;
-  } else {
-    _openWrites--;
-  }
-
-  if (tx->sensitive && (--_openSensitive == 0)) {
-    _term++;
-  }
-
-  unlock();
 
   delete tx;
 }
 
-std::uint64_t TransactionManager::term() { return _term.load(); }
-
-void TransactionManager::lock() {
-  while (true) {
-    while (_lock.load(std::memory_order_relaxed)) {
-      basics::cpu_relax();
-    }
-    bool expected = false;
-    if (_lock.compare_exchange_weak(expected, true, std::memory_order_acq_rel,
-                                    std::memory_order_relaxed)) {
-      return;
-    }
-    basics::cpu_relax();
-  }
-}
-
-void TransactionManager::unlock() {
-  _lock.store(false, std::memory_order_release);
-}
+uint64_t TransactionManager::term() { return _data.load(std::memory_order_acquire).term; }
 
 }  // namespace arangodb::cache
