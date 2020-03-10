@@ -30,6 +30,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 
+#include <iostream>
 #include <map>
 #include <string_view>
 
@@ -278,4 +279,20 @@ auto AqlCall::toString() const -> std::string {
   auto stream = std::stringstream{};
   stream << *this;
   return stream.str();
+}
+
+auto aql::operator<<(std::ostream& out, AqlCall::Limit const& limit) -> std::ostream& {
+  return std::visit(overload{[&out](size_t const& i) -> std::ostream& {
+                               return out << i;
+                             },
+                             [&out](AqlCall::Infinity const&) -> std::ostream& {
+                               return out << "unlimited";
+                             }},
+                    limit);
+}
+
+auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
+  return out << "{ skip: " << call.getOffset() << ", softLimit: " << call.softLimit
+             << ", hardLimit: " << call.hardLimit
+             << ", fullCount: " << std::boolalpha << call.fullCount << " }";
 }

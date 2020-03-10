@@ -1796,7 +1796,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
 // We use two pass-through producers, that simply copy over input and assert an calls.
 // On top of them we have a 1000 line producer.
 // We expect the result to be identical to the 1000 line producer only.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_passthrough) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_passthrough) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1839,7 +1839,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_passthroug
 // does skipping.
 // On top of them we have a 1000 line producer.
 // We expect the result to be identical to the 1000 line producer only.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_skip) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_implement_skip) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -2502,7 +2502,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 // Test forward outer queries.
 // The executors should not be called if there is no relevant call on the Stack
 // Block shall be returned unmodified.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_outer_subquery_forwarding_passthrough) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest,
+       DISABLED_test_outer_subquery_forwarding_passthrough) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   auto builder = std::make_shared<VPackBuilder>();
   {
@@ -2562,7 +2563,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_outer_subquery_forwarding_
 // Test forward outer queries.
 // The executors should not be called if there is no relevant call on the Stack
 // Block shall be returned unmodified.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_outer_subquery_forwarding) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_outer_subquery_forwarding) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   auto builder = std::make_shared<VPackBuilder>();
   {

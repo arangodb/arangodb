@@ -63,6 +63,9 @@ class AqlCallStack {
   // Put another call on top of the stack.
   void pushCall(AqlCall&& call);
 
+  // Put another call on top of the stack.
+  void pushCall(AqlCall const& call);
+
   // Pops one subquery level.
   // if this isRelevent it pops the top-most call from the stack.
   // if this is not revelent it reduces the depth by 1.

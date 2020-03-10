@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
 #define ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
 
+#include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
@@ -73,17 +74,6 @@ class UnsortedGatherExecutor {
   ~UnsortedGatherExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
-  [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
-      -> std::pair<ExecutionState, Stats>;
-
-  [[nodiscard]] auto skipRows(size_t atMost) -> std::tuple<ExecutionState, NoStats, size_t>;
-
-  /**
    * @brief Produce rows
    *
    * @param input DataRange delivered by the fetcher
@@ -91,11 +81,10 @@ class UnsortedGatherExecutor {
    * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
    *   ExecutorState: DONE or HASMORE (only within a subquery)
    *   Stats: Stats gerenated here
-   *   AqlCall: Request to upstream
-   *   size:t: Dependency to request
+   *   AqlCallSet: Request to upstream
    */
   [[nodiscard]] auto produceRows(typename Fetcher::DataRange& input, OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, Stats, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, Stats, AqlCallSet>;
 
   /**
    * @brief Skip rows
@@ -106,28 +95,21 @@ class UnsortedGatherExecutor {
    *   ExecutorState: DONE or HASMORE (only within a subquery)
    *   Stats: Stats gerenated here
    *   size_t: Number of rows skipped
-   *   AqlCall: Request to upstream
-   *   size:t: Dependency to request
+   *   AqlCallSet: Request to upstream
    */
   [[nodiscard]] auto skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
-      -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
  private:
   [[nodiscard]] auto numDependencies() const
       noexcept(noexcept(static_cast<Fetcher*>(nullptr)->numberDependencies())) -> size_t;
-  [[nodiscard]] auto fetcher() const noexcept -> Fetcher const&;
-  [[nodiscard]] auto fetcher() noexcept -> Fetcher&;
   [[nodiscard]] auto done() const noexcept -> bool;
   [[nodiscard]] auto currentDependency() const noexcept -> size_t;
-  [[nodiscard]] auto fetchNextRow(size_t atMost)
-      -> std::pair<ExecutionState, InputAqlItemRow>;
-  [[nodiscard]] auto skipNextRows(size_t atMost) -> std::pair<ExecutionState, size_t>;
   auto advanceDependency() noexcept -> void;
 
  private:
   Fetcher& _fetcher;
   size_t _currentDependency{0};
-  size_t _skipped{0};
 };
 
 }  // namespace arangodb::aql

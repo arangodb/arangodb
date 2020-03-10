@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_SORTING_GATHER_EXECUTOR_H
 #define ARANGOD_AQL_SORTING_GATHER_EXECUTOR_H
 
+#include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
@@ -96,7 +97,7 @@ class SortingGatherExecutor {
     virtual ~SortingStrategy() = default;
 
     /// @brief returns next value
-    virtual ValueType nextValue() = 0;
+    [[nodiscard]] virtual auto nextValue() -> ValueType = 0;
 
     /// @brief prepare strategy fetching values
     virtual void prepare(std::vector<ValueType>& /*blockPos*/) {}
@@ -131,7 +132,7 @@ class SortingGatherExecutor {
    *   size:t: Dependency to request
    */
   [[nodiscard]] auto produceRows(MultiAqlItemBlockInputRange& input, OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, Stats, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, Stats, AqlCallSet>;
 
   /**
    * @brief Skip rows
@@ -146,12 +147,10 @@ class SortingGatherExecutor {
    *   size:t: Dependency to request
    */
   [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input, AqlCall& call)
-      -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t>;
-
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
  private:
-  bool constrainedSort() const noexcept;
+  [[nodiscard]] auto constrainedSort() const noexcept -> bool;
 
   void assertConstrainedDoesntOverfetch(size_t atMost) const noexcept;
 
@@ -159,7 +158,7 @@ class SortingGatherExecutor {
   // enabled. Then, after the limit is reached, we may pass skipSome through
   // to our dependencies, and not sort any more.
   // This also means that we may not produce rows anymore after that point.
-  bool maySkip() const noexcept;
+  [[nodiscard]] auto maySkip() const noexcept -> bool;
 
   /**
    * @brief Function that checks if all dependencies are either
@@ -170,43 +169,39 @@ class SortingGatherExecutor {
    * @param inputRange Range of all input dependencies
    * @return std::optional<std::tuple<AqlCall, size_t>>  optional call for the dependnecy requiring input
    */
-  auto requiresMoreInput(MultiAqlItemBlockInputRange const& inputRange)
-      -> std::optional<std::tuple<AqlCall, size_t>>;
+  [[nodiscard]] auto requiresMoreInput(MultiAqlItemBlockInputRange const& inputRange,
+                                       AqlCall const& clientCall) -> AqlCallSet;
 
   /**
    * @brief Get the next row matching the sorting strategy
    *
    * @return InputAqlItemRow best fit row. Might be invalid if all input is done.
    */
-  auto nextRow(MultiAqlItemBlockInputRange& input) -> InputAqlItemRow;
-
-  /**
-   * @brief Tests if this Executor is done producing
-   *        => All inputs are fully consumed
-   *
-   * @return true we are done
-   * @return false we have more
-   */
-  auto isDone(MultiAqlItemBlockInputRange const& input) const -> bool;
+  [[nodiscard]] auto nextRow(MultiAqlItemBlockInputRange& input) -> InputAqlItemRow;
 
   /**
    * @brief Initialize the Sorting strategy with the given input.
    *        This is known to be empty, but all prepared at this point.
    * @param inputRange The input, no data included yet.
    */
-  auto initialize(MultiAqlItemBlockInputRange const& inputRange)
-      -> std::optional<std::tuple<AqlCall, size_t>>;
+  [[nodiscard]] auto initialize(MultiAqlItemBlockInputRange const& inputRange,
+                                AqlCall const& clientCall) -> AqlCallSet;
 
-  auto rowsLeftToWrite() const noexcept -> size_t;
+  [[nodiscard]] auto rowsLeftToWrite() const noexcept -> size_t;
+
+  [[nodiscard]] auto limitReached() const noexcept -> bool;
+
+  [[nodiscard]] auto calculateUpstreamCall(AqlCall const& clientCall) const
+      noexcept -> AqlCall;
 
  private:
   // Flag if we are past the initialize phase (fetched one block for every dependency).
-  bool _initialized;
+  bool _initialized = false;
 
   // Total Number of dependencies
   size_t _numberDependencies;
 
-  // Input data to process
+  // Input data to process, indexed by dependency, referenced by the SortingStrategy
   std::vector<ValueType> _inputRows;
 
   /// @brief If we do a constrained sort, it holds the limit > 0. Otherwise, it's 0.
@@ -221,6 +216,8 @@ class SortingGatherExecutor {
   std::unique_ptr<SortingStrategy> _strategy;
 
   const bool _fetchParallel;
+
+  std::optional<size_t> _depToUpdate = std::nullopt;
 };
 
 }  // namespace aql

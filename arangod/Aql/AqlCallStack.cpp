@@ -99,6 +99,12 @@ void AqlCallStack::pushCall(AqlCall&& call) {
   _operations.emplace_back(std::move(call));
 }
 
+void AqlCallStack::pushCall(AqlCall const& call) {
+  // TODO is this correct on subqueries?
+  TRI_ASSERT(isRelevant());
+  _operations.emplace_back(call);
+}
+
 void AqlCallStack::pop() {
   if (isRelevant()) {
     // We have one element to pop
