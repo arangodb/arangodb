@@ -136,21 +136,26 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   template<typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
+    return guage({name}, t, help);
+  }
 
-    std::string labels;
+  template<typename T>
+  Gauge<T>& gauge(std::initializer_list<std::string> const& key, T const& t,
+                  std::string const& help) {
+
+    metrics_key mk(key);
     if (ServerState::instance() != nullptr) {
-      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+      mk.labels += ",shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
-    auto metric = std::make_shared<Gauge<T>>(t, name, help, labels);
+    auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, mk.labels);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
-      success = _registry.try_emplace(
-        metrics_key(name), std::dynamic_pointer_cast<Metric>(metric)).second;
+      success = _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
     }
     if (!success) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("gauge ") + name + " alredy exists");
+        TRI_ERROR_INTERNAL, std::string("gauge ") + mk.name + " alredy exists");
     }
     return *metric;
   }
