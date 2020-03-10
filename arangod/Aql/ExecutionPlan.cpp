@@ -120,6 +120,26 @@ uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
+void parseGraphCollectionRestriction(std::vector<std::string>& collections, AstNode const* src) {
+  if (src->isStringValue()) {
+    collections.emplace_back(src->getString());
+  } else if (src->type == NODE_TYPE_ARRAY) {
+    size_t const n = src->numMembers();
+    collections.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      AstNode const* c = src->getMemberUnchecked(i);
+      if (!c->isStringValue()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+            "collection restrictions option must be either a string or an array of collection names");
+      }
+      collections.emplace_back(c->getStringValue(), c->getStringLength());
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+        "collection restrictions option must be either a string or an array of collection names");
+  }
+}
+
 std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
@@ -179,23 +199,13 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_BAD_PARAMETER,
                 "uniqueEdges: 'global' is not supported, "
-                "due to unpredictable results. Use 'path' "
+                "due to otherwise unpredictable results. Use 'path' "
                 "or 'none' instead");
           }
+        } else if (name == "edgeCollections") {
+          parseGraphCollectionRestriction(options->edgeCollections, value);
         } else if (name == "vertexCollections") {
-          if (value->isStringValue()) {
-            options->vertexCollections.emplace_back(value->getStringValue(),
-                                                    value->getStringLength());
-          } else if (value->isArray()) {
-            for (size_t j = 0; j < value->numMembers(); j++) {
-              AstNode const* member = value->getMember(j);
-              if (member->type == AstNodeType::NODE_TYPE_VALUE &&
-                  member->value.type == AstNodeValueType::VALUE_TYPE_STRING) {
-                options->vertexCollections.emplace_back(member->getStringValue(),
-                                                        member->getStringLength());
-              }
-            }
-          }
+          parseGraphCollectionRestriction(options->vertexCollections, value);
         }
       }
     }
@@ -206,7 +216,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueVertices: 'global' is only "
                                    "supported, with bfs: true due to "
-                                   "unpredictable results.");
+                                   "otherwise unpredictable results.");
   }
 
   return options;

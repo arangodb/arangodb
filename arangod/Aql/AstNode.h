@@ -287,9 +287,6 @@ struct AstNode {
   /// @brief fetch a node's type from VPack
   static AstNodeType getNodeTypeFromVPack(arangodb::velocypack::Slice const& slice);
 
-  /// @brief return a VelocyPack representation of the node value
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackValue() const;
-
   /// @brief build a VelocyPack representation of the node value
   ///        Can throw Out of Memory Error
   void toVelocyPackValue(arangodb::velocypack::Builder&) const;
@@ -562,9 +559,6 @@ struct AstNode {
   /// this creates an equivalent to what JSON.stringify() would do
   void appendValue(arangodb::basics::StringBuffer*) const;
 
-  /// @brief Steals the computed value and frees it.
-  void stealComputedValue();
-
   /// @brief If the node has not been marked finalized, mark its subtree so.
   /// If it runs into a finalized node, it assumes the whole subtree beneath
   /// it is marked already and exits early; otherwise it will finalize the node
@@ -588,6 +582,8 @@ struct AstNode {
                                                                Args... args);
 
   static std::underlying_type<AstNodeFlagType>::type makeFlags();
+
+  void freeComputedValue();
 
  private:
   /// @brief precomputed VPack value (used when executing expressions)

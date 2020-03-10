@@ -568,17 +568,23 @@ function initProcessStats(instanceInfo) {
 }
 
 function getDeltaProcessStats(instanceInfo) {
-  let deltaStats = {};
-  instanceInfo.arangods.forEach((arangod) => {
-    let newStats = getProcessStats(arangod.pid);
-    let myDeltaStats = {};
-    for (let key in arangod.stats) {
-      myDeltaStats[key] = newStats[key] - arangod.stats[key];
-    }
-    deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
-    arangod.stats = newStats;
-  });
-  return deltaStats;
+  try {
+    let deltaStats = {};
+    instanceInfo.arangods.forEach((arangod) => {
+      let newStats = getProcessStats(arangod.pid);
+      let myDeltaStats = {};
+      for (let key in arangod.stats) {
+        myDeltaStats[key] = newStats[key] - arangod.stats[key];
+      }
+      deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
+      arangod.stats = newStats;
+    });
+    return deltaStats;
+  }
+  catch (x) {
+    print("aborting stats generation");
+    return {};
+  }
 }
 
 function summarizeStats(deltaStats) {
@@ -708,6 +714,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       instanceInfo.exitStatus.hasOwnProperty('signal') &&
       ((instanceInfo.exitStatus.signal === 11) ||
        (instanceInfo.exitStatus.signal === 6) ||
+       (instanceInfo.exitStatus.signal === 4) || // mac sometimes SIG_ILLs...
        // Windows sometimes has random numbers in signal...
        (platform.substr(0, 3) === 'win')
       )

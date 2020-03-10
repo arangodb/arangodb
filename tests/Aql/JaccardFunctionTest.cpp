@@ -71,7 +71,13 @@ AqlValue evaluate(char const* lhs, char const* rhs) {
   auto const lhsJson = arangodb::velocypack::Parser::fromJson(lhs);
   auto const rhsJson = arangodb::velocypack::Parser::fromJson(rhs);
 
-  return evaluate(AqlValue(lhsJson->slice()), AqlValue(rhsJson->slice()));
+  AqlValue lhsValue(lhsJson->slice());
+  AqlValueGuard lhsGuard(lhsValue, true);
+  
+  AqlValue rhsValue(rhsJson->slice());
+  AqlValueGuard rhsGuard(rhsValue, true);
+
+  return evaluate(lhsValue, rhsValue);
 }
 
 void assertJaccardFail(char const* lhs, char const* rhs) {

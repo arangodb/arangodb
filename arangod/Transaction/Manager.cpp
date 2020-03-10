@@ -116,7 +116,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
                                   bool isReadOnlyTransaction) {
   if (!isReadOnlyTransaction) {
-    _rwLock.readLock();
+    _rwLock.lockRead();
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -297,7 +297,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
   TRI_ASSERT(it->second.type == MetaType::StandaloneAQL);
 
   /// we need to make sure no-one else is still using the TransactionState
-  if (!it->second.rwlock.writeLock(/*maxAttempts*/ 256)) {
+  if (!it->second.rwlock.lockWrite(/*maxAttempts*/ 256)) {
     LOG_TOPIC("9f7d7", ERR, Logger::TRANSACTIONS)
         << "a transaction is still in use";
     TRI_ASSERT(false);
@@ -518,12 +518,12 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
             TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
             "not allowed to write lock an AQL transaction");
       }
-      if (mtrx.rwlock.tryWriteLock()) {
+      if (mtrx.rwlock.tryLockWrite()) {
         state = mtrx.state;
         break;
       }
     } else {
-      if (mtrx.rwlock.tryReadLock()) {
+      if (mtrx.rwlock.tryLockRead()) {
         state = mtrx.state;
         break;
       }

@@ -1794,13 +1794,13 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 ///        only and do not run out of scope unless
 ///        the lake is cleared.
 
-int fetchEdgesFromEngines(transaction::Methods& trx,
-                          std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-                          VPackSlice const vertexId, size_t depth,
-                          std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
-                          std::vector<VPackSlice>& result,
-                          std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
-                          size_t& filtered, size_t& read) {
+Result fetchEdgesFromEngines(transaction::Methods& trx,
+                             std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                             VPackSlice const vertexId, size_t depth,
+                             std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
+                             std::vector<VPackSlice>& result,
+                             std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
+                             size_t& filtered, size_t& read) {
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -1837,16 +1837,21 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-
+    
     auto payload = r.response->stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
+    
+    Result res = network::resultFromBody(resSlice, TRI_ERROR_NO_ERROR);
+    if (res.fail()) {
+      return res;
+    }
     filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
-
+          
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
@@ -1872,7 +1877,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
       datalake.emplace_back(std::move(payload));
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 /// @brief fetch edges from TraverserEngines
@@ -1886,13 +1891,12 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
 ///        only and do not run out of scope unless
 ///        the lake is cleared.
 
-int fetchEdgesFromEngines(
-    transaction::Methods& trx,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    VPackSlice const vertexId, bool backward,
-    std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
-    std::vector<VPackSlice>& result,
-    std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake, size_t& read) {
+Result fetchEdgesFromEngines(transaction::Methods& trx,
+                             std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                             VPackSlice const vertexId, bool backward,
+                             std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
+                             std::vector<VPackSlice>& result,
+                             std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake, size_t& read) {
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -1929,12 +1933,16 @@ int fetchEdgesFromEngines(
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-
+    
     auto payload = r.response->stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    }
+    Result res = network::resultFromBody(resSlice, TRI_ERROR_NO_ERROR);
+    if (res.fail()) {
+      return res;
     }
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
@@ -1962,7 +1970,7 @@ int fetchEdgesFromEngines(
       datalake.emplace_back(std::move(payload));
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 /// @brief fetch vertices from TraverserEngines

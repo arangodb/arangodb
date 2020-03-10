@@ -114,6 +114,7 @@ add_library(arango STATIC
   Basics/ConditionVariable.cpp
   Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
+  Basics/EncodingUtils.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
@@ -122,6 +123,7 @@ add_library(arango STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
+  Basics/NumberUtils.cpp
   Basics/PageSize.cpp
   Basics/PhysicalMemory.cpp
   Basics/ReadWriteLock.cpp
@@ -145,7 +147,6 @@ add_library(arango STATIC
   Basics/csv.cpp
   Basics/datetime.cpp
   Basics/debugging.cpp
-  Basics/EncodingUtils.cpp
   Basics/error.cpp
   Basics/fasthash.cpp
   Basics/files.cpp
@@ -166,6 +167,7 @@ add_library(arango STATIC
   Basics/voc-errors.cpp
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
+  Containers/MerkleTree.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
@@ -230,6 +232,11 @@ target_link_libraries(arango
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
 )
+
+add_dependencies(arango snappy-static)
+
+set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+include_directories(${SNAPPY_INCLUDE_DIR})
 
 # Rebuild generated error files so they are up-to-date when all
 # dependent stuff is built

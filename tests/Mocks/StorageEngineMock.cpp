@@ -1076,6 +1076,11 @@ std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(
   return std::make_unique<AllIteratorMock>(_documents, this->_logicalCollection, trx);
 }
 
+std::unique_ptr<arangodb::ReplicationIterator> PhysicalCollectionMock::getReplicationIterator(
+    arangodb::ReplicationIterator::Ordering, uint64_t) {
+  return nullptr;
+}
+
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {
   before();
 }
@@ -1251,13 +1256,6 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
     return arangodb::Result(TRI_ERROR_NO_ERROR);
   }
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-}
-
-arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods* trx,
-                                              arangodb::velocypack::Slice const& key,
-                                              arangodb::ManagedDocumentResult& result,
-                                              bool unusedFlag) {
-  return read(trx, arangodb::velocypack::StringRef(key), result, unusedFlag);
 }
 
 bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,

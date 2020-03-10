@@ -36,7 +36,12 @@ using namespace arangodb::traverser;
 
 NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, TraverserOptions* opts)
     : PathEnumerator(traverser, opts), 
-      _searchDepth(0) {}
+      _searchDepth(0) {
+      
+  TRI_ASSERT(opts->useBreadthFirst);
+  TRI_ASSERT(opts->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL);
+  TRI_ASSERT(!opts->hasDepthLookupInfo());
+}
 
 void NeighborsEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   PathEnumerator::setStartVertex(startVertex);
@@ -74,26 +79,28 @@ bool NeighborsEnumerator::next() {
 
       swapLastAndCurrentDepth();
       for (auto const& nextVertex : _lastDepth) {
-        auto callback = [&](EdgeDocumentToken&& eid, VPackSlice other, size_t cursorId) {
-          if (!keepEdge(eid, other, nextVertex, _searchDepth, cursorId)) {
+        EdgeCursor* cursor = getCursor(nextVertex, _searchDepth);
+        cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice vertex, size_t cursorId) {
+          if (!keepEdge(eid, vertex, nextVertex, _searchDepth, cursorId)) {
             return;
           }
 
           // Counting should be done in readAll
-          arangodb::velocypack::StringRef v;
-          if (other.isString()) {
-            v = _opts->cache()->persistString(arangodb::velocypack::StringRef(other));
-          } else {
-            TRI_ASSERT(other.isObject());
-            VPackSlice tmp = transaction::helpers::extractFromFromDocument(other);
+          if (!vertex.isString()) {
+            TRI_ASSERT(vertex.isObject());
+            VPackSlice tmp = transaction::helpers::extractFromFromDocument(vertex);
             if (tmp.compareString(nextVertex.data(), nextVertex.length()) == 0) {
-              tmp = transaction::helpers::extractToFromDocument(other);
+              tmp = transaction::helpers::extractToFromDocument(vertex);
             }
             TRI_ASSERT(tmp.isString());
-            v = _opts->cache()->persistString(arangodb::velocypack::StringRef(tmp));
+            vertex = tmp;
           }
+          
+          arangodb::velocypack::StringRef v(vertex);
 
           if (_allFound.find(v) == _allFound.end()) {
+            v = _opts->cache()->persistString(v);
+            
             if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
               _allFound.emplace(v);
               if (shouldPrune(v)) {
@@ -104,14 +111,9 @@ bool NeighborsEnumerator::next() {
           } else {
             _opts->cache()->increaseFilterCounter();
           }
-        };
+        });
 
-        std::unique_ptr<arangodb::graph::EdgeCursor> cursor(
-            _opts->nextCursor(nextVertex, _searchDepth));
-        if (cursor != nullptr) {
-          incHttpRequests(cursor->httpRequests());
-          cursor->readAll(callback);
-        }
+        incHttpRequests(cursor->httpRequests());
       }
       if (_currentDepth.empty()) {
         // Nothing found. Cannot do anything more.
@@ -158,15 +160,20 @@ void NeighborsEnumerator::swapLastAndCurrentDepth() {
 
 bool NeighborsEnumerator::shouldPrune(arangodb::velocypack::StringRef v) {
   // Prune here
-  if (_opts->usesPrune()) {
-    auto* evaluator = _opts->getPruneEvaluator();
-    if (evaluator->needsVertex()) {
-      evaluator->injectVertex(_traverser->fetchVertexData(v).slice());
-    }
-    // We cannot support these two here
-    TRI_ASSERT(!evaluator->needsEdge());
-    TRI_ASSERT(!evaluator->needsPath());
-    return evaluator->evaluate();
+  if (!_opts->usesPrune()) {
+    return false;
   }
-  return false;
+
+  auto* evaluator = _opts->getPruneEvaluator();
+  aql::AqlValue vertex;
+  aql::AqlValueGuard vertexGuard{vertex, true};
+  if (evaluator->needsVertex()) {
+    vertex = _traverser->fetchVertexData(v);
+    evaluator->injectVertex(vertex.slice());
+  }
+  
+  // We cannot support these two here
+  TRI_ASSERT(!evaluator->needsEdge());
+  TRI_ASSERT(!evaluator->needsPath());
+  return evaluator->evaluate();
 }

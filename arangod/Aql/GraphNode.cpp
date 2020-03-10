@@ -142,6 +142,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
       std::string eColName = col->getString();
 
+      if (_options->shouldExcludeEdgeCollection(eColName)) {
+        // excluded edge collection
+        continue;
+      }
+
       // now do some uniqueness checks for the specified collections
       auto [it, inserted] = seenCollections.try_emplace(eColName, dir);
       if (!inserted) {
@@ -197,7 +202,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     if (length == 0) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
     }
-
+      
     // First determine whether all edge collections are smart and sharded
     // like a common collection:
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
@@ -220,6 +225,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     }
 
     for (const auto& n : eColls) {
+      if (_options->shouldExcludeEdgeCollection(n)) {
+        // excluded edge collection
+        continue;
+      }
+
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci.getCollection(_vocbase->name(), n);
         if (!c->isSmart()) {
@@ -627,7 +637,7 @@ Variable const* GraphNode::vertexOutVariable() const {
 }
 
 bool GraphNode::usesVertexOutVariable() const {
-  return _vertexOutVariable != nullptr;
+  return _vertexOutVariable != nullptr && _options->produceVertices();
 }
 
 void GraphNode::setVertexOutput(Variable const* outVar) {

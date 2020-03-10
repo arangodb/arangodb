@@ -502,7 +502,8 @@ function printTraversalDetails(traversals) {
 
   var optify = function (options, colorize) {
     var opts = {
-      bfs: options.bfs || undefined, /* only print if set to true to space room */
+      bfs: options.bfs || undefined, /* only print if set to true to save room */
+      neighbors: options.neighbors || undefined, /* only print if set to true to save room */
       uniqueVertices: options.uniqueVertices,
       uniqueEdges: options.uniqueEdges
     };
@@ -1203,6 +1204,8 @@ function processQuery(query, explain, planIndex) {
           } else {
             parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
           }
+        } else {
+          parts.push(annotation('/* vertex optimized away */'));
         }
         if (node.hasOwnProperty('edgeOutVariable')) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));

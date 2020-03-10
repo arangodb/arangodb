@@ -1278,7 +1278,6 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  OperationResult result;
   if (_state->isCoordinator()) {
     return addTracking(documentCoordinator(cname, value, options), value,
                        [=](OperationResult const& opRes, VPackSlice data) {

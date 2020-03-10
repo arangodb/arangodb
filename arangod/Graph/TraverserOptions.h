@@ -32,6 +32,8 @@
 
 #include <velocypack/StringRef.h>
 
+#include <memory>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -47,6 +49,10 @@ class Query;
 class TraversalNode;
 struct Variable;
 }  // namespace aql
+
+namespace graph {
+class EdgeCursor;
+}
 
 namespace traverser {
 
@@ -78,11 +84,15 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool useBreadthFirst;
 
+  bool useNeighbors;
+
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
 
   std::vector<std::string> vertexCollections;
+  
+  std::vector<std::string> edgeCollections;
 
   explicit TraverserOptions(aql::Query* query);
 
@@ -107,11 +117,16 @@ struct TraverserOptions : public graph::BaseOptions {
   /// @brief Build a velocypack containing all relevant information
   ///        for DBServer traverser engines.
   void buildEngineInfo(arangodb::velocypack::Builder&) const override;
+  
+  /// @brief Whether or not the edge collection shall be excluded
+  bool shouldExcludeEdgeCollection(std::string const& name) const override;
 
   /// @brief Add a lookup info for specific depth
   void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth);
+  
+  bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 
   bool vertexHasFilter(uint64_t) const;
 
@@ -127,9 +142,9 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
 
-  graph::EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid, uint64_t);
-
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
+  
+  std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
   double estimateCost(size_t& nrItems) const override;
 
@@ -143,9 +158,6 @@ struct TraverserOptions : public graph::BaseOptions {
     TRI_ASSERT(usesPrune());
     return _pruneExpression.get();
   }
-
- private:
-  graph::EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid, uint64_t);
 };
 }  // namespace traverser
 }  // namespace arangodb

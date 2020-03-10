@@ -30,6 +30,7 @@
 
 #include <velocypack/StringRef.h>
 #include <deque>
+#include <memory>
 
 namespace arangodb {
 
@@ -38,7 +39,7 @@ class Slice;
 }
 
 namespace graph {
-
+class EdgeCursor;
 struct ShortestPathOptions;
 
 class ConstantWeightShortestPathFinder : public ShortestPathFinder {
@@ -83,6 +84,9 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   std::vector<arangodb::velocypack::StringRef> _neighbors;
   std::vector<graph::EdgeDocumentToken> _edges;
+
+  std::unique_ptr<EdgeCursor> _forwardCursor;
+  std::unique_ptr<EdgeCursor> _backwardCursor;
 };
 
 }  // namespace graph

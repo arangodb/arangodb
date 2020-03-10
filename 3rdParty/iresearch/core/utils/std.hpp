@@ -256,7 +256,7 @@ template<typename Builder, size_t Size>
 struct initializer {
   using type = typename Builder::type;
 
-  static constexpr const auto Idx = Size - 1;
+  static constexpr auto Idx = Size - 1;
 
   template<typename Array>
 #ifndef IRESEARCH_CXX_11
@@ -277,7 +277,7 @@ template<typename Builder>
 struct initializer<Builder, 1> {
   using type = typename Builder::type;
 
-  static constexpr const auto Idx = 0;
+  static constexpr auto Idx = 0;
 
   template<typename Array>
 #ifndef IRESEARCH_CXX_11

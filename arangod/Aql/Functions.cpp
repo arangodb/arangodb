@@ -1560,19 +1560,22 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
   AqlValue const& value1 = extractFunctionParameterValue(parameters, 0);
   AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
 
-  // FIXME: there is only one shared stringbuffer instance
-  transaction::StringBufferLeaser buffer1(trx);
-  transaction::StringBufferLeaser buffer2(trx);
+  // we use one buffer to stringify both arguments
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
-  arangodb::basics::VPackStringBufferAdapter adapter1(buffer1->stringBuffer());
-  arangodb::basics::VPackStringBufferAdapter adapter2(buffer2->stringBuffer());
+  // stringify argument 1
+  ::appendAsString(trx, adapter, value1);
 
-  ::appendAsString(trx, adapter1, value1);
-  ::appendAsString(trx, adapter2, value2);
+  // note split position
+  size_t const split = buffer->length();
+
+  // stringify argument 2
+  ::appendAsString(trx, adapter, value2);
 
   int encoded = basics::StringUtils::levenshteinDistance(
-      std::string(buffer1->begin(), buffer1->length()),
-      std::string(buffer2->begin(), buffer2->length()));
+      buffer->begin(), split,
+      buffer->begin() + split, buffer->length() - split);
 
   return AqlValue(AqlValueHintInt(encoded));
 }

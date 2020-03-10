@@ -43,6 +43,7 @@ class Cache;
 }
 class LogicalCollection;
 class RocksDBMethods;
+struct OperationOptions;
 
 class RocksDBIndex : public Index {
  protected:
@@ -91,7 +92,7 @@ class RocksDBIndex : public Index {
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const& doc,
-                        Index::OperationMode mode) = 0;
+                        OperationOptions& options) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
