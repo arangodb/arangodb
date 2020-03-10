@@ -74,6 +74,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include "utils/levenshtein_utils.hpp"
+#include "utils/ngram_match_utils.hpp"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -1577,6 +1578,88 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
 
   return AqlValue(AqlValueHintInt(encoded));
 }
+
+
+namespace {
+  AqlValue NgramSimilarityHelper(char const* AFN, bool search_semantics, ExpressionContext* ctx, transaction::Methods* trx,
+    VPackFunctionParameters const& args) {
+
+    auto const& attribute = extractFunctionParameterValue(args, 0);
+    if (ADB_UNLIKELY(!attribute.isString())) {
+      arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+      return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+    }
+    auto const attributeValue = attribute.isString() ?
+      arangodb::iresearch::getStringRef(attribute.slice()) : irs::string_ref::EMPTY;
+
+    auto const& target = extractFunctionParameterValue(args, 1);
+    if (ADB_UNLIKELY(!target.isString())) {
+      arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+      return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+    }
+    auto const targetValue = target.isString() ?
+      arangodb::iresearch::getStringRef(target.slice()) : irs::string_ref::EMPTY;
+
+    auto const& ngramSize = extractFunctionParameterValue(args, 2);
+    if (ADB_UNLIKELY(!ngramSize.isNumber())) {
+      arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+      return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+    }
+    auto const ngramSizeValue = ngramSize.toInt64();
+
+    if (ADB_UNLIKELY(ngramSizeValue < 1)) {
+      arangodb::aql::registerWarning(ctx, AFN, 
+                                     arangodb::Result{TRI_ERROR_BAD_PARAMETER, 
+                                                      "Invalid ngram size. Should be 1 or greater"});
+      return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+    }
+
+    auto utf32Attribute = basics::StringUtils::characterCodes(attributeValue.c_str(), attributeValue.size());
+    auto utf32Target = basics::StringUtils::characterCodes(targetValue.c_str(), targetValue.size());
+
+    auto const similarity = search_semantics ?
+        irs::ngram_similarity<uint32_t, true>(
+            utf32Target.data(), utf32Target.size(),
+            utf32Attribute.data(), utf32Attribute.size(),
+            ngramSizeValue) :
+        irs::ngram_similarity<uint32_t, false>(
+            utf32Target.data(), utf32Target.size(),
+            utf32Attribute.data(), utf32Attribute.size(),
+            ngramSizeValue);
+    return AqlValue(AqlValueHintDouble(similarity));
+  }
+}
+
+/// Executes NGRAM_SIMILARITY based on binary ngram similarity 
+AqlValue Functions::NgramSimilarity(ExpressionContext* ctx, transaction::Methods* trx,
+                               VPackFunctionParameters const& args) {
+  static char const* AFN = "NGRAM_SIMILARITY";
+  return NgramSimilarityHelper(AFN, true, ctx, trx, args);
+  //double threshold{ 0.7 };
+  //if (args.size() > 2) {
+  //  auto const& userThreshold = extractFunctionParameterValue(args, 2);
+  //  if (ADB_UNLIKELY(!userThreshold.isNumber())) {
+  //    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+  //    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  //  }
+  //  threshold = userThreshold.toDouble();
+  //  if (ADB_UNLIKELY(threshold <= 0 || threshold > 1)) {
+  //    LOG_TOPIC("2d81c", WARN, Logger::AQL)
+  //      << AFN << " AQL function: invalid threshold value. Value should be between 0 and 1";
+  //    registerWarning(ctx, AFN, TRI_ERROR_BAD_PARAMETER);
+  //    return AqlValue(AqlValueHintNull());
+  //  }
+  //}
+
+}
+
+/// Executes NGRAM_POSITIONAL_SIMILARITY based on positional ngram similarity 
+AqlValue Functions::NgramPositionalSimilarity(ExpressionContext* ctx, transaction::Methods* trx,
+  VPackFunctionParameters const& args) {
+  static char const* AFN = "NGRAM_POSITIONAL_SIMILARITY";
+  return NgramSimilarityHelper(AFN, false, ctx, trx, args);
+}
+
 
 /// Executes LEVENSHTEIN_MATCH
 AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Methods* trx,
