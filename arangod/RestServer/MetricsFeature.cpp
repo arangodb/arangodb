@@ -106,8 +106,13 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 Counter& MetricsFeature::counter (
   std::initializer_list<std::string> const& key, uint64_t const& val,
   std::string const& help) {
+  return counter(metrics_key(key), val, help);
+}
 
-  metrics_key mk(key);
+Counter& MetricsFeature::counter (
+  metrics_key const& mk, uint64_t const& val,
+  std::string const& help) {
+
   std::string labels = mk.labels;
   if (ServerState::instance() != nullptr) {
     if (!labels.empty()) {
@@ -130,7 +135,7 @@ Counter& MetricsFeature::counter (
 
 Counter& MetricsFeature::counter (
   std::string const& name, uint64_t const& val, std::string const& help) {
-  return counter({name}, val, help);
+  return counter(metrics_key(name), val, help);
 }
 
 ServerStatistics& MetricsFeature::serverStatistics() {
@@ -147,8 +152,30 @@ Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key)
     std::lock_guard<std::mutex> guard(_lock);
     registry_type::const_iterator it = _registry.find(mk);
     if (it == _registry.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("No counter booked as ") + mk.name);
+      it = _registry.find(mk.name);
+      if (it == _registry.end()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, std::string("No counter booked as ") + mk.name);
+      } else {
+        auto tmp = std::dynamic_pointer_cast<Counter>(it->second);
+        std::string labels = mk.labels;
+        if (ServerState::instance() != nullptr) {
+          if (!labels.empty()) {
+            labels += ",";
+          }
+          labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+        }
+        metric = std::make_shared<Counter>(0, mk.name, tmp->help(), labels);
+        bool success = false;
+        {
+          success = _registry.emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
+        }
+        if (!success) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " alredy exists");
+        }
+        return *metric;
+      }
     }
     try {
       metric = std::dynamic_pointer_cast<Counter>(it->second);

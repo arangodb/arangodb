@@ -117,7 +117,16 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     {
       std::lock_guard<std::mutex> guard(_lock);
       registry_type::const_iterator it = _registry.find(mk);
-
+      if (it == _registry.end()) {
+        it = _registry.find(mk.name);
+        if (it == _registry.end()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + mk.name);
+        } else {
+          metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
+          return histogram(mk, metric->scale(), metric->help());
+        }
+      }
       try {
         metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
         if (metric == nullptr) {
@@ -137,6 +146,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
   Counter& counter(std::initializer_list<std::string> const& key, uint64_t const& val,
                    std::string const& help);
+  Counter& counter(metrics_key const& key, uint64_t const& val, std::string const& help);
   Counter& counter(std::string const& name);
   Counter& counter(std::initializer_list<std::string> const& key);
 
