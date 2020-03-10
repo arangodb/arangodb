@@ -105,7 +105,7 @@ class ReplicationClientsProgressTracker {
  private:
   // Make sure the underlying integer types for SyncerIDs and ClientIDs are the
   // same, so we can use one entry
-  static_assert(std::is_same<decltype(SyncerId::value), TRI_server_id_t>::value,
+  static_assert(std::is_same<decltype(SyncerId::value), TRI_server_id_t::BaseType>::value,
                 "Assuming identical underlying integer types. If these are "
                 "changed, the client-map key must be changed, too.");
   enum class KeyType { INVALID, SYNCER_ID, SERVER_ID };
@@ -172,13 +172,12 @@ class ReplicationClientsProgressTracker {
     if (syncerId.value != 0) {
       keyUnion.syncerId = syncerId;
       keyType = KeyType::SYNCER_ID;
-    }
-    else if (clientId != 0) {
+    } else if (clientId.isSet()) {
       keyUnion.clientId = clientId;
       keyType = KeyType::SERVER_ID;
     }
 
-    return {keyType, keyUnion};
+    return ClientKey(keyType, keyUnion);
   }
 
  private:

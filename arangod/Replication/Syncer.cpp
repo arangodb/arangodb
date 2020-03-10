@@ -475,7 +475,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     
   // get our own server-id
   _state.localServerId = ServerIdFeature::getId();
-  _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId);
+  _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId.id());
 
   _state.master.endpoint = _state.applier._endpoint;
 }

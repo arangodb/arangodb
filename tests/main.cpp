@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
   arangodb::ArangoGlobalContext ctx(1, const_cast<char**>(&ARGV0), ".");
   ctx.exit(0);  // set "good" exit code by default
 
-  arangodb::ServerIdFeature::setId(12345);
+  arangodb::ServerIdFeature::setId(TRI_server_id_t{12345});
   IcuInitializer::setup(ARGV0);
 
   // Run tests in subthread such that it has a larger stack size in libmusl,

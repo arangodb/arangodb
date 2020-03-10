@@ -43,7 +43,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-TRI_server_id_t ServerIdFeature::SERVERID = 0;
+TRI_server_id_t ServerIdFeature::SERVERID{0};
 
 ServerIdFeature::ServerIdFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ServerId") {
@@ -86,14 +86,15 @@ void ServerIdFeature::start() {
 
 /// @brief generates a new server id
 void ServerIdFeature::generateId() {
-  TRI_ASSERT(SERVERID == 0);
+  TRI_ASSERT(SERVERID.empty());
 
   do {
-    SERVERID = RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL));
+    SERVERID = TRI_server_id_t(
+        RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
 
-  } while (SERVERID == 0);
+  } while (SERVERID.empty());
 
-  TRI_ASSERT(SERVERID != 0);
+  TRI_ASSERT(SERVERID.isSet());
 }
 
 /// @brief reads server id from file
@@ -113,15 +114,16 @@ int ServerIdFeature::readId() {
     if (!idSlice.isString()) {
       return TRI_ERROR_INTERNAL;
     }
-    foundId = basics::StringUtils::uint64(idSlice.copyString());
+    foundId = TRI_server_id_t(basics::StringUtils::uint64(idSlice.copyString()));
   } catch (...) {
     // Nothing to free
     return TRI_ERROR_INTERNAL;
   }
 
-  LOG_TOPIC("281bf", TRACE, arangodb::Logger::FIXME) << "using existing server id: " << foundId;
+  LOG_TOPIC("281bf", TRACE, arangodb::Logger::FIXME)
+      << "using existing server id: " << foundId.id();
 
-  if (foundId == 0) {
+  if (foundId.empty()) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -137,8 +139,8 @@ int ServerIdFeature::writeId() {
   try {
     builder.openObject();
 
-    TRI_ASSERT(SERVERID != 0);
-    builder.add("serverId", VPackValue(std::to_string(SERVERID)));
+    TRI_ASSERT(SERVERID.isSet());
+    builder.add("serverId", VPackValue(std::to_string(SERVERID.id())));
 
     time_t tt = time(nullptr);
     struct tm tb;

@@ -55,7 +55,8 @@ struct SyncerInfo {
 };
 
 std::ostream& operator<<(std::ostream& ostream, SyncerInfo const& info) {
-  ostream << "syncer " << info.syncerId.toString() << " from client " << info.clientId;
+  ostream << "syncer " << info.syncerId.toString() << " from client "
+          << info.clientId.id();
   if (!info.clientInfo.empty()) {
     ostream << " (" << info.clientInfo << ")";
   }
@@ -165,7 +166,7 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
     auto const& progress = it.second;
     builder.add(VPackValue(VPackValueType::Object));
     builder.add("syncerId", VPackValue(progress.syncerId.toString()));
-    builder.add("serverId", VPackValue(std::to_string(progress.clientId)));
+    builder.add("serverId", VPackValue(std::to_string(progress.clientId.id())));
     builder.add("clientInfo", VPackValue(progress.clientInfo));
 
     char buffer[21];

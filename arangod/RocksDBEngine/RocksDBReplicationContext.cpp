@@ -72,11 +72,11 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
 }  // namespace
 
 RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId,
-                                                    TRI_server_id_t clientId)
+                                                     TRI_server_id_t clientId)
     : _id{TRI_NewTickServer()},
       _syncerId{syncerId},
-    // buggy clients may not send the serverId
-      _clientId{clientId != 0 ? clientId : _id},
+      // buggy clients may not send the serverId
+      _clientId{clientId.isSet() ? clientId : TRI_server_id_t(_id)},
       _snapshotTick{0},
       _snapshot{nullptr},
       _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},

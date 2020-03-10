@@ -37,7 +37,7 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
   void start() override final;
 
   static TRI_server_id_t getId() {
-    TRI_ASSERT(SERVERID != 0);
+    TRI_ASSERT(SERVERID.isSet());
     return SERVERID;
   }
 

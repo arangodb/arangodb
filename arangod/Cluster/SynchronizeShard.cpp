@@ -244,7 +244,8 @@ static arangodb::Result addShardFollower(
       body.add(FOLLOWER_ID, VPackValue(arangodb::ServerState::instance()->getId()));
       body.add(SHARD, VPackValue(shard));
       body.add("checksum", VPackValue(std::to_string(docCount)));
-      body.add("serverId", VPackValue(basics::StringUtils::itoa(ServerIdFeature::getId())));
+      body.add("serverId",
+               VPackValue(basics::StringUtils::itoa(ServerIdFeature::getId().id())));
       if (syncerId.value != 0) {
         body.add("syncerId", VPackValue(syncerId.toString()));
       }

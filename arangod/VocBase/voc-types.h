@@ -33,6 +33,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
+#include "Basics/Identifier.h"
+
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;
 
@@ -52,7 +54,13 @@ typedef uint64_t TRI_voc_tid_t;
 typedef TRI_voc_tick_t TRI_idx_iid_t;
 
 /// @brief server id type
-typedef uint64_t TRI_server_id_t;
+// typedef uint64_t TRI_server_id_t;
+class TRI_server_id_t : public arangodb::basics::Identifier {
+ public:
+  constexpr TRI_server_id_t() noexcept : Identifier() {}
+  constexpr explicit TRI_server_id_t(BaseType id) noexcept : Identifier(id) {}
+};
+DECLARE_HASH_FOR_IDENTIFIER(TRI_server_id_t)
 
 /// @brief Convert a revision ID to a string
 std::string TRI_RidToString(TRI_voc_rid_t rid);
