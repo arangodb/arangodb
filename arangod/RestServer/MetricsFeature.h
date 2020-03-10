@@ -153,24 +153,28 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  template<typename T> Gauge<T>& gauge(std::string const& name) {
+  template<typename Scale> Histogram<Scale>& guage (std::string const& name) {
+    return gauge<Scale>({name});
+  }
+  template<typename T> Gauge<T>& gauge(std::initializer_list<std::string> const& key) {
 
+    metrics_key mk(key);
     std::shared_ptr<Gauge<T>> metric = nullptr;
     std::string error;
     {
       std::lock_guard<std::mutex> guard(_lock);
-      registry_type::const_iterator it = _registry.find(metrics_key(name));
+      registry_type::const_iterator it = _registry.find(metrics_key(mk.name));
       if (it == _registry.end()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + name);
+          TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + mk.name);
       }
       try {
         metric = std::dynamic_pointer_cast<Gauge<T>>(*it->second);
         if (metric == nullptr) {
-          error = std::string("Failed to retrieve gauge ") + name;
+          error = std::string("Failed to retrieve gauge ") + mk.name;
         }
       } catch (std::exception const& e) {
-        error = std::string("Failed to retrieve gauge ") + name +  ": " + e.what();
+        error = std::string("Failed to retrieve gauge ") + mk.name +  ": " + e.what();
       }
     }
     if (!error.empty()) {
