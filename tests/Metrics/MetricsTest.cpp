@@ -213,3 +213,6 @@ TEST_F(MetricsTest, test_float_log__histogram) {
 TEST_F(MetricsTest, test_int64_log_bin_histogram) {
   histogram_test(log_scale_t<int64_t>(2, 50,  8000,  10));
 }
+TEST_F(MetricsTest, test_uint64_log_bin_histogram) {
+  histogram_test(log_scale_t<uint64_t>(2, 50., 8.0e3, 10));
+}
