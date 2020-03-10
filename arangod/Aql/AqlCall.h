@@ -52,7 +52,7 @@ struct AqlCall {
   AqlCall() = default;
   // Replacements for struct initialization
   explicit constexpr AqlCall(size_t offset, Limit softLimit = Infinity{},
-                   Limit hardLimit = Infinity{}, bool fullCount = false)
+                             Limit hardLimit = Infinity{}, bool fullCount = false)
       : offset{offset}, softLimit{softLimit}, hardLimit{hardLimit}, fullCount{fullCount} {}
 
   enum class LimitType { SOFT, HARD };
@@ -176,9 +176,7 @@ struct AqlCall {
     std::visit(minus, hardLimit);
   }
 
-  bool hasLimit() const {
-    return hasHardLimit() || hasSoftLimit();
-  }
+  bool hasLimit() const { return hasHardLimit() || hasSoftLimit(); }
 
   bool hasHardLimit() const {
     return !std::holds_alternative<AqlCall::Infinity>(hardLimit);
@@ -205,6 +203,23 @@ constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
   }
   return std::get<size_t>(a) < std::get<size_t>(b);
 }
+
+constexpr bool operator<(AqlCall::Limit const& a, size_t b) {
+  if (std::holds_alternative<AqlCall::Infinity>(a)) {
+    return false;
+  }
+  return std::get<size_t>(a) < b;
+}
+
+constexpr bool operator<(size_t a, AqlCall::Limit const& b) { return !(b < a); }
+
+constexpr bool operator>(AqlCall::Limit const& a, AqlCall::Limit const& b) {
+  return b < a;
+}
+
+constexpr bool operator>(size_t a, AqlCall::Limit const& b) { return b < a; }
+
+constexpr bool operator>(AqlCall::Limit const& a, size_t b) { return b < a; }
 
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
   return std::visit(overload{[n](size_t const& i) -> AqlCall::Limit {
