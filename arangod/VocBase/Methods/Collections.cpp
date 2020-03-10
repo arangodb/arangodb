@@ -46,6 +46,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
@@ -256,6 +257,9 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   TRI_ASSERT(!vocbase.isDangling());
   bool haveShardingFeature = ServerState::instance()->isCoordinator() &&
                              vocbase.server().hasFeature<ShardingFeature>();
+  bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
+  bool useRevs =
+      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB();
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
@@ -286,6 +290,15 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.openObject();
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
+
+    if (addUseRevs) {
+      helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
+                 arangodb::velocypack::Value(useRevs));
+      bool isSmartChild =
+          Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
+      TRI_voc_rid_t minRev = isSmartChild ? 0 : TRI_HybridLogicalClock();
+      helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
+    }
 
     if (ServerState::instance()->isCoordinator()) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
@@ -359,6 +372,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     
 
   VPackSlice const infoSlice = builder.slice();
+
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   TRI_ASSERT(infoSlice.isArray());
   TRI_ASSERT(infoSlice.length() >= 1);
@@ -420,7 +434,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           break;
         }
         if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-          LOG_TOPIC("116bb", WARN, Logger::FIXME)
+          LOG_TOPIC("116bb", WARN, Logger::AUTHENTICATION)
               << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
           for (auto const& col : collections) {
             events::CreateCollection(vocbase.name(), col->name(), r.errorNumber());
@@ -428,7 +442,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           return r;
         }
         // try again in case of conflict
-        LOG_TOPIC("ff123", TRACE, Logger::FIXME)
+        LOG_TOPIC("ff123", TRACE, Logger::AUTHENTICATION)
             << "Updating user failed with error: " << r.errorMessage() << ". trying again";
       }
     }
@@ -814,6 +828,10 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   } else {
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
+  
+  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail())
+    << "error while dropping collection: '" << collName
+    << "' error: '" << res.errorMessage() << "'";
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 

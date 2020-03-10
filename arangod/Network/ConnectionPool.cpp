@@ -37,10 +37,11 @@ namespace network {
 using namespace arangodb::fuerte::v1;
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : _config(config), _loop(config.numIOThreads) {
-      TRI_ASSERT(config.numIOThreads > 0);
-      TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
-    }
+    : _config(config), 
+      _loop(config.numIOThreads, config.name) {
+  TRI_ASSERT(config.numIOThreads > 0);
+  TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
+}
 
 ConnectionPool::~ConnectionPool() { shutdownConnections(); }
 
@@ -184,7 +185,7 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
   builder.verifyHost(_config.verifyHosts);
   builder.protocolType(_config.protocol); // always overwrite protocol
   TRI_ASSERT(builder.socketType() != SocketType::Undefined);
-  
+    
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();
@@ -228,7 +229,10 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
       return c.fuerte; // TODO: make (num <= 4) configurable ?
     }
   }
-
+  
+  LOG_TOPIC("2d6ab", DEBUG, Logger::COMMUNICATION) << "creating connection to "
+    << endpoint << " bucket size  " << bucket.list.size();
+    
   // no free connection found, so we add one
 
   fuerte::ConnectionBuilder builder;

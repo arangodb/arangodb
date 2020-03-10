@@ -301,7 +301,8 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   }
 
   // note: aggregateValues may be a nullptr!
-  auto [result, emplaced] = _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
+  auto [result, emplaced] =
+      _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
   // emplace must not fail
   TRI_ASSERT(emplaced);
 
@@ -316,7 +317,8 @@ std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(si
   size_t rowsLeft = 0;
   if (!_isInitialized) {
     ExecutionState state;
-    std::tie(state, rowsLeft) = _fetcher.preFetchNumberOfRows(atMost);
+    std::tie(state, rowsLeft) =
+        _fetcher.preFetchNumberOfRows(ExecutionBlock::DefaultBatchSize);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(rowsLeft == 0);
       return {state, 0};
@@ -327,10 +329,11 @@ std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(si
     // as it knows how many  groups is has created and not returned.
     rowsLeft = _allGroups.size() - _returnedGroups;
   }
-  if (rowsLeft > 0) {
-    return {ExecutionState::HASMORE, rowsLeft};
+  auto rowsAvailable = std::min(rowsLeft, atMost);
+  if (rowsAvailable > 0) {
+    return {ExecutionState::HASMORE, rowsAvailable};
   }
-  return {ExecutionState::DONE, rowsLeft};
+  return {ExecutionState::DONE, rowsAvailable};
 }
 
 const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {

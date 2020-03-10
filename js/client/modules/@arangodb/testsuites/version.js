@@ -55,6 +55,9 @@ function version(options) {
   
   args.push('--server.rest-server');
   args.push('false');
+  
+  args.push('--server.allow-deprecated-storage-engine');
+  args.push('true');
 
   fs.makeDirectoryRecursive(dataDir);
   pu.cleanupDBDirectoriesAppend(dataDir);

@@ -75,7 +75,7 @@ RestStatus RestSupervisionStateHandler::execute() {
         }
 
         resetResponse(rest::ResponseCode::OK);
-        _response->setPayload(std::move(response), true);
+        _response->setPayload(std::move(response));
       } else {
         generateError(result.asResult());
       }

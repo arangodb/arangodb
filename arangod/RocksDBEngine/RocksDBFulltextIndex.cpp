@@ -212,7 +212,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                     LocalDocumentId const& documentId,
                                     velocypack::Slice const& doc,
-                                    Index::OperationMode mode) {
+                                    OperationOptions& options) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 

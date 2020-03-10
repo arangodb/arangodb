@@ -883,6 +883,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       // iterate over result and return it
       uint32_t j = 0;
       ExecutionState state = ExecutionState::HASMORE;
+      auto context = TRI_IGETC;
       while (state != ExecutionState::DONE) {
         auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
         state = res.first;
@@ -907,7 +908,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
             AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              resArray->Set(j++, val.toV8(isolate, _trx.get()));
+              resArray->Set(context, j++, val.toV8(isolate, _trx.get())).FromMaybe(false);
 
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);

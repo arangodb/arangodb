@@ -38,6 +38,7 @@ add_library(nghttp2 STATIC
   ${NGHTTP2_SOURCES}
 )
 
+include(CheckTypeSize)
 check_type_size("ssize_t" SIZEOF_SSIZE_T)
 if(SIZEOF_SSIZE_T STREQUAL "")
   # ssize_t is a signed type in POSIX storing at least -1.
@@ -48,4 +49,8 @@ endif()
 # we always build it statically
 target_compile_definitions(nghttp2 PUBLIC "-DNGHTTP2_STATICLIB")
 
+# enable for debugging
+#target_compile_definitions(nghttp2 PUBLIC "-DDEBUGBUILD=1")
+
 target_include_directories(nghttp2 PUBLIC ${NGHTTP2_INCLUDES})
+

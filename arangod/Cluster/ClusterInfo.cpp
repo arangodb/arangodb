@@ -1965,6 +1965,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   std::vector<AgencyOperation> opers({IncreaseVersion()});
   std::vector<AgencyPrecondition> precs;
   std::unordered_set<std::string> conditions;
+  std::unordered_set<ServerID> allServers;
 
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive Mutex)
   for (auto& info : infos) {
@@ -1981,7 +1982,9 @@ Result ClusterInfo::createCollectionsCoordinator(
       std::vector<ServerID> serverIds;
 
       for (auto const& serv : VPackArrayIterator(pair.value)) {
-        serverIds.emplace_back(serv.copyString());
+        auto const sid = serv.copyString();
+        serverIds.emplace_back(sid);
+        allServers.emplace(sid);
       }
       shardServers.try_emplace(shardID, serverIds);
     }
@@ -2219,9 +2222,27 @@ Result ClusterInfo::createCollectionsCoordinator(
     VPackBuilder versionBuilder;
     versionBuilder.add(VPackValue(planVersion));
 
-    // add a precondition that checks the plan version has not yet changed
-    precs.emplace_back(AgencyPrecondition("Plan/Version", AgencyPrecondition::Type::VALUE,
-                                          versionBuilder.slice()));
+    VPackBuilder serversBuilder;
+    {
+      VPackArrayBuilder a(&serversBuilder);
+      for (auto const & i : allServers) {
+        serversBuilder.add(VPackValue(i));
+      }
+    }
+
+    // Preconditions:
+    // * plan version unchanged
+    precs.emplace_back(
+      AgencyPrecondition(
+        "Plan/Version", AgencyPrecondition::Type::VALUE, versionBuilder.slice()));
+    // * not in to be cleaned server list
+    precs.emplace_back(
+      AgencyPrecondition(
+        "Target/ToBeCleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY, serversBuilder.slice()));
+    // * not in cleaned server list
+    precs.emplace_back(
+      AgencyPrecondition(
+        "Target/CleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY, serversBuilder.slice()));
 
     AgencyWriteTransaction transaction(opers, precs);
 
@@ -2604,6 +2625,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   temp.add(StaticStrings::ReplicationFactor, VPackValue(info->replicationFactor()));
   temp.add(StaticStrings::MinReplicationFactor, VPackValue(info->writeConcern())); // deprecated in 3.6
   temp.add(StaticStrings::WriteConcern, VPackValue(info->writeConcern()));
+  temp.add(VPackValue(StaticStrings::Validation));
+  info->validatorsToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
@@ -4645,9 +4668,13 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
         "invalid agency result while releasing backup lock");
   }
 
+  if (supervisionOff) {
+    return arangodb::Result();
+  }
+
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    result = _agency.getValues("/arango/Supervision/State/Mode");
+    result = _agency.getValues("Supervision/State/Mode");
     if (result.successful()) {
       if (!result.slice().isArray() || result.slice().length() != 1 ||
           !result.slice()[0].hasKey(modepv) || !result.slice()[0].get(modepv).isString()) {

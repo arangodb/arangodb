@@ -61,7 +61,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the storage format used with IResearch writers
 ////////////////////////////////////////////////////////////////////////////////
-const irs::string_ref IRESEARCH_STORE_FORMAT("1_2");
+const irs::string_ref IRESEARCH_STORE_FORMAT("1_3simd");
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;

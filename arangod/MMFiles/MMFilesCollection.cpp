@@ -1590,22 +1590,22 @@ size_t MMFilesCollection::memory() const {
 }
 
 /// @brief disallow compaction of the collection
-void MMFilesCollection::preventCompaction() { _compactionLock.readLock(); }
+void MMFilesCollection::preventCompaction() { _compactionLock.lockRead(); }
 
 /// @brief try disallowing compaction of the collection
 bool MMFilesCollection::tryPreventCompaction() {
-  return _compactionLock.tryReadLock();
+  return _compactionLock.tryLockRead();
 }
 
 /// @brief re-allow compaction of the collection
 void MMFilesCollection::allowCompaction() { _compactionLock.unlock(); }
 
 /// @brief exclusively lock the collection for compaction
-void MMFilesCollection::lockForCompaction() { _compactionLock.writeLock(); }
+void MMFilesCollection::lockForCompaction() { _compactionLock.lockWrite(); }
 
 /// @brief try to exclusively lock the collection for compaction
 bool MMFilesCollection::tryLockForCompaction() {
-  return _compactionLock.tryWriteLock();
+  return _compactionLock.tryLockWrite();
 }
 
 /// @brief signal that compaction is finished
@@ -1993,8 +1993,13 @@ LocalDocumentId MMFilesCollection::lookupKey(transaction::Methods* trx,
   return element ? LocalDocumentId(element.localDocumentId()) : LocalDocumentId();
 }
 
-Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
+Result MMFilesCollection::read(transaction::Methods* trx, 
+                               arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
+  // copy string into a vpack string
+  transaction::BuilderLeaser builder(trx);
+  builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
+
   TRI_IF_FAILURE("ReadDocumentNoLock") {
     // test what happens if no lock can be acquired
     return Result(TRI_ERROR_DEBUG);
@@ -2015,22 +2020,13 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
   }
   TRI_DEFER(if (lock) { unlockRead(useDeadlockDetector, trx->state()); });
 
-  LocalDocumentId const documentId = lookupDocument(trx, key, result);
+  LocalDocumentId const documentId = lookupDocument(trx, builder->slice(), result);
   if (documentId.empty()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   // we found a document
   return Result(TRI_ERROR_NO_ERROR);
-}
-
-Result MMFilesCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result, bool lock) {
-  // copy string into a vpack string
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-  return read(trx, builder->slice(), result, lock);
 }
 
 bool MMFilesCollection::readDocument(transaction::Methods* trx,

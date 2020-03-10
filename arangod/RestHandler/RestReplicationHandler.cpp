@@ -32,13 +32,16 @@
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
+#include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Network/NetworkFeature.h"
@@ -67,6 +70,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
@@ -258,6 +262,10 @@ std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Barrier = "barrier";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
+std::string const RestReplicationHandler::Revisions = "revisions";
+std::string const RestReplicationHandler::Tree = "tree";
+std::string const RestReplicationHandler::Ranges = "ranges";
+std::string const RestReplicationHandler::Documents = "documents";
 std::string const RestReplicationHandler::Dump = "dump";
 std::string const RestReplicationHandler::RestoreCollection =
     "restore-collection";
@@ -413,6 +421,25 @@ RestStatus RestReplicationHandler::execute() {
         handleCommandFetchKeys();
       } else if (type == rest::RequestType::DELETE_REQ) {
         handleCommandRemoveKeys();
+      }
+    } else if (command == Revisions) {
+      if (isCoordinatorError()) {
+        return RestStatus::DONE;
+      }
+
+      if (len > 1) {
+        std::string const& subCommand = suffixes[1];
+        if (type == rest::RequestType::GET && subCommand == Tree) {
+          handleCommandRevisionTree();
+        } else if (type == rest::RequestType::POST && subCommand == Tree) {
+          handleCommandRebuildRevisionTree();
+        } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
+          handleCommandRevisionRanges();
+        } else if (type == rest::RequestType::PUT && subCommand == Documents) {
+          handleCommandRevisionDocuments();
+        }
+      } else {
+        goto BAD_CALL;
       }
     } else if (command == Dump) {
       // works on collections
@@ -1434,14 +1461,17 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
 
   allMarkers.clear();
 
-  if (_request->transportType() != Endpoint::TransportType::HTTP) {
+  // simon: originally VST was not allowed here, but in 3.7 the content-type
+  // is properly set, so we can use it
+  if (_request->transportType() != Endpoint::TransportType::HTTP &&
+      _request->contentType() != ContentType::DUMP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
-
+  
   VPackStringRef bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
-
+  
   VPackValueLength currentPos = 0;
 
   // First parse and collect all markers, we assemble everything in one
@@ -2888,6 +2918,319 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
   } else {
     generateError(res);
   }
+}
+
+bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& ctx) {
+  auto& selector = server().getFeature<EngineSelectorFeature>();
+  if (!selector.isRocksDB()) {
+    generateError(
+        rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+        "this storage engine does not support revision-based replication");
+    return false;
+  }
+
+  LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
+      << "enter prepareRevisionOperation";
+
+  bool found = false;
+
+  // get collection Name
+  ctx.cname = _request->value("collection");
+  if (ctx.cname.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return false;
+  }
+
+  // get batchId
+  std::string const& batchIdString = _request->value("batchId", found);
+  if (found) {
+    ctx.batchId = StringUtils::uint64(batchIdString);
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "replication revision tree - request misses batchId");
+    return false;
+  }
+
+  // get resume
+  std::string const& resumeString = _request->value("resume", found);
+  if (found) {
+    ctx.resume = StringUtils::uint64(resumeString);
+  }
+
+  // print request
+  LOG_TOPIC("2b70f", TRACE, arangodb::Logger::REPLICATION)
+      << "requested revision tree for collection '" << ctx.cname
+      << "' using contextId '" << ctx.batchId << "'";
+
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+
+  if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname, auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return false;
+  }
+
+  ctx.collection = _vocbase.lookupCollection(ctx.cname);
+  if (!ctx.collection) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return false;
+  }
+  if (!ctx.collection->syncByRevision()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                  "this collection doesn't support revision-based replication");
+    return false;
+  }
+
+  // determine end tick for dump
+  ctx.tickEnd = std::numeric_limits<TRI_voc_tick_t>::max();
+  std::string const& value2 = _request->value("to", found);
+  if (found) {
+    ctx.tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
+  }
+
+  ctx.iter =
+      ctx.collection->getPhysical()->getReplicationIterator(ReplicationIterator::Ordering::Revision,
+                                                            ctx.batchId);
+  if (!ctx.iter) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "could not get replication iterator for collection '" +
+                      ctx.cname + "'");
+    return false;
+  }
+
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the revision tree for a given collection, if available
+/// @response serialized revision tree, binary
+//////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRevisionTree() {
+  RevisionOperationContext ctx;
+  if (!prepareRevisionOperation(ctx)) {
+    return;
+  }
+
+  auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
+  if (!tree) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "could not generate revision tree");
+    return;
+  }
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder result(buffer);
+  tree->serialize(result);
+
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
+}
+
+void RestReplicationHandler::handleCommandRebuildRevisionTree() {
+  RevisionOperationContext ctx;
+  if (!prepareRevisionOperation(ctx)) {
+    return;
+  }
+
+  if (!ctx.collection->syncByRevision()) {
+    generateError(Result(TRI_ERROR_BAD_PARAMETER,
+                         "collection does not support revision tree commands"));
+    return;
+  }
+
+  Result res = ctx.collection->getPhysical()->rebuildRevisionTree();
+  if (res.fail()) {
+    generateError(res);
+    return;
+  }
+
+  generateResult(rest::ResponseCode::NO_CONTENT, VPackSlice::nullSlice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the requested revision ranges for a given collection, if
+///        available
+/// @response VPackObject, containing
+///           * ranges, VPackArray of VPackArray of revisions
+///           * resume, optional, if response is chunked; revision resume
+///                     point to specify on subsequent requests
+//////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRevisionRanges() {
+  RevisionOperationContext ctx;
+  if (!prepareRevisionOperation(ctx)) {
+    return;
+  }
+
+  bool success = false;
+  std::size_t current = 0;
+  VPackSlice const body = this->parseVPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  bool badFormat = !body.isArray();
+  if (!badFormat) {
+    std::size_t i = 0;
+    VPackSlice previous;
+    for (VPackSlice entry : VPackArrayIterator(body)) {
+      if (!entry.isArray() || entry.length() != 2) {
+        badFormat = true;
+        break;
+      }
+      VPackSlice first = entry.at(0);
+      VPackSlice second = entry.at(1);
+      if (!first.isNumber() || !second.isNumber()) {
+        badFormat = true;
+        break;
+      }
+      if (first.getNumber<std::size_t>() <= ctx.resume ||
+          (i > 0 && previous.getNumber<std::size_t>() < ctx.resume)) {
+        current = std::max(current, i);
+      }
+      previous = second;
+      ++i;
+    }
+  }
+  if (badFormat) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an array of pairs of revisions");
+    return;
+  }
+
+  RevisionReplicationIterator& it =
+      *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
+  it.seek(ctx.resume);
+
+  std::size_t constexpr limit = 64 * 1024;  // ~2MB data
+  std::size_t total = 0;
+  VPackBuilder response;
+  {
+    VPackObjectBuilder obj(&response);
+    TRI_voc_rid_t resumeNext = ctx.resume;
+    VPackSlice range = body.at(current);
+
+    {
+      TRI_ASSERT(response.isOpenObject());
+      VPackArrayBuilder rangesGuard(&response, "ranges");
+      TRI_ASSERT(response.isOpenArray());
+      bool subOpen = false;
+      while (total < limit && current < body.length()) {
+        if (!it.hasMore() || it.revision() <= range.at(0).getNumber<std::size_t>() ||
+            it.revision() > range.at(1).getNumber<std::size_t>() ||
+            (!subOpen && it.revision() <= range.at(1).getNumber<std::size_t>())) {
+          auto target = std::max(ctx.resume, range.at(0).getNumber<std::size_t>());
+          if (it.hasMore() && it.revision() < target) {
+            it.seek(target);
+          }
+          TRI_ASSERT(!subOpen);
+          response.openArray();
+          subOpen = true;
+          resumeNext = std::max(ctx.resume + 1, range.at(0).getNumber<std::size_t>());
+        }
+
+        if (it.hasMore() && it.revision() >= range.at(0).getNumber<std::size_t>() &&
+            it.revision() <= range.at(1).getNumber<std::size_t>()) {
+          response.add(VPackValue(it.revision()));
+          ++total;
+          resumeNext = it.revision() + 1;
+          it.next();
+        }
+
+        if (!it.hasMore() || it.revision() > range.at(1).getNumber<std::size_t>()) {
+          TRI_ASSERT(response.isOpenArray());
+          TRI_ASSERT(subOpen);
+          subOpen = false;
+          response.close();
+          TRI_ASSERT(response.isOpenArray());
+          resumeNext = range.at(1).getNumber<std::size_t>() + 1;
+          ++current;
+          if (current < body.length()) {
+            range = body.at(current);
+          }
+        }
+      }
+      if (subOpen) {
+        TRI_ASSERT(response.isOpenArray());
+        response.close();
+        subOpen = false;
+        TRI_ASSERT(response.isOpenArray());
+      }
+      TRI_ASSERT(!subOpen);
+      TRI_ASSERT(response.isOpenArray());
+      // exit scope closes "ranges"
+    }
+
+    TRI_ASSERT(response.isOpenObject());
+
+    if (body.length() > 0 &&
+        resumeNext <= body.at(body.length() - 1).at(1).getNumber<std::size_t>()) {
+      response.add("resume", VPackValue(resumeNext));
+    }
+  }
+
+  generateResult(rest::ResponseCode::OK, response.slice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the requested documents from a given collection, if
+///        available
+/// @response VPackArray, containing VPackObject documents or errors
+//////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRevisionDocuments() {
+  RevisionOperationContext ctx;
+  if (!prepareRevisionOperation(ctx)) {
+    return;
+  }
+
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  bool badFormat = !body.isArray();
+  if (!badFormat) {
+    for (VPackSlice entry : VPackArrayIterator(body)) {
+      if (!entry.isNumber()) {
+        badFormat = true;
+        break;
+      }
+    }
+  }
+  if (badFormat) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an array of revisions");
+    return;
+  }
+
+  std::size_t constexpr sizeLimit = 16 * 1024 * 1024;
+  std::size_t size = 0;  // running total, approximation
+  RevisionReplicationIterator& it =
+      *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
+
+  VPackBuffer<std::uint8_t> buffer;
+  VPackBuilder response(buffer);
+  {
+    VPackArrayBuilder docs(&response);
+
+    for (VPackSlice entry : VPackArrayIterator(body)) {
+      TRI_voc_rid_t rev = entry.getNumber<TRI_voc_rid_t>();
+      if (it.hasMore() && it.revision() < rev) {
+        it.seek(rev);
+      }
+      VPackSlice res =
+          it.hasMore() ? it.document() : velocypack::Slice::emptyObjectSlice();
+      if (size + res.byteSize() > sizeLimit && !response.slice().isEmptyArray()) {
+        break;
+      }
+      response.add(res);
+      size += res.byteSize();
+    }
+  }
+
+  auto ctxt = transaction::StandaloneContext::Create(_vocbase);
+  generateResult(rest::ResponseCode::OK, std::move(buffer), ctxt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

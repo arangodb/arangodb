@@ -311,7 +311,7 @@ function backgroundIndexSuite() {
         } 
         c.save(docs);
       }
-      
+
       assertEqual(c.count(), 100000);
 
       // lets remove half via tasks
@@ -347,18 +347,23 @@ function backgroundIndexSuite() {
       // sanity checks
       assertEqual(c.count(), 50000);
       for (let i = 0; i < 10; i++) { // check for remaining docs via index
+        let invalues = [];
         for (let x = i * 10000 + 5000; x < (i + 1) * 10000; x++) {
-          const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
-                                   {'@coll': cn, 'val': x}, {count:true});
-          assertEqual(cursor.count(), 1);
+          invalues.push(x);
         }
+        const cursor = db._query("FOR doc IN @@coll FILTER doc.value in @val RETURN 1", 
+                                   {'@coll': cn, 'val': invalues }, {count:true});
+        assertEqual(cursor.count(), 5000);
       }
+
       for (let i = 0; i < 10; i++) { // check for removed docs via index
+        let invalues = [];
         for (let x = i * 10000; x < i * 10000 + 5000; x++) {
-          const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
-                                   {'@coll': cn, 'val': x}, {count:true});
-          assertEqual(cursor.count(), 0, [i, x]);
+          invalues.push(x);
         }
+        const cursor = db._query("FOR doc IN @@coll FILTER doc.value in @val RETURN 1", 
+                                 {'@coll': cn, 'val': invalues }, {count:true});
+        assertEqual(cursor.count(), 0, [i, invalues]);
       }
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
@@ -427,6 +432,7 @@ function backgroundIndexSuite() {
       const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 
                                   {'@coll': cn, 'val': 100000}, {count:true});
       assertEqual(newCursor.count(), 100000);
+
       // check for old entries via index
       const oldCursor = db._query("FOR doc IN @@coll FILTER doc.value < @val RETURN 1", 
                                   {'@coll': cn, 'val': 100000}, {count:true});

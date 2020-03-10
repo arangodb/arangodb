@@ -139,10 +139,10 @@ class SortedCollectExecutor {
     AggregateValuesType aggregators;
     size_t groupLength;
     bool const count;
+    bool _shouldDeleteBuilderBuffer;
     Infos& infos;
     InputAqlItemRow _lastInputRow;
     arangodb::velocypack::Builder _builder;
-    bool _shouldDeleteBuilderBuffer;
 
     CollectGroup() = delete;
     CollectGroup(CollectGroup&&) = default;

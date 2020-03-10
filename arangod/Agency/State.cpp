@@ -95,8 +95,8 @@ inline static std::string stringify(index_t index) {
 bool State::persist(index_t index, term_t term, uint64_t millis,
                     arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
-  LOG_TOPIC("b735e", TRACE, Logger::AGENCY) << "persist index=" << index << " term=" << term
-                                   << " entry: " << entry.toJson();
+  LOG_TOPIC("b735e", TRACE, Logger::AGENCY)
+    << "persist index=" << index << " term=" << term << " entry: " << entry.toJson();
 
   Builder body;
   {
@@ -1662,4 +1662,3 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   return n;
 }
-

@@ -117,13 +117,14 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
   Cluster/AgencyPathsTest.cpp
-  Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Containers/associative-multi-pointer-test.cpp
   Containers/associative-multi-pointer-nohashcache-test.cpp
+  Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
+  Containers/MerkleTreeTest.cpp
   Containers/skiplist-test.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
@@ -141,7 +142,6 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
-  IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
   IResearch/Containers-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/ExpressionFilter-test.cpp
@@ -172,6 +172,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryJoin-test.cpp
   IResearch/IResearchQueryLateMaterialization-test.cpp
   IResearch/IResearchQueryMinMatch-test.cpp
+  IResearch/IResearchQueryNGramMatch-test.cpp
   IResearch/IResearchQueryNoMaterialization-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
@@ -222,7 +223,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
-  SimpleHttpClient/CommunicatorTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
   Transaction/Manager-test.cpp
@@ -234,8 +234,7 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/vocbase-test.cpp
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
-  VocBase/VersionTest.cpp
-)
+  VocBase/VersionTest.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
@@ -296,6 +295,7 @@ endif()
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INCLUDE_DIR}
+  ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )

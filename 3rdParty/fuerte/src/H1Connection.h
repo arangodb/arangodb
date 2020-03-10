@@ -94,17 +94,16 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   void asyncWriteNextRequest();
 
   // called by the async_write handler (called from IO thread)
-  void asyncWriteCallback(asio_ns::error_code const&,
-                          std::unique_ptr<RequestItem>, size_t nwrite);
+  void asyncWriteCallback(asio_ns::error_code const&, size_t nwrite);
 
  private:
-  static int on_message_begin(http_parser* parser);
-  static int on_status(http_parser* parser, const char* at, size_t len);
-  static int on_header_field(http_parser* parser, const char* at, size_t len);
-  static int on_header_value(http_parser* parser, const char* at, size_t len);
-  static int on_header_complete(http_parser* parser);
-  static int on_body(http_parser* parser, const char* at, size_t len);
-  static int on_message_complete(http_parser* parser);
+  static int on_message_begin(http_parser* p);
+  static int on_status(http_parser* p, const char* at, size_t len);
+  static int on_header_field(http_parser* p, const char* at, size_t len);
+  static int on_header_value(http_parser* p, const char* at, size_t len);
+  static int on_header_complete(http_parser* p);
+  static int on_body(http_parser* p, const char* at, size_t len);
+  static int on_message_complete(http_parser* p);
 
  private:
   /// elements to send out
@@ -116,7 +115,7 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   /// the node http-parser
   http_parser _parser;
   http_parser_settings _parserSettings;
-
+  
   std::atomic<bool> _active;  /// is loop active
 
   // parser state

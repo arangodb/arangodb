@@ -37,6 +37,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -110,13 +111,14 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   VPackSlice data = slice.get("data");
   VPackSlice raw = slice.get("raw");
 
+  VPackArrayIterator rawIterator(raw);
+
   std::vector<AqlValue> madeHere;
-  madeHere.reserve(static_cast<size_t>(raw.length()));
+  madeHere.reserve(static_cast<size_t>(rawIterator.size()));
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
 
   VPackArrayIterator dataIterator(data);
-  VPackArrayIterator rawIterator(raw);
 
   auto storeSingleValue = [this](size_t row, RegisterId column, VPackArrayIterator& it,
                                  std::vector<AqlValue>& madeHere) {
@@ -301,7 +303,8 @@ void AqlItemBlock::destroy() noexcept {
       return;
     }
 
-    for (size_t i = 0; i < numEntries(); i++) {
+    size_t const n = numEntries();
+    for (size_t i = 0; i < n; i++) {
       auto& it = _data[i];
       if (it.requiresDestruction()) {
         auto it2 = _valueCount.find(it);
@@ -346,7 +349,15 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
 
-  for (size_t i = numEntries(); i < _data.size(); ++i) {
+  // remove the shadow row indices pointing to now invalid rows.
+  _shadowRowIndexes.erase(_shadowRowIndexes.lower_bound(nrItems),
+                          _shadowRowIndexes.end());
+
+  // adjust the size of the block
+  _nrItems = nrItems;
+
+  size_t const n = numEntries();
+  for (size_t i = n; i < _data.size(); ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
       auto it = _valueCount.find(a);
@@ -367,13 +378,6 @@ void AqlItemBlock::shrink(size_t nrItems) {
     }
     a.erase();
   }
-
-  // remove the shadow row indices pointing to now invalid rows.
-  _shadowRowIndexes.erase(_shadowRowIndexes.lower_bound(nrItems),
-                          _shadowRowIndexes.end());
-
-  // adjust the size of the block
-  _nrItems = nrItems;
 }
 
 void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
@@ -726,15 +730,23 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
 
 void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const* options,
                                     arangodb::velocypack::Builder& builder) const {
-  VPackArrayBuilder rowBuilder{&builder};
+  {
+    VPackArrayBuilder rowBuilder{&builder};
 
-  if (isShadowRow(row)) {
-    getShadowRowDepth(row).toVelocyPack(options, *rowBuilder, false);
-  } else {
-    AqlValue{AqlValueHintNull{}}.toVelocyPack(options, *rowBuilder, false);
-  }
-  for (RegisterId reg = 0; reg < getNrRegs(); ++reg) {
-    getValueReference(row, reg).toVelocyPack(options, *rowBuilder, false);
+    if (isShadowRow(row)) {
+      getShadowRowDepth(row).toVelocyPack(options, builder, false);
+    } else {
+      builder.add(VPackSlice::nullSlice());
+    }
+    RegisterId const n = getNrRegs();
+    for (RegisterId reg = 0; reg < n; ++reg) {
+      AqlValue const& ref = getValueReference(row, reg);
+      if (ref.isEmpty()) {
+        builder.add(VPackSlice::noneSlice());
+      } else {
+        ref.toVelocyPack(options, builder, false);
+      }
+    }
   }
 }
 
@@ -745,9 +757,10 @@ void AqlItemBlock::toSimpleVPack(velocypack::Options const* options,
   block->add("nrRegs", VPackValue(getNrRegs()));
   block->add(VPackValue("matrix"));
   {
-    VPackArrayBuilder matrixBuilder{block.builder};
-    for (size_t row = 0; row < size(); ++row) {
-      rowToSimpleVPack(row, options, *matrixBuilder.builder);
+    size_t const n = size();
+    VPackArrayBuilder matrixBuilder{&builder};
+    for (size_t row = 0; row < n; ++row) {
+      rowToSimpleVPack(row, options, builder);
     }
   }
 }

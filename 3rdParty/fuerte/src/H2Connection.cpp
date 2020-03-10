@@ -94,6 +94,7 @@ template <SocketType T>
   } else if (field == fu_content_length_key) {
     size_t len = std::min<size_t>(std::stoul(val.toString()), 1024 * 1024 * 64);
     strm->data.reserve(len);
+    strm->response->header.addMeta(field.toString(), val.toString());
   } else {  // fall through
     strm->response->header.addMeta(field.toString(), val.toString());
     // TODO limit max header size ??
@@ -157,6 +158,9 @@ template <SocketType T>
 
   auto strm = me->eraseStream(stream_id);
   if (error_code != NGHTTP2_NO_ERROR && strm != nullptr) {
+    FUERTE_LOG_ERROR << "http2 closing stream '" << stream_id
+      << "' with error " << nghttp2_http2_strerror(error_code)
+      << " (" << error_code << ")\n";
     strm->invokeOnError(fuerte::Error::ProtocolError);
   }
 
@@ -184,7 +188,7 @@ template <SocketType T>
 namespace {
 int on_error_callback(nghttp2_session* session, int lib_error_code,
                       const char* msg, size_t len, void*) {
-  FUERTE_LOG_DEBUG << "http2 error: \"" << std::string(msg, len) << "\" ("
+  FUERTE_LOG_ERROR << "http2 error: \"" << std::string(msg, len) << "\" ("
                    << lib_error_code << ")";
   return 0;
 }
@@ -312,14 +316,16 @@ void H2Connection<T>::sendRequest(std::unique_ptr<Request> req,
   }
 
   // Add item to send queue
+  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   if (!_queue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(q > 0);
     item->invokeOnError(Error::QueueCapacityExceeded);
     return;
   }
   item.release();  // queue owns this now
 
-  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
 
   // _state.load() after queuing request, to prevent race with connect
@@ -350,8 +356,10 @@ std::size_t H2Connection<T>::requestsLeft() const {
 // socket connection is used without TLS
 template <SocketType T>
 void H2Connection<T>::finishConnect() {
-  FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";
-  FUERTE_ASSERT(this->state() == Connection::State::Connecting);
+  FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";  
+  if (this->state() != Connection::State::Connecting) {
+    return;
+  }
 
   std::array<nghttp2_settings_entry, 4> iv;
   populateSettings(iv);
@@ -444,12 +452,18 @@ void H2Connection<T>::readSwitchingProtocolsResponse() {
 // socket connection is up (with optional SSL), now initiate the VST protocol.
 template <>
 void H2Connection<SocketType::Ssl>::finishConnect() {
+  FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";
+  if (this->state() != Connection::State::Connecting) {
+    return;
+  }
+  
   const unsigned char *alpn = NULL;
   unsigned int alpnlen = 0;
   SSL_get0_alpn_selected(this->_proto.socket.native_handle(), &alpn, &alpnlen);
 
   if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
     this->_state.store(Connection::State::Failed);
+    FUERTE_LOG_ERROR << "h2 is not negotiated";
     shutdownConnection(Error::ProtocolError, "h2 is not negotiated");
     return;
   }
@@ -503,6 +517,8 @@ void H2Connection<T>::queueHttp2Requests() {
   Stream* tmp = nullptr;
   while (numQueued++ < 4 && _queue.pop(tmp)) {
     std::unique_ptr<Stream> strm(tmp);
+    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(q > 0);
 
     FUERTE_LOG_HTTPTRACE << "queued request " << this << "\n";
 
@@ -560,6 +576,12 @@ void H2Connection<T>::queueHttp2Requests() {
       if (pair.first == fu_authorization_key) {
         haveAuth = true;
       }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto copy = pair.first;
+      toLowerInPlace(copy);
+      FUERTE_ASSERT(copy == pair.first);
+#endif
+      
       nva.push_back(
           {(uint8_t*)pair.first.data(), (uint8_t*)pair.second.data(),
            pair.first.size(), pair.second.size(),
@@ -588,7 +610,7 @@ void H2Connection<T>::queueHttp2Requests() {
                                uint8_t* buf, size_t length, uint32_t* data_flags,
                                nghttp2_data_source* source,
                                void* user_data) -> ssize_t {
-          auto strm = static_cast<H2Connection<T>::Stream*>(source->ptr);
+          auto strm = static_cast<typename H2Connection<T>::Stream*>(source->ptr);
 
           auto payload = strm->request->payload();
 
@@ -616,6 +638,7 @@ void H2Connection<T>::queueHttp2Requests() {
                                          /*stream_user_data*/ nullptr);
     
     if (sid < 0) {
+      FUERTE_LOG_ERROR << "illegal stream id";
       this->shutdownConnection(Error::ProtocolError, "illegal stream id");
       return;
     }
@@ -648,6 +671,7 @@ void H2Connection<T>::doWrite() {
     ssize_t rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
       _writing = false;
+      FUERTE_LOG_ERROR << "http2 framing error";
       this->shutdownConnection(Error::ProtocolError, "http2 framing error");
       return;
     } else if (rv == 0) {  // done
@@ -715,6 +739,7 @@ void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
 
     ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
     if (rv < 0) {
+      FUERTE_LOG_ERROR << "http2 parsing error";
       this->shutdownConnection(Error::ProtocolError, "http2 parsing error");
       return;  // stop read loop
     }
@@ -773,7 +798,9 @@ void H2Connection<T>::setTimeout() {
         }
         std::for_each(expired.begin(), expired.end(), [&](auto sid) {
           auto strm = me.eraseStream(sid);
-          strm->invokeOnError(Error::Timeout);
+          if (strm) {
+            strm->invokeOnError(Error::Timeout);
+          }
         });
 
         if (me._streams.empty()) {  // no more messages to wait on
@@ -795,6 +822,8 @@ void H2Connection<T>::abortOngoingRequests(const fuerte::Error err) {
   for (auto& pair : _streams) {
     pair.second->invokeOnError(err);
   }
+  asio_ns::error_code ec;
+  _ping.cancel(ec);
   _streams.clear();
   _streamCount.store(0);
 }
@@ -805,7 +834,8 @@ void H2Connection<T>::drainQueue(const fuerte::Error ec) {
   Stream* item = nullptr;
   while (_queue.pop(item)) {
     std::unique_ptr<Stream> guard(item);
-    this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(q > 0);
     guard->invokeOnError(ec);
   }
 }
@@ -847,13 +877,13 @@ bool H2Connection<T>::shouldStop() const {
 template <SocketType T>
 void H2Connection<T>::startPing() {
   _ping.expires_after(std::chrono::seconds(30));
-  
+
   _ping.async_wait([self(Connection::weak_from_this())](auto const& ec) {
     std::shared_ptr<Connection> s;
     if (ec || !(s = self.lock())) {
       return;
     }
-    
+
     auto& me = static_cast<H2Connection<T>&>(*s);
     if (me._state != Connection::State::Connected || !me._streams.empty()) {
       return;
