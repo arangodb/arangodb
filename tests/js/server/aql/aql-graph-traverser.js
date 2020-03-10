@@ -4550,6 +4550,86 @@ function pruneTraversalSuite() {
 
   return testObj;
 }
+
+function unusedVariableSuite() {
+  const gn = 'UnitTestGraph';
+
+  return {
+
+    setUpAll: function () {
+      db._drop(gn + 'v');
+      db._drop(gn + 'e');
+
+      var i;
+
+      var c = db._create(gn + 'v');
+      for (i = 0; i < 10000; ++i) {
+        c.insert({_key: 'test' + i});
+      }
+
+      c = db._createEdgeCollection(gn + 'e');
+      for (i = 0; i < 10000; ++i) {
+        c.insert({_from: gn + 'v/test' + i, _to: gn + 'v/test' + (i+1)});
+      }
+    },
+
+    tearDownAll: function () {
+      db._drop(gn + 'v');
+      db._drop(gn + 'e');
+    },
+
+    testCount: function () {
+      const queries = [
+        [ 'FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
+        [ 'FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
+        [ 'FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
+        [ 'FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
+        [ 'FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
+        [ 'FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
+        [ 'FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
+        [ 'FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
+        [ 'FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
+        [ 'FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v', 1],
+        [ 'FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v', 100],
+        [ 'FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v', 1000],
+      ];
+
+      queries.forEach(function (query) {
+        const r = db._query(query[0], {"start": gn + 'v/test0', "@edges": gn+'e'});
+        const resultArray = r.toArray();
+        assertEqual(query[1], resultArray.length, query);
+      });
+
+    },
+
+    testCountSubquery: function () {
+      const queries = [
+        [ 'RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+        [ 'RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+        [ 'RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+        [ 'RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+        [ 'RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+        [ 'RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)', 1],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)', 100],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000],
+      ];
+
+      queries.forEach(function (query) {
+        const r = db._query(query[0], {"start": gn + 'v/test0', "@edges": gn+'e'});
+        const resultArray = r.toArray();
+        assertEqual(resultArray.length, 1);
+        assertEqual(query[1], resultArray[0], query);
+      });
+    },
+  };
+}
+
+
+
 jsunity.run(invalidStartVertexSuite);
 jsunity.run(simpleInboundOutboundSuite);
 jsunity.run(limitSuite);
@@ -4572,4 +4652,5 @@ if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);
 }
 jsunity.run(pruneTraversalSuite);
+jsunity.run(unusedVariableSuite);
 return jsunity.done();
