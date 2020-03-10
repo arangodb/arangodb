@@ -127,7 +127,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _replicationFactor = 0;
       _writeConcern = 0;
       _numberOfShards = 1;
-      _distributeShardsLike = "";
       _avoidServers.clear();
       isError = false;
       isASatellite = true;
