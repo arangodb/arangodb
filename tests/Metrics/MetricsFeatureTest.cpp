@@ -42,17 +42,23 @@ protected:
   MetricsFeatureTest () {}
 };
 
+Counter *thisCounter, *thatCounter;
+
 TEST_F(MetricsFeatureTest, test_counter) {
 
   auto& counter = feature.counter("counter", 0, "one counter");
   auto& labeledCounter = feature.counter({"counter", "label=label"}, 0, "another counter");
-  
+
+  ASSERT_DOUBLE_EQ(counter.load(), 0);
   std::string s;
   counter.toPrometheus(s);
   std::cout << s << std::endl;
   s.clear();
   labeledCounter.toPrometheus(s);
   std::cout << s << std::endl;
+
+  thisCounter = &counter;
+  thatCounter = &labeledCounter;
 
 }
 
@@ -61,17 +67,25 @@ TEST_F(MetricsFeatureTest, fail_recreate_counter) {
   try { 
     auto& counterFail = feature.counter({"counter"}, 0, "one counter");
     ASSERT_TRUE(false);
+    LOG_DEVEL << counterFail.load();
   } catch (...) {
     ASSERT_TRUE(true);
   }
 }
 
 
-TEST_F(MetricsFeatureTest, test_counter_retrieve) {
+TEST_F(MetricsFeatureTest, test_same_counter_retrieve) {
 
-  auto& counter = feature.counter("counter");
+  auto& counter1 = feature.counter("counter");
+  ASSERT_EQ(&counter1, thisCounter);
+  
+  auto& counter2 = feature.counter({"counter"});
+  ASSERT_EQ(&counter2, thisCounter);
+  
+  auto& counter3 = feature.counter({"counter", "label=label"});
   std::string s;
-  counter.toPrometheus(s);
+  counter3.toPrometheus(s);
   std::cout << s << std::endl;
-
+  ASSERT_EQ(&counter3, thatCounter);
+  
 }
