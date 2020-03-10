@@ -33,6 +33,7 @@
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "StorageEngine/ReplicationIterator.h"
 
 namespace arangodb {
 class ClusterInfo;
@@ -73,6 +74,12 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   RestReplicationHandler(application_features::ApplicationServer&,
                          GeneralRequest*, GeneralResponse*);
   ~RestReplicationHandler();
+
+ public:
+  static std::string const Revisions;
+  static std::string const Tree;
+  static std::string const Ranges;
+  static std::string const Documents;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -287,6 +294,39 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandLoggerTickRanges();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the revision tree for a given collection, if available
+  /// @response serialized revision tree, binary
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandRevisionTree();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief rebuild the revision tree for a given collection, if allowed
+  /// @response 204 No Content if all goes well
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandRebuildRevisionTree();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the requested revision ranges for a given collection, if
+  ///        available
+  /// @response VPackObject, containing
+  ///           * ranges, VPackArray of VPackArray of revisions
+  ///           * resume, optional, if response is chunked; revision resume
+  ///                     point to specify on subsequent requests
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandRevisionRanges();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the requested documents from a given collection, if
+  ///        available
+  /// @response VPackArray, containing VPackObject documents or errors
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandRevisionDocuments();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief determine chunk size from request
   ///        Reads chunkSize attribute from request
   //////////////////////////////////////////////////////////////////////////////
@@ -299,6 +339,17 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ReplicationApplier* getApplier(bool& global);
 
  private:
+  struct RevisionOperationContext {
+    uint64_t batchId;
+    std::size_t resume;
+    TRI_voc_tick_t tickEnd;
+    std::string cname;
+    std::shared_ptr<LogicalCollection> collection;
+    std::unique_ptr<ReplicationIterator> iter;
+  };
+
+  bool prepareRevisionOperation(RevisionOperationContext&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
@@ -323,7 +374,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName);
+  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName, bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection

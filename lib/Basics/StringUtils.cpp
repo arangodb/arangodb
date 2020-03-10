@@ -1494,24 +1494,6 @@ bool boolean(std::string const& str) {
   return false;
 }
 
-#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-int64_t int64(std::string const& value) {
-  try {
-    return std::stoll(value, nullptr, 10);
-  } catch (...) {
-    return 0;
-  }
-}
-
-uint64_t uint64(std::string const& value) {
-  try {
-    return std::stoull(value, nullptr, 10);
-  } catch (...) {
-    return 0;
-  }
-}
-#endif
-
 uint64_t uint64_trusted(char const* value, size_t length) {
   uint64_t result = 0;
 
@@ -1579,88 +1561,6 @@ uint64_t uint64_trusted(char const* value, size_t length) {
 
   return result;
 }
-
-#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-int32_t int32(std::string const& str) {
-#ifdef TRI_HAVE_STRTOL_R
-  struct reent buffer;
-  return strtol_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOL_R
-  struct reent buffer;
-  return _strtol_r(&buffer, str.c_str(), 0, 10);
-#else
-  return (int32_t)strtol(str.c_str(), nullptr, 10);
-#endif
-#endif
-}
-
-int32_t int32(char const* value, size_t size) {
-  char tmp[22];
-
-  if (value[size] != '\0') {
-    if (size >= sizeof(tmp)) {
-      size = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, value, size);
-    tmp[size] = '\0';
-    value = tmp;
-  }
-
-#ifdef TRI_HAVE_STRTOL_R
-  struct reent buffer;
-  return strtol_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOL_R
-  struct reent buffer;
-  return _strtol_r(&buffer, value, 0, 10);
-#else
-  return (int32_t)strtol(value, nullptr, 10);
-#endif
-#endif
-}
-
-uint32_t uint32(std::string const& str) {
-#ifdef TRI_HAVE_STRTOUL_R
-  struct reent buffer;
-  return strtoul_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  struct reent buffer;
-  return _strtoul_r(&buffer, str.c_str(), 0, 10);
-#else
-  return (uint32_t)strtoul(str.c_str(), nullptr, 10);
-#endif
-#endif
-}
-
-uint32_t uint32(char const* value, size_t size) {
-  char tmp[22];
-
-  if (value[size] != '\0') {
-    if (size >= sizeof(tmp)) {
-      size = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, value, size);
-    tmp[size] = '\0';
-    value = tmp;
-  }
-
-#ifdef TRI_HAVE_STRTOUL_R
-  struct reent buffer;
-  return strtoul_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  struct reent buffer;
-  return _strtoul_r(&buffer, value, 0, 10);
-#else
-  return (uint32_t)strtoul(value, nullptr, 10);
-#endif
-#endif
-}
-#endif
 
 double doubleDecimal(std::string const& str) {
   return doubleDecimal(str.c_str(), str.size());

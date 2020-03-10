@@ -31,7 +31,8 @@
 #include "Basics/debugging.h"
 
 #ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Logger/Logger.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #endif
 
 #include <thread>
@@ -111,7 +112,8 @@ class ReadLocker {
 #ifdef ARANGODB_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
       LOG_TOPIC("8e47e", INFO, arangodb::Logger::PERFORMANCE)
-          << "ReadLocker " << _file << ":" << _line << " took " << _time << " s";
+          << "ReadLocker for lock [" << _readWriteLock << "] " << _file << ":"
+          << _line << " took " << _time << " s";
     }
 #endif
   }
