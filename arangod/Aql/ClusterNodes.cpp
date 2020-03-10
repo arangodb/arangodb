@@ -635,6 +635,12 @@ void GatherNode::setParallelism(GatherNode::Parallelism value) {
   _parallelism = value;
 }
 
+GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
+                                                  size_t shardsRequiredForHeapMerge) noexcept {
+  return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap
+                                                      : SortMode::MinElement;
+}
+
 SingleRemoteOperationNode::SingleRemoteOperationNode(
     ExecutionPlan* plan, size_t id, NodeType mode, bool replaceIndexNode,
     std::string const& key, Collection const* collection,

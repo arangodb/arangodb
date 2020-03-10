@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
 #include "Aql/AqlCall.h"
+#include "Aql/AqlCallSet.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
@@ -51,10 +52,14 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
 class ShadowAqlItemRow;
-class ParallelUnsortedGatherExecutor;
+class MultiDependencySingleRowFetcher;
 
 template <typename T, typename... Es>
 constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
+
+template <typename Executor>
+static constexpr bool isMultiDepExecutor =
+    std::is_same_v<typename Executor::Fetcher, MultiDependencySingleRowFetcher>;
 
 /**
  * @brief This is the implementation class of AqlExecutionBlocks.
@@ -139,8 +144,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     DONE
   };
 
-  static constexpr bool isParallelExecutor =
-      is_one_of_v<Executor, ParallelUnsortedGatherExecutor>;
+  // Where Executors with a single dependency return an AqlCall, Executors with
+  // multiple dependencies return a partial map depIndex -> AqlCall.
+  // It may be empty. If the cardinality is greater than one, the calls will be
+  // executed in parallel.
+  using AqlCallType = std::conditional_t<isMultiDepExecutor<Executor>, AqlCallSet, AqlCall>;
 
  public:
   /**
@@ -156,6 +164,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
                      typename Executor::Infos);
 
   ~ExecutionBlockImpl() override;
+
+  /// @brief Must be called exactly once after the plan is instantiated (i.e.,
+  ///        all blocks are created and dependencies are injected), but before
+  ///        the first execute() call.
+  ///        Is currently called conditionally in execute() itself, but should
+  ///        better be called in instantiateFromPlan and similar methods.
+  void init();
 
   /**
    * @brief Produce atMost many output rows, or less.
@@ -241,17 +256,17 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
   std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> executeFetcher(
-      AqlCallStack& stack, size_t const dependency);
+      AqlCallStack& stack, AqlCallType const& aqlCall);
 
-  std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> executeProduceRows(
+  std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);
 
   // execute a skipRowsRange call
   auto executeSkipRowsRange(typename Fetcher::DataRange& inputRange, AqlCall& call)
-      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType>;
 
   auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
-      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t>;
+      -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType>;
 
   /**
    * @brief Inner getSome() part, without the tracing calls.
@@ -310,9 +325,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
-  [[nodiscard]] auto lastRangeHasDataRow() const -> bool;
+  [[nodiscard]] auto lastRangeHasDataRow() const noexcept -> bool;
 
   void resetExecutor();
+
+  void initOnce();
+
+  [[nodiscard]] auto executorNeedsCall(AqlCallType& call) const noexcept -> bool;
 
  private:
   /**
@@ -348,11 +367,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   ExecState _execState;
 
-  AqlCall _upstreamRequest;
+  AqlCallType _upstreamRequest;
 
   AqlCall _clientRequest;
-
-  size_t _requestedDependency;
 
   // Only used in passthrough variant.
   // We track if we have reference the range's block
@@ -362,8 +379,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   bool _executorReturnedDone = false;
 
-  /// @brief Only needed for parallel executors; could be omitted otherwise
-  std::vector<std::optional<AqlCallStack>> _callsInFlight;
+  bool _initialized = false;
 };
 
 }  // namespace arangodb::aql

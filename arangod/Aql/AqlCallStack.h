@@ -63,6 +63,9 @@ class AqlCallStack {
   // Put another call on top of the stack.
   void pushCall(AqlCall&& call);
 
+  // Put another call on top of the stack.
+  void pushCall(AqlCall const& call);
+
   // fill up all missing calls within this stack s.t. we reach depth == 0
   // This needs to be called if an executor requires to be fully executed, even if skipped,
   // even if the subquery it is located in is skipped.

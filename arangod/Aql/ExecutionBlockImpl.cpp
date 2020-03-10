@@ -117,13 +117,11 @@ CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // Forward declaration of Test Executors.
 // only used as long as isNewStyleExecutor is required.
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 class TestLambdaExecutor;
 
 class TestLambdaSkipExecutor;
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 #endif
 
 /*
@@ -196,7 +194,6 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _execState{ExecState::CHECKCALL},
       _upstreamRequest{},
       _clientRequest{},
-      _requestedDependency{},
       _hasUsedDataRangeBlock{false} {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
@@ -606,12 +603,18 @@ template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
-  _lastRange = DataRange(ExecutorState::HASMORE);
   _hasUsedDataRangeBlock = false;
-
+  initOnce();
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_dependencyProxy);
+
+  if constexpr (isMultiDepExecutor<Executor>) {
+    _lastRange.reset();
+    _rowFetcher.init();
+  } else {
+    _lastRange = DataRange(ExecutorState::HASMORE);
+  }
 
   TRI_ASSERT(_skipped == 0);
   _skipped = 0;
@@ -653,6 +656,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
     TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    initOnce();
 
     auto res = executeWithoutTrace(stack);
     return traceExecuteEnd(res);
@@ -982,12 +986,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
                   "Executors should implement the method "
                   "fetchBlockForPassthrough() iff "
                   "Properties::allowsBlockPassthrough is true");
+    static_assert(
+        Executor::Properties::inputSizeRestrictsOutputSize ==
+            hasExpectedNumberOfRows<Executor>::value,
+        "Executors should implement the method expectedNumberOfRows() iff "
+        "Properties::inputSizeRestrictsOutputSize is true");
   }
-  static_assert(
-      Executor::Properties::inputSizeRestrictsOutputSize ==
-          hasExpectedNumberOfRows<Executor>::value,
-      "Executors should implement the method expectedNumberOfRows() iff "
-      "Properties::inputSizeRestrictsOutputSize is true");
 
   constexpr RequestWrappedBlockVariant variant =
       isNewStyleExecutor<Executor>
@@ -1217,35 +1221,45 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t const dependency)
+auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> {
-  // Silence compiler about unused dependency
-  (void)dependency;
   if constexpr (isNewStyleExecutor<Executor>) {
-    if constexpr (is_one_of_v<Fetcher, MultiDependencySingleRowFetcher>) {
-      // TODO: This is a hack to guarantee we have enough space in our range
-      //       to fit all inputs, in particular the one executed below
-      TRI_ASSERT(dependency < _dependencies.size());
-      _lastRange.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
-      if constexpr (!isParallelExecutor) {
-        auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, stack);
+    // TODO The logic in the MultiDependencySingleRowFetcher branch should be
+    //      moved into the MultiDependencySingleRowFetcher.
+    static_assert(isMultiDepExecutor<Executor> ==
+                  std::is_same_v<Fetcher, MultiDependencySingleRowFetcher>);
+    if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher>) {
+      // Note the aqlCall is an AqlCallSet in this case:
+      static_assert(std::is_same_v<AqlCallSet, std::decay_t<decltype(aqlCall)>>);
+      TRI_ASSERT(_lastRange.numberDependencies() == _dependencies.size());
+      auto const& [state, skipped, ranges] = _rowFetcher.execute(stack, aqlCall);
+      for (auto const& [dependency, range] : ranges) {
         _lastRange.setDependency(dependency, range);
-        return {state, skipped, _lastRange};
-      } else {
-        _callsInFlight.resize(_dependencyProxy.numberDependencies());
-        if (!_callsInFlight[dependency].has_value()) {
-          _callsInFlight[dependency] = stack;
-        }
-        TRI_ASSERT(_callsInFlight[dependency].has_value());
-        auto [state, skipped, range] = _rowFetcher.executeForDependency(dependency, _callsInFlight[dependency].value());
-        if (state != ExecutionState::WAITING) {
-          _callsInFlight[dependency] = std::nullopt;
-        }
-        _lastRange.setDependency(dependency, range);
-        return {state, skipped, _lastRange};
       }
+      return {state, skipped, _lastRange};
     } else {
-      return _rowFetcher.execute(stack);
+      // If we are SubqueryStart, we remove the top element of the stack
+      // which belongs to the subquery enclosed by this
+      // SubqueryStart and the partnered SubqueryEnd by *not*
+      // pushing the upstream request.
+      if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
+        auto callCopy = _upstreamRequest;
+        stack.pushCall(std::move(callCopy));
+      }
+
+      auto const result = _rowFetcher.execute(stack);
+
+      if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
+        // As the stack is copied into the fetcher, we need to pop off our call
+        // again. If we use other datastructures or moving we may hand over
+        // ownership of the stack here instead and no popCall is necessary.
+        stack.popCall();
+      } else {
+        // Do not pop the call, we did not put it on.
+        // However we need it for accounting later.
+      }
+
+      return result;
     }
   } else {
     TRI_ASSERT(false);
@@ -1256,10 +1270,10 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, size_t co
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRange& input,
                                                       OutputAqlItemRow& output)
-    -> std::tuple<ExecutorState, typename Executor::Stats, AqlCall, size_t> {
+    -> std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> {
   if constexpr (isNewStyleExecutor<Executor>) {
-    if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>) {
-      input.resizeIfNecessary(ExecutorState::HASMORE, 0, _dependencies.size());
+    if constexpr (isMultiDepExecutor<Executor>) {
+      TRI_ASSERT(input.numberDependencies() == _dependencies.size());
       return _executor.produceRows(input, output);
     } else if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
       // The SubqueryExecutor has it's own special handling outside.
@@ -1268,21 +1282,22 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     } else {
       auto [state, stats, call] = _executor.produceRows(input, output);
-      return {state, stats, call, 0};
+      return {state, stats, call};
     }
   } else {
-    return {ExecutorState::DONE, typename Executor::Stats{}, AqlCall{}, 0};
+    return {ExecutorState::DONE, typename Executor::Stats{}, AqlCall{}};
   }
 }
 
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRange& inputRange,
                                                         AqlCall& call)
-    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t> {
+    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType> {
   if constexpr (isNewStyleExecutor<Executor>) {
     call.skippedRows = 0;
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
-      if constexpr (is_one_of_v<Executor, UnsortedGatherExecutor, SortingGatherExecutor, ParallelUnsortedGatherExecutor>) {
+      if constexpr (isMultiDepExecutor<Executor>) {
+        TRI_ASSERT(inputRange.numberDependencies() == _dependencies.size());
         // If the executor has a method skipRowsRange, to skip outputs.
         // Every non-passthrough executor needs to implement this.
         auto res = _executor.skipRowsRange(inputRange, call);
@@ -1297,7 +1312,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
         auto [state, stats, skipped, localCall] =
             _executor.skipRowsRange(inputRange, call);
         _executorReturnedDone = state == ExecutorState::DONE;
-        return {state, stats, skipped, localCall, 0};
+        return {state, stats, skipped, localCall};
       }
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
       // If we know that every input row produces exactly one output row (this
@@ -1308,18 +1323,17 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
       static_assert(
           std::is_same_v<typename Executor::Stats, NoStats>,
           "Executors with custom statistics must implement skipRowsRange.");
-      return {inputRange.upstreamState(), NoStats{}, 0, call, 0};
+      return {inputRange.upstreamState(), NoStats{}, 0, call};
     } else {
       static_assert(dependent_false<Executor>::value,
                     "This value of SkipRowsRangeVariant is not supported");
-      return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call, 0);
+      TRI_ASSERT(false);
     }
   } else {
     TRI_ASSERT(false);
-    return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call, 0);
   }
-  // Compiler is unhappy without this.
-  return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call, 0);
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 template <>
@@ -1474,7 +1488,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRange& inputRange,
                                                       AqlCall& clientCall)
-    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall, size_t> {
+    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType> {
   TRI_ASSERT(isNewStyleExecutor<Executor>);
   if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
     if (clientCall.needsFullCount() && clientCall.getOffset() == 0 &&
@@ -1484,7 +1498,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       return executeSkipRowsRange(_lastRange, clientCall);
     }
     // Do not fastForward anything, the Subquery start will handle it by itself
-    return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}, 0};
+    return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}};
   }
   auto type = fastForwardType(clientCall, _executor);
 
@@ -1492,9 +1506,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
     case FastForwardVariant::FULLCOUNT:
     case FastForwardVariant::EXECUTOR: {
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
-      auto [state, stats, skippedLocal, call, dependency] =
-          executeSkipRowsRange(_lastRange, clientCall);
-      _requestedDependency = dependency;
+      auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
 
       if (type == FastForwardVariant::EXECUTOR) {
         // We do not report the skip
@@ -1508,22 +1520,40 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
         inputRange.skipAllRemainingDataRows();
       }
 
-      return {state, stats, skippedLocal, call, dependency};
+      return {state, stats, skippedLocal, call};
     }
     case FastForwardVariant::FETCHER: {
       LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
-      _requestedDependency = inputRange.skipAllRemainingDataRows();
-      AqlCall call{};
-      call.hardLimit = 0;
+      auto const dependency = inputRange.skipAllRemainingDataRows();
+      auto constexpr fastForwardCall = AqlCall{0, false, 0, AqlCall::LimitType::HARD};
+      auto const call = std::invoke([&]() -> AqlCallType {
+        if constexpr (std::is_same_v<AqlCallType, AqlCall>) {
+          return fastForwardCall;
+        } else {
+#ifndef _WIN32
+          // For some reason our Windows compiler complains about this static assert
+          // in the cases that should be in the above constexpr path.
+          // So simply not compile it in.
+          static_assert(std::is_same_v<AqlCallType, AqlCallSet>);
+#endif
+          auto call = AqlCallSet{};
+          call.calls.emplace_back(typename AqlCallSet::DepCallPair{dependency, fastForwardCall});
+          return call;
+        }
+      });
 
       // TODO We have to ask all dependencies to go forward to the next shadow row
-      if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-        return {inputRange.upstreamState(_requestedDependency),
-                typename Executor::Stats{}, 0, call, _requestedDependency};
-      } else {
-        return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call,
-                _requestedDependency};
-      }
+      auto const state = std::invoke(
+          [&](auto) {
+            if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+              return inputRange.upstreamState(dependency);
+            } else {
+              return inputRange.upstreamState();
+            }
+          },
+          0);
+
+      return {state, typename Executor::Stats{}, 0, call};
     }
   }
   // Unreachable
@@ -1585,7 +1615,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       size_t skippedLocal = 0;
       typename Fetcher::DataRange bypassedRange{ExecutorState::HASMORE};
       std::tie(_upstreamState, skippedLocal, bypassedRange) =
-          executeFetcher(stack, _requestedDependency);
+          executeFetcher(stack, _upstreamRequest);
       return {_upstreamState, skippedLocal, bypassedRange.getBlock()};
     }
 
@@ -1665,8 +1695,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           ExecutorState state = ExecutorState::HASMORE;
           typename Executor::Stats stats;
           size_t skippedLocal = 0;
-          AqlCall call{};
-          size_t dependency = 0;
+          AqlCallType call{};
           if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
             // NOTE: The subquery Executor will by itself call EXECUTE on it's
             // subquery. This can return waiting => we can get a WAITING state
@@ -1684,11 +1713,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             }
           } else {
             // Execute skipSome
-            std::tie(state, stats, skippedLocal, call, dependency) =
+            std::tie(state, stats, skippedLocal, call) =
                 executeSkipRowsRange(_lastRange, clientCall);
           }
 
-          _requestedDependency = dependency;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           // Assertion: We did skip 'skippedLocal' documents here.
           // This means that they have to be removed from
@@ -1750,8 +1778,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(!_executorReturnedDone);
           ExecutorState state = ExecutorState::HASMORE;
           typename Executor::Stats stats;
-          AqlCall call{};
-          size_t dependency = 0;
+          auto call = AqlCallType{};
           if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
             // NOTE: The subquery Executor will by itself call EXECUTE on it's
             // subquery. This can return waiting => we can get a WAITING state
@@ -1768,10 +1795,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             }
           } else {
             // Execute getSome
-            std::tie(state, stats, call, dependency) =
-                executeProduceRows(_lastRange, *_outputItemRow);
+            std::tie(state, stats, call) = executeProduceRows(_lastRange, *_outputItemRow);
           }
-          _requestedDependency = dependency;
           _executorReturnedDone = state == ExecutorState::DONE;
           _engine->_stats += stats;
           localExecutorState = state;
@@ -1790,7 +1815,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // In all other branches only if the client Still needs more data.
             _execState = ExecState::DONE;
             break;
-          } else if (clientCall.getLimit() > 0 && !lastRangeHasDataRow()) {
+          } else if (clientCall.getLimit() > 0 && executorNeedsCall(call)) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
             _upstreamRequest = call;
@@ -1804,10 +1829,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         case ExecState::FASTFORWARD: {
           LOG_QUERY("96e2c", DEBUG)
               << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
-          auto [state, stats, skippedLocal, call, dependency] =
+          auto [state, stats, skippedLocal, call] =
               executeFastForward(_lastRange, clientCall);
 
-          _requestedDependency = dependency;
           _skipped += skippedLocal;
           _engine->_stats += stats;
           localExecutorState = state;
@@ -1831,39 +1855,22 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // If this triggers the executors produceRows function has returned
           // HASMORE even if it knew that upstream has no further rows.
           TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-          // We need to make sure _lastRange is all used
-          TRI_ASSERT(!lastRangeHasDataRow());
+          // We need to make sure _lastRange is all used for single-dependency
+          // executors.
+          TRI_ASSERT(isMultiDepExecutor<Executor> || !lastRangeHasDataRow());
           TRI_ASSERT(!_lastRange.hasShadowRow());
           size_t skippedLocal = 0;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          size_t subqueryLevelBefore = stack.subqueryLevel();
+          auto subqueryLevelBefore = stack.subqueryLevel();
 #endif
-          // If we are SubqueryStart, we remove the top element of the stack
-          // which belongs to the subquery enclosed by this
-          // SubqueryStart and the partnered SubqueryEnd by *not*
-          // pushing the upstream request.
-          if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
-            auto callCopy = _upstreamRequest;
-            stack.pushCall(std::move(callCopy));
-          }
-
           std::tie(_upstreamState, skippedLocal, _lastRange) =
-              executeFetcher(stack, _requestedDependency);
-
-          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-            // Do not pop the call, we did not put it on.
-            // However we need it for accounting later.
-          } else {
-            // As the stack is copied into the fetcher, we need to pop off our call again.
-            // If we use other datastructures or moving we may hand over ownership of the stack here
-            // instead and no popCall is necessary.
-            stack.popCall();
-          }
+              executeFetcher(stack, _upstreamRequest);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           TRI_ASSERT(subqueryLevelBefore == stack.subqueryLevel());
 #endif
+
           if (_upstreamState == ExecutionState::WAITING) {
             // We need to persist the old call before we return.
             // We might have some local accounting to this call.
@@ -2019,9 +2026,8 @@ auto ExecutionBlockImpl<Executor>::outputIsFull() const noexcept -> bool {
          _outputItemRow->allRowsUsed();
 }
 
-// TODO: remove again
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const -> bool {
+auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const noexcept -> bool {
   return _lastRange.hasDataRow();
 }
 
@@ -2031,6 +2037,37 @@ RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enab
     noexcept {
   return _infos.getOutputRegister();
 }
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::init() {
+  TRI_ASSERT(!_initialized);
+  if constexpr (isMultiDepExecutor<Executor>) {
+    _lastRange.resizeOnce(ExecutorState::HASMORE, 0, _dependencies.size());
+    _rowFetcher.init();
+  }
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::initOnce() {
+  if (!_initialized) {
+    init();
+    _initialized = true;
+  }
+}
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const
+    noexcept -> bool {
+  if constexpr (isMultiDepExecutor<Executor>) {
+    // call is an AqlCallSet. We need to call upstream if it's not empty.
+    return !call.empty();
+  } else {
+    // call is an AqlCall, unconditionally. The current convention is
+    // to call upstream when there is no input left.
+    // This could be made unnecessary by returning an optional AqlCall
+    // for single-dependency executors.
+    return !lastRangeHasDataRow();
+  }
+};
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;

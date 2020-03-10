@@ -45,12 +45,21 @@ ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
 
 auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall) const
     noexcept -> AqlCall {
+  TRI_ASSERT(clientCall.needSkipMore());
+
   // Only skip, don't ask for rows
-  auto upstreamCall = clientCall;
-  upstreamCall.softLimit = 0;
-  upstreamCall.hardLimit = AqlCall::Infinity{};
-  upstreamCall.fullCount = false;
-  return upstreamCall;
+  if (clientCall.getOffset() > 0) {
+    auto upstreamCall = clientCall;
+    upstreamCall.softLimit = 0;
+    upstreamCall.hardLimit = AqlCall::Infinity{};
+    upstreamCall.fullCount = false;
+    return upstreamCall;
+  }
+  TRI_ASSERT(clientCall.getLimit() == 0 && clientCall.hasHardLimit());
+
+  // This can onyl be fullCount or fastForward call.
+  // Send it upstream.
+  return clientCall;
 }
 
 auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCall) const
@@ -75,9 +84,12 @@ auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCa
 
 auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                                  OutputAqlItemRow& output)
-    -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
-  // Illegal dependency, on purpose to trigger asserts
-  size_t waitingDep = input.numberDependencies();
+    -> std::tuple<ExecutorState, Stats, AqlCallSet> {
+  auto const& clientCall = output.getClientCall();
+  TRI_ASSERT(clientCall.getOffset() == 0);
+
+  auto callSet = AqlCallSet{};
+
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
     while (!output.isFull()) {
       auto [state, row] = input.nextDataRow(dep);
@@ -87,24 +99,24 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
       } else {
         // This output did not produce anything
         if (state == ExecutorState::HASMORE) {
-          waitingDep = dep;
+          callSet.calls.emplace_back(
+              AqlCallSet::DepCallPair{dep, upstreamCallProduce(clientCall)});
         }
         break;
       }
     }
   }
-  if (input.isDone()) {
-    // We cannot have one that we are waiting on, if we are done.
-    TRI_ASSERT(waitingDep == input.numberDependencies());
-    return {ExecutorState::DONE, NoStats{}, AqlCall{}, waitingDep};
-  }
-  return {ExecutorState::HASMORE, NoStats{},
-          upstreamCallProduce(output.getClientCall()), waitingDep};
+
+  // We cannot have one that we are waiting on, if we are done.
+  TRI_ASSERT(!input.isDone() || callSet.empty());
+
+  return {input.state(), NoStats{}, callSet};
 }
 
 auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
                                                    AqlCall& call)
-    -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
+  // TODO skipping is currently not parallelized, but should be
   size_t waitingDep = input.numberDependencies();
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
     auto& range = input.rangeForDependency(dep);
@@ -140,8 +152,13 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
   if (input.isDone()) {
     // We cannot have one that we are waiting on, if we are done.
     TRI_ASSERT(waitingDep == input.numberDependencies());
-    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}, waitingDep};
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCallSet{}};
   }
-  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
-          upstreamCallSkip(call), waitingDep};
+  auto callSet = AqlCallSet{};
+  if (call.needSkipMore()) {
+    // We are not done with skipping.
+    // Prepare next call.
+    callSet.calls.emplace_back(AqlCallSet::DepCallPair{waitingDep, upstreamCallSkip(call)});
+  }
+  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
 }

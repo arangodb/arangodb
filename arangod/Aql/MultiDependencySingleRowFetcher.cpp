@@ -176,10 +176,13 @@ void MultiDependencySingleRowFetcher::initDependencies() {
 }
 
 size_t MultiDependencySingleRowFetcher::numberDependencies() {
-  if (_dependencyInfos.empty()) {
-    initDependencies();
-  }
   return _dependencyInfos.size();
+}
+
+void MultiDependencySingleRowFetcher::init() {
+  TRI_ASSERT(_dependencyInfos.empty());
+  initDependencies();
+  _callsInFlight.resize(numberDependencies());
 }
 
 std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRows(size_t atMost) {
@@ -368,9 +371,6 @@ auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> voi
 auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependency,
                                                            AqlCallStack& stack)
     -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange> {
-  if (_dependencyStates.empty()) {
-    initDependencies();
-  }
   auto [state, skipped, block] = _dependencyProxy->executeForDependency(dependency, stack);
 
   if (state == ExecutionState::WAITING) {
@@ -380,18 +380,87 @@ auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependen
       state == ExecutionState::DONE ? ExecutorState::DONE : ExecutorState::HASMORE;
 
   _dependencyStates.at(dependency) = state;
-  if (std::any_of(std::begin(_dependencyStates), std::end(_dependencyStates),
-                  [](ExecutionState const s) {
-                    return s == ExecutionState::HASMORE;
-                  })) {
-    state = ExecutionState::HASMORE;
-  } else {
-    state = ExecutionState::DONE;
-  }
+
   if (block == nullptr) {
     return {state, skipped, AqlItemBlockInputRange{execState, skipped}};
   }
   TRI_ASSERT(block != nullptr);
   auto [start, end] = block->getRelevantRange();
   return {state, skipped, AqlItemBlockInputRange{execState, skipped, block, start}};
+}
+
+auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
+                                              AqlCallSet const& aqlCallSet)
+    -> std::tuple<ExecutionState, size_t, std::vector<std::pair<size_t, AqlItemBlockInputRange>>> {
+  TRI_ASSERT(_callsInFlight.size() == numberDependencies());
+
+  auto ranges = std::vector<std::pair<size_t, AqlItemBlockInputRange>>{};
+  ranges.reserve(aqlCallSet.size());
+
+  auto depCallIdx = size_t{0};
+  auto allAskedDepsAreWaiting = true;
+  auto askedAtLeastOneDep = false;
+  auto skippedTotal = size_t{0};
+  // Iterate in parallel over `_callsInFlight` and `aqlCall.calls`.
+  // _callsInFlight[i] corresponds to aqlCalls.calls[k] iff
+  // aqlCalls.calls[k].dependency = i.
+  // So there is not always a matching entry in aqlCall.calls.
+  for (auto dependency = size_t{0}; dependency < _callsInFlight.size(); ++dependency) {
+    auto& maybeCallInFlight = _callsInFlight[dependency];
+
+    // See if there is an entry for `dependency` in `aqlCall.calls`
+    if (depCallIdx < aqlCallSet.calls.size() &&
+        aqlCallSet.calls[depCallIdx].dependency == dependency) {
+      // If there is a call in flight, we *must not* change the call,
+      // no matter what we got. Otherwise, we save the current call.
+      if (!maybeCallInFlight.has_value()) {
+        auto depStack = stack;
+        depStack.pushCall(aqlCallSet.calls[depCallIdx].call);
+        maybeCallInFlight = depStack;
+      }
+      ++depCallIdx;
+      if (depCallIdx < aqlCallSet.calls.size()) {
+        TRI_ASSERT(aqlCallSet.calls[depCallIdx - 1].dependency <
+                   aqlCallSet.calls[depCallIdx].dependency);
+      }
+    }
+
+    if (maybeCallInFlight.has_value()) {
+      // We either need to make a new call, or check whether we got a result
+      // for a call in flight.
+      auto& callInFlight = maybeCallInFlight.value();
+      auto [state, skipped, range] = executeForDependency(dependency, callInFlight);
+      askedAtLeastOneDep = true;
+      if (state != ExecutionState::WAITING) {
+        // Got a result, call is no longer in flight
+        maybeCallInFlight = std::nullopt;
+        allAskedDepsAreWaiting = false;
+      } else {
+        TRI_ASSERT(skipped == 0);
+      }
+      skippedTotal += skipped;
+      ranges.emplace_back(dependency, range);
+    }
+  }
+
+  auto const state = std::invoke([&]() {
+    if (askedAtLeastOneDep && allAskedDepsAreWaiting) {
+      return ExecutionState::WAITING;
+    } else {
+      return upstreamState();
+    }
+  });
+
+  return {state, skippedTotal, ranges};
+}
+
+auto MultiDependencySingleRowFetcher::upstreamState() const -> ExecutionState {
+  if (std::any_of(std::begin(_dependencyStates), std::end(_dependencyStates),
+                  [](ExecutionState const s) {
+                    return s == ExecutionState::HASMORE;
+                  })) {
+    return ExecutionState::HASMORE;
+  } else {
+    return ExecutionState::DONE;
+  }
 }
