@@ -28,7 +28,6 @@ Is returned if the operation succeeds.
 
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
-@endDocuBlock
 
 @EXAMPLES
 
@@ -41,4 +40,3 @@ is returned when an invalid HTTP method is used.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

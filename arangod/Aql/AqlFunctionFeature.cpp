@@ -24,6 +24,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "RestServer/AqlFeature.h"
@@ -82,9 +83,10 @@ Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
 }
 
 void AqlFunctionFeature::add(Function const& func) {
+  TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
   TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
   // add function to the map
-  _functionNames.emplace(func.name, func);
+  _functionNames.try_emplace(func.name, func);
 }
 
 void AqlFunctionFeature::addAlias(std::string const& alias, std::string const& original) {
@@ -217,6 +219,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
+  add({"LEVENSHTEIN_MATCH", ".,.,.|.", flags, &Functions::LevenshteinMatch});  // (attribute, target, max distance, [include transpositions])
 
   // special flags:
   add({"RANDOM_TOKEN", ".", Function::makeFlags(FF::CanRunOnDBServer),
@@ -266,6 +269,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"MINUS", ".,.|+", flags, &Functions::Minus});
   add({"OUTERSECTION", ".,.|+", flags, &Functions::Outersection});
   add({"INTERSECTION", ".,.|+", flags, &Functions::Intersection});
+  add({"JACCARD", ".,.", flags, &Functions::Jaccard});
   add({"FLATTEN", ".|.", flags, &Functions::Flatten});
   add({"LENGTH", ".", flags, &Functions::Length});
   // COUNT is an alias for LENGTH
@@ -308,6 +312,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REMOVE_VALUE", ".,.|.", flags, &Functions::RemoveValue});
   add({"REMOVE_VALUES", ".,.", flags, &Functions::RemoveValues});
   add({"REMOVE_NTH", ".,.", flags, &Functions::RemoveNth});
+  add({"REPLACE_NTH", ".,.,.|.", flags, &Functions::ReplaceNth});
 
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic

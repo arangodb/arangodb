@@ -26,7 +26,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + this.collectionName
+        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -171,7 +171,7 @@
                     try {
                       if (Number.parseInt(writeConcern) > Number.parseInt(replicationFactor)) {
                         // validation here, as our Joi integration misses some core features
-                        arangoHelper.arangoError("Change Collection", "Minimum replication factor not allowed to be greater than replication factor");
+                        arangoHelper.arangoError("Change Collection", "Write concern is not allowed to be greater than replication factor");
                         abort = true;
                       }
                     } catch (ignore) {
@@ -429,9 +429,9 @@
                     tableContent.push(
                       window.modalView.createReadOnlyEntry(
                         'change-write-concern',
-                        'Minimum replication factor',
+                        'Write concern',
                         data.writeConcern,
-                        'This collection is a satellite collection. The minimum replication factor is not changeable.',
+                        'This collection is a satellite collection. The write concern is not changeable.',
                         '',
                         true
                       )
@@ -456,9 +456,9 @@
                     tableContent.push(
                       window.modalView.createTextEntry(
                         'change-write-concern',
-                        'Minimum replication factor',
+                        'Write concern',
                         data.writeConcern,
-                        'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that is required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
+                        'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
                         '',
                         true,
                         [

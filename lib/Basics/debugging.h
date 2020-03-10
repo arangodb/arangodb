@@ -121,7 +121,7 @@ template<typename T> struct is_container {
 
 template < typename T > struct is_associative {
   static tc& test(...) ;
-  
+
   template < typename U >
   static char test(U&&, typename U::key_type* = 0) ;
   static constexpr bool value = sizeof( test( std::declval<T>() ) ) == 1 ;
@@ -136,6 +136,7 @@ template < typename T > struct is_container :
                    && !std::is_same<unsigned char *, typename std::decay<T>::type>::value
                    && !std::is_same<unsigned char const*, typename std::decay<T>::type>::value
                    && !std::is_same<T, std::string>::value
+                   && !std::is_same<T, std::string_view>::value
                    && !std::is_same<T, const std::string>::value, std::true_type, std::false_type >::type {};
 
 template < typename T > struct is_associative :
@@ -190,7 +191,7 @@ template<typename T>
 enable_if_t<is_container<T>::value, std::ostream&>
 operator<< (std::ostream& o, T const& t) {
   o << conpar<is_associative<T>::value>::open;
-  bool first = true;  
+  bool first = true;
   for (auto const& i : t) {
     if (first) {
       o << " ";
@@ -201,7 +202,7 @@ operator<< (std::ostream& o, T const& t) {
     o << i ;
   }
   o << " " << conpar<is_associative<T>::value>::close;
-  return o;  
+  return o;
 }
 
 /// @brief assert
@@ -227,8 +228,8 @@ operator<< (std::ostream& o, T const& t) {
   do {                   \
   } while (0)
 
-#endif
+#endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#endif
+#endif  // #ifndef TRI_ASSERT
 
 #endif

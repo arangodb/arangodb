@@ -2566,15 +2566,15 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN RANDOM_TOKEN(1, 2)');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 'RETURN RANDOM_TOKEN(-1)');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 'RETURN RANDOM_TOKEN(-10)');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 'RETURN RANDOM_TOKEN(0)');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 'RETURN RANDOM_TOKEN(65537)');
 
-      var actual = getQueryResults('FOR i IN [ 1, 10, 100, 1000 ] RETURN RANDOM_TOKEN(i)');
-      assertEqual(4, actual.length);
+      var actual = getQueryResults('FOR i IN [ 1, 10, 100, 1000, 0 ] RETURN RANDOM_TOKEN(i)');
+      assertEqual(5, actual.length);
       assertEqual(1, actual[0].length);
       assertEqual(10, actual[1].length);
       assertEqual(100, actual[2].length);
       assertEqual(1000, actual[3].length);
+      assertEqual(0, actual[4].length);
     }
 
   };

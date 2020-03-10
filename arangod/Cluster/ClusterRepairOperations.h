@@ -23,11 +23,10 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_REPAIR_OPERATIONS_H
 #define ARANGOD_CLUSTER_CLUSTER_REPAIR_OPERATIONS_H
 
-#include <boost/optional.hpp>
-#include <boost/variant.hpp>
-
 #include <velocypack/velocypack-common.h>
 #include <map>
+#include <optional>
+#include <variant>
 #include "ClusterInfo.h"
 
 namespace arangodb {
@@ -65,7 +64,7 @@ class VersionSort {
     }
   };
 
-  using CharOrInt = boost::variant<char, WrappedUInt64>;
+  using CharOrInt = std::variant<char, WrappedUInt64>;
 
   std::vector<CharOrInt> static splitVersion(std::string const& str);
 };
@@ -153,9 +152,9 @@ keyword<tag::leader, std::string> _leader = decltype(_leader)::instance;
 keyword<tag::followers, std::vector<std::string>> _followers = decltype(_followers)::instance;
 keyword<tag::protoFollowers, std::vector<std::string>> _protoFollowers =
     decltype(_protoFollowers)::instance;
-keyword<tag::distributeShardsLike, boost::optional<CollectionID>> _distributeShardsLike =
+keyword<tag::distributeShardsLike, std::optional<CollectionID>> _distributeShardsLike =
     decltype(_distributeShardsLike)::instance;
-keyword<tag::repairingDistributeShardsLike, boost::optional<CollectionID>> _repairingDistributeShardsLike =
+keyword<tag::repairingDistributeShardsLike, std::optional<CollectionID>> _repairingDistributeShardsLike =
     decltype(_repairingDistributeShardsLike)::instance;
 keyword<tag::shardsById, std::map<ShardID, DBServers, VersionSort>> _shardsById =
     decltype(_shardsById)::instance;
@@ -319,7 +318,7 @@ std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operat
 std::ostream& operator<<(std::ostream& ostream, FixServerOrderOperation const& operation);
 
 using RepairOperation =
-    boost::variant<BeginRepairsOperation const, FinishRepairsOperation const, MoveShardOperation const, FixServerOrderOperation const>;
+    std::variant<BeginRepairsOperation const, FinishRepairsOperation const, MoveShardOperation const, FixServerOrderOperation const>;
 
 std::string getTypeAsString(RepairOperation const& op);
 
@@ -327,9 +326,8 @@ std::ostream& operator<<(std::ostream& ostream, RepairOperation const& operation
 
 // Converts any RepairOperation to a Transaction. If its a job (i.e. put in
 // Target/ToDo/), it returns the corresponding job id as well.
-class RepairOperationToTransactionVisitor
-    : public boost::static_visitor<std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>> {
-  using ReturnValueT = std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>;
+class RepairOperationToTransactionVisitor {
+  using ReturnValueT = std::pair<AgencyWriteTransaction, std::optional<uint64_t>>;
 
  public:
   RepairOperationToTransactionVisitor(ClusterInfo&);
@@ -364,7 +362,7 @@ class RepairOperationToTransactionVisitor
 // Doesn't contain all data, some members are named differently.
 // TODO Maybe it would still be good to add all members, at least for the
 // functional tests?
-class RepairOperationToVPackVisitor : public boost::static_visitor<void> {
+class RepairOperationToVPackVisitor {
  public:
   RepairOperationToVPackVisitor() = delete;
   explicit RepairOperationToVPackVisitor(VPackBuilder& builder);

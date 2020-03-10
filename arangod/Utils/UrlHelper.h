@@ -23,8 +23,8 @@
 #ifndef ARANGOD_UTILS_URLHELPER_H
 #define ARANGOD_UTILS_URLHELPER_H
 
-#include <boost/optional.hpp>
-#include <boost/variant.hpp>
+#include <optional>
+#include <variant>
 
 #include <string>
 #include <utility>
@@ -68,11 +68,11 @@ class UserInfo {
   explicit UserInfo(User);
 
   User const& user() const noexcept;
-  boost::optional<Password> const& password() const noexcept;
+  std::optional<Password> const& password() const noexcept;
 
  private:
   User _user;
-  boost::optional<Password> _password;
+  std::optional<Password> _password;
 };
 
 class Host {
@@ -95,16 +95,16 @@ class Port {
 
 class Authority {
  public:
-  Authority(boost::optional<UserInfo> userInfo, Host host, boost::optional<Port> port);
+  Authority(std::optional<UserInfo> userInfo, Host host, std::optional<Port> port);
 
-  boost::optional<UserInfo> const& userInfo() const noexcept;
+  std::optional<UserInfo> const& userInfo() const noexcept;
   Host const& host() const noexcept;
-  boost::optional<Port> const& port() const noexcept;
+  std::optional<Port> const& port() const noexcept;
 
  private:
-  boost::optional<UserInfo> _userInfo;
+  std::optional<UserInfo> _userInfo;
   Host _host;
-  boost::optional<Port> _port;
+  std::optional<Port> _port;
 };
 
 class Path {
@@ -151,7 +151,7 @@ class Query {
 
  private:
   // Optionally use either a string, or a vector of pairs as representation
-  boost::variant<QueryString, QueryParameters> _content;
+  std::variant<QueryString, QueryParameters> _content;
 };
 
 class Fragment {
@@ -166,41 +166,41 @@ class Fragment {
 
 class Url {
  public:
-  Url(Scheme, boost::optional<Authority>, Path, boost::optional<Query>,
-      boost::optional<Fragment>);
+  Url(Scheme, std::optional<Authority>, Path, std::optional<Query>,
+      std::optional<Fragment>);
 
   std::string toString() const;
 
   Scheme const& scheme() const noexcept;
-  boost::optional<Authority> const& authority() const noexcept;
+  std::optional<Authority> const& authority() const noexcept;
   Path const& path() const noexcept;
-  boost::optional<Query> const& query() const noexcept;
-  boost::optional<Fragment> const& fragment() const noexcept;
+  std::optional<Query> const& query() const noexcept;
+  std::optional<Fragment> const& fragment() const noexcept;
 
  private:
   Scheme _scheme;
-  boost::optional<Authority> _authority;
+  std::optional<Authority> _authority;
   Path _path;
-  boost::optional<Query> _query;
-  boost::optional<Fragment> _fragment;
+  std::optional<Query> _query;
+  std::optional<Fragment> _fragment;
 };
 
 // Artificial part of an URI, including path and optionally query and fragment,
 // but omitting scheme and authority.
 class Location {
  public:
-  Location(Path, boost::optional<Query>, boost::optional<Fragment>);
+  Location(Path, std::optional<Query>, std::optional<Fragment>);
 
   std::string toString() const;
 
   Path const& path() const noexcept;
-  boost::optional<Query> const& query() const noexcept;
-  boost::optional<Fragment> const& fragment() const noexcept;
+  std::optional<Query> const& query() const noexcept;
+  std::optional<Fragment> const& fragment() const noexcept;
 
  private:
   Path _path;
-  boost::optional<Query> _query;
-  boost::optional<Fragment> _fragment;
+  std::optional<Query> _query;
+  std::optional<Fragment> _fragment;
 };
 
 std::string uriEncode(std::string const&);

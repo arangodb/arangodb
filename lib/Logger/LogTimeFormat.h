@@ -25,7 +25,6 @@
 #define ARANGODB_LOGGER_LOG_TIME_FORMAT_H 1
 
 #include <iosfwd>
-#include <ostream>
 #include <string>
 #include <unordered_set>
 
@@ -58,7 +57,7 @@ TimeFormat formatFromName(std::string const& name);
 
 /// @brief writes the current time into the given buffer,
 /// in the specified format
-void writeTime(std::ostream& out, TimeFormat format);
+void writeTime(std::string& out, TimeFormat format);
 
 }  // namespace LogTimeFormats
 }  // namespace arangodb

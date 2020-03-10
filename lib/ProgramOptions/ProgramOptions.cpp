@@ -128,7 +128,7 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
   builder.openObject();
 
   walk(
-      [&builder, &filter, &detailed](Section const& section, Option const& option) {
+      [this, &builder, &filter, &detailed](Section const& section, Option const& option) {
         std::string full(option.fullName());
         
         if (!filter(full)) {
@@ -154,6 +154,41 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
                       VPackValue(section.enterpriseOnly ||
                                  option.hasFlag(arangodb::options::Flags::Enterprise)));
           builder.add("requiresValue", VPackValue(option.parameter->requiresValue()));
+         
+          // OS support
+          builder.add("os", VPackValue(VPackValueType::Array));
+          if (option.hasFlag(arangodb::options::Flags::OsLinux)) {
+            builder.add(VPackValue("linux"));
+          }
+          if (option.hasFlag(arangodb::options::Flags::OsMac)) {
+            builder.add(VPackValue("macos"));
+          }
+          if (option.hasFlag(arangodb::options::Flags::OsWindows)) {
+            builder.add(VPackValue("windows"));
+          }
+          builder.close();
+          
+          // component support
+          char const* arangod = "arangod";
+          if (_progname.size() >= strlen(arangod) &&
+              _progname.compare(_progname.size() - strlen(arangod), strlen(arangod), arangod) == 0) {
+            builder.add("component", VPackValue(VPackValueType::Array));
+            if (option.hasFlag(arangodb::options::Flags::OnCoordinator)) {
+              builder.add(VPackValue("coordinator"));
+            }
+            if (option.hasFlag(arangodb::options::Flags::OnDBServer)) {
+              builder.add(VPackValue("dbserver"));
+            }
+            if (option.hasFlag(arangodb::options::Flags::OnAgent)) {
+              builder.add(VPackValue("agent"));
+            }
+            if (option.hasFlag(arangodb::options::Flags::OnSingle)) {
+              builder.add(VPackValue("single"));
+            }
+            builder.close();
+          }
+
+          // version the option was introduced in (unknown for some older options)
           builder.add(VPackValue("introducedIn"));
           if (option.hasIntroducedIn()) {
             builder.openArray();
@@ -164,6 +199,8 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           } else {
             builder.add(VPackValue(VPackValueType::Null));
           }
+
+          // version the option was deprecated in (not set for still-active options)
           builder.add(VPackValue("deprecatedIn"));
           if (option.hasDeprecatedIn()) {
             builder.openArray();
@@ -174,12 +211,18 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           } else {
             builder.add(VPackValue(VPackValueType::Null));
           }
+
           std::string values = option.parameter->description();
           if (!values.empty()) {
             builder.add("values", VPackValue(values));
           }
-          builder.add(VPackValue("default"));
-          option.toVPack(builder);
+
+          if (!option.hasFlag(arangodb::options::Flags::Command)) {
+            // command-like options are commands, thus they shouldn't have
+            // a "default" value
+            builder.add(VPackValue("default"));
+            option.toVPack(builder);
+          }
           builder.add("dynamic",
                       VPackValue(option.hasFlag(arangodb::options::Flags::Dynamic)));
           builder.close();
@@ -477,22 +520,17 @@ void ProgramOptions::addPositional(std::string const& value) {
 // adds an option to the list of options
 void ProgramOptions::addOption(Option const& option) {
   checkIfSealed();
-  auto it = _sections.find(option.section);
-
-  if (it == _sections.end()) {
-    // add an anonymous section now...
-    addSection(option.section, "");
-    it = _sections.find(option.section);
-  }
+  std::map<std::string, Section>::iterator sectionIt = addSection(option.section, "");
 
   if (!option.shorthand.empty()) {
-    if (!_shorthands.emplace(option.shorthand, option.fullName()).second) {
+    if (!_shorthands.try_emplace(option.shorthand, option.fullName()).second) {
       throw std::logic_error(
           std::string("shorthand option already defined for option ") + option.displayName());
     }
   }
 
-  (*it).second.options.emplace(option.name, option);
+  Section& section = (*sectionIt).second;
+  section.options.try_emplace(option.name, option);
 }
 
 // determine maximum width of all options labels
@@ -535,7 +573,7 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value,
       if (last > 1 && it.first > 2 * last) {
         break;
       }
-      if (it.first > cutOff) {
+      if (it.first > cutOff && it.second.substr(0, value.size()) != value) {
         continue;
       }
       result.emplace_back(it.second);

@@ -28,24 +28,36 @@
 
 namespace arangodb {
 
+// this feature is responsible for performing a database upgrade. 
+// it is only doing something if the server was started with the option 
+// `--database.auto-upgrade true` or `--database.check-version true`. 
+// On a coordinator this feature will *not* perform the actual upgrade,
+// because it is too early in the sequence. Coordinator upgrades are
+// performed by the ClusterUpgradeFeature, which is way later in the
+// startup sequence, so it can use the full cluster functionality when run.
+// after this feature has executed the upgrade, it will shut down the server.
+// in the coordinator case, this feature will not shut down the server.
+// instead, the shutdown is performed by the ClusterUpgradeFeature.
 class UpgradeFeature final : public application_features::ApplicationFeature {
  public:
   UpgradeFeature(application_features::ApplicationServer& server, int* result,
                  std::vector<std::type_index> const& nonServerFeatures);
 
-  void addTask(methods::Upgrade::Task&& task);
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  
+  void addTask(methods::Upgrade::Task&& task);
+
+ private:
+  void upgradeLocalDatabase();
 
  private:
   friend struct methods::Upgrade;  // to allow access to '_tasks'
 
   bool _upgrade;
   bool _upgradeCheck;
-
-  void upgradeDatabase();
 
   int* _result;
   std::vector<std::type_index> _nonServerFeatures;

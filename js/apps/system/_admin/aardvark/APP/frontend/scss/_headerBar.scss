@@ -38,9 +38,10 @@ input.search-input {
   }
 
   .fa-search {
+    float: right;
     position: relative;
-    right: 5px;
-    top: -4px;
+    right: 0;
+    top: 5px;
   }
 }
 

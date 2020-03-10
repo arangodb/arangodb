@@ -1,12 +1,14 @@
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Rest/Version.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
 #include "gtest/gtest.h"
 
@@ -92,8 +94,9 @@ int main(int argc, char* argv[]) {
 
   ARGV0 = subargv[0];
 
-  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::ServerState state(server);
+  state.setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::ShellColorsFeature sc(server);
 
   arangodb::Logger::setShowLineNumber(logLineNumbers);

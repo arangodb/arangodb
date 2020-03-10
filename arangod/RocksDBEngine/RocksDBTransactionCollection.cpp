@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTransactionCollection.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -40,12 +43,15 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
     : TransactionCollection(trx, cid, accessType, nestingLevel),
+      _usageLocked(false),
+      _exclusiveWrites(trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites),
       _initialNumberDocuments(0),
       _revision(0),
       _numInserts(0),
       _numUpdates(0),
-      _numRemoves(0),
-      _usageLocked(false) {}
+      _numRemoves(0)
+      {}
+
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
@@ -189,17 +195,18 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
   }
 }
 
-void RocksDBTransactionCollection::prepareCommit(uint64_t trxId, uint64_t preCommitSeq) {
+void RocksDBTransactionCollection::prepareTransaction(uint64_t trxId, uint64_t beginSeq) {
   TRI_ASSERT(_collection != nullptr);
-  if (hasOperations() || !_trackedIndexOperations.empty()) {
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-    coll->meta().placeBlocker(trxId, preCommitSeq);
+    TRI_ASSERT(beginSeq > 0);
+    coll->meta().placeBlocker(trxId, beginSeq);
   }
 }
 
 void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   TRI_ASSERT(_collection != nullptr);
-  if (hasOperations() || !_trackedIndexOperations.empty()) {
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     coll->meta().removeBlocker(trxId);
   }
@@ -208,12 +215,18 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
   TRI_ASSERT(_collection != nullptr);
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-  
+
   // Update the collection count
   int64_t const adj = _numInserts - _numRemoves;
   if (hasOperations()) {
     TRI_ASSERT(_revision != 0 && commitSeq != 0);
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
+  }
+
+  // update the revision tree
+  if (!_trackedOperations.empty()) {
+    rcoll->bufferUpdates(commitSeq, std::move(_trackedOperations.inserts),
+                         std::move(_trackedOperations.removals));
   }
 
   // Update the index estimates.
@@ -233,7 +246,7 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
     }
   }
 
-  if (hasOperations() || !_trackedIndexOperations.empty()) {
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     rcoll->meta().removeBlocker(trxId);
   }
 
@@ -241,16 +254,27 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
+  _trackedOperations.clear();
   _trackedIndexOperations.clear();
 }
 
+void RocksDBTransactionCollection::trackInsert(TRI_voc_rid_t rid) {
+  if (_collection->syncByRevision()) {
+    _trackedOperations.inserts.emplace_back(static_cast<std::size_t>(rid));
+  }
+}
+
+void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
+  if (_collection->syncByRevision()) {
+    _trackedOperations.removals.emplace_back(static_cast<std::size_t>(rid));
+  }
+}
+
 void RocksDBTransactionCollection::trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash) {
-  // First list is Inserts
   _trackedIndexOperations[iid].inserts.emplace_back(hash);
 }
 
 void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash) {
-  // Second list is Removes
   _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 
@@ -259,6 +283,11 @@ void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t 
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
 /// no other error occurred returns any other error code otherwise
 int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
+
+  if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
+    type = AccessMode::Type::EXCLUSIVE;
+  }
+
   if (!AccessMode::isWriteOrExclusive(type)) {
     _lockType = type;
     return TRI_ERROR_NO_ERROR;
@@ -312,6 +341,10 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
 /// @brief unlock a collection
 int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLevel) {
+  if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
+    type = AccessMode::Type::EXCLUSIVE;
+  }
+
   if (!AccessMode::isWriteOrExclusive(type) || !AccessMode::isWriteOrExclusive(_lockType)) {
     _lockType = AccessMode::Type::NONE;
     return TRI_ERROR_NO_ERROR;

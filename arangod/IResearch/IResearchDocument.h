@@ -141,7 +141,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   bool valid() const noexcept { return !_stack.empty(); }
 
   bool operator==(FieldIterator const& rhs) const noexcept {
-    TRI_ASSERT(_trx == rhs._trx);  // compatibility
+    TRI_ASSERT(_trx == rhs._trx); // compatibility
     return _stack == rhs._stack;
   }
 
@@ -149,27 +149,25 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
     return !(*this == rhs);
   }
 
-  void reset( // reset
-    arangodb::velocypack::Slice const& doc, // doc
-    IResearchLinkMeta const& linkMeta // link meta
-  );
+  void reset(velocypack::Slice const& doc,
+             FieldMeta const& linkMeta);
 
  private:
-  typedef IResearchLinkMeta::Analyzer const* AnalyzerIterator;
+  typedef FieldMeta::Analyzer const* AnalyzerIterator;
 
   typedef bool(*Filter)( // filter
     std::string& buffer,  // buffer
-    IResearchLinkMeta const*& rootMeta, // root link meta
+    FieldMeta const*& rootMeta, // root link meta
     IteratorValue const& value // value
   );
 
   struct Level {
-    Level( // constructor
-        arangodb::velocypack::Slice slice, // slice
-        size_t nameLength, // name length
-        IResearchLinkMeta const& meta, // link meta
-        Filter filter // filter
-    ): it(slice), nameLength(nameLength), meta(&meta), filter(filter) {
+    Level(velocypack::Slice slice,
+          size_t nameLength,
+          FieldMeta const& meta,
+          Filter filter)
+      : it(slice), nameLength(nameLength),
+        meta(&meta), filter(filter) {
     }
 
     bool operator==(Level const& rhs) const noexcept { return it == rhs.it; }
@@ -178,7 +176,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
 
     Iterator it;
     size_t nameLength;              // length of the name at the current level
-    IResearchLinkMeta const* meta;  // metadata
+    FieldMeta const* meta;  // metadata
     Filter filter;
   };  // Level
 
@@ -201,17 +199,17 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   FieldIterator& operator=(FieldIterator const&) = delete;
 
   void next();
-  bool pushAndSetValue(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
-  bool setAttributeValue(IResearchLinkMeta const& context);
+  bool pushAndSetValue(arangodb::velocypack::Slice slice, FieldMeta const*& topMeta);
+  bool setAttributeValue(FieldMeta const& context);
   bool setStringValue( // set value
     arangodb::velocypack::Slice const value, // value
-    IResearchLinkMeta::Analyzer const& valueAnalyzer // analyzer to use
+    FieldMeta::Analyzer const& valueAnalyzer // analyzer to use
   );
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
 
-  void resetAnalyzers(IResearchLinkMeta const& context) noexcept {
+  void resetAnalyzers(FieldMeta const& context) noexcept {
     auto const& analyzers = context._analyzers;
 
     _begin = analyzers.data();

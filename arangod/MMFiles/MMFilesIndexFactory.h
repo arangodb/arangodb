@@ -30,7 +30,7 @@ namespace arangodb {
 
 class MMFilesIndexFactory final : public IndexFactory {
  public:
-  MMFilesIndexFactory();
+  explicit MMFilesIndexFactory(application_features::ApplicationServer&);
   ~MMFilesIndexFactory() = default;
 
   /// @brief create system indexes primary / edge

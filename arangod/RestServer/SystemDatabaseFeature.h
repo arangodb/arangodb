@@ -24,6 +24,8 @@
 #ifndef ARANGOD_RESTSERVER__SYSTEM_DATABASE_FEATURE_H
 #define ARANGOD_RESTSERVER__SYSTEM_DATABASE_FEATURE_H 1
 
+#include <atomic>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 struct TRI_vocbase_t;  // forward declaration

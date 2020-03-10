@@ -61,8 +61,6 @@ class SingleRowFetcher {
  public:
   /**
    * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the row returned is valid only
-   *        until the next call to fetchRow.
    *
    * @param atMost may be passed if a block knows the maximum it might want to
    *        fetch from upstream (should apply only to the LimitExecutor). Will
@@ -71,7 +69,7 @@ class SingleRowFetcher {
    *
    * @return A pair with the following properties:
    *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
+   *           WAITING => IO going on, immediately return to caller.
    *           DONE => No more to expect from Upstream, if you are done with
    *                   this row return DONE to caller.
    *           HASMORE => There is potentially more from above, call again if
@@ -84,11 +82,24 @@ class SingleRowFetcher {
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
+
+  struct RowWithStates {
+    RowWithStates() = delete;
+    ExecutionState localState;
+    ExecutionState globalState;
+    InputAqlItemRow row;
+  };
+
+  // Like fetchRow(), but returns both the subquery-local state (like fetchRow())
+  // and the global state (like fetchShadowRow()).
+  // Currently necessary only in the SubqueryStartExecutor.
+  [[nodiscard]] RowWithStates fetchRowWithGlobalState(
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
 

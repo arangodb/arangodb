@@ -30,6 +30,7 @@
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Containers/HashSet.h"
 #include "Indexes/IndexIterator.h"
@@ -115,11 +116,43 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// the projection attributes (if any)
   void initIndexCoversProjections();
 
+  void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
+                         std::vector<aql::RegisterId>& nrRegs,
+                         std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
+                         unsigned int& totalNrRegs, unsigned int depth) const;
+
+  bool isLateMaterialized() const noexcept {
+    TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||
+               !(_outNonMaterializedDocId == nullptr || _outNonMaterializedIndVars.second.empty()));
+    return !_outNonMaterializedIndVars.second.empty();
+  }
+
+  bool canApplyLateDocumentMaterializationRule() const {
+    return isProduceResult() && coveringIndexAttributePositions().empty();
+  }
+
+  struct IndexVariable {
+    size_t indexFieldNum;
+    Variable const* var;
+  };
+
+  using IndexValuesVars = std::pair<TRI_idx_iid_t, std::vector<std::pair<size_t, Variable const*>>>;
+
+  using IndexValuesRegisters = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, RegisterId>>;
+
+  using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexVariable>;
+
+  void setLateMaterialized(aql::Variable const* docIdVariable, TRI_idx_iid_t commonIndexId, IndexVarsInfo const& indexVariables);
+
  private:
   void initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,
                       std::vector<RegisterId>& inRegs,
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                       transaction::Methods* trxPtr) const;
+
+  bool isProduceResult() const {
+    return isVarUsedLater(_outVariable) || _filter != nullptr;
+  }
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*, transaction::Methods* trx) const;
@@ -136,6 +169,12 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   /// @brief the index iterator options - same for all indexes
   IndexIteratorOptions _options;
+
+  /// @brief output variable to write only non-materialized document ids
+  aql::Variable const* _outNonMaterializedDocId;
+
+  /// @brief output variables to non-materialized document index references
+  IndexValuesVars _outNonMaterializedIndVars;
 };
 
 }  // namespace aql

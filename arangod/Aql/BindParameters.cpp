@@ -61,7 +61,7 @@ void BindParameters::process() {
   }
 
   for (auto it : VPackObjectIterator(slice, false)) {
-    std::string const key(it.key.copyString());
+    auto const key(it.key.copyString());
     VPackSlice const value(it.value);
 
     if (value.isNone()) {
@@ -73,7 +73,7 @@ void BindParameters::process() {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, key.c_str());
     }
 
-    _parameters.emplace(std::move(key), std::make_pair(value, false));
+    _parameters.try_emplace(std::move(key), value, false);
   }
 
   _processed = true;
@@ -107,9 +107,9 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
 }
 
 BindParameters::BindParameters()
-    : _builder(nullptr), _parameters(), _processed(false) {}
+    : _parameters(), _processed(false) {}
 
-BindParameters::BindParameters(std::shared_ptr<arangodb::velocypack::Builder>  builder)
+BindParameters::BindParameters(std::shared_ptr<arangodb::velocypack::Builder> builder)
     : _builder(std::move(builder)), _parameters(), _processed(false) {}
 
 BindParametersType& BindParameters::get() {

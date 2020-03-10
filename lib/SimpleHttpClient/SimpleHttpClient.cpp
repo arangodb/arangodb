@@ -191,7 +191,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
       break;
     }
 
-    auto& server = application_features::ApplicationServer::server();
+    auto& server = _connection->server();
     if (server.isStopping()) {
       // abort this client, will also lead to exiting this loop next
       setAborted(true);
@@ -262,7 +262,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   // reset error message
   _errorMessage = "";
 
-  auto& server = application_features::ApplicationServer::server();
+  auto& server = _connection->server();
   auto& comm = server.getFeature<application_features::CommunicationFeaturePhase>();
 
   // set body

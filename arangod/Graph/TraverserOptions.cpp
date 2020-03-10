@@ -28,8 +28,10 @@
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
+#include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/SingleServerTraverser.h"
 #include "Indexes/Index.h"
 
@@ -43,6 +45,25 @@ using namespace arangodb::transaction;
 using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+arangodb::velocypack::StringRef getEdgeDestination(arangodb::velocypack::Slice edge,
+                                                   arangodb::velocypack::StringRef origin) {
+  if (edge.isString()) {
+    return edge.stringRef();
+  }
+
+  TRI_ASSERT(edge.isObject());
+  auto from = edge.get(arangodb::StaticStrings::FromString);
+  TRI_ASSERT(from.isString());
+  if (from.stringRef() == origin) {
+    auto to = edge.get(arangodb::StaticStrings::ToString);
+    TRI_ASSERT(to.isString());
+    return to.stringRef();
+  }
+  return from.stringRef();
+}
+}  // namespace
+
 TraverserOptions::TraverserOptions(aql::Query* query)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
@@ -50,6 +71,7 @@ TraverserOptions::TraverserOptions(aql::Query* query)
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
+      useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {}
 
@@ -60,6 +82,7 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
+      useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {
   TRI_ASSERT(obj.isObject());
@@ -74,6 +97,10 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
   TRI_ASSERT(minDepth <= maxDepth);
   useBreadthFirst = VPackHelper::getBooleanValue(obj, "bfs", false);
+  useNeighbors = VPackHelper::getBooleanValue(obj, "neighbors", false);
+
+  TRI_ASSERT(!useNeighbors || useBreadthFirst);
+  
   std::string tmp = VPackHelper::getStringValue(obj, "uniqueVertices", "");
   if (tmp == "path") {
     uniqueVertices = TraverserOptions::UniquenessLevel::PATH;
@@ -82,7 +109,7 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "uniqueVertices: 'global' is only "
                                      "supported, with bfs: true due to "
-                                     "unpredictable results.");
+                                     "otherwise unpredictable results.");
     }
     uniqueVertices = TraverserOptions::UniquenessLevel::GLOBAL;
   } else {
@@ -95,11 +122,55 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
   } else if (tmp == "global") {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueEdges: 'global' is not supported, "
-                                   "due to unpredictable results. Use 'path' "
+                                   "due to otherwise unpredictable results. Use 'path' "
                                    "or 'none' instead");
   } else {
     uniqueEdges = TraverserOptions::UniquenessLevel::PATH;
   }
+
+  VPackSlice read = obj.get("vertexCollections");
+  if (read.isString()) {
+    auto c = read.stringRef();
+    vertexCollections.emplace_back(c.data(), c.size());
+  } else if (read.isArray()) {
+    for (auto slice : VPackArrayIterator(read)) {
+      if (!slice.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "The options require vertexCollections to "
+            "be a string or array of strings");
+      }
+      auto c = slice.stringRef();
+      vertexCollections.emplace_back(c.data(), c.size());
+    }
+  } else if (!read.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require vertexCollections to "
+                                   "be a string or array of strings");
+  }
+  
+  read = obj.get("edgeCollections");
+  if (read.isString()) {
+    auto c = read.stringRef();
+    edgeCollections.emplace_back(c.data(), c.size());
+  } else if (read.isArray()) {
+    for (auto slice : VPackArrayIterator(read)) {
+      if (!slice.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "The options require edgeCollections to "
+            "be a string or array of strings");
+      }
+      auto c = slice.stringRef();
+      edgeCollections.emplace_back(c.data(), c.size());
+    }
+  } else if (!read.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require edgeCollections to "
+                                   "be a string or array of strings");
+  }
+  
+  _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* query,
@@ -110,6 +181,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
+      useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -139,6 +211,12 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
                                    "The options require a bfs");
   }
   useBreadthFirst = read.getBool();
+  
+  read = info.get("neighbors");
+  if (read.isBoolean()) {
+    useNeighbors = read.getBool();
+  }
+  TRI_ASSERT(!useNeighbors || useBreadthFirst);
 
   read = info.get("uniqueVertices");
   if (!read.isInteger()) {
@@ -179,6 +257,48 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
                                      "The options require a uniqueEdges");
   }
 
+  read = info.get("vertexCollections");
+  if (read.isString()) {
+    auto c = read.stringRef();
+    vertexCollections.emplace_back(c.data(), c.size());
+  } else if (read.isArray()) {
+    for (auto slice : VPackArrayIterator(read)) {
+      if (!slice.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "The options require vertexCollections to "
+            "be a string or array of strings");
+      }
+      auto c = slice.stringRef();
+      vertexCollections.emplace_back(c.data(), c.size());
+    }
+  } else if (!read.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require vertexCollections to "
+                                   "be a string or array of strings");
+  }
+  
+  read = info.get("edgeCollections");
+  if (read.isString()) {
+    auto c = read.stringRef();
+    edgeCollections.emplace_back(c.data(), c.size());
+  } else if (read.isArray()) {
+    for (auto slice : VPackArrayIterator(read)) {
+      if (!slice.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "The options require edgeCollections to "
+            "be a string or array of strings");
+      }
+      auto c = slice.stringRef();
+      edgeCollections.emplace_back(c.data(), c.size());
+    }
+  } else if (!read.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require edgeCollections to "
+                                   "be a string or array of strings");
+  }
+
   read = info.get("depthLookupInfo");
   if (!read.isNone()) {
     if (!read.isObject()) {
@@ -190,13 +310,13 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
     size_t length = collections.length();
     for (auto const& depth : VPackObjectIterator(read)) {
       uint64_t d = basics::StringUtils::uint64(depth.key.copyString());
-      auto it = _depthLookupInfo.emplace(d, std::vector<LookupInfo>());
-      TRI_ASSERT(it.second);
+      auto [it, emplaced] = _depthLookupInfo.try_emplace(d, std::vector<LookupInfo>());
+      TRI_ASSERT(emplaced);
       VPackSlice list = depth.value;
       TRI_ASSERT(length == list.length());
-      it.first->second.reserve(length);
+      it->second.reserve(length);
       for (size_t j = 0; j < length; ++j) {
-        it.first->second.emplace_back(query, list.at(j), collections.at(j));
+        it->second.emplace_back(query, list.at(j), collections.at(j));
       }
     }
   }
@@ -213,12 +333,17 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
     for (auto const& info : VPackObjectIterator(read)) {
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto it = _vertexExpressions.emplace(d, new aql::Expression(query->plan(),
+      bool emplaced = false;
+      std::tie(std::ignore, emplaced) = _vertexExpressions.try_emplace(d, new aql::Expression(query->plan(),
                                                                   query->ast(), info.value));
-      TRI_ASSERT(it.second);
+      TRI_ASSERT(emplaced);
 #else
-      _vertexExpressions.emplace(d, new aql::Expression(query->plan(),
-                                                        query->ast(), info.value));
+      _vertexExpressions.try_emplace(
+        d,
+        arangodb::lazyConstruct([&]{
+          return new aql::Expression(query->plan(), query->ast(), info.value);
+        })
+      );
 #endif
     }
   }
@@ -235,17 +360,22 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
   TRI_ASSERT(uniqueVertices != TraverserOptions::UniquenessLevel::GLOBAL || useBreadthFirst);
+  
+  _produceVertices = VPackHelper::getBooleanValue(info, "produceVertices", true);
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& other)
-    : BaseOptions(other._query),
+    : BaseOptions(static_cast<BaseOptions const&>(other)),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
       minDepth(other.minDepth),
       maxDepth(other.maxDepth),
       useBreadthFirst(other.useBreadthFirst),
+      useNeighbors(other.useNeighbors),
       uniqueVertices(other.uniqueVertices),
-      uniqueEdges(other.uniqueEdges) {
+      uniqueEdges(other.uniqueEdges),
+      vertexCollections(other.vertexCollections),
+      edgeCollections(other.edgeCollections) {
   TRI_ASSERT(other._baseLookupInfos.empty());
   TRI_ASSERT(other._depthLookupInfo.empty());
   TRI_ASSERT(other._vertexExpressions.empty());
@@ -270,6 +400,7 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("bfs", VPackValue(useBreadthFirst));
+  builder.add("neighbors", VPackValue(useNeighbors));
 
   switch (uniqueVertices) {
     case TraverserOptions::UniquenessLevel::NONE:
@@ -295,6 +426,21 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
       break;
   }
 
+  if (!vertexCollections.empty()) {
+    VPackArrayBuilder guard(&builder, "vertexCollections");
+    for (auto& c : vertexCollections) {
+      builder.add(VPackValue(c));
+    }
+  }
+  
+  if (!edgeCollections.empty()) {
+    VPackArrayBuilder guard(&builder, "edgeCollections");
+    for (auto& c : edgeCollections) {
+      builder.add(VPackValue(c));
+    }
+  }
+
+  builder.add("produceVertices", VPackValue(_produceVertices));
   builder.add("type", VPackValue("traversal"));
 }
 
@@ -305,7 +451,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.add("base", VPackValue(VPackValueType::Array));
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
-      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
+      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
     }
   }
   builder.close();
@@ -317,7 +463,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
     builder.add(VPackValue(VPackValueType::Array));
     for (auto const& it2 : it.second) {
       for (auto const& it3 : it2.idxHandles) {
-        it3.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
+        it3->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
       }
     }
     builder.close();
@@ -332,6 +478,7 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
   result.add("bfs", VPackValue(useBreadthFirst));
+  result.add("neighbors", VPackValue(useNeighbors));
 
   result.add(VPackValue("uniqueVertices"));
   switch (uniqueVertices) {
@@ -373,6 +520,20 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
     result.close();
   }
 
+  if (!vertexCollections.empty()) {
+    VPackArrayBuilder guard(&result, "vertexCollections");
+    for (auto& c : vertexCollections) {
+      result.add(VPackValue(c));
+    }
+  }
+  
+  if (!edgeCollections.empty()) {
+    VPackArrayBuilder guard(&result, "edgeCollections");
+    for (auto& c : edgeCollections) {
+      result.add(VPackValue(c));
+    }
+  }
+
   if (!_vertexExpressions.empty()) {
     result.add(VPackValue("vertexExpressions"));
     result.openObject();
@@ -395,6 +556,11 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   }
 
   result.close();
+}
+  
+bool TraverserOptions::shouldExcludeEdgeCollection(std::string const& name) const {
+  return !edgeCollections.empty() && 
+         std::find(edgeCollections.begin(), edgeCollections.end(), name) == edgeCollections.end();
 }
 
 void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
@@ -432,9 +598,13 @@ bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
   return expression != nullptr;
 }
 
+bool TraverserOptions::hasVertexCollectionRestrictions() const {
+  return !vertexCollections.empty();
+}
+
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
                                               arangodb::velocypack::StringRef vertexId,
-                                              uint64_t depth, size_t cursorId) const {
+                                              uint64_t depth, size_t cursorId) {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _depthLookupInfo.find(depth);
@@ -468,7 +638,6 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
     auto idNode = dirCmp->getMemberUnchecked(1);
     TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-    idNode->stealComputedValue();
     idNode->setStringValue(vertexId.data(), vertexId.length());
   }
   if (edge.isExternal()) {
@@ -478,7 +647,7 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
 }
 
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
-                                                uint64_t depth) const {
+                                                uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _vertexExpressions.find(depth);
@@ -495,23 +664,35 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
   return evaluateExpression(expression, vertex);
 }
 
-EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
-    arangodb::velocypack::StringRef vid, uint64_t depth) {
-  if (_isCoordinator) {
-    return nextCursorCoordinator(vid, depth);
+bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
+                                                    velocypack::StringRef sourceVertex) {
+  if (hasVertexCollectionRestrictions()) {
+    auto destination = ::getEdgeDestination(edge, sourceVertex);
+    auto collection = transaction::helpers::extractCollectionFromId(destination);
+    if (std::find(vertexCollections.begin(), vertexCollections.end(),
+                  std::string_view(collection.data(), collection.size())) ==
+        vertexCollections.end()) {
+      // collection not found
+      return false;
+    }
   }
-  auto specific = _depthLookupInfo.find(depth);
-  if (specific != _depthLookupInfo.end()) {
-    return nextCursorLocal(vid, specific->second);
-  }
-  return nextCursorLocal(vid, _baseLookupInfos);
+
+  return true;
 }
 
-EdgeCursor* TraverserOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid,
-                                                    uint64_t depth) {
-  TRI_ASSERT(_traverser != nullptr);
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, depth, this);
-  return cursor.release();
+std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(uint64_t depth) {
+  ensureCache();
+
+  if (_isCoordinator) {
+    return std::make_unique<ClusterTraverserEdgeCursor>(this);
+  }
+  
+  auto specific = _depthLookupInfo.find(depth);
+  if (specific != _depthLookupInfo.end()) {
+    return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr, specific->second);
+  }
+
+  return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr, _baseLookupInfos);
 }
 
 void TraverserOptions::linkTraverser(ClusterTraverser* trav) {

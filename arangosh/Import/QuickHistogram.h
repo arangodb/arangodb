@@ -50,7 +50,7 @@ class QuickHistogram : public arangodb::Thread {
   QuickHistogram& operator=(QuickHistogram const&) = delete;
 
  public:
-  QuickHistogram(application_features::ApplicationServer& server)
+  explicit QuickHistogram(application_features::ApplicationServer& server)
       : Thread(server, "QuickHistogram"),
         _writingLatencies(nullptr),
         _readingLatencies(nullptr),

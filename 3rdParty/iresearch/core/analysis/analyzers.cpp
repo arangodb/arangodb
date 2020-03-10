@@ -44,11 +44,11 @@ struct key {
       name(name) {
   }
 
-  bool operator==(const key& other) const NOEXCEPT {
+  bool operator==(const key& other) const noexcept {
     return &args_format == &other.args_format && name == other.name;
   }
 
-  bool operator!=(const key& other) const NOEXCEPT {
+  bool operator!=(const key& other) const noexcept {
     return !(*this == other);
   }
 
@@ -64,13 +64,13 @@ struct value{
       normalizer(normalizer) {
   }
 
-  bool empty() const NOEXCEPT { return nullptr == factory;  }
+  bool empty() const noexcept { return nullptr == factory;  }
 
-  bool operator==(const value& other) const NOEXCEPT {
+  bool operator==(const value& other) const noexcept {
     return factory == other.factory && normalizer == other.normalizer;
   }
 
-  bool operator!=(const value& other) const NOEXCEPT {
+  bool operator!=(const value& other) const noexcept {
     return !(*this == other);
   }
 
@@ -84,7 +84,7 @@ NS_BEGIN(std)
 
 template<>
 struct hash<::key> {
-  size_t operator()(const ::key& value) const NOEXCEPT {
+  size_t operator()(const ::key& value) const noexcept {
     return std::hash<irs::string_ref>()(value.name);
   }
 }; // hash
@@ -137,7 +137,7 @@ NS_BEGIN(analysis)
     const irs::text_format::type_id& args_format,
     const string_ref& args,
     bool load_library /*= true*/
-) NOEXCEPT {
+) noexcept {
   try {
     auto* normalizer = analyzer_register::instance().get(
       ::key(name, args_format),
@@ -153,12 +153,44 @@ NS_BEGIN(analysis)
   return false;
 }
 
+/*static*/ result analyzers::get(
+    analyzer::ptr& analyzer,
+    const string_ref& name,
+    const irs::text_format::type_id& args_format,
+    const string_ref& args,
+    bool load_library /*= true*/
+) noexcept {
+  try {
+    auto* factory = analyzer_register::instance().get(
+      ::key(name, args_format),
+      load_library
+    ).factory;
+
+    if (!factory) {
+      return result::make<result::NOT_FOUND>();
+    }
+
+    analyzer = factory(args);
+  } catch (const std::exception& e) {
+    return result::make<result::INVALID_ARGUMENT>(
+      "Caught exception while getting an analyzer instance",
+      e.what());
+  } catch (...) {
+    IR_LOG_EXCEPTION();
+
+    return result::make<result::INVALID_ARGUMENT>(
+      "Caught exception while getting an analyzer instance");
+  }
+
+  return {};
+}
+
 /*static*/ analyzer::ptr analyzers::get(
     const string_ref& name,
     const irs::text_format::type_id& args_format,
     const string_ref& args,
     bool load_library /*= true*/
-) NOEXCEPT {
+) noexcept {
   try {
     auto* factory = analyzer_register::instance().get(
       ::key(name, args_format),
@@ -177,7 +209,7 @@ NS_BEGIN(analysis)
 /*static*/ void analyzers::init() {
   #ifndef IRESEARCH_DLL
     irs::analysis::delimited_token_stream::init();
-    irs::analysis::ngram_token_stream::init();
+    irs::analysis::ngram_token_stream_base::init();
     irs::analysis::text_token_normalizing_stream::init();
     irs::analysis::text_token_stemming_stream::init();
     irs::analysis::text_token_stream::init();

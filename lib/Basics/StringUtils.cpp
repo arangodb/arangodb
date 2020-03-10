@@ -24,7 +24,6 @@
 #include "StringUtils.h"
 
 #include <algorithm>
-#include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -164,11 +163,17 @@ unsigned char const BASE64U_REVS[256] = {
 };
 
 inline bool isBase64(unsigned char c) {
-  return (isalnum(c) || (c == '+') || (c == '/'));
+  return (c >= '0' && c <= '9') ||
+         (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
+         c == '+' || c == '/';
 }
 
 inline bool isBase64U(unsigned char c) {
-  return (isalnum(c) || (c == '-') || (c == '_'));
+  return (c >= '0' && c <= '9') ||
+         (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
+         c == '-' || c == '_';
 }
 
 unsigned char consume(char const*& s) {
@@ -488,13 +493,12 @@ std::vector<std::string> split(std::string const& source, std::string const& del
 
 std::string trim(std::string const& sourceStr, std::string const& trimStr) {
   size_t s = sourceStr.find_first_not_of(trimStr);
-  size_t e = sourceStr.find_last_not_of(trimStr);
 
   if (s == std::string::npos) {
     return std::string();
-  } else {
-    return std::string(sourceStr, s, e - s + 1);
   }
+  size_t e = sourceStr.find_last_not_of(trimStr);
+  return std::string(sourceStr, s, e - s + 1);
 }
 
 void trimInPlace(std::string& str, std::string const& trimStr) {
@@ -517,9 +521,8 @@ std::string lTrim(std::string const& str, std::string const& trimStr) {
 
   if (s == std::string::npos) {
     return std::string();
-  } else {
-    return std::string(str, s);
-  }
+  } 
+  return std::string(str, s);
 }
 
 std::string rTrim(std::string const& sourceStr, std::string const& trimStr) {
@@ -682,14 +685,8 @@ std::string tolower(std::string&& str) {
 }
 
 std::string tolower(std::string const& str) {
-  std::string result;
-  result.resize(str.size());
-
-  size_t i = 0;
-  for (auto& c : result) {
-    c = StringUtils::tolower(str[i++]);
-  }
-
+  std::string result = str;
+  tolowerInPlace(result);
   return result;
 }
 
@@ -992,24 +989,23 @@ std::string soundex(std::string const& str) {
   return soundex(str.data(), str.size());
 }
 
-unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
+unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size_t l2) {
   // convert input strings to vectors of (multi-byte) character numbers
-  std::vector<uint32_t> vect1 = characterCodes(str1);
-  std::vector<uint32_t> vect2 = characterCodes(str2);
+  std::vector<uint32_t> vect1 = characterCodes(s1, l1);
+  std::vector<uint32_t> vect2 = characterCodes(s2, l2);
 
   // calculate levenshtein distance on vectors of character numbers
   return static_cast<unsigned int>(::levenshteinDistance(vect1, vect2));
 }
 
-std::vector<uint32_t> characterCodes(std::string const& str) {
-  char const* s = str.data();
-  char const* e = s + str.size();
+std::vector<uint32_t> characterCodes(char const* s, size_t length) {
+  char const* e = s + length;
 
   std::vector<uint32_t> charNums;
   // be conservative, and reserve space for one number of input
   // string byte. this may be too much, but it avoids later
   // reallocation of the vector
-  charNums.reserve(str.size());
+  charNums.reserve(length);
 
   while (s < e) {
     // note: consume advances the *s* pointer by one byte
@@ -1049,6 +1045,14 @@ std::vector<uint32_t> characterCodes(std::string const& str) {
   }
 
   return charNums;
+}
+
+std::vector<uint32_t> characterCodes(std::string const& str) {
+  return characterCodes(str.data(), str.size());
+}
+
+unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
+  return levenshteinDistance(str1.data(), str1.size(), str2.data(), str2.size());
 }
 
 // .............................................................................
@@ -1403,6 +1407,68 @@ size_t itoa(uint64_t attr, char* buffer) {
   return p - buffer;
 }
 
+void itoa(uint64_t attr, std::string& out) {
+  if (10000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000ULL) % 10 + '0'));
+  }
+  if (10000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000ULL) % 10 + '0'));
+  }
+  if (1000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000ULL) % 10 + '0'));
+  }
+  if (100000000ULL <= attr) {
+    out.push_back(char((attr / 100000000ULL) % 10 + '0'));
+  }
+  if (10000000ULL <= attr) {
+    out.push_back(char((attr / 10000000ULL) % 10 + '0'));
+  }
+  if (1000000ULL <= attr) {
+    out.push_back(char((attr / 1000000ULL) % 10 + '0'));
+  }
+  if (100000ULL <= attr) {
+    out.push_back(char((attr / 100000ULL) % 10 + '0'));
+  }
+  if (10000ULL <= attr) {
+    out.push_back(char((attr / 10000ULL) % 10 + '0'));
+  }
+  if (1000ULL <= attr) {
+    out.push_back(char((attr / 1000ULL) % 10 + '0'));
+  }
+  if (100ULL <= attr) {
+    out.push_back(char((attr / 100ULL) % 10 + '0'));
+  }
+  if (10ULL <= attr) {
+    out.push_back(char((attr / 10ULL) % 10 + '0'));
+  }
+
+  out.push_back(char(attr % 10 + '0'));
+}
+
 std::string ftoa(double i) {
   char buffer[24];
   int length = fpconv_dtoa(i, &buffer[0]);
@@ -1427,24 +1493,6 @@ bool boolean(std::string const& str) {
   }
   return false;
 }
-
-#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-int64_t int64(std::string const& value) {
-  try {
-    return std::stoll(value, nullptr, 10);
-  } catch (...) {
-    return 0;
-  }
-}
-
-uint64_t uint64(std::string const& value) {
-  try {
-    return std::stoull(value, nullptr, 10);
-  } catch (...) {
-    return 0;
-  }
-}
-#endif
 
 uint64_t uint64_trusted(char const* value, size_t length) {
   uint64_t result = 0;
@@ -1513,88 +1561,6 @@ uint64_t uint64_trusted(char const* value, size_t length) {
 
   return result;
 }
-
-#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-int32_t int32(std::string const& str) {
-#ifdef TRI_HAVE_STRTOL_R
-  struct reent buffer;
-  return strtol_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOL_R
-  struct reent buffer;
-  return _strtol_r(&buffer, str.c_str(), 0, 10);
-#else
-  return (int32_t)strtol(str.c_str(), nullptr, 10);
-#endif
-#endif
-}
-
-int32_t int32(char const* value, size_t size) {
-  char tmp[22];
-
-  if (value[size] != '\0') {
-    if (size >= sizeof(tmp)) {
-      size = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, value, size);
-    tmp[size] = '\0';
-    value = tmp;
-  }
-
-#ifdef TRI_HAVE_STRTOL_R
-  struct reent buffer;
-  return strtol_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOL_R
-  struct reent buffer;
-  return _strtol_r(&buffer, value, 0, 10);
-#else
-  return (int32_t)strtol(value, nullptr, 10);
-#endif
-#endif
-}
-
-uint32_t uint32(std::string const& str) {
-#ifdef TRI_HAVE_STRTOUL_R
-  struct reent buffer;
-  return strtoul_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  struct reent buffer;
-  return _strtoul_r(&buffer, str.c_str(), 0, 10);
-#else
-  return (uint32_t)strtoul(str.c_str(), nullptr, 10);
-#endif
-#endif
-}
-
-uint32_t uint32(char const* value, size_t size) {
-  char tmp[22];
-
-  if (value[size] != '\0') {
-    if (size >= sizeof(tmp)) {
-      size = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, value, size);
-    tmp[size] = '\0';
-    value = tmp;
-  }
-
-#ifdef TRI_HAVE_STRTOUL_R
-  struct reent buffer;
-  return strtoul_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  struct reent buffer;
-  return _strtoul_r(&buffer, value, 0, 10);
-#else
-  return (uint32_t)strtoul(value, nullptr, 10);
-#endif
-#endif
-}
-#endif
 
 double doubleDecimal(std::string const& str) {
   return doubleDecimal(str.c_str(), str.size());

@@ -41,9 +41,9 @@ function optimizerRuleTestSuite () {
   var ruleName = "distribute-in-cluster";
   // various choices to control the optimizer: 
   var rulesNone        = { optimizer: { rules: [ "-all" ] } };
-  var rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection" ] } };
+  var rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather" ] } };
   var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-" + ruleName ] } };
+  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather", "-" + ruleName ] } };
   var maxPlans         = { optimizer: { rules: [ "-all" ] }, maxNumberOfPlans: 1 };
 
   var cn1 = "UnitTestsAqlOptimizerRuleUndist1";
@@ -904,9 +904,6 @@ function interactionOtherRulesTestSuite () {
         "LET x = {_key: 'blah'} FOR y IN  " + cn1 + " REMOVE x._key IN  " + cn1,
 
         // not removing x or x._key 
-        "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key} IN  " + cn1,
-
-        // not removing x or x._key 
         "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key} IN  " + cn2,
 
         // different collections  (the outer scatters, the inner distributes)
@@ -918,117 +915,103 @@ function interactionOtherRulesTestSuite () {
 
       var expectedNodes = [ 
         [
-        "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "SingletonNode", 
+          "EnumerateCollectionNode", 
+          "CalculationNode", 
+          "FilterNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "CalculationNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "EnumerateCollectionNode", 
+          "CalculationNode", 
+          "FilterNode", 
+          "CalculationNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "CalculationNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "CalculationNode", 
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "CalculationNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "CalculationNode", 
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "CalculationNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "EnumerateCollectionNode", 
+          "CalculationNode", 
+          "FilterNode", 
+          "CalculationNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "CalculationNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "ScatterNode", 
+          "RemoteNode", 
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
-        [
-          "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ]
-          ];
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "ScatterNode", 
+          "RemoteNode", 
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ]
+      ];
 
       queries.forEach(function(query, i) {
         var result = AQL_EXPLAIN(query, { }, allRulesNoInter);

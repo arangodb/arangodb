@@ -71,8 +71,7 @@ void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
 /// @brief inserts a document into the index
 Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice const& doc,
-                               Index::OperationMode mode) {
+                               velocypack::Slice const& doc, OperationOptions& options) {
   double timestamp = getTimestamp(doc);
   if (timestamp < 0) {
     // index attribute not present or invalid. nothing to do 
@@ -81,8 +80,8 @@ Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
   leased->add(getAttribute(), VPackValue(timestamp));
-  leased->close(); 
-  return RocksDBVPackIndex::insert(trx, mthds, documentId, leased->slice(), mode);
+  leased->close();
+  return RocksDBVPackIndex::insert(trx, mthds, documentId, leased->slice(), options);
 }
 
 /// @brief removes a document from the index

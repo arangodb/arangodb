@@ -22,6 +22,10 @@
 
 #include "ShadowAqlItemRow.h"
 
+#include "Basics/VelocyPackHelper.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Context.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -92,7 +96,8 @@ bool ShadowAqlItemRow::operator!=(ShadowAqlItemRow const& other) const noexcept 
   return !(*this == other);
 }
 
-bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other) const noexcept {
+bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
+                               velocypack::Options const* options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
@@ -103,8 +108,9 @@ bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other) const noexcept {
   if (getDepth() != other.getDepth()) {
     return false;
   }
-  // NOLINTNEXTLINE(modernize-use-transparent-functors)
-  auto const eq = std::equal_to<AqlValue>{};
+  auto const eq = [options](auto left, auto right) {
+    return 0 == AqlValue::Compare(options, left, right, false);
+  };
   for (RegisterId i = 0; i < getNrRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;

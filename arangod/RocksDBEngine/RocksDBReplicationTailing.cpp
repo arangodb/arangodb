@@ -592,7 +592,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
 
       auto collection = _vocbase->lookupCollection(cid);
       if (collection) {
-        _collectionCache.emplace(cid, CollectionGuard(_vocbase, collection));
+        _collectionCache.try_emplace(cid, _vocbase, collection);
         return collection.get();
       }
     }

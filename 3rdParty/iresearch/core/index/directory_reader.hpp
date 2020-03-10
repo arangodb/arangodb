@@ -51,23 +51,31 @@ class IRESEARCH_API directory_reader final
   typedef directory_reader ptr; // pointer to self
 
   directory_reader() = default; // allow creation of an uninitialized ptr
-  directory_reader(const directory_reader& other) NOEXCEPT;
-  directory_reader& operator=(const directory_reader& other) NOEXCEPT;
+  directory_reader(const directory_reader& other) noexcept;
+  directory_reader& operator=(const directory_reader& other) noexcept;
 
-  explicit operator bool() const NOEXCEPT { return bool(impl_); }
+  explicit operator bool() const noexcept { return bool(impl_); }
 
-  bool operator==(const directory_reader& rhs) const NOEXCEPT {
+  bool operator==(std::nullptr_t) const noexcept {
+    return !impl_;
+  }
+
+  bool operator!=(std::nullptr_t) const noexcept {
+    return !(*this == nullptr);
+  }
+
+  bool operator==(const directory_reader& rhs) const noexcept {
     return impl_ == rhs.impl_;
   }
 
-  bool operator!=(const directory_reader& rhs) const NOEXCEPT {
+  bool operator!=(const directory_reader& rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  directory_reader& operator*() NOEXCEPT { return *this; }
-  const directory_reader& operator*() const NOEXCEPT { return *this; }
-  directory_reader* operator->() NOEXCEPT { return this; }
-  const directory_reader* operator->() const NOEXCEPT { return this; }
+  directory_reader& operator*() noexcept { return *this; }
+  const directory_reader& operator*() const noexcept { return *this; }
+  directory_reader* operator->() noexcept { return this; }
+  const directory_reader* operator->() const noexcept { return this; }
 
   virtual const sub_reader& operator[](size_t i) const override {
     return (*impl_)[i];
@@ -109,14 +117,14 @@ class IRESEARCH_API directory_reader final
     format::ptr codec = nullptr
   ) const;
 
-  void reset() NOEXCEPT {
+  void reset() noexcept {
     impl_.reset();
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief converts current directory_reader to 'index_reader::ptr'
   ////////////////////////////////////////////////////////////////////////////////
-  explicit operator index_reader::ptr() const NOEXCEPT {
+  explicit operator index_reader::ptr() const noexcept {
     return impl_;
   }
 
@@ -127,8 +135,16 @@ class IRESEARCH_API directory_reader final
   impl_ptr impl_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
-  directory_reader(impl_ptr&& impl) NOEXCEPT;
+  directory_reader(impl_ptr&& impl) noexcept;
 }; // directory_reader
+
+inline bool operator==(std::nullptr_t, const directory_reader& rhs) noexcept {
+  return rhs == nullptr;
+}
+
+inline bool operator!=(std::nullptr_t, const directory_reader& rhs) noexcept {
+  return rhs != nullptr;
+}
 
 NS_END
 

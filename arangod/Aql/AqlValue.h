@@ -47,6 +47,7 @@ namespace velocypack {
 template <typename T>
 class Buffer;
 class Builder;
+struct Options;
 class Slice;
 class StringRef;
 }
@@ -329,11 +330,14 @@ struct AqlValue final {
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, transaction::Methods*) const;
 
   /// @brief materializes a value into the builder
-  void toVelocyPack(transaction::Methods*, arangodb::velocypack::Builder& builder,
-                    bool resolveExternals) const;
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&, bool resolveExternals) const;
+  [[deprecated("Pass VPackOptions instead of the transaction")]]
+  void toVelocyPack(transaction::Methods*, arangodb::velocypack::Builder&, bool resolveExternals) const;
 
   /// @brief materialize a value into a new one. this expands docvecs and
   /// ranges
+  AqlValue materialize(velocypack::Options const*, bool& hasCopied, bool resolveExternals) const;
+  [[deprecated("Pass VPackOptions instead of the transaction")]]
   AqlValue materialize(transaction::Methods*, bool& hasCopied, bool resolveExternals) const;
 
   /// @brief return the slice for the value
@@ -353,17 +357,10 @@ struct AqlValue final {
   /// @brief returns the size of the dynamic memory allocated for the value
   size_t memoryUsage() const noexcept;
 
-  /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  static AqlValue CreateFromBlocks(transaction::Methods*,
-                                   std::vector<AqlItemBlock*> const&,
-                                   std::vector<std::string> const&);
-
-  /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  static AqlValue CreateFromBlocks(transaction::Methods*,
-                                   std::vector<AqlItemBlock*> const&,
-                                   arangodb::aql::RegisterId);
-
   /// @brief compare function for two values
+  static int Compare(velocypack::Options const*, AqlValue const& left,
+                     AqlValue const& right, bool useUtf8);
+  [[deprecated("Pass VPackOptions instead of the transaction")]]
   static int Compare(transaction::Methods*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
 
@@ -387,6 +384,8 @@ class AqlValueGuard {
   AqlValueGuard() = delete;
   AqlValueGuard(AqlValueGuard const&) = delete;
   AqlValueGuard& operator=(AqlValueGuard const&) = delete;
+  AqlValueGuard(AqlValueGuard&&) = delete;
+  AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy);
   ~AqlValueGuard();
@@ -397,28 +396,6 @@ class AqlValueGuard {
  private:
   AqlValue& _value;
   bool _destroy;
-};
-
-struct AqlValueMaterializer {
-  explicit AqlValueMaterializer(transaction::Methods* trx);
-
-  AqlValueMaterializer(AqlValueMaterializer const& other);
-
-  // cppcheck-suppress operatorEqVarError
-  AqlValueMaterializer& operator=(AqlValueMaterializer const& other);
-
-  AqlValueMaterializer(AqlValueMaterializer&& other) noexcept;
-
-  // cppcheck-suppress operatorEqVarError
-  AqlValueMaterializer& operator=(AqlValueMaterializer&& other) noexcept;
-
-  ~AqlValueMaterializer();
-
-  arangodb::velocypack::Slice slice(AqlValue const& value, bool resolveExternals);
-
-  transaction::Methods* trx;
-  AqlValue materialized;
-  bool hasCopied;
 };
 
 static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");

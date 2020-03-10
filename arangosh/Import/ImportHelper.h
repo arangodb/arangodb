@@ -67,7 +67,7 @@ struct ImportStatistics {
   arangodb::Mutex _mutex;
   QuickHistogram _histogram;
 
-  ImportStatistics(application_features::ApplicationServer&);
+  explicit ImportStatistics(application_features::ApplicationServer&);
 };
 
 class ImportHelper {

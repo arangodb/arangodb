@@ -8,8 +8,8 @@
 Returns the last available tick value that can be served from the server's
 replication log. This corresponds to the tick of the latest successfull operation.
 
-The result is a JSON object containing the attributes *tick*, *time* and *server*. 
-* *tick*: contains the last available tick, *time* 
+The result is a JSON object containing the attributes *tick*, *time* and *server*.
+* *tick*: contains the last available tick, *time*
 * *time*: the server time as string in format "YYYY-MM-DDTHH:MM:SSZ"
 * *server*: An object with fields *version* and *serverId*
 
@@ -42,4 +42,3 @@ Returning the first available tick
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

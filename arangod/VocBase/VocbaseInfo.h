@@ -68,7 +68,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo(application_features::ApplicationServer&);
+  explicit CreateDatabaseInfo(application_features::ApplicationServer&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -92,6 +92,8 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_validId);
     return _id;
   }
+
+  bool valid() const { return _valid; }
 
   bool validId() const { return _validId; }
 

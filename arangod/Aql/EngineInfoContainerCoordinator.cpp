@@ -88,19 +88,22 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately
   if (_id != 0) {
+    coordinatorQueryIds.emplace_back(_id);
+
     double ttl = query.queryOptions().ttl;
     TRI_ASSERT(ttl > 0);
     try {
       queryRegistry->insert(_id, &query, ttl, true, false);
     } catch (basics::Exception const& e) {
+      coordinatorQueryIds.pop_back();
       return {e.code(), e.message()};
     } catch (std::exception const& e) {
+      coordinatorQueryIds.pop_back();
       return {TRI_ERROR_INTERNAL, e.what()};
     } catch (...) {
-      return {TRI_ERROR_INTERNAL};
+      coordinatorQueryIds.pop_back();
+      return {TRI_ERROR_INTERNAL, "unable to store query in registry"};
     }
-
-    coordinatorQueryIds.emplace_back(_id);
   }
 
   return {TRI_ERROR_NO_ERROR};

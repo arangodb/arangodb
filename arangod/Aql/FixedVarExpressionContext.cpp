@@ -51,7 +51,7 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, b
 void FixedVarExpressionContext::clearVariableValues() { _vars.clear(); }
 
 void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue const& value) {
-  _vars.emplace(var, value);
+  _vars.try_emplace(var, value);
 }
 
 void FixedVarExpressionContext::serializeAllVariables(transaction::Methods* trx,

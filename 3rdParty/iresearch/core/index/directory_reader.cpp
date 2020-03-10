@@ -38,7 +38,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
   irs::index_meta& meta,
   const irs::directory& dir,
   const irs::format* codec
-) NOEXCEPT {
+) noexcept {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -162,11 +162,11 @@ class directory_reader_impl :
  public:
   DECLARE_SHARED_PTR(directory_reader_impl); // required for NAMED_PTR(...)
 
-  const directory& dir() const NOEXCEPT {
+  const directory& dir() const noexcept {
     return dir_;
   }
 
-  const directory_meta& meta() const NOEXCEPT { return meta_; }
+  const directory_meta& meta() const noexcept { return meta_; }
 
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
@@ -195,16 +195,16 @@ class directory_reader_impl :
   directory_meta meta_;
 }; // directory_reader_impl
 
-directory_reader::directory_reader(impl_ptr&& impl) NOEXCEPT
+directory_reader::directory_reader(impl_ptr&& impl) noexcept
   : impl_(std::move(impl)) {
 }
 
-directory_reader::directory_reader(const directory_reader& other) NOEXCEPT {
+directory_reader::directory_reader(const directory_reader& other) noexcept {
   *this = other;
 }
 
 directory_reader& directory_reader::operator=(
-    const directory_reader& other) NOEXCEPT {
+    const directory_reader& other) noexcept {
   if (this != &other) {
     // make a copy
     impl_ptr impl = atomic_utils::atomic_load(&other.impl_);

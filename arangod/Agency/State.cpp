@@ -79,7 +79,11 @@ inline static std::string timestamp(uint64_t m) {
 
   using namespace std::chrono;
 
+<<<<<<< HEAD
   std::time_t t =
+=======
+  std::time_t t = (m == 0) ? std::time(nullptr) :
+>>>>>>> f07ac211d6d8eee69ae0afebd11558b6d3b3a506
     system_clock::to_time_t(system_clock::time_point(milliseconds(m)));
   char mbstr[100];
   return std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::gmtime(&t))
@@ -97,8 +101,8 @@ inline static std::string stringify(index_t index) {
 bool State::persist(index_t index, term_t term, uint64_t millis,
                     arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
-  LOG_TOPIC("b735e", TRACE, Logger::AGENCY) << "persist index=" << index << " term=" << term
-                                   << " entry: " << entry.toJson();
+  LOG_TOPIC("b735e", TRACE, Logger::AGENCY)
+    << "persist index=" << index << " term=" << term << " entry: " << entry.toJson();
 
   Builder body;
   {

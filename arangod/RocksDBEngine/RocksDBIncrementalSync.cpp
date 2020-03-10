@@ -229,7 +229,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                      syncer._state.master.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const responseBody = builder.slice();
@@ -426,7 +426,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
                         syncer._state.master.endpoint +
-                        ": response is no array");
+                        ": " + r.errorMessage());
     }
 
     VPackSlice const slice = docsBuilder->slice();
@@ -439,6 +439,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
     size_t foundLength = slice.length();
 
+    double t = TRI_microtime();
     for (VPackSlice it : VPackArrayIterator(slice)) {
       if (it.isNull()) {
         continue;
@@ -548,6 +549,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         }
       }
     }
+    stats.waitedForInsertions += TRI_microtime() - t;
 
     if (foundLength >= toFetch.size()) {
       break;
@@ -614,7 +616,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                      syncer._state.master.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const chunkSlice = builder.slice();
@@ -893,6 +895,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       ", " + "waited for initial: " + std::to_string(stats.waitedForInitial) +
       " s, " + "waited for keys: " + std::to_string(stats.waitedForKeys) +
       " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
+      " s, " + "waited for insertions: " + std::to_string(stats.waitedForInsertions) +
       " s, " + "total time: " + std::to_string(TRI_microtime() - startTime) +
       " s");
 

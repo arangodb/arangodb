@@ -58,7 +58,7 @@ Collection* Collections::add(std::string const& name, AccessMode::Type accessTyp
     }
 
     auto collection = std::make_unique<Collection>(name, _vocbase, accessType);
-    _collections.emplace(name, collection.get());
+    _collections.try_emplace(name, collection.get());
 
     return collection.release();
   }

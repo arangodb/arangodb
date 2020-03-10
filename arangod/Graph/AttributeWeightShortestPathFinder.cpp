@@ -24,6 +24,7 @@
 #include "AttributeWeightShortestPathFinder.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
@@ -45,12 +46,12 @@ AttributeWeightShortestPathFinder::Step::Step(arangodb::velocypack::StringRef co
 
 AttributeWeightShortestPathFinder::Searcher::Searcher(
     AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-    ThreadInfo& peerInfo, arangodb::velocypack::StringRef const& start, bool isBackward)
+    ThreadInfo& peerInfo, arangodb::velocypack::StringRef const& start, bool backward)
     : _pathFinder(pathFinder),
       _myInfo(myInfo),
       _peerInfo(peerInfo),
       _start(start),
-      _isBackward(isBackward) {}
+      _backward(backward) {}
 
 void AttributeWeightShortestPathFinder::Searcher::insertNeighbor(std::unique_ptr<Step>&& step,
                                                                  double newWeight) {
@@ -136,12 +137,11 @@ bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
   TRI_ASSERT(s != nullptr);
 
   std::vector<std::unique_ptr<Step>> neighbors;
-  _pathFinder->expandVertex(_isBackward, v, neighbors);
+  _pathFinder->expandVertex(_backward, v, neighbors);
   for (std::unique_ptr<Step>& neighbor : neighbors) {
     insertNeighbor(std::move(neighbor), s->weight() + neighbor->weight());
   }
   // All neighbours are moved out.
-  neighbors.clear();
   lookupPeer(v, s->weight());
 
   Step* s2 = _myInfo._pq.find(v);
@@ -159,7 +159,10 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPat
       _bingo(false),
       _resultCode(TRI_ERROR_NO_ERROR),
       _intermediateSet(false),
-      _intermediate() {}
+      _intermediate() {
+  _forwardCursor = _options.buildCursor(false);
+  _backwardCursor = _options.buildCursor(true);
+}
 
 AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() = default;
 
@@ -272,16 +275,20 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
 }
 
 void AttributeWeightShortestPathFinder::inserter(
-    std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
-    std::vector<std::unique_ptr<Step>>& result,
-    arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
-    double currentWeight, EdgeDocumentToken&& edge) {
-  auto cand = candidates.find(t);
-  if (cand == candidates.end()) {
-    // Add weight
+  std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
+  std::vector<std::unique_ptr<Step>>& result,
+  arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
+  double currentWeight, EdgeDocumentToken&& edge) {
+
+  auto [cand, emplaced] = candidates.try_emplace(
+    t,
+    arangodb::lazyConstruct([&]{
     result.emplace_back(std::make_unique<Step>(t, s, currentWeight, std::move(edge)));
-    candidates.emplace(t, result.size() - 1);
-  } else {
+      return result.size() - 1;
+    })
+  );
+
+  if (!emplaced) {
     // Compare weight
     auto& old = result[cand->second];
     auto oldWeight = old->weight();
@@ -294,17 +301,13 @@ void AttributeWeightShortestPathFinder::inserter(
 }
 
 void AttributeWeightShortestPathFinder::expandVertex(
-    bool isBackward, arangodb::velocypack::StringRef const& vertex,
+    bool backward, arangodb::velocypack::StringRef const& vertex,
     std::vector<std::unique_ptr<Step>>& result) {
-  std::unique_ptr<EdgeCursor> edgeCursor;
-  if (isBackward) {
-    edgeCursor.reset(_options.nextReverseCursor(vertex));
-  } else {
-    edgeCursor.reset(_options.nextCursor(vertex));
-  }
+  EdgeCursor* cursor = backward ? _backwardCursor.get() : _forwardCursor.get();
+  cursor->rearm(vertex, 0);
 
   std::unordered_map<arangodb::velocypack::StringRef, size_t> candidates;
-  auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+  cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
     if (edge.isString()) {
       VPackSlice doc = _options.cache()->lookupToken(eid);
       double currentWeight = _options.weightEdge(doc);
@@ -328,9 +331,7 @@ void AttributeWeightShortestPathFinder::expandVertex(
         inserter(candidates, result, to, from, currentWeight, std::move(eid));
       }
     }
-  };
-
-  edgeCursor->readAll(callback);
+  });
 }
 
 /*

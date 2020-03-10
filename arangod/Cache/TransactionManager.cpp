@@ -18,17 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <atomic>
+#include <cstdint>
+
 #include "Cache/TransactionManager.h"
+
 #include "Basics/cpu-relax.h"
+#include "Basics/debugging.h"
 #include "Cache/Transaction.h"
 
-#include <stdint.h>
-#include <atomic>
-
-using namespace arangodb::cache;
+namespace arangodb::cache {
 
 TransactionManager::TransactionManager()
     : _openReads(0), _openSensitive(0), _openWrites(0), _term(0), _lock(false) {}
@@ -88,7 +90,7 @@ void TransactionManager::end(Transaction* tx) noexcept {
   delete tx;
 }
 
-uint64_t TransactionManager::term() { return _term.load(); }
+std::uint64_t TransactionManager::term() { return _term.load(); }
 
 void TransactionManager::lock() {
   while (true) {
@@ -107,3 +109,5 @@ void TransactionManager::lock() {
 void TransactionManager::unlock() {
   _lock.store(false, std::memory_order_release);
 }
+
+}  // namespace arangodb::cache

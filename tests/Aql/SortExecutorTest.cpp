@@ -50,15 +50,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace tests {
-namespace aql {
-
-int compareAqlValues(irs::sort::prepared const*, arangodb::transaction::Methods* trx,
-                     arangodb::aql::AqlValue const& lhs,
-                     arangodb::aql::AqlValue const& rhs) {
-  return arangodb::aql::AqlValue::Compare(trx, lhs, rhs, true);
-}
+namespace arangodb::tests::aql {
 
 class SortExecutorTest : public ::testing::Test {
  protected:
@@ -67,14 +59,7 @@ class SortExecutorTest : public ::testing::Test {
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 
-  // Mock of the Transaction
-  // Enough for this test, will only be passed through and accessed
-  // on documents alone.
-  fakeit::Mock<transaction::Methods> mockTrx;
-  transaction::Methods& trx;
-
-  fakeit::Mock<transaction::Context> mockContext;
-  transaction::Context& ctxt;
+  velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
 
   Variable sortVar;
   SortElement sl;
@@ -84,13 +69,9 @@ class SortExecutorTest : public ::testing::Test {
   SortExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        trx(mockTrx.get()),
-        ctxt(mockContext.get()),
         sortVar("mySortVar", 0),
         sl(&sortVar, true),
         sortReg(0, sl) {
-    fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
-    fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
     sortRegisters.emplace_back(std::move(sortReg));
   }
 };
@@ -98,7 +79,7 @@ class SortExecutorTest : public ::testing::Test {
 TEST_F(SortExecutorTest, no_rows_upstream_producer_doesnt_wait) {
   SortExecutorInfos infos(std::move(sortRegisters),
                           /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, {0}, &trx, false);
+                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, false);
   VPackBuilder input;
   AllRowsFetcherHelper fetcher(input.steal(), false);
   SortExecutor testee(fetcher, infos);
@@ -117,7 +98,7 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_doesnt_wait) {
 TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
   SortExecutorInfos infos(std::move(sortRegisters),
                           /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, {0}, &trx, false);
+                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, false);
   VPackBuilder input;
   AllRowsFetcherHelper fetcher(input.steal(), true);
   SortExecutor testee(fetcher, infos);
@@ -141,7 +122,7 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
 TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   SortExecutorInfos infos(std::move(sortRegisters),
                           /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, {0}, &trx, false);
+                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, false);
   std::shared_ptr<VPackBuilder> input =
       VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
   AllRowsFetcherHelper fetcher(input->steal(), true);
@@ -215,6 +196,4 @@ TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   ASSERT_EQ(number, 5);
 }
 
-}  // namespace aql
-}  // namespace tests
-}  // namespace arangodb
+}  // namespace arangodb::tests::aql

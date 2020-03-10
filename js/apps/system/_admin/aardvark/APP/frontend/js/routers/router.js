@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document, d3 */
+/* global window, $, Backbone, document, d3, ReactDOM */
 /* global $, arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
@@ -101,6 +101,9 @@
             this.loggerView.logTopicView.remove();
           }
         }
+
+        // react unmounting
+        ReactDOM.unmountComponentAtNode(document.getElementById("content"));
       }
 
       this.lastRoute = window.location.hash;
@@ -407,6 +410,9 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
+      // TODO re-enable React View, for now use old view:
+      // window.ShardsReactView.render();
+      // Below code needs to be removed then again.
       if (this.shardsView) {
         this.shardsView.remove();
       }
@@ -414,6 +420,7 @@
         dbServers: this.dbServers
       });
       this.shardsView.render();
+
     },
 
     nodes: function (initialized) {
@@ -518,14 +525,18 @@
         this.waitForInit(this.logger.bind(this));
         return;
       }
-      if (!this.loggerView) {
-        var co = new window.ArangoLogs(
-          {upto: true, loglevel: 4}
-        );
-        this.loggerView = new window.LoggerView({
-          collection: co
-        });
+
+      if (this.loggerView) {
+        this.loggerView.remove();
       }
+
+      var co = new window.ArangoLogs({
+        upto: true,
+        loglevel: 4
+      });
+      this.loggerView = new window.LoggerView({
+        collection: co
+      });
       this.loggerView.render();
     },
 
@@ -605,7 +616,7 @@
             collection: this.userCollection
           });
         }
-        if (error || user === null) {
+        if (error || user === null || user === undefined) {
           this.loginView.render();
         } else {
           this.loginView.render(true);

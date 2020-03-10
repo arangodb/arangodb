@@ -1,0 +1,678 @@
+diff --git a/source/common/brkeng.cpp b/source/common/brkeng.cpp
+index 19467dc2..a1d10c4e 100644
+--- a/source/common/brkeng.cpp
++++ b/source/common/brkeng.cpp
+@@ -129,8 +129,8 @@ ICULanguageBreakFactory::getEngineFor(UChar32 c) {
+     const LanguageBreakEngine *lbe = NULL;
+     UErrorCode  status = U_ZERO_ERROR;
+ 
+-    static UMutex gBreakEngineMutex = U_MUTEX_INITIALIZER;
+-    Mutex m(&gBreakEngineMutex);
++    static UMutex *gBreakEngineMutex = new UMutex();
++    Mutex m(gBreakEngineMutex);
+ 
+     if (fEngines == NULL) {
+         UStack  *engines = new UStack(_deleteEngine, NULL, status);
+diff --git a/source/common/characterproperties.cpp b/source/common/characterproperties.cpp
+index 5a573643..e891f67d 100644
+--- a/source/common/characterproperties.cpp
++++ b/source/common/characterproperties.cpp
+@@ -48,8 +48,8 @@ UnicodeSet *sets[UCHAR_BINARY_LIMIT] = {};
+ UCPMap *maps[UCHAR_INT_LIMIT - UCHAR_INT_START] = {};
+ 
+ icu::UMutex *cpMutex() {
+-    static icu::UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static icu::UMutex *m = new icu::UMutex();
++    return m;
+ }
+ 
+ //----------------------------------------------------------------
+diff --git a/source/common/locdspnm.cpp b/source/common/locdspnm.cpp
+index da35be9e..a5bc857c 100644
+--- a/source/common/locdspnm.cpp
++++ b/source/common/locdspnm.cpp
+@@ -549,8 +549,8 @@ LocaleDisplayNamesImpl::adjustForUsageAndContext(CapContextUsage usage,
+     if ( result.length() > 0 && u_islower(result.char32At(0)) && capitalizationBrkIter!= NULL &&
+           ( capitalizationContext==UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE || fCapitalization[usage] ) ) {
+         // note fCapitalization[usage] won't be set unless capitalizationContext is UI_LIST_OR_MENU or STANDALONE
+-        static UMutex capitalizationBrkIterLock = U_MUTEX_INITIALIZER;
+-        Mutex lock(&capitalizationBrkIterLock);
++        static UMutex *capitalizationBrkIterLock = new UMutex();
++        Mutex lock(capitalizationBrkIterLock);
+         result.toTitle(capitalizationBrkIter, locale, U_TITLECASE_NO_LOWERCASE | U_TITLECASE_NO_BREAK_ADJUSTMENT);
+     }
+ #endif
+diff --git a/source/common/locid.cpp b/source/common/locid.cpp
+index 06986b63..caffdb8b 100644
+--- a/source/common/locid.cpp
++++ b/source/common/locid.cpp
+@@ -63,8 +63,8 @@ static UInitOnce gLocaleCacheInitOnce = U_INITONCE_INITIALIZER;
+ 
+ // gDefaultLocaleMutex protects all access to gDefaultLocalesHashT and gDefaultLocale.
+ static UMutex *gDefaultLocaleMutex() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ static UHashtable *gDefaultLocalesHashT = NULL;
+ static Locale *gDefaultLocale = NULL;
+diff --git a/source/common/resbund.cpp b/source/common/resbund.cpp
+index 08cda3a9..0c2f56ce 100644
+--- a/source/common/resbund.cpp
++++ b/source/common/resbund.cpp
+@@ -377,8 +377,8 @@ void ResourceBundle::getVersion(UVersionInfo versionInfo) const {
+ }
+ 
+ const Locale &ResourceBundle::getLocale(void) const {
+-    static UMutex gLocaleLock = U_MUTEX_INITIALIZER;
+-    Mutex lock(&gLocaleLock);
++    static UMutex *gLocaleLock = new UMutex();
++    Mutex lock(gLocaleLock);
+     if (fLocale != NULL) {
+         return *fLocale;
+     }
+diff --git a/source/common/serv.cpp b/source/common/serv.cpp
+index 555c0555..482aa884 100644
+--- a/source/common/serv.cpp
++++ b/source/common/serv.cpp
+@@ -334,8 +334,8 @@ U_CDECL_END
+ */
+ 
+ static UMutex *lock() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ ICUService::ICUService()
+diff --git a/source/common/servls.cpp b/source/common/servls.cpp
+index 90874d11..9da05029 100644
+--- a/source/common/servls.cpp
++++ b/source/common/servls.cpp
+@@ -263,9 +263,9 @@ ICULocaleService::validateFallbackLocale() const
+ {
+     const Locale&     loc    = Locale::getDefault();
+     ICULocaleService* ncThis = (ICULocaleService*)this;
+-    static UMutex llock = U_MUTEX_INITIALIZER;
++    static UMutex *llock = new UMutex();
+     {
+-        Mutex mutex(&llock);
++        Mutex mutex(llock);
+         if (loc != fallbackLocale) {
+             ncThis->fallbackLocale = loc;
+             LocaleUtility::initNameFromLocale(loc, ncThis->fallbackLocaleName);
+diff --git a/source/common/servnotf.cpp b/source/common/servnotf.cpp
+index 1e65a147..3e2700da 100644
+--- a/source/common/servnotf.cpp
++++ b/source/common/servnotf.cpp
+@@ -22,8 +22,8 @@ EventListener::~EventListener() {}
+ UOBJECT_DEFINE_RTTI_IMPLEMENTATION(EventListener)
+ 
+ static UMutex *notifyLock() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ ICUNotifier::ICUNotifier(void) 
+diff --git a/source/common/ucnv_bld.cpp b/source/common/ucnv_bld.cpp
+index b71be8fd..5a10f0d9 100644
+--- a/source/common/ucnv_bld.cpp
++++ b/source/common/ucnv_bld.cpp
+@@ -195,8 +195,8 @@ static struct {
+ /*initializes some global variables */
+ static UHashtable *SHARED_DATA_HASHTABLE = NULL;
+ static icu::UMutex *cnvCacheMutex() {                 /* Mutex for synchronizing cnv cache access. */
+-    static icu::UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static icu::UMutex *m = new icu::UMutex();
++    return m;
+ }
+ /*  Note:  the global mutex is used for      */
+ /*         reference count updates.          */
+diff --git a/source/common/ucurr.cpp b/source/common/ucurr.cpp
+index 444adc09..3f028f0e 100644
+--- a/source/common/ucurr.cpp
++++ b/source/common/ucurr.cpp
+@@ -366,8 +366,8 @@ U_CDECL_END
+ struct CReg;
+ 
+ static UMutex *gCRegLock() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ static CReg* gCRegHead = 0;
+ 
+@@ -1357,8 +1357,8 @@ static CurrencyNameCacheEntry* currCache[CURRENCY_NAME_CACHE_NUM] = {NULL};
+ static int8_t currentCacheEntryIndex = 0;
+ 
+ static UMutex *gCurrencyCacheMutex() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ // Cache deletion
+diff --git a/source/common/udata.cpp b/source/common/udata.cpp
+index 07756bbf..b62095cd 100644
+--- a/source/common/udata.cpp
++++ b/source/common/udata.cpp
+@@ -831,8 +831,8 @@ static UBool extendICUData(UErrorCode *pErr)
+      * Use a specific mutex to avoid nested locks of the global mutex.
+      */
+ #if MAP_IMPLEMENTATION==MAP_STDIO
+-    static UMutex extendICUDataMutex = U_MUTEX_INITIALIZER;
+-    umtx_lock(&extendICUDataMutex);
++    static UMutex *extendICUDataMutex = new UMutex();
++    umtx_lock(extendICUDataMutex);
+ #endif
+     if(!umtx_loadAcquire(gHaveTriedToLoadCommonData)) {
+         /* See if we can explicitly open a .dat file for the ICUData. */
+@@ -868,7 +868,7 @@ static UBool extendICUData(UErrorCode *pErr)
+                                                           /* Also handles a race through here before gHaveTriedToLoadCommonData is set. */
+ 
+ #if MAP_IMPLEMENTATION==MAP_STDIO
+-    umtx_unlock(&extendICUDataMutex);
++    umtx_unlock(extendICUDataMutex);
+ #endif
+     return didUpdate;               /* Return true if ICUData pointer was updated.   */
+                                     /*   (Could potentially have been done by another thread racing */
+diff --git a/source/common/umutex.cpp b/source/common/umutex.cpp
+index 20b03d6c..2e81b9cd 100644
+--- a/source/common/umutex.cpp
++++ b/source/common/umutex.cpp
+@@ -43,8 +43,8 @@ U_NAMESPACE_BEGIN
+ 
+ // The ICU global mutex. Used when ICU implementation code passes NULL for the mutex pointer.
+ static UMutex *globalMutex() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ U_CAPI void  U_EXPORT2
+diff --git a/source/common/unifiedcache.cpp b/source/common/unifiedcache.cpp
+index 641f4ec6..340ec2fd 100644
+--- a/source/common/unifiedcache.cpp
++++ b/source/common/unifiedcache.cpp
+@@ -22,8 +22,8 @@
+ 
+ static icu::UnifiedCache *gCache = NULL;
+ static icu::UMutex *gCacheMutex() {
+-    static icu::UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static icu::UMutex *m = new icu::UMutex();
++    return m;
+ }
+ static icu::UConditionVar *gInProgressValueAddedCond() {
+     static icu::UConditionVar cv = U_CONDITION_INITIALIZER;
+diff --git a/source/common/uresbund.cpp b/source/common/uresbund.cpp
+index af6d1a1f..b20e3095 100644
+--- a/source/common/uresbund.cpp
++++ b/source/common/uresbund.cpp
+@@ -50,8 +50,8 @@ static UHashtable *cache = NULL;
+ static icu::UInitOnce gCacheInitOnce;
+ 
+ static UMutex *resbMutex() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ /* INTERNAL: hashes an entry  */
+diff --git a/source/common/usprep.cpp b/source/common/usprep.cpp
+index a05fae1c..d8325133 100644
+--- a/source/common/usprep.cpp
++++ b/source/common/usprep.cpp
+@@ -48,8 +48,8 @@ static UHashtable *SHARED_DATA_HASHTABLE = NULL;
+ static icu::UInitOnce gSharedDataInitOnce;
+ 
+ static UMutex *usprepMutex() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ /* format version of spp file */
+diff --git a/source/i18n/astro.cpp b/source/i18n/astro.cpp
+index e6dcfe89..b0b6bda3 100644
+--- a/source/i18n/astro.cpp
++++ b/source/i18n/astro.cpp
+@@ -66,8 +66,8 @@ static inline UBool isINVALID(double d) {
+ }
+ 
+ static icu::UMutex *ccLock() {
+-    static icu::UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static icu::UMutex *m = new icu::UMutex();
++    return m;
+ }
+ 
+ U_CDECL_BEGIN
+diff --git a/source/i18n/chnsecal.cpp b/source/i18n/chnsecal.cpp
+index 2472870f..a30d34a9 100644
+--- a/source/i18n/chnsecal.cpp
++++ b/source/i18n/chnsecal.cpp
+@@ -52,8 +52,8 @@ static void debug_chnsecal_msg(const char *pat, ...)
+ 
+ // --- The cache --
+ static icu::UMutex *astroLock() {  // Protects access to gChineseCalendarAstro.
+-    static icu::UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static icu::UMutex *m = new icu::UMutex();
++    return m;
+ }
+ static icu::CalendarAstronomer *gChineseCalendarAstro = NULL;
+ 
+diff --git a/source/i18n/dtfmtsym.cpp b/source/i18n/dtfmtsym.cpp
+index 42cf5c5e..6b2cdf16 100644
+--- a/source/i18n/dtfmtsym.cpp
++++ b/source/i18n/dtfmtsym.cpp
+@@ -1246,9 +1246,9 @@ const UnicodeString**
+ DateFormatSymbols::getZoneStrings(int32_t& rowCount, int32_t& columnCount) const
+ {
+     const UnicodeString **result = NULL;
+-    static UMutex LOCK = U_MUTEX_INITIALIZER;
++    static UMutex *LOCK = new UMutex();
+ 
+-    umtx_lock(&LOCK);
++    umtx_lock(LOCK);
+     if (fZoneStrings == NULL) {
+         if (fLocaleZoneStrings == NULL) {
+             ((DateFormatSymbols*)this)->initZoneStringsArray();
+@@ -1259,7 +1259,7 @@ DateFormatSymbols::getZoneStrings(int32_t& rowCount, int32_t& columnCount) const
+     }
+     rowCount = fZoneStringsRowCount;
+     columnCount = fZoneStringsColCount;
+-    umtx_unlock(&LOCK);
++    umtx_unlock(LOCK);
+ 
+     return result;
+ }
+diff --git a/source/i18n/dtitvfmt.cpp b/source/i18n/dtitvfmt.cpp
+index 0e124f56..d6f799a1 100644
+--- a/source/i18n/dtitvfmt.cpp
++++ b/source/i18n/dtitvfmt.cpp
+@@ -83,8 +83,8 @@ UOBJECT_DEFINE_RTTI_IMPLEMENTATION(DateIntervalFormat)
+ //        Needed because these data members are modified by const methods of DateIntervalFormat.
+ 
+ static UMutex *gFormatterMutex() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ DateIntervalFormat* U_EXPORT2
+diff --git a/source/i18n/gender.cpp b/source/i18n/gender.cpp
+index 50161e14..f85323b8 100644
+--- a/source/i18n/gender.cpp
++++ b/source/i18n/gender.cpp
+@@ -98,11 +98,11 @@ const GenderInfo* GenderInfo::getInstance(const Locale& locale, UErrorCode& stat
+     return NULL;
+   }
+ 
+-  static UMutex gGenderMetaLock = U_MUTEX_INITIALIZER;
++  static UMutex *gGenderMetaLock = new UMutex();
+   const GenderInfo* result = NULL;
+   const char* key = locale.getName();
+   {
+-    Mutex lock(&gGenderMetaLock);
++    Mutex lock(gGenderMetaLock);
+     result = (const GenderInfo*) uhash_get(gGenderInfoCache, key);
+   }
+   if (result) {
+@@ -118,7 +118,7 @@ const GenderInfo* GenderInfo::getInstance(const Locale& locale, UErrorCode& stat
+   // Try to put our GenderInfo object in cache. If there is a race condition,
+   // favor the GenderInfo object that is already in the cache.
+   {
+-    Mutex lock(&gGenderMetaLock);
++    Mutex lock(gGenderMetaLock);
+     GenderInfo* temp = (GenderInfo*) uhash_get(gGenderInfoCache, key);
+     if (temp) {
+       result = temp;
+diff --git a/source/i18n/islamcal.cpp b/source/i18n/islamcal.cpp
+index a024f4cb..b5caa98a 100644
+--- a/source/i18n/islamcal.cpp
++++ b/source/i18n/islamcal.cpp
+@@ -470,8 +470,8 @@ double IslamicCalendar::moonAge(UDate time, UErrorCode &status)
+ {
+     double age = 0;
+ 
+-    static UMutex astroLock = U_MUTEX_INITIALIZER;      // pod bay door lock
+-    umtx_lock(&astroLock);
++    static UMutex *astroLock = new UMutex();      // pod bay door lock
++    umtx_lock(astroLock);
+     if(gIslamicCalendarAstro == NULL) {
+         gIslamicCalendarAstro = new CalendarAstronomer();
+         if (gIslamicCalendarAstro == NULL) {
+@@ -482,7 +482,7 @@ double IslamicCalendar::moonAge(UDate time, UErrorCode &status)
+     }
+     gIslamicCalendarAstro->setTime(time);
+     age = gIslamicCalendarAstro->getMoonAge();
+-    umtx_unlock(&astroLock);
++    umtx_unlock(astroLock);
+ 
+     // Convert to degrees and normalize...
+     age = age * 180 / CalendarAstronomer::PI;
+diff --git a/source/i18n/listformatter.cpp b/source/i18n/listformatter.cpp
+index 802ab0ef..548d8b06 100644
+--- a/source/i18n/listformatter.cpp
++++ b/source/i18n/listformatter.cpp
+@@ -144,9 +144,9 @@ const ListFormatInternal* ListFormatter::getListFormatInternal(
+     keyBuffer.append(':', errorCode).append(style, errorCode);
+     UnicodeString key(keyBuffer.data(), -1, US_INV);
+     ListFormatInternal* result = nullptr;
+-    static UMutex listFormatterMutex = U_MUTEX_INITIALIZER;
++    static UMutex *listFormatterMutex = new UMutex();
+     {
+-        Mutex m(&listFormatterMutex);
++        Mutex m(listFormatterMutex);
+         if (listPatternHash == nullptr) {
+             initializeHash(errorCode);
+             if (U_FAILURE(errorCode)) {
+@@ -164,7 +164,7 @@ const ListFormatInternal* ListFormatter::getListFormatInternal(
+     }
+ 
+     {
+-        Mutex m(&listFormatterMutex);
++        Mutex m(listFormatterMutex);
+         ListFormatInternal* temp = static_cast<ListFormatInternal*>(listPatternHash->get(key));
+         if (temp != nullptr) {
+             delete result;
+diff --git a/source/i18n/measfmt.cpp b/source/i18n/measfmt.cpp
+index 0b2ba8fd..20b30d3c 100644
+--- a/source/i18n/measfmt.cpp
++++ b/source/i18n/measfmt.cpp
+@@ -801,10 +801,10 @@ UnicodeString &MeasureFormat::formatNumeric(
+     // #13606: DateFormat is not thread-safe, but MeasureFormat advertises itself as thread-safe.
+     FieldPosition smallestFieldPosition(smallestField);
+     UnicodeString draft;
+-    static UMutex dateFmtMutex = U_MUTEX_INITIALIZER;
+-    umtx_lock(&dateFmtMutex);
++    static UMutex *dateFmtMutex = new UMutex();
++    umtx_lock(dateFmtMutex);
+     dateFmt.format(date, draft, smallestFieldPosition, status);
+-    umtx_unlock(&dateFmtMutex);
++    umtx_unlock(dateFmtMutex);
+ 
+     // If we find field for smallest amount replace it with the formatted
+     // smallest amount from above taking care to replace the integer part
+diff --git a/source/i18n/numfmt.cpp b/source/i18n/numfmt.cpp
+index 7adf902d..5438f6a0 100644
+--- a/source/i18n/numfmt.cpp
++++ b/source/i18n/numfmt.cpp
+@@ -1362,8 +1362,8 @@ NumberFormat::makeInstance(const Locale& desiredLocale,
+         // TODO: Bad hash key usage, see ticket #8504.
+         int32_t hashKey = desiredLocale.hashCode();
+ 
+-        static icu::UMutex nscacheMutex = U_MUTEX_INITIALIZER;
+-        Mutex lock(&nscacheMutex);
++        static icu::UMutex *nscacheMutex = new icu::UMutex();
++        Mutex lock(nscacheMutex);
+         ns = (NumberingSystem *)uhash_iget(NumberingSystem_cache, hashKey);
+         if (ns == NULL) {
+             ns = NumberingSystem::createInstance(desiredLocale,status);
+diff --git a/source/i18n/rbt.cpp b/source/i18n/rbt.cpp
+index b4407930..aed711e7 100644
+--- a/source/i18n/rbt.cpp
++++ b/source/i18n/rbt.cpp
+@@ -253,14 +253,14 @@ RuleBasedTransliterator::handleTransliterate(Replaceable& text, UTransPosition&
+     //
+     // TODO(andy): Need a better scheme for handling this.
+ 
+-    static UMutex transliteratorDataMutex = U_MUTEX_INITIALIZER;
++    static UMutex *transliteratorDataMutex = new UMutex();
+     UBool needToLock;
+     {
+         Mutex m;
+         needToLock = (&text != gLockedText);
+     }
+     if (needToLock) {
+-        umtx_lock(&transliteratorDataMutex);  // Contention, longish waits possible here.
++        umtx_lock(transliteratorDataMutex);  // Contention, longish waits possible here.
+         Mutex m;
+         gLockedText = &text;
+         lockedMutexAtThisLevel = TRUE;
+@@ -279,7 +279,7 @@ RuleBasedTransliterator::handleTransliterate(Replaceable& text, UTransPosition&
+             Mutex m;
+             gLockedText = NULL;
+         }
+-        umtx_unlock(&transliteratorDataMutex);
++        umtx_unlock(transliteratorDataMutex);
+     }
+ }
+ 
+diff --git a/source/i18n/rbtz.cpp b/source/i18n/rbtz.cpp
+index 4aa143c7..312e699c 100644
+--- a/source/i18n/rbtz.cpp
++++ b/source/i18n/rbtz.cpp
+@@ -149,16 +149,16 @@ RuleBasedTimeZone::addTransitionRule(TimeZoneRule* rule, UErrorCode& status) {
+ 
+ void
+ RuleBasedTimeZone::completeConst(UErrorCode& status) const {
+-    static UMutex gLock = U_MUTEX_INITIALIZER;
++    static UMutex *gLock = new UMutex();
+     if (U_FAILURE(status)) {
+         return;
+     }
+-    umtx_lock(&gLock);
++    umtx_lock(gLock);
+     if (!fUpToDate) {
+         RuleBasedTimeZone *ncThis = const_cast<RuleBasedTimeZone*>(this);
+         ncThis->complete(status);
+     }
+-    umtx_unlock(&gLock);
++    umtx_unlock(gLock);
+ }
+ 
+ void
+diff --git a/source/i18n/reldatefmt.cpp b/source/i18n/reldatefmt.cpp
+index 2b58e47c..a7520d31 100644
+--- a/source/i18n/reldatefmt.cpp
++++ b/source/i18n/reldatefmt.cpp
+@@ -1184,8 +1184,8 @@ UnicodeString& RelativeDateTimeFormatter::adjustForContext(UnicodeString &str) c
+ 
+     // Must guarantee that one thread at a time accesses the shared break
+     // iterator.
+-    static icu::UMutex gBrkIterMutex = U_MUTEX_INITIALIZER;
+-    Mutex lock(&gBrkIterMutex);
++    static icu::UMutex *gBrkIterMutex = new icu::UMutex();
++    Mutex lock(gBrkIterMutex);
+     str.toTitle(
+             fOptBreakIterator->get(),
+             fLocale,
+diff --git a/source/i18n/simpletz.cpp b/source/i18n/simpletz.cpp
+index cacfa187..f9da0480 100644
+--- a/source/i18n/simpletz.cpp
++++ b/source/i18n/simpletz.cpp
+@@ -1083,13 +1083,13 @@ SimpleTimeZone::checkTransitionRules(UErrorCode& status) const {
+     if (U_FAILURE(status)) {
+         return;
+     }
+-    static UMutex gLock = U_MUTEX_INITIALIZER;
+-    umtx_lock(&gLock);
++    static UMutex *gLock = new UMutex();
++    umtx_lock(gLock);
+     if (!transitionRulesInitialized) {
+         SimpleTimeZone *ncThis = const_cast<SimpleTimeZone*>(this);
+         ncThis->initTransitionRules(status);
+     }
+-    umtx_unlock(&gLock);
++    umtx_unlock(gLock);
+ }
+ 
+ void
+diff --git a/source/i18n/smpdtfmt.cpp b/source/i18n/smpdtfmt.cpp
+index e67c4538..98f36b3e 100644
+--- a/source/i18n/smpdtfmt.cpp
++++ b/source/i18n/smpdtfmt.cpp
+@@ -231,8 +231,8 @@ static const int32_t HEBREW_CAL_CUR_MILLENIUM_START_YEAR = 5000;
+ static const int32_t HEBREW_CAL_CUR_MILLENIUM_END_YEAR = 6000;
+ 
+ static UMutex *LOCK() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ UOBJECT_DEFINE_RTTI_IMPLEMENTATION(SimpleDateFormat)
+diff --git a/source/i18n/translit.cpp b/source/i18n/translit.cpp
+index 7d9c7192..0286de4e 100644
+--- a/source/i18n/translit.cpp
++++ b/source/i18n/translit.cpp
+@@ -92,8 +92,8 @@ static const char RB_RULE_BASED_IDS[] = "RuleBasedTransliteratorIDs";
+  * The mutex controlling access to registry object.
+  */
+ static icu::UMutex *registryMutex() {
+-    static icu::UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static icu::UMutex *m = new icu::UMutex();
++    return m;
+ }
+ 
+ /**
+diff --git a/source/i18n/tridpars.cpp b/source/i18n/tridpars.cpp
+index f54393b6..785fa16b 100644
+--- a/source/i18n/tridpars.cpp
++++ b/source/i18n/tridpars.cpp
+@@ -51,8 +51,8 @@ static UInitOnce gSpecialInversesInitOnce = U_INITONCE_INITIALIZER;
+  * The mutex controlling access to SPECIAL_INVERSES
+  */
+ static UMutex *LOCK() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ TransliteratorIDParser::Specs::Specs(const UnicodeString& s, const UnicodeString& t,
+diff --git a/source/i18n/tzfmt.cpp b/source/i18n/tzfmt.cpp
+index 5aa7af5b..c34e0168 100644
+--- a/source/i18n/tzfmt.cpp
++++ b/source/i18n/tzfmt.cpp
+@@ -148,8 +148,8 @@ static TextTrieMap *gShortZoneIdTrie = NULL;
+ static icu::UInitOnce gShortZoneIdTrieInitOnce = U_INITONCE_INITIALIZER;
+ 
+ static UMutex *gLock() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ U_CDECL_BEGIN
+diff --git a/source/i18n/tzgnames.cpp b/source/i18n/tzgnames.cpp
+index 4e3ecb4c..89713df1 100644
+--- a/source/i18n/tzgnames.cpp
++++ b/source/i18n/tzgnames.cpp
+@@ -270,8 +270,8 @@ GNameSearchHandler::getMatches(int32_t& maxMatchLen) {
+ }
+ 
+ static UMutex *gLock() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ class TZGNCore : public UMemory {
+@@ -1116,8 +1116,8 @@ typedef struct TZGNCoreRef {
+ 
+ // TZGNCore object cache handling
+ static UMutex *gTZGNLock() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ static UHashtable *gTZGNCoreCache = NULL;
+ static UBool gTZGNCoreCacheInitialized = FALSE;
+diff --git a/source/i18n/tznames.cpp b/source/i18n/tznames.cpp
+index acd6aecd..b104d66c 100644
+--- a/source/i18n/tznames.cpp
++++ b/source/i18n/tznames.cpp
+@@ -30,8 +30,8 @@ U_NAMESPACE_BEGIN
+ 
+ // TimeZoneNames object cache handling
+ static UMutex *gTimeZoneNamesLock() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ static UHashtable *gTimeZoneNamesCache = NULL;
+ static UBool gTimeZoneNamesCacheInitialized = FALSE;
+diff --git a/source/i18n/tznames_impl.cpp b/source/i18n/tznames_impl.cpp
+index 5e3b478c..4592e26e 100644
+--- a/source/i18n/tznames_impl.cpp
++++ b/source/i18n/tznames_impl.cpp
+@@ -50,8 +50,8 @@ static const char* TZDBNAMES_KEYS[]               = {"ss", "sd"};
+ static const int32_t TZDBNAMES_KEYS_SIZE = UPRV_LENGTHOF(TZDBNAMES_KEYS);
+ 
+ static UMutex *gDataMutex() {
+-    static UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static UMutex *m = new UMutex();
++    return m;
+ }
+ 
+ static UHashtable* gTZDBNamesMap = NULL;
+@@ -388,9 +388,9 @@ TextTrieMap::search(const UnicodeString &text, int32_t start,
+         //       Don't do unless it's really required.
+ 
+         // Mutex for protecting the lazy creation of the Trie node structure on the first call to search().
+-        static UMutex TextTrieMutex = U_MUTEX_INITIALIZER;
++        static UMutex *TextTrieMutex = new UMutex();
+ 
+-        Mutex lock(&TextTrieMutex);
++        Mutex lock(TextTrieMutex);
+         if (fLazyContents != NULL) {
+             TextTrieMap *nonConstThis = const_cast<TextTrieMap *>(this);
+             nonConstThis->buildTrie(status);
+@@ -2247,8 +2247,8 @@ TZDBTimeZoneNames::getMetaZoneNames(const UnicodeString& mzID, UErrorCode& statu
+     U_ASSERT(status == U_ZERO_ERROR);   // already checked length above
+     mzIDKey[mzID.length()] = 0;
+ 
+-    static UMutex gTZDBNamesMapLock = U_MUTEX_INITIALIZER;
+-    umtx_lock(&gTZDBNamesMapLock);
++    static UMutex *gTZDBNamesMapLock = new UMutex();
++    umtx_lock(gTZDBNamesMapLock);
+     {
+         void *cacheVal = uhash_get(gTZDBNamesMap, mzIDKey);
+         if (cacheVal == NULL) {
+@@ -2291,7 +2291,7 @@ TZDBTimeZoneNames::getMetaZoneNames(const UnicodeString& mzID, UErrorCode& statu
+             tzdbNames = (TZDBNames *)cacheVal;
+         }
+     }
+-    umtx_unlock(&gTZDBNamesMapLock);
++    umtx_unlock(gTZDBNamesMapLock);
+ 
+     return tzdbNames;
+ }
+diff --git a/source/i18n/zonemeta.cpp b/source/i18n/zonemeta.cpp
+index 0e3ee893..dc3e33ce 100644
+--- a/source/i18n/zonemeta.cpp
++++ b/source/i18n/zonemeta.cpp
+@@ -31,8 +31,8 @@
+ #include "uinvchar.h"
+ 
+ static icu::UMutex *gZoneMetaLock() {
+-    static icu::UMutex m = U_MUTEX_INITIALIZER;
+-    return &m;
++    static icu::UMutex *m = new icu::UMutex();
++    return m;
+ }
+ 
+ // CLDR Canonical ID mapping table

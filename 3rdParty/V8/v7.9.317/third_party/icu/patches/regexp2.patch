@@ -1,0 +1,49 @@
+diff --git a/source/i18n/regexcmp.cpp b/source/i18n/regexcmp.cpp
+index e27c3ca5..707e212e 100644
+--- a/source/i18n/regexcmp.cpp
++++ b/source/i18n/regexcmp.cpp
+@@ -3463,7 +3463,6 @@ int32_t   RegexCompile::maxMatchLength(int32_t start, int32_t end) {
+     U_ASSERT(start <= end);
+     U_ASSERT(end < fRXPat->fCompiledPat->size());
+ 
+-
+     int32_t    loc;
+     int32_t    op;
+     int32_t    opType;
+@@ -3672,7 +3671,7 @@ int32_t   RegexCompile::maxMatchLength(int32_t start, int32_t end) {
+ 
+         case URX_CTR_LOOP:
+         case URX_CTR_LOOP_NG:
+-            // These opcodes will be skipped over by code for URX_CRT_INIT.
++            // These opcodes will be skipped over by code for URX_CTR_INIT.
+             // We shouldn't encounter them here.
+             UPRV_UNREACHABLE;
+ 
+@@ -3700,21 +3699,15 @@ int32_t   RegexCompile::maxMatchLength(int32_t start, int32_t end) {
+             {
+                 // Look-behind.  Scan forward until the matching look-around end,
+                 //   without processing the look-behind block.
+-                int32_t  depth = 0;
+-                for (;;) {
+-                    loc++;
++                int32_t dataLoc = URX_VAL(op);
++                for (loc = loc + 1; loc < end; ++loc) {
+                     op = (int32_t)fRXPat->fCompiledPat->elementAti(loc);
+-                    if (URX_TYPE(op) == URX_LA_START || URX_TYPE(op) == URX_LB_START) {
+-                        depth++;
+-                    }
+-                    if (URX_TYPE(op) == URX_LA_END || URX_TYPE(op)==URX_LBN_END) {
+-                        if (depth == 0) {
+-                            break;
+-                        }
+-                        depth--;
++                    int32_t opType = URX_TYPE(op);
++                    if ((opType == URX_LA_END || opType == URX_LBN_END) && (URX_VAL(op) == dataLoc)) {
++                        break;
+                     }
+-                    U_ASSERT(loc < end);
+                 }
++                U_ASSERT(loc < end);
+             }
+             break;
+ 

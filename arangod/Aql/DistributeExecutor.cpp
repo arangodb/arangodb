@@ -251,11 +251,18 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
 
     SharedAqlItemBlockPtr cur = _buffer[_index];
 
-    while (_pos < cur->size()) {
-      // this may modify the input item buffer in place
-      size_t const id = sendToClient(cur);
+    for (; _pos < cur->size(); ++_pos) {
+      if (!cur->isShadowRow(_pos)) {
+        // this may modify the input item buffer in place
+        size_t const id = sendToClient(cur);
 
-      _distBuffer[id].emplace_back(_index, _pos++);
+        _distBuffer[id].emplace_back(_index, _pos);
+      } else {
+        // A shadow row must always be distributed to all clients.
+        for (auto& dist : _distBuffer) {
+          dist.emplace_back(_index, _pos);
+        }
+      }
     }
 
     if (_pos == cur->size()) {

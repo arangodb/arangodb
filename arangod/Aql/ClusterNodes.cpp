@@ -24,10 +24,12 @@
 #include <type_traits>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ClusterNodes.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/BlocksWithClients.h"
@@ -41,12 +43,15 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
+#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortingGatherExecutor.h"
+#include "Aql/UnsortedGatherExecutor.h"
 #include "Aql/types.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -63,13 +68,34 @@ arangodb::velocypack::StringRef const SortModeUnset("unset");
 arangodb::velocypack::StringRef const SortModeMinElement("minelement");
 arangodb::velocypack::StringRef const SortModeHeap("heap");
 
+char const* toString(GatherNode::Parallelism value) {
+  switch (value) {
+    case GatherNode::Parallelism::Parallel:
+      return "parallel";
+    case GatherNode::Parallelism::Serial:
+      return "serial";
+    case GatherNode::Parallelism::Undefined:
+    default:
+      return "undefined";
+  }
+}
+
+GatherNode::Parallelism parallelismFromString(std::string const& value) {
+  if (value == "parallel") {
+    return GatherNode::Parallelism::Parallel;
+  } else if (value == "serial") {
+    return GatherNode::Parallelism::Serial;
+  }
+  return GatherNode::Parallelism::Undefined;
+}
+
+std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
+    {SortModeMinElement, GatherNode::SortMode::MinElement},
+    {SortModeHeap, GatherNode::SortMode::Heap},
+    {SortModeUnset, GatherNode::SortMode::Default}};
+
 bool toSortMode(arangodb::velocypack::StringRef const& str, GatherNode::SortMode& mode) noexcept {
   // std::map ~25-30% faster than std::unordered_map for small number of elements
-  static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
-      {SortModeMinElement, GatherNode::SortMode::MinElement},
-      {SortModeHeap, GatherNode::SortMode::Heap},
-      {SortModeUnset, GatherNode::SortMode::Default}};
-
   auto const it = NameToValue.find(str);
 
   if (it == NameToValue.end()) {
@@ -397,13 +423,15 @@ CostEstimate DistributeNode::estimateCost() const {
 GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                        SortElementVector const& elements)
     : ExecutionNode(plan, base),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _elements(elements),
       _sortmode(SortMode::MinElement),
+      _parallelism(Parallelism::Undefined), 
       _limit(0) {
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
 
-    if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, ""), _sortmode)) {
+    if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, VPackStringRef()), _sortmode)) {
       LOG_TOPIC("2c6f3", ERR, Logger::AQL)
           << "invalid sort mode detected while "
              "creating 'GatherNode' from vpack";
@@ -413,16 +441,24 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
         basics::VelocyPackHelper::getNumericValue<decltype(_limit)>(base,
                                                                     "limit", 0);
   }
+    
+  setParallelism(parallelismFromString(VelocyPackHelper::getStringValue(base, "parellelism", "")));
 }
 
-GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode) noexcept
-    : ExecutionNode(plan, id), _sortmode(sortMode), _limit(0) {}
+GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, Parallelism parallelism) noexcept
+    : ExecutionNode(plan, id), 
+      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _sortmode(sortMode), 
+      _parallelism(parallelism),
+      _limit(0) {}
 
 /// @brief toVelocyPack, for GatherNode
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                     std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+ 
+  nodes.add("parallelism", VPackValue(toString(_parallelism)));
 
   if (_elements.empty()) {
     nodes.add("sortmode", VPackValue(SortModeUnset.data()));
@@ -448,7 +484,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       }
     }
   }
-
+  
   // And close it:
   nodes.close();
 }
@@ -461,21 +497,25 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   if (_elements.empty()) {
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
-    IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                          calcRegsToKeep(), getRegsToClear());
-    if (ServerState::instance()->isCoordinator()) {
-      // In the coordinator case the GatherBlock will fetch from RemoteBlocks.
-      // We want to immediately move the block on and not wait for additional requests here (hence passthrough)
-      return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>>(
+    if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
+      ParallelUnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                                                calcRegsToKeep(), getRegsToClear());
+      return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
           &engine, this, std::move(infos));
     } else {
-      // In the DBServer case the GatherBlock will merge local results and then expose them (directly or indirectly)
-      // To the RemoteBlock on coordinator. We want to trigger as few requests as possible, so we invest the little
-      // memory inefficiency that we have here in favor of a better grouping of requests.
-      return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>>(
-          &engine, this, std::move(infos));
+      IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                            calcRegsToKeep(), getRegsToClear());
+
+      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
+                                                                           std::move(infos));
     }
   }
+  
+  Parallelism p = _parallelism;
+  if (ServerState::instance()->isDBServer()) {
+    p = Parallelism::Serial; // not supported in v36
+  }
+  
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
   SortingGatherExecutorInfos infos(make_shared_unordered_set(),
@@ -484,7 +524,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                    calcRegsToKeep(), std::move(sortRegister),
                                    _plan->getAst()->query()->trx(), sortMode(),
-                                   constrainedSortLimit());
+                                   constrainedSortLimit(), p);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
                                                                      std::move(infos));
@@ -505,6 +545,70 @@ size_t GatherNode::constrainedSortLimit() const noexcept { return _limit; }
 
 bool GatherNode::isSortingGather() const noexcept {
   return !elements().empty();
+}
+
+/// @brief is the node parallelizable?
+struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
+  bool const _parallelizeWrites;
+  bool _isParallelizable;
+
+  explicit ParallelizableFinder(TRI_vocbase_t const& _vocbase)
+      : _parallelizeWrites(_vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites()),
+        _isParallelizable(true) {}
+
+  ~ParallelizableFinder() = default;
+
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    return false;
+  }
+
+  bool before(ExecutionNode* node) override final {
+    if (node->getType() == ExecutionNode::SCATTER ||
+        node->getType() == ExecutionNode::GATHER ||
+        node->getType() == ExecutionNode::DISTRIBUTE ||
+        node->getType() == ExecutionNode::TRAVERSAL ||
+        node->getType() == ExecutionNode::SHORTEST_PATH ||
+        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
+    }
+    // write operations of type REMOVE, REPLACE and UPDATE
+    // can be parallelized, provided the rest of the plan
+    // does not prohibit this
+    if (node->isModificationNode() &&
+        (!_parallelizeWrites ||
+         (node->getType() != ExecutionNode::REMOVE &&
+          node->getType() != ExecutionNode::REPLACE && 
+          node->getType() != ExecutionNode::UPDATE))) {
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
+    }
+
+    // continue inspecting
+    return false;
+  }
+};
+
+/// no modification nodes, ScatterNodes etc
+bool GatherNode::isParallelizable() const {
+  if (_parallelism == Parallelism::Serial) {
+    // node already defined to be serial
+    return false;
+  }
+
+  ParallelizableFinder finder(*_vocbase);
+  for (ExecutionNode* e : _dependencies) {
+    e->walk(finder);
+    if (!finder._isParallelizable) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void GatherNode::setParallelism(GatherNode::Parallelism value) {
+  TRI_ASSERT(value != Parallelism::Parallel || isParallelizable());
+  _parallelism = value;
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
@@ -551,7 +655,8 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   SingleRemoteModificationInfos infos(
       in, outputNew, outputOld, out,

@@ -54,7 +54,7 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
-static std::vector<std::string> const cmp{JOURNAL_SIZE, WAIT_FOR_SYNC, DO_COMPACT, INDEX_BUCKETS};
+static std::vector<std::string> const cmp{JOURNAL_SIZE, WAIT_FOR_SYNC, DO_COMPACT, VALIDATION, CACHE_ENABLED};
 
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
@@ -474,7 +474,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                 break;
               }
             }
-          }  // else if(!shard.value.isArray()) - intentionally do nothing
+          }  // else if (!shard.value.isArray()) - intentionally do nothing
         }
       }
     }

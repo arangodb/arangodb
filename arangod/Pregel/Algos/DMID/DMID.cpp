@@ -556,9 +556,9 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
            * This vertex is a global leader. Set Membership degree to
            * 100%
            */
-          vertexState->membershipDegree.emplace(_id, 1.0f);
+          vertexState->membershipDegree.try_emplace(_id, 1.0f);
         } else {
-          vertexState->membershipDegree.emplace(_id, 0.0f);
+          vertexState->membershipDegree.try_emplace(_id, 0.0f);
         }
       }
     });

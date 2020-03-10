@@ -38,7 +38,7 @@ class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus execute() override;
 
  protected:
-  virtual std::string forwardingTarget() override;
+  virtual ResultT<std::pair<std::string, bool>> forwardingTarget() override;
 
  private:
   void startExecution();

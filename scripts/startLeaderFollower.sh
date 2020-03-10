@@ -142,7 +142,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
-        --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
         --database.directory active/data$PORT \
         --javascript.enabled false \

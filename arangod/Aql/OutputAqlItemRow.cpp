@@ -116,7 +116,7 @@ void OutputAqlItemRow::copyRow(ItemRowType const& sourceRow, bool ignoreMissing)
   // implementation as planned should only copy a row after all values have
   // been set, and copyRow should only be called once.
   TRI_ASSERT(!_inputRowCopied);
-  // We either have a shadowRow, or we need to ahve all values written
+  // We either have a shadowRow, or we need to have all values written
   TRI_ASSERT((std::is_same<ItemRowType, ShadowAqlItemRow>::value) || allValuesWritten());
   if (_inputRowCopied) {
     _lastBaseIndex = _baseIndex;
@@ -192,9 +192,9 @@ void OutputAqlItemRow::advanceRow() {
   _numValuesWritten = 0;
 }
 
-void OutputAqlItemRow::toVelocyPack(transaction::Methods& trx, VPackBuilder& builder) {
+void OutputAqlItemRow::toVelocyPack(velocypack::Options const* options, VPackBuilder& builder) {
   TRI_ASSERT(produced());
-  block().rowToSimpleVPack(_baseIndex, &trx, builder);
+  block().rowToSimpleVPack(_baseIndex, options, builder);
 }
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {

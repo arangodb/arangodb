@@ -61,7 +61,7 @@ static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
   while (true) {
     auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      ss->waitForAsyncResponse();
+      ss->waitForAsyncWakeup();
     } else {
       break;
     }

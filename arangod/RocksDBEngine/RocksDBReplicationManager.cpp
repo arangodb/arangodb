@@ -113,7 +113,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    _contexts.emplace(id, context.get());
+    _contexts.try_emplace(id, context.get());
   }
 
   LOG_TOPIC("27c43", TRACE, Logger::REPLICATION)
@@ -217,6 +217,9 @@ RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
     // not found
     return {TRI_ERROR_CURSOR_NOT_FOUND};
   }
+
+  LOG_TOPIC("71234", TRACE, Logger::REPLICATION)
+      << "extending lifetime of replication context " << id;
 
   RocksDBReplicationContext* context = it->second;
   TRI_ASSERT(context != nullptr);

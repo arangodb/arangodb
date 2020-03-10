@@ -92,6 +92,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   bool _useFileLogging;
   bool _limitOpenFilesAtStartup;
   bool _allowFAllocate;
+  bool _exclusiveWrites;
 };
 
 }  // namespace arangodb

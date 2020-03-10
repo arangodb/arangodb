@@ -62,8 +62,8 @@
 #include <fst/randgen.h>
 #include <fst/rational.h>
 #include <fst/relabel.h>
-#include <fst/replace.h>
 #include <fst/replace-util.h>
+#include <fst/replace.h>
 #include <fst/reverse.h>
 #include <fst/reweight.h>
 #include <fst/rmepsilon.h>
@@ -121,8 +121,8 @@
 #include <fst/register.h>
 #include <fst/state-reachable.h>
 #include <fst/string.h>
-#include <fst/symbol-table.h>
 #include <fst/symbol-table-ops.h>
+#include <fst/symbol-table.h>
 #include <fst/test-properties.h>
 #include <fst/util.h>
 

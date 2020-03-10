@@ -144,6 +144,12 @@ class RequestStatistics {
     }
   }
 
+  static void SET_SUPERUSER(RequestStatistics* stat) {
+    if (stat != nullptr) {
+      stat->_superuser = true;
+    }
+  }
+
   double requestStart() const { return _requestStart; }
 
   static void fill(basics::StatisticsDistribution& totalTime,
@@ -151,7 +157,8 @@ class RequestStatistics {
                    basics::StatisticsDistribution& queueTime,
                    basics::StatisticsDistribution& ioTime,
                    basics::StatisticsDistribution& bytesSent,
-                   basics::StatisticsDistribution& bytesReceived);
+                   basics::StatisticsDistribution& bytesReceived,
+                   stats::RequestStatisticsSource source);
 
   std::string timingsCsv();
   std::string to_string();
@@ -189,6 +196,7 @@ class RequestStatistics {
     _ignore = false;
     _released = true;
     _inQueue = false;
+    _superuser = false;
   }
 
   double _readStart;   // CommTask::processRead - read first byte of message
@@ -213,6 +221,7 @@ class RequestStatistics {
   bool _ignore;
   bool _released;
   bool _inQueue;
+  bool _superuser;
 };
 }  // namespace arangodb
 

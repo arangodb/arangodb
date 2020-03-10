@@ -60,15 +60,15 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  explicit V8ClientConnection(application_features::ApplicationServer&);
+  explicit V8ClientConnection(application_features::ApplicationServer&, ClientFeature&);
   ~V8ClientConnection();
 
  public:
   void setInterrupted(bool interrupted);
   bool isConnected() const;
 
-  void connect(ClientFeature*);
-  void reconnect(ClientFeature*);
+  void connect();
+  void reconnect();
 
   double timeout() const;
 
@@ -121,7 +121,7 @@ class V8ClientConnection {
                                   std::unordered_map<std::string, std::string> const& headerFields,
                                   bool raw);
 
-  void initServer(v8::Isolate*, v8::Handle<v8::Context> context, ClientFeature*);
+  void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
   std::shared_ptr<fuerte::Connection> createConnection();
@@ -146,14 +146,20 @@ class V8ClientConnection {
   /// to a nullptr
   void shutdownConnection();
 
+  void setCustomError(int httpCode, std::string const& msg) {
+    _setCustomError = true;
+    _lastHttpReturnCode = httpCode;
+    _lastErrorMessage = msg;
+  }
  private:
   application_features::ApplicationServer& _server;
+  ClientFeature& _client;
 
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;
 
   mutable std::recursive_mutex _lock;
-  int _lastHttpReturnCode;
+  unsigned _lastHttpReturnCode;
   std::string _lastErrorMessage;
   std::string _version;
   std::string _mode;
@@ -164,6 +170,7 @@ class V8ClientConnection {
   std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
   bool _forceJson;
+  bool _setCustomError;
 };
 }  // namespace arangodb
 

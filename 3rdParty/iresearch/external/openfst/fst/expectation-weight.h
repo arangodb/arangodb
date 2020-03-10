@@ -49,9 +49,6 @@ class ExpectationWeight : public PairWeight<X1, X2> {
 
   ExpectationWeight() : PairWeight<X1, X2>(Zero()) {}
 
-  ExpectationWeight(const ExpectationWeight &weight)
-      : PairWeight<X1, X2>(weight) {}
-
   explicit ExpectationWeight(const PairWeight<X1, X2> &weight)
       : PairWeight<X1, X2>(weight) {}
 
@@ -72,9 +69,9 @@ class ExpectationWeight : public PairWeight<X1, X2> {
     return no_weight;
   }
 
-  static const string &Type() {
-    static const string *const type =
-        new string("expectation_" + X1::Type() + "_" + X2::Type());
+  static const std::string &Type() {
+    static const std::string *const type =
+        new std::string("expectation_" + X1::Type() + "_" + X2::Type());
     return *type;
   }
 
@@ -88,7 +85,7 @@ class ExpectationWeight : public PairWeight<X1, X2> {
 
   bool Member() const { return PairWeight<X1, X2>::Member(); }
 
-  static FST_CONSTEXPR uint64 Properties() {
+  static constexpr uint64 Properties() {
     return X1::Properties() & X2::Properties() &
            (kLeftSemiring | kRightSemiring | kCommutative | kIdempotent);
   }

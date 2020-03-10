@@ -1,0 +1,62 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Markus Pfeiffer
+////////////////////////////////////////////////////////////////////////////////
+
+#include "InsertModifier.h"
+
+#include "Aql/AqlValue.h"
+#include "Aql/Collection.h"
+#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Basics/Common.h"
+#include "ModificationExecutor.h"
+#include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
+
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Logger/LogMacros.h"
+
+class CollectionNameResolver;
+
+using namespace arangodb;
+using namespace arangodb::aql;
+using namespace arangodb::aql::ModificationExecutorHelpers;
+
+ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
+                                                           InputAqlItemRow& row) {
+  RegisterId const inDocReg = _infos._input1RegisterId;
+
+  // The document to be INSERTed
+  AqlValue const& inDoc = row.getValue(inDocReg);
+
+  if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
+    accu.add(inDoc.slice());
+    return ModifierOperationType::ReturnIfAvailable;
+  } else {
+    return ModifierOperationType::CopyRow;
+  }
+}
+
+OperationResult InsertModifierCompletion::transact(VPackSlice const& data) {
+  return _infos._trx->insert(_infos._aqlCollection->name(), data, _infos._options);
+}

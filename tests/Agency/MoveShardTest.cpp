@@ -671,8 +671,8 @@ TEST_F(MoveShardTest, the_job_should_be_moved_to_pending_when_everything_is_ok) 
     EXPECT_EQ(writes.get(sourceKey).get("op").copyString(), "delete");
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).copyString() ==
                 "1");
-    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).copyString() ==
-                "1");
+    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-lock"));
+    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("by").isEqualString("1"));
     EXPECT_TRUE(writes.get("/arango/Plan/Version").get("op").copyString() ==
                 "increment");
     EXPECT_TRUE(std::string(writes.get("/arango/Target/Pending/1").typeName()) ==
@@ -710,8 +710,8 @@ TEST_F(MoveShardTest, the_job_should_be_moved_to_pending_when_everything_is_ok) 
                     .copyString() == "GOOD");
     EXPECT_TRUE(
         preconditions.get("/arango/Supervision/DBServers/" + FREE_SERVER)
-            .get("oldEmpty")
-            .getBool() == true);
+            .get("can-read-lock")
+            .isEqualString("1"));
     EXPECT_TRUE(
         preconditions.get("/arango/Supervision/Shards/" + SHARD).get("oldEmpty").getBool() == true);
     EXPECT_TRUE(preconditions
@@ -1287,8 +1287,7 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
 
     auto preconditions = q->slice()[0][1];
     EXPECT_TRUE(preconditions
@@ -1736,8 +1735,7 @@ TEST_F(MoveShardTest, a_pending_moveshard_job_should_also_put_the_original_serve
                 "delete");
     EXPECT_EQ(q->slice()[0].length(), 2);  // Precondition: to Server not leader yet
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(std::string(writes
@@ -2023,8 +2021,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
                 "delete");
     EXPECT_EQ(q->slice()[0].length(), 2);  // Precondition: to Server not leader yet
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(std::string(writes
@@ -2115,8 +2112,8 @@ TEST_F(MoveShardTest, aborting_the_job_while_the_new_leader_is_already_in_place_
     auto writes = q->slice()[0][0];
     EXPECT_EQ(writes.get("/arango/Target/Pending/1").get("op").copyString(), "delete");
     EXPECT_EQ(q->slice()[0].length(), 2); // Precondition: to Server not leader yet
-    EXPECT_EQ(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString(), "delete");
     EXPECT_EQ(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString(), "delete");
+    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_EQ(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()), "array");
     // well apparently this job is not responsible to cleanup its mess
     EXPECT_TRUE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).length() >= 3);
@@ -2311,14 +2308,14 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     auto writes = q->slice()[0][0];
-    EXPECT_EQ(writes.length(), 4);
+
+    EXPECT_EQ(writes.length(), 5);
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(std::string(writes.get("/arango/Target/Finished/1").typeName()) ==
                 "object");
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
 
@@ -2489,8 +2486,7 @@ TEST_F(MoveShardTest, when_aborting_a_moveshard_job_that_is_moving_stuff_away_fr
     EXPECT_TRUE(preconditions.get("/arango/Plan/Collections/" + DATABASE +
                                      "/" + COLLECTION).get("oldEmpty").isFalse());
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(std::string(writes

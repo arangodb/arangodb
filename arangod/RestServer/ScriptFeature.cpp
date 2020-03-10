@@ -50,7 +50,7 @@ ScriptFeature::ScriptFeature(application_features::ApplicationServer& server, in
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.script-parameter", "script parameter",
                      new VectorParameter<StringParameter>(&_scriptParameters));
@@ -82,11 +82,12 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
 
     auto localContext = v8::Local<v8::Context>::New(isolate, guard.context()->_context);
     localContext->Enter();
+    auto context = localContext;
     {
       v8::Context::Scope contextScope(localContext);
       for (auto const& script : scripts) {
         LOG_TOPIC("e703c", TRACE, arangodb::Logger::FIXME) << "executing script '" << script << "'";
-        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str(), true);
+        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str());
 
         if (!r) {
           LOG_TOPIC("9d38a", FATAL, arangodb::Logger::FIXME)
@@ -102,17 +103,17 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
       // parameter array
       v8::Handle<v8::Array> params = v8::Array::New(isolate);
 
-      params->Set(0, TRI_V8_STD_STRING(isolate, scripts[scripts.size() - 1]));
+      params->Set(context, 0, TRI_V8_STD_STRING(isolate, scripts[scripts.size() - 1])).FromMaybe(false);
 
       for (size_t i = 0; i < _scriptParameters.size(); ++i) {
-        params->Set((uint32_t)(i + 1), TRI_V8_STD_STRING(isolate, _scriptParameters[i]));
+        params->Set(context, (uint32_t)(i + 1), TRI_V8_STD_STRING(isolate, _scriptParameters[i])).FromMaybe(false);
       }
 
       // call main
       v8::Handle<v8::String> mainFuncName =
           TRI_V8_ASCII_STRING(isolate, "main");
       v8::Handle<v8::Function> main =
-          v8::Handle<v8::Function>::Cast(localContext->Global()->Get(mainFuncName));
+        v8::Handle<v8::Function>::Cast(localContext->Global()->Get(context, mainFuncName).FromMaybe(v8::Handle<v8::Value>()));
 
       if (main.IsEmpty() || main->IsUndefined()) {
         LOG_TOPIC("e3365", FATAL, arangodb::Logger::FIXME)
@@ -122,7 +123,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
         v8::Handle<v8::Value> args[] = {params};
 
         try {
-          v8::Handle<v8::Value> result = main->Call(main, 1, args);
+          v8::Handle<v8::Value> result = main->Call(TRI_IGETC, main, 1, args).FromMaybe(v8::Local<v8::Value>());;
 
           if (tryCatch.HasCaught()) {
             if (tryCatch.CanContinue()) {

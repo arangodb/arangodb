@@ -165,7 +165,7 @@ WalAccessResult MMFilesWalAccess::openTransactions(WalAccess::Filter const& filt
         TRI_ASSERT(tid > 0);
 
         if (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION) {
-          transactions.emplace(tid, foundTick);
+          transactions.try_emplace(tid, foundTick);
         } else if (type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
                    type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
           transactions.erase(tid);

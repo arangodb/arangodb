@@ -34,7 +34,7 @@
 NS_ROOT
 NS_BEGIN(memory)
 
-void dump_mem_stats_trace() NOEXCEPT {
+void dump_mem_stats_trace() noexcept {
   #ifndef _MSC_VER
 
   // MacOS does not have malloc.h and hence no mallinfo() or malloc_stats()

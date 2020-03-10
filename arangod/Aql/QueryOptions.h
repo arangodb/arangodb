@@ -24,7 +24,9 @@
 #ifndef ARANGOD_AQL_QUERY_OPTIONS_H
 #define ARANGOD_AQL_QUERY_OPTIONS_H 1
 
+#include <string>
 #include <unordered_set>
+#include <vector>
 
 #include "Basics/Common.h"
 #include "Transaction/Options.h"
@@ -34,6 +36,7 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
+class QueryRegistryFeature;
 
 namespace aql {
 
@@ -51,7 +54,7 @@ enum ProfileLevel : uint32_t {
 };
 
 struct QueryOptions {
-  QueryOptions();
+  explicit QueryOptions(QueryRegistryFeature&);
   TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);
@@ -61,8 +64,10 @@ struct QueryOptions {
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
+  double maxRuntime; // query has to execute within the given time or will be killed
   double satelliteSyncWait;
-  double ttl;
+  double ttl; // time until query cursor expires - avoids coursors to
+              // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
   bool allPlans;

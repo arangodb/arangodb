@@ -189,25 +189,21 @@ size_t SortCondition::coveredAttributes(
     }
 
     // no match
-    bool isConstant = false;
-
     if (isContained(indexAttributes, field.attributes) &&
         isContained(_constAttributes, field.attributes)) {
       // no field match, but a constant attribute
-      isConstant = true;
       ++fieldsPosition;
       ++numCovered;
+      continue;
     }
 
-    if (!isConstant && isContained(_constAttributes, indexAttributes[i])) {
+    if (isContained(_constAttributes, indexAttributes[i])) {
       // no field match, but a constant attribute
-      isConstant = true;
       ++i;  // next index field
+      continue;
     }
 
-    if (!isConstant) {
-      break;
-    }
+    break;
   }
 
   TRI_ASSERT(numCovered <= _fields.size());

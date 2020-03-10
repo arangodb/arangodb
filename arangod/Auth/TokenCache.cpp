@@ -34,9 +34,9 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Ssl/SslInterface.h"
+
+#include <fuerte/jwt.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -56,10 +56,8 @@ velocypack::StringRef const jwtString("JWT");
 
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
     : _userManager(um),
-      _authTimeout(timeout),
-      _basicCacheVersion(0),
-      _jwtSecret(""),
-      _jwtCache(16384) {}
+      _jwtCache(16384),
+      _authTimeout(timeout) {}
 
 auth::TokenCache::~TokenCache() {
   // properly clear structs while using the appropriate locks
@@ -68,26 +66,31 @@ auth::TokenCache::~TokenCache() {
     _basicCache.clear();
   }
   {
-    WRITE_LOCKER(writeLocker, _jwtLock);
+    WRITE_LOCKER(writeLocker, _jwtSecretLock);
     _jwtCache.clear();
   }
 }
 
+#ifndef USE_ENTERPRISE
+
 void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
-  WRITE_LOCKER(writeLocker, _jwtLock);
-  LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
-      << "Setting jwt secret of size " << jwtSecret.size();
-  _jwtSecret = jwtSecret;
-  _jwtCache.clear();
-  generateJwtToken();
+  {
+    WRITE_LOCKER(writeLocker, _jwtSecretLock);
+    LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
+        << "Setting jwt secret of size " << jwtSecret.size();
+    _jwtActiveSecret = jwtSecret;
+  }
+  generateSuperToken();
 }
+
+#endif
 
 std::string auth::TokenCache::jwtSecret() const {
-  READ_LOCKER(writeLocker, _jwtLock);
-  return _jwtSecret;  // intentional copy
+  READ_LOCKER(writeLocker, _jwtSecretLock);
+  return _jwtActiveSecret;  // intentional copy
 }
 
-// public called from HttpCommTask.cpp and VstCommTask.cpp
+// public called from {H2,Http,Vst}CommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
 auth::TokenCache::Entry auth::TokenCache::checkAuthentication(AuthenticationMethod authType,
@@ -163,13 +166,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string c
   {
     WRITE_LOCKER(guard, _basicLock);
     if (authorized) {
-      if (!_basicCache.emplace(secret, entry).second) {
-        // insertion did not work - probably another thread did insert the
-        // same data right now
-        // erase it and re-insert our version
-        _basicCache.erase(secret);
-        _basicCache.emplace(secret, entry);
-      }
+      _basicCache.insert_or_assign(std::move(secret), entry);
     } else {
       _basicCache.erase(secret);
     }
@@ -184,7 +181,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   // the cache's linked list. so acquiring just a read-lock is
   // insufficient!!
   {
-    WRITE_LOCKER(writeLocker, _jwtLock);
+    std::lock_guard<std::mutex> guard(_jwtCacheMutex);
     // intentionally copy the entry from the cache
     auth::TokenCache::Entry const* entry = _jwtCache.get(jwt);
     if (entry != nullptr) {
@@ -226,14 +223,16 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   }
 
   auth::TokenCache::Entry newEntry = validateJwtBody(body);
-  if (!newEntry._authenticated) {
+  if (!newEntry.authenticated()) {
     LOG_TOPIC("5fcba", TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt body " << body;
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  WRITE_LOCKER(writeLocker, _jwtLock);
-  _jwtCache.put(jwt, newEntry);
+  {
+    std::lock_guard<std::mutex> guard(_jwtCacheMutex);
+    _jwtCache.put(jwt, newEntry);
+  }
   return newEntry;
 }
 
@@ -377,70 +376,20 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
   return authResult;
 }
 
+#ifndef USE_ENTERPRISE
 bool auth::TokenCache::validateJwtHMAC256Signature(std::string const& message,
                                                    std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
 
-  return verifyHMAC(_jwtSecret.c_str(), _jwtSecret.length(), message.c_str(),
+  READ_LOCKER(guard, _jwtSecretLock);
+  return verifyHMAC(_jwtActiveSecret.c_str(), _jwtActiveSecret.length(), message.c_str(),
                     message.length(), decodedSignature.c_str(),
                     decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
 }
-
-std::string auth::TokenCache::generateRawJwt(VPackSlice const& body) const {
-  VPackBuilder headerBuilder;
-  {
-    VPackObjectBuilder h(&headerBuilder);
-    headerBuilder.add("alg", VPackValue("HS256"));
-    headerBuilder.add("typ", VPackValue("JWT"));
-  }
-
-  std::string fullMessage(StringUtils::encodeBase64U(headerBuilder.toJson()) +
-                          "." + StringUtils::encodeBase64U(body.toJson()));
-  if (_jwtSecret.empty()) {
-    LOG_TOPIC("1e995", INFO, Logger::AUTHENTICATION)
-        << "Using cluster without JWT Token";
-  }
-
-  std::string signature =
-      sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(),
-              fullMessage.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
-
-  return fullMessage + "." + StringUtils::encodeBase64U(signature);
-}
-
-std::string auth::TokenCache::generateJwt(VPackSlice const& payload) const {
-  if (!payload.isObject()) {
-    std::string error = "Need an object to generate a JWT. Got: ";
-    error += payload.typeName();
-    throw std::runtime_error(error);
-  }
-  bool hasIss = payload.hasKey("iss");
-  bool hasIat = payload.hasKey("iat");
-  if (hasIss && hasIat) {
-    return generateRawJwt(payload);
-  } 
-  
-  VPackBuilder bodyBuilder;
-  {
-    VPackObjectBuilder p(&bodyBuilder);
-    if (!hasIss) {
-      bodyBuilder.add("iss", VPackValue("arangodb"));
-    }
-    if (!hasIat) {
-      bodyBuilder.add("iat", VPackValue(TRI_microtime() / 1000));
-    }
-    for (auto const& obj : VPackObjectIterator(payload)) {
-      bodyBuilder.add(obj.key.copyString(), obj.value);
-    }
-  }
-  return generateRawJwt(bodyBuilder.slice());
-}
+#endif
 
 /// generate a JWT token for internal cluster communication
-void auth::TokenCache::generateJwtToken() {
-  VPackBuilder body;
-  body.openObject();
-  body.add("server_id", VPackValue(ServerState::instance()->getId()));
-  body.close();
-  _jwtToken = generateJwt(body.slice());
+void auth::TokenCache::generateSuperToken() {
+  std::string sid = ServerState::instance()->getId();
+  _jwtSuperToken = fuerte::jwt::generateInternalToken(jwtSecret(), sid);
 }

@@ -41,29 +41,29 @@ struct LogMessage;
 
 class LogThread final : public Thread {
  public:
-  static void log(std::unique_ptr<LogMessage>&);
-  // flush all pending log messages
-  static void flush();
-
- public:
   explicit LogThread(application_features::ApplicationServer& server,
                      std::string const& name);
   ~LogThread();
 
  public:
-  bool isSystem() override { return true; }
-  bool isSilent() override { return true; }
+  bool isSystem() const override { return true; }
+  bool isSilent() const override { return true; }
   void run() override;
+  
+  bool log(std::unique_ptr<LogMessage>&);
+  // flush all pending log messages
+  void flush() noexcept;
 
   // whether or not the log thread has messages queued
-  bool hasMessages();
+  bool hasMessages() const noexcept;
   // wake up the log thread from the outside
-  void wakeup();
+  void wakeup() noexcept;
+ 
+  // handle all queued messages - normally this should not be called
+  // by anyone, except from the crash handler
+  bool processPendingMessages();
 
  private:
-  static arangodb::basics::ConditionVariable* CONDITION;
-  static boost::lockfree::queue<LogMessage*>* MESSAGES;
-
   arangodb::basics::ConditionVariable _condition;
   boost::lockfree::queue<LogMessage*> _messages;
 };

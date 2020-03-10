@@ -40,23 +40,19 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool SortedCollectExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough SortedCollectExecutor::Properties::allowsBlockPassthrough;
-constexpr bool SortedCollectExecutor::Properties::inputSizeRestrictsOutputSize;
-
 static const AqlValue EmptyValue;
 
 SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
     : groupLength(0),
       count(count),
+      _shouldDeleteBuilderBuffer(true),
       infos(infos),
-      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _shouldDeleteBuilderBuffer(true) {
+      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(Aggregator::fromTypeString(infos.getTransaction(), aggName));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
-};
+}
 
 SortedCollectExecutor::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {
@@ -305,7 +301,6 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlI
         InputAqlItemRow input{CreateInvalidInputRowHint{}};
         _currentGroup.reset(input);
         TRI_ASSERT(!_currentGroup.isValid());
-        return {ExecutionState::DONE, {}};
       }
       return {ExecutionState::DONE, {}};
     }
@@ -373,12 +368,14 @@ std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(si
   if (!_fetcherDone) {
     ExecutionState state;
     size_t expectedRows;
-    std::tie(state, expectedRows) = _fetcher.preFetchNumberOfRows(atMost);
+    std::tie(state, expectedRows) =
+        _fetcher.preFetchNumberOfRows(ExecutionBlock::DefaultBatchSize);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(expectedRows == 0);
       return {state, 0};
     }
-    return {ExecutionState::HASMORE, expectedRows + 1};
+    auto rowsAvailable = std::min(expectedRows + 1, atMost);
+    return {ExecutionState::HASMORE, rowsAvailable};
   }
   // The fetcher will NOT send anything any more
   // We will at most return the current oepn group

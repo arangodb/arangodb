@@ -14,7 +14,6 @@ or PRs.
 
 ======================================================================
 
-- `test/js/common/shell/shell-collection-cache-rocksdb-noncluster-nondeterministic.js`
 - `test/js/server/shell/shell-any-nondeterministic-noncluster.js`
 - `test/rb/HttpInterface/api-query-analysis-spec-timecritical.rb`
 - `test/rb/HttpInterface/api-async-spec-timecritical.rb`

@@ -37,10 +37,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
-constexpr bool TraversalExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough TraversalExecutor::Properties::allowsBlockPassthrough;
-constexpr bool TraversalExecutor::Properties::inputSizeRestrictsOutputSize;
-
 TraversalExecutorInfos::TraversalExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
@@ -255,7 +251,7 @@ ExecutionState TraversalExecutor::computeState() const {
 }
 
 bool TraversalExecutor::resetTraverser() {
-  _traverser.traverserCache()->clear();
+  _traverser.clear();
 
   // Initialize the Expressions within the options.
   // We need to find the variable and read its value here. Everything is

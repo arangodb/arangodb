@@ -85,8 +85,7 @@ VPackSlice QueryResultCursor::next() {
 /// @brief return the cursor size
 size_t QueryResultCursor::count() const { return _iterator.size(); }
 
-std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder,
-                                                          std::function<void()> const&) {
+std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder) {
   // This cursor cannot block, result already there.
   auto res = dumpSync(builder);
   return {ExecutionState::DONE, res};
@@ -208,7 +207,7 @@ QueryStreamCursor::~QueryStreamCursor() {
     }
 
     // now remove the continue handler we may have registered in the query
-    _query->sharedState()->setContinueCallback();
+    _query->sharedState()->invalidate();
     // Query destructor will cleanup plan and abort transaction
     _query.reset();
   }
@@ -220,17 +219,11 @@ void QueryStreamCursor::kill() {
   }
 }
 
-std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
-                                                          std::function<void()> const& ch) {
+std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
       << "executing query " << _id << ": '"
       << _query->queryString().extract(1024) << "'";
-
-  // We will get a different RestHandler on every dump, so we need to update the
-  // Callback
-  std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-  ss->setContinueHandler(ch);
 
   try {
     ExecutionState state = prepareDump();
@@ -243,6 +236,7 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
     if (!res.ok()) {
       return {ExecutionState::DONE, res};
     }
+    
     return {state, res};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
@@ -276,9 +270,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
       << _query->queryString().extract(1024) << "'";
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-  // We will get a different RestHandler on every dump, so we need to update the
-  // Callback
-  ss->setContinueCallback();
+  ss->resetWakeupHandler();
 
   try {
     aql::ExecutionEngine* engine = _query->engine();
@@ -291,7 +283,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     while (state == ExecutionState::WAITING) {
       state = prepareDump();
       if (state == ExecutionState::WAITING) {
-        ss->waitForAsyncResponse();
+        ss->waitForAsyncWakeup();
       }
     }
 
@@ -314,6 +306,19 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     return Result(TRI_ERROR_INTERNAL,
                   TRI_errno_string(TRI_ERROR_INTERNAL) +
                       QueryExecutionState::toStringWithPrefix(_query->state()));
+  }
+}
+
+/// Set wakeup callback on streaming cursor
+void QueryStreamCursor::setWakeupHandler(std::function<bool()> const& cb) {
+  if (_query) {
+    _query->sharedState()->setWakeupHandler(cb);
+  }
+}
+
+void QueryStreamCursor::resetWakeupHandler() {
+  if (_query) {
+    _query->sharedState()->resetWakeupHandler();
   }
 }
 
@@ -377,15 +382,16 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
     if (!hasMore) {
       std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-      ss->setContinueCallback();
+      ss->resetWakeupHandler();
 
       // cleanup before transaction is committet
       cleanupStateCallback();
 
+      // TODO: perhaps run this differently ?
       QueryResult result;
       ExecutionState state = _query->finalize(result);  // will commit transaction
       while (state == ExecutionState::WAITING) {
-        ss->waitForAsyncResponse();
+        ss->waitForAsyncWakeup();
         state = _query->finalize(result);
       }
       if (result.extra && result.extra->slice().isObject()) {

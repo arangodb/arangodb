@@ -52,7 +52,7 @@ class arena {
     return (n + (alignment - 1)) & ~(alignment - 1);
   }
 
-  bool pointer_in_buffer(char* p) noexcept {
+  bool pointer_in_buffer(char* p) const noexcept {
     return buf_ <= p && p <= buf_ + N;
   }
 };
@@ -101,6 +101,8 @@ class short_alloc {
   short_alloc(const short_alloc&) = default;
   short_alloc& operator=(const short_alloc&) = delete;
 
+  // cppcheck-suppress constParameter
+  // cppcheck-suppress noExplicitConstructor
   short_alloc(arena_type& a) noexcept : a_(a) {
     static_assert(size % alignment == 0,
                   "size N needs to be a multiple of alignment Align");
@@ -113,10 +115,10 @@ class short_alloc {
     using other = short_alloc<_Up, N, alignment>;
   };
 
-  T* allocate(std::size_t n) {
+  T* allocate(std::size_t n) const {
     return reinterpret_cast<T*>(a_.template allocate<alignof(T)>(n * sizeof(T)));
   }
-  void deallocate(T* p, std::size_t n) noexcept {
+  void deallocate(T* p, std::size_t n) const noexcept {
     a_.deallocate(reinterpret_cast<char*>(p), n * sizeof(T));
   }
 

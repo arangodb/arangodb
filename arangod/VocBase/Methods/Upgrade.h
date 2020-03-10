@@ -96,10 +96,15 @@ struct Upgrade {
   static UpgradeResult createDB(TRI_vocbase_t& vocbase,
                                 arangodb::velocypack::Slice const& users);
 
-  /// @brief executed on startup
+  /// @brief executed on startup for non-coordinators
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js
   static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade, bool ignoreFileErrors);
+  
+  /// @brief executed on startup for coordinators
+  /// @param upgrade  Perform an actual upgrade
+  /// Corresponds to upgrade-database.js
+  static UpgradeResult startupCoordinator(TRI_vocbase_t& vocbase);
 
  private:
   /// @brief register tasks, only run once on startup

@@ -83,7 +83,6 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   Collection abc;
   std::vector<std::string> const projections;
   transaction::Methods& trx;
-  std::vector<size_t> const coveringIndexAttributePositions;
   bool useRawPointers;
   bool random;
 
@@ -108,7 +107,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
         random(false),
         infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
               &engine, &abc, &outVariable, varUsedLater, nullptr, projections,
-              coveringIndexAttributePositions, useRawPointers, random),
+              useRawPointers, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     // fake indexScan
     fakeit::When(Method(mockTrx, indexScan))

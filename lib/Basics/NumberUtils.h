@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/system-compiler.h"
 
+#include <cstdint>
 #include <limits>
 #include <type_traits>
 
@@ -177,7 +178,7 @@ inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
       return result;
     }
     result *= 10;
-    result += c;
+    result += static_cast<T>(c);
   } while (++p < e);
 
   valid = true;
@@ -249,6 +250,15 @@ inline T atoi_zero(char const* p, char const* e) noexcept {
   T result = atoi<T>(p, e, valid);
   return valid ? result : 0;
 }
+
+template <typename T>
+constexpr std::enable_if_t<std::is_integral<T>::value, bool> isPowerOf2(T n) {
+  return n > 0 && (n & (n - 1)) == 0;
+}
+
+/// @brief calculate the integer log2 value for the given input
+/// the result is undefined when calling this with a value of 0!
+uint32_t log2(uint32_t value) noexcept;
 
 }  // namespace NumberUtils
 }  // namespace arangodb

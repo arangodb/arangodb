@@ -38,33 +38,33 @@ struct template_traits_t;
 
 template<typename First, typename... Second>
 struct template_traits_t<First, Second...> {
-  static CONSTEXPR size_t count() NOEXCEPT {
+  static constexpr size_t count() noexcept {
     return 1 + template_traits_t<Second...>::count();
   }
 
-  static CONSTEXPR size_t size() NOEXCEPT {
+  static constexpr size_t size() noexcept {
     return sizeof(First) + template_traits_t<Second...>::size();
   }
 
-  static CONSTEXPR size_t size_aligned(size_t start = 0) NOEXCEPT {
+  static constexpr size_t size_aligned(size_t start = 0) noexcept {
     return template_traits_t<Second...>::size_aligned(
       template_traits_t<First>::size_max_aligned(start)
     );
   }
 
-  static CONSTEXPR size_t align_max(size_t max = 0) NOEXCEPT {
+  static constexpr size_t align_max(size_t max = 0) noexcept {
     return template_traits_t<Second...>::align_max(
       irstd::max(max, std::alignment_of<First>::value)
     );
   }
 
-  static CONSTEXPR size_t size_max(size_t max = 0) NOEXCEPT {
+  static constexpr size_t size_max(size_t max = 0) noexcept {
     return template_traits_t<Second...>::size_max(
       irstd::max(max, sizeof(First))
     );
   }
 
-  static CONSTEXPR size_t offset_aligned(size_t start = 0) NOEXCEPT {
+  static constexpr size_t offset_aligned(size_t start = 0) noexcept {
     typedef std::alignment_of<First> align_t;
 
     return start
@@ -72,20 +72,20 @@ struct template_traits_t<First, Second...> {
       + sizeof(First);
   }
 
-  static CONSTEXPR size_t size_max_aligned(size_t start = 0, size_t max = 0) NOEXCEPT {
+  static constexpr size_t size_max_aligned(size_t start = 0, size_t max = 0) noexcept {
     return template_traits_t<Second...>::size_max_aligned(
       start, (irstd::max)(max, offset_aligned(start))
     );
   }
 
   template <typename T>
-  static CONSTEXPR bool is_convertible() NOEXCEPT {
+  static constexpr bool is_convertible() noexcept {
     return std::is_convertible<First, T>::value
       || template_traits_t<Second...>::template is_convertible<T>();
   }
 
   template<typename T>
-  static CONSTEXPR bool in_list() NOEXCEPT {
+  static constexpr bool in_list() noexcept {
     return std::is_same<First, T>::value
       || template_traits_t<Second...>::template in_list<T>();
   }
@@ -93,41 +93,41 @@ struct template_traits_t<First, Second...> {
 
 template<>
 struct template_traits_t<> {
-  static CONSTEXPR size_t count() NOEXCEPT {
+  static constexpr size_t count() noexcept {
     return 0;
   }
 
-  static CONSTEXPR size_t size() NOEXCEPT {
+  static constexpr size_t size() noexcept {
     return 0;
   }
 
-  static CONSTEXPR size_t size_aligned(size_t start = 0) NOEXCEPT {
+  static constexpr size_t size_aligned(size_t start = 0) noexcept {
     return start;
   }
 
-  static CONSTEXPR size_t align_max(size_t max = 0) NOEXCEPT {
+  static constexpr size_t align_max(size_t max = 0) noexcept {
     return max;
   }
 
-  static CONSTEXPR size_t size_max(size_t max = 0) NOEXCEPT {
+  static constexpr size_t size_max(size_t max = 0) noexcept {
     return max;
   }
 
-  static CONSTEXPR size_t offset_aligned(size_t start = 0) NOEXCEPT {
+  static constexpr size_t offset_aligned(size_t start = 0) noexcept {
     return start;
   }
 
-  static CONSTEXPR size_t size_max_aligned(size_t start = 0, size_t max = 0) NOEXCEPT {
+  static constexpr size_t size_max_aligned(size_t start = 0, size_t max = 0) noexcept {
     return max ? max : start;
   }
 
   template<typename T>
-  static CONSTEXPR bool is_convertible() NOEXCEPT {
+  static constexpr bool is_convertible() noexcept {
     return false;
   }
 
   template<typename T>
-  static CONSTEXPR bool in_list() NOEXCEPT {
+  static constexpr bool in_list() noexcept {
     return false;
   }
 }; // template_traits_t
@@ -137,7 +137,7 @@ struct template_traits_t<> {
 ///          false otherwise
 ///////////////////////////////////////////////////////////////////////////////
 template<typename T, typename... Types>
-CONSTEXPR bool is_convertible() NOEXCEPT {
+constexpr bool is_convertible() noexcept {
   return template_traits_t<Types...>::template is_convertible<T>();
 }
 
@@ -146,7 +146,7 @@ CONSTEXPR bool is_convertible() NOEXCEPT {
 ///          false otherwise
 ///////////////////////////////////////////////////////////////////////////////
 template<typename T, typename... Types>
-CONSTEXPR bool in_list() NOEXCEPT {
+constexpr bool in_list() noexcept {
   return template_traits_t<Types...>::template in_list<T>();
 }
 

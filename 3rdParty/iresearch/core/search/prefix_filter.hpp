@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_PREFIX_FILTER_H
@@ -28,14 +27,20 @@
 
 NS_ROOT
 
-class term_selector;
-
-class IRESEARCH_API by_prefix final : public by_term {
+class IRESEARCH_API by_prefix : public by_term {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_prefix() NOEXCEPT;
+  static prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& prefix,
+    size_t scored_terms_limit);
+
+  by_prefix() noexcept;
 
   using by_term::field;
 
@@ -47,11 +52,14 @@ class IRESEARCH_API by_prefix final : public by_term {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+      const index_reader& index,
+      const order::prepared& ord,
+      boost_t boost,
+      const attribute_view& /*ctx*/) const override {
+    return prepare(index, ord, this->boost()*boost,
+                   field(), term(), scored_terms_limit_);
+
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
@@ -68,10 +76,14 @@ class IRESEARCH_API by_prefix final : public by_term {
     return scored_terms_limit_;
   }
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  explicit by_prefix(const type_id& type) noexcept
+    : by_term(type) {
+  }
+
+  virtual bool equals(const filter& rhs) const noexcept override;
 
  private:
   size_t scored_terms_limit_{1024};

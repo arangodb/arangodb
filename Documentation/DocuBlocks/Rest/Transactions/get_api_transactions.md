@@ -44,4 +44,3 @@ Get currently running transactions
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

@@ -169,14 +169,12 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
     // r/w lock the collection
     int res = doLock(_accessType, nestingLevel);
 
-    if (res == TRI_ERROR_LOCKED) {
-      // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
-      // operation has actually acquired the lock (and that the lock has not
-      // been held before)
-      res = TRI_ERROR_NO_ERROR;
-    } else if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
+     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
+     // operation has actually acquired the lock (and that the lock has not
+     // been held before)
+     if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_LOCKED) {
+       return res;
+     }
   }
 
   if (AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {

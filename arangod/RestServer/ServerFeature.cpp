@@ -82,13 +82,13 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--server.rest-server", "start a rest-server",
                      new BooleanParameter(&_restServer),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addObsoleteOption(
       "--server.session-timeout",
       "timeout of web interface server sessions (in seconds)", true);
 
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
@@ -96,13 +96,13 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("vst", "Configure the VelocyStream protocol");
 
   options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
-                             "for a VelocyPack chunk", false);
+                             "for a VelocyPack chunk", true);
 
 #if _WIN32
   options->addOption("--console.code-page",
                      "Windows code page to use; defaults to UTF8",
                      new UInt16Parameter(&_codePage),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 #endif
 }
 

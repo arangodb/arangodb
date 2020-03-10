@@ -23,7 +23,7 @@
 #ifndef ARANGOD_REST_HANDLER_REST_GRAPH_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_GRAPH_HANDLER_H
 
-#include <boost/optional.hpp>
+#include <optional>
 
 #include "Actions/RestActionHandler.h"
 #include "Graph/GraphManager.h"
@@ -215,7 +215,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   Result modifyVertexDefinition(graph::Graph& graph, VertexDefinitionAction action,
                                 std::string vertexDefinitionName);
 
-  boost::optional<TRI_voc_rid_t> handleRevision() const;
+  std::optional<TRI_voc_rid_t> handleRevision() const;
 
  private:
   graph::GraphManager _gmngr;

@@ -31,6 +31,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
@@ -429,7 +430,7 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
     // grantDatabase is not supposed to change any rights on the
     // collection level code which relies on the old behavior
     // will need to be adjusted
-    _dbAccess.emplace(dbname, DBAuthContext(level, CollLevelMap()));
+    _dbAccess.try_emplace(dbname, DBAuthContext(level, CollLevelMap()));
   }
 }
 
@@ -469,14 +470,17 @@ void auth::User::grantCollection(std::string const& dbname, std::string const& c
       << _username << ": Granting " << auth::convertFromAuthLevel(level)
       << " on " << dbname << "/" << cname;
 
-  auto it = _dbAccess.find(dbname);
-  if (it != _dbAccess.end()) {
-    it->second._collectionAccess[cname] = level;
-  } else {
+  auto[it, emplaced] = _dbAccess.try_emplace(
+      dbname,
+      arangodb::lazyConstruct([&]{
     // do not overwrite wildcard access to a database, by granting more
     // specific rights to a collection in a specific db
     auth::Level lvl = auth::Level::UNDEFINED;
-    _dbAccess.emplace(dbname, DBAuthContext(lvl, CollLevelMap({{cname, level}})));
+        return DBAuthContext(lvl, CollLevelMap({{cname, level}}));
+      })
+  );
+  if (!emplaced) {
+    it->second._collectionAccess[cname] = level;
   }
 }
 
@@ -550,7 +554,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     return auth::Level::NONE;  // invalid collection names
   }
   // we must have got a non-empty collection name when we get here
-  TRI_ASSERT(!isdigit(cname[0]));
+  TRI_ASSERT(cname[0] < '0' || cname[0] > '9');
 
   bool isSystem = cname[0] == '_';
   if (isSystem) {

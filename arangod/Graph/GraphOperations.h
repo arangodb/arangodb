@@ -72,37 +72,37 @@ class GraphOperations {
   /// This is because in case of a precondition error during trx.document(),
   /// the OperationResult may still be needed.
   OperationResult getVertex(std::string const& collectionName, std::string const& key,
-                            boost::optional<TRI_voc_rid_t> rev);
+                            std::optional<TRI_voc_rid_t> rev);
 
   /// @brief Get a single edge document from definitionName.
   /// Similar to getVertex().
   OperationResult getEdge(const std::string& definitionName, const std::string& key,
-                          boost::optional<TRI_voc_rid_t> rev);
+                          std::optional<TRI_voc_rid_t> rev);
 
   /// @brief Remove a single edge document from definitionName.
   OperationResult removeEdge(const std::string& definitionName, const std::string& key,
-                             boost::optional<TRI_voc_rid_t> rev,
+                             std::optional<TRI_voc_rid_t> rev,
                              bool waitForSync, bool returnOld);
 
   /// @brief Remove a vertex and all incident edges in the graph
   OperationResult removeVertex(const std::string& collectionName, const std::string& key,
-                               boost::optional<TRI_voc_rid_t> rev,
+                               std::optional<TRI_voc_rid_t> rev,
                                bool waitForSync, bool returnOld);
 
   /// @brief Remove an edge or vertex and all incident edges in the graph
   OperationResult removeEdgeOrVertex(const std::string& collectionName,
                                      const std::string& key,
-                                     boost::optional<TRI_voc_rid_t> rev,
+                                     std::optional<TRI_voc_rid_t> rev,
                                      bool waitForSync, bool returnOld);
 
   OperationResult updateEdge(const std::string& definitionName,
                              const std::string& key, VPackSlice document,
-                             boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                             std::optional<TRI_voc_rid_t> rev, bool waitForSync,
                              bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult replaceEdge(const std::string& definitionName,
                               const std::string& key, VPackSlice document,
-                              boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                              std::optional<TRI_voc_rid_t> rev, bool waitForSync,
                               bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult createEdge(const std::string& definitionName, VPackSlice document,
@@ -131,12 +131,12 @@ class GraphOperations {
 
   OperationResult updateVertex(const std::string& collectionName,
                                const std::string& key, VPackSlice document,
-                               boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                               std::optional<TRI_voc_rid_t> rev, bool waitForSync,
                                bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult replaceVertex(const std::string& collectionName,
                                 const std::string& key, VPackSlice document,
-                                boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                                std::optional<TRI_voc_rid_t> rev, bool waitForSync,
                                 bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult createVertex(const std::string& collectionName, VPackSlice document,
@@ -187,16 +187,16 @@ class GraphOperations {
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
   OperationResult getDocument(std::string const& collectionName, const std::string& key,
-                              boost::optional<TRI_voc_rid_t> rev);
+                              std::optional<TRI_voc_rid_t> rev);
 
   /// @brief creates a vpack { _key: key } or { _key: key, _rev: rev }
   /// (depending on whether rev is set)
   VPackBufferPtr _getSearchSlice(const std::string& key,
-                                 boost::optional<TRI_voc_rid_t>& rev) const;
+                                 std::optional<TRI_voc_rid_t>& rev) const;
 
   OperationResult modifyDocument(const std::string& collectionName,
                                  const std::string& key, VPackSlice document,
-                                 bool isPatch, boost::optional<TRI_voc_rid_t> rev,
+                                 bool isPatch, std::optional<TRI_voc_rid_t> rev,
                                  bool waitForSync, bool returnOld, bool returnNew,
                                  bool keepNull, transaction::Methods& trx);
 

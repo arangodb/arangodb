@@ -68,14 +68,15 @@ class DependencyProxy {
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   AqlItemBlockManager& itemBlockManager,
                   std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-                  RegisterId nrInputRegisters);
+                  RegisterId nrInputRegisters,
+                  velocypack::Options const*);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // This fetches a block from the given dependency.
   // NOTE: It is not allowed to be used in conjunction with prefetching
@@ -83,7 +84,7 @@ class DependencyProxy {
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
-      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // See comment on fetchBlockForDependency().
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipSomeForDependency(
@@ -101,13 +102,15 @@ class DependencyProxy {
   // regards the _blockQueue). If it doesn't it's either because
   //  - upstream returned WAITING - then so does prefetchBlock().
   //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
-  [[nodiscard]] ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
+  [[nodiscard]] ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   [[nodiscard]] TEST_VIRTUAL size_t numberDependencies() const;
 
   void reset();
 
   void setDistributeId(std::string const& distId) { _distributeId = distId; }
+
+  [[nodiscard]] velocypack::Options const* velocypackOptions() const noexcept;
 
  protected:
   [[nodiscard]] AqlItemBlockManager& itemBlockManager();
@@ -134,6 +137,7 @@ class DependencyProxy {
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
   size_t _skipped;
+  velocypack::Options const* const _vpackOptions;
 };
 
 }  // namespace arangodb::aql

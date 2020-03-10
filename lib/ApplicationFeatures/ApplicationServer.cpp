@@ -36,6 +36,7 @@
 
 #include "ApplicationServer.h"
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
@@ -64,35 +65,17 @@ static void failCallback(std::string const& message) {
   LOG_TOPIC("85b08", FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
   FATAL_ERROR_EXIT();
 }
-
-ApplicationServer* OLD_INSTANCE = nullptr;
 }  // namespace
-
-ApplicationServer* ApplicationServer::INSTANCE(nullptr);
 
 std::atomic<bool> ApplicationServer::CTRL_C(false);
 
-ApplicationServer& ApplicationServer::server() {
-  TRI_ASSERT(INSTANCE);
-  return *INSTANCE;
-}
-
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
-                                     const char* binaryPath)
+                                     char const* binaryPath)
     : _state(State::UNINITIALIZED),
       _options(options),
       _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
-
-  ::OLD_INSTANCE = ApplicationServer::INSTANCE;
-
-  ApplicationServer::INSTANCE = this;
-}
-
-ApplicationServer::~ApplicationServer() {
-  ApplicationServer::INSTANCE = OLD_INSTANCE;
-  OLD_INSTANCE = nullptr;
 }
 
 bool ApplicationServer::isPrepared() {
@@ -310,13 +293,13 @@ void ApplicationServer::collectOptions() {
 
   _options->addOption("--dump-dependencies", "dump dependency graph",
                       new BooleanParameter(&_dumpDependencies),
-                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                    arangodb::options::Flags::Command));
 
   _options->addOption("--dump-options",
                       "dump configuration options in JSON format",
                       new BooleanParameter(&_dumpOptions),
-                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                    arangodb::options::Flags::Command));
 
   apply(
@@ -651,9 +634,29 @@ void ApplicationServer::start() {
       LOG_TOPIC("4ec19", ERR, Logger::STARTUP) << res.errorMessage() << ". shutting down";
       LOG_TOPIC("51732", TRACE, Logger::STARTUP)
           << "aborting startup, now stopping and unpreparing all features";
+
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-        ApplicationFeature& feature = (*it).get();
+        ApplicationFeature& feature = *it;
+        if (!feature.isEnabled()) {
+          continue;
+        }
+        if (feature.state() == ApplicationFeature::State::STARTED) {
+          LOG_TOPIC("e5cfe", TRACE, Logger::STARTUP)
+          << "forcefully beginning stop of feature '" << feature.name() << "'";
+          try {
+            feature.beginShutdown();
+          } catch (...) {
+            // ignore errors on shutdown
+            LOG_TOPIC("13224", TRACE, Logger::STARTUP)
+            << "caught exception while stopping feature '" << feature.name() << "'";
+          }
+        }
+      }
+
+      // try to stop all feature that we just started
+      for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+        ApplicationFeature& feature = *it;
         if (!feature.isEnabled()) {
           continue;
         }
@@ -661,7 +664,6 @@ void ApplicationServer::start() {
           LOG_TOPIC("e5cfd", TRACE, Logger::STARTUP)
               << "forcefully stopping feature '" << feature.name() << "'";
           try {
-            feature.beginShutdown();
             feature.stop();
             feature.state(ApplicationFeature::State::STOPPED);
           } catch (...) {

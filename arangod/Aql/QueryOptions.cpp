@@ -21,10 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "QueryOptions.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
-#include "QueryOptions.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Builder.h>
@@ -34,10 +35,11 @@
 
 using namespace arangodb::aql;
 
-QueryOptions::QueryOptions()
+QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
     : memoryLimit(0),
       maxNumberOfPlans(0),
       maxWarningCount(10),
+      maxRuntime(0),
       satelliteSyncWait(60.0),
       ttl(0),
       profile(PROFILE_LEVEL_NONE),
@@ -52,9 +54,6 @@ QueryOptions::QueryOptions()
       verboseErrors(false),
       inspectSimplePlans(true) {
   // now set some default values from server configuration options
-  auto& server = application_features::ApplicationServer::server();
-  auto& feature = server.getFeature<QueryRegistryFeature>();
-
   // use global memory limit value
   uint64_t globalLimit = feature.queryMemoryLimit();
   if (globalLimit > 0) {
@@ -102,6 +101,12 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isNumber()) {
     maxWarningCount = value.getNumber<size_t>();
   }
+
+  value = slice.get("maxRuntime");
+  if (value.isNumber()) {
+    maxRuntime = value.getNumber<double>();
+  }
+
 
   value = slice.get("satelliteSyncWait");
   if (value.isNumber()) {
@@ -214,6 +219,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("memoryLimit", VPackValue(memoryLimit));
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
+  builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));

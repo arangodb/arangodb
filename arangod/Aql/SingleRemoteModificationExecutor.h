@@ -23,7 +23,13 @@
 #ifndef ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H
 #define ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H 1
 
-#include "Aql/ModificationExecutor.h"
+#include "Aql/AllRowsFetcher.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/ModificationExecutorInfos.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 
 namespace arangodb {
 namespace aql {
@@ -61,7 +67,14 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
   constexpr static double const defaultTimeOut = 3600.0;
 };
 
+// These tags are used to instantiate SingleRemoteModificationExecutor
+// for the different use cases
 struct IndexTag {};
+struct Insert {};
+struct Remove {};
+struct Replace {};
+struct Update {};
+struct Upsert {};
 
 template <typename Modifier>
 struct SingleRemoteModificationExecutor {

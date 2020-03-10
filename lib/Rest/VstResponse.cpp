@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/tri-strings.h"
@@ -42,7 +43,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 VstResponse::VstResponse(ResponseCode code, uint64_t id)
-    : GeneralResponse(code), _messageId(id) {
+    : GeneralResponse(code, id) {
   _contentType = ContentType::VPACK;
 }
 
@@ -50,12 +51,18 @@ void VstResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
   _contentType = ContentType::VPACK;
-  _generateBody = false;  // payload has to be set
+  _payload.clear();
 }
 
 void VstResponse::addPayload(VPackSlice const& slice,
                              VPackOptions const* options,
                              bool resolveExternals) {
+  if (_contentType == rest::ContentType::VPACK &&
+      _contentTypeRequested == rest::ContentType::JSON) {
+    // content type was set by a handler to VPACK but the client requested JSON
+    // as we have a slice at hand we are able to reply with JSON easily
+    _contentType = rest::ContentType::JSON;
+  }
   if (!options) {
     options = &VPackOptions::Options::Defaults;
   }
@@ -69,21 +76,50 @@ void VstResponse::addPayload(VPackSlice const& slice,
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
                                                builder, options, true, true, true);
-      if (_payload.empty()) {
-        _payload = std::move(tmpBuffer);
+      if (_contentType == rest::ContentType::VPACK) {
+        if (_payload.empty()) {
+          _payload = std::move(tmpBuffer);
+        } else {
+          _payload.append(tmpBuffer.data(), tmpBuffer.size());
+        }
+      } else if (_contentType == rest::ContentType::JSON) {
+        VPackSlice finalSlice(tmpBuffer.data());
+        StringBuffer plainBuffer;
+        arangodb::basics::VelocyPackDumper dumper(&plainBuffer, options);
+        dumper.dumpValue(finalSlice);
+        _payload.reset();
+        _payload.append(plainBuffer.data(), plainBuffer.length());
       } else {
-        _payload.append(tmpBuffer.data(), tmpBuffer.size());
+        _payload.reset();
+        _payload.append(slice.start(), slice.byteSize());
       }
       return;
     }
   }
 
-  // just copy
-  _payload.append(slice.startAs<char>(), slice.byteSize());
+  if (_contentType == rest::ContentType::VPACK) {
+    // just copy
+    _payload.append(slice.startAs<char>(), slice.byteSize());
+  } else if (_contentType == rest::ContentType::JSON) {
+    StringBuffer plainBuffer;
+    arangodb::basics::VelocyPackDumper dumper(&plainBuffer, options);
+    dumper.dumpValue(slice);
+    _payload.reset();
+    _payload.append(plainBuffer.data(), plainBuffer.length());
+  } else {
+    _payload.reset();
+    _payload.append(slice.start(), slice.byteSize());
+  }
 }
 
 void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
                              velocypack::Options const* options, bool resolveExternals) {
+  if (_contentType == rest::ContentType::VPACK &&
+      _contentTypeRequested == rest::ContentType::JSON) {
+    // content type was set by a handler to VPACK but the client wants JSON
+    // as we have a slice at had we are able to reply with JSON
+    _contentType = rest::ContentType::JSON;
+  }
   if (!options) {
     options = &VPackOptions::Options::Defaults;
   }
@@ -98,18 +134,42 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
                                                builder, options, true, true, true);
-      if (_payload.empty()) {
-        _payload = std::move(tmpBuffer);
+      if (_contentType == rest::ContentType::VPACK) {
+        if (_payload.empty()) {
+          _payload = std::move(tmpBuffer);
+        } else {
+          _payload.append(tmpBuffer.data(), tmpBuffer.size());
+        }
+      } else if (_contentType == rest::ContentType::JSON) {
+        VPackSlice finalSlice(tmpBuffer.data());
+        StringBuffer plainBuffer;
+        arangodb::basics::VelocyPackDumper dumper(&plainBuffer, options);
+        dumper.dumpValue(finalSlice);
+        _payload.reset();
+        _payload.append(plainBuffer.data(), plainBuffer.length());
       } else {
-        _payload.append(tmpBuffer.data(), tmpBuffer.size());
+        _payload.reset();
+        _payload = buffer;
       }
-      return;  // done
+      return;
     }
   }
-  if (_payload.empty()) {
-    _payload = std::move(buffer);
+  if (_contentType == rest::ContentType::VPACK) {
+    if (_payload.empty()) {
+      _payload = std::move(buffer);
+    } else {
+      _payload.append(buffer.data(), buffer.size());
+    }
+  } else if (_contentType == rest::ContentType::JSON) {
+    VPackSlice finalSlice(buffer.data());
+    StringBuffer plainBuffer;
+    arangodb::basics::VelocyPackDumper dumper(&plainBuffer, options);
+    dumper.dumpValue(finalSlice);
+    _payload.reset();
+    _payload.append(plainBuffer.data(), plainBuffer.length());
   } else {
-    _payload.append(buffer.data(), buffer.size());
+    _payload.reset();
+    _payload = buffer;
   }
 }
 
@@ -119,7 +179,7 @@ void VstResponse::addRawPayload(VPackStringRef payload) {
 
 void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackBuilder builder(buffer);
-  builder.openArray();
+  VPackArrayBuilder array(&builder, /*unindexed*/true);
   builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
   builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));  // 3 == request - return code
@@ -144,7 +204,7 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   };
   
   std::string currentHeader;
-  builder.openObject();  // 4 == meta
+  VPackObjectBuilder meta(&builder, /*unindexed*/true);  // 4 == meta
   for (auto& item : _headers) {
 
     if (_contentType != ContentType::CUSTOM &&
@@ -156,12 +216,14 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(item.second));
   }
+  if (!generateBody()) {
+    std::string len = std::to_string(_payload.size());
+    builder.add(StaticStrings::ContentLength, VPackValue(len));
+  }
   if (_contentType != ContentType::VPACK &&
       _contentType != ContentType::CUSTOM) { // fuerte uses VPack as default
     currentHeader = StaticStrings::ContentTypeHeader;
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));
   }
-  builder.close();
-  builder.close();
 }

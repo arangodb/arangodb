@@ -51,23 +51,12 @@ SharedAqlItemBlockPtr itemBlock::concatenate(AqlItemBlockManager& manager,
   TRI_ASSERT(totalSize > 0);
   TRI_ASSERT(nrRegs > 0);
 
-  auto res = manager.requestBlock(totalSize, nrRegs);
+  auto resultBlock = manager.requestBlock(totalSize, nrRegs);
 
-  size_t pos = 0;
-  for (auto& it : blocks) {
-    size_t const n = it->size();
-    for (size_t row = 0; row < n; ++row) {
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        // copy over value
-        AqlValue const& a = it->getValueReference(row, col);
-        if (!a.isEmpty()) {
-          res->setValue(pos + row, col, a);
-        }
-      }
-    }
-    it->eraseAll();
-    pos += n;
+  size_t nextFreeRow = 0;
+  for (auto& inputBlock : blocks) {
+    nextFreeRow = resultBlock->moveOtherBlockHere(nextFreeRow, *inputBlock);
   }
 
-  return res;
+  return resultBlock;
 }

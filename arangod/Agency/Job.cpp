@@ -34,6 +34,7 @@
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
 #include "Agency/TimeString.h"
+#include "AgencyStrings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
@@ -170,7 +171,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
         for (auto const& prec : VPackObjectIterator(preconditions)) {
           finished.add(prec.key.copyString(), prec.value);
         }
-      } // -- preconditions
+      }  // -- preconditions
     }
 
     write_ret_t res = singleWriteTransaction(_agent, finished, false);
@@ -726,4 +727,76 @@ std::string Job::checkServerHealth(Node const& snapshot, std::string const& serv
     return "UNCLEAR";
   }
   return status.first;
+}
+
+void Job::addReadLockServer(Builder& trx, std::string const& server, std::string const& jobId) {
+  trx.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue(OP_READ_LOCK));
+    trx.add("by", VPackValue(jobId));
+  }
+}
+void Job::addWriteLockServer(Builder& trx, std::string const& server, std::string const& jobId) {
+  trx.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue(OP_WRITE_LOCK));
+    trx.add("by", VPackValue(jobId));
+  }
+}
+
+void Job::addReadUnlockServer(Builder& trx, std::string const& server, std::string const& jobId) {
+  trx.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue(OP_READ_UNLOCK));
+    trx.add("by", VPackValue(jobId));
+  }
+}
+
+void Job::addWriteUnlockServer(Builder& trx, std::string const& server,
+                              std::string const& jobId) {
+  trx.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue(OP_WRITE_UNLOCK));
+    trx.add("by", VPackValue(jobId));
+  }
+}
+
+void Job::addPreconditionServerReadLockable(Builder& pre, std::string const& server,
+                                           std::string const& jobId) {
+  pre.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder shardLockEmpty(&pre);
+    pre.add(PREC_CAN_READ_LOCK, VPackValue(jobId));
+  }
+}
+
+void Job::addPreconditionServerReadLocked(Builder& pre, std::string const& server,
+                                         std::string const& jobId) {
+  pre.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder shardLockEmpty(&pre);
+    pre.add(PREC_IS_READ_LOCKED, VPackValue(jobId));
+  }
+}
+
+void Job::addPreconditionServerWriteLockable(Builder& pre, std::string const& server,
+                                            std::string const& jobId) {
+  pre.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder shardLockEmpty(&pre);
+    pre.add(PREC_CAN_WRITE_LOCK, VPackValue(jobId));
+  }
+}
+
+void Job::addPreconditionServerWriteLocked(Builder& pre, std::string const& server,
+                                          std::string const& jobId) {
+  pre.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder shardLockEmpty(&pre);
+    pre.add(PREC_IS_WRITE_LOCKED, VPackValue(jobId));
+  }
 }

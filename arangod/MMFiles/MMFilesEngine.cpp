@@ -35,6 +35,7 @@
 #include "Basics/build.h"
 #include "Basics/encoding.h"
 #include "Basics/files.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -99,13 +100,15 @@ static uint64_t getNumericFilenamePartFromDatafile(std::string const& filename) 
 
 /// @brief extract the numeric part from a filename
 static uint64_t getNumericFilenamePartFromDatabase(std::string const& filename) {
+  auto size = filename.size();
+  auto data = filename.data();
   char const* pos = strrchr(filename.c_str(), '-');
 
   if (pos == nullptr) {
     return 0;
   }
-
-  return basics::StringUtils::uint64(pos + 1);
+  size -= std::distance(data, pos);
+  return basics::StringUtils::uint64(pos + 1, size);
 }
 
 static uint64_t getNumericFilenamePartFromDatafile(MMFilesDatafile const* datafile) {
@@ -163,7 +166,7 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::make_unique<MMFilesIndexFactory>()),
+                    std::make_unique<MMFilesIndexFactory>(server)),
       _isUpgrade(false),
       _maxTick(0),
       _walAccess(new MMFilesWalAccess()),
@@ -676,7 +679,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
       VPackBuilder builder = loadCollectionInfo(&vocbase, directory);
       VPackSlice info = builder.slice();
 
-      if (VelocyPackHelper::readBooleanValue(info, "deleted", false)) {
+      if (VelocyPackHelper::getBooleanValue(info, "deleted", false)) {
         std::string name = VelocyPackHelper::getStringValue(info, "name", "");
         _deleted.emplace_back(std::make_pair(name, directory));
         continue;
@@ -752,7 +755,7 @@ int MMFilesEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
 
       LOG_TOPIC("41921", TRACE, Logger::VIEWS) << "got view slice: " << info.toJson();
 
-      if (VelocyPackHelper::readBooleanValue(info, "deleted", false)) {
+      if (VelocyPackHelper::getBooleanValue(info, "deleted", false)) {
         std::string name = VelocyPackHelper::getStringValue(info, "name", "");
         _deleted.emplace_back(std::make_pair(name, directory));
         continue;
@@ -1572,7 +1575,7 @@ void MMFilesEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t col
 static bool UnloadCollectionCallback(LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+  WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
 
   if (collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
     return false;
@@ -2591,7 +2594,7 @@ int MMFilesEngine::startCleanup(TRI_vocbase_t* vocbase) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    _cleanupThreads.emplace(vocbase, std::move(thread));
+    _cleanupThreads.try_emplace(vocbase, std::move(thread));
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2634,21 +2637,22 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t& vocbase) {
   {
     MUTEX_LOCKER(locker, _threadsLock);
 
-    auto it = _compactorThreads.find(&vocbase);
+    auto emplaced = _compactorThreads.try_emplace(
+      &vocbase,
+      arangodb::lazyConstruct([&]{
+        thread.reset(new MMFilesCompactorThread(vocbase));
+        if (!thread->start()) {
+          LOG_TOPIC("3addc", ERR, arangodb::Logger::COMPACTOR)
+            << "could not start compactor thread";
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+        return std::move(thread);
+      })
+    ).second;
 
-    if (it != _compactorThreads.end()) {
+    if (!emplaced) {
       return TRI_ERROR_INTERNAL;
     }
-
-    thread.reset(new MMFilesCompactorThread(vocbase));
-
-    if (!thread->start()) {
-      LOG_TOPIC("3addc", ERR, arangodb::Logger::COMPACTOR)
-          << "could not start compactor thread";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    _compactorThreads.emplace(&vocbase, std::move(thread));
   }
 
   return TRI_ERROR_NO_ERROR;

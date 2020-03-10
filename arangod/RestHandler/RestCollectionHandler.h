@@ -62,7 +62,7 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
                                        velocypack::Builder& builder) = 0;
 
  private:
-  void standardResponse();
+  RestStatus standardResponse();
   void initializeTransaction(LogicalCollection&);
 
  private:

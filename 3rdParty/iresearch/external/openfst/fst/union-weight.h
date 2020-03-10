@@ -9,7 +9,6 @@
 #define FST_UNION_WEIGHT_H_
 
 #include <cstdlib>
-
 #include <iostream>
 #include <list>
 #include <sstream>
@@ -81,16 +80,16 @@ class UnionWeight {
       <>(const UnionWeight<W, O> &, const UnionWeight<W, O> &);
 
   // Sets represented as first_ weight + rest_ weights. Uses first_ as
-  // NoWeight() to indicate the union weight Zero() ask the empty set. Uses
+  // NoWeight() to indicate the union weight Zero() as the empty set. Uses
   // rest_ containing NoWeight() to indicate the union weight NoWeight().
   UnionWeight() : first_(W::NoWeight()) {}
 
   explicit UnionWeight(W weight) : first_(weight) {
-    if (weight == W::NoWeight()) rest_.push_back(weight);
+    if (!weight.Member()) rest_.push_back(W::NoWeight());
   }
 
   static const UnionWeight<W, O> &Zero() {
-    static const UnionWeight<W, O> zero(W::NoWeight());
+    static const UnionWeight<W, O> zero{};
     return zero;
   }
 
@@ -104,12 +103,13 @@ class UnionWeight {
     return no_weight;
   }
 
-  static const string &Type() {
-    static const string *const type = new string(W::Type() + "_union");
+  static const std::string &Type() {
+    static const std::string *const type =
+        new std::string(W::Type() + "_union");
     return *type;
   }
 
-  static FST_CONSTEXPR uint64 Properties() {
+  static constexpr uint64 Properties() {
     return W::Properties() &
            (kLeftSemiring | kRightSemiring | kCommutative | kIdempotent);
   }
@@ -313,8 +313,8 @@ inline typename UnionWeight<W, O>::ReverseWeight UnionWeight<W, O>::Reverse()
 template <class W, class O>
 inline size_t UnionWeight<W, O>::Hash() const {
   size_t h = 0;
-  static FST_CONSTEXPR const int lshift = 5;
-  static FST_CONSTEXPR const int rshift = CHAR_BIT * sizeof(size_t) - lshift;
+  static constexpr int lshift = 5;
+  static constexpr int rshift = CHAR_BIT * sizeof(size_t) - lshift;
   for (UnionWeightIterator<W, O> it(*this); !it.Done(); it.Next()) {
     h = h << lshift ^ h >> rshift ^ it.Value().Hash();
   }
@@ -374,7 +374,7 @@ inline std::ostream &operator<<(std::ostream &ostrm,
 template <class W, class O>
 inline std::istream &operator>>(std::istream &istrm,
                                 UnionWeight<W, O> &weight) {
-  string s;
+  std::string s;
   istrm >> s;
   if (s == "EmptySet") {
     weight = UnionWeight<W, O>::Zero();

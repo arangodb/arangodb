@@ -23,6 +23,7 @@
 
 #include "Manager.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/ReadLocker.h"
@@ -53,6 +54,7 @@
 #include "Enterprise/VocBase/VirtualCollection.h"
 #endif
 
+#include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -114,7 +116,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
                                   bool isReadOnlyTransaction) {
   if (!isReadOnlyTransaction) {
-    _rwLock.readLock();
+    _rwLock.lockRead();
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -127,7 +129,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 
     try {
       // insert into currently running list of transactions
-      _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+      _transactions[bucket]._activeTransactions.try_emplace(transactionId, std::move(data));
     } catch (...) {
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
       if (!isReadOnlyTransaction) {
@@ -275,8 +277,7 @@ void Manager::registerAQLTrx(TransactionState* state) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
                                      std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(tid),
-                          std::forward_as_tuple(MetaType::StandaloneAQL, state));
+    buck._managed.try_emplace(tid, MetaType::StandaloneAQL, state);
   }
 }
 
@@ -296,7 +297,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
   TRI_ASSERT(it->second.type == MetaType::StandaloneAQL);
 
   /// we need to make sure no-one else is still using the TransactionState
-  if (!it->second.rwlock.writeLock(/*maxAttempts*/ 256)) {
+  if (!it->second.rwlock.lockWrite(/*maxAttempts*/ 256)) {
     LOG_TOPIC("9f7d7", ERR, Logger::TRANSACTIONS)
         << "a transaction is still in use";
     TRI_ASSERT(false);
@@ -368,10 +369,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
     << "managed trx creating: '" << tid << "'";
-  
+
   const size_t bucket = getBucket(tid);
 
   {  // quick check whether ID exists
@@ -479,10 +480,13 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                        std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
-    _transactions[bucket]._managed.emplace(std::piecewise_construct,
-                                           std::forward_as_tuple(tid),
-                                           std::forward_as_tuple(MetaType::Managed,
-                                                                 state.release()));
+    bool emplaced = _transactions[bucket]._managed.try_emplace(
+        tid,
+        MetaType::Managed, state.get()
+    ).second;
+    if (emplaced) {
+      state.release();
+    }
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
@@ -493,7 +497,6 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 /// @brief lease the transaction, increases nesting
 std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid,
                                                                AccessMode::Type mode) {
-  auto& server = application_features::ApplicationServer::server();
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
@@ -521,12 +524,12 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
             TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
             "not allowed to write lock an AQL transaction");
       }
-      if (mtrx.rwlock.tryWriteLock()) {
+      if (mtrx.rwlock.tryLockWrite()) {
         state = mtrx.state;
         break;
       }
     } else {
-      if (mtrx.rwlock.tryReadLock()) {
+      if (mtrx.rwlock.tryLockRead()) {
         state = mtrx.state;
         break;
       }
@@ -543,7 +546,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     if (i++ > 32) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
-      if (server.isStopping()) {
+      if (_feature.server().isStopping()) {
         return nullptr;  // shutting down
       }
     }
@@ -900,7 +903,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     options.database = database;
     options.timeout = network::Timeout(30.0);
     options.param("local", "true");
-    
+
     VPackBuffer<uint8_t> body;
 
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
@@ -912,16 +915,10 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder authBuilder;
-          {
-            VPackObjectBuilder payload{&authBuilder};
-            payload->add("preferred_username", VPackValue(username));
-          }
-          VPackSlice slice = authBuilder.slice();
-          headers.emplace(StaticStrings::Authorization,
-                          "bearer " + auth->tokenCache().generateJwt(slice));
+          headers.try_emplace(StaticStrings::Authorization,
+                          "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
         } else {
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
         }
       }
@@ -970,7 +967,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
 Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout) {
   LOG_TOPIC("bba16", INFO, Logger::QUERIES) << "aborting all " << (fanout ? "" : "local ") << "write transactions";
   Result res;
- 
+
   DatabaseFeature& databaseFeature = _feature.server().getFeature<DatabaseFeature>();
   databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
     auto queryList = vocbase->queryList();
@@ -979,7 +976,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     queryList->kill([](aql::Query& query) {
       auto* state = query.trx()->state();
       return state && !state->isReadOnlyTransaction();
-    }, false); 
+    }, false);
   });
 
   // abort local transactions
@@ -987,7 +984,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     return ::authorized(user) && !state.isReadOnlyTransaction();
   });
 
-  if (fanout && 
+  if (fanout &&
       ServerState::instance()->isCoordinator()) {
     auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
 
@@ -1000,8 +997,9 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     std::vector<network::FutureRes> futures;
     auto auth = AuthenticationFeature::instance();
 
-    network::RequestOptions options;
-    options.timeout = network::Timeout(30.0);
+    network::RequestOptions reqOpts;
+    reqOpts.timeout = network::Timeout(30.0);
+    reqOpts.param("local", "true");
 
     VPackBuffer<uint8_t> body;
 
@@ -1014,23 +1012,17 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder builder;
-          {
-            VPackObjectBuilder payload{&builder};
-            payload->add("preferred_username", VPackValue(username));
-          }
-          VPackSlice slice = builder.slice();
-          headers.emplace(StaticStrings::Authorization,
-                          "bearer " + auth->tokenCache().generateJwt(slice));
+          headers.try_emplace(StaticStrings::Authorization,
+                          "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
         } else {
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
         }
       }
-
+      
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
-                                    "/_db/_system/_api/transaction/write?local=true",
-                                    body, options, std::move(headers));
+                                    "_api/transaction/write",
+                                    body, reqOpts, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 

@@ -159,7 +159,7 @@ class OutputAqlItemRow {
   // The data of this row will be copied.
   void decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
 
-  void toVelocyPack(transaction::Methods& trx, velocypack::Builder& builder);
+  void toVelocyPack(velocypack::Options const* options, velocypack::Builder& builder);
 
  private:
   [[nodiscard]] std::unordered_set<RegisterId> const& outputRegisters() const {

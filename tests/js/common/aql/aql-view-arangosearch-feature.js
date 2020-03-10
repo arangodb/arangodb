@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse, assertNotNull, fail, db._query */
+/*global assertUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, assertNotNull, fail, db._query */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -27,6 +27,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
+const arango = require('@arangodb').arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -56,38 +57,63 @@ function iResearchFeatureAqlTestSuite () {
     testAnalyzersInvalidPropertiesDiscarded : function() {
       {
         try {analyzers.remove("normPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("normPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
       }
       {
         try {analyzers.remove("textPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("textPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
+      }
+      {
+        try {analyzers.remove("textPropAnalyzerWithNGram"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
+        let analyzer = analyzers.save("textPropAnalyzerWithNgram", "text", {"stopwords" : [], "locale":"en", "edgeNgram" : { "min" : 2, "invalid_param":true}});
+        assertEqual(1, db._analyzers.count());
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove("textPropAnalyzerWithNgram", true);
+        assertEqual(0, db._analyzers.count());
       }
       {
         try {analyzers.remove("delimiterPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("delimiterPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
       }
       {
         try {analyzers.remove("stemPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("stemPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
       }
       {
         try {analyzers.remove("ngramPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("ngramPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
       }
     },
     testAnalyzerRemovalWithDatabaseName_InSystem: function() {
@@ -125,6 +151,35 @@ function iResearchFeatureAqlTestSuite () {
       db._useDatabase(dbName);
       analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
       analyzers.remove(dbName + "::MyTrigram", true); 
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+    testAnalyzerUseOnDBServer_InDb: function() {
+      let dbName = "analyzerUseOnDbServer";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+
+      // NOOPT guarantees that TOKENS function will be executed on DB server
+      let res = db._query("FOR d IN _analyzers FILTER NOOPT(LENGTH(TOKENS('foobar', 'MyTrigram')) > 0) RETURN d").toArray();
+      assertEqual(1, res.length);
+      assertEqual("_analyzers/MyTrigram", res[0]._id);
+      assertEqual("MyTrigram", res[0]._key);
+      assertEqual("MyTrigram", res[0].name);
+      assertEqual("ngram", res[0].type);
+      assertEqual(6, Object.keys(res[0].properties).length);
+      assertEqual("", res[0].properties.startMarker);
+      assertEqual("", res[0].properties.endMarker);
+      assertEqual("binary", res[0].properties.streamType);
+      assertEqual(2, res[0].properties.min);
+      assertEqual(3, res[0].properties.max);
+      assertTrue(res[0].properties.preserveOriginal);
+      assertTrue(Array === res[0].features.constructor);
+      assertEqual(0, res[0].features.length);
+      assertEqual([ ], res[0].features);
+
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
@@ -203,6 +258,8 @@ function iResearchFeatureAqlTestSuite () {
       let oldListInCollection = db._analyzers.toArray();
       assertTrue(Array === oldList.constructor);
 
+      assertEqual(0, db._analyzers.count());
+
       // creation
       analyzers.save("testAnalyzer", "stem", { "locale":"en"}, [ "frequency" ]);
 
@@ -216,12 +273,27 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Array === analyzer.features().constructor);
       assertEqual(1, analyzer.features().length);
       assertEqual([ "frequency" ], analyzer.features());
+
+      // check persisted analyzer
+      assertEqual(1, db._analyzers.count());
+      let savedAnalyzer = db._analyzers.toArray()[0];
+      assertTrue(null !== savedAnalyzer);
+      assertEqual(7, Object.keys(savedAnalyzer).length);
+      assertEqual("_analyzers/testAnalyzer", savedAnalyzer._id);
+      assertEqual("testAnalyzer", savedAnalyzer._key);
+      assertEqual("testAnalyzer", savedAnalyzer.name);
+      assertEqual("stem", savedAnalyzer.type);
+      assertEqual(analyzer.properties(), savedAnalyzer.properties);
+      assertEqual(analyzer.features(), savedAnalyzer.features);
+
       analyzer = undefined; // release reference 
 
       // check the analyzers collection in database
       assertEqual(oldListInCollection.length + 1, db._analyzers.toArray().length);
       let dbAnalyzer = db._query("FOR d in _analyzers FILTER d.name=='testAnalyzer' RETURN d").toArray();
       assertEqual(1, dbAnalyzer.length);
+      assertEqual("_analyzers/testAnalyzer", dbAnalyzer[0]._id);
+      assertEqual("testAnalyzer", dbAnalyzer[0]._key);
       assertEqual("testAnalyzer", dbAnalyzer[0].name);
       assertEqual("stem", dbAnalyzer[0].type);
       assertEqual(1, Object.keys(dbAnalyzer[0].properties).length);
@@ -240,14 +312,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // force server-side V8 garbage collection
       if (db._connection !== undefined) { // client test
-        let url = require('internal').arango.getEndpoint().replace('tcp', 'http');
-        url += '/_admin/execute?returnAsJSON=true';
-        let options = require('@arangodb/process-utils').makeAuthorizationHeaders({
-          username: 'root',
-          password: ''
-        });
-        options.method = 'POST';
-        require('internal').download(url, 'require("internal").wait(0.1, true);', options);
+        arango.POST('/_admin/execute?returnAsJSON=true', 'require("internal").wait(0.1, true);');
       } else {
         require("internal").wait(0.1, true);
       }
@@ -1032,10 +1097,259 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual([ "jump" ], result[0]);
         analyzers.remove(analyzerName, true);
       }
+
+      // empty ngram object
+      {
+        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{} });
+        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+        assertEqual(undefined, props);
+        let result = db._query(
+          "RETURN TOKENS('jumps', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "jumps" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // non empty ngram object
+      {
+        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{ "min": 1, "max":2} });
+        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+        assertNotEqual(undefined, props);
+        assertEqual(1, props.min);
+        assertEqual(2, props.max);
+        assertEqual(undefined, props.preserveOriginal);
+        let result = db._query(
+          "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(6, result[0].length);
+        assertEqual([ "q", "qu", "b", "br", "f", "fo" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // non empty ngram object
+      {
+        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{ "min": 1, "max":2, "preserveOriginal": true} });
+        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+        assertNotEqual(undefined, props);
+        assertEqual(1, props.min);
+        assertEqual(2, props.max);
+        assertEqual(true, props.preserveOriginal);
+        let result = db._query(
+          "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(9, result[0].length);
+        assertEqual([ "q", "qu", "quick", "b", "br", "brown", "f", "fo", "foxy" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // non empty ngram object
+      {
+        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{ "min": 1, "max":200, "preserveOriginal": false} });
+        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+        assertNotEqual(undefined, props);
+        assertEqual(1, props.min);
+        assertEqual(200, props.max);
+        assertEqual(false, props.preserveOriginal);
+        let result = db._query(
+          "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(14, result[0].length);
+        assertEqual([ "q", "qu", "qui", "quic", "quick", "b", "br", "bro", "brow", "brown", "f", "fo", "fox", "foxy" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // non empty ngram object with stemming
+      {
+        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":true, "stopwords": [], "edgeNgram":{ "min": 1 } });
+        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+        assertNotEqual(undefined, props);
+        assertEqual(1, props.min);
+        assertEqual(undefined, props.max);
+        assertEqual(undefined, props.preserveOriginal);
+        let result = db._query(
+          "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(14, result[0].length);
+        assertEqual([ "q", "qu", "qui", "quic", "quick", "b", "br", "bro", "brow", "brown", "f", "fo", "fox", "foxi" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
       // no properties
       {
         try {
           analyzers.save(analyzerName, "text");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+    },
+    testCustomNGramAnalyzer : function() {
+      let analyzerName = "textUnderTest";
+
+      // without preserveOriginal
+      {
+        analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":false  });
+        let props = analyzers.analyzer(analyzerName).properties();
+        assertEqual(1, props.min);
+        assertEqual(2, props.max);
+        assertEqual(false, props.preserveOriginal);
+        assertEqual("", props.startMarker);
+        assertEqual("", props.endMarker);
+        assertEqual("binary", props.streamType);
+        let result = db._query(
+          "RETURN TOKENS('quick', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(9, result[0].length);
+        assertEqual([ "q", "qu", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // with preserveOriginal
+      {
+        analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":true});
+        let props = analyzers.analyzer(analyzerName).properties();
+        assertEqual(1, props.min);
+        assertEqual(2, props.max);
+        assertEqual(true, props.preserveOriginal);
+        assertEqual("", props.startMarker);
+        assertEqual("", props.endMarker);
+        assertEqual("binary", props.streamType);
+        let result = db._query(
+          "RETURN TOKENS('quick', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(10, result[0].length);
+        assertEqual([ "q", "qu", "quick", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // with optional start marker
+      {
+        analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":true, "startMarker":"$"});
+        let props = analyzers.analyzer(analyzerName).properties();
+        assertEqual(1, props.min);
+        assertEqual(2, props.max);
+        assertEqual(true, props.preserveOriginal);
+        assertEqual("$", props.startMarker);
+        assertEqual("", props.endMarker);
+        assertEqual("binary", props.streamType);
+        let result = db._query(
+          "RETURN TOKENS('quick', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(10, result[0].length);
+        assertEqual([ "$q", "$qu", "$quick", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // with optional end marker
+      {
+        analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":true, "startMarker":"$", "endMarker":"^"});
+        let props = analyzers.analyzer(analyzerName).properties();
+        assertEqual(1, props.min);
+        assertEqual(2, props.max);
+        assertEqual(true, props.preserveOriginal);
+        assertEqual("$", props.startMarker);
+        assertEqual("^", props.endMarker);
+        assertEqual("binary", props.streamType);
+        let result = db._query(
+          "RETURN TOKENS('quick', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(11, result[0].length);
+        assertEqual([ "$q", "$qu", "$quick", "quick^", "u", "ui", "i", "ic", "c", "ck^", "k^" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // utf8 sequence
+      {
+        analyzers.save(analyzerName, "ngram", { "min":3, "max":2, "preserveOriginal":false, "streamType":"utf8"});
+        let props = analyzers.analyzer(analyzerName).properties();
+        assertEqual(3, props.min);
+        assertEqual(3, props.max);
+        assertEqual(false, props.preserveOriginal);
+        assertEqual("", props.startMarker);
+        assertEqual("", props.endMarker);
+        assertEqual("utf8", props.streamType);
+        let result = db._query(
+          "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(4, result[0].length);
+        assertEqual([ "хор", "оро", "рош", "ошо"  ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // invalid properties 
+      {
+        try {
+          analyzers.save(analyzerName, "ngram", { "min":1, "max":2 } );
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+
+      // invalid properties
+      {
+        try {
+          analyzers.save(analyzerName, "ngram", { "max":2, "preserveOriginal":false } );
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+
+      // invalid properties
+      {
+        try {
+          analyzers.save(analyzerName, "ngram", { "min":2, "preserveOriginal":false } );
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+
+      // invalid properties
+      {
+        try {
+          analyzers.save(analyzerName, "ngram", { "max":2, "min":2, "preserveOriginal":false, "streamType":"invalid" } );
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {

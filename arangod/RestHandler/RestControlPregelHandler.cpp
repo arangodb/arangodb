@@ -75,26 +75,26 @@ RestStatus RestControlPregelHandler::execute() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-std::string RestControlPregelHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestControlPregelHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::GET &&
       type != rest::RequestType::DELETE_REQ) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
   if (sourceServer == ServerState::instance()->getShortId()) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return ci.getCoordinatorByShortID(sourceServer);
+  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
 }
 
 void RestControlPregelHandler::startExecution() {
@@ -107,7 +107,7 @@ void RestControlPregelHandler::startExecution() {
 
   // algorithm
   std::string algorithm =
-      VelocyPackHelper::getStringValue(body, "algorithm", "");
+      VelocyPackHelper::getStringValue(body, "algorithm", StaticStrings::Empty);
   if ("" == algorithm) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "invalid algorithm");

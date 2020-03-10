@@ -1,12 +1,12 @@
 @startDocuBlock post_create_document_MULTI
 @brief creates multiple documents
 
-@RESTHEADER{POST /_api/document/{collection-name}, Create document, insertDocument}
+@RESTHEADER{POST /_api/document/{collection}#multiple,Create multiple documents,insertDocuments}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{collection-name,string,required}
-The *collection* in which the documents are to be created.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* in which the documents are to be created.
 
 @RESTALLBODYPARAM{data,json,required}
 An array of documents to create.
@@ -31,7 +31,7 @@ Additionally return the complete old document under the attribute *old*
 in the result. Only available if the overwrite option is used.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data 
+If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the created document. This option can be used to
 save some network traffic.
 
@@ -39,6 +39,26 @@ save some network traffic.
 If set to *true*, the insert becomes a replace-insert. If a document with the
 same *_key* already exists the new document is not rejected with unique
 constraint violated but will replace the old document.
+
+@RESTQUERYPARAM{overwriteMode,string,optional}
+This parameter can be set to *replace* or *update*. If given it sets implicitly 
+the overwrite flag. In case it is set to *update*, the replace-insert becomes an
+update-insert. Otherwise this option follows the rules of the overwrite parameter.
+
+@RESTQUERYPARAM{keepNull,boolean,optional}
+If the intention is to delete existing attributes with the update-insert
+command, the URL query parameter *keepNull* can be used with a value of
+*false*. This will modify the behavior of the patch command to remove any
+attributes from the existing document that are contained in the patch document
+with an attribute value of *null*.
+This option controls the update-insert behavior only.
+
+@RESTQUERYPARAM{mergeObjects,boolean,optional}
+Controls whether objects (not arrays) will be merged if present in both the
+existing and the update-insert document. If set to *false*, the value in the
+patch document will overwrite the existing document's value. If set to *true*,
+objects will be merged. The default is *true*.
+This option controls the update-insert behavior only.
 
 @RESTDESCRIPTION
 Creates new documents from the documents given in the body, unless there
@@ -54,10 +74,10 @@ errorCode set to the error code that has happened.
 Possibly given *_id* and *_rev* attributes in the body are always ignored,
 the URL part or the query parameter collection respectively counts.
 
-If *silent* is not set to *true*, the body of the response contains an 
+If *silent* is not set to *true*, the body of the response contains an
 array of JSON objects with the following attributes:
 
-  - *_id* contains the document handle of the newly created document
+  - *_id* contains the document identifier of the newly created document
   - *_key* contains the document key
   - *_rev* contains the document revision
 
@@ -142,7 +162,6 @@ Use of returnNew:
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-
 Partially illegal documents:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostBadJsonMulti}
@@ -162,4 +181,3 @@ Partially illegal documents:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

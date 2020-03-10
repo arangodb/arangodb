@@ -30,6 +30,8 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
 #include "Meta/static_assert_size.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -85,10 +87,11 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   auto outReg = variableToRegisterId(_outVariable);
   outputRegisters->emplace(outReg);
 
+  auto const vpackOptions = trx->transactionContextPtr()->getVPackOptions();
   SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                 getRegisterPlan()->nrRegs[getDepth()],
-                                 getRegsToClear(), calcRegsToKeep(), trx, inReg, outReg);
+                                 getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                                 calcRegsToKeep(), vpackOptions, inReg, outReg);
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
                                                                    std::move(infos));

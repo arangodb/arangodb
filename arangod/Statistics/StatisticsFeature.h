@@ -59,6 +59,12 @@ extern StatisticsDistribution TRI_IoTimeDistributionStatistics;
 extern StatisticsDistribution TRI_QueueTimeDistributionStatistics;
 extern StatisticsDistribution TRI_RequestTimeDistributionStatistics;
 extern StatisticsDistribution TRI_TotalTimeDistributionStatistics;
+extern StatisticsDistribution TRI_BytesReceivedDistributionStatisticsUser;
+extern StatisticsDistribution TRI_BytesSentDistributionStatisticsUser;
+extern StatisticsDistribution TRI_IoTimeDistributionStatisticsUser;
+extern StatisticsDistribution TRI_QueueTimeDistributionStatisticsUser;
+extern StatisticsDistribution TRI_RequestTimeDistributionStatisticsUser;
+extern StatisticsDistribution TRI_TotalTimeDistributionStatisticsUser;
 }  // namespace basics
 
 class StatisticsFeature final : public application_features::ApplicationFeature {
@@ -80,6 +86,9 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   void prepare() override final;
   void start() override final;
   void stop() override final;
+  void toPrometheus(std::string& result, double const& now) {
+    _statisticsWorker->generateRawStatistics(result, now);
+  }
 
   static stats::Descriptions const* descriptions() {
     if (STATISTICS != nullptr) {
@@ -90,6 +99,8 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
 
  private:
   bool _statistics;
+  bool _statisticsHistory;
+  bool _statisticsHistoryTouched;
 
   std::unique_ptr<stats::Descriptions> _descriptions;
   std::unique_ptr<Thread> _statisticsThread;

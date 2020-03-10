@@ -411,7 +411,6 @@ function unitTestPrettyPrintResults (options, results) {
           }
 
           let details = successCases[name];
-
           if (details.skipped) {
             SuccessMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
           } else {
@@ -443,7 +442,11 @@ function unitTestPrettyPrintResults (options, results) {
             continue;
           }
 
-          m = '    [FAILED]  ' + name;
+          if (name === 'SKIPPED') {
+            m = '    [SKIPPED]  the following tests were skipped due to the server not being in a trustworthy state anymore.';
+          } else {
+            m = '    [FAILED]  ' + name;
+          }
           failedMessages += RED + m + RESET + '\n\n';
           onlyFailedMessages += m + '\n\n';
 
@@ -495,7 +498,7 @@ function unitTestPrettyPrintResults (options, results) {
     onlyFailedMessages += failText + '\n';
     failText = RED + failText + RESET;
   }
-  if (cu.GDB_OUTPUT !== '') {
+  if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText === options.testFailureText) {
     // write more verbose failures to the testFailureText file
     onlyFailedMessages += '\n\n' + cu.GDB_OUTPUT;
   }
@@ -510,7 +513,13 @@ ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}$
   if (crashedText !== '') {
     onlyFailedMessages += '\n' + crashedText;
   }
-  fs.write(options.testOutputDirectory + options.testFailureText, onlyFailedMessages);
+  fs.write(fs.join(options.testOutputDirectory, options.testFailureText), onlyFailedMessages);
+
+  if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText !== options.testFailureText ) {
+    // write more verbose failures to the testFailureText file
+    fs.write(fs.join(options.testOutputDirectory, options.crashAnalysisText), cu.GDB_OUTPUT);
+  }
+
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -762,8 +771,8 @@ function locateShortServerLife(options, results) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function writeDefaultReports(options, testSuites) {
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', "false", true);
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', "true", true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), "false", true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), "true", true);
   let testFailureText = 'testfailures.txt';
   if (options.hasOwnProperty('testFailureText')) {
     testFailureText = options.testFailureText;
@@ -775,8 +784,8 @@ function writeDefaultReports(options, testSuites) {
 }
 
 function writeReports(options, results) {
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', String(results.status), true);
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', String(results.crashed), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed), true);
 }
 
 function dumpAllResults(options, results) {
@@ -788,7 +797,7 @@ function dumpAllResults(options, results) {
     j = inspect(results);
   }
 
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT.json', j, true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json'), j, true);
 }
 
 

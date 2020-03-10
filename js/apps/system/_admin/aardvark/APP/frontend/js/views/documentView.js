@@ -384,7 +384,7 @@
     breadcrumb: function () {
       var name = window.location.hash.split('/');
       $('#subNavigationBar .breadcrumb').html(
-        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1] + '</a>' +
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + (name[1].length > 64 ? name[1].substr(0, 64) + "..." : name[1]) + '</a>' +
         '<i class="fa fa-chevron-right"></i>' +
         this.type.charAt(0).toUpperCase() + this.type.slice(1) + ': ' + name[2]
       );

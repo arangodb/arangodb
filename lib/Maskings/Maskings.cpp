@@ -67,7 +67,7 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
     return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
   }
 
-  std::unique_ptr<Maskings> maskings(new Maskings{});
+  auto maskings = std::make_unique<Maskings>();
 
   maskings.get()->_randomSeed = RandomGenerator::interval(UINT64_MAX);
 

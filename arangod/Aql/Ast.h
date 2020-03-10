@@ -239,6 +239,7 @@ class Ast {
                                          AstNode const*, AstNode const*);
 
   /// @brief create an AST ternary operator
+  AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*);
   AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST variable access
@@ -522,6 +523,10 @@ class Ast {
                                             AccessMode::Type accessType);
 
   void extractCollectionsFromGraph(AstNode const* graphNode);
+
+  /// @brief copies node payload from node into copy. this is *not* copying
+  /// the subnodes
+  void copyPayload(AstNode const* node, AstNode* copy) const;
 
  public:
   /// @brief negated comparison operators

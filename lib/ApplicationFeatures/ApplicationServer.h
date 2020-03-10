@@ -32,6 +32,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
@@ -42,9 +43,8 @@ namespace options {
 class ProgramOptions;
 }
 namespace application_features {
-class ApplicationFeature;
 
-// the following phases exists:
+// the following phases exist:
 //
 // `collectOptions`
 //
@@ -127,14 +127,12 @@ class ApplicationServer {
     std::function<void(State, std::string const& featureName)> _feature;
    };
 
-   static ApplicationServer& server();
-
    static std::atomic<bool> CTRL_C;
 
   public:
    ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
-   TEST_VIRTUAL ~ApplicationServer();
+   TEST_VIRTUAL ~ApplicationServer() = default;
 
    std::string helpSection() const { return _helpSection; }
    bool helpShown() const { return !_helpSection.empty(); }
@@ -216,7 +214,7 @@ class ApplicationServer {
    }
 
 #ifdef TEST_VIRTUAL
-   void setStateUnsafe(State ss) { server()._state = ss; }
+   void setStateUnsafe(State ss) { _state = ss; }
 #endif
 
    // adds a feature to the application server. the application server
@@ -229,7 +227,7 @@ class ApplicationServer {
    As& addFeature(Args&&... args) {
      TRI_ASSERT(!hasFeature<As>());
      std::pair<FeatureMap::iterator, bool> result =
-         _features.emplace(std::type_index(typeid(As)),
+         _features.try_emplace(std::type_index(typeid(As)),
                            std::make_unique<Type>(*this, std::forward<Args>(args)...));
      TRI_ASSERT(result.second);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -243,14 +241,14 @@ class ApplicationServer {
 
    // checks for the existence of a feature by type. will not throw when used
    // for a non-existing feature
-   bool hasFeature(std::type_index type) const {
+   bool hasFeature(std::type_index type) const noexcept {
      return (_features.find(type) != _features.end());
    }
 
    // checks for the existence of a feature. will not throw when used for
    // a non-existing feature
    template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
-   bool hasFeature() const {
+   bool hasFeature() const noexcept {
      return hasFeature(std::type_index(typeid(Type)));
    }
 
@@ -359,8 +357,6 @@ class ApplicationServer {
    void reportFeatureProgress(State, std::string const&);
 
   private:
-   static ApplicationServer* INSTANCE;
-
    // the current state
    std::atomic<State> _state;
 

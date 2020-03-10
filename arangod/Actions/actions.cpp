@@ -43,9 +43,9 @@ static std::unordered_map<std::string, std::shared_ptr<TRI_action_t>> PrefixActi
 
 /// @brief actions lock
 static ReadWriteLock ActionsLock;
-  
+
 /// @brief actions of this type are executed directly. nothing to do here
-TRI_action_result_t TRI_fake_action_t::execute(TRI_vocbase_t*, 
+TRI_action_result_t TRI_fake_action_t::execute(TRI_vocbase_t*,
                                                arangodb::GeneralRequest*,
                                                arangodb::GeneralResponse*,
                                                arangodb::Mutex*, void**) {
@@ -75,7 +75,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
   WRITE_LOCKER(writeLocker, ActionsLock);
 
   // create a new action and store the callback function
-  auto it = which->emplace(url, action);
+  auto it = which->try_emplace(url, action);
 
   if (!it.second) {
     return (*(it.first)).second;
@@ -105,7 +105,7 @@ std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(arangodb::GeneralRequest* 
 
   // find longest prefix match
   while (true) {
-    auto it = PrefixActions.find(name);
+    it = PrefixActions.find(name);
 
     if (it != PrefixActions.end()) {
       // found a prefix match

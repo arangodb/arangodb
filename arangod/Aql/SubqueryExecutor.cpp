@@ -30,13 +30,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <bool isModificationSubquery>
-constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::preservesOrder;
-template <bool isModificationSubquery>
-constexpr BlockPassthrough SubqueryExecutor<isModificationSubquery>::Properties::allowsBlockPassthrough;
-template <bool isModificationSubquery>
-constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::inputSizeRestrictsOutputSize;
-
 SubqueryExecutorInfos::SubqueryExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
@@ -96,7 +89,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::pro
       }
 
       // Non const case, or first run in const
-      auto res = _subquery.getSome(ExecutionBlock::DefaultBatchSize());
+      auto res = _subquery.getSome(ExecutionBlock::DefaultBatchSize);
       if (res.first == ExecutionState::WAITING) {
         TRI_ASSERT(res.second == nullptr);
         return {res.first, NoStats{}};

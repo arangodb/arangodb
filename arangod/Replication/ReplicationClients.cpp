@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -124,21 +125,21 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, TRI_server_id_t
   WRITE_LOCKER(writeLocker, _lock);
 
   // insert new client entry
-  auto const progress = ReplicationClientProgress(timestamp, expires, lastServedTick,
+  auto const [it, inserted] = _clients.try_emplace(
+    key,
+    arangodb::lazyConstruct([&]{
+      return ReplicationClientProgress(timestamp, expires, lastServedTick,
                                                   syncerId, clientId, clientInfo);
-  auto const res = _clients.emplace(key, progress);
-  auto const it = res.first;
-  bool const inserted = res.second;
-
+    })
+  );
   auto const syncer = syncerId.toString();
 
   if (inserted) {
     LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
-        << "inserting replication client entry for " << SyncerInfo{progress}
+        << "inserting replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl << ", last tick: " << lastServedTick;
     return;
   }
-  TRI_ASSERT(it != _clients.end());
 
   // update an existing client entry
   it->second.lastSeenStamp = timestamp;
@@ -146,11 +147,11 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, TRI_server_id_t
   if (lastServedTick > 0) {
     it->second.lastServedTick = lastServedTick;
     LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for " << SyncerInfo{progress}
+          << "updating replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl << ", last tick: " << lastServedTick;
   } else {
     LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for " << SyncerInfo{progress}
+          << "updating replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl;
   }
 }

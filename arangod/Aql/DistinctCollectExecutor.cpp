@@ -38,10 +38,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool DistinctCollectExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough DistinctCollectExecutor::Properties::allowsBlockPassthrough;
-constexpr bool DistinctCollectExecutor::Properties::inputSizeRestrictsOutputSize;
-
 DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear,

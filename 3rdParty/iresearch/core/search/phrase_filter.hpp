@@ -18,15 +18,15 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_PHRASE_FILTER_H
 #define IRESEARCH_PHRASE_FILTER_H
 
+#include <map>
+
 #include "filter.hpp"
 #include "utils/string.hpp"
-#include <map>
 
 NS_ROOT
 
@@ -42,7 +42,7 @@ class IRESEARCH_API by_phrase : public filter {
   typedef terms_t::iterator iterator;
   typedef terms_t::value_type term_t;
 
-  // returns set of features required for filter 
+  // returns set of features required for filter
   static const flags& required();
 
   DECLARE_FILTER_TYPE();
@@ -50,16 +50,16 @@ class IRESEARCH_API by_phrase : public filter {
 
   by_phrase();
 
-  by_phrase& field(std::string fld) {
-    fld_ = std::move(fld); 
+  by_phrase& field(std::string fld) noexcept {
+    fld_ = std::move(fld);
     return *this;
   }
 
-  const std::string& field() const { return fld_; }
+  const std::string& field() const noexcept { return fld_; }
 
-  // inserts term to the specified position 
+  // inserts term to the specified position
   by_phrase& insert(size_t pos, const bytes_ref& term) {
-    phrase_[pos] = term; 
+    phrase_[pos] = term;
     return *this;
   }
 
@@ -72,7 +72,7 @@ class IRESEARCH_API by_phrase : public filter {
     return *this;
   }
 
-  // inserts term to the end of the phrase with 
+  // inserts term to the end of the phrase with
   // the specified offset from the last term
   by_phrase& push_back(const bytes_ref& term, size_t offs = 0) {
     return insert(next_pos() + offs, term);
@@ -86,19 +86,19 @@ class IRESEARCH_API by_phrase : public filter {
     return insert(next_pos() + offs, std::move(term));
   }
 
-  bstring& operator[](size_t pos) { return phrase_[pos]; } 
+  bstring& operator[](size_t pos) { return phrase_[pos]; }
   const bstring& operator[](size_t pos) const {
-    return phrase_.at(pos); 
+    return phrase_.at(pos);
   }
 
-  bool empty() const { return phrase_.empty(); }
-  size_t size() const { return phrase_.size(); }
+  bool empty() const noexcept { return phrase_.empty(); }
+  size_t size() const noexcept { return phrase_.size(); }
 
-  const_iterator begin() const { return phrase_.begin(); }
-  const_iterator end() const { return phrase_.end(); }
+  const_iterator begin() const noexcept { return phrase_.begin(); }
+  const_iterator end() const noexcept { return phrase_.end(); }
 
-  iterator begin() { return phrase_.begin(); }
-  iterator end() { return phrase_.end(); }
+  iterator begin() noexcept { return phrase_.begin(); }
+  iterator end() noexcept { return phrase_.end(); }
 
   using filter::prepare;
 
@@ -109,16 +109,16 @@ class IRESEARCH_API by_phrase : public filter {
     const attribute_view& ctx
   ) const override;
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
- 
+  virtual bool equals(const filter& rhs) const noexcept override;
+
  private:
   size_t next_pos() const {
     return phrase_.empty() ? 0 : 1 + phrase_.rbegin()->first;
   }
-  
+
   size_t first_pos() const {
     return phrase_.empty() ? 0 : phrase_.begin()->first;
   }

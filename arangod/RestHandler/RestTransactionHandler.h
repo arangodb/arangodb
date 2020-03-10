@@ -45,10 +45,10 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   char const* name() const override final { return "RestTransactionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
   RestStatus execute() override;
-  bool cancel() override final;
+  void cancel() override final;
 
  protected:
-  virtual std::string forwardingTarget() override;
+  virtual ResultT<std::pair<std::string, bool>> forwardingTarget() override;
 
  private:
   void executeGetState();

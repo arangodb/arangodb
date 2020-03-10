@@ -48,24 +48,24 @@ class rot13_encryption final : public irs::ctr_encryption {
   explicit rot13_encryption(
       size_t block_size,
       size_t header_length = DEFAULT_HEADER_LENGTH
-  ) NOEXCEPT
+  ) noexcept
     : irs::ctr_encryption(cipher_),
       cipher_(block_size),
       header_length_(header_length) {
   }
 
-  virtual size_t header_length() NOEXCEPT override {
+  virtual size_t header_length() noexcept override {
     return header_length_;
   }
 
  private:
   class rot13_cipher final : public irs::cipher {
    public:
-    explicit rot13_cipher(size_t block_size) NOEXCEPT
+    explicit rot13_cipher(size_t block_size) noexcept
       : block_size_(block_size) {
     }
 
-    virtual size_t block_size() const NOEXCEPT override {
+    virtual size_t block_size() const noexcept override {
       return block_size_;
     }
 
@@ -122,7 +122,7 @@ class directory_test_case_base : public virtual test_param_base<tests::dir_facto
   virtual void SetUp() override;
   virtual void TearDown() override;
 
-  irs::directory& dir() const NOEXCEPT { return *dir_; }
+  irs::directory& dir() const noexcept { return *dir_; }
 
  protected:
   std::shared_ptr<irs::directory> dir_;

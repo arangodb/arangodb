@@ -89,7 +89,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   void compute(MessageIterator<uint64_t> const& messages) override {
     SLPAValue* val = mutableVertexData();
     if (globalSuperstep() == 0) {
-      val->memory.emplace(val->nodeId, 1);
+      val->memory.try_emplace(val->nodeId, 1);
       val->numCommunities = 1;
     }
 

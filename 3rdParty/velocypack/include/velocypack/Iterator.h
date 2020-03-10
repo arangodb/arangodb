@@ -37,9 +37,17 @@
 namespace arangodb {
 namespace velocypack {
 
-class ArrayIterator {
+class ArrayIterator : public std::iterator<std::forward_iterator_tag, Slice> {
  public:
+  using iterator_category = std::forward_iterator_tag;
+
+  struct Empty {};
+
   ArrayIterator() = delete;
+
+  // optimization for an empty array
+  explicit ArrayIterator(Empty) noexcept
+      : _slice(Slice::emptyArraySlice()), _size(0), _position(0), _current(nullptr), _first(nullptr) {}
 
   explicit ArrayIterator(Slice slice)
       : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
@@ -81,8 +89,11 @@ class ArrayIterator {
     return result;
   }
 
+  bool operator==(ArrayIterator const& other) const noexcept {
+    return _position == other._position;
+  }
   bool operator!=(ArrayIterator const& other) const noexcept {
-    return _position != other._position;
+    return !operator==(other);
   }
 
   Slice operator*() const {
@@ -156,13 +167,16 @@ class ArrayIterator {
   uint8_t const* _first;
 };
 
-class ObjectIterator {
+struct ObjectIteratorPair {
+  ObjectIteratorPair(Slice key, Slice value) noexcept
+      : key(key), value(value) {}
+  Slice const key;
+  Slice const value;
+};
+
+class ObjectIterator : public std::iterator<std::forward_iterator_tag, ObjectIteratorPair> {
  public:
-  struct ObjectPair {
-    ObjectPair(Slice key, Slice value) noexcept : key(key), value(value) {}
-    Slice const key;
-    Slice const value;
-  };
+  using ObjectPair = ObjectIteratorPair;
 
   ObjectIterator() = delete;
 
@@ -212,8 +226,12 @@ class ObjectIterator {
     return result;
   }
 
+  bool operator==(ObjectIterator const& other) const {
+    return _position == other._position;
+  }
+
   bool operator!=(ObjectIterator const& other) const {
-    return _position != other._position;
+    return !operator==(other);
   }
 
   ObjectPair operator*() const {
