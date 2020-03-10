@@ -176,7 +176,7 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _selfShutdown(false),
       _upgraded(false),
       _supervision_runtime_msec(server.getFeature<arangodb::MetricsFeature>().histogram(
-          "agency_supervision_runtime_msec", log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
+          StaticStrings::SupervisionRuntimeMs, log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
           "Agency Supervision runtime histogram [ms]")) {}
 
 Supervision::~Supervision() {

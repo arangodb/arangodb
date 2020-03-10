@@ -339,12 +339,14 @@ std::string const StaticStrings::ShardsTotalCount("arangodb_shards_total_count")
 std::string const StaticStrings::ShardsLeaderCount("arangodb_shards_leader_count");
 std::string const StaticStrings::ShardsNotReplicated("arangodb_shards_not_replicated");
 
-std::string const StaticStrings::AgencyCommRequestTimeMs("arangodb_agencycomm_request_time_ms");
+std::string const StaticStrings::AgencyCommRequestTimeMs("arangodb_agencycomm_request_time_msec");
 
-std::string const StaticStrings::AqlQueryRuntimeMs("arangodb_aql_total_query_time_ms");
+std::string const StaticStrings::AqlQueryRuntimeMs("arangodb_aql_total_query_time_msec");
 
 std::string const StaticStrings::SchedulerQueueLength("arangodb_scheduler_queue_length");
 std::string const StaticStrings::SchedulerAwakeWorkers("arangodb_scheduler_awake_threads");
 std::string const StaticStrings::SchedulerNumWorker("arangodb_scheduler_num_worker_threads");
 
 std::string const StaticStrings::DroppedFollowerCount("arangodb_dropped_followers_count");
+
+std::string const StaticStrings::SupervisionRuntimeMs("agency_supervision_runtime_msec");

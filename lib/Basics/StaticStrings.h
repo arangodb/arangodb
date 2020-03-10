@@ -324,6 +324,8 @@ class StaticStrings {
 
   static std::string const DroppedFollowerCount;
 
+  static std::string const SupervisionRuntimeMs;
+
 };
 }  // namespace arangodb
 
