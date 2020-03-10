@@ -54,12 +54,9 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       output.copyRow(inputRow);
       TRI_ASSERT(output.produced());
       output.advanceRow();
-
-      if (state == ExecutorState::DONE) {
-        advanceDependency();
-      }
     } else {
       if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+        TRI_ASSERT(input.rangeForDependency(currentDependency()).skippedInFlight() == 0);
         advanceDependency();
       } else {
         auto callSet = AqlCallSet{};
@@ -71,6 +68,13 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
   }
 
   while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+    auto range = input.rangeForDependency(currentDependency());
+    if (range.upstreamState() == ExecutorState::HASMORE || range.skippedInFlight() > 0) {
+      // skippedInFlight > 0 -> output.isFull()
+      TRI_ASSERT(range.skippedInFlight() == 0 || output.isFull());
+      break;
+    }
+    TRI_ASSERT(input.rangeForDependency(currentDependency()).skippedInFlight() == 0);
     advanceDependency();
   }
 
@@ -110,10 +114,8 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
     auto callSet = AqlCallSet{};
     if (call.needSkipMore()) {
       callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
-      return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
-    } else {
-      return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
     }
+    return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
   }
 }
 
