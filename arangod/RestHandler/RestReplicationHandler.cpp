@@ -2514,7 +2514,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   {  // untrack the (async) replication client, so the WAL may be cleaned
-    TRI_server_id_t const serverId{StringUtils::uint64(
+    arangodb::ServerId const serverId{StringUtils::uint64(
         basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
         basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};

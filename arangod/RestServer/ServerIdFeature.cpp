@@ -43,7 +43,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-TRI_server_id_t ServerIdFeature::SERVERID{0};
+ServerId ServerIdFeature::SERVERID{0};
 
 ServerIdFeature::ServerIdFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ServerId") {
@@ -89,8 +89,7 @@ void ServerIdFeature::generateId() {
   TRI_ASSERT(SERVERID.empty());
 
   do {
-    SERVERID = TRI_server_id_t(
-        RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
+    SERVERID = ServerId(RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
 
   } while (SERVERID.empty());
 
@@ -103,7 +102,7 @@ int ServerIdFeature::readId() {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  TRI_server_id_t foundId;
+  ServerId foundId;
   try {
     VPackBuilder builder = basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
     VPackSlice content = builder.slice();
@@ -114,7 +113,7 @@ int ServerIdFeature::readId() {
     if (!idSlice.isString()) {
       return TRI_ERROR_INTERNAL;
     }
-    foundId = TRI_server_id_t(basics::StringUtils::uint64(idSlice.copyString()));
+    foundId = ServerId(basics::StringUtils::uint64(idSlice.copyString()));
   } catch (...) {
     // Nothing to free
     return TRI_ERROR_INTERNAL;

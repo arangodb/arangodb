@@ -113,7 +113,7 @@ arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& conn
 
   // validate all values we got
   std::string const masterIdString(serverId.copyString());
-  TRI_server_id_t const masterId{arangodb::basics::StringUtils::uint64(masterIdString)};
+  arangodb::ServerId const masterId{arangodb::basics::StringUtils::uint64(masterIdString)};
   if (masterId.empty()) {
     // invalid master id
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,

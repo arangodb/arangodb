@@ -554,7 +554,7 @@ bool ReplicationApplier::loadStateNoLock() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE);
   }
   _state._serverId =
-      TRI_server_id_t(arangodb::basics::StringUtils::uint64(serverId.copyString()));
+      ServerId(arangodb::basics::StringUtils::uint64(serverId.copyString()));
 
   // read the ticks
   readTick(slice, "lastAppliedContinuousTick", _state._lastAppliedContinuousTick, false);

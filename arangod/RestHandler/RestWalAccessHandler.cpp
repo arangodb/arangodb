@@ -256,8 +256,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   // check for serverId
-  TRI_server_id_t const clientId{
-      StringUtils::uint64(_request->value("serverId"))};
+  ServerId const clientId{StringUtils::uint64(_request->value("serverId"))};
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
   std::string const clientInfo = _request->value("clientInfo");
 
