@@ -1424,6 +1424,9 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
+  bool generateNewRevisionIds =
+      !_request->parsedValue(StaticStrings::PreserveRevisionIds, false);
+
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   if (colName == TRI_COL_NAME_USERS) {
@@ -1446,7 +1449,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
     return res;
   }
 
-  res = processRestoreDataBatch(trx, colName);
+  res = processRestoreDataBatch(trx, colName, generateNewRevisionIds);
   res = trx.finish(res);
 
   return res;
@@ -1600,7 +1603,8 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
 ////////////////////////////////////////////////////////////////////////////////
 
 Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx,
-                                                       std::string const& collectionName) {
+                                                       std::string const& collectionName,
+                                                       bool generateNewRevisionIds) {
   std::unordered_map<std::string, VPackValueLength> latest;
   VPackBuilder allMarkers;
 
@@ -1678,6 +1682,16 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   bool const isUsersOnCoordinator = (ServerState::instance()->isCoordinator() &&
                                      collectionName == TRI_COL_NAME_USERS);
 
+  LogicalCollection* collection = trx.documentCollection(collectionName);
+  if (generateNewRevisionIds && !collection) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+  PhysicalCollection* physical = collection->getPhysical();
+  if (!physical) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+  char ridBuffer[11];
+
   // Now try to insert all keys for which the last marker was a document
   // marker, note that these could still be replace markers!
   VPackBuilder builder;
@@ -1699,19 +1713,24 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
       if (type == REPLICATION_MARKER_DOCUMENT) {
         VPackSlice const doc = marker.get(::dataString);
         TRI_ASSERT(doc.isObject());
-        if (isUsersOnCoordinator) {
-          // In the _users case we silently remove the _key value.
-          builder.openObject();
-          for (auto it : VPackObjectIterator(doc)) {
-            if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
-                arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
-              builder.add(it.key);
-              builder.add(it.value);
-            }
+        // In the _users case we silently remove the _key value.
+        VPackObjectBuilder guard(&builder);
+        for (auto it : VPackObjectIterator(doc)) {
+          if (isUsersOnCoordinator &&
+              (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString ||
+               arangodb::velocypack::StringRef(it.key) == StaticStrings::IdString)) {
+            continue;
           }
-          builder.close();
-        } else {
-          builder.add(doc);
+
+          builder.add(it.key);
+
+          if (generateNewRevisionIds && arangodb::velocypack::StringRef(it.key) ==
+                                            StaticStrings::RevString) {
+            TRI_voc_rid_t newRid = physical->newRevisionId();
+            builder.add(TRI_RidToValuePair(newRid, ridBuffer));
+          } else {
+            builder.add(it.value);
+          }
         }
       }
     }
@@ -3419,10 +3438,12 @@ Result RestReplicationHandler::createBlockingTransaction(
     std::string comment = std::string("SynchronizeShard from ") + serverId +
                           " for " + col.name() + " access mode " +
                           AccessMode::typeString(access);
-    auto rGuard = std::make_unique<CallbackGuard>(
+    std::unique_ptr<CallbackGuard> rGuard = nullptr;
+    if (!serverId.empty()) {
+      rGuard = std::make_unique<CallbackGuard>(
         ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
                                           f, comment));
-
+    }
     queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
 
   } catch (...) {
