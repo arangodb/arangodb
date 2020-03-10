@@ -70,6 +70,7 @@ class StaticStrings {
   static std::string const Prefix;
   static std::string const OverWrite;
   static std::string const OverWriteMode;
+  static std::string const PreserveRevisionIds;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
