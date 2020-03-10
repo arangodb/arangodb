@@ -4,6 +4,14 @@ devel
 * MoveShard to check, if target is in sync follower before promotion
   to leader.
 
+* Added the SNI feature for TLS. This means that one can configure multiple
+  server keys and certificate chains and the system dynamically uses
+  the right one depending on the value of the TLS servername extension.
+  This allows to use different TLS setups for the same server which is
+  reachable behind different DNS names, for example (enterprise only).
+
+* Do not create a reboot tracker for empty serverId ubin sync repl.
+
 * Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
   AQL functions when invoking an AQL query from the arangosh or a client application.
   Previously, invoking an AQL query and using the `CALL` or `APPLY` AQL functions
