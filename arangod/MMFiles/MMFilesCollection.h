@@ -236,6 +236,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
+
   void invokeOnAllElements(transaction::Methods* trx,
                            std::function<bool(LocalDocumentId const&)> callback);
 
@@ -281,9 +282,6 @@ class MMFilesCollection final : public PhysicalCollection {
   LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result, bool) override;
-
-  Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool) override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& documentId,

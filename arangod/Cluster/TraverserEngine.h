@@ -47,12 +47,14 @@ class Query;
 }  // namespace aql
 
 namespace graph {
+class EdgeCursor;
 struct ShortestPathOptions;
 }
 
 namespace velocypack {
 class Builder;
 class Slice;
+class StringRef;
 }  // namespace velocypack
 
 namespace traverser {
@@ -122,6 +124,8 @@ class BaseTraverserEngine : public BaseEngine {
 
   void getVertexData(arangodb::velocypack::Slice, size_t, arangodb::velocypack::Builder&);
 
+  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
+
   virtual void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) = 0;
 
   virtual void smartSearchBFS(arangodb::velocypack::Slice,
@@ -133,6 +137,7 @@ class BaseTraverserEngine : public BaseEngine {
  
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
+  std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
 };
 
 class ShortestPathEngine : public BaseEngine {
@@ -152,9 +157,15 @@ class ShortestPathEngine : public BaseEngine {
   void getEdges(arangodb::velocypack::Slice, bool backward, arangodb::velocypack::Builder&);
 
   EngineType getType() const override { return SHORTESTPATH; }
+
+ private:
+  void addEdgeData(arangodb::velocypack::Builder& builder, bool backward, arangodb::velocypack::StringRef v);
  
  protected:
   std::unique_ptr<graph::ShortestPathOptions> _opts;
+
+  std::unique_ptr<graph::EdgeCursor> _forwardCursor;
+  std::unique_ptr<graph::EdgeCursor> _backwardCursor;
 };
 
 class TraverserEngine : public BaseTraverserEngine {

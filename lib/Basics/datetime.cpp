@@ -607,7 +607,8 @@ int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
     }
     ++p;
   }
-  result = arangodb::NumberUtils::atoi_positive_unchecked<int>(dateTime.data(), p);
+  bool valid;
+  result = arangodb::NumberUtils::atoi_positive<int>(dateTime.data(), p, valid);
   return static_cast<int>(p - dateTime.data());
 }
 

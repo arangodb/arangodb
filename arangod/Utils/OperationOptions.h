@@ -34,6 +34,7 @@ struct OperationOptions {
       : recoveryData(nullptr),
         indexOperationMode(Index::OperationMode::normal),
         waitForSync(false),
+        validate(true),
         keepNull(true),
         mergeObjects(true),
         silent(false),
@@ -42,6 +43,7 @@ struct OperationOptions {
         returnNew(false),
         isRestore(false),
         overwrite(false),
+        ignoreUniqueConstraints(false),
         overwriteModeUpdate(false)
         {}
 
@@ -54,6 +56,7 @@ struct OperationOptions {
        << "{ recoveryData : " << ops.recoveryData
        << ", indexOperationMode : " << ops.indexOperationMode
        << ", waitForSync : " << ops.waitForSync
+       << ", validate : " << ops.validate
        << ", keepNull : " << ops.keepNull
        << ", mergeObjects : " << ops.mergeObjects
        << ", silent : " << ops.silent
@@ -76,6 +79,9 @@ struct OperationOptions {
 
   // wait until the operation has been synced
   bool waitForSync;
+
+  // apply document vaidators if there are any available
+  bool validate;
 
   // keep null values on update (=true) or remove them (=false). only used for
   // update operations
@@ -104,6 +110,10 @@ struct OperationOptions {
   // for insert operations: do not fail if _key exists but replace the document
   bool overwrite;
 
+  // for replication; only set true if you an guarantee that any conflicts have
+  // already been removed, and are simply not reflected in the transaction read
+  bool ignoreUniqueConstraints;
+  
   // above replace becomes an update
   bool overwriteModeUpdate;
 

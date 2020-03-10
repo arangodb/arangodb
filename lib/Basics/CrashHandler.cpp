@@ -29,21 +29,22 @@
 #include <unistd.h>
 #endif
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #ifndef _WIN32
 #include <execinfo.h>
 #endif
 
-#ifdef __linux__
-#include <syscall.h>
-#endif
-
 #include <atomic>
+#include <thread>
 
 #include "CrashHandler.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/files.h"
+#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
 #include "Logger/LoggerFeature.h"
@@ -54,6 +55,9 @@
 
 #ifndef _WIN32
 namespace {
+
+/// @brief filename that we will use to write a backtrace into
+std::string crashFilename;
 
 /// @brief helper struct that is used to create an alternative stack for the
 /// signal handler on construction and to tear it down on destruction
@@ -119,7 +123,7 @@ void appendNullTerminatedString(char const* src, char*& dst) {
 /// in context of SIGSEGV, with a broken heap etc.
 /// Assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
-/// (1024 bytes should be more than enough).
+/// (4096 bytes should be more than enough).
 size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize) {
   // build a crash message
   char* p = s;
@@ -129,17 +133,7 @@ size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize
   p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
   
 #ifdef __linux__
-  // gettid() would be nice to use, unfortunately it is only available
-  // in _very_ recent versions of glibc and current not available in libmusl.
-  // thus we use syscall here. evil, but works
-  uint64_t threadId = static_cast<uint64_t>(syscall(__NR_gettid));
-  appendNullTerminatedString(", tid ", p);
-  p += arangodb::basics::StringUtils::itoa(threadId, p);
-
   char const* name = arangodb::Thread::currentThreadName();
-  if (threadId == static_cast<uint64_t>(::getpid())) {
-    name = "main";
-  }
 #else
   char const* name = nullptr;
 #endif
@@ -170,11 +164,12 @@ size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize
     }
   }
 
-  appendNullTerminatedString(". displaying ", p);
-  p += arangodb::basics::StringUtils::itoa(uint64_t(stackSize), p);
-  
-  appendNullTerminatedString(" stack frame(s). use addr2line to resolve addresses!", p);
-  
+  if (stackSize > 0) {
+    appendNullTerminatedString(". displaying ", p);
+    p += arangodb::basics::StringUtils::itoa(uint64_t(stackSize), p);
+    
+    appendNullTerminatedString(" stack frame(s). use addr2line to resolve addresses!", p);
+  } 
   return p - s;
 }
 
@@ -198,13 +193,6 @@ size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize
 /// - Windows is currently not supported.
 void crashHandler(int signal, siginfo_t* info, void*) {
   if (!::crashHandlerInvoked.exchange(true)) {
-    // restore default signal action, so that we can write a core dump and crash "properly"
-    struct sigaction act;
-    sigemptyset(&act.sa_mask);
-    act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
-    act.sa_handler = SIG_DFL;
-    sigaction(signal, &act, nullptr);
-    
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // prints a backtrace in maintainer mode, if and only if ARANGODB_ENABLE_BACKTRACE
     // is defined. Will call malloc and other async-unsafe ops. But will not do anything
@@ -213,8 +201,8 @@ void crashHandler(int signal, siginfo_t* info, void*) {
 #endif
 
     try {
-      // buffer for constructing temporary log messages (to avoid malloc as much as possible)
-      char buffer[1024];
+      // buffer for constructing temporary log messages (to avoid malloc)
+      char buffer[4096];
       memset(&buffer[0], 0, sizeof(buffer));
 
       // acquire backtrace
@@ -224,28 +212,78 @@ void crashHandler(int signal, siginfo_t* info, void*) {
       int numFrames = backtrace(traces, maxFrames);
    
       char* p = &buffer[0];
-      size_t length = buildLogMessage(p, signal, info, numFrames - skipFrames);
+      size_t length = buildLogMessage(p, signal, info, numFrames >= skipFrames ? numFrames - skipFrames : 0);
       // note: LOG_TOPIC() will allocate memory
-      LOG_TOPIC("a7902", ERR, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
       arangodb::Logger::flush();
 
-      // note: backtrace_symbols() will allocate memory
-      char** stack = backtrace_symbols(traces, numFrames); 
-      if (stack != nullptr) {
-        for (int i = skipFrames /* ignore first frames */; i < numFrames; ++i) {
-          char* p = &buffer[0];
-          appendNullTerminatedString("- frame #", p);
-          p += arangodb::basics::StringUtils::itoa(uint64_t(i), p);
-          appendNullTerminatedString(": ", p);
-          if (strlen(stack[i]) <= sizeof(buffer) / 2) {
-            // only append stack trace to buffer if it is safe (i.e. short enough to append it)
-            appendNullTerminatedString(stack[i], p);
+      if (numFrames > 0 && !::crashFilename.empty()) {
+        // open crash file to write backtrace information into it
+        int fd = TRI_CREATE(::crashFilename.c_str(), O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+        
+        if (fd >= 0) {
+          // actually write backtrace information into file. this does not malloc!
+          backtrace_symbols_fd(traces, numFrames, fd);
+          TRI_CLOSE(fd);
 
-            // note: LOG_TOPIC() will allocate memory
-            LOG_TOPIC("308c2", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+          // reopen the file for reading it
+          fd = TRI_OPEN(::crashFilename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+          if (fd >= 0) {
+            // fill buffer with \n bytes, so we can simplify the following logic
+            memset(&buffer[0], '\n', sizeof(buffer));
+            // also make sure it is always null-terminated
+            buffer[sizeof(buffer) - 1] = '\0';
+
+            p = &buffer[0];
+            size_t bytesLeft = sizeof(buffer) - 2;
+            while (bytesLeft > 0) {
+              TRI_read_return_t n = TRI_READ(fd, p, static_cast<TRI_read_t>(bytesLeft));
+              if (n <= 0) {
+                *p = '\0';
+                break;
+              }
+              TRI_ASSERT(bytesLeft >= static_cast<size_t>(n));
+              bytesLeft -= n;
+              p += n;
+            }
+
+            int frame = 0;
+            length = p - &buffer[0]; 
+            p = &buffer[0];
+            char* e = p + length;
+            while (p < e) {
+              char* split = strchr(p, '\n');
+              if (split != nullptr) {
+                length = split - p;
+              } else {
+                length = e - p;
+              }
+              if (length <= 1) {
+                break;
+              }
+              TRI_ASSERT(length > 0);
+
+              if (frame >= skipFrames) {
+                LOG_TOPIC("308c2", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(p, length);
+              }
+              
+              ++frame;
+
+              if (frame >= numFrames) {
+                break;
+              }
+
+              if (split != nullptr) {
+                p = split + 1;
+              } else {
+                // reached the end
+                p = e;
+              }
+            }
+            TRI_CLOSE(fd);
           }
+
         }
-        free(stack);
         arangodb::Logger::flush();
       }
      
@@ -271,8 +309,22 @@ void crashHandler(int signal, siginfo_t* info, void*) {
     } catch (...) {
       // we better not throw an exception from inside a signal handler
     }
+    
+  } else {
+    // signal handler was already entered by another thread...
+    // there is not so much we can do here except waiting and then finally let it crash
+    
+    // alternatively, we can get if the current thread has received the signal, invoked the 
+    // signal handler and while being in there, caught yet another signal.
+    std::this_thread::sleep_for(std::chrono::seconds(5));
   }
-
+    
+  // restore default signal action, so that we can write a core dump and crash "properly"
+  struct sigaction act;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
+  act.sa_handler = SIG_DFL;
+  sigaction(signal, &act, nullptr);
 
 #ifdef _WIN32
   exit(255 + signal);
@@ -281,6 +333,7 @@ void crashHandler(int signal, siginfo_t* info, void*) {
   ::kill(::getpid(), signal);
 #endif
 }
+
 } // namespace
 #endif
 
@@ -288,6 +341,14 @@ namespace arangodb {
 
 void CrashHandler::installCrashHandler() {
 #ifndef _WIN32
+  // create a temporary file. This will automatically be deleted at shutdown
+  long int unusedError;
+  std::string unusedMessage;
+  int res = TRI_GetTempName(nullptr, ::crashFilename, false, unusedError, unusedMessage);
+  if (res != TRI_ERROR_NO_ERROR) {
+    ::crashFilename.clear();
+  }
+
   // install signal handlers for the following signals
   struct sigaction act;
   sigemptyset(&act.sa_mask);

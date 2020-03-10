@@ -31,7 +31,8 @@
 #include "Basics/debugging.h"
 
 #ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Logger/Logger.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #endif
 
 #include <thread>
@@ -112,7 +113,8 @@ class WriteLocker {
 #ifdef ARANGODB_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
       LOG_TOPIC("95aa0", INFO, arangodb::Logger::PERFORMANCE)
-          << "WriteLocker " << _file << ":" << _line << " took " << _time << " s";
+          << "WriteLocker for lock [" << _readWriteLock << "] " << _file << ":"
+          << _line << " took " << _time << " s";
     }
 #endif
   }
@@ -130,7 +132,7 @@ class WriteLocker {
 
   [[nodiscard]] bool tryLock() {
     TRI_ASSERT(!_isLocked);
-    if (_readWriteLock->tryWriteLock()) {
+    if (_readWriteLock->tryLockWrite()) {
       _isLocked = true;
     }
     return _isLocked;
@@ -139,7 +141,7 @@ class WriteLocker {
   /// @brief acquire the write lock, blocking
   void lock() {
     TRI_ASSERT(!_isLocked);
-    _readWriteLock->writeLock();
+    _readWriteLock->lockWrite();
     _isLocked = true;
   }
 

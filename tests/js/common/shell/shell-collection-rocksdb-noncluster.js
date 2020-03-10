@@ -408,103 +408,105 @@ function CollectionSuite () {
       var cn = "UnitLoadBehavior123";
       db._drop(cn);
       var c = db._createEdgeCollection(cn);
-      c.load();
-      for(let i=0;i<10000;i++) {
-        c.insert({_from:"c/v"+(i/100), _to:"c/v"+i});
-        c.insert({_to:"c/v"+(i/100), _from:"c/v"+i});
+      try {
+        c.load();
+        for(let i=0;i<10000;i++) {
+          c.insert({_from:"c/v"+(i/100), _to:"c/v"+i});
+          c.insert({_to:"c/v"+(i/100), _from:"c/v"+i});
+        }
+
+        // check if edge cache is present
+        var idxs = c.getIndexes(true);
+        assertEqual("edge", idxs[1].type, idxs);
+
+        var inital = [];
+        idxs.forEach(function(idx) {
+          if (idx.figures.cacheInUse) {
+            inital.push(idx.figures);
+          } else {
+            inital.push(-1);
+          }
+        });
+
+        c.loadIndexesIntoMemory();
+
+        // checking if edge cach grew
+        idxs = c.getIndexes(true);
+        idxs.forEach(function(idx, i) {
+          if (idx.figures.cacheInUse) {
+            assertTrue(idx.figures.cacheSize > inital[i].cacheSize, idx);
+            assertEqual(idx.figures.cacheLifeTimeHitRate, 0, idx);
+            inital[i] = idx.figures;
+          }
+        });
+
+        for(let i=0;i<10000;i++) {
+          c.outEdges("c/v"+(i/100));
+          c.inEdges("c/v"+(i/100));
+        }
+        idxs = c.getIndexes(true);
+        // cache was filled same queries, hit rate must be about
+        idxs.forEach(function(idx, i) {
+          if (idx.figures.cacheInUse) {
+            let diff = Math.abs(inital[i].cacheSize - idx.figures.cacheSize);
+            assertTrue(diff <= Math.pow(2, 21), idx);
+            assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
+            inital[i] = idx.figures;
+          }
+        });
+        for(let i = 0; i < 10000; i++) {
+          c.outEdges("c/v" + (i / 100));
+          c.inEdges("c/v" + (i / 100));
+        }
+        idxs = c.getIndexes(true);
+        // cache was filled with same queries, hit rate must be higher
+        idxs.forEach(function(idx, i) {
+          if (idx.figures.cacheInUse) {
+            assertTrue(Math.abs(inital[i].cacheSize - idx.figures.cacheSize) < 1024);
+            assertTrue(idx.figures.cacheLifeTimeHitRate > 30, idx);
+          }
+        });
+
+        // cache usage should be 0 after unload
+        c.unload(); // destorys cache
+        idxs = c.getIndexes(true); // loads collection
+        idxs.forEach(function(idx, i) {
+          if (idx.figures.cacheInUse) {
+            assertTrue(idx.figures.cacheSize > 0);
+            assertEqual(idx.figures.cacheUsage, 0);
+          }
+        });
+
+        // lets do some reads
+        for(let i = 0; i < 10000; i++) {
+          c.outEdges("c/v" + (i / 100));
+          c.inEdges("c/v" + (i / 100));
+        }
+        idxs = c.getIndexes(true);
+        // cache was empty, hit rate should be 0
+        idxs.forEach(function(idx) {
+          if (idx.figures.cacheInUse) {
+            assertTrue(idx.figures.cacheSize > 0, idx);
+            assertTrue(idx.figures.cacheUsage > 0, idx);
+            assertEqual(idx.figures.cacheLifeTimeHitRate, 0, idx);
+          }
+        });
+
+        for(let i = 0; i < 10000; i++) {
+          c.outEdges("c/v" + (i / 100));
+          c.inEdges("c/v" + (i / 100));
+        }
+        idxs = c.getIndexes(true);
+        // cache was partially filled same queries, lifetime hit rate
+        // should be about 50 %
+        idxs.forEach(function(idx) {
+          if (idx.figures.cacheInUse) {
+            assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
+          }
+        });
+      } finally {
+        db._drop(cn);
       }
-
-      // check if edge cache is present
-      var idxs = c.getIndexes(true);
-      assertEqual("edge", idxs[1].type, idxs);
-
-      var inital = [];
-      idxs.forEach(function(idx) {
-        if (idx.figures.cacheInUse) {
-          inital.push(idx.figures);
-        } else {
-          inital.push(-1);
-        }
-      });
-
-      c.loadIndexesIntoMemory();
-
-      // checking if edge cach grew
-      idxs = c.getIndexes(true);
-      idxs.forEach(function(idx, i) {
-        if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheSize > inital[i].cacheSize, idx);
-          assertEqual(idx.figures.cacheLifeTimeHitRate, 0, idx);
-          inital[i] = idx.figures;
-        }
-      });
-
-      for(let i=0;i<10000;i++) {
-        c.outEdges("c/v"+(i/100));
-        c.inEdges("c/v"+(i/100));
-      }
-      idxs = c.getIndexes(true);
-      // cache was filled same queries, hit rate must be about 
-      idxs.forEach(function(idx, i) {
-        if (idx.figures.cacheInUse) {
-          let diff = Math.abs(inital[i].cacheSize - idx.figures.cacheSize);
-          assertTrue(diff <= Math.pow(2, 21), idx);
-          assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
-          inital[i] = idx.figures;
-        }
-      });
-      for(let i = 0; i < 10000; i++) {
-        c.outEdges("c/v" + (i / 100));
-        c.inEdges("c/v" + (i / 100));
-      }
-      idxs = c.getIndexes(true);
-      // cache was filled with same queries, hit rate must be higher
-      idxs.forEach(function(idx, i) {
-        if (idx.figures.cacheInUse) {
-          assertTrue(Math.abs(inital[i].cacheSize - idx.figures.cacheSize) < 1024);
-          assertTrue(idx.figures.cacheLifeTimeHitRate > 30, idx);
-        }
-      });
-
-      // cache usage should be 0 after unload
-      c.unload(); // destorys cache
-      idxs = c.getIndexes(true); // loads collection
-      idxs.forEach(function(idx, i) {
-        if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheSize > 0);
-          assertEqual(idx.figures.cacheUsage, 0);
-        }
-      });
-
-      // lets do some reads
-      for(let i = 0; i < 10000; i++) {
-        c.outEdges("c/v" + (i / 100));
-        c.inEdges("c/v" + (i / 100));        
-      }
-      idxs = c.getIndexes(true);
-      // cache was empty, hit rate should be 0
-      idxs.forEach(function(idx) {
-        if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheSize > 0, idx);
-          assertTrue(idx.figures.cacheUsage > 0, idx);
-          assertEqual(idx.figures.cacheLifeTimeHitRate, 0, idx);
-        }
-      });
-
-      for(let i = 0; i < 10000; i++) {
-        c.outEdges("c/v" + (i / 100));
-        c.inEdges("c/v" + (i / 100));        
-      }
-      idxs = c.getIndexes(true);
-      // cache was partially filled same queries, lifetime hit rate 
-      // should be about 50 %
-      idxs.forEach(function(idx) {
-        if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
-        }
-      });
-
-      db._drop(cn);
     }
   };
 }

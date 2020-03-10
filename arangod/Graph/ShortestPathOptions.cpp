@@ -28,6 +28,7 @@
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/SingleServerEdgeCursor.h"
 #include "Indexes/Index.h"
 #include "Transaction/Helpers.h"
 
@@ -174,30 +175,16 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) const {
       edge, weightAttribute.c_str(), defaultWeight);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursor(arangodb::velocypack::StringRef vid) {
+std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
+  ensureCache();
+
   if (_isCoordinator) {
-    return nextCursorCoordinator(vid);
+    return std::make_unique<ClusterShortestPathEdgeCursor>(this, backward);
   }
-  return nextCursorLocal(vid, _baseLookupInfos);
+  
+  return std::make_unique<SingleServerEdgeCursor>(this, _tmpVar, nullptr, backward ? _reverseLookupInfos : _baseLookupInfos);
 }
-
-EdgeCursor* ShortestPathOptions::nextReverseCursor(arangodb::velocypack::StringRef vid) {
-  if (_isCoordinator) {
-    return nextReverseCursorCoordinator(vid);
-  }
-  return nextCursorLocal(vid, _reverseLookupInfos);
-}
-
-EdgeCursor* ShortestPathOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid) {
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, false, this);
-  return cursor.release();
-}
-
-EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(arangodb::velocypack::StringRef vid) {
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, true, this);
-  return cursor.release();
-}
-
+  
 void ShortestPathOptions::fetchVerticesCoordinator(
     std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
   // TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());

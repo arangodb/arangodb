@@ -184,8 +184,8 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
   if (_engineType == ClusterEngineType::MMFilesEngine) {
     // nothing to update here
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    merge.add("cacheEnabled",
-              VPackValue(Helper::getBooleanValue(slice, "cacheEnabled", false)));
+    merge.add(StaticStrings::CacheEnabled,
+              VPackValue(Helper::getBooleanValue(slice, StaticStrings::CacheEnabled, false)));
 
   } else {
     TRI_ASSERT(false);

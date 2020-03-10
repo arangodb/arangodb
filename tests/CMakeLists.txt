@@ -122,7 +122,9 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/RebootTrackerTest.cpp
   Containers/associative-multi-pointer-test.cpp
   Containers/associative-multi-pointer-nohashcache-test.cpp
+  Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
+  Containers/MerkleTreeTest.cpp
   Containers/skiplist-test.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
@@ -170,6 +172,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryJoin-test.cpp
   IResearch/IResearchQueryLateMaterialization-test.cpp
   IResearch/IResearchQueryMinMatch-test.cpp
+  IResearch/IResearchQueryNGramMatch-test.cpp
   IResearch/IResearchQueryNoMaterialization-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
@@ -231,8 +234,7 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/vocbase-test.cpp
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
-  VocBase/VersionTest.cpp
-)
+  VocBase/VersionTest.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
