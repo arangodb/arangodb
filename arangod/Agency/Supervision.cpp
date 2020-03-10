@@ -182,7 +182,15 @@ Supervision::Supervision(application_features::ApplicationServer& server)
           server.getFeature<arangodb::MetricsFeature>().histogram(
               StaticStrings::SupervisionRuntimeWaitForSyncMs,
               log_scale_t<uint64_t>(2, 10., 2.0e3, 10),
-              "Agency Supervision wait for replication time [ms]")) {}
+              "Agency Supervision wait for replication time [ms]")),
+      _supervision_accum_runtime_msec(
+          server.getFeature<arangodb::MetricsFeature>().counter(
+              StaticStrings::SupervisionAccumRuntimeMs, 0,
+              "Accumulated Supervision Runtime [ms]")),
+      _supervision_accum_runtime_wait_for_sync_msec(
+          server.getFeature<arangodb::MetricsFeature>().counter(
+              StaticStrings::SupervisionAccumRuntimeWaitForSyncMs, 0,
+              "Accumulated Supervision  wait for replication time  [ms]")) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
@@ -911,9 +919,11 @@ void Supervision::run() {
           }
 
           auto wait_for_repl_end = std::chrono::steady_clock::now();
-          _supervision_runtime_wait_for_sync_msec.count(
-              std::chrono::duration_cast<std::chrono::milliseconds>(wait_for_repl_end - wait_for_repl_start)
-                  .count());
+          auto repl_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             wait_for_repl_end - wait_for_repl_start)
+                             .count();
+          _supervision_runtime_wait_for_sync_msec.count(repl_ms);
+          _supervision_accum_runtime_wait_for_sync_msec.count(repl_ms);
         }
       }
 
@@ -921,6 +931,7 @@ void Supervision::run() {
                          std::chrono::steady_clock::now() - lapStart)
                          .count();
 
+      _supervision_runtime_msec.count(lapTime / 1000);
       _supervision_runtime_msec.count(lapTime / 1000);
 
       if (lapTime < 1000000) {

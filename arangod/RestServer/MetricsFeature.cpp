@@ -145,8 +145,7 @@ Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key)
   std::string error;
   {
     std::lock_guard<std::mutex> guard(_lock);
-
-    registry_type::const_iterator it = _registry.find(metrics_key(mk.name));
+    registry_type::const_iterator it = _registry.find(mk);
     if (it == _registry.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, std::string("No counter booked as ") + mk.name);

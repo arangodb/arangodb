@@ -255,6 +255,8 @@ class Supervision : public arangodb::CriticalThread {
 
   Histogram<log_scale_t<uint64_t>>& _supervision_runtime_msec;
   Histogram<log_scale_t<uint64_t>>& _supervision_runtime_wait_for_sync_msec;
+  Counter& _supervision_accum_runtime_msec;
+  Counter& _supervision_accum_runtime_wait_for_sync_msec;
 };
 
 /**

@@ -139,7 +139,12 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   Counter& counter(std::string const& name);
   Counter& counter(std::initializer_list<std::string> const& key);
 
-  template <typename T>
+  template<typename T>
+  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
+    return gauge({name}, t, help);
+  }
+
+  template<typename T>
   Gauge<T>& gauge(std::initializer_list<std::string> const& key, T const& t,
                   std::string const& help) {
     metrics_key mk(key);
@@ -164,11 +169,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  template <typename T>
-  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-    return gauge({name}, t, help);
-  }
-
   template <typename Scale>
   Gauge<Scale>& gauge(std::string const& name) {
     return gauge<Scale>({name});
@@ -181,7 +181,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     std::string error;
     {
       std::lock_guard<std::mutex> guard(_lock);
-      registry_type::const_iterator it = _registry.find(metrics_key(mk.name));
+      registry_type::const_iterator it = _registry.find(mk);
       if (it == _registry.end()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        std::string("No gauge booked as ") + mk.name);

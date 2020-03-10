@@ -326,6 +326,8 @@ class StaticStrings {
 
   static std::string const SupervisionRuntimeMs;
   static std::string const SupervisionRuntimeWaitForSyncMs;
+  static std::string const SupervisionAccumRuntimeMs;
+  static std::string const SupervisionAccumRuntimeWaitForSyncMs;
 
 };
 }  // namespace arangodb

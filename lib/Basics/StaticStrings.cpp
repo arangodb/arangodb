@@ -351,3 +351,9 @@ std::string const StaticStrings::DroppedFollowerCount("arangodb_dropped_follower
 
 std::string const StaticStrings::SupervisionRuntimeMs("arangodb_agency_supervision_runtime_msec");
 std::string const StaticStrings::SupervisionRuntimeWaitForSyncMs("arangodb_agency_supervision_runtime_wait_for_replication_msec");
+
+std::string const StaticStrings::SupervisionAccumRuntimeMs("arangodb_agency_supervision_accum_runtime_msec");
+std::string const StaticStrings::SupervisionAccumRuntimeWaitForSyncMs("arangodb_agency_supervision_accum_runtime_wait_for_replication_msec");
+
+
+
