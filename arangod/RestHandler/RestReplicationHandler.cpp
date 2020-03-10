@@ -3084,10 +3084,10 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         badFormat = true;
         break;
       }
-      std::uint64_t left = basics::HybridLogicalClock::decodeTimeStamp(first);
-      std::uint64_t right = basics::HybridLogicalClock::decodeTimeStamp(second);
-      if (left == std::numeric_limits<std::size_t>::max() ||
-          right == std::numeric_limits<std::size_t>::max() || left >= right ||
+      TRI_voc_rid_t left = basics::HybridLogicalClock::decodeTimeStamp(first);
+      TRI_voc_rid_t right = basics::HybridLogicalClock::decodeTimeStamp(second);
+      if (left == std::numeric_limits<TRI_voc_rid_t>::max() ||
+          right == std::numeric_limits<TRI_voc_rid_t>::max() || left >= right ||
           left < previousRight) {
         badFormat = true;
         break;
@@ -3116,8 +3116,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     VPackObjectBuilder obj(&response);
     TRI_voc_rid_t resumeNext = ctx.resume;
     VPackSlice range;
-    std::size_t left;
-    std::size_t right;
+    TRI_voc_rid_t left;
+    TRI_voc_rid_t right;
     auto setRange = [&body, &range, &left, &right](std::size_t index) -> void {
       range = body.at(index);
       left = basics::HybridLogicalClock::decodeTimeStamp(range.at(0));

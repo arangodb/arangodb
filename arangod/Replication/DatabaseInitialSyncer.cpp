@@ -1407,7 +1407,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                       "&batchId=" + std::to_string(_config.batch.id);
     auto headers = replutils::createHeaders();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
-    std::size_t requestResume = ranges[0].first;  // start with beginning
+    TRI_voc_rid_t requestResume = ranges[0].first;  // start with beginning
     TRI_ASSERT(requestResume);
     TRI_voc_rid_t iterResume = static_cast<TRI_voc_rid_t>(requestResume);
     std::size_t chunk = 0;
@@ -1423,7 +1423,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     RevisionReplicationIterator& local =
         *static_cast<RevisionReplicationIterator*>(iter.get());
 
-    while (requestResume < std::numeric_limits<std::size_t>::max()) {
+    while (requestResume < std::numeric_limits<TRI_voc_rid_t>::max()) {
       if (isAborted()) {
         return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
       }
@@ -1475,7 +1475,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                           ": response field 'resume' is not a number");
       }
       requestResume = resumeSlice.isNone()
-                          ? std::numeric_limits<std::size_t>::max()
+                          ? std::numeric_limits<TRI_voc_rid_t>::max()
                           : basics::HybridLogicalClock::decodeTimeStamp(resumeSlice);
 
       VPackSlice const rangesSlice = slice.get("ranges");
@@ -1501,13 +1501,10 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                               static_cast<TRI_voc_rid_t>(currentRange.first)));
         }
 
-        std::size_t removalBound =
+        TRI_voc_rid_t removalBound =
             masterSlice.isEmptyArray()
                 ? currentRange.second + 1
                 : basics::HybridLogicalClock::decodeTimeStamp(masterSlice.at(0));
-        if (currentRange.first > removalBound) {
-          LOG_DEVEL << currentRange.first << " > " << removalBound;
-        }
         TRI_ASSERT(currentRange.first <= removalBound);
         TRI_ASSERT(removalBound <= currentRange.second + 1);
         std::size_t mixedBound = masterSlice.isEmptyArray()
