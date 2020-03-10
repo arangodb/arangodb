@@ -104,8 +104,6 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Pick up leadership tasks
   void lead();
 
-  /// @brief 
-
   /// @brief Prepare leadership
   bool prepareLead();
 
