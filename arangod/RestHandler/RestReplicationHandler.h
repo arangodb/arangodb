@@ -374,7 +374,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName);
+  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName, bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
