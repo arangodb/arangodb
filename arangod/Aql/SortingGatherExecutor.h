@@ -167,8 +167,8 @@ class SortingGatherExecutor {
    * @param inputRange Range of all input dependencies
    * @return std::optional<std::tuple<AqlCall, size_t>>  optional call for the dependnecy requiring input
    */
-  [[nodiscard]] auto requiresMoreInput(MultiAqlItemBlockInputRange const& inputRange)
-      -> AqlCallSet;
+  [[nodiscard]] auto requiresMoreInput(MultiAqlItemBlockInputRange const& inputRange,
+                                       AqlCall const& clientCall) -> AqlCallSet;
 
   /**
    * @brief Get the next row matching the sorting strategy
@@ -182,12 +182,15 @@ class SortingGatherExecutor {
    *        This is known to be empty, but all prepared at this point.
    * @param inputRange The input, no data included yet.
    */
-  [[nodiscard]] auto initialize(MultiAqlItemBlockInputRange const& inputRange)
-      -> AqlCallSet;
+  [[nodiscard]] auto initialize(MultiAqlItemBlockInputRange const& inputRange,
+                                AqlCall const& clientCall) -> AqlCallSet;
 
   [[nodiscard]] auto rowsLeftToWrite() const noexcept -> size_t;
 
   [[nodiscard]] auto limitReached() const noexcept -> bool;
+
+  [[nodiscard]] auto calculateUpstreamCall(AqlCall const& clientCall) const
+      noexcept -> AqlCall;
 
  private:
   // Flag if we are past the initialize phase (fetched one block for every dependency).

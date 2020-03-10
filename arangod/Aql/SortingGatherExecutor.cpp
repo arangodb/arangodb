@@ -216,8 +216,8 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
 
 SortingGatherExecutor::~SortingGatherExecutor() = default;
 
-auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputRange)
-    -> AqlCallSet {
+auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputRange,
+                                       AqlCall const& clientCall) -> AqlCallSet {
   if (!_initialized) {
     // We cannot modify the number of dependencies, so we start
     // with 0 dependencies, and will increase to whatever inputRange gives us.
@@ -238,8 +238,8 @@ auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputR
       _inputRows[dep] = {dep, row, state};
       if (!row && state != ExecutorState::DONE) {
         // This dependency requires input
-        // TODO: This call requires limits
-        callSet.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCall{}});
+        callSet.calls.emplace_back(
+            AqlCallSet::DepCallPair{dep, calculateUpstreamCall(clientCall)});
         if (!_fetchParallel) {
           break;
         }
@@ -254,8 +254,8 @@ auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputR
   return {};
 }
 
-auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const& inputRange)
-    -> AqlCallSet {
+auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const& inputRange,
+                                              AqlCall const& clientCall) -> AqlCallSet {
   auto callSet = AqlCallSet{};
 
   if (_depToUpdate.has_value()) {
@@ -265,7 +265,8 @@ auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const&
     if (needMoreInput) {
       // Still waiting for input
       // TODO: This call requires limits
-      callSet.calls.emplace_back(AqlCallSet::DepCallPair{dependency, AqlCall{}});
+      callSet.calls.emplace_back(
+          AqlCallSet::DepCallPair{dependency, calculateUpstreamCall(clientCall)});
     } else {
       // We got an answer, save it
       ValueType& localDep = _inputRows[dependency];
@@ -335,14 +336,14 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     -> std::tuple<ExecutorState, Stats, AqlCallSet> {
   {
     // First initialize
-    auto const callSet = initialize(input);
+    auto const callSet = initialize(input, output.getClientCall());
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, callSet};
     }
   }
 
   {
-    auto const callSet = requiresMoreInput(input);
+    auto const callSet = requiresMoreInput(input, output.getClientCall());
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, callSet};
     }
@@ -359,7 +360,7 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       output.copyRow(row);
       output.advanceRow();
     }
-    auto const callSet = requiresMoreInput(input);
+    auto const callSet = requiresMoreInput(input, output.getClientCall());
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, callSet};
     }
@@ -382,14 +383,14 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
   {
     // First initialize
-    auto const callSet = initialize(input);
+    auto const callSet = initialize(input, call);
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, 0, callSet};
     }
   }
 
   {
-    auto const callSet = requiresMoreInput(input);
+    auto const callSet = requiresMoreInput(input, call);
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, 0, callSet};
     }
@@ -405,7 +406,7 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
     if (row) {
       call.didSkip(1);
     }
-    auto const callSet = requiresMoreInput(input);
+    auto const callSet = requiresMoreInput(input, call);
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
     }
@@ -416,9 +417,8 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
   auto callSet = AqlCallSet{};
 
   // skip fullCount
-  if (!input.isDone() && call.needsFullCount() && call.getLimit() == 0) {
+  if (call.needSkipMore()) {
     TRI_ASSERT(call.getOffset() == 0);
-    TRI_ASSERT(call.hasHardLimit());
     TRI_ASSERT(call.hasHardLimit());
     // We are only called with fullcount.
     // sorting does not matter.
@@ -481,4 +481,48 @@ auto SortingGatherExecutor::rowsLeftToWrite() const noexcept -> size_t {
 
 auto SortingGatherExecutor::limitReached() const noexcept -> bool {
   return constrainedSort() && rowsLeftToWrite() == 0;
+}
+
+[[nodiscard]] auto SortingGatherExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
+    noexcept -> AqlCall {
+  auto upstreamCall = AqlCall{};
+  if (constrainedSort()) {
+    if (clientCall.hasSoftLimit()) {
+      // We do not know if we are going to be asked again to do a fullcount
+      // So we can only request a softLimit bounded by our internal limit to upstream
+
+      upstreamCall.softLimit = clientCall.offset + clientCall.softLimit;
+      if (rowsLeftToWrite() < upstreamCall.softLimit) {
+        // Do not overfetch
+        // NOTE: We cannnot use std::min as the numbers have different types ;(
+        upstreamCall.softLimit = rowsLeftToWrite();
+      }
+
+      // We need at least 1 to now violate API. It seems we have nothing to
+      // produce and are called with a softLimit.
+      TRI_ASSERT(upstreamCall.softLimit > 0);
+    } else {
+      if (rowsLeftToWrite() < upstreamCall.hardLimit) {
+        // Do not overfetch
+        // NOTE: We cannnot use std::min as the numbers have different types ;(
+        upstreamCall.hardLimit = rowsLeftToWrite();
+      }
+      // In case the client needs a fullCount we do it as well, for all rows
+      // after the above limits
+      upstreamCall.fullCount = clientCall.fullCount;
+      TRI_ASSERT(upstreamCall.hardLimit > 0 || upstreamCall.needsFullCount());
+    }
+  } else {
+    // Increase the clientCall limit by it's offset and forward.
+    upstreamCall.softLimit = clientCall.softLimit + clientCall.offset;
+    upstreamCall.hardLimit = clientCall.hardLimit + clientCall.offset;
+    // In case the client needs a fullCount we do it as well, for all rows
+    // after the above limits
+    upstreamCall.fullCount = clientCall.fullCount;
+  }
+
+  // We do never send a skip to upstream here.
+  // We need to look at every relevant line ourselves
+  TRI_ASSERT(upstreamCall.offset == 0);
+  return upstreamCall;
 }
