@@ -1543,13 +1543,15 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       });
 
       // TODO We have to ask all dependencies to go forward to the next shadow row
-      auto const state = std::invoke([&]() {
-        if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-          return inputRange.upstreamState(dependency);
-        } else {
-          return inputRange.upstreamState();
-        }
-      });
+      auto const state = std::invoke(
+          [&](auto) {
+            if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+              return inputRange.upstreamState(dependency);
+            } else {
+              return inputRange.upstreamState();
+            }
+          },
+          0);
 
       return {state, typename Executor::Stats{}, 0, call};
     }

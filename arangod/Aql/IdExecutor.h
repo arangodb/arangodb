@@ -88,10 +88,6 @@ class IdExecutorInfos : public ExecutorInfos {
   bool const _isResponsibleForInitializeCursor;
 };
 
-// forward declaration
-template <class Fetcher>
-class IdExecutor;
-
 template <class UsedFetcher>
 // cppcheck-suppress noConstructor
 class IdExecutor {
