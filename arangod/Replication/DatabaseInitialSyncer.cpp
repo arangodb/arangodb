@@ -1550,7 +1550,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         }
 
         while (local.hasMore() &&
-               local.revision() <= std::min(requestResume - 1, currentRange.second)) {
+               local.revision() <= std::min(requestResume - 1, static_cast<TRI_voc_rid_t>(currentRange.second))) {
           toRemove.emplace_back(local.revision());
           iterResume = std::max(iterResume, local.revision() + 1);
           local.next();
