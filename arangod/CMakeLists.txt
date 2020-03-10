@@ -417,6 +417,7 @@ set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
 )
 
 set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
+  StorageEngine/ReplicationIterator.cpp
   StorageEngine/WalAccess.cpp
 )
 

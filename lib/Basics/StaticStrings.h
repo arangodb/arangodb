@@ -70,6 +70,7 @@ class StaticStrings {
   static std::string const Prefix;
   static std::string const OverWrite;
   static std::string const OverWriteMode;
+  static std::string const PreserveRevisionIds;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -209,6 +210,7 @@ class StaticStrings {
   // collection attributes
   static std::string const NumberOfShards;
   static std::string const IsSmart;
+  static std::string const IsSmartChild;
   static std::string const DistributeShardsLike;
   static std::string const CacheEnabled;
   static std::string const IndexBuckets;
@@ -216,13 +218,15 @@ class StaticStrings {
   static std::string const DoCompact;
   static std::string const ReplicationFactor;
   static std::string const MinReplicationFactor;
+  static std::string const MinRevision;
   static std::string const ShardKeys;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
-  static std::string const WriteConcern;
+  static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Validation;
+  static std::string const WriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -255,6 +259,13 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
+  static std::string const RevisionTreeCount;
+  static std::string const RevisionTreeHash;
+  static std::string const RevisionTreeMaxDepth;
+  static std::string const RevisionTreeNodes;
+  static std::string const RevisionTreeRangeMax;
+  static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeVersion;
 
   // generic attribute names
   static std::string const AttrCoordinator;

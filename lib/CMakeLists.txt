@@ -167,6 +167,7 @@ add_library(arango STATIC
   Basics/voc-errors.cpp
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
+  Containers/MerkleTree.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
@@ -231,6 +232,11 @@ target_link_libraries(arango
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
 )
+
+add_dependencies(arango snappy-static)
+
+set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+include_directories(${SNAPPY_INCLUDE_DIR})
 
 # Rebuild generated error files so they are up-to-date when all
 # dependent stuff is built

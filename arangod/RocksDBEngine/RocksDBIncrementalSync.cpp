@@ -439,6 +439,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
     size_t foundLength = slice.length();
 
+    double t = TRI_microtime();
     for (VPackSlice it : VPackArrayIterator(slice)) {
       if (it.isNull()) {
         continue;
@@ -548,6 +549,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         }
       }
     }
+    stats.waitedForInsertions += TRI_microtime() - t;
 
     if (foundLength >= toFetch.size()) {
       break;
@@ -893,6 +895,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       ", " + "waited for initial: " + std::to_string(stats.waitedForInitial) +
       " s, " + "waited for keys: " + std::to_string(stats.waitedForKeys) +
       " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
+      " s, " + "waited for insertions: " + std::to_string(stats.waitedForInsertions) +
       " s, " + "total time: " + std::to_string(TRI_microtime() - startTime) +
       " s");
 

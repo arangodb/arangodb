@@ -181,13 +181,8 @@ TEST_F(StringUtilsTest, test_uint64) {
   EXPECT_EQ(12ULL,  StringUtils::uint64("00012"s));
   EXPECT_EQ(1234ULL,  StringUtils::uint64("1234"s));
   EXPECT_EQ(1234ULL,  StringUtils::uint64("1234a"s));
-#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
   EXPECT_EQ(0ULL,  StringUtils::uint64("-1"s));
   EXPECT_EQ(0ULL,  StringUtils::uint64("-12345"s));
-#else
-  EXPECT_EQ(18446744073709551615ULL,  StringUtils::uint64("-1"s));
-  EXPECT_EQ(18446744073709539271ULL,  StringUtils::uint64("-12345"s));
-#endif
   EXPECT_EQ(1234ULL,  StringUtils::uint64("1234.56"s));
   EXPECT_EQ(0ULL,  StringUtils::uint64("1234567890123456789012345678901234567890"s));
   EXPECT_EQ(0ULL,  StringUtils::uint64("@"s));
