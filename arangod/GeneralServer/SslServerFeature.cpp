@@ -176,6 +176,10 @@ void SslServerFeature::verifySslOptions() {
     FATAL_ERROR_EXIT();
   }
 
+  // Set up first _sniEntry:
+  _sniEntries.clear();
+  _sniEntries.emplace_back("", _keyfile);
+
   try {
     createSslContexts();   // just to test if everything works
   } catch (...) {
