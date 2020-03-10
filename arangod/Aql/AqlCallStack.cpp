@@ -184,15 +184,9 @@ auto AqlCallStack::toString() const -> std::string {
 
 auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallStack {
   AqlCallStack res{*this};
-  if (subqueryLevel() > 1) {
-    // We only replace the subquery levels.
-    // The releveant call may include a softLimit
-    // which needs to be honored here.
-
-    std::replace_if(
-        res._operations.begin(), res._operations.end() - 1,
-        [](auto const&) -> bool { return true; }, AqlCall{});
-  }
+  std::replace_if(
+      res._operations.begin(), res._operations.end(),
+      [](auto const&) -> bool { return true; }, AqlCall{});
   return res;
 }
 

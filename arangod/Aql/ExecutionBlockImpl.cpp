@@ -1244,7 +1244,9 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
       // by skipping them. SO we need to fetch all shadow rows in order to
       // trigger this Executor with everthing from above.
       // NOTE: The Executor needs to discard shadowRows, and do the
+      static_assert(std::is_same_v<AqlCall, std::decay_t<decltype(aqlCall)>>);
       auto fetchAllStack = stack.createEquivalentFetchAllShadowRowsStack();
+      fetchAllStack.pushCall(aqlCall);
       auto res = _rowFetcher.execute(fetchAllStack);
       // Just make sure we did not Skip anything
       TRI_ASSERT(std::get<SkipResult>(res).nothingSkipped());
@@ -1255,8 +1257,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
       // SubqueryStart and the partnered SubqueryEnd by *not*
       // pushing the upstream request.
       if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
-        auto callCopy = _upstreamRequest;
-        stack.pushCall(std::move(callCopy));
+        stack.pushCall(std::move(aqlCall));
       }
 
       auto const result = _rowFetcher.execute(stack);
