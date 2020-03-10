@@ -213,14 +213,6 @@ constexpr bool operator<(AqlCall::Limit const& a, size_t b) {
 
 constexpr bool operator<(size_t a, AqlCall::Limit const& b) { return !(b < a); }
 
-constexpr bool operator>(AqlCall::Limit const& a, AqlCall::Limit const& b) {
-  return b < a;
-}
-
-constexpr bool operator>(size_t a, AqlCall::Limit const& b) { return b < a; }
-
-constexpr bool operator>(AqlCall::Limit const& a, size_t b) { return b < a; }
-
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
   return std::visit(overload{[n](size_t const& i) -> AqlCall::Limit {
                                return i + n;

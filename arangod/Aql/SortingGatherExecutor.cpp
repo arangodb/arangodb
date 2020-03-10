@@ -499,7 +499,7 @@ auto SortingGatherExecutor::limitReached() const noexcept -> bool {
 
       // We need at least 1 to now violate API. It seems we have nothing to
       // produce and are called with a softLimit.
-      TRI_ASSERT(upstreamCall.softLimit > 0);
+      TRI_ASSERT(0 < upstreamCall.softLimit);
     } else {
       if (rowsLeftToWrite() < upstreamCall.hardLimit) {
         // Do not overfetch
@@ -509,7 +509,7 @@ auto SortingGatherExecutor::limitReached() const noexcept -> bool {
       // In case the client needs a fullCount we do it as well, for all rows
       // after the above limits
       upstreamCall.fullCount = clientCall.fullCount;
-      TRI_ASSERT(upstreamCall.hardLimit > 0 || upstreamCall.needsFullCount());
+      TRI_ASSERT(0 < upstreamCall.hardLimit || upstreamCall.needsFullCount());
     }
   } else {
     // Increase the clientCall limit by it's offset and forward.
