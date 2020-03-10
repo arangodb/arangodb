@@ -143,11 +143,9 @@ bool IResearchViewStoredValues::fromVelocyPack(
         std::sort(fieldNames.begin(), fieldNames.end());
         std::string columnName;
         TRI_ASSERT(columnLength > 1);
-        columnName.reserve(columnLength - 1);
+        columnName.reserve(columnLength);
         for (auto const& fieldName : fieldNames) {
-          if (!columnName.empty()) {
-            columnName += FIELDS_DELIMITER;
-          }
+          columnName += FIELDS_DELIMITER; // a prefix for EXISTS()
           columnName += fieldName;
         }
         if (!uniqueColumns.emplace(columnName).second) {
@@ -173,9 +171,13 @@ bool IResearchViewStoredValues::fromVelocyPack(
         if (!uniqueColumns.emplace(fieldName).second) {
           continue;
         }
+        std::string columnName;
+        columnName.reserve(fieldName.size() + 1);
+        columnName += FIELDS_DELIMITER; // a prefix for EXISTS()
+        columnName += fieldName;
         StoredColumn sc;
         sc.fields.emplace_back(fieldName, std::move(field));
-        sc.name = std::move(fieldName);
+        sc.name = std::move(columnName);
         _storedColumns.emplace_back(std::move(sc));
       } else {
         clear();

@@ -47,6 +47,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
@@ -971,16 +972,7 @@ void ClusterInfo::loadPlan() {
           }
 
           // Sort by the number in the shard ID ("s0000001" for example):
-          std::sort(            // sort
-              shards->begin(),  // begin
-              shards->end(),    // end
-              [](std::string const& a, std::string const& b) -> bool {
-                TRI_ASSERT(a.size() >= 2);
-                TRI_ASSERT(b.size() >= 2);
-                return NumberUtils::atoi_zero<uint64_t>(a.c_str() + 1, a.c_str() + a.size()) <
-                       NumberUtils::atoi_zero<uint64_t>(b.c_str() + 1, b.c_str() + b.size());
-              }  // comparator
-          );
+          ShardingInfo::sortShardNamesNumerically(*shards);
           newShards.try_emplace(collectionId, std::move(shards));
         } catch (std::exception const& ex) {
           // The plan contains invalid collection information.
@@ -1574,7 +1566,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, "Current/Databases/" + database.getName(),
+      std::make_shared<AgencyCallback>(_server, "Current/Databases/" + database.getName(),
                                        dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
@@ -1792,7 +1784,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
+      std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
     _agencyCallbackRegistry->unregisterCallback(agencyCallback);
@@ -1973,6 +1965,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   std::vector<AgencyOperation> opers({IncreaseVersion()});
   std::vector<AgencyPrecondition> precs;
   std::unordered_set<std::string> conditions;
+  std::unordered_set<ServerID> allServers;
 
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive Mutex)
   for (auto& info : infos) {
@@ -1989,7 +1982,9 @@ Result ClusterInfo::createCollectionsCoordinator(
       std::vector<ServerID> serverIds;
 
       for (auto const& serv : VPackArrayIterator(pair.value)) {
-        serverIds.emplace_back(serv.copyString());
+        auto const sid = serv.copyString();
+        serverIds.emplace_back(sid);
+        allServers.emplace(sid);
       }
       shardServers.try_emplace(shardID, serverIds);
     }
@@ -2113,7 +2108,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     // AgencyCallback for this.
 
     auto agencyCallback =
-        std::make_shared<AgencyCallback>(ac,
+        std::make_shared<AgencyCallback>(_server,
                                          "Current/Collections/" + databaseName +
                                              "/" + info.collectionID,
                                          closure, true, false);
@@ -2227,9 +2222,27 @@ Result ClusterInfo::createCollectionsCoordinator(
     VPackBuilder versionBuilder;
     versionBuilder.add(VPackValue(planVersion));
 
-    // add a precondition that checks the plan version has not yet changed
-    precs.emplace_back(AgencyPrecondition("Plan/Version", AgencyPrecondition::Type::VALUE,
-                                          versionBuilder.slice()));
+    VPackBuilder serversBuilder;
+    {
+      VPackArrayBuilder a(&serversBuilder);
+      for (auto const & i : allServers) {
+        serversBuilder.add(VPackValue(i));
+      }
+    }
+
+    // Preconditions:
+    // * plan version unchanged
+    precs.emplace_back(
+      AgencyPrecondition(
+        "Plan/Version", AgencyPrecondition::Type::VALUE, versionBuilder.slice()));
+    // * not in to be cleaned server list
+    precs.emplace_back(
+      AgencyPrecondition(
+        "Target/ToBeCleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY, serversBuilder.slice()));
+    // * not in cleaned server list
+    precs.emplace_back(
+      AgencyPrecondition(
+        "Target/CleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY, serversBuilder.slice()));
 
     AgencyWriteTransaction transaction(opers, precs);
 
@@ -2469,7 +2482,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
+      std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
     _agencyCallbackRegistry->unregisterCallback(agencyCallback);
@@ -3135,7 +3148,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
+      std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
 
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
@@ -3492,7 +3505,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
+      std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
@@ -4743,8 +4756,12 @@ VPackSlice PlanCollectionReader::indexes() {
 }
 
 CollectionWatcher::~CollectionWatcher() {
-  _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
-};
+  try {
+    _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("42af2", WARN, Logger::CLUSTER) << "caught unexpected exception in CollectionWatcher: " << ex.what();
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

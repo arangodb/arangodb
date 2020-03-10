@@ -41,7 +41,6 @@ class GeneralCommTask : public CommTask {
 
   virtual ~GeneralCommTask() = default;
 
-  void start() override;
   void stop() override;
   
   void close(asio_ns::error_code const& err = asio_ns::error_code());
@@ -70,6 +69,8 @@ class GeneralCommTask : public CommTask {
   static constexpr std::chrono::seconds DefaultTimeout{120};
   
   std::unique_ptr<AsioSocket<T>> _protocol;
+  
+  std::atomic<bool> _stopped;
 };
 }  // namespace rest
 }  // namespace arangodb

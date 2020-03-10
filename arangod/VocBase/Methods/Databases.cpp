@@ -282,8 +282,6 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 arangodb::Result Databases::create(application_features::ApplicationServer& server,
                                    std::string const& dbName, VPackSlice const& users,
                                    VPackSlice const& options) {
-  arangodb::Result res;
-
   // Only admin users are permitted to create databases
   ExecContext const& exec = ExecContext::current();
 
@@ -293,7 +291,7 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   }
 
   CreateDatabaseInfo createInfo(server);
-  res = createInfo.load(dbName, options, users);
+  arangodb::Result res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
     LOG_TOPIC("15580", ERR, Logger::FIXME)

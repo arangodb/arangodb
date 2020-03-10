@@ -1,32 +1,32 @@
 @startDocuBlock get_api_analyzer
-@brief returns an analyzer definition
+@brief returns an Analyzer definition
 
-@RESTHEADER{GET /_api/analyzer/{analyzer-name}, Return the analyzer definition, RestAnalyzerHandler:GetDefinition}
+@RESTHEADER{GET /_api/analyzer/{analyzer-name}, Return the Analyzer definition, RestAnalyzerHandler:GetDefinition}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{analyzer-name,string,required}
-The name of the analyzer to retrieve.
+The name of the Analyzer to retrieve.
 
 @RESTDESCRIPTION
-Retrieves the full definition for the specified analyzer name.
+Retrieves the full definition for the specified Analyzer name.
 The resulting object contains the following attributes:
-- *name*: the analyzer name
-- *type*: the analyzer type
+- *name*: the Analyzer name
+- *type*: the Analyzer type
 - *properties*: the properties used to configure the specified type
-- *features*: the set of features to set on the analyzer generated fields
+- *features*: the set of features to set on the Analyzer generated fields
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-The analyzer definition was retrieved successfully.
+The Analyzer definition was retrieved successfully.
 
 @RESTRETURNCODE{404}
-Such an analyzer configuration does not exist.
+Such an Analyzer configuration does not exist.
 
 @EXAMPLES
 
-Retrieve an analyzer definition:
+Retrieve an Analyzer definition:
 
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerGet}
   var analyzers = require("@arangodb/analyzers");

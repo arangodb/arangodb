@@ -129,19 +129,13 @@ to all "follower" replicas, before the write operation is reported successful.
 If a server fails, this is detected automatically and one of the servers holding
 copies take over, usually without an error being reported.
 
-@RESTBODYPARAM{minReplicationFactor,integer,optional,int64}
-(optional, default is 1): in a cluster, this attribute determines how many
-desired copies of each shard are kept on different DBServers. The value 1 means
-that only one copy (no synchronous replication) is kept. A value of k means
-that desired k-1 replicas are kept.  If in a failover scenario a shard of a
-collection has less than minReplicationFactor many insync followers it will go
-into "read-only" mode and will reject writes until enough followers are insync
-again.
-
-**In more detail**: Having `minReplicationFactor == 1` means as soon as a
-"master-copy" is available of the data writes are allowed.  Having
-`minReplicationFactor > 1` requires additional insync copies on follower
-servers to allow writes.
+@RESTBODYPARAM{writeConcern,integer,optional,int64}
+Write concern for this collection (default: 1).
+It determines how many copies of each shard are required to be
+in sync on the different DBServers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTBODYPARAM{distributeShardsLike,string,optional,string}
 (The default is *""*): in an Enterprise Edition cluster, this attribute binds

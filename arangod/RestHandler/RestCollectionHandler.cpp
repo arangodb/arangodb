@@ -266,10 +266,10 @@ RestStatus RestCollectionHandler::handleCommandGet() {
             continue;
           }
 
-          VPackArrayBuilder arr(&_builder, shard);
+          VPackArrayBuilder arr2(&_builder, shard);
 
           for (auto const& server : servers) {
-            arr->add(VPackValue(server));
+            arr2->add(VPackValue(server));
           }
         }
       } else {

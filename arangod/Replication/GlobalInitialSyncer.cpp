@@ -154,7 +154,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
 
   if (!_state.applier._skipCreateDrop) {
     LOG_TOPIC("af241", DEBUG, Logger::REPLICATION) << "updating server inventory";
-    Result r = updateServerInventory(databases);
+    r = updateServerInventory(databases);
     if (r.fail()) {
       LOG_TOPIC("5fc1c", DEBUG, Logger::REPLICATION)
           << "updating server inventory failed";
@@ -204,7 +204,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
                                _state.barrier.updateTime, _batch.id, _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
-      Result r = syncer->runWithInventory(incremental, dbInventory);
+      r = syncer->runWithInventory(incremental, dbInventory);
       if (r.fail()) {
         return r;
       }

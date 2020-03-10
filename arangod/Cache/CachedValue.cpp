@@ -52,18 +52,11 @@ CachedValue* CachedValue::construct(void const* k, size_t kSize, void const* v, 
   }
 
   uint8_t* buf = new uint8_t[_headerAllocSize + kSize + vSize];
-  CachedValue* cv = nullptr;
-  try {
-    uint8_t* aligned = reinterpret_cast<uint8_t*>(
-        (reinterpret_cast<size_t>(buf) + _headerAllocOffset) & _headerAllocMask);
-    size_t offset = buf - aligned;
-    cv = new (aligned) CachedValue(offset, k, kSize, v, vSize);
-  } catch (...) {
-    delete[] buf;
-    return nullptr;
-  }
-
-  return cv;
+  uint8_t* aligned = reinterpret_cast<uint8_t*>(
+      (reinterpret_cast<size_t>(buf) + _headerAllocOffset) & _headerAllocMask);
+  size_t offset = buf - aligned;
+  // ctor of CachedValue is noexcept
+  return new (aligned) CachedValue(offset, k, kSize, v, vSize);
 }
 
 void CachedValue::operator delete(void* ptr) {

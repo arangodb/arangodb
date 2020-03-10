@@ -24,6 +24,7 @@
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
@@ -114,10 +115,14 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto limitNode : nodes) {
     auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
-    if (ExecutionNode::INDEX == loop->getType()) {
+    if (loop != nullptr && ExecutionNode::INDEX == loop->getType()) {
       auto indexNode = ExecutionNode::castTo<IndexNode*>(loop);
       if (!indexNode->canApplyLateDocumentMaterializationRule() || indexNode->isLateMaterialized()) {
         continue; // loop is already optimized
+      }
+      if (indexNode->hasFilter()) {
+        // IndexNode has an early pruning filter. In this case we cannot perform the optimization
+        continue;
       }
       auto current = limitNode->getFirstDependency();
       ExecutionNode* sortNode = nullptr;

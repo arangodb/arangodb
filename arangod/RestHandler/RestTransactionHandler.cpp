@@ -218,7 +218,7 @@ void RestTransactionHandler::executeAbort() {
   TRI_ASSERT(mgr != nullptr);
 
   if (_request->suffixes()[0] == "write") {
-    // abort all transactions
+    // abort all write transactions
     bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
     ExecContext const& exec = ExecContext::current();
     Result res = mgr->abortAllManagedWriteTrx(exec.user(), fanout);

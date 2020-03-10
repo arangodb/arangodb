@@ -188,7 +188,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
     ApplyStats applyStats;
     uint64_t ignoreCount = 0;
-    Result r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
+    r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
     if (r.fail()) {
       until = fromTick;
       return r;

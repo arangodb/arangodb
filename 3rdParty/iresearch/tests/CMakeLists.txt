@@ -56,6 +56,7 @@ set(IReSearch_tests_sources
   ./index/index_meta_tests.cpp
   ./index/index_profile_tests.cpp
   ./index/index_tests.cpp
+  ./index/index_levenshtein_tests.cpp
   ./index/index_column_tests.cpp
   ./index/sorted_index_tests.cpp
   ./index/index_death_tests.cpp
@@ -68,6 +69,7 @@ set(IReSearch_tests_sources
   ./search/empty_filter_tests.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/wildcard_filter_test.cpp
+  ./search/levenshtein_filter_test.cpp
   ./search/index_reader_test.cpp
   ./search/scorers_tests.cpp
   ./search/bitset_doc_iterator_test.cpp
@@ -104,6 +106,7 @@ set(IReSearch_tests_sources
   ./utils/block_pool_test.cpp
   ./utils/encryption_test.cpp
   ./utils/locale_utils_tests.cpp
+  ./utils/levenshtein_utils_test.cpp
   ./utils/ref_counter_tests.cpp
   ./utils/memory_tests.cpp
   ./utils/string_tests.cpp
@@ -112,6 +115,7 @@ set(IReSearch_tests_sources
   ./utils/math_utils_test.cpp
   ./utils/std_test.cpp
   ./utils/type_utils_tests.cpp
+  ./utils/utf8_utils_test.cpp
   ./utils/utf8_path_tests.cpp
   ./utils/fst_builder_test.cpp
   ./utils/fst_utils_test.cpp

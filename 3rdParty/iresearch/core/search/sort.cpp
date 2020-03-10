@@ -373,13 +373,6 @@ bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
   return false;
 }
 
-void order::prepared::add(byte_type* lhs, const byte_type* rhs) const {
-  for_each([lhs, rhs] (const prepared_sort& sort) {
-    assert(sort.bucket);
-    sort.bucket->add(lhs + sort.score_offset, rhs + sort.score_offset);
-  });
-}
-
 NS_END
 
 // -----------------------------------------------------------------------------

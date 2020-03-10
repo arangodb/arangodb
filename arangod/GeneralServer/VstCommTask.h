@@ -51,6 +51,8 @@ class VstCommTask final : public GeneralCommTask<T> {
   bool enableReadTimeout() const override {
     return true;
   }
+  
+  void start() override;
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
@@ -109,7 +111,7 @@ class VstCommTask final : public GeneralCommTask<T> {
  private:
   
   std::map<uint64_t, std::unique_ptr<Message>> _messages;
-  boost::lockfree::queue<ResponseItem*, boost::lockfree::capacity<512>> _writeQueue;
+  boost::lockfree::queue<ResponseItem*, boost::lockfree::capacity<64>> _writeQueue;
   std::atomic<bool> _writing; /// is writing
   
   /// Is the current user authenticated (not authorized)

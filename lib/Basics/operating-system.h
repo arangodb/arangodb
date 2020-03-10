@@ -70,143 +70,6 @@
 #endif
 
 // -----------------------------------------------------------------------------
-// --Section--                                                           solaris
-// -----------------------------------------------------------------------------
-
-#ifdef __sun
-
-#define TRI_PLATFORM "solaris"
-
-// necessary defines and includes
-
-#define TRI_UNDEF_ERR 1
-
-#define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
-
-#define TRI_HAVE_PSTACK 1
-
-// enabled features
-
-#define ARANGODB_ENABLE_SYSLOG 1
-#define ARANGODB_ENABLE_SYSLOG_STRINGS 1
-
-// available include files
-
-#define TRI_HAVE_ARPA_INET_H 1
-#define TRI_HAVE_DIRENT_H 1
-#define TRI_HAVE_GETRLIMIT 1
-#define TRI_HAVE_LIMITS_H 1
-#define TRI_HAVE_NETDB_H 1
-#define TRI_HAVE_NETINET_STAR_H 1
-#define TRI_HAVE_POLL_H 1
-#define TRI_HAVE_SCHED_H 1
-#define TRI_HAVE_SIGNAL_H 1
-#define TRI_HAVE_STDBOOL_H 1
-#define TRI_HAVE_SYS_FILE_H 1
-#define TRI_HAVE_SYS_IOCTL_H 1
-#define TRI_HAVE_SYS_RESOURCE_H 1
-#define TRI_HAVE_SYS_SOCKET_H 1
-#define TRI_HAVE_SYS_TIME_H 1
-#define TRI_HAVE_SYS_TYPES_H 1
-#define TRI_HAVE_SYS_WAIT_H 1
-#define TRI_HAVE_TERMIOS_H 1
-#define TRI_HAVE_UNISTD_H 1
-
-// available functions
-
-#define ARANGODB_HAVE_FORK 1
-#define ARANGODB_HAVE_GETGRGID 1
-#define ARANGODB_HAVE_GETGRNAM 1
-#define ARANGODB_HAVE_GETPPID 1
-#define ARANGODB_HAVE_GETPWNAM 1
-#define ARANGODB_HAVE_GETPWUID 1
-#define ARANGODB_HAVE_GETRUSAGE 1
-#undef ARANGODB_HAVE_GETTID
-#define ARANGODB_HAVE_GMTIME_R 1
-#undef ARANGODB_HAVE_GMTIME_S
-#undef ARANGODB_HAVE_INITGROUPS
-#define ARANGODB_HAVE_LOCALTIME_R 1
-#undef ARANGODB_HAVE_LOCALTIME_S
-#define ARANGODB_HAVE_SETGID 1
-#define ARANGODB_HAVE_SETUID 1
-
-#define TRI_srandom ::srand
-#define TRI_random ::rand
-
-// available features
-
-#define TRI_HAVE_POSIX 1
-
-#define ARANGODB_HAVE_DOMAIN_SOCKETS 1
-#define TRI_HAVE_LINUX_PROC 1
-#define TRI_HAVE_POSIX_MMAP 1
-#define TRI_HAVE_POSIX_PWD_GRP 1
-#define TRI_HAVE_POSIX_SPIN 1
-#define TRI_HAVE_POSIX_THREADS 1
-#define TRI_HAVE_SC_PHYS_PAGES 1
-
-#define TRI_HAVE_ANONYMOUS_MMAP 1
-
-#define ARANGODB_MISSING_MEMRCHR 1
-
-// files
-
-#define TRI_DIR_SEPARATOR_CHAR '/'
-#define TRI_DIR_SEPARATOR_STR "/"
-
-#define TRI_O_CLOEXEC O_CLOEXEC
-#define TRI_NOATIME 0
-
-#define TRI_CHDIR ::chdir
-#define TRI_CLOSE ::close
-#define TRI_CREATE(a, b, c) ::open((a), (b), (c))
-#define TRI_FSTAT ::fstat
-#define TRI_GETCWD ::getcwd
-#define TRI_LSEEK ::lseek
-#define TRI_MKDIR(a, b) ::mkdir((a), (b))
-#define TRI_OPEN(a, b) ::open((a), (b))
-#define TRI_FOPEN(a, b) ::fopen((a), (b))
-#define TRI_DUP ::dup
-#define TRI_READ ::read
-#define TRI_RMDIR ::rmdir
-#define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtim.tv_sec
-#define TRI_UNLINK ::unlink
-#define TRI_WRITE ::write
-#define TRI_FDOPEN(a, b) ::fdopen((a), (b))
-
-#define TRI_lseek_t off_t
-#define TRI_read_t size_t
-#define TRI_stat_t struct stat
-#define TRI_write_t size_t
-
-#define TRI_ERRORBUF \
-  {}
-#define TRI_GET_ERRORBUF ::strerror(errno)
-#define TRI_LAST_ERROR_STR ::strerror(errno)
-#define TRI_SYSTEM_ERROR() \
-  {}
-#define TRI_GET_ARGV(ARGC, ARGV)
-
-// sockets
-
-#define TRI_CONNECT_AI_FLAGS (AI_PASSIVE | AI_NUMERICSERV | AI_ALL)
-
-#define TRI_INVALID_SOCKET -1
-
-#define TRI_CLOSE_SOCKET TRI_closesocket
-#define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
-
-// user and group types
-
-#define TRI_uid_t uid_t
-#define TRI_gid_t gid_t
-
-#endif
-
-// -----------------------------------------------------------------------------
 // --Section--                                                             apple
 // -----------------------------------------------------------------------------
 
@@ -255,7 +118,6 @@
 #define ARANGODB_HAVE_GETPWNAM 1
 #define ARANGODB_HAVE_GETPWUID 1
 #define ARANGODB_HAVE_GETRUSAGE 1
-#undef ARANGODB_HAVE_GETTID
 #define ARANGODB_HAVE_GMTIME_R 1
 #undef ARANGODB_HAVE_GMTIME_S
 #define ARANGODB_HAVE_INITGROUPS 1
@@ -334,6 +196,7 @@
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
+#define TRI_read_return_t ssize_t
 #define TRI_stat_t struct stat
 #define TRI_write_t size_t
 
@@ -416,7 +279,6 @@
 #define ARANGODB_HAVE_GETPWNAM 1
 #define ARANGODB_HAVE_GETPWUID 1
 #define ARANGODB_HAVE_GETRUSAGE 1
-#undef ARANGODB_HAVE_GETTID
 #define ARANGODB_HAVE_GMTIME_R 1
 #undef ARANGODB_HAVE_GMTIME_S
 #undef ARANGODB_HAVE_INITGROUPS
@@ -479,6 +341,7 @@
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
+#define TRI_read_return_t ssize_t
 #define TRI_stat_t struct stat
 #define TRI_write_t size_t
 
@@ -568,7 +431,6 @@
 #define ARANGODB_HAVE_GETPWNAM 1
 #define ARANGODB_HAVE_GETPWUID 1
 #define ARANGODB_HAVE_GETRUSAGE 1
-#undef ARANGODB_HAVE_GETTID
 #define ARANGODB_HAVE_GMTIME_R 1
 #undef ARANGODB_HAVE_GMTIME_S
 #define ARANGODB_HAVE_INITGROUPS 1
@@ -637,6 +499,7 @@
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
+#define TRI_read_return_t ssize_t
 #define TRI_stat_t struct stat
 #define TRI_write_t size_t
 
@@ -716,7 +579,6 @@
 #undef ARANGODB_HAVE_GETPWNAM
 #undef ARANGODB_HAVE_GETPWUID
 #undef ARANGODB_HAVE_GETRUSAGE
-#undef ARANGODB_HAVE_GETTID
 #undef ARANGODB_HAVE_GMTIME_R
 #define ARANGODB_HAVE_GMTIME_S 1
 #undef ARANGODB_HAVE_INITGROUPS
@@ -838,6 +700,8 @@ typedef unsigned char bool;
 
 #define TRI_lseek_t __int64
 #define TRI_read_t unsigned int
+#define TRI_read_return_t int
+
 #define TRI_stat_t struct _stat64
 #define TRI_write_t unsigned int
 

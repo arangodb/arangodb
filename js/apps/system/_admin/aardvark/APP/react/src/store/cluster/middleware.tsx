@@ -20,7 +20,8 @@ const middleware : Middleware = (_ : MiddlewareAPI ) =>
       arango.triggerMoveShard(action.payload);
       break;
     case '@@cluster/checkHealth':
-      arango.clusterCheckHealth();
+      // TODO: enable me when switched to react
+      // arango.clusterCheckHealth();
       break;
     default:
   }

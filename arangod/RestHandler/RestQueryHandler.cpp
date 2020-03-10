@@ -28,12 +28,11 @@
 #include "Aql/QueryList.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
 #include "Transaction/Helpers.h"
+#include "VocBase/Methods/Queries.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -64,7 +63,7 @@ RestStatus RestQueryHandler::execute() {
       parseQuery();
       break;
     default:
-      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      generateNotImplemented("ILLEGAL /_api/query");
       break;
   }
 
@@ -95,30 +94,14 @@ bool RestQueryHandler::readQueryProperties() {
 }
 
 bool RestQueryHandler::readQuery(bool slow) {
-  auto queryList = _vocbase.queryList();
-  auto queries = slow ? queryList->listSlow() : queryList->listCurrent();
   VPackBuilder result;
-
-  result.add(VPackValue(VPackValueType::Array));
-
-  for (auto const& q : queries) {
-    auto timeString = TRI_StringTimeStamp(q.started, Logger::getUseLocalTime());
-
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("id", VPackValue(StringUtils::itoa(q.id)));
-    result.add("query", VPackValue(q.queryString));
-    if (q.bindParameters != nullptr) {
-      result.add("bindVars", q.bindParameters->slice());
-    } else {
-      result.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
-    }
-    result.add("started", VPackValue(timeString));
-    result.add("runTime", VPackValue(q.runTime));
-    result.add("state", VPackValue(QueryExecutionState::toString(q.state)));
-    result.add("stream", VPackValue(q.stream));
-    result.close();
+    
+  bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+  if (slow) {
+    methods::Queries::listSlow(_vocbase, result, fanout);
+  } else {
+    methods::Queries::listCurrent(_vocbase, result, fanout);
   }
-  result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());
 
@@ -152,8 +135,8 @@ bool RestQueryHandler::readQuery() {
 }
 
 void RestQueryHandler::deleteQuerySlow() {
-  auto queryList = _vocbase.queryList();
-  queryList->clearSlow();
+  bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+  methods::Queries::clearSlow(_vocbase, fanout);
 
   VPackBuilder result;
 
@@ -165,12 +148,8 @@ void RestQueryHandler::deleteQuerySlow() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-void RestQueryHandler::deleteQuery(std::string const& name) {
-  auto id = StringUtils::uint64(name);
-  auto queryList = _vocbase.queryList();
-  TRI_ASSERT(queryList != nullptr);
-
-  Result res = queryList->kill(id);
+void RestQueryHandler::killQuery(std::string const& id) {
+  Result res = methods::Queries::kill(_vocbase, StringUtils::uint64(id));
 
   if (res.ok()) {
     VPackBuilder result;
@@ -182,7 +161,7 @@ void RestQueryHandler::deleteQuery(std::string const& name) {
     generateResult(rest::ResponseCode::OK, result.slice());
   } else {
     generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(),
-                  "cannot kill query '" + name + "': " + res.errorMessage());
+                  "cannot kill query '" + id + "': " + res.errorMessage());
   }
 }
 
@@ -196,12 +175,12 @@ void RestQueryHandler::deleteQuery() {
     return;
   }
 
-  auto const& name = suffixes[0];
+  auto const& id = suffixes[0];
 
-  if (name == "slow") {
+  if (id == "slow") {
     deleteQuerySlow();
   } else {
-    deleteQuery(name);
+    killQuery(id);
   }
 }
 
@@ -327,7 +306,7 @@ bool RestQueryHandler::parseQuery() {
     for (const auto& it : parseResult.collectionNames) {
       result.add(VPackValue(it));
     }
-    result.close();  // Collections
+    result.close();  // collections
 
     result.add("bindVars", VPackValue(VPackValueType::Array));
     for (const auto& it : parseResult.bindParameters) {
@@ -348,10 +327,9 @@ bool RestQueryHandler::parseQuery() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
-  if (!ServerState::instance()->isCoordinator()) {
-    return {std::make_pair(StaticStrings::Empty, false)};
-  }
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
 
+  /* it seems we don't need this here
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
@@ -366,6 +344,22 @@ ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
     }
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+  }
+  */
+
+  if (_request->requestType() == RequestType::DELETE_REQ) {
+    // kill operation
+    auto const& suffixes = _request->suffixes();
+    TRI_ASSERT(suffixes.size() >= 1);
+    auto const& id = suffixes[0];
+    if (id != "slow") {
+      uint64_t tick = basics::StringUtils::uint64(id);
+      uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+      if (sourceServer != ServerState::instance()->getShortId()) {
+        auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+        return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+      }
+    }
   }
 
   return {std::make_pair(StaticStrings::Empty, false)};

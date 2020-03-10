@@ -43,8 +43,6 @@ class MMFilesPersistentIndexFeature final : public application_features::Applica
   explicit MMFilesPersistentIndexFeature(application_features::ApplicationServer& server);
   ~MMFilesPersistentIndexFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void unprepare() override final;
 

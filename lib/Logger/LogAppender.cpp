@@ -43,20 +43,20 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 arangodb::Mutex LogAppender::_appendersLock;
+  
+std::vector<std::shared_ptr<LogAppender>> LogAppender::_globalAppenders;
 
 std::map<size_t, std::vector<std::shared_ptr<LogAppender>>> LogAppender::_topics2appenders;
 
 std::map<std::pair<std::string, std::string>, std::shared_ptr<LogAppender>> LogAppender::_definition2appenders;
 
-std::vector<std::function<void(LogMessage*)>> LogAppender::_loggers;
-
 bool LogAppender::_allowStdLogging = true;
 
-void LogAppender::addLogger(std::function<void(LogMessage*)> func) {
-  MUTEX_LOCKER(guard, _appendersLock);  // to silence TSan
-  _loggers.emplace_back(func);
+void LogAppender::addGlobalAppender(std::shared_ptr<LogAppender> appender) {
+  MUTEX_LOCKER(guard, _appendersLock);
+  _globalAppenders.emplace_back(std::move(appender));
 }
-
+  
 void LogAppender::addAppender(std::string const& definition, std::string const& filter) {
   MUTEX_LOCKER(guard, _appendersLock);
   std::pair<std::shared_ptr<LogAppender>, LogTopic*> appender(
@@ -137,7 +137,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
       return {nullptr, nullptr};
     }
 
-    std::string identifier = "";
+    std::string identifier;
 
     if (s.size() == 2) {
       identifier = s[1];
@@ -184,18 +184,27 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
   }
 }
 
-void LogAppender::log(LogMessage* message) {
-  // output to appender
-  auto output = [message](size_t n) -> bool {
-    auto const& it = _topics2appenders.find(n);
+void LogAppender::logGlobal(LogMessage const& message) {
+  MUTEX_LOCKER(guard, _appendersLock);
+  
+  // append to global appenders first
+  for (auto const& appender : _globalAppenders) {
+    appender->logMessage(message);
+  }
+}
+
+void LogAppender::log(LogMessage const& message) {
+  // output to appenders
+  auto output = [&message](size_t n) -> bool {
     bool shown = false;
 
+    auto const& it = _topics2appenders.find(n);
     if (it != _topics2appenders.end()) {
       auto const& appenders = it->second;
 
       for (auto const& appender : appenders) {
-        if (appender->checkContent(message->_message)) {
-          appender->logMessage(message->_level, message->_message, message->_offset);
+        if (appender->checkContent(message._message)) {
+          appender->logMessage(message);
         }
 
         shown = true;
@@ -204,24 +213,21 @@ void LogAppender::log(LogMessage* message) {
 
     return shown;
   };
-
+  
   bool shown = false;
 
+  // try to find a topic-specific appender
+  size_t topicId = message._topicId;
+  
   MUTEX_LOCKER(guard, _appendersLock);
-
-  // try to find a specific topic
-  size_t topicId = message->_topicId;
+ 
   if (topicId < LogTopic::MAX_LOG_TOPICS) {
     shown = output(topicId);
   }
 
-  // otherwise use the general topic
+  // otherwise use the general topic appender
   if (!shown) {
     output(LogTopic::MAX_LOG_TOPICS);
-  }
-
-  for (auto const& logger : _loggers) {
-    logger(message);
   }
 }
 
@@ -231,6 +237,7 @@ void LogAppender::shutdown() {
   LogAppenderSyslog::close();
   LogAppenderFile::closeAll();
 
+  _globalAppenders.clear();
   _topics2appenders.clear();
   _definition2appenders.clear();
 }

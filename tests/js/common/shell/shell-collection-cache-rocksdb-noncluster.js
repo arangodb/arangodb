@@ -181,7 +181,9 @@ function CollectionCacheSuite () {
       let idxs2 = c.getIndexes(true);
       idxs2.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
-          assertEqual(idx.figures.cacheSize, idxs[i].figures.cacheSize);
+          // unsafe assumption
+          // assertEqual(idx.figures.cacheSize, idxs[i].figures.cacheSize);
+          
           assertTrue(Math.abs(idx.figures.cacheUsage - idxs[i].figures.cacheUsage) < 2048, 
                      Math.abs(idx.figures.cacheUsage - idxs[i].figures.cacheUsage));
           assertTrue(Math.abs(idx.figures.cacheLifeTimeHitRate - 50) < 11);

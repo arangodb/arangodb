@@ -68,23 +68,23 @@ void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #ifdef ARANGODB_HAVE_SETUID
   options->addOption("--uid", "switch to user-id after reading config files",
                      new StringParameter(&_uid),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.uid",
                      "switch to user-id after reading config files",
                      new StringParameter(&_uid),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 #endif
 
 #ifdef ARANGODB_HAVE_SETGID
   options->addOption("--gid", "switch to group-id after reading config files",
                      new StringParameter(&_gid),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.gid",
                      "switch to group-id after reading config files",
                      new StringParameter(&_gid),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 #endif
 }
 

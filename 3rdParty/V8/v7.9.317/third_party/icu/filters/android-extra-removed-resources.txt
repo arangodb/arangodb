@@ -1,0 +1,7 @@
+res_index.res
+coll/res_index.res
+curr/res_index.res
+lang/res_index.res
+region/res_index.res
+unit/res_index.res
+zone/res_index.res

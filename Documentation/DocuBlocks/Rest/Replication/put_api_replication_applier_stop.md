@@ -8,7 +8,7 @@
 
 @RESTQUERYPARAM{global,boolean,optional}
 If set to *true*, stops the global replication applier for all
-database. If set to *false*, stops the replication applier in the
+databases. If set to *false*, stops the replication applier in the
 selected database.
 
 @RESTDESCRIPTION

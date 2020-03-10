@@ -265,7 +265,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
 
-  if (_lastResponse != nullptr || _lastError.fail()) {
+  if (_lastResponse != nullptr) {
     // We have an open result still.
     auto response = std::move(_lastResponse);
 
@@ -286,6 +286,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
       return {ExecutionState::DONE, {errorNumber, errorSlice.copyString()}};
     }
     return {ExecutionState::DONE, errorNumber};
+  } else if (_lastError.fail()) {
+    return {ExecutionState::DONE, std::move(_lastError)};
   }
 
   VPackOptions options(VPackOptions::Defaults);
@@ -451,8 +453,8 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
   } else {
     VPackSlice slice = response->slice();
     if (slice.isObject()) {
-      VPackSlice err = slice.get(StaticStrings::Error);
-      if (err.isBool() && err.getBool()) {
+      VPackSlice errSlice = slice.get(StaticStrings::Error);
+      if (errSlice.isBool() && errSlice.getBool()) {
         res = VelocyPackHelper::getNumericValue(slice, StaticStrings::ErrorNum, res);
         VPackStringRef ref =
             VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
@@ -493,8 +495,13 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   // Later, we probably want to set these sensibly:
   req->timeout(kDefaultTimeOutSecs);
   if (!_ownName.empty()) {
-    req->header.addMeta("Shard-Id", _ownName);
+    req->header.addMeta("x-shard-id", _ownName);
+    req->header.addMeta("shard-id", _ownName);  // deprecated in 3.7, remove later
   }
+  
+  LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
+      << "request to '" << _server
+      << "' '" << fuerte::to_string(type) << " " << req->header.path << "'";
 
   network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
 

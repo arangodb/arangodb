@@ -52,7 +52,6 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -104,7 +103,6 @@ struct DocIdScorer: public irs::sort {
   virtual sort::prepared::ptr prepare() const override { PTR_NAMED(Prepared, ptr); return ptr; }
 
   struct Prepared: public irs::sort::prepared_base<uint64_t, void> {
-    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override { score_cast(dst) = score_cast(src); }
     virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
       const size_t size, size_t offset) const  override {
       auto& casted_dst = score_cast(dst + offset);
@@ -236,11 +234,6 @@ class IResearchViewTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::FATAL> {
  protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() {
-      arangodb::ClusterComm::_theInstanceInit.store(0);
-    }
-  };
 
   arangodb::tests::mocks::MockAqlServer server;
   std::unique_ptr<TRI_vocbase_t> system;
@@ -267,7 +260,6 @@ class IResearchViewTest
 
   ~IResearchViewTest() {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
-    ClusterCommControl::reset();
   }
 };
 
@@ -7482,14 +7474,16 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     EXPECT_TRUE(meta.init(slice, error));
     ASSERT_EQ(4, meta._storedValues.columns().size());
     EXPECT_EQ(1, meta._storedValues.columns()[0].fields.size());
-    EXPECT_EQ("obj.a", meta._storedValues.columns()[0].name);
+    EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.a"), meta._storedValues.columns()[0].name);
     EXPECT_EQ(1, meta._storedValues.columns()[1].fields.size());
-    EXPECT_EQ("obj.b.b1", meta._storedValues.columns()[1].name);
+    EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.b.b1"), meta._storedValues.columns()[1].name);
     EXPECT_EQ(2, meta._storedValues.columns()[2].fields.size());
-    EXPECT_EQ(std::string("obj.c") + arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.d",
+    EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.c") +
+              arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.d",
               meta._storedValues.columns()[2].name);
     EXPECT_EQ(3, meta._storedValues.columns()[3].fields.size());
-    EXPECT_EQ(std::string("obj.e") + arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER +"obj.f.f1" +
+    EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.e") +
+              arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.f.f1" +
               arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.g", meta._storedValues.columns()[3].name);
   }
 
@@ -7520,15 +7514,16 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     EXPECT_TRUE(meta.init(slice, error));
     ASSERT_EQ(5, meta._storedValues.columns().size());
     EXPECT_EQ(1, meta._storedValues.columns()[0].fields.size());
-    EXPECT_EQ("obj.a", meta._storedValues.columns()[0].name);
+    EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.a"), meta._storedValues.columns()[0].name);
     EXPECT_EQ(1, meta._storedValues.columns()[1].fields.size());
-    EXPECT_EQ("obj.b", meta._storedValues.columns()[1].name);
+    EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.b"), meta._storedValues.columns()[1].name);
     EXPECT_EQ(1, meta._storedValues.columns()[2].fields.size());
-    EXPECT_EQ("obj.c", meta._storedValues.columns()[2].name);
+    EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.c"), meta._storedValues.columns()[2].name);
     EXPECT_EQ(1, meta._storedValues.columns()[3].fields.size());
-    EXPECT_EQ("obj.d", meta._storedValues.columns()[3].name);
+    EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.d"), meta._storedValues.columns()[3].name);
     EXPECT_EQ(2, meta._storedValues.columns()[4].fields.size());
-    EXPECT_EQ(std::string("obj.c") + arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.d",
+    EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.c") +
+              arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.d",
               meta._storedValues.columns()[4].name);
   }
 }

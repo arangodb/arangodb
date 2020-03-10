@@ -1147,14 +1147,14 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
 
-        Result res = trx.begin();
+        res = trx.begin();
         if (res.fail()) {
           return res;
         }
 
         OperationOptions options;
-        OperationResult result = trx.truncate(name, options);
-        res = trx.finish(result.result);
+        OperationResult opRes = trx.truncate(name, options);
+        res = trx.finish(opRes.result);
         if (res.fail()) {
           res.appendErrorMessage(
               ". Unable to truncate collection (dropping is forbidden)");
@@ -1434,14 +1434,17 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
 
   allMarkers.clear();
 
-  if (_request->transportType() != Endpoint::TransportType::HTTP) {
+  // simon: originally VST was not allowed here, but in 3.7 the content-type
+  // is properly set, so we can use it
+  if (_request->transportType() != Endpoint::TransportType::HTTP &&
+      _request->contentType() != ContentType::DUMP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
-
+  
   VPackStringRef bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
-
+  
   VPackValueLength currentPos = 0;
 
   // First parse and collect all markers, we assemble everything in one
@@ -1861,8 +1864,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
       arangodb::velocypack::Slice value = idxDef.get(StaticStrings::IndexType);
       if (value.isString()) {
-        std::string const typeString = value.copyString();
-        if ((typeString == "primary") || (typeString == "edge")) {
+        if (value.isEqualString("primary") || value.isEqualString("edge")) {
           LOG_TOPIC("0d352", DEBUG, Logger::REPLICATION)
               << "processRestoreIndexes silently ignoring primary or edge "
               << "index: " << idxDef.toJson();
@@ -2389,7 +2391,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
             << "Compare with shortCut Leader: " << nr
             << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
-          Result res = col->followers()->add(followerId);
+          res = col->followers()->add(followerId);
 
           if (res.fail()) {
             // this will create an error response with the appropriate message

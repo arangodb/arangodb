@@ -141,6 +141,21 @@ function lateDocumentMaterializationRuleTestSuite () {
       try { db._drop(severalIndexesCollectionName); } catch(e) {}
       try { db._drop(projectionsCoveredByIndexCollectionName); } catch(e) {}
     },
+    testIssue10845() {
+      // this tests a regression described in https://github.com/arangodb/arangodb/issues/10845#issuecomment-575723029:
+      // when there is a collection with an index in a query, all LIMITs in the query may be inspected.
+      // however, each LIMIT was supposed to be present underneath a FOR loop, otherwise
+      // the query could crash. This test is here to just make sure there are no crashes.
+      for (i = 0; i < numOfCollectionIndexes; ++i) {
+        let query = "LET results = (FOR d IN " + collectionNames[i]  + " FILTER d.obj.a == 'a_val' SORT d.obj.c DESC RETURN d) FOR p IN results " +
+          "LET validFrom = (RETURN IS_NULL(p.valid_from) ? 0 : p.valid_from) " +
+          "LET validTo = (RETURN IS_NULL(p.valid_to) ? 253370764800000 : p.valid_to) " +
+          "LET inactive = (RETURN (validFrom[0] > 1579279781654 || validTo[0] < 1579279781654)) " +
+          "RETURN (inactive[0]) ? MERGE(p, {inactive: true}) : p";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      }
+    },
     testNotAppliedDueToNoFilter() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let query = "FOR d IN " + collectionNames[i] + " SORT d.obj.c LIMIT 10 RETURN d";

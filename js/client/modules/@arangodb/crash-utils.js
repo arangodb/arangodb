@@ -383,7 +383,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
   let hint = '';
   if (platform.substr(0, 3) === 'win') {
     if (instanceInfo.hasOwnProperty('monitor')) {
-      pu.stopProcdump(options, instanceInfo);
+      stopProcdump(options, instanceInfo);
     }
     if (!instanceInfo.hasOwnProperty('coreFilePattern') ) {
       print("your process wasn't monitored by procdump, won't have a coredump!");

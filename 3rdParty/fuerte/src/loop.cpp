@@ -39,15 +39,7 @@ EventLoopService::EventLoopService(unsigned int threadCount)
 }
 
 EventLoopService::~EventLoopService() {
-  for (auto& guard : _guards) {
-    guard.reset();  // allow run() to exit
-  }
-  for (std::thread& thread : _threads) {
-    thread.join();
-  }
-  for (auto& ctx : _ioContexts) {
-    ctx->stop();
-  }
+  stop();
 }
   
 asio_ns::ssl::context& EventLoopService::sslContext() {
@@ -61,6 +53,15 @@ asio_ns::ssl::context& EventLoopService::sslContext() {
     _sslContext->set_default_verify_paths();
   }
   return *_sslContext;
+}
+
+void EventLoopService::stop() {
+  // allow run() to exit, wait for threads to finish only then stop the context
+  std::for_each(_guards.begin(), _guards.end(), [](auto& g) { g.reset(); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  std::for_each(_ioContexts.begin(), _ioContexts.end(), [](auto& c) { c->stop(); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  std::for_each(_threads.begin(), _threads.end(), [](auto& t) { if(t.joinable()) { t.join(); } });
 }
   
 }}}  // namespace arangodb::fuerte::v1

@@ -10,7 +10,7 @@
 Include system collections in the result. The default value is *true*.
 
 @RESTQUERYPARAM{global,boolean,optional}
-Include alll databases in the response. Only works on `_system` The default value is *false*.
+Include all databases in the response. Only works on `_system` The default value is *false*.
 
 @RESTQUERYPARAM{batchId,number,required}
 The RocksDB engine requires a valid batchId for this API call

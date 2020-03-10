@@ -65,7 +65,7 @@ class IoContext {
   explicit IoContext(IoContext const&);
   ~IoContext();
   
-  int clients() const noexcept {
+  unsigned clients() const noexcept {
     return _clients.load(std::memory_order_acquire);
   }
 

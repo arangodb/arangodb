@@ -284,7 +284,7 @@ class AgencyCommManager {
 
 class AgencyPrecondition {
  public:
-  enum class Type { NONE, EMPTY, VALUE };
+  enum class Type { NONE, EMPTY, VALUE, TIN, NOTIN, INTERSECTION_EMPTY};
 
  public:
   AgencyPrecondition();
@@ -663,7 +663,7 @@ class AgencyComm {
  public:
   explicit AgencyComm(application_features::ApplicationServer&);
 
-  AgencyCommResult sendServerState(double ttl);
+  AgencyCommResult sendServerState();
 
   std::string version();
 
@@ -681,7 +681,7 @@ class AgencyComm {
   AgencyCommResult setValue(std::string const&, arangodb::velocypack::Slice const&, double);
 
   AgencyCommResult setTransient(std::string const&,
-                                arangodb::velocypack::Slice const&, double);
+                                arangodb::velocypack::Slice const&, uint64_t);
 
   bool exists(std::string const&);
 

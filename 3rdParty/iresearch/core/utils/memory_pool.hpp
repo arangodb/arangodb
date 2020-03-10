@@ -23,28 +23,17 @@
 #ifndef IRESEARCH_MEMORY_POOL_H
 #define IRESEARCH_MEMORY_POOL_H
 
-#include "shared.hpp"
-#include "ebo.hpp"
-#include "map_utils.hpp"
-#include "math_utils.hpp"
-#include "noncopyable.hpp"
-#include "memory.hpp"
-
 #include <map>
 #include <memory>
 
+#include "shared.hpp"
+#include "ebo.hpp"
+#include "map_utils.hpp"
+#include "noncopyable.hpp"
+#include "memory.hpp"
+
 NS_ROOT
 NS_BEGIN(memory)
-
-inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  assert(math::is_power2(alignment));
-  return (size + alignment - 1) & (0 - alignment);
-#else
-  return IRS_ASSERT(math::is_power2(alignment)),
-         (size + alignment - 1) & (0 - alignment);
-#endif
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class freelist
@@ -202,80 +191,6 @@ struct new_delete_allocator {
     delete[] ptr;
   }
 }; // new_delete_allocator
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class arena_allocator
-///////////////////////////////////////////////////////////////////////////////
-template<size_t Size, size_t Alignment>
-struct arena_allocator
-    : private memory::aligned_storage<Size, Alignment>,
-      private util::noncopyable {
- public:
-  arena_allocator() = default;
-  ~arena_allocator() noexcept { p_ = nullptr; }
-
-  char* allocate(size_t size) {
-    assert(within_arena(p_));
-    auto* p = p_ + align_up(size, Alignment);
-
-    if (within_arena(p)) {
-      std::swap(p, p_);
-      return p;
-    }
-
-#if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
-//FIXME
-//    if (Alignment > alignof(MAX_ALIGN_T)) {
-//      return reinterpret_cast<char*>(::operator new(size, Alignment));
-//    }
-#else
-    static_assert(
-      Alignment <= alignof(MAX_ALIGN_T),
-      "new can't guarantee the requested alignment"
-    );
-#endif
-
-    return reinterpret_cast<char*>(::operator new(size));
-  }
-
-  void deallocate(char* p, size_t size) noexcept {
-    assert(within_arena(p_));
-
-    if (within_arena(p)) {
-      size = align_up(size, Alignment);
-
-      if (p + size == p_) {
-        p_ = p;
-      }
-    } else {
-#if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
-//FIXME
-//      if (Alignment > alignof(MAX_ALIGN_T)) {
-//        ::operator delete(p, Alignment);
-//      }
-#else
-      static_assert(
-        Alignment <= alignof(MAX_ALIGN_T),
-        "new can't guarantee the requested alignment"
-      );
-#endif
-      ::operator delete(p);
-    }
-  }
-
-  size_t used() const noexcept {
-    return p_ - buffer_t::data;
-  }
-
-  bool within_arena(const char* p) const noexcept {
-    return std::begin(buffer_t::data) <= p && p <= std::end(buffer_t::data);
-  }
-
- private:
-  typedef memory::aligned_storage<Size, Alignment> buffer_t;
-
-  char* p_{ buffer_t::data }; // current position
-}; // arena_allocator
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief GrowPolicy concept
