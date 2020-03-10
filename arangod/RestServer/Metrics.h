@@ -226,9 +226,10 @@ public:
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
     TRI_ASSERT(base > T(0));
-    T nn = -1.0*(n-1);
+    double nn = -1.0*(n-1);
     for (auto& i : this->_delim) {
-      i = (high-low) * std::pow(base, nn++) + low;
+      i = static_cast<double>(high-low) *
+        std::pow(static_cast<double>(base), static_cast<double>(nn++)) + low;
     }
     _div = this->_delim.front() - low;
     TRI_ASSERT(_div > T(0));
