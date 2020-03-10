@@ -1015,7 +1015,7 @@ TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
             VPackBuilder pendingJob;
             {
               VPackObjectBuilder b(&pendingJob);
-              auto plainJob = createJob(COLLECTION, LEADER, SHARD_FOLLOWE1);
+              auto plainJob = createJob(COLLECTION, LEADER, SHARD_FOLLOWER1);
               for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
