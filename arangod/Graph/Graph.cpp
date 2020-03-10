@@ -323,6 +323,7 @@ void Graph::toPersistence(VPackBuilder& builder) const {
       builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
     }
     builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
+    builder.add(StaticStrings::GraphIsSatellite, VPackValue(isSatellite()));
   }
 
   // EdgeDefinitions
