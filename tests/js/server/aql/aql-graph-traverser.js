@@ -4580,22 +4580,22 @@ function unusedVariableSuite() {
 
     testCount: function () {
       const queries = [
-        [ 'FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
-        [ 'FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
-        [ 'FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
-        [ 'FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
-        [ 'FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
-        [ 'FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
-        [ 'FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
-        [ 'FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
-        [ 'FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
-        [ 'FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v', 1],
-        [ 'FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v', 100],
-        [ 'FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v', 1000],
+        [ 'WITH @@vertices,@@edges FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
+        [ 'WITH @@vertices,@@edges FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
+        [ 'WITH @@vertices,@@edges FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
+        [ 'WITH @@vertices,@@edges FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
+        [ 'WITH @@vertices,@@edges FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
+        [ 'WITH @@vertices,@@edges FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v', 1],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v', 100],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v', 1000],
       ];
 
       queries.forEach(function (query) {
-        const r = db._query(query[0], {"start": gn + 'v/test0', "@edges": gn+'e'});
+        const r = db._query(query[0], {"start": gn + 'v/test0', "@vertices": gn+'v', "@edges": gn+'e'});
         const resultArray = r.toArray();
         assertEqual(query[1], resultArray.length, query);
       });
