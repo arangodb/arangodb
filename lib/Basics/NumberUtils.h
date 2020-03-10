@@ -251,6 +251,11 @@ inline T atoi_zero(char const* p, char const* e) noexcept {
   return valid ? result : 0;
 }
 
+template <typename T>
+constexpr std::enable_if_t<std::is_integral<T>::value, bool> isPowerOf2(T n) {
+  return n > 0 && (n & (n - 1)) == 0;
+}
+
 /// @brief calculate the integer log2 value for the given input
 /// the result is undefined when calling this with a value of 0!
 uint32_t log2(uint32_t value) noexcept;
