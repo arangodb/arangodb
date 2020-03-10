@@ -104,23 +104,29 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 }
 
 Counter& MetricsFeature::counter (
-  std::string const& name, uint64_t const& val, std::string const& help) {
+  std::initializer_list<std::string> const& key, uint64_t const& val,
+  std::string const& help) {
 
-  std::string labels;
+  metrics_key mk(key);
   if (ServerState::instance() != nullptr) {
-    labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+    mk.labels += ",shortname=\"" + ServerState::instance()->getShortName() + "\"";
   }
-  auto metric = std::make_shared<Counter>(val, name, help, labels);
+  auto metric = std::make_shared<Counter>(val, mk.name, help, mk.labels);
   bool success = false;
   {
     std::lock_guard<std::mutex> guard(_lock);
-    success = _registry.emplace(name, std::dynamic_pointer_cast<Metric>(metric)).second;
+    success = _registry.emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
   }
   if (!success) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("counter ") + name + " alredy exists");
+      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " alredy exists");
   }
   return *metric;
+}
+
+Counter& MetricsFeature::counter (
+  std::string const& name, uint64_t const& val, std::string const& help) {
+  return counter({name}, val, help);
 }
 
 ServerStatistics& MetricsFeature::serverStatistics() {
@@ -135,8 +141,8 @@ Counter& MetricsFeature::counter(std::string const& name) {
     std::lock_guard<std::mutex> guard(_lock);
     registry_type::const_iterator it = _registry.find(name);
     if (it == _registry.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + name);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     std::string("No gauge booked as ") + name);
     }
     try {
       metric = std::dynamic_pointer_cast<Counter>(it->second);
@@ -144,11 +150,44 @@ Counter& MetricsFeature::counter(std::string const& name) {
         error = std::string("Failed to retrieve counter ") + name;
       }
     } catch (std::exception const& e) {
-      error = std::string("Failed to retrieve counter ") + name +  ": " + e.what();
+      error = std::string("Failed to retrieve counter ") + name + ": " + e.what();
     }
   }
   if (!error.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
   }
   return *metric;
+}
+
+metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
+  TRI_ASSERT(il.size() > 0);
+  TRI_ASSERT(il.size() < 3);
+  name = *il.begin();
+  if (il.size() == 2) {
+    labels = *(il.begin()+1);
+  }
+  _hash = std::hash<std::string>{}(name + labels);
+}
+
+metrics_key::metrics_key(std::string const& name) : name(name) {
+  _hash = std::hash<std::string>{}(name);
+}
+
+metrics_key::metrics_key(std::string const& name, std::string const& labels) :
+  name(name), labels(labels) {
+  _hash = std::hash<std::string>{}(name + labels);
+}
+
+std::size_t metrics_key::hash() const noexcept {
+  return _hash;
+}
+
+bool metrics_key::operator== (metrics_key const& other) const {
+  return name == other.name && labels == other.labels;
+}
+
+namespace std {
+std::size_t hash<arangodb::metrics_key>::operator()(arangodb::metrics_key const& m) const noexcept {
+  return m.hash();
+}
 }

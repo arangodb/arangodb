@@ -25,18 +25,41 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/Metrics.h"
 #include "Statistics/ServerStatistics.h"
 
 namespace arangodb {
+struct metrics_key;
+}
+
+namespace std {
+template <>
+struct hash<arangodb::metrics_key> {
+  typedef arangodb::metrics_key argument_t;
+  typedef std::size_t result_t;
+  result_t operator()(argument_t const& r) const noexcept;
+};
+}  // namespace std
+
+namespace arangodb {
+
+struct metrics_key {
+  std::string name;
+  std::string labels;
+  std::size_t _hash;
+  metrics_key(std::string const& name);
+  metrics_key(std::string const& name, std::string const& labels);
+  metrics_key(std::initializer_list<std::string> const& il);
+  std::size_t hash() const noexcept;
+  bool operator==(metrics_key const& other) const;
+};
 
 class MetricsFeature final : public application_features::ApplicationFeature {
  public:
-
-  using registry_type = std::unordered_map<std::string, std::shared_ptr<Metric>>;
+  using registry_type = std::unordered_map<metrics_key, std::shared_ptr<Metric>>;
 
   static double time();
 
@@ -47,96 +70,122 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  template<typename Scale> Histogram<Scale>&
-  histogram (std::string const& name, Scale const& scale,
-             std::string const& help = std::string()) {
+  template <typename Scale>
+  Histogram<Scale>& histogram(std::string const& name, Scale const& scale,
+                              std::string const& help = std::string()) {
+    return histogram<Scale>({name}, scale, help);
+  }
 
-    std::string labels;
+  template <typename Scale>
+  Histogram<Scale>& histogram(std::initializer_list<std::string> const& key,
+                              Scale const& scale,
+                              std::string const& help = std::string()) {
+    metrics_key mk(key);
     if (ServerState::instance() != nullptr) {
-      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\",";
+      mk.labels +=
+          "shortname=\"" + ServerState::instance()->getShortName() + "\",";
     }
 
-    auto metric = std::make_shared<Histogram<Scale>>(scale, name, help, labels);
+    auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, mk.labels);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
-      success = _registry.try_emplace(
-        name, std::dynamic_pointer_cast<Metric>(metric)).second;
+      success =
+          _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
     }
     if (!success) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("histogram ") + name + " alredy exists");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     std::string("histogram ") + mk.name +
+                                         " alredy exists");
     }
     return *metric;
-
   };
 
-  template<typename Scale> Histogram<Scale>& histogram (std::string const& name) {
+  template <typename Scale>
+  Histogram<Scale>& histogram(std::string const& name) {
+    return histogram<Scale>({name});
+  }
 
+  template <typename Scale>
+  Histogram<Scale>& histogram(std::initializer_list<std::string> const& key) {
+    metrics_key mk(key);
     std::shared_ptr<Histogram<Scale>> metric = nullptr;
     std::string error;
     {
       std::lock_guard<std::mutex> guard(_lock);
-      registry_type::const_iterator it = _registry.find(name);
+      registry_type::const_iterator it = _registry.find(mk);
 
       try {
         metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
         if (metric == nullptr) {
-          error = std::string("Failed to retrieve histogram ") + name;
+          error = std::string("Failed to retrieve histogram ") + mk.name;
         }
       } catch (std::exception const& e) {
-        error = std::string("Failed to retrieve histogram ") + name + ": " + e.what();
+        error = std::string("Failed to retrieve histogram ") + mk.name + ": " + e.what();
       }
     }
     if (!error.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
     return *metric;
-
   }
 
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
+  Counter& counter(std::initializer_list<std::string> const& key,
+                   uint64_t const& val, std::string const& help);
   Counter& counter(std::string const& name);
 
-  template<typename T>
-  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-
-    std::string labels;
+  template <typename T>
+  Gauge<T>& gauge(std::initializer_list<std::string> const& key, T const& t,
+                  std::string const& help) {
+    metrics_key mk(key);
     if (ServerState::instance() != nullptr) {
-      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+      mk.labels +=
+          ",shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
-    auto metric = std::make_shared<Gauge<T>>(t, name, help, labels);
+    auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, mk.labels);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
-      success = _registry.try_emplace(
-        name, std::dynamic_pointer_cast<Metric>(metric)).second;
+      success =
+          _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
     }
     if (!success) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("gauge ") + name + " alredy exists");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("gauge ") + mk.name +
+                                                             " alredy exists");
     }
     return *metric;
   }
 
-  template<typename T> Gauge<T>& gauge(std::string const& name) {
+  template <typename T>
+  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
+    return guage({name}, t, help);
+  }
 
+  template <typename Scale>
+  Gauge<Scale>& guage(std::string const& name) {
+    return gauge<Scale>({name});
+  }
+
+  template <typename T>
+  Gauge<T>& gauge(std::initializer_list<std::string> const& key) {
+    metrics_key mk(key);
     std::shared_ptr<Gauge<T>> metric = nullptr;
     std::string error;
     {
       std::lock_guard<std::mutex> guard(_lock);
-      registry_type::const_iterator it = _registry.find(name);
+      registry_type::const_iterator it = _registry.find(metrics_key(mk.name));
       if (it == _registry.end()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + name);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       std::string("No gauge booked as ") + mk.name);
       }
       try {
-        metric = std::dynamic_pointer_cast<Gauge<T>>(*it->second);
+        metric = std::dynamic_pointer_cast<Gauge<T>>(it->second);
         if (metric == nullptr) {
-          error = std::string("Failed to retrieve gauge ") + name;
+          error = std::string("Failed to retrieve gauge ") + mk.name;
         }
       } catch (std::exception const& e) {
-        error = std::string("Failed to retrieve gauge ") + name +  ": " + e.what();
+        error = std::string("Failed to retrieve gauge ") + mk.name + ": " + e.what();
       }
     }
     if (!error.empty()) {
@@ -157,7 +206,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   std::unique_ptr<ServerStatistics> _serverStatistics;
 
   bool _export;
-
 };
 
 }  // namespace arangodb
