@@ -398,6 +398,10 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
 
   // skip offset
   while (!input.isDone() && call.getOffset() > 0) {
+    // During offset phase we have the guarntee
+    // that the rows we need to skip have been fetched
+    // We will fetch rows as data from upstream for
+    // all rows we need to skip here.
     TRI_ASSERT(!maySkip());
     // We need to sort still
     // And account the row in the limit
@@ -415,32 +419,27 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
   TRI_ASSERT(input.isDone() || call.getOffset() == 0);
 
   auto callSet = AqlCallSet{};
-
-  // skip fullCount
-  if (call.needSkipMore()) {
+  if (call.needSkipMore() && call.getOffset() == 0) {
+    // We can only skip more if the offset is reached.
+    // Otherwise we would have looped more above
     TRI_ASSERT(call.getOffset() == 0);
     TRI_ASSERT(call.hasHardLimit());
+
     // We are only called with fullcount.
+    // or if the input is done.
     // sorting does not matter.
     // Start simply skip all from upstream.
     for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
-      auto state = ExecutorState::HASMORE;
-      while (state == ExecutorState::HASMORE) {
-        auto row = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        std::tie(state, row) = input.nextDataRow(dep);
-        if (row) {
-          call.didSkip(1);
-        } else {
-          // We have consumed all overfetched rows.
-          // We may still have a skip counter within the range.
-          call.didSkip(input.skipAll(dep));
-          // Need to leave the while loop here.
-          // the state could still be HASMORE
-          // e.g. if we have not yet fetched all.
-          break;
-        }
+      auto& range = input.rangeForDependency(dep);
+      while (range.hasDataRow()) {
+        // Consume the row and count it as skipped
+        std::ignore = input.nextDataRow(dep);
+        call.didSkip(1);
       }
-      if (state == ExecutorState::HASMORE) {
+      // Skip all rows in flight
+      call.didSkip(range.skipAll());
+
+      if (range.upstreamState() == ExecutorState::HASMORE) {
         TRI_ASSERT(!input.hasDataRow(dep));
         TRI_ASSERT(input.skippedInFlight(dep) == 0);
         // We need to fetch more data, but can fullCount now
