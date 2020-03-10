@@ -104,26 +104,31 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 }
 
 Counter& MetricsFeature::counter (
-  std::string const& name, uint64_t const& val, std::string const& help) {
+  std::initializer_list<std::string> const& key, uint64_t const& val,
+  std::string const& help) {
 
-  std::string labels;
+  metrics_key mk(key);
   if (ServerState::instance() != nullptr) {
-    labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+    mk.labels += ",shortname=\"" + ServerState::instance()->getShortName() + "\"";
   }
-  auto metric = std::make_shared<Counter>(val, name, help, labels);
+  auto metric = std::make_shared<Counter>(val, mk.name, help, mk.labels);
   bool success = false;
   {
     std::lock_guard<std::mutex> guard(_lock);
-    success = _registry.emplace(
-      metrics_key(name), std::dynamic_pointer_cast<Metric>(metric)).second;
+    success = _registry.emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
   }
   if (!success) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("counter ") + name + " alredy exists");
+      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " alredy exists");
   }
   return *metric;
 }
 
+Counter& MetricsFeature::counter (
+  std::string const& name, uint64_t const& val, std::string const& help) {
+  return counter({name}, val, help);
+}
+  
 ServerStatistics& MetricsFeature::serverStatistics() {
   _serverStatistics->_uptime = StatisticsFeature::time() - _serverStatistics->_startTime;
   return *_serverStatistics;
