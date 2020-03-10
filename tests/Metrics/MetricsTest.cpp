@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for Cluster maintenance
+/// @brief test suite for metrics
 ///
 /// @file
 ///
@@ -22,7 +22,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 

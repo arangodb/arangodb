@@ -81,11 +81,15 @@ class MetricsFeature final : public application_features::ApplicationFeature {
              std::string const& help = std::string()) {
 
     metrics_key mk(key);
+    std::string labels = mk.labels;
     if (ServerState::instance() != nullptr) {
-      mk.labels += "shortname=\"" + ServerState::instance()->getShortName() + "\",";
+      if (!labels.empty()) {
+        labels += ",";
+      }
+      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\",";
     }
 
-    auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, mk.labels);
+    auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
@@ -115,7 +119,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       registry_type::const_iterator it = _registry.find(mk);
 
       try {
-        metric = std::dynamic_pointer_cast<Histogram<Scale>>(*it->second);
+        metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
         if (metric == nullptr) {
           error = std::string("Failed to retrieve histogram ") + mk.name;
         }
@@ -133,6 +137,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
   Counter& counter(std::initializer_list<std::string> const& key, uint64_t const& val,
                    std::string const& help);
+  Counter& counter(std::string const& name);
+  Counter& counter(std::initializer_list<std::string> const& key);
 
   template<typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
@@ -144,10 +150,14 @@ class MetricsFeature final : public application_features::ApplicationFeature {
                   std::string const& help) {
 
     metrics_key mk(key);
+    std::string labels = mk.labels;
     if (ServerState::instance() != nullptr) {
-      mk.labels += ",shortname=\"" + ServerState::instance()->getShortName() + "\"";
+      if (!labels.empty()) {
+        labels += ",";
+      }
+      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
-    auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, mk.labels);
+    auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, labels);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
@@ -176,7 +186,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
           TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + mk.name);
       }
       try {
-        metric = std::dynamic_pointer_cast<Gauge<T>>(*it->second);
+        metric = std::dynamic_pointer_cast<Gauge<T>>(it->second);
         if (metric == nullptr) {
           error = std::string("Failed to retrieve gauge ") + mk.name;
         }

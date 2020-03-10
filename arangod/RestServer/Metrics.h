@@ -39,10 +39,6 @@
 #include "Logger/LogMacros.h"
 #include "counter.h"
 
-class Counter;
-
-template<typename Scale> class Histogram;
-
 class Metric {
 public:
   Metric(std::string const& name, std::string const& help, std::string const& labels);
@@ -60,8 +56,6 @@ protected:
 
 struct Metrics {
 
-  enum Type {COUNTER, HISTOGRAM};
-
   using counter_type = gcl::counter::simplex<uint64_t, gcl::counter::atomicity::full>;
   using hist_type = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
   using buffer_type = gcl::counter::buffer<uint64_t>;
@@ -74,7 +68,8 @@ struct Metrics {
  */
 class Counter : public Metric {
 public:
-  Counter(uint64_t const& val, std::string const& name, std::string const& help, std::string const& labels = std::string());
+  Counter(uint64_t const& val, std::string const& name, std::string const& help,
+          std::string const& labels = std::string());
   Counter(Counter const&) = delete;
   ~Counter();
   std::ostream& print (std::ostream&) const;
@@ -246,7 +241,7 @@ public:
    * @return    index
    */
   size_t pos(T const& val) const {
-    LOG_DEVEL << "val:" << val << " low:" << this->_low << " _div:" << _div << " _lbase: " << _lbase <<  1 + std::floor(log((val - this->_low)/_div)/_lbase);
+    //LOG_DEVEL << "val:" << val << " low:" << this->_low << " _div:" << _div << " _lbase: " << _lbase <<  1 + std::floor(log((val - this->_low)/_div)/_lbase);
     return static_cast<size_t>(1+std::floor(log((val - this->_low)/_div)/_lbase));
   }
   /**
