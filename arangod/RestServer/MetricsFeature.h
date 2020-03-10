@@ -142,7 +142,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   template<typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-    return guage({name}, t, help);
+    return gauge({name}, t, help);
   }
 
   template<typename T>
