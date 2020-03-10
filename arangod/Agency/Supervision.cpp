@@ -948,7 +948,7 @@ void Supervision::run() {
 // Guarded by caller
 bool Supervision::isShuttingDown() {
   _lock.assertLockedByCurrentThread();
-  if ((*_snapshot).has("Shutdown")) {
+  if ( _snapshot && _snapshot->has("Shutdown")) {
     return (*_snapshot).hasAsBool("Shutdown").first;
   }
   return false;
