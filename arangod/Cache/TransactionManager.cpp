@@ -40,8 +40,8 @@ Transaction* TransactionManager::begin(bool readOnly) {
 
   Data newData;
   if (readOnly) {
-    auto data = _data.load(std::memory_order_relaxed);
-    for (;;) {
+    Data data = _data.load(std::memory_order_relaxed);
+    do {
       tx->sensitive = false;
       newData = data;
       newData.counters.openReads++;
@@ -49,14 +49,11 @@ Transaction* TransactionManager::begin(bool readOnly) {
         tx->sensitive = true;
         newData.counters.openSensitive++;
       }
-      if (_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed)) {
-        break;
-      }
-    }
+    } while (!_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed));
   } else {
     tx->sensitive = true;
-    auto data = _data.load(std::memory_order_relaxed);
-    for (;;) {
+    Data data = _data.load(std::memory_order_relaxed);
+    do {
       newData = data;
       newData.counters.openWrites++;
       if (newData.counters.openSensitive == 0) {
@@ -67,10 +64,7 @@ Transaction* TransactionManager::begin(bool readOnly) {
       } else {
         newData.counters.openSensitive++;
       }
-      if (_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed)) {
-        break;
-      }
-    }
+    } while (!_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed));
   }
   tx->term = newData.term;
   return tx;
@@ -79,8 +73,9 @@ Transaction* TransactionManager::begin(bool readOnly) {
 void TransactionManager::end(Transaction* tx) noexcept {
   TRI_ASSERT(tx != nullptr);
 
-  for (;;) {
-    auto data = _data.load(std::memory_order_relaxed);
+  Data data = _data.load(std::memory_order_relaxed);
+  Data newData;
+  do {
     if (((data.term & static_cast<uint64_t>(1)) > 0) && (data.term > tx->term)) {
       tx->sensitive = true;
     }
@@ -95,10 +90,7 @@ void TransactionManager::end(Transaction* tx) noexcept {
     if (tx->sensitive && (--newData.counters.openSensitive == 0)) {
       newData.term++;
     }
-    if (_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed)) {
-      break;
-    }
-  }
+  } while (!_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed));
 
   delete tx;
 }
