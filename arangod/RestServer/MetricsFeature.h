@@ -70,17 +70,23 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  template <typename Scale>
-  Histogram<Scale>& histogram(std::string const& name, Scale const& scale,
-                              std::string const& help = std::string()) {
-    return histogram<Scale>({name}, scale, help);
+
+  template<typename Scale> Histogram<Scale>&
+  histogram (std::string const& name, Scale const& scale,
+             std::string const& help = std::string()) {
+    return histogram<Scale>(metrics_key(name), scale, help);
   }
 
-  template <typename Scale>
-  Histogram<Scale>& histogram(std::initializer_list<std::string> const& key,
-                              Scale const& scale,
-                              std::string const& help = std::string()) {
-    metrics_key mk(key);
+  template<typename Scale> Histogram<Scale>&
+    histogram (std::initializer_list<std::string> const& il, Scale const& scale,
+               std::string const& help = std::string()) {
+    return histogram<Scale>(metrics_key(il), scale, help);
+  }
+
+  template<typename Scale> Histogram<Scale>&
+  histogram (metrics_key const& mk, Scale const& scale,
+             std::string const& help = std::string()) {
+
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr) {
       if (!labels.empty()) {
@@ -92,9 +98,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);
     bool success = false;
     {
-      std::lock_guard<std::mutex> guard(_lock);
-      success =
-          _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
+      std::lock_guard<std::recursive_mutex> guard(_lock);
+      success = _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
     }
     if (!success) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -115,7 +120,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     std::shared_ptr<Histogram<Scale>> metric = nullptr;
     std::string error;
     {
-      std::lock_guard<std::mutex> guard(_lock);
+      std::lock_guard<std::recursive_mutex> guard(_lock);
       registry_type::const_iterator it = _registry.find(mk);
       if (it == _registry.end()) {
         it = _registry.find(mk.name);
@@ -123,8 +128,18 @@ class MetricsFeature final : public application_features::ApplicationFeature {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          std::string("No gauge booked as ") + mk.name);
         } else {
-          metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
-          return histogram(mk, metric->scale(), metric->help());
+          try {
+            metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
+          } catch (std::exception const& e) {
+            error = std::string("Failed to retrieve histogram ") + mk.name + ": " + e.what();
+          }
+          if (metric == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              std::string("Non matching scale classes for cloning ") + mk.name);
+          }
+          auto& tmp =  histogram(mk, metric->scale(), metric->help());
+          return tmp;
         }
       }
       try {
@@ -143,20 +158,27 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   }
 
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
-  Counter& counter(std::initializer_list<std::string> const& key,
-                   uint64_t const& val, std::string const& help);
-  Counter& counter(metrics_key const& mk, uint64_t const& val, std::string const& help);
+  Counter& counter(std::initializer_list<std::string> const& key, uint64_t const& val,
+    std::string const& help);
+  Counter& counter(metrics_key const& key, uint64_t const& val, std::string const& help);
   Counter& counter(std::string const& name);
   Counter& counter(std::initializer_list<std::string> const& key);
 
   template <typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-    return gauge({name}, t, help);
+    return gauge(metrics_key(name), t, help);
   }
 
-  template <typename T>
-  Gauge<T>& gauge(std::initializer_list<std::string> const& key, T const& t,
+  template<typename T>
+  Gauge<T>& gauge(std::initializer_list<std::string> const& il, T const& t,
                   std::string const& help) {
+    return gauge(metrics_key(il), t, help);
+  }
+
+
+  template<typename T>
+  Gauge<T>& gauge(metrics_key const& key, T const& t, std::string const& help = std::string()) {
+
     metrics_key mk(key);
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr) {
@@ -168,9 +190,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, labels);
     bool success = false;
     {
-      std::lock_guard<std::mutex> guard(_lock);
-      success =
-          _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
+      std::lock_guard<std::recursive_mutex> guard(_lock);
+      success = _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
     }
     if (!success) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("gauge ") + mk.name +
@@ -179,9 +200,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  template <typename Scale>
-  Gauge<Scale>& gauge(std::string const& name) {
-    return gauge<Scale>({name});
+  template<typename Scale> Histogram<Scale>& guage (std::string const& name) {
+    return gauge<Scale>(metrics_key(name));
   }
 
   template <typename T>
@@ -190,7 +210,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     std::shared_ptr<Gauge<T>> metric = nullptr;
     std::string error;
     {
-      std::lock_guard<std::mutex> guard(_lock);
+      std::lock_guard<std::recursive_mutex> guard(_lock);
       registry_type::const_iterator it = _registry.find(mk);
       if (it == _registry.end()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -218,7 +238,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
  private:
   registry_type _registry;
 
-  mutable std::mutex _lock;
+  mutable std::recursive_mutex _lock;
 
   std::unique_ptr<ServerStatistics> _serverStatistics;
 

@@ -328,12 +328,19 @@ public:
 
   Histogram() = delete;
 
-  Histogram (Scale scale, std::string const& name, std::string const& help,
+  Histogram (Scale&& scale, std::string const& name, std::string const& help,
              std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
-      _n(scale.n()-1) {}
+      _n(_scale.n()-1) {}
+
+  Histogram (Scale const& scale, std::string const& name, std::string const& help,
+             std::string const& labels = std::string())
+    : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
+      _lowr(std::numeric_limits<value_type>::max()),
+      _highr(std::numeric_limits<value_type>::min()),
+      _n(_scale.n()-1) {}
 
   ~Histogram() = default;
 
@@ -343,6 +350,10 @@ public:
     } else if (val > _highr) {
       _highr = val;
     }
+  }
+
+  Scale const& scale() {
+    return _scale;
   }
 
   size_t pos(value_type const& t) const {
