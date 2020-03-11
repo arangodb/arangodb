@@ -125,23 +125,22 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       if (it == _registry.end()) {
         it = _registry.find(mk.name);
         if (it == _registry.end()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         std::string("No gauge booked as ") + mk.name);
-        } else {
-          try {
-            metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
-          } catch (std::exception const& e) {
-            error = std::string("Failed to retrieve histogram ") + mk.name + ": " + e.what();
-          }
-          if (metric == nullptr) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              std::string("Non matching scale classes for cloning ") + mk.name);
-          }
-          auto& tmp =  histogram(mk, metric->scale(), metric->help());
-          return tmp;
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + mk.name);
         }
+        try {
+          metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
+        } catch (std::exception const& e) {
+          error = std::string("Failed to retrieve histogram ") + mk.name + ": " + e.what();
+        }
+        if (metric == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            std::string("Non matching scale classes for cloning ") + mk.name);
+        }
+        return histogram(mk, metric->scale(), metric->help());
       }
+
       try {
         metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
         if (metric == nullptr) {
@@ -200,12 +199,15 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  template<typename Scale> Histogram<Scale>& guage (std::string const& name) {
-    return gauge<Scale>(metrics_key(name));
+  template<typename T> Gauge<T>& gauge (std::string const& name) {
+    return gauge<T>(metrics_key(name));
+  }
+  template<typename T> Gauge<T>& gauge (std::initializer_list<std::string> const& il) {
+    return gauge<T>(metrics_key(il));
   }
 
-  template <typename T>
-  Gauge<T>& gauge(std::initializer_list<std::string> const& key) {
+
+  template<typename T> Gauge<T>& gauge(metrics_key const& key) {
     metrics_key mk(key);
     std::shared_ptr<Gauge<T>> metric = nullptr;
     std::string error;
@@ -213,9 +215,24 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       std::lock_guard<std::recursive_mutex> guard(_lock);
       registry_type::const_iterator it = _registry.find(mk);
       if (it == _registry.end()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       std::string("No gauge booked as ") + mk.name);
+        it = _registry.find(mk.name);
+        if (it == _registry.end()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + mk.name);
+        }
+        try {
+          metric = std::dynamic_pointer_cast<Gauge<T>>(it->second);
+        } catch (std::exception const& e) {
+          error = std::string("Failed to retrieve gauge ") + mk.name + ": " + e.what();
+        }
+        if (metric == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            std::string("Non matching type for cloning ") + mk.name);
+        }
+        return gauge(mk, T(0), metric->help());
       }
+
       try {
         metric = std::dynamic_pointer_cast<Gauge<T>>(it->second);
         if (metric == nullptr) {

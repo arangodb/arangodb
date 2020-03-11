@@ -228,8 +228,9 @@ public:
     TRI_ASSERT(base > T(0));
     double nn = -1.0*(n-1);
     for (auto& i : this->_delim) {
-      i = static_cast<double>(high-low) *
-        std::pow(static_cast<double>(base), static_cast<double>(nn++)) + low;
+      i = static_cast<T>(
+        static_cast<double>(high-low) *
+        std::pow(static_cast<double>(base), static_cast<double>(nn++)) + static_cast<double>(low));
     }
     _div = this->_delim.front() - low;
     TRI_ASSERT(_div > T(0));

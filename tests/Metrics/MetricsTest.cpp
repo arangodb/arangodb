@@ -173,11 +173,6 @@ TEST_F(MetricsTest, test_int_histogram) {
   histogram_test(lin_scale_t<int>( 20,  40, 7));
   histogram_test(lin_scale_t<int>(-63, -11, 8));
 }
-TEST_F(MetricsTest, test_long_histogram) {
-  histogram_test(lin_scale_t<long>(-17, 349, 6));
-  histogram_test(lin_scale_t<long>( 20,  40, 7));
-  histogram_test(lin_scale_t<long>(-63, -11, 8));
-}
 
 TEST_F(MetricsTest, test_double_log_10_histogram) {
   histogram_test(log_scale_t(10., 0.,  2000.,  5));
