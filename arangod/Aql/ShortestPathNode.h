@@ -50,7 +50,7 @@ class ShortestPathNode : public GraphNode {
   /// Does not clone recursively, does not clone properties (`other.plan()` is
   /// expected to be the same as `plan)`, and does not register this node in the
   /// plan.
-  ShortestPathNode(ExecutionPlan& plan, const ShortestPathNode& node);
+  ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& node);
 
  public:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,

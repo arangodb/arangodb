@@ -224,6 +224,18 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
+KShortestPathsNode::KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode const& other)
+    : GraphNode(plan, other, std::make_unique<ShortestPathOptions>(*other.options())),
+      _pathOutVariable(other._pathOutVariable),
+      _inStartVariable(other._inStartVariable),
+      _startVertexId(other._startVertexId),
+      _inTargetVariable(other._inTargetVariable),
+      _targetVertexId(other._targetVertexId),
+      _fromCondition(nullptr),
+      _toCondition(nullptr) {
+  other.kshortestPathsCloneHelper(plan, *this, false);
+}
+
 void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                             std::unordered_set<ExecutionNode const*>& seen) const {
   GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
@@ -306,25 +318,32 @@ ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan, bool withDependenc
                                                 _directions, _inStartVariable,
                                                 _startVertexId, _inTargetVariable,
                                                 _targetVertexId, std::move(tmp));
+
+  kshortestPathsCloneHelper(*plan, *c, withProperties);
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+void KShortestPathsNode::kshortestPathsCloneHelper(ExecutionPlan& plan,
+                                                   KShortestPathsNode& c,
+                                                   bool withProperties) const {
   if (usesPathOutVariable()) {
     auto pathOutVariable = _pathOutVariable;
     if (withProperties) {
-      pathOutVariable = plan->getAst()->variables()->createVariable(pathOutVariable);
+      pathOutVariable = plan.getAst()->variables()->createVariable(pathOutVariable);
     }
     TRI_ASSERT(pathOutVariable != nullptr);
-    c->setPathOutput(pathOutVariable);
+    c.setPathOutput(pathOutVariable);
   }
 
   // Temporary Filter Objects
-  c->_tmpObjVariable = _tmpObjVariable;
-  c->_tmpObjVarNode = _tmpObjVarNode;
-  c->_tmpIdNode = _tmpIdNode;
+  c._tmpObjVariable = _tmpObjVariable;
+  c._tmpObjVarNode = _tmpObjVarNode;
+  c._tmpIdNode = _tmpIdNode;
 
   // Filter Condition Parts
-  c->_fromCondition = _fromCondition->clone(_plan->getAst());
-  c->_toCondition = _toCondition->clone(_plan->getAst());
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  c._fromCondition = _fromCondition->clone(_plan->getAst());
+  c._toCondition = _toCondition->clone(_plan->getAst());
 }
 
 void KShortestPathsNode::prepareOptions() {
@@ -368,4 +387,14 @@ void KShortestPathsNode::prepareOptions() {
     _options->activateCache(false, nullptr);
   }
   _optionsBuilt = true;
+}
+
+auto KShortestPathsNode::options() const -> graph::ShortestPathOptions* {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* opts = dynamic_cast<ShortestPathOptions*>(GraphNode::options());
+  TRI_ASSERT((GraphNode::options() == nullptr) == (opts == nullptr));
+#else
+  auto* opts = static_cast<ShortestPathOptions*>(GraphNode::options());
+#endif
+  return opts;
 }

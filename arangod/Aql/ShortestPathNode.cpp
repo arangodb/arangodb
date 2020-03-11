@@ -400,7 +400,7 @@ auto ShortestPathNode::options() const -> ShortestPathOptions* {
   return opts;
 }
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan& plan, const ShortestPathNode& other)
+ShortestPathNode::ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& other)
     : GraphNode(plan, other, std::make_unique<ShortestPathOptions>(*other.options())),
       _inStartVariable(other._inStartVariable),
       _startVertexId(other._startVertexId),
