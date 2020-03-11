@@ -104,6 +104,7 @@ describe('_api/gharial', () => {
       minReplicationFactor: Joi.number().integer().min(1).required(),
       writeConcern: Joi.number().integer().min(1).required(),
       isSmart: Joi.boolean().required(),
+      isSatellite: Joi.boolean().required(),
       orphanCollections: Joi.array().items(Joi.string()).required(),
       edgeDefinitions: Joi.array().items(edgeDefinition).required()
     });
