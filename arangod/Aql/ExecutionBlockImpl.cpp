@@ -1777,8 +1777,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
                  _execState == ExecState::UPSTREAM);
     }
 
-    // Skip can only be > 0 if we are in upstream cases.
-    TRI_ASSERT(_skipped.nothingSkipped() || _execState == ExecState::UPSTREAM);
+    // Skip can only be > 0 if we are in upstream cases, or if we got injected a block
+    TRI_ASSERT(_skipped.nothingSkipped() || _execState == ExecState::UPSTREAM ||
+               (std::is_same_v<Executor, IdExecutor<ConstFetcher>>));
 
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
       // In subqeryEndExecutor we actually manage two calls.
