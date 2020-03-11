@@ -47,7 +47,7 @@ Metric *thisMetric, *thatMetric;
 TEST_F(MetricsFeatureTest, test_counter) {
 
   auto& counter = feature.counter("counter", 0, "one counter");
-  auto& labeledCounter = feature.counter({"counter", "label=label"}, 0, "another counter");
+  auto& labeledCounter = feature.counter({"counter", "label=\"label\""}, 0, "another counter");
 
   ASSERT_DOUBLE_EQ(counter.load(), 0);
   std::string s;
@@ -67,6 +67,7 @@ TEST_F(MetricsFeatureTest, fail_recreate_counter) {
   try {
     auto& counterFail = feature.counter({"counter"}, 0, "one counter");
     ASSERT_TRUE(false);
+    std::cout << counterFail.name() << std::endl;
   } catch (...) {
     ASSERT_TRUE(true);
   }
@@ -81,13 +82,13 @@ TEST_F(MetricsFeatureTest, test_same_counter_retrieve) {
   auto& counter2 = feature.counter({"counter"});
   ASSERT_EQ(&counter2, thisMetric);
 
-  auto& counter3 = feature.counter({"counter", "label=label"});
+  auto& counter3 = feature.counter({"counter", "label=\"label\""});
   std::string s;
   counter3.toPrometheus(s);
   std::cout << s << std::endl;
   ASSERT_EQ(&counter3, thatMetric);
 
-  auto& counter4 = feature.counter({"counter", "label=other_label"});
+  auto& counter4 = feature.counter({"counter", "label=\"other_label\""});
   s.clear();
   counter4.toPrometheus(s);
   std::cout << s << std::endl;
@@ -98,7 +99,7 @@ TEST_F(MetricsFeatureTest, test_histogram) {
 
   auto& histogram = feature.histogram("hist", lin_scale_t(0.,1.,10), "linear histogram");
   auto& labeledHistogram = feature.histogram(
-    {"hist", "label=label"}, log_scale_t(2.,0.,1.,10), "labeled logarithmic histogram");
+    {"hist", "label=\"label\""}, log_scale_t(2.,0.,1.,10), "labeled logarithmic histogram");
 
   std::string s;
   histogram.toPrometheus(s);
@@ -117,6 +118,7 @@ TEST_F(MetricsFeatureTest, fail_recreate_histogram) {
   try {
     auto& histogramFail = feature.histogram({"hist"}, lin_scale_t(0.,1.,10), "linear histogram");
     ASSERT_TRUE(false);
+    std::cout << histogramFail << std::endl;
   } catch (...) {
     ASSERT_TRUE(true);
   }
@@ -131,6 +133,7 @@ TEST_F(MetricsFeatureTest, test_same_histogram_retrieve) {
   try {
     auto& histogramFail = feature.histogram<lin_scale_t<float>>("hist");
     ASSERT_TRUE(false);
+    std::cout << histogramFail << std::endl;
   } catch (...) {
     ASSERT_TRUE(true);
   }
@@ -138,16 +141,66 @@ TEST_F(MetricsFeatureTest, test_same_histogram_retrieve) {
   auto& histogram2 = feature.histogram<lin_scale_t<double>>({"hist"});
   ASSERT_EQ(&histogram2, thisMetric);
 
-  auto& histogram3 = feature.histogram<log_scale_t<double>>({"hist", "label=label"});
+  auto& histogram3 = feature.histogram<log_scale_t<double>>({"hist", "label=\"label\""});
   std::string s;
   histogram3.toPrometheus(s);
   std::cout << s << std::endl;
   ASSERT_EQ(&histogram3, thatMetric);
 
 
-  auto& histogram4 = feature.histogram<lin_scale_t<double>>({"hist", "label=other_label"});
+  auto& histogram4 = feature.histogram<lin_scale_t<double>>({"hist", "label=\"other_label\""});
   s.clear();
   histogram4.toPrometheus(s);
+  std::cout << s << std::endl;
+
+}
+
+
+TEST_F(MetricsFeatureTest, test_gauge) {
+
+  auto& gauge = feature.gauge("gauge", 2.3, "one gauge");
+  auto& labeledGauge = feature.gauge(
+    {"gauge", "label=\"label\""}, 17., "labeled gauge");
+
+  std::string s;
+  gauge.toPrometheus(s);
+  std::cout << s << std::endl;
+  s.clear();
+  labeledGauge.toPrometheus(s);
+  std::cout << s << std::endl;
+
+  thisMetric = &gauge;
+  thatMetric = &labeledGauge;
+
+}
+
+
+TEST_F(MetricsFeatureTest, test_same_gauge_retrieve) {
+
+  auto& gauge1 = feature.gauge<double>("gauge");
+  ASSERT_EQ(&gauge1, thisMetric);
+
+  try {
+    auto& gaugeFail = feature.gauge<float>("gauge");
+    ASSERT_TRUE(false);
+    std::cout << gaugeFail.name() << std::endl;
+  } catch (...) {
+    ASSERT_TRUE(true);
+  }
+
+  auto& gauge2 = feature.gauge<double>({"gauge"});
+  ASSERT_EQ(&gauge2, thisMetric);
+
+  auto& gauge3 = feature.gauge<double>({"gauge", "label=\"label\""});
+  std::string s;
+  gauge3.toPrometheus(s);
+  std::cout << s << std::endl;
+  ASSERT_EQ(&gauge3, thatMetric);
+
+
+  auto& gauge4 = feature.gauge<double>({"gauge", "label=\"other_label\""});
+  s.clear();
+  gauge4.toPrometheus(s);
   std::cout << s << std::endl;
 
 }
