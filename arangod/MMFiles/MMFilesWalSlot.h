@@ -59,7 +59,7 @@ class MMFilesWalSlot {
     if (_logfile != nullptr) {
       return _logfile->id();
     }
-    return 0;
+    return MMFilesWalLogfile::IdType{0};
   }
 
   /// @brief return the logfile assigned to the slot

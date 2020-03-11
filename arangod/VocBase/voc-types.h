@@ -41,9 +41,6 @@ typedef uint64_t TRI_voc_tick_t;
 /// @brief collection identifier type
 typedef uint64_t TRI_voc_cid_t;
 
-/// @brief datafile identifier type
-typedef uint64_t TRI_voc_fid_t;
-
 /// @brief revision identifier type
 typedef uint64_t TRI_voc_rid_t;
 

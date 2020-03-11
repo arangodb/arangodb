@@ -50,7 +50,15 @@ bool Identifier::operator<(Identifier const& other) const {
   return _id < other._id;
 }
 
+bool Identifier::operator<=(Identifier const& other) const {
+  return _id <= other._id;
+}
+
 bool Identifier::operator>(Identifier const& other) const {
+  return _id > other._id;
+}
+
+bool Identifier::operator>=(Identifier const& other) const {
   return _id > other._id;
 }
 

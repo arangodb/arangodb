@@ -67,8 +67,14 @@ class Identifier {
   /// @brief check if this identifier is less than another
   bool operator<(Identifier const& other) const;
 
+  /// @brief check if this identifier is at most another
+  bool operator<=(Identifier const& other) const;
+
   /// @brief check if this identifier is greater than another
   bool operator>(Identifier const& other) const;
+
+  /// @brief check if this identifier is at least another
+  bool operator>=(Identifier const& other) const;
 
   /// @brief unset the identifier (set to 0)
   void clear();

@@ -2969,7 +2969,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   // convert the sealed journals into datafiles
   if (!stop) {
     for (auto& datafile : sealed) {
-      std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
+      std::string dname("datafile-" + std::to_string(datafile->fid().id()) +
+                        ".db");
       std::string filename =
           arangodb::basics::FileUtils::buildFilename(physical->path(), dname);
 
@@ -3211,7 +3212,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection, TRI_v
   TRI_ASSERT(datafile != nullptr);
 
   if (cache->lastFid != datafile->fid()) {
-    if (cache->lastFid > 0) {
+    if (cache->lastFid.isSet()) {
       // rotated the existing journal... now update the old journal's stats
       auto& dfi = cache->createDfi(cache->lastFid);
       static_cast<MMFilesCollection*>(collection->getPhysical())

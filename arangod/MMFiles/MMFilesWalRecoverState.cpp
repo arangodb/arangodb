@@ -260,7 +260,7 @@ LogicalCollection* MMFilesWalRecoverState::getCollection(TRI_voc_tick_t database
 /// @brief executes a single operation inside a transaction
 int MMFilesWalRecoverState::executeSingleOperation(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    MMFilesMarker const* marker, TRI_voc_fid_t fid,
+    MMFilesMarker const* marker, FileId fid,
     std::function<int(SingleCollectionTransaction*, MMFilesMarkerEnvelope*)> func) {
   // first find the correct database
   TRI_vocbase_t* vocbase = useDatabase(databaseId);

@@ -195,7 +195,7 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
 
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
 
-static MMFilesDatafile* CreateAnonymousDatafile(TRI_voc_fid_t fid, uint32_t maximalSize) {
+static MMFilesDatafile* CreateAnonymousDatafile(FileId fid, uint32_t maximalSize) {
 #ifdef TRI_MMAP_ANONYMOUS
   // fd -1 is required for "real" anonymous regions
   int fd = -1;
@@ -248,7 +248,7 @@ static MMFilesDatafile* CreateAnonymousDatafile(TRI_voc_fid_t fid, uint32_t maxi
 ////////////////////////////////////////////////////////////////////////////////
 
 static MMFilesDatafile* CreatePhysicalDatafile(std::string const& filename,
-                                               TRI_voc_fid_t fid, uint32_t maximalSize) {
+                                               FileId fid, uint32_t maximalSize) {
   TRI_ASSERT(!filename.empty());
 
   int fd = TRI_CreateDatafile(filename, maximalSize);
@@ -339,7 +339,7 @@ int MMFilesDatafile::judge(std::string const& filename) {
 }
 
 /// @brief creates either an anonymous or a physical datafile
-MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fid_t fid,
+MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, FileId fid,
                                          uint32_t maximalSize, bool withInitialMarkers) {
   size_t pageSize = PageSize::getValue();
 
@@ -700,7 +700,7 @@ bool TRI_IterateDatafile(MMFilesDatafile* datafile,
 
   LOG_TOPIC("8ccdf", DEBUG, arangodb::Logger::DATAFILES)
       << "iterating over datafile '" << datafile->getName()
-      << "', fid: " << datafile->fid() << ", size: " << datafile->currentSize();
+      << "', fid: " << datafile->fid().id() << ", size: " << datafile->currentSize();
 
   char const* ptr = datafile->data();
   char const* end = ptr + datafile->currentSize();
@@ -746,7 +746,7 @@ Result TRI_IterateDatafile(MMFilesDatafile* datafile,
 
   LOG_TOPIC("32e89", DEBUG, arangodb::Logger::DATAFILES)
       << "iterating over datafile '" << datafile->getName()
-      << "', fid: " << datafile->fid() << ", size: " << datafile->currentSize();
+      << "', fid: " << datafile->fid().id() << ", size: " << datafile->currentSize();
 
   char const* ptr = datafile->data();
   char const* end = ptr + datafile->currentSize();
@@ -791,7 +791,7 @@ bool TRI_IterateDatafile(MMFilesDatafile* datafile,
                          std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb) {
   LOG_TOPIC("dab1d", DEBUG, arangodb::Logger::DATAFILES)
       << "iterating over datafile '" << datafile->getName()
-      << "', fid: " << datafile->fid() << ", size: " << datafile->currentSize();
+      << "', fid: " << datafile->fid().id() << ", size: " << datafile->currentSize();
 
   char const* ptr = datafile->data();
   char const* end = ptr + datafile->currentSize();
@@ -1027,7 +1027,7 @@ static std::string DiagnoseMarker(MMFilesMarker const* marker, char const* end) 
 
 MMFilesDatafile::MMFilesDatafile(std::string const& filename, int fd,
                                  void* mmHandle, uint32_t maximalSize,
-                                 uint32_t currentSize, TRI_voc_fid_t fid, char* data)
+                                 uint32_t currentSize, FileId fid, char* data)
     : _filename(filename),
       _fid(fid),
       _state(TRI_DF_STATE_READ),
@@ -1763,11 +1763,10 @@ DatafileScan MMFilesDatafile::scanHelper() {
 }
 
 /// @brief create the initial datafile header marker
-int MMFilesDatafile::writeInitialHeaderMarker(TRI_voc_fid_t fid, uint32_t maximalSize) {
+int MMFilesDatafile::writeInitialHeaderMarker(FileId fid, uint32_t maximalSize) {
   // create the header
   MMFilesDatafileHeaderMarker header =
-      MMFilesDatafileHelper::CreateHeaderMarker(maximalSize,
-                                                static_cast<TRI_voc_tick_t>(fid));
+      MMFilesDatafileHelper::CreateHeaderMarker(maximalSize, fid);
 
   // reserve space and write header to file
   MMFilesMarker* position;
@@ -1960,7 +1959,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
 
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(!filename.empty());
-  TRI_voc_fid_t fid = GetNumericFilenamePart(filename.c_str());
+  FileId fid{GetNumericFilenamePart(filename.c_str())};
 
   // attempt to open a datafile file
   int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC);

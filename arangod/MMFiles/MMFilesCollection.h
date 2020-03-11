@@ -35,6 +35,7 @@
 #include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesRevisionsCache.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/Identifiers/FileId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -136,7 +137,7 @@ class MMFilesCollection final : public PhysicalCollection {
                           char*& resultPosition, MMFilesDatafile*& resultDatafile);
 
   /// @brief create compactor file
-  MMFilesDatafile* createCompactor(TRI_voc_fid_t fid, size_t maximalSize);
+  MMFilesDatafile* createCompactor(FileId fid, size_t maximalSize);
 
   /// @brief close an existing compactor
   int closeCompactor(MMFilesDatafile* datafile);
@@ -151,8 +152,7 @@ class MMFilesCollection final : public PhysicalCollection {
   int sealDatafile(MMFilesDatafile* datafile, bool isCompactor);
 
   /// @brief increase dead stats for a datafile, if it exists
-  void updateStats(TRI_voc_fid_t fid,
-                   MMFilesDatafileStatisticsContainer const& values, bool warn) {
+  void updateStats(FileId fid, MMFilesDatafileStatisticsContainer const& values, bool warn) {
     _datafileStatistics.update(fid, values, warn);
   }
 
@@ -322,18 +322,18 @@ class MMFilesCollection final : public PhysicalCollection {
                            velocypack::Slice const& newDoc);
 
   MMFilesDocumentPosition insertLocalDocumentId(LocalDocumentId const& documentId,
-                                                uint8_t const* dataptr, TRI_voc_fid_t fid,
+                                                uint8_t const* dataptr, FileId fid,
                                                 bool isInWal, bool shouldLock);
 
   void insertLocalDocumentId(MMFilesDocumentPosition const& position, bool shouldLock);
 
-  void updateLocalDocumentId(LocalDocumentId const& documentId, uint8_t const* dataptr,
-                             TRI_voc_fid_t fid, bool isInWal);
+  void updateLocalDocumentId(LocalDocumentId const& documentId,
+                             uint8_t const* dataptr, FileId fid, bool isInWal);
 
   bool updateLocalDocumentIdConditional(LocalDocumentId const& documentId,
                                         MMFilesMarker const* oldPosition,
                                         MMFilesMarker const* newPosition,
-                                        TRI_voc_fid_t newFid, bool isInWal);
+                                        FileId newFid, bool isInWal);
 
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
@@ -374,7 +374,7 @@ class MMFilesCollection final : public PhysicalCollection {
                            MMFilesDatafile* datafile);
 
   /// @brief create statistics for a datafile, using the stats provided
-  void createStats(TRI_voc_fid_t fid, MMFilesDatafileStatisticsContainer const& values) {
+  void createStats(FileId fid, MMFilesDatafileStatisticsContainer const& values) {
     _datafileStatistics.create(fid, values);
   }
 
@@ -382,7 +382,7 @@ class MMFilesCollection final : public PhysicalCollection {
   bool iterateDatafiles(std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb);
 
   /// @brief creates a datafile
-  MMFilesDatafile* createDatafile(TRI_voc_fid_t fid, uint32_t journalSize, bool isCompactor);
+  MMFilesDatafile* createDatafile(FileId fid, uint32_t journalSize, bool isCompactor);
 
   /// @brief iterate over a vector of datafiles and pick those with a specific
   /// data range

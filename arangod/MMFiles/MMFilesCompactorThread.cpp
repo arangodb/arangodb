@@ -94,10 +94,10 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df,
   TRI_ASSERT(df != nullptr);
 
   std::unique_ptr<MMFilesDatafile> datafile(df);
-  TRI_voc_fid_t fid = datafile->fid();
+  FileId fid = datafile->fid();
 
   std::string copy;
-  std::string name("deleted-" + std::to_string(fid) + ".db");
+  std::string name("deleted-" + std::to_string(fid.id()) + ".db");
   std::string filename =
       arangodb::basics::FileUtils::buildFilename(physical->path(), name);
 
@@ -180,7 +180,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
 
   if (datafile->isPhysical()) {
     // construct a suitable tempname
-    std::string jname("temp-" + std::to_string(datafile->fid()) + ".db");
+    std::string jname("temp-" + std::to_string(datafile->fid().id()) + ".db");
     std::string tempFilename =
         arangodb::basics::FileUtils::buildFilename(physical->path(), jname);
     std::string realName = datafile->getName();
@@ -409,7 +409,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   /// too!!
   auto compactifier = [&context, &physical, this](MMFilesMarker const* marker,
                                                   MMFilesDatafile* datafile) -> bool {
-    TRI_voc_fid_t const targetFid = context->_compactor->fid();
+    FileId const targetFid = context->_compactor->fid();
 
     MMFilesMarkerType const type = marker->getType();
 
@@ -794,7 +794,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     MMFilesDatafile* df = datafiles[i];
     if (df->state() == TRI_DF_STATE_OPEN_ERROR || df->state() == TRI_DF_STATE_WRITE_ERROR) {
       LOG_TOPIC("275f3", WARN, Logger::COMPACTOR)
-          << "cannot compact datafile " << df->fid() << " of collection '"
+          << "cannot compact datafile " << df->fid().id() << " of collection '"
           << collection->name() << "' because it has errors";
       physical->setCompactionStatus(ReasonCorrupted);
       return false;
@@ -811,7 +811,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
     if (dfi.numberUncollected > 0) {
       LOG_TOPIC("efb09", DEBUG, Logger::COMPACTOR)
-          << "cannot compact datafile " << df->fid() << " of collection '"
+          << "cannot compact datafile " << df->fid().id() << " of collection '"
           << collection->name() << "' because it still has uncollected entries";
       start = i + 1;
       break;
@@ -888,7 +888,8 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     TRI_ASSERT(reason != nullptr);
 
     LOG_TOPIC("d870a", DEBUG, Logger::COMPACTOR)
-        << "found datafile #" << i << " eligible for compaction. fid: " << df->fid()
+        << "found datafile #" << i
+        << " eligible for compaction. fid: " << df->fid().id()
         << ", size: " << df->maximalSize() << ", reason: " << reason
         << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive
         << ", numberDeletions: " << dfi.numberDeletions
