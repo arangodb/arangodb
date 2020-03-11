@@ -155,7 +155,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     std::string leaderId{};
 
     /// @brief local server id
-    ServerId localServerId{0};
+    ServerId localServerId{ServerId::none()};
 
     /// @brief local server id
     std::string localServerIdString{};

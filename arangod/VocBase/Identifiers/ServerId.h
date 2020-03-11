@@ -33,6 +33,10 @@ class ServerId : public arangodb::basics::Identifier {
  public:
   constexpr ServerId() noexcept : Identifier() {}
   constexpr explicit ServerId(BaseType id) noexcept : Identifier(id) {}
+
+ public:
+  /// @brief create a not-set file id
+  static constexpr ServerId none() { return ServerId{0}; }
 };
 
 }  // namespace arangodb

@@ -118,7 +118,7 @@ void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   _stopInitialSynchronization = false;
   _progressMsg.clear();
   _progressTime[0] = '\0';
-  _serverId = ServerId(0);
+  _serverId = ServerId::none();
   _lastError.reset();
 
   if (resetPhase) {
