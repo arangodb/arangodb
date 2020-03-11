@@ -48,6 +48,7 @@ const std::string COLLECTION = "collection";
 const std::string SHARD = "s99";
 const std::string SHARD_LEADER = "leader";
 const std::string SHARD_FOLLOWER1 = "follower1";
+const std::string SHARD_FOLLOWER2 = "follower2";
 const std::string FREE_SERVER = "free";
 const std::string FREE_SERVER2 = "free2";
 
@@ -1015,7 +1016,7 @@ TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
             VPackBuilder pendingJob;
             {
               VPackObjectBuilder b(&pendingJob);
-              auto plainJob = createJob(COLLECTION, LEADER, SHARD_FOLLOWER1);
+              auto plainJob = createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1);
               for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
