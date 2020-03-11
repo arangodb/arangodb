@@ -193,7 +193,7 @@ Supervision::Supervision(application_features::ApplicationServer& server)
               "Accumulated Supervision  wait for replication time  [ms]")),
       _supervision_failed_server_counter(
           server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionAccumRuntimeWaitForSyncMs, 0,
+              StaticStrings::SupervisionFailedServerCount, 0,
               "Counter for FailedServer jobs")) {}
 
 Supervision::~Supervision() {
