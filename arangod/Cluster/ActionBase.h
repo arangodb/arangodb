@@ -159,23 +159,23 @@ class ActionBase {
   Result result() const { return _result; }
 
   /// @brief When object was constructed
-  std::chrono::steady_clock::time_point getCreateTime() const {
-    return std::chrono::steady_clock::time_point() + _actionCreated.load();
+  std::chrono::system_clock::time_point getCreateTime() const {
+    return std::chrono::system_clock::time_point() + _actionCreated.load();
   }
 
   /// @brief When object was first started
-  std::chrono::steady_clock::time_point getStartTime() const {
-    return std::chrono::steady_clock::time_point() + _actionStarted.load();
+  std::chrono::system_clock::time_point getStartTime() const {
+    return std::chrono::system_clock::time_point() + _actionStarted.load();
   }
 
   /// @brief When object most recently iterated
-  std::chrono::steady_clock::time_point getLastStatTime() const {
-    return std::chrono::steady_clock::time_point() + _actionLastStat.load();
+  std::chrono::system_clock::time_point getLastStatTime() const {
+    return std::chrono::system_clock::time_point() + _actionLastStat.load();
   }
 
   /// @brief When object finished executing
-  std::chrono::steady_clock::time_point getDoneTime() const {
-    return std::chrono::steady_clock::time_point() + _actionDone.load();
+  std::chrono::system_clock::time_point getDoneTime() const {
+    return std::chrono::system_clock::time_point() + _actionDone.load();
   }
 
   /// @brief check if worker lables match ours
@@ -213,10 +213,10 @@ class ActionBase {
 
   // times for user reporting (and _actionDone used by done() to prevent
   //  race conditions of same task executing twice
-  std::atomic<std::chrono::steady_clock::duration> _actionCreated;
-  std::atomic<std::chrono::steady_clock::duration> _actionStarted;
-  std::atomic<std::chrono::steady_clock::duration> _actionLastStat;
-  std::atomic<std::chrono::steady_clock::duration> _actionDone;
+  std::atomic<std::chrono::system_clock::duration> _actionCreated;
+  std::atomic<std::chrono::system_clock::duration> _actionStarted;
+  std::atomic<std::chrono::system_clock::duration> _actionLastStat;
+  std::atomic<std::chrono::system_clock::duration> _actionDone;
 
   std::atomic<uint64_t> _progress;
 

@@ -306,9 +306,21 @@ class StaticStrings {
   static std::string const MaintenancePhaseTwoRuntimeMs;
   static std::string const MaintenanceAgencySyncRuntimeMs;
 
+
+  static std::string const MaintenanceActionRuntimeMs;
+  static std::string const MaintenanceActionAccumRuntimeMs;
+  static std::string const MaintenanceActionFailureCounter;
+  static std::string const MaintenanceActionQueueTimeMs;
+  static std::string const MaintenanceActionAccumQueueTimeMs;
+
   static std::string const MaintenancePhaseOneAccumRuntimeMs;
   static std::string const MaintenancePhaseTwoAccumRuntimeMs;
   static std::string const MaintenanceAgencySyncAccumRuntimeMs;
+
+
+  static std::string const ActionDuplicateCounter;
+  static std::string const ActionRegisteredCounter;
+  static std::string const ActionDoneCounter;
 
   static std::string const ShardsOutOfSync;
   static std::string const ShardsTotalCount;

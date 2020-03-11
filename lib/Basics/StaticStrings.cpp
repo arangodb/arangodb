@@ -331,9 +331,20 @@ std::string const StaticStrings::MaintenancePhaseOneRuntimeMs("arangodb_maintena
 std::string const StaticStrings::MaintenancePhaseTwoRuntimeMs("arangodb_maintenance_phase2_runtime_msec");
 std::string const StaticStrings::MaintenanceAgencySyncRuntimeMs("arangodb_maintenance_agency_sync_runtime_msec");
 
+
+std::string const StaticStrings::MaintenanceActionRuntimeMs("arangodb_maintenance_action_runtime_msec");
+std::string const StaticStrings::MaintenanceActionAccumRuntimeMs("arangodb_maintenance_action_accum_runtime_msec");
+std::string const StaticStrings::MaintenanceActionFailureCounter("arangodb_maintenance_action_failure_counter");
+std::string const StaticStrings::MaintenanceActionQueueTimeMs("arangodb_maintenance_action_queue_time_msec");
+std::string const StaticStrings::MaintenanceActionAccumQueueTimeMs("arangodb_maintenance_action_accum_queue_time_msec");
+
 std::string const StaticStrings::MaintenancePhaseOneAccumRuntimeMs("arangodb_maintenance_phase1_accum_runtime_msec");
 std::string const StaticStrings::MaintenancePhaseTwoAccumRuntimeMs("arangodb_maintenance_phase2_accum_runtime_msec");
 std::string const StaticStrings::MaintenanceAgencySyncAccumRuntimeMs("arangodb_maintenance_agency_sync_accum_runtime_msec");
+
+std::string const StaticStrings::ActionDuplicateCounter("arangodb_maintenance_action_duplicate_counter");
+std::string const StaticStrings::ActionRegisteredCounter("arangodb_maintenance_action_registered_counter");
+std::string const StaticStrings::ActionDoneCounter("arangodb_maintenance_action_done_counter");
 
 std::string const StaticStrings::ShardsOutOfSync("arangodb_shards_out_of_sync");
 std::string const StaticStrings::ShardsTotalCount("arangodb_shards_total_count");

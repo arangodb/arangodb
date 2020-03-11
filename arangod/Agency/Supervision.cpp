@@ -932,7 +932,7 @@ void Supervision::run() {
                          .count();
 
       _supervision_runtime_msec.count(lapTime / 1000);
-      _supervision_runtime_msec.count(lapTime / 1000);
+      _supervision_accum_runtime_msec.count(lapTime / 1000);
 
       if (lapTime < 1000000) {
         _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));

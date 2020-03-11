@@ -85,6 +85,8 @@ class MaintenanceWorker : public Thread {
  private:
   MaintenanceWorker(MaintenanceWorker const&) = delete;
 
+  void recordJobStats(bool failed);
+
 };  // class MaintenanceWorker
 
 }  // namespace maintenance

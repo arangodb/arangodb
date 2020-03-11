@@ -161,23 +161,31 @@ class Action {
   bool runable() const { return _action->runable(); }
 
   /// @brief When object was constructed
-  std::chrono::steady_clock::time_point getCreateTime() const {
+  std::chrono::system_clock::time_point getCreateTime() const {
     return _action->getCreateTime();
   }
 
   /// @brief When object was first started
-  std::chrono::steady_clock::time_point getStartTime() const {
+  std::chrono::system_clock::time_point getStartTime() const {
     return _action->getStartTime();
   }
 
   /// @brief When object most recently iterated
-  std::chrono::steady_clock::time_point getLastStatTime() const {
+  std::chrono::system_clock::time_point getLastStatTime() const {
     return _action->getLastStatTime();
   }
 
   /// @brief When object finished executing
-  std::chrono::steady_clock::time_point getDoneTime() const {
+  std::chrono::system_clock::time_point getDoneTime() const {
     return _action->getDoneTime();
+  }
+
+  auto getRunDuration() const {
+    return _action->getDoneTime() - _action->getStartTime();
+  }
+
+  auto getQueueDuration() const {
+    return _action->getStartTime() - _action->getCreateTime();
   }
 
   /// @brief fastTrack

@@ -125,11 +125,12 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
+  using namespace std::chrono;
+  using clock = std::chrono::steady_clock;
+  auto start = clock::now();
   TRI_ASSERT(AgencyCommManager::isEnabled());
   AgencyComm comm(_server);
 
-  using namespace std::chrono;
-  using clock = std::chrono::steady_clock;
 
   LOG_TOPIC("62fd8", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
@@ -176,7 +177,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
-  auto start = clock::now();
   try {
     // in previous life handlePlanChange
 
