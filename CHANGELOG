@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix a bug that leads to graph traversals yielding empty output when none of the
+  output variables (vertex, edge, path) are used. This is relevant when a query 
+  is only interested in a COUNT of the outputs, for example.
+
 * MoveShard to check, if target is in sync follower before promotion
   to leader.
 
