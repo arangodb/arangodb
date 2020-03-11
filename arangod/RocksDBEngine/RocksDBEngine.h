@@ -350,25 +350,31 @@ class RocksDBEngine final : public StorageEngine {
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options, bool createdEngineDir);
   void validateJournalFiles() const;
   
-  Result readUserEncryptionKey(std::string& out) const;
+  Result readUserEncryptionKeys(std::map<std::string, std::string>& outlist) const;
 
   enterprise::RocksDBEngineEEData _eeData;
 
 public:
+  
+  bool isEncryptionEnabled() const;
+  
   std::string const& getEncryptionKey();
   
-  /// encryption file
-  std::string const& getEncryptionFilePath();
-  /// encrypted key file path
-  std::string const& getEncryptedKeyFilePath();
+  std::string getEncryptionTypeFile() const;
   
-  /// reload user-provided key, writes out the internal key file
-  Result rotateEncryptionKey();
+  std::string getKeyStoreFolder() const;
+  
+  std::vector<std::string> userEncryptionKeys() const;
+  
+  /// rotate user-provided keys, writes out the internal key files
+  Result rotateUserEncryptionKeys();
   
 private:
   
-  /// reload encryption key, using new user provided key file
-  Result loadEncryptionKey();
+  /// load encryption at rest key from keystore
+  Result decryptInternalKeystore();
+  /// encrypt the internal keystore with all user keys
+  Result encryptInternalKeystore();
   
 #endif
 private:

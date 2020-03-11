@@ -330,7 +330,7 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
     *errorNumber = 0;
   }
 
-  int result = TRI_MKDIR(name.c_str(), mask);
+  auto result = TRI_MKDIR(name.c_str(), mask);
 
   int res = errno;
   if (result != 0 && res == EEXIST && isDirectory(name)) {
@@ -365,19 +365,19 @@ bool copyRecursive(std::string const& source, std::string const& target,
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
-bool copyDirectoryRecursive(std::string const& source, std::string const& target,
-                   std::function<bool(std::string const&)> const& filter,
-                   std::string& error) {
-
-  // "auto lambda" will not work here
-  std::function<TRI_copy_recursive_e(std::string const&)> lambda =
-    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
-    return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
-  };
-
-  return copyDirectoryRecursive(source, target, lambda, error);
-
-} // copyDirectoryRecursive (bool filter())
+//bool copyDirectoryRecursive(std::string const& source, std::string const& target,
+//                   std::function<bool(std::string const&)> const& filter,
+//                   std::string& error) {
+//
+//  // "auto lambda" will not work here
+//  std::function<TRI_copy_recursive_e(std::string const&)> lambda =
+//    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
+//    return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
+//  };
+//
+//  return copyDirectoryRecursive(source, target, lambda, error);
+//
+//} // copyDirectoryRecursive (bool filter())
 
 
 /// @brief will not copy files/directories for which the filter function

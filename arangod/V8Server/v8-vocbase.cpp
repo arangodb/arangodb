@@ -1966,7 +1966,7 @@ static void JS_EncryptionKeyReload(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
   
   auto* engine = EngineSelectorFeature::ENGINE;
-  auto res = static_cast<RocksDBEngine*>(engine)->rotateEncryptionKey();
+  auto res = static_cast<RocksDBEngine*>(engine)->rotateUserEncryptionKeys();
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }

@@ -148,7 +148,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
 
   uint64ToPersistent(internals.buffer(), objectId);
   internals.buffer().append(word.data(), word.length());
-  internals.push_back(0xFFU);
+  internals.push_back(static_cast<const char>(0xFFU));
   // 0xFF is higher than any valud utf-8 character
   return b;
 }
@@ -284,7 +284,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
 
       _internals.separate();
       _internals.push_back(static_cast<char>(_type));
-      _internals.push_back(0xFFU);
+      _internals.push_back(static_cast<const char>(0xFFU));
       break;
     }
     case RocksDBEntryType::CounterValue:
@@ -325,7 +325,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());
 
       uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append((char*)(min.begin()), min.byteSize());
+      _internals.buffer().append((char const*)(min.begin()), min.byteSize());
 
       _internals.separate();
 
@@ -334,10 +334,10 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         // for the upper bound we can use the object id + 1, which will always compare higher in a
         // bytewise comparison
         uint64ToPersistent(_internals.buffer(), first + 1);
-        _internals.buffer().append((char*)(min.begin()), min.byteSize());
+        _internals.buffer().append((char const*)(min.begin()), min.byteSize());
       } else {
         uint64ToPersistent(_internals.buffer(), first);
-        _internals.buffer().append((char*)(max.begin()), max.byteSize());
+        _internals.buffer().append((char const*)(max.begin()), max.byteSize());
       }
       break;
     }
