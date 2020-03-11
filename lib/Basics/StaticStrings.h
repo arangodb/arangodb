@@ -265,6 +265,8 @@ class StaticStrings {
   static std::string const RevisionTreeNodes;
   static std::string const RevisionTreeRangeMax;
   static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeRanges;
+  static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
 
   // generic attribute names
