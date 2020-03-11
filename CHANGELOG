@@ -1,6 +1,16 @@
 devel
 -----
 
+* Agency ttl bug fix
+
+* Added the SNI feature for TLS. This means that one can configure multiple
+  server keys and certificate chains and the system dynamically uses
+  the right one depending on the value of the TLS servername extension.
+  This allows to use different TLS setups for the same server which is
+  reachable behind different DNS names, for example (enterprise only).
+
+* Do not create a reboot tracker for empty serverId ubin sync repl.
+
 * Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
   AQL functions when invoking an AQL query from the arangosh or a client application.
   Previously, invoking an AQL query and using the `CALL` or `APPLY` AQL functions
@@ -16,11 +26,11 @@ devel
 
   The traversal speedups observed by these changes alone were around 8 to 10% for
   single-server traversals and traversals in OneShard setups. Cluster traversals
-  will also benefit from these changes, but to a lesser extent. This is because the 
+  will also benefit from these changes, but to a lesser extent. This is because the
   network roundtrips have a higher share of the total query execution times there.
 
 * Traversal performance can also be improved by not fetching the visited vertices
-  from the storage engine in case the traversal query does not refer to them. 
+  from the storage engine in case the traversal query does not refer to them.
   For example, in the query
 
       FOR v, e, p IN 1..3 OUTBOUND 'collection/startVertex' edges
@@ -44,7 +54,7 @@ devel
 
   the execution of the `sub2` subquery can be delayed to after the SORT and LIMIT,
   turning it into
-      
+
       FOR doc IN collection1
         LET sub1 = FIRST(FOR sub IN collection2 FILTER sub.ref == doc._key RETURN sub)
         SORT sub1
@@ -56,7 +66,7 @@ devel
   specified by providing the new `validation` collection property when creating a
   new collection or when updating the properties of an existing collection:
 
-      db.mycollection.properties({ 
+      db.mycollection.properties({
         validation: {
           rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
           message : "Json-Schema validation failed"
@@ -99,7 +109,7 @@ devel
   from the named graph are needed, the `edgeCollections` option can be a handy
   performance optimization.
 
-* Make arangobench return a proper error message when its initial attempt to 
+* Make arangobench return a proper error message when its initial attempt to
   create the test collection fails.
 
 * In some cases with a COLLECT LIMIT situation on a small limit the collect
