@@ -405,7 +405,7 @@ void appendTerms(irs::by_phrase& filter, irs::string_ref const& value,
 
   // add tokens
   while (stream.next()) {
-    filter.push_back(irs::by_phrase::info_t::simple_term{}, token.value(), firstOffset);
+    filter.push_back(irs::by_phrase::simple_term{token.value()}, firstOffset);
     firstOffset = 0;
   }
 }
@@ -2114,7 +2114,7 @@ arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
   }
   if (filter) {
     // 128 - FIXME make configurable
-    filter->push_back(irs::by_phrase::info_t::prefix_term{{128}}, term, firstOffset);
+    filter->push_back(irs::by_phrase::prefix_term{128, irs::ref_cast<irs::byte_type>(term)}, firstOffset);
   }
   return {};
 }
@@ -2134,7 +2134,7 @@ arangodb::Result fromFuncPhraseLike(char const* funcName,
   }
   if (filter) {
     // 128 - FIXME make configurable
-    filter->push_back(irs::by_phrase::info_t::wildcard_term{{128}}, term, firstOffset);
+    filter->push_back(irs::by_phrase::wildcard_term{128, irs::ref_cast<irs::byte_type>(term)}, firstOffset);
   }
   return {};
 }
@@ -2275,10 +2275,9 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
 
   if (filter) {
     filter->push_back(
-          irs::by_phrase::info_t::levenshtein_term{{scoringLimit},
-                                                   static_cast<irs::byte_type>(maxDistance),
-                                                   &arangodb::iresearch::getParametricDescription,
-                                                   withTranspositions}, target, firstOffset);
+          irs::by_phrase::levenshtein_term{withTranspositions, static_cast<irs::byte_type>(maxDistance), scoringLimit,
+                                           &arangodb::iresearch::getParametricDescription,
+                                           irs::ref_cast<irs::byte_type>(target)}, firstOffset);
   }
   return {};
 }
@@ -2318,7 +2317,7 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
     };
   }
 
-  std::vector<irs::string_ref> terms;
+  std::vector<irs::bstring> terms;
   terms.reserve(argc);
   ScopedAqlValue termValue;
   irs::string_ref term;
@@ -2331,10 +2330,10 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
         res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
       };
     }
-    terms.emplace_back(term);
+    terms.emplace_back(irs::ref_cast<irs::byte_type>(term));
   }
   if (filter) {
-    filter->push_back(irs::by_phrase::info_t::select_term{}, terms, firstOffset);
+    filter->push_back(irs::by_phrase::set_term{std::move(terms)}, firstOffset);
   }
   return {};
 }
