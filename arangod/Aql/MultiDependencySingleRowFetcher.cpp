@@ -439,7 +439,7 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
       } else {
         TRI_ASSERT(skipped.nothingSkipped());
       }
-      skippedTotal += skipped;
+      skippedTotal.merge(skipped, false);
       ranges.emplace_back(dependency, range);
     }
   }

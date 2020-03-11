@@ -225,7 +225,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<ConstFetcher>>>>
-  auto injectConstantBlock(SharedAqlItemBlockPtr block) -> void;
+  auto injectConstantBlock(SharedAqlItemBlockPtr block, SkipResult skipped) -> void;
 
   [[nodiscard]] Infos const& infos() const;
 

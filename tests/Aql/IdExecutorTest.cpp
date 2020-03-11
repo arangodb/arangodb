@@ -443,7 +443,8 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher) {
     // Inject block
     auto inputBlock =
         buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}});
-    testee.injectConstantBlock(inputBlock);
+
+    testee.injectConstantBlock(inputBlock, SkipResult{});
   }
   {
     // Now call with too small hardLimit
@@ -480,7 +481,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_at_end) {
     auto inputBlock =
         buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}},
                       {{5, 0}, {6, 1}});
-    testee.injectConstantBlock(inputBlock);
+    testee.injectConstantBlock(inputBlock, SkipResult{});
   }
   {
     // Now call with too small hardLimit
@@ -517,7 +518,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_in_between) {
     auto inputBlock =
         buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}},
                       {{3, 0}, {4, 1}, {6, 0}});
-    testee.injectConstantBlock(inputBlock);
+    testee.injectConstantBlock(inputBlock, SkipResult{});
   }
   {
     // Now call with too small hardLimit
@@ -557,7 +558,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     auto inputBlock =
         buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}},
                       {{3, 0}, {4, 1}, {5, 0}, {6, 0}});
-    testee.injectConstantBlock(inputBlock);
+    testee.injectConstantBlock(inputBlock, SkipResult{});
   }
   // We can only return until the next top-level shadow row is reached.
   {

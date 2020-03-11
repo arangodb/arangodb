@@ -711,8 +711,8 @@ namespace arangodb::aql {
 
 template <>
 template <>
-auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecutor<ConstFetcher>>(SharedAqlItemBlockPtr block)
-    -> void {
+auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecutor<ConstFetcher>>(
+    SharedAqlItemBlockPtr block, SkipResult skipped) -> void {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
 
@@ -721,8 +721,15 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
   new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   TRI_ASSERT(_skipped.nothingSkipped());
-  _skipped.reset();
+
+  // Local skipped is either fresh (depth == 1)
+  // Or exactly of the size handed in
+  TRI_ASSERT(_skipped.subqueryDepth() == 1 ||
+             _skipped.subqueryDepth() == skipped.subqueryDepth());
+  _skipped = skipped;
+
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
+
   _state = InternalState::FETCH_DATA;
 
   // Reset state of execute
@@ -742,8 +749,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   SharedAqlItemBlockPtr block =
       input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
                          infos().numberOfOutputRegisters());
-
-  injectConstantBlock(block);
+  TRI_ASSERT(_skipped.nothingSkipped());
+  _skipped.reset();
+  // We inject an empty copy of our skipped here,
+  // This is resettet, but will maintain the size
+  injectConstantBlock(block, _skipped);
 
   // end of default initializeCursor
   return ExecutionBlock::initializeCursor(input);

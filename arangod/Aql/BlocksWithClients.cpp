@@ -246,7 +246,8 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
     _upstreamState = state;
   }
   // If we get here we have data and can return it.
-  return dataContainer.execute(call, _upstreamState);
+  stack.pushCall(call);
+  return dataContainer.execute(stack, _upstreamState);
 }
 
 template <class Executor>
@@ -264,10 +265,9 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
   TRI_ASSERT(_dependencies.size() == 1);
   auto [state, skipped, block] = _dependencies[0]->execute(stack);
 
-  // We can never ever forward skip!
   // We could need the row in a different block, and once skipped
   // we cannot get it back.
-  TRI_ASSERT(skipped.nothingSkipped());
+  TRI_ASSERT(skipped.getSkipCount() == 0);
 
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -276,7 +276,7 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
   // Waiting -> no block
   TRI_ASSERT(state != ExecutionState::WAITING || block == nullptr);
   if (block != nullptr) {
-    _executor.distributeBlock(block, _clientBlockData);
+    _executor.distributeBlock(block, skipped, _clientBlockData);
   }
 
   return state;
