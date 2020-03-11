@@ -406,11 +406,11 @@ public:
       uint64_t n = load(i);
       sum += n;
       result += name() + "_bucket{";
-      if (separator) {
-        result += ",";
-      }
       if (haveLabels) {
         result += lbs;
+      }
+      if (separator) {
+        result += ",";
       }
       result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
     }
