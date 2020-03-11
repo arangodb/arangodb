@@ -42,7 +42,7 @@ protected:
   MetricsFeatureTest () {}
 };
 
-Counter *thisCounter, *thatCounter;
+Metric *thisMetric, *thatMetric;
 
 TEST_F(MetricsFeatureTest, test_counter) {
 
@@ -57,17 +57,16 @@ TEST_F(MetricsFeatureTest, test_counter) {
   labeledCounter.toPrometheus(s);
   std::cout << s << std::endl;
 
-  thisCounter = &counter;
-  thatCounter = &labeledCounter;
+  thisMetric = &counter;
+  thatMetric = &labeledCounter;
 
 }
 
 
 TEST_F(MetricsFeatureTest, fail_recreate_counter) {
-  try { 
+  try {
     auto& counterFail = feature.counter({"counter"}, 0, "one counter");
     ASSERT_TRUE(false);
-    LOG_DEVEL << counterFail.load();
   } catch (...) {
     ASSERT_TRUE(true);
   }
@@ -77,20 +76,78 @@ TEST_F(MetricsFeatureTest, fail_recreate_counter) {
 TEST_F(MetricsFeatureTest, test_same_counter_retrieve) {
 
   auto& counter1 = feature.counter("counter");
-  ASSERT_EQ(&counter1, thisCounter);
-  
+  ASSERT_EQ(&counter1, thisMetric);
+
   auto& counter2 = feature.counter({"counter"});
-  ASSERT_EQ(&counter2, thisCounter);
-  
+  ASSERT_EQ(&counter2, thisMetric);
+
   auto& counter3 = feature.counter({"counter", "label=label"});
   std::string s;
   counter3.toPrometheus(s);
   std::cout << s << std::endl;
-  ASSERT_EQ(&counter3, thatCounter);
+  ASSERT_EQ(&counter3, thatMetric);
 
   auto& counter4 = feature.counter({"counter", "label=other_label"});
   s.clear();
   counter4.toPrometheus(s);
   std::cout << s << std::endl;
-  
+
+}
+
+TEST_F(MetricsFeatureTest, test_histogram) {
+
+  auto& histogram = feature.histogram("hist", lin_scale_t(0.,1.,10), "linear histogram");
+  auto& labeledHistogram = feature.histogram(
+    {"hist", "label=label"}, log_scale_t(2.,0.,1.,10), "labeled logarithmic histogram");
+
+  std::string s;
+  histogram.toPrometheus(s);
+  std::cout << s << std::endl;
+  s.clear();
+  labeledHistogram.toPrometheus(s);
+  std::cout << s << std::endl;
+
+  thisMetric = &histogram;
+  thatMetric = &labeledHistogram;
+
+}
+
+
+TEST_F(MetricsFeatureTest, fail_recreate_histogram) {
+  try {
+    auto& histogramFail = feature.histogram({"hist"}, lin_scale_t(0.,1.,10), "linear histogram");
+    ASSERT_TRUE(false);
+  } catch (...) {
+    ASSERT_TRUE(true);
+  }
+}
+
+
+TEST_F(MetricsFeatureTest, test_same_histogram_retrieve) {
+
+  auto& histogram1 = feature.histogram<lin_scale_t<double>>("hist");
+  ASSERT_EQ(&histogram1, thisMetric);
+
+  try {
+    auto& histogramFail = feature.histogram<lin_scale_t<float>>("hist");
+    ASSERT_TRUE(false);
+  } catch (...) {
+    ASSERT_TRUE(true);
+  }
+
+  auto& histogram2 = feature.histogram<lin_scale_t<double>>({"hist"});
+  ASSERT_EQ(&histogram2, thisMetric);
+
+  auto& histogram3 = feature.histogram<log_scale_t<double>>({"hist", "label=label"});
+  std::string s;
+  histogram3.toPrometheus(s);
+  std::cout << s << std::endl;
+  ASSERT_EQ(&histogram3, thatMetric);
+
+
+  auto& histogram4 = feature.histogram<lin_scale_t<double>>({"hist", "label=other_label"});
+  s.clear();
+  histogram4.toPrometheus(s);
+  std::cout << s << std::endl;
+
 }

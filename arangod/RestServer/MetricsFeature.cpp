@@ -80,7 +80,7 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   result.reserve(65536);
 
   {
-    std::lock_guard<std::mutex> guard(_lock);
+    std::lock_guard<std::recursive_mutex> guard(_lock);
     for (auto const& i : _registry) {
       i.second->toPrometheus(result);
     }
@@ -123,7 +123,7 @@ Counter& MetricsFeature::counter (
   auto metric = std::make_shared<Counter>(val, mk.name, help, labels);
   bool success = false;
   {
-    std::lock_guard<std::mutex> guard(_lock);
+    std::lock_guard<std::recursive_mutex> guard(_lock);
     success = _registry.emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
   }
   if (!success) {
@@ -149,7 +149,7 @@ Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key)
   std::shared_ptr<Counter> metric = nullptr;
   std::string error;
   {
-    std::lock_guard<std::mutex> guard(_lock);
+    std::lock_guard<std::recursive_mutex> guard(_lock);
     registry_type::const_iterator it = _registry.find(mk);
     if (it == _registry.end()) {
       it = _registry.find(mk.name);
@@ -158,23 +158,7 @@ Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key)
           TRI_ERROR_INTERNAL, std::string("No counter booked as ") + mk.name);
       } else {
         auto tmp = std::dynamic_pointer_cast<Counter>(it->second);
-        std::string labels = mk.labels;
-        if (ServerState::instance() != nullptr) {
-          if (!labels.empty()) {
-            labels += ",";
-          }
-          labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
-        }
-        metric = std::make_shared<Counter>(0, mk.name, tmp->help(), labels);
-        bool success = false;
-        {
-          success = _registry.emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
-        }
-        if (!success) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " alredy exists");
-        }
-        return *metric;
+        return counter(mk, 0, tmp->help());
       }
     }
     try {
