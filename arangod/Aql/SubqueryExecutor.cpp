@@ -77,80 +77,6 @@ SubqueryExecutor<isModificationSubquery>::~SubqueryExecutor() = default;
 
 template <bool isModificationSubquery>
 std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::produceRows(OutputAqlItemRow& output) {
-#if 0
-  if (_state == ExecutorState::DONE && !_input.isInitialized()) {
-    // We have seen DONE upstream, and we have discarded our local reference
-    // to the last input, we will not be able to produce results anymore.
-    return {_state, NoStats{}};
-  }
-  while (true) {
-    if (_subqueryInitialized) {
-      // Continue in subquery
-
-      // Const case
-      if (_infos.isConst() && !_input.isFirstDataRowInBlock()) {
-        // Simply write
-        writeOutput(output);
-        return {_state, NoStats{}};
-      }
-
-      // Non const case, or first run in const
-      auto res = _subquery.getSome(ExecutionBlock::DefaultBatchSize);
-      if (res.first == ExecutionState::WAITING) {
-        TRI_ASSERT(res.second == nullptr);
-        return {res.first, NoStats{}};
-      }
-      // We get a result
-      if (res.second != nullptr) {
-        TRI_IF_FAILURE("SubqueryBlock::executeSubquery") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        if (_infos.returnsData()) {
-          TRI_ASSERT(_subqueryResults != nullptr);
-          _subqueryResults->emplace_back(std::move(res.second));
-        }
-      }
-
-      // Subquery DONE
-      if (res.first == ExecutionState::DONE) {
-        writeOutput(output);
-        return {_state, NoStats{}};
-      }
-
-    } else {
-      // init new subquery
-      if (!_input) {
-        std::tie(_state, _input) = _fetcher.fetchRow();
-        if (_state == ExecutionState::WAITING) {
-          TRI_ASSERT(!_input);
-          return {_state, NoStats{}};
-        }
-        if (!_input) {
-          TRI_ASSERT(_state == ExecutionState::DONE);
-
-          // We are done!
-          return {_state, NoStats{}};
-        }
-      }
-
-      TRI_ASSERT(_input);
-      if (!_infos.isConst() || _input.isFirstDataRowInBlock()) {
-        auto initRes = _subquery.initializeCursor(_input);
-        if (initRes.first == ExecutionState::WAITING) {
-          return {ExecutionState::WAITING, NoStats{}};
-        }
-        if (initRes.second.fail()) {
-          // Error during initialize cursor
-          THROW_ARANGO_EXCEPTION(initRes.second);
-        }
-        _subqueryResults = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
-      }
-      // on const subquery we can retoggle init as soon as we have new input.
-      _subqueryInitialized = true;
-    }
-  }
-#endif
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -175,7 +101,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
     // to the last input, we will not be able to produce results anymore.
     return {translatedReturnType(), NoStats{}, getUpstreamCall()};
   }
-  while (true) {
+  while (!output.isFull()) {
     if (_subqueryInitialized) {
       // Continue in subquery
 
@@ -248,6 +174,8 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
       _subqueryInitialized = true;
     }
   }
+  // Output full nothing to do.
+  return {ExecutionState::DONE, NoStats{}, AqlCall{}};
 }
 
 template <bool isModificationSubquery>
