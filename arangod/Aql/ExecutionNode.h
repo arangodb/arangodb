@@ -68,6 +68,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/TypeTraits.h"
 #include "Containers/HashSet.h"
 
 namespace arangodb {
@@ -203,7 +204,13 @@ class ExecutionNode {
     TRI_ASSERT(result != nullptr);
     return result;
 #else
-    return static_cast<T>(node);
+    // At least GraphNode is virtually inherited by its subclasses. We have to
+    // use dynamic_cast for these types.
+    if constexpr (can_static_cast_v<FromType, T>) {
+      return static_cast<T>(node);
+    } else {
+      return dynamic_cast<T>(node);
+    }
 #endif
   }
 

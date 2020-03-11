@@ -131,7 +131,7 @@ class ShortestPathNode : public virtual GraphNode {
   ///        of blocks.
   void prepareOptions() override;
 
-  /// @brief Overrides GraphNode::Options with a more specific return type
+  /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
   auto options() const -> graph::ShortestPathOptions*;
 
