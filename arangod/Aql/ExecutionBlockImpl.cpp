@@ -1521,6 +1521,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     // We need to reset the Executor
     resetExecutor();
   }
+
   if (depthSkippingNow > shadowDepth) {
     // We are skipping the outermost Subquery.
     // Simply drop this ShadowRow
@@ -1781,14 +1782,29 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     TRI_ASSERT(_skipped.nothingSkipped() || _execState == ExecState::UPSTREAM ||
                (std::is_same_v<Executor, IdExecutor<ConstFetcher>>));
 
+    if constexpr (executorHasSideEffects<Executor>) {
+      if (!_skipped.nothingSkipped()) {
+        // We get woken up on upstream, but we have not reported our
+        // local skip value to downstream
+        // In the sideEffect executor we need to apply the skip values on the
+        // incomming stack, which has not been modified yet.
+        // NOTE: We only apply the skipping on subquery level.
+        TRI_ASSERT(_skipped.subqueryDepth() == stack.subqueryLevel() + 1);
+        for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+          auto skippedSub = _skipped.getSkipOnSubqueryLevel(i);
+          if (skippedSub > 0) {
+            auto& call = stack.modifyCallAtDepth(i);
+            call.didSkip(skippedSub);
+          }
+        }
+      }
+    }
+
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
       // In subqeryEndExecutor we actually manage two calls.
       // The clientClient is defined of what will go into the Executor.
       // on SubqueryEnd this call is generated based on the call from downstream
       stack.pushCall(std::move(clientCall));
-      // TODO: Implement different kind of calls we need to inject into Executor
-      // based on modification, or on forwarding.
-      // FOr now use a fetchUnlimited Call always
       clientCall = AqlCall{};
     }
     if (_execState == ExecState::UPSTREAM) {
@@ -2028,7 +2044,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 #endif
           std::tie(_upstreamState, skippedLocal, _lastRange) =
               executeFetcher(stack, _upstreamRequest);
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           TRI_ASSERT(subqueryLevelBefore == stack.subqueryLevel());
 #endif

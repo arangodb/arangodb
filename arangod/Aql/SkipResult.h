@@ -56,6 +56,8 @@ class SkipResult {
 
   auto didSkipSubquery(size_t skipped, size_t depth) -> void;
 
+  auto getSkipOnSubqueryLevel(size_t depth) -> size_t;
+
   auto nothingSkipped() const noexcept -> bool;
 
   auto toVelocyPack(arangodb::velocypack::Builder& builder) const noexcept -> void;

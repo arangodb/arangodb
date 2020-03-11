@@ -53,6 +53,12 @@ auto SkipResult::didSkipSubquery(size_t skipped, size_t depth) -> void {
   localSkip += skipped;
 }
 
+auto SkipResult::getSkipOnSubqueryLevel(size_t depth) -> size_t {
+  TRI_ASSERT(!_skipped.empty());
+  TRI_ASSERT(_skipped.size() > depth);
+  return _skipped.at(depth);
+}
+
 auto SkipResult::nothingSkipped() const noexcept -> bool {
   TRI_ASSERT(!_skipped.empty());
   return std::all_of(_skipped.begin(), _skipped.end(),
