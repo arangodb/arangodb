@@ -233,7 +233,7 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode c
       _targetVertexId(other._targetVertexId),
       _fromCondition(nullptr),
       _toCondition(nullptr) {
-  other.kshortestPathsCloneHelper(plan, *this, false);
+  other.kShortestPathsCloneHelper(plan, *this, false);
 }
 
 void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -319,12 +319,12 @@ ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan, bool withDependenc
                                                 _startVertexId, _inTargetVariable,
                                                 _targetVertexId, std::move(tmp));
 
-  kshortestPathsCloneHelper(*plan, *c, withProperties);
+  kShortestPathsCloneHelper(*plan, *c, withProperties);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void KShortestPathsNode::kshortestPathsCloneHelper(ExecutionPlan& plan,
+void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
                                                    KShortestPathsNode& c,
                                                    bool withProperties) const {
   if (usesPathOutVariable()) {

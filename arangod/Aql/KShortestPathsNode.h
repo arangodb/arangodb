@@ -148,7 +148,7 @@ class KShortestPathsNode : public GraphNode {
   auto options() const -> graph::ShortestPathOptions*;
 
  private:
-  void kshortestPathsCloneHelper(ExecutionPlan& plan, KShortestPathsNode& c,
+  void kShortestPathsCloneHelper(ExecutionPlan& plan, KShortestPathsNode& c,
                                  bool withProperties) const;
 
  private:
