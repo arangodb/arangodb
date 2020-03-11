@@ -12,7 +12,12 @@ Return a summary of the TLS data. The JSON response will contain a field
   - `clientCA`: Information about the CA for client certificate
     verification.
 
-In both cases the value of the attribute will be a JSON object, which
+If server name indication (SNI) is used and multiple key files are
+configured for different server names, then there is an additional
+attribute `SNI`, which contains for each configured server name
+the corresponding information about the key file for that server name.
+
+In all cases the value of the attribute will be a JSON object, which
 has a subset of the following attributes (whatever is appropriate):
 
   - `SHA256`: The value is a string with the SHA256 of the whole input

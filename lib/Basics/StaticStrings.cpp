@@ -286,6 +286,8 @@ std::string const StaticStrings::RevisionTreeMaxDepth("maxDepth");
 std::string const StaticStrings::RevisionTreeNodes("nodes");
 std::string const StaticStrings::RevisionTreeRangeMax("rangeMax");
 std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
+std::string const StaticStrings::RevisionTreeRanges("ranges");
+std::string const StaticStrings::RevisionTreeResume("resume");
 std::string const StaticStrings::RevisionTreeVersion("version");
 
 // Generic attribute names

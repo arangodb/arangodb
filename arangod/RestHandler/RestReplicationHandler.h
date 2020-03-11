@@ -341,7 +341,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
  private:
   struct RevisionOperationContext {
     uint64_t batchId;
-    std::size_t resume;
+    TRI_voc_rid_t resume;
     TRI_voc_tick_t tickEnd;
     std::string cname;
     std::shared_ptr<LogicalCollection> collection;
