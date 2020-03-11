@@ -159,6 +159,8 @@ class MultiDependencySingleRowFetcher {
   ///        in initOnce() to make sure that init() is called exactly once.
   std::vector<std::optional<AqlCallStack>> _callsInFlight;
 
+  bool _didReturnSubquerySkips{false};
+
  private:
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()

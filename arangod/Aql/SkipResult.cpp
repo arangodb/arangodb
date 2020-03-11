@@ -140,6 +140,14 @@ auto SkipResult::merge(SkipResult const& other, bool excludeTopLevel) noexcept -
   }
 }
 
+auto SkipResult::mergeOnlyTopLevel(SkipResult const& other) noexcept -> void {
+  _skipped.reserve(other.subqueryDepth());
+  while (other.subqueryDepth() > subqueryDepth()) {
+    incrementSubquery();
+  }
+  _skipped.back() += other._skipped.back();
+}
+
 auto SkipResult::operator+=(SkipResult const& b) noexcept -> SkipResult& {
   didSkip(b.getSkipCount());
   return *this;
