@@ -33,68 +33,67 @@
 namespace arangodb::cache {
 
 TransactionManager::TransactionManager()
-    : _data({{0,0,0}, 0}) {}
+    : _state({{0,0,0}, 0}) {}
 
 Transaction* TransactionManager::begin(bool readOnly) {
   Transaction* tx = new Transaction(readOnly);
 
-  Data newData;
+  State newState;
   if (readOnly) {
-    Data data = _data.load(std::memory_order_relaxed);
+    State state = _state.load(std::memory_order_relaxed);
     do {
       tx->sensitive = false;
-      newData = data;
-      newData.counters.openReads++;
-      if (newData.counters.openWrites > 0) {
+      newState = state;
+      newState.counters.openReads++;
+      if (newState.counters.openWrites > 0) {
         tx->sensitive = true;
-        newData.counters.openSensitive++;
+        newState.counters.openSensitive++;
       }
-    } while (!_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed));
+    } while (!_state.compare_exchange_strong(state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
   } else {
     tx->sensitive = true;
-    Data data = _data.load(std::memory_order_relaxed);
+    State state = _state.load(std::memory_order_relaxed);
     do {
-      newData = data;
-      newData.counters.openWrites++;
-      if (newData.counters.openSensitive == 0) {
-        newData.term++;
+      newState = state;
+      if (newState.counters.openSensitive == 0) {
+        newState.term++;
       }
-      if (newData.counters.openWrites++ == 0) {
-        newData.counters.openSensitive = data.counters.openReads + 1;
+      if (newState.counters.openWrites++ == 0) {
+        newState.counters.openSensitive = state.counters.openReads + 1;
       } else {
-        newData.counters.openSensitive++;
+        newState.counters.openSensitive++;
       }
-    } while (!_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed));
+    } while (!_state.compare_exchange_strong(state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
   }
-  tx->term = newData.term;
+  tx->term = newState.term;
   return tx;
 }
 
 void TransactionManager::end(Transaction* tx) noexcept {
   TRI_ASSERT(tx != nullptr);
 
-  Data data = _data.load(std::memory_order_relaxed);
-  Data newData;
+  State state = _state.load(std::memory_order_relaxed);
+  State newState;
   do {
-    if (((data.term & static_cast<uint64_t>(1)) > 0) && (data.term > tx->term)) {
+    if (((state.term & static_cast<uint64_t>(1)) > 0) && (state.term > tx->term)) {
       tx->sensitive = true;
     }
 
-    auto newData = data;
+    newState = state;
     if (tx->readOnly) {
-      newData.counters.openReads--;
+      newState.counters.openReads--;
     } else {
-      newData.counters.openWrites--;
+      newState.counters.openWrites--;
     }
 
-    if (tx->sensitive && (--newData.counters.openSensitive == 0)) {
-      newData.term++;
+    if (tx->sensitive && (--newState.counters.openSensitive == 0)) {
+      newState.term++;
     }
-  } while (!_data.compare_exchange_strong(data, newData, std::memory_order_acq_rel, std::memory_order_relaxed));
+  } while (!_state.compare_exchange_strong(state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
 
   delete tx;
 }
 
-uint64_t TransactionManager::term() { return _data.load(std::memory_order_acquire).term; }
+uint64_t TransactionManager::term() { return _state.load(std::memory_order_acquire).term; }
 
 }  // namespace arangodb::cache

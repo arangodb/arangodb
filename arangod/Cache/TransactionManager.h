@@ -77,12 +77,12 @@ class TransactionManager {
   };
   static_assert(sizeof(Counters) == sizeof(uint64_t), "unexpected size");
 
-  struct alignas(16) Data {
+  struct alignas(16) State {
     Counters counters;
     uint64_t term;
   };
 
-  std::atomic<Data> _data;
+  std::atomic<State> _state;
 };
 
 };  // end namespace cache
