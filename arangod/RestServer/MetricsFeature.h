@@ -130,13 +130,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
         } else {
           try {
             metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
-            if (metric == nullptr) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL,
-                std::string("Non matching scale classes for cloning ") + mk.name);
-            }
           } catch (std::exception const& e) {
             error = std::string("Failed to retrieve histogram ") + mk.name + ": " + e.what();
+          }
+          if (metric == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              std::string("Non matching scale classes for cloning ") + mk.name);
           }
           auto& tmp =  histogram(mk, metric->scale(), metric->help());
           return tmp;
