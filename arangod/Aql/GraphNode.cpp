@@ -465,6 +465,12 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
   setGraphInfoAndCopyColls(other.edgeColls(), other.vertexColls());
 }
 
+GraphNode::GraphNode(THIS_THROWS_WHEN_CALLED)
+    : ExecutionNode(nullptr, 0), _defaultDirection() {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
 std::string const& GraphNode::collectionToShardName(std::string const& collName) const {
   if (_collectionToShard.empty()) {
     return collName;

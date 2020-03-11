@@ -2034,7 +2034,13 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   template <typename T>
   void replaceStartTargetVariables(ExecutionNode* en) {
-    auto node = static_cast<T*>(en);
+    auto node = std::invoke([en](auto) {
+      if constexpr (std::is_base_of_v<GraphNode, T>) {
+        return dynamic_cast<T*>(en);
+      } else {
+        return static_cast<T*>(en);
+      }
+    }, 0);
     if (node->_inStartVariable != nullptr) {
       node->_inStartVariable = Variable::replace(node->_inStartVariable, _replacements);
     }
