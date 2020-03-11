@@ -368,6 +368,7 @@ std::string const StaticStrings::SupervisionRuntimeWaitForSyncMs("arangodb_agenc
 
 std::string const StaticStrings::SupervisionAccumRuntimeMs("arangodb_agency_supervision_accum_runtime_msec");
 std::string const StaticStrings::SupervisionAccumRuntimeWaitForSyncMs("arangodb_agency_supervision_accum_runtime_wait_for_replication_msec");
+std::string const StaticStrings::SupervisionFailedServerCount("arangodb_agency_supervision_failed_server_count");
 
 
 

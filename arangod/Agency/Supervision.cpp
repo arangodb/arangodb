@@ -190,7 +190,11 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _supervision_accum_runtime_wait_for_sync_msec(
           server.getFeature<arangodb::MetricsFeature>().counter(
               StaticStrings::SupervisionAccumRuntimeWaitForSyncMs, 0,
-              "Accumulated Supervision  wait for replication time  [ms]")) {}
+              "Accumulated Supervision  wait for replication time  [ms]")),
+      _supervision_failed_server_counter(
+          server.getFeature<arangodb::MetricsFeature>().counter(
+              StaticStrings::SupervisionAccumRuntimeWaitForSyncMs, 0,
+              "Counter for FailedServer jobs")) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
@@ -347,6 +351,7 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
+      agent->supervision()._supervision_failed_server_counter.operator++();
       FailedServer(snapshot, agent, std::to_string(jobId), "supervision", serverID)
           .create(envelope);
     }
