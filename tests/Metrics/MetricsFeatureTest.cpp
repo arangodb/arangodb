@@ -87,5 +87,10 @@ TEST_F(MetricsFeatureTest, test_same_counter_retrieve) {
   counter3.toPrometheus(s);
   std::cout << s << std::endl;
   ASSERT_EQ(&counter3, thatCounter);
+
+  auto& counter4 = feature.counter({"counter", "label=other_label"});
+  s.clear();
+  counter4.toPrometheus(s);
+  std::cout << s << std::endl;
   
 }

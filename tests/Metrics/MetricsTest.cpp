@@ -99,7 +99,8 @@ template<typename Scale> void histogram_test(Scale const& scale) {
   T mx = scale.high(), mn = scale.low(), d, base = 0.;
   T span = mx - mn, step = span/static_cast<T>(buckets),
     mmin = (std::is_floating_point<T>::value) ? span / T(1.e6) : T(1),
-    one(1), ten(10), thousand(1000);
+    one(1), ten(10);
+
   if constexpr (!linear) {
     base = scale.base();
   }
@@ -135,13 +136,11 @@ template<typename Scale> void histogram_test(Scale const& scale) {
   //below lower limit
   h.count(mn - one);
   h.count(mn - ten);
-  h.count(mn - thousand);
 //  ASSERT_DOUBLE_EQ(h.load(0), 5);
 
   // above upper limit
   h.count(mx + one);
   h.count(mx + ten);
-  h.count(mx + thousand);
 //  ASSERT_DOUBLE_EQ(h.load(buckets-1), 5);
 
   // dump

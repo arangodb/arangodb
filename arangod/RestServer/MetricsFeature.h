@@ -86,7 +86,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       if (!labels.empty()) {
         labels += ",";
       }
-      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\",";
+      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
 
     auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);
@@ -117,7 +117,16 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     {
       std::lock_guard<std::mutex> guard(_lock);
       registry_type::const_iterator it = _registry.find(mk);
-
+      if (it == _registry.end()) {
+        it = _registry.find(mk.name);
+        if (it == _registry.end()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         std::string("No gauge booked as ") + mk.name);
+        } else {
+          metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
+          return histogram(mk, metric->scale(), metric->help());
+        }
+      }
       try {
         metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
         if (metric == nullptr) {
@@ -136,15 +145,16 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
   Counter& counter(std::initializer_list<std::string> const& key,
                    uint64_t const& val, std::string const& help);
+  Counter& counter(metrics_key const& mk, uint64_t const& val, std::string const& help);
   Counter& counter(std::string const& name);
   Counter& counter(std::initializer_list<std::string> const& key);
 
-  template<typename T>
+  template <typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
     return gauge({name}, t, help);
   }
 
-  template<typename T>
+  template <typename T>
   Gauge<T>& gauge(std::initializer_list<std::string> const& key, T const& t,
                   std::string const& help) {
     metrics_key mk(key);
