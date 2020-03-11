@@ -4,6 +4,8 @@ devel
 * MoveShard to check, if target is in sync follower before promotion
   to leader.
 
+* Agency ttl bug fix
+
 * Added the SNI feature for TLS. This means that one can configure multiple
   server keys and certificate chains and the system dynamically uses
   the right one depending on the value of the TLS servername extension.
