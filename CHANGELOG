@@ -1,6 +1,8 @@
 devel
 -----
 
+* Agency ttl bug fix
+
 * Added the SNI feature for TLS. This means that one can configure multiple
   server keys and certificate chains and the system dynamically uses
   the right one depending on the value of the TLS servername extension.
@@ -52,7 +54,7 @@ devel
 
   the execution of the `sub2` subquery can be delayed to after the SORT and LIMIT,
   turning it into
-      
+
       FOR doc IN collection1
         LET sub1 = FIRST(FOR sub IN collection2 FILTER sub.ref == doc._key RETURN sub)
         SORT sub1
@@ -64,7 +66,7 @@ devel
   specified by providing the new `validation` collection property when creating a
   new collection or when updating the properties of an existing collection:
 
-      db.mycollection.properties({ 
+      db.mycollection.properties({
         validation: {
           rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
           message : "Json-Schema validation failed"
@@ -107,7 +109,7 @@ devel
   from the named graph are needed, the `edgeCollections` option can be a handy
   performance optimization.
 
-* Make arangobench return a proper error message when its initial attempt to 
+* Make arangobench return a proper error message when its initial attempt to
   create the test collection fails.
 
 * In some cases with a COLLECT LIMIT situation on a small limit the collect
