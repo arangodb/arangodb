@@ -86,7 +86,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       if (!labels.empty()) {
         labels += ",";
       }
-      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\",";
+      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
 
     auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);

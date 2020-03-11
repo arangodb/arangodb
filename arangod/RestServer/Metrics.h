@@ -387,14 +387,23 @@ public:
   virtual void toPrometheus(std::string& result) const override {
     result += "#TYPE " + name() + " histogram\n";
     result += "#HELP " + name() + " " + help() + "\n";
+    std::string lbs = labels();
+    auto const haveLabels = !lbs.empty();
+    auto const separator = haveLabels && lbs.back() != ',';
     value_type sum(0);
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{" + labels() + "le=\"" + _scale.delim(i) + "\"} " +
-        std::to_string(n) + "\n";
+      result += name() + "_bucket{";
+      if (separator) {
+        result += ",";
+      }
+      if (haveLabels) {
+        result += lbs;
+      }
+      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
     }
-    result += name() + "_count " + std::to_string(sum) + "\n";
+    result += name() + "_count{" + labels() + "} " + std::to_string(sum) + "\n";
   }
 
   std::ostream& print(std::ostream& o) const {
