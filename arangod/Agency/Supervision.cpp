@@ -308,7 +308,6 @@ void Supervision::upgradeMaintenance(VPackBuilder& builder) {
   _lock.assertLockedByCurrentThread();
   if (_snapshot.has(supervisionMaintenance)) {
 
-    TRI_ASSERT(_snapshot.get(supervisionMaintenance).isString());
     std::string maintenanceState;
     try {
       maintenanceState = _snapshot.get(supervisionMaintenance).getString();
