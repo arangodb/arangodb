@@ -155,6 +155,8 @@ struct Functions {
   static AqlValue NgramPositionalSimilarity(ExpressionContext* ctx,
                                             transaction::Methods*, 
                                             VPackFunctionParameters const&);
+  static AqlValue NgramMatch(ExpressionContext*, transaction::Methods*,
+                             VPackFunctionParameters const&);
   // Date
   static AqlValue DateNow(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);

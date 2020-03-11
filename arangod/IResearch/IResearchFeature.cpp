@@ -407,7 +407,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &minMatchFunc });  // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, { "BOOST", ".,.", flags, &contextFunc });  // (filter expression, boost)
   addFunction(functions, { "ANALYZER", ".,.", flags, &contextFunc });  // (filter expression, analyzer)
-  addFunction(functions, { "NGRAM_MATCH", ".,.|.,.", flags, &dummyFilterFunc }); // (attribute, target, threshold, [analyzer]) OR (attribute, target, [analyzer])
+  addFunction(functions, { "NGRAM_MATCH", ".,.|.,.", flags, &dummyFilterFunc }); // (attribute, target, [threshold, analyzer]) OR (attribute, target, [analyzer])
 }
 
 namespace {
@@ -584,7 +584,8 @@ bool isFilter(arangodb::aql::Function const& func) noexcept {
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
          func.implementation == &aql::Functions::LevenshteinMatch ||
-         func.implementation == &aql::Functions::Like;
+         func.implementation == &aql::Functions::Like ||
+         func.implementation == &aql::Functions::NgramMatch;
 }
 
 bool isScorer(arangodb::aql::Function const& func) noexcept {
