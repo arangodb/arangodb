@@ -1,4 +1,5 @@
 /* jshint strict: true, unused: true */
+/* global AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helpers for graph tests
@@ -27,8 +28,9 @@
 /// @author Copyright 2016-2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
+var jsunity = require('jsunity');
 const db = require("@arangodb").db;
+const {assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 
 function makeTree(k, depth, nrShards, subgraph) {
   // This creates a large graph (vertices and edges), which is a k-ary
