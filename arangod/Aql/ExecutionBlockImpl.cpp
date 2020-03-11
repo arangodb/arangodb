@@ -1772,6 +1772,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       TRI_ASSERT(_execState == ExecState::CHECKCALL ||
                  _execState == ExecState::SHADOWROWS || _execState == ExecState::UPSTREAM ||
                  _execState == ExecState::PRODUCE || _execState == ExecState::SKIP);
+
+      // As it can return WAITING in produce call, there could be some rows written into the output.
+      // So let us update the call with the last state we have.
+      if (_execState == ExecState::PRODUCE && _outputItemRow != nullptr &&
+          _outputItemRow->isInitialized()) {
+        clientCall = _outputItemRow->getClientCall();
+      }
     } else {
       // We can only have returned the following internal states
       TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
