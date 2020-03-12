@@ -2242,7 +2242,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   TRI_ASSERT(idx != nullptr);
 
   if (!restore) {
-    TRI_UpdateTickServer(idx->id());
+    TRI_UpdateTickServer(idx->id().id());
   }
 
   auto other = PhysicalCollection::lookupIndex(idx->id());
@@ -2372,11 +2372,11 @@ bool MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
     }
   }
 
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id.id()));
 
   _indexes.emplace(idx);
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-    TRI_ASSERT(idx->id() == 0);
+    TRI_ASSERT(idx->id().isPrimary());
     _primaryIndex = static_cast<MMFilesPrimaryIndex*>(idx.get());
   }
   return true;
@@ -2398,11 +2398,11 @@ void MMFilesCollection::addIndexLocal(std::shared_ptr<arangodb::Index> idx) {
   }
 }
 
-bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
-  if (iid == 0) {
+bool MMFilesCollection::dropIndex(IndexId iid) {
+  if (iid.isPrimary() || iid.isNone()) {
     // invalid index id or primary index
     events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                      std::to_string(iid), TRI_ERROR_NO_ERROR);
+                      std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
     return true;
   }
 
@@ -2411,7 +2411,7 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   if (!removeIndex(iid)) {
     // We tried to remove an index that does not exist
     events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                      std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+                      std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     return false;
   }
 
@@ -2434,25 +2434,25 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
 
     VPackBuilder markerBuilder;
     markerBuilder.openObject();
-    markerBuilder.add("id", VPackValue(std::to_string(iid)));
+    markerBuilder.add("id", VPackValue(std::to_string(iid.id())));
     markerBuilder.close();
     engine->dropIndexWalMarker(&vocbase, cid, markerBuilder.slice(), true, res);
 
     if (res == TRI_ERROR_NO_ERROR) {
       events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                        std::to_string(iid), TRI_ERROR_NO_ERROR);
+                        std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
     } else {
       LOG_TOPIC("96677", WARN, arangodb::Logger::ENGINES)
           << "could not save index drop marker in log: " << TRI_errno_string(res);
       events::DropIndex(_logicalCollection.vocbase().name(),
-                        _logicalCollection.name(), std::to_string(iid), res);
+                        _logicalCollection.name(), std::to_string(iid.id()), res);
     }
   }
   return true;
 }
 
 /// @brief removes an index by id
-bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
+bool MMFilesCollection::removeIndex(IndexId iid) {
   WRITE_LOCKER(guard, _indexesLock);
 
   for (auto& idx : _indexes) {

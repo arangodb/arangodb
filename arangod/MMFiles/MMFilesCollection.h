@@ -36,6 +36,7 @@
 #include "MMFiles/MMFilesRevisionsCache.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/Identifiers/FileId.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -249,7 +250,7 @@ class MMFilesCollection final : public PhysicalCollection {
                                      bool restore, bool& created);
 
   /// @brief Drop an index with the given iid.
-  bool dropIndex(TRI_idx_iid_t iid) override;
+  bool dropIndex(IndexId iid) override;
 
   ////////////////////////////////////
   // -- SECTION Locking --
@@ -412,7 +413,7 @@ class MMFilesCollection final : public PhysicalCollection {
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexLocal(std::shared_ptr<arangodb::Index> idx);
 
-  bool removeIndex(TRI_idx_iid_t iid);
+  bool removeIndex(IndexId iid);
 
   /// @brief return engine-specific figures
   void figuresSpecific(arangodb::velocypack::Builder&) override;

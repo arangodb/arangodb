@@ -67,7 +67,7 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
@@ -103,7 +103,7 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     return std::make_shared<arangodb::MMFilesFulltextIndex>(id, collection, definition);
   }
@@ -130,7 +130,7 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     return std::make_shared<arangodb::MMFilesGeoIndex>(id, collection, definition, "geo");
   }
@@ -156,7 +156,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     return std::make_shared<arangodb::MMFilesGeoIndex>(id, collection, definition, "geo1");
   }
@@ -182,7 +182,7 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     return std::make_shared<arangodb::MMFilesGeoIndex>(id, collection, definition, "geo2");
   }
@@ -208,7 +208,7 @@ struct HashIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     return std::make_shared<arangodb::MMFilesHashIndex>(id, collection, definition);
   }
@@ -239,7 +239,7 @@ struct PersistentIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     return std::make_shared<arangodb::MMFilesPersistentIndex>(id, collection, definition);
   }
@@ -266,7 +266,7 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     return std::make_shared<arangodb::MMFilesTtlIndex>(id, collection, definition);
   }
@@ -292,7 +292,7 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
@@ -329,7 +329,7 @@ struct SkiplistIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
+                                               IndexId id,
                                                bool isClusterConstructor) const override {
     return std::make_shared<arangodb::MMFilesSkiplistIndex>(id, collection, definition);
   }
@@ -385,7 +385,8 @@ void MMFilesIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
 
   // create edges index
   if (TRI_COL_TYPE_EDGE == col.type()) {
-    systemIndexes.emplace_back(std::make_shared<arangodb::MMFilesEdgeIndex>(1, col));
+    systemIndexes.emplace_back(
+        std::make_shared<arangodb::MMFilesEdgeIndex>(IndexId::edge(), col));
   }
 }
 

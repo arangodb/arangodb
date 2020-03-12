@@ -47,9 +47,6 @@ typedef uint64_t TRI_voc_rid_t;
 /// @brief transaction identifier type
 typedef uint64_t TRI_voc_tid_t;
 
-/// @brief index identifier
-typedef TRI_voc_tick_t TRI_idx_iid_t;
-
 /// @brief Convert a revision ID to a string
 std::string TRI_RidToString(TRI_voc_rid_t rid);
 

@@ -2934,18 +2934,18 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
                                            VPackBuilder& resultBuilder, double timeout) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   // check index id
-  uint64_t iid = 0;
+  IndexId iid = IndexId::none();
   VPackSlice const idSlice = slice.get(StaticStrings::IndexId);
 
   if (idSlice.isString()) {  // use predefined index id
-    iid = arangodb::basics::StringUtils::uint64(idSlice.copyString());
+    iid = IndexId{arangodb::basics::StringUtils::uint64(idSlice.copyString())};
   }
 
-  if (iid == 0) {  // no id set, create a new one!
-    iid = uniqid();
+  if (iid.isNone()) {  // no id set, create a new one!
+    iid = IndexId{uniqid()};
   }
 
-  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
   Result res;
 
   try {
@@ -3265,14 +3265,14 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
                              finishedPlanIndex.slice(), newIndexBuilder.slice()),
              AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
             AgencyPrecondition(planIndexesKey, AgencyPrecondition::Type::EMPTY, false));
-        TRI_idx_iid_t indexId = arangodb::basics::StringUtils::uint64(
-            newIndexBuilder.slice().get("id").copyString());
+        IndexId indexId{arangodb::basics::StringUtils::uint64(
+            newIndexBuilder.slice().get("id").copyString())};
         if (!_agency.sendTransactionWithFailover(trx, 0.0).successful()) {
           // We just log the problem and move on, the Supervision will repair
           // things in due course:
           LOG_TOPIC("d9420", INFO, Logger::CLUSTER)
-              << "Could not remove isBuilding flag in new index " << indexId
-              << ", this will be repaired automatically.";
+              << "Could not remove isBuilding flag in new index "
+              << indexId.id() << ", this will be repaired automatically.";
         }
 
         loadPlan();
@@ -3381,7 +3381,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::dropIndexCoordinator(  // drop index
     std::string const& databaseName,       // database name
-    std::string const& collectionID, TRI_idx_iid_t iid,
+    std::string const& collectionID, IndexId iid,
     double timeout  // request timeout
 ) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
@@ -3390,7 +3390,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
-  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
 
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
@@ -3419,8 +3419,9 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   VPackSlice indexes = collection.get("indexes");
   if (!indexes.isArray()) {
-    LOG_TOPIC("63178", DEBUG, Logger::CLUSTER) << "Failed to find index " << databaseName
-                                               << "/" << collectionID << "/" << iid;
+    LOG_TOPIC("63178", DEBUG, Logger::CLUSTER)
+        << "Failed to find index " << databaseName << "/" << collectionID << "/"
+        << iid.id();
     events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
@@ -3450,8 +3451,9 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   }
 
   if (!indexToRemove.isObject()) {
-    LOG_TOPIC("95fe6", DEBUG, Logger::CLUSTER) << "Failed to find index " << databaseName
-                                               << "/" << collectionID << "/" << iid;
+    LOG_TOPIC("95fe6", DEBUG, Logger::CLUSTER)
+        << "Failed to find index " << databaseName << "/" << collectionID << "/"
+        << iid.id();
     events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);

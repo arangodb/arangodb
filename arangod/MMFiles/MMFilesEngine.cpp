@@ -1509,9 +1509,8 @@ Result MMFilesEngine::changeView(TRI_vocbase_t& vocbase,
 // creation requests will not fail.
 // the WAL entry for the index creation will be written *after* the call
 // to "createIndex" returns
-void MMFilesEngine::createIndex(TRI_vocbase_t& vocbase,
-                                TRI_voc_cid_t collectionId, TRI_idx_iid_t id,
-                                arangodb::velocypack::Slice const& data) {
+void MMFilesEngine::createIndex(TRI_vocbase_t& vocbase, TRI_voc_cid_t collectionId,
+                                IndexId id, arangodb::velocypack::Slice const& data) {
   // construct filename
   auto filename = indexFilename(vocbase.id(), collectionId, id);
 
@@ -1535,8 +1534,7 @@ void MMFilesEngine::createIndex(TRI_vocbase_t& vocbase,
 // the actual deletion.
 // the WAL entry for index deletion will be written *after* the call
 // to "dropIndex" returns
-void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase,
-                              TRI_voc_cid_t collectionId, TRI_idx_iid_t id) {
+void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId, IndexId id) {
   // construct filename
   std::string const filename = indexFilename(vocbase->id(), collectionId, id);
 
@@ -1992,15 +1990,15 @@ std::string MMFilesEngine::viewParametersFilename(TRI_voc_tick_t databaseId,
 }
 
 /// @brief build an index filename (absolute path)
-std::string MMFilesEngine::indexFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                         TRI_idx_iid_t id) const {
+std::string MMFilesEngine::indexFilename(TRI_voc_tick_t databaseId,
+                                         TRI_voc_cid_t collectionId, IndexId id) const {
   return basics::FileUtils::buildFilename(collectionDirectory(databaseId, collectionId),
                                           indexFilename(id));
 }
 
 /// @brief build an index filename (relative path)
-std::string MMFilesEngine::indexFilename(TRI_idx_iid_t id) const {
-  return std::string("index-") + std::to_string(id) + ".json";
+std::string MMFilesEngine::indexFilename(IndexId id) const {
+  return std::string("index-") + std::to_string(id.id()) + ".json";
 }
 
 /// @brief open an existing database. internal function

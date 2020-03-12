@@ -352,7 +352,7 @@ uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
 }
 
 /// @brief create the index
-RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::vpack(),
                    /*useCache*/ false),
@@ -372,7 +372,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid, arangodb::LogicalCollect
   }
   TRI_ASSERT(!_fields.empty());
 
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid.isSet());
 
   fillPaths(_paths, _expanding);
 }

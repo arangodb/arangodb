@@ -1607,7 +1607,7 @@ std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> RocksDBEngine::collectionM
 }
 
 void RocksDBEngine::addIndexMapping(uint64_t objectId, TRI_voc_tick_t did,
-                                    TRI_voc_cid_t cid, TRI_idx_iid_t iid) {
+                                    TRI_voc_cid_t cid, IndexId iid) {
   if (objectId != 0) {
     WRITE_LOCKER(guard, _mapLock);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

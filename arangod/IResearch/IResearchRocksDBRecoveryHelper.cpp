@@ -70,7 +70,7 @@ std::vector<std::shared_ptr<arangodb::Index>> lookupLinks(arangodb::LogicalColle
 
 std::shared_ptr<arangodb::iresearch::IResearchLink> lookupLink(TRI_vocbase_t& vocbase,
                                                                TRI_voc_cid_t cid,
-                                                               TRI_idx_iid_t iid) {
+                                                               arangodb::IndexId iid) {
   auto col = vocbase.lookupCollection(cid);
 
   if (!col) {
@@ -103,13 +103,14 @@ void ensureLink(arangodb::DatabaseFeature& db,
     return;
   }
 
-  TRI_idx_iid_t iid;
+  arangodb::IndexId iid;
   auto const idSlice = indexSlice.get("id");
 
   if (idSlice.isString()) {
-    iid = static_cast<TRI_idx_iid_t>(std::stoull(idSlice.copyString()));
+    iid = arangodb::IndexId{
+        static_cast<arangodb::IndexId::BaseType>(std::stoull(idSlice.copyString()))};
   } else if (idSlice.isNumber()) {
-    iid = idSlice.getNumber<TRI_idx_iid_t>();
+    iid = arangodb::IndexId{idSlice.getNumber<arangodb::IndexId::BaseType>()};
   } else {
     LOG_TOPIC("96bc8", ERR, arangodb::iresearch::TOPIC)
         << "Cannot recover index for the collection '" << cid
@@ -143,7 +144,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
   if (!recoveredIndexes.emplace(dbId, cid, iid).second) {
     // already there
     LOG_TOPIC("3dcb4", TRACE, arangodb::iresearch::TOPIC)
-        << "Index of type 'IResearchLink' with id `" << iid
+        << "Index of type 'IResearchLink' with id `" << iid.id()
         << "' in the collection '" << cid << "' in the database '" << dbId
         << "' already exists: skipping create marker";
     return;
@@ -154,14 +155,14 @@ void ensureLink(arangodb::DatabaseFeature& db,
   if (!link) {
     LOG_TOPIC("e9142", TRACE, arangodb::iresearch::TOPIC)
         << "Collection '" << cid << "' in the database '" << dbId
-        << "' does not contain index of type 'IResearchLink' with id '" << iid
-        << "': skip create marker";
+        << "' does not contain index of type 'IResearchLink' with id '"
+        << iid.id() << "': skip create marker";
     return;
   }
 
   LOG_TOPIC("29bea", TRACE, arangodb::iresearch::TOPIC)
       << "found create index marker, databaseId: '" << dbId
-      << "', collectionId: '" << cid << "', link '" << iid << "'";
+      << "', collectionId: '" << cid << "', link '" << iid.id() << "'";
 
   arangodb::velocypack::Builder json;
 
@@ -169,7 +170,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
 
   if (!link->properties(json, true).ok()) { // link definition used for recreation and persistence
     LOG_TOPIC("15f11", ERR, arangodb::iresearch::TOPIC)
-        << "Failed to generate jSON definition for link '" << iid
+        << "Failed to generate jSON definition for link '" << iid.id()
         << "' to the collection '" << cid << "' in the database '" << dbId;
     return;
   }
@@ -183,7 +184,8 @@ void ensureLink(arangodb::DatabaseFeature& db,
       || !col->createIndex(json.slice(), created) // index creation failure
       || !created) { // index not created
     LOG_TOPIC("44a02", ERR, arangodb::iresearch::TOPIC)
-      << "Failed to recreate an arangosearch link '" << iid << "' to the collection '" << cid << "' in the database '" << dbId;
+        << "Failed to recreate an arangosearch link '" << iid.id()
+        << "' to the collection '" << cid << "' in the database '" << dbId;
 
     return;
   }

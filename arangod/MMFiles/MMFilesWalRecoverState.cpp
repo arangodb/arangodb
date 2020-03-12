@@ -886,7 +886,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return state->canContinue();
         }
 
-        TRI_idx_iid_t indexId = numericValue<TRI_idx_iid_t>(payloadSlice, "id");
+        IndexId indexId{numericValue<IndexId::BaseType>(payloadSlice, "id")};
 
         if (state->isDropped(databaseId, collectionId)) {
           return true;
@@ -922,7 +922,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         TRI_ASSERT(physical != nullptr);
         MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
-        std::string const indexName("index-" + std::to_string(indexId) +
+        std::string const indexName("index-" + std::to_string(indexId.id()) +
                                     ".json");
         std::string const filename(
             arangodb::basics::FileUtils::buildFilename(physical->path(), indexName));
@@ -933,7 +933,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (!ok) {
           LOG_TOPIC("3a1aa", WARN, arangodb::Logger::ENGINES)
-              << "cannot create index " << indexId << ", collection "
+              << "cannot create index " << indexId.id() << ", collection "
               << collectionId << " in database " << databaseId;
           ++state->errorCount;
 
@@ -945,7 +945,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             TRI_ASSERT(unused != nullptr);
           } catch (basics::Exception const&) {
             LOG_TOPIC("92fdf", WARN, arangodb::Logger::ENGINES)
-                << "cannot create index " << indexId << ", collection "
+                << "cannot create index " << indexId.id() << ", collection "
                 << collectionId << " in database " << databaseId;
             ++state->errorCount;
             return state->canContinue();
@@ -1262,11 +1262,11 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return state->canContinue();
         }
 
-        TRI_idx_iid_t indexId = numericValue<TRI_idx_iid_t>(payloadSlice, "id");
+        IndexId indexId{numericValue<IndexId::BaseType>(payloadSlice, "id")};
 
         LOG_TOPIC("bb61e", TRACE, arangodb::Logger::ENGINES)
             << "found drop index marker. databaseId: " << databaseId
-            << ", collectionId: " << collectionId << ", indexId: " << indexId;
+            << ", collectionId: " << collectionId << ", indexId: " << indexId.id();
 
         if (state->isDropped(databaseId, collectionId)) {
           return true;
@@ -1295,7 +1295,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         // additionally remove the index file
-        std::string const indexName("index-" + std::to_string(indexId) +
+        std::string const indexName("index-" + std::to_string(indexId.id()) +
                                     ".json");
         std::string const filename(
             arangodb::basics::FileUtils::buildFilename(physical->path(), indexName));

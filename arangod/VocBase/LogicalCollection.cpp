@@ -963,7 +963,7 @@ void LogicalCollection::open(bool ignoreErrors) {
 
 /// SECTION Indexes
 
-std::shared_ptr<Index> LogicalCollection::lookupIndex(TRI_idx_iid_t idxId) const {
+std::shared_ptr<Index> LogicalCollection::lookupIndex(IndexId idxId) const {
   return getPhysical()->lookupIndex(idxId);
 }
 
@@ -991,7 +991,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice const& info, bo
 }
 
 /// @brief drops an index, including index file removal and replication
-bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
+bool LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 #if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);

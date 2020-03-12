@@ -173,13 +173,13 @@ void MMFilesEdgeIndexIterator::reset() {
   _lastElement = MMFilesSimpleIndexElement();
 }
 
-MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection)
+MMFilesEdgeIndex::MMFilesEdgeIndex(IndexId iid, arangodb::LogicalCollection& collection)
     : MMFilesIndex(iid, collection, StaticStrings::IndexNameEdge,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
                         {arangodb::basics::AttributeName(StaticStrings::ToString, false)}}),
                    false, false) {
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid.isSet());
   size_t initialSize = 64;
   auto physical = static_cast<MMFilesCollection*>(collection.getPhysical());
   TRI_ASSERT(physical != nullptr);

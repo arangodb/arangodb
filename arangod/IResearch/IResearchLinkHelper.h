@@ -27,6 +27,7 @@
 #include <memory>
 
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -72,9 +73,9 @@ struct IResearchLinkHelper {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
   //////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<IResearchLink> find( // find link
-    arangodb::LogicalCollection const& collection, // collection to search
-    TRI_idx_iid_t id // index to find
+  static std::shared_ptr<IResearchLink> find(         // find link
+      arangodb::LogicalCollection const& collection,  // collection to search
+      IndexId id                                      // index to find
   );
 
   //////////////////////////////////////////////////////////////////////////////
