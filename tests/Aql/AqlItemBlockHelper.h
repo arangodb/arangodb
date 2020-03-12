@@ -77,7 +77,9 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-using EntryBuilder = std::variant<int, const char*>;
+struct NoneEntry {};
+
+using EntryBuilder = std::variant<NoneEntry, int, const char*>;
 
 template <::arangodb::aql::RegisterId columns>
 using RowBuilder = std::array<EntryBuilder, columns>;
@@ -112,15 +114,16 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
   for (size_t row = 0; row < matrix.size(); row++) {
     for (RegisterId col = 0; col < columns; col++) {
       auto const& entry = matrix[row][col];
-      auto value = std::visit(
-          overload{
-              [](int i) { return AqlValue{AqlValueHintInt{i}}; },
-              [](const char* json) {
-                VPackBufferPtr tmpVpack = vpackFromJsonString(json);
-                return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
-              },
-          },
-          entry);
+      auto value =
+          std::visit(overload{
+                         [](NoneEntry) { return AqlValue{}; },
+                         [](int i) { return AqlValue{AqlValueHintInt{i}}; },
+                         [](const char* json) {
+                           VPackBufferPtr tmpVpack = vpackFromJsonString(json);
+                           return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
+                         },
+                     },
+                     entry);
       block->setValue(row, col, value);
     }
   }
