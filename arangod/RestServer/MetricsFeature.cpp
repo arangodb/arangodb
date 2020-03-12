@@ -77,7 +77,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 void MetricsFeature::toPrometheus(std::string& result) const {
 
   // minimize reallocs
-  result.reserve(65536);
+  result.reserve(32768);
 
   {
     std::lock_guard<std::recursive_mutex> guard(_lock);

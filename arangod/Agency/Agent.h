@@ -331,6 +331,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// the agency leader.
   void updateSomeConfigValues(VPackSlice);
 
+  Histogram<log_scale_t<float>>& commitHist() const;
+
  private:
 
   /// @brief load() has run
@@ -500,6 +502,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Counter& _read_ok;
   Counter& _read_no_leader;
   Histogram<log_scale_t<float>>& _write_hist_msec;
+  Histogram<log_scale_t<float>>& _commit_hist_msec;
 
 };
 }  // namespace consensus
