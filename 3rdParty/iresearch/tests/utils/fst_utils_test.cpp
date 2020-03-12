@@ -38,16 +38,6 @@ TEST(fst_table_matcher_test, static_const) {
 }
 
 TEST(fst_table_matcher_test, invalid_matcher) {
-  // has epsilons
-  {
-    fst::fsa::Automaton a;
-    a.AddState(); // 0
-    a.AddState(); // 1
-    a.EmplaceArc(1, 0, 0);
-    fst::TableMatcher<fst::fsa::Automaton> matcher(a, fst::kNoLabel);
-    ASSERT_EQ(fst::kError, matcher.Properties(0));
-  }
-
   // non-deterministic
   {
     fst::fsa::Automaton a;

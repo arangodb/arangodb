@@ -1244,7 +1244,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
       }
     }
 
-    // maintenace actions
+    // maintenance actions
     report.add(VPackValue("actions"));
     {
       VPackObjectBuilder agency(&report);

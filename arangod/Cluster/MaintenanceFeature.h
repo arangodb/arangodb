@@ -281,7 +281,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /**
    * @brief copy all error maps (shards, indexes and databases) for Maintenance
    *
-   * @param  errors  errors struct into which all maintenace feature error are copied
+   * @param  errors  errors struct into which all maintenance feature error are copied
    * @return         success
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;

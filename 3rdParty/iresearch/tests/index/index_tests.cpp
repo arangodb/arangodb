@@ -315,6 +315,22 @@ void payloaded_json_field_factory(
   }
 }
 
+void normalized_string_json_field_factory(
+  tests::document& doc,
+  const std::string& name,
+  const json_doc_generator::json_value& data) {
+  static irs::flags norm{ irs::norm::type() };
+  if (json_doc_generator::ValueType::STRING == data.vt) {
+    doc.insert(std::make_shared<templates::string_field>(
+      irs::string_ref(name),
+      data.str,
+      norm
+      ));
+  } else {
+    generic_json_field_factory(doc, name, data);
+  }
+}
+
 std::string to_string(
     const testing::TestParamInfo<index_test_context>& info
 ) {
@@ -2450,21 +2466,21 @@ TEST_P(index_test_case, europarl_docs_automaton) {
 
   // prefix
   {
-    auto acceptor = irs::from_wildcard<char>("forb%");
+    auto acceptor = irs::from_wildcard("forb%");
     irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
     assert_index(0, &matcher);
   }
 
   // part
   {
-    auto acceptor = irs::from_wildcard<char>("%ende%");
+    auto acceptor = irs::from_wildcard("%ende%");
     irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
     assert_index(0, &matcher);
   }
 
   // suffix
   {
-    auto acceptor = irs::from_wildcard<char>("%ione");
+    auto acceptor = irs::from_wildcard("%ione");
     irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
     assert_index(0, &matcher);
   }
@@ -13231,6 +13247,29 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
     index_test_case_12_values
+  ),
+  tests::to_string
+);
+
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+NS_LOCAL
+#if defined(IRESEARCH_SSE2)
+const auto index_test_case_13_values = ::testing::Values("1_3", "1_3simd");
+#else
+const auto index_test_case_13_values = ::testing::Values("1_3");
+#endif
+NS_END
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_13,
+  index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
+    ),
+    index_test_case_13_values
   ),
   tests::to_string
 );

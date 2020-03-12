@@ -80,6 +80,10 @@ class format_test_case : public index_test_base {
       offs_.clear();
     }
 
+    virtual void reset() override {
+      assert(false); // unsupported
+    }
+
    private:
     friend class postings;
 

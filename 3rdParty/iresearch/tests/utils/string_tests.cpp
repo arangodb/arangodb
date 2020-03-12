@@ -184,6 +184,78 @@ TEST(string_ref_tests, compare) {
   }
 }
 
+TEST(string_ref_tests, common_prefix) {
+  using namespace iresearch;
+
+  {
+    const string_ref lhs = "20-MAR-2012 19:56:11.00";
+    const string_ref rhs = "20-MAR-2012 19:56:11.00\0\0";
+    EXPECT_EQ(23, common_prefix_length(lhs, rhs));
+    EXPECT_EQ(23, common_prefix_length(rhs, lhs));
+  }
+
+  {
+    const string_ref lhs = "quick brown fox";
+    const string_ref rhs = "quick brown fax";
+    EXPECT_EQ(13, common_prefix_length(lhs, rhs));
+    EXPECT_EQ(13, common_prefix_length(rhs, lhs));
+  }
+
+  {
+    const string_ref lhs = "quick brown foxies";
+    const string_ref rhs = "quick brown fax";
+    EXPECT_EQ(13, common_prefix_length(lhs, rhs));
+    EXPECT_EQ(13, common_prefix_length(rhs, lhs));
+  }
+
+  {
+    const string_ref lhs = "quick brown foxies";
+    const string_ref rhs = "fuick brown fax";
+    EXPECT_EQ(0, common_prefix_length(lhs, rhs));
+    EXPECT_EQ(0, common_prefix_length(rhs, lhs));
+  }
+
+  {
+    const string_ref lhs = "quick brown foxies";
+    const string_ref rhs = "q1ick brown fax";
+    EXPECT_EQ(1, common_prefix_length(lhs, rhs));
+    EXPECT_EQ(1, common_prefix_length(rhs, lhs));
+  }
+
+  {
+    const string_ref lhs = "qui";
+    const string_ref rhs = "q1";
+    EXPECT_EQ(1, common_prefix_length(lhs, rhs));
+    EXPECT_EQ(1, common_prefix_length(rhs, lhs));
+  }
+
+  {
+    const string_ref lhs = "qui";
+    const string_ref rhs = "f1";
+    EXPECT_EQ(0, common_prefix_length(lhs, rhs));
+    EXPECT_EQ(0, common_prefix_length(rhs, lhs));
+  }
+
+  {
+    const string_ref lhs = "quick brown foxies";
+    const string_ref rhs = "qui";
+    EXPECT_EQ(3, common_prefix_length(lhs, rhs));
+    EXPECT_EQ(3, common_prefix_length(rhs, lhs));
+  }
+
+  {
+    const string_ref str = "quick brown foxies";
+    EXPECT_EQ(0, common_prefix_length(string_ref::NIL, str));
+    EXPECT_EQ(0, common_prefix_length(str, string_ref::NIL));
+  }
+
+  {
+    const string_ref str = "quick brown foxies";
+    EXPECT_EQ(0, common_prefix_length(string_ref::EMPTY, str));
+    EXPECT_EQ(0, common_prefix_length(str, string_ref::EMPTY));
+  }
+}
+
 TEST(string_ref_tests, starts_with) {
   using namespace iresearch;
 

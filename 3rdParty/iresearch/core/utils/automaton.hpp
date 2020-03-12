@@ -61,6 +61,9 @@ NS_BEGIN(fsa)
 class BooleanWeight {
  public:
   using ReverseWeight = BooleanWeight;
+  using PayloadType = irs::byte_type;
+
+  static constexpr PayloadType MaxPayload = 0x3F;
 
   static const std::string& Type() {
     static const std::string type = "boolean";
@@ -71,62 +74,69 @@ class BooleanWeight {
   static constexpr BooleanWeight One() noexcept { return true; }
   static constexpr BooleanWeight NoWeight() noexcept { return {}; }
 
-  constexpr BooleanWeight() noexcept : v_(Value::NO_WEIGHT) { }
-  constexpr BooleanWeight(bool v) noexcept : v_(Value(char(v))) { }
-
   static constexpr uint64 Properties() noexcept {
     return kLeftSemiring | kRightSemiring |
            kCommutative | kIdempotent | kPath;
   }
 
-  constexpr bool Member() const noexcept { return v_ != Value::NO_WEIGHT; }
+  constexpr BooleanWeight() noexcept : v_(Invalid) { }
+  constexpr BooleanWeight(bool v, PayloadType payload = 0) noexcept
+    : v_(PayloadType(v) | (payload << 2)) {
+  }
+
+  constexpr bool Member() const noexcept { return 0 == (v_ & Invalid); }
   constexpr BooleanWeight Quantize(float delta = kDelta) const noexcept { return {}; }
   std::istream& Read(std::istream& strm) noexcept {
-    v_ = Value(strm.get());
+    v_ = strm.get();
+    if (strm.fail()) {
+      v_ = Invalid;
+    }
     return strm;
   }
   std::ostream& Write(std::ostream &strm) const noexcept {
-    strm << char(v_);
+    strm.put(v_);
     return strm;
   }
-  constexpr size_t Hash() const noexcept { return size_t(v_); }
+  constexpr size_t Hash() const noexcept { return size_t(v_ & WeightMask); }
   constexpr ReverseWeight Reverse() const noexcept { return *this; }
-  constexpr operator bool() const noexcept { return v_ == Value::TRUE; }
+  constexpr PayloadType Payload() const noexcept { return v_ >> 2; }
+  constexpr operator bool() const noexcept { return 0 != (v_ & True); }
 
   friend constexpr bool operator==(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
-    return lhs.v_ == rhs.v_;
+    return lhs.Hash() == rhs.Hash();
   }
   friend constexpr bool operator!=(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
     return !(lhs == rhs);
   }
-  friend BooleanWeight Plus(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
-    return { bool(lhs.v_) || bool(rhs.v_) };
+  friend constexpr BooleanWeight Plus(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
+    return BooleanWeight(bool(lhs.Hash()) || bool(rhs.Hash()), lhs.Payload() | rhs.Payload());
   }
-  friend BooleanWeight Times(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
-    return { bool(lhs.v_) && bool(rhs.v_) };
+  friend constexpr BooleanWeight Times(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
+    return BooleanWeight(bool(lhs.Hash()) && bool(rhs.Hash()), lhs.Payload() & rhs.Payload());
   }
-  friend BooleanWeight Divide(BooleanWeight, BooleanWeight, DivideType) noexcept {
-    return { };
+  friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight, DivideType) noexcept {
+    return NoWeight();
   }
   friend std::ostream& operator<<(std::ostream& strm, const BooleanWeight& w) {
-    if (Value::NO_WEIGHT != w.v_) {
-      strm << char(w.v_ + 48);
+    if (w.Member()) {
+      strm << "{" << char(bool(w) + 48) << "," << int(w.Payload()) << "}";
     }
     return strm;
   }
-  friend bool ApproxEqual(const BooleanWeight& lhs, const BooleanWeight& rhs,
-                          float delta = kDelta) {
+  friend constexpr bool ApproxEqual(const BooleanWeight& lhs, const BooleanWeight& rhs,
+                                    float delta = kDelta) {
     return lhs == rhs;
   }
 
  private:
-  enum Value : char {
-    NO_WEIGHT = -1,
-    FALSE = 0,
-    TRUE = 1
-  };
+  static constexpr PayloadType WeightMask = 0x03;
+  static constexpr PayloadType True = 1;    // "is true" mask
+  static constexpr PayloadType Invalid = 2; // "not a member" mask
 
-  Value v_;
+  // [2..7] - payload
+  // [1] - "not a member" bit
+  // [0] - true/false bit
+  PayloadType v_;
 };
 
 struct MinMaxLabel {
