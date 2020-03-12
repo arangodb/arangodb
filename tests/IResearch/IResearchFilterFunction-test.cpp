@@ -2706,7 +2706,7 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleString("obj.name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref( "q"))})
+    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
         .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
         .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
         .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
@@ -3182,7 +3182,7 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
         .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
         .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("f", 2))})
+    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("f"))}, 2)
         .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
         .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x"))});
     phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("j"))})
@@ -3720,14 +3720,14 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       vocbase(),
       "FOR d IN myView FILTER "
       "analyzer(phrase(d.obj.properties.id.name, ['quick'], 3, "
-      "'123', 'wn', 0, ['f', 'o', 'x'], 0, ['j', ['u'], 'mps']), 'test_analyzer') "
+      "'123', 'wn', 0, ['f', 'o', 'x'], 0, [['j', ['u'], 'mps']]), 'test_analyzer') "
       "RETURN d", &ctx);
 
     assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER "
       "analyzer(phrase(d.obj.properties.id.name, ['quick', 3, "
-      "'123', 'wn', 0, 'f', 'o', 'x', 0, ['j'], 'u', 'mps']), 'test_analyzer') "
+      "'123', 'wn', 0, 'f', 'o', 'x', 0, [['j']], 'u', 'mps']), 'test_analyzer') "
       "RETURN d", &ctx);
   }
 
