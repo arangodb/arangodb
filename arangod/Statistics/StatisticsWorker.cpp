@@ -915,15 +915,36 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"ioTimeSum",
    {"arangodb_client_connection_statistics_io_time_sum", "gauge",
     "Request time needed to answer a request.\n"}},
-  {"httpRequestsTotal",
-   {"http_requests_total", "counter",
-    "Total number of HTTP requests made."}},
-  {"",
-    {"http_response_size_bytes", "summary",
-    "The HTTP response sizes in bytes."}}
-  /*{"",
-    {"", "",
-    ""}}*/
+  {"httpReqsTotal",
+   {"arangodb_http_request_statistics_total_requests", "gauge",
+    "Total number of HTTP requests."}},
+  {"httpReqsAsync",
+   {"arangodb_http_request_statistics_async_requests", "gauge",
+    "Number of asynchronously executed HTTP requests."}},
+  {"httpReqsDelete",
+   {"arangodb_http_request_statistics_http_delete_requests", "gauge",
+    "Number of HTTP DELETE requests."}},
+  {"httpReqsGet",
+   {"arangodb_http_request_statistics_http_get_requests", "gauge",
+    "Number of HTTP GET requests."}},
+  {"httpReqsHead",
+   {"arangodb_http_request_statistics_http_head_requests", "gauge",
+    "Number of HTTP HEAD requests."}},
+  {"httpReqsOptions",
+   {"arangodb_http_request_statistics_http_options_requests", "gauge",
+    "Number of HTTP OPTIONS requests."}},
+  {"httpReqsPatch",
+   {"arangodb_http_request_statistics_http_patch_requests", "gauge",
+    "Number of HTTP PATH requests."}},
+  {"httpReqsPost",
+   {"arangodb_http_request_statistics_http_post_requests", "gauge",
+    "Number of HTTP POST requests."}},
+  {"httpReqsPut",
+   {"arangodb_http_request_statistics_http_put_requests", "gauge",
+    "Number of HTTP PUT requests."}},
+  {"httpReqsOther",
+   {"arangodb_http_request_statistics_other_http_requests", "gauge",
+    "Number of other HTTP requests."}}
 };
 
 void StatisticsWorker::generateRawStatistics(std::string& result, double const& now) {
@@ -1213,30 +1234,63 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
     HELP_ + statStrings.at("bytesReceivedSum").at(0) + " " + statStrings.at("bytesReceivedSum")[2] +
     statStrings.at("bytesReceivedSum").at(0) + " " + std::to_string(slc.get("sum").template getNumber<uint64_t>());
 
-  
+
+  // _httpStatistics()
+  result +=
+    TYPE_ + statStrings.at("httpReqsDelete").at(0) + " " + statStrings.at("httpReqsDelete")[1] +
+    HELP_ + statStrings.at("httpReqsDelete").at(0) + " " + statStrings.at("httpReqsDelete")[2] +
+    statStrings.at("httpReqsDelete").at(0) + " " +
+    std::to_string(methodRequests[(int)rest::RequestType::DELETE]._count);
+
+  result +=
+    TYPE_ + statStrings.at("httpReqsGet").at(0) + " " + statStrings.at("httpReqsGet")[1] +
+    HELP_ + statStrings.at("httpReqsGet").at(0) + " " + statStrings.at("httpReqsGet")[2] +
+    statStrings.at("httpReqsGet").at(0) + " " +
+    std::to_string(methodRequests[(int)rest::RequestType::GET]._count);
+
+  result +=
+    TYPE_ + statStrings.at("httpReqsHead").at(0) + " " + statStrings.at("httpReqsHead")[1] +
+    HELP_ + statStrings.at("httpReqsHead").at(0) + " " + statStrings.at("httpReqsHead")[2] +
+    statStrings.at("httpReqsHead").at(0) + " " +
+    std::to_string(methodRequests[(int)rest::RequestType::HEAD]._count);
+
+  result +=
+    TYPE_ + statStrings.at("httpReqsOptions").at(0) + " " + statStrings.at("httpReqsOptions")[1] +
+    HELP_ + statStrings.at("httpReqsOptions").at(0) + " " + statStrings.at("httpReqsOptions")[2] +
+    statStrings.at("httpReqsOptions").at(0) + " " +
+    std::to_string(methodRequests[(int)rest::RequestType::OPTIONS]._count);
+
+  result +=
+    TYPE_ + statStrings.at("httpReqsPatch").at(0) + " " + statStrings.at("httpReqsPatch")[1] +
+    HELP_ + statStrings.at("httpReqsPatch").at(0) + " " + statStrings.at("httpReqsPatch")[2] +
+    statStrings.at("httpReqsPatch").at(0) + " " +
+    std::to_string(methodRequests[(int)rest::RequestType::PATCH]._count);
+
+  result +=
+    TYPE_ + statStrings.at("httpReqsPost").at(0) + " " + statStrings.at("httpReqsPost")[1] +
+    HELP_ + statStrings.at("httpReqsPost").at(0) + " " + statStrings.at("httpReqsPost")[2] +
+    statStrings.at("httpReqsPost").at(0) + " " +
+    std::to_string(methodRequests[(int)rest::RequestType::POST]._count);
+
+  result +=
+    TYPE_ + statStrings.at("httpReqsPut").at(0) + " " + statStrings.at("httpReqsPut")[1] +
+    HELP_ + statStrings.at("httpReqsPut").at(0) + " " + statStrings.at("httpReqsPut")[2] +
+    statStrings.at("httpReqsPut").at(0) + " " +
+    std::to_string(methodRequests[(int)rest::RequestType::PUT]._count);
+
+  result +=
+    TYPE_ + statStrings.at("httpReqsHead").at(0) + " " + statStrings.at("httpReqsHead")[1] +
+    HELP_ + statStrings.at("httpReqsHead").at(0) + " " + statStrings.at("httpReqsHead")[2] +
+    statStrings.at("httpReqsHead").at(0) + " " +
+    std::to_string(methodRequests[(int)rest::RequestType::HEAD]._count);
+
+  result +=
+    TYPE_ + statStrings.at("httpReqsHead").at(0) + " " + statStrings.at("httpReqsHead")[1] +
+    HELP_ + statStrings.at("httpReqsHead").at(0) + " " + statStrings.at("httpReqsHead")[2] +
+    statStrings.at("httpReqsHead").at(0) + " " +
+    std::to_string(methodRequests[(int)rest::RequestType::HEAD]._count);
 
   /*
-  // _httpStatistics()
-  builder.add("http", VPackValue(VPackValueType::Object));
-  builder.add("requestsTotal", VPackValue(totalRequests._count));
-  builder.add("requestsAsync", VPackValue(asyncRequests._count));
-  builder.add("requestsGet",
-              VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
-  builder.add("requestsHead",
-              VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));
-  builder.add("requestsPost",
-              VPackValue(methodRequests[(int)rest::RequestType::POST]._count));
-  builder.add("requestsPut",
-              VPackValue(methodRequests[(int)rest::RequestType::PUT]._count));
-  builder.add("requestsPatch",
-              VPackValue(methodRequests[(int)rest::RequestType::PATCH]._count));
-  builder.add("requestsDelete",
-              VPackValue(methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
-  builder.add("requestsOptions",
-              VPackValue(methodRequests[(int)rest::RequestType::OPTIONS]._count));
-  builder.add("requestsOther",
-              VPackValue(methodRequests[(int)rest::RequestType::ILLEGAL]._count));
-  builder.close();
 
   // _serverStatistics()
   builder.add("server", VPackValue(VPackValueType::Object));
