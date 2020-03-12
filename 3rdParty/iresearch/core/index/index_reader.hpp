@@ -107,7 +107,7 @@ struct IRESEARCH_API index_reader {
   virtual size_t size() const = 0;
 
   // first sub-segment
-  reader_iterator begin() const {
+  reader_iterator begin() const noexcept {
     return reader_iterator(*this, 0);
   }
 
