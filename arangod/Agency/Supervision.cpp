@@ -917,12 +917,6 @@ void Supervision::run() {
           updateSnapshot();
           LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
-<<<<<<< HEAD
-          if (!(*_snapshot).has("Supervision/Maintenance")) {
-            reportStatus("Normal");
-=======
->>>>>>> 7c826dc4daf7cc1082b8ce5f24f161673df43713
-
           if (!_upgraded) {
             upgradeAgency();
           }
