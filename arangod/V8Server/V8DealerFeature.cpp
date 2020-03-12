@@ -133,19 +133,21 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.gc-frequency",
       "JavaScript time-based garbage collection frequency (each x seconds)",
       new DoubleParameter(&_gcFrequency),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.gc-interval",
       "JavaScript request-based garbage collection interval (each x requests)",
       new UInt64Parameter(&_gcInterval),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.app-path", "directory for Foxx applications",
@@ -168,10 +170,11 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.module-directory",
       "additional paths containing JavaScript modules",
       new VectorParameter<StringParameter>(&_moduleDirectories),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.copy-installation",
@@ -206,36 +209,40 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.v8-contexts-max-invocations",
       "maximum number of invocations for each V8 context before it is disposed",
       new UInt64Parameter(&_maxContextInvocations),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.v8-contexts-max-age",
       "maximum age for each V8 context (in seconds) before it is disposed",
       new DoubleParameter(&_maxContextAge),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
       new BooleanParameter(&_allowAdminExecute),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.enabled", "enable the V8 JavaScript engine",
       new BooleanParameter(&_enableJS),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
