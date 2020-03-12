@@ -309,11 +309,11 @@ void Supervision::upgradeAgency() {
 
 void Supervision::upgradeMaintenance(VPackBuilder& builder) {
   _lock.assertLockedByCurrentThread();
-  if (_snapshot.has(supervisionMaintenance)) {
+  if (_snapshot->has(supervisionMaintenance)) {
 
     std::string maintenanceState;
     try {
-      maintenanceState = _snapshot.get(supervisionMaintenance).getString();
+      maintenanceState = _snapshot->get(supervisionMaintenance).getString();
     } catch (std::exception const& e) {
       LOG_TOPIC("cf235", ERR, Logger::SUPERVISION)
         << "Supervision maintenance key in agency is not a string. This should never happen and will prevent hot backups. " << e.what();
@@ -344,9 +344,9 @@ void Supervision::upgradeBackupKey(VPackBuilder& builder) {
   // Upgrade /arango/Target/HotBackup/Create from 0 to time out
 
   _lock.assertLockedByCurrentThread();
-  if (_snapshot.has(HOTBACKUP_KEY)) {
+  if (_snapshot->has(HOTBACKUP_KEY)) {
 
-    Node const& tmp  = _snapshot(HOTBACKUP_KEY);
+    Node const& tmp  = (*_snapshot)(HOTBACKUP_KEY);
     if (tmp.isNumber()) {
       if (tmp.getInt() == 0) {
 
@@ -917,21 +917,15 @@ void Supervision::run() {
           updateSnapshot();
           LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
-<<<<<<< HEAD
-          if (!(*_snapshot).has("Supervision/Maintenance")) {
-            reportStatus("Normal");
-=======
->>>>>>> ec6271496ecd86e5745c8c75fd1d2d87a366d220
-
           if (!_upgraded) {
             upgradeAgency();
           }
 
           bool maintenanceMode = false;
-          if (_snapshot.has(supervisionMaintenance)) {
+          if (_snapshot->has(supervisionMaintenance)) {
             try {
-              if (_snapshot.get(supervisionMaintenance).isString()) {
-                std::string tmp = _snapshot.get(supervisionMaintenance).getString();
+              if (_snapshot->get(supervisionMaintenance).isString()) {
+                std::string tmp = _snapshot->get(supervisionMaintenance).getString();
                 if (tmp.size() < 18) { // legacy behaviour
                   maintenanceMode = true;
                 } else {
@@ -1416,8 +1410,8 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
 // Remove expired hot backup lock if exists
 void Supervision::unlockHotBackup() {
   _lock.assertLockedByCurrentThread();
-  if (_snapshot.has(HOTBACKUP_KEY)) {
-    Node tmp = _snapshot(HOTBACKUP_KEY);
+  if (_snapshot->has(HOTBACKUP_KEY)) {
+    Node tmp = (*_snapshot)(HOTBACKUP_KEY);
     if (tmp.isString()) {
       if (std::chrono::system_clock::now() > stringToTimepoint(tmp.getString())) {
         VPackBuilder unlock;
