@@ -138,6 +138,11 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
     // to the last input, we will not be able to produce results anymore.
     return {translatedReturnType(), NoStats{}, getUpstreamCall()};
   }
+  if (output.isFull()) {
+    // This can happen if there is no upstream
+    _state = input.upstreamState();
+  }
+
   while (!output.isFull()) {
     if (_subqueryInitialized) {
       // Continue in subquery
