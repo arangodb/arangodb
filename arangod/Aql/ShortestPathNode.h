@@ -40,7 +40,7 @@ struct ShortestPathOptions;
 namespace aql {
 
 /// @brief class ShortestPathNode
-class ShortestPathNode : public GraphNode {
+class ShortestPathNode : public virtual GraphNode {
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
 

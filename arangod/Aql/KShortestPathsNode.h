@@ -41,7 +41,7 @@ struct ShortestPathOptions;
 namespace aql {
 
 /// @brief class KShortestPathsNode
-class KShortestPathsNode : public GraphNode {
+class KShortestPathsNode : public virtual GraphNode {
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
 

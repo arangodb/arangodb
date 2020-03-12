@@ -46,7 +46,7 @@ struct TraverserOptions;
 namespace aql {
 
 /// @brief class TraversalNode
-class TraversalNode : public GraphNode {
+class TraversalNode : public virtual GraphNode {
   class TraversalEdgeConditionBuilder final : public EdgeConditionBuilder {
    private:
     /// @brief reference to the outer traversal node

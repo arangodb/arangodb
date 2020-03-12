@@ -276,9 +276,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 #endif
 }
 
+// This constructor is only used from SatelliteTraversalNode, and GraphNode
+// is virtually inherited; thus its constructor is never called from here.
 TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other)
-    : GraphNode(plan, other,
-                std::make_unique<traverser::TraverserOptions>(*other.options())),
+    : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),
       _pathOutVariable(nullptr),
       _inVariable(other._inVariable),
       _vertexId(other._vertexId),

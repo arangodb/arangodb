@@ -56,13 +56,14 @@ namespace aql {
 //        * Smart Graph Handling
 
 class GraphNode : public ExecutionNode {
- public:
+ protected:
   /// @brief constructor with a vocbase and a collection name
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase, AstNode const* direction,
             AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
+ public:
   bool isUsedAsSatellite() const;
 
   bool isEligibleAsSatelliteTraversal() const;
@@ -81,6 +82,9 @@ class GraphNode : public ExecutionNode {
   /// plan.
   GraphNode(ExecutionPlan& plan, GraphNode const& other,
             std::unique_ptr<graph::BaseOptions> options);
+
+  struct THIS_THROWS_WHEN_CALLED{};
+  explicit GraphNode(THIS_THROWS_WHEN_CALLED);
 
   std::string const& collectionToShardName(std::string const& collName) const;
 
