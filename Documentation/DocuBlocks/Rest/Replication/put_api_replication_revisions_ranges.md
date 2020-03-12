@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_revisions_ranges
 @brief retrieves the revision IDs of documents within requested ranges
 
-@RESTHEADER{GET /_api/replication/revisions/ranges, Return revision IDs within requested ranges,handleCommandRevisionRanges}
+@RESTHEADER{PUT /_api/replication/revisions/ranges, Return revision IDs within requested ranges,handleCommandRevisionRanges}
 
 @RESTQUERYPARAMETERS
 
@@ -56,8 +56,8 @@ string-encoding for a moment), if ranges `[1, 3], [5, 9], [12, 15]` are
 requested, then a first response may return `[], [5, 6]` with a resume point of
 `7` and a subsequent response might be `[8], [12, 13]`.
 
-If a requested range contains no revisions, then an empty array may be
-returned. Empty ranges will not be omitted.
+If a requested range contains no revisions, then an empty array is returned.
+Empty ranges will not be omitted.
 
 Each `<String, revision>` value type is a 64-bit value encoded as a string of
 11 characters, using the same encoding as our document `_rev` values. The

@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_revisions_documents
 @brief retrieves documents by revision
 
-@RESTHEADER{GET /_api/replication/revisions/documents, Return documents by revision,handleCommandRevisionDocuments}
+@RESTHEADER{PUT /_api/replication/revisions/documents, Return documents by revision,handleCommandRevisionDocuments}
 
 @RESTQUERYPARAMETERS
 

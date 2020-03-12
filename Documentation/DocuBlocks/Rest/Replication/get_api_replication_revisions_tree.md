@@ -18,7 +18,8 @@ Returns the Merkle tree from the collection.
 The result will be JSON/VelocyPack in the following format:
 ```
 {
-  version: <Number>
+  version: <Number>,
+  branchingFactor: <Number>
   maxDepth: <Number>,
   rangeMin: <String, revision>,
   rangeMax: <String, revision>,
@@ -40,7 +41,10 @@ reason for this is that 64-bit values cannot necessarily be represented in full
 in JavaScript, as it handles all numbers as floating point, and can only
 represent up to `2^53-1` faithfully.
 
-The node count should correspond to a full tree with the given `maxDepth`.
+The node count should correspond to a full tree with the given `maxDepth` and
+`branchingFactor`. The nodes are laid out in level-order tree traversal, so the
+root is at index `0`, its children at indices `[1, branchingFactor]`, and so
+on.
 
 @RESTRETURNCODES
 
