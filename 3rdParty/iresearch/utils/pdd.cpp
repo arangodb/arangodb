@@ -97,18 +97,21 @@ int dump(
     compressed = raw;
   }
 
-  out << "{{\n";
+  out << std::hex;
+
+  out << "{\n  {\n";
   for (auto begin = compressed.begin(), end = compressed.end(); begin != end;) {
-    out << "  ";
+    out << "    \"";
     auto slice_begin = begin;
     auto slice_end = std::min(begin + line_length, compressed.end());
     for (; slice_begin != slice_end; ++slice_begin) {
-      out << uint32_t(*slice_begin) << ",";
+      out << "\\x" << uint32_t(*slice_begin);
     }
-    out << "\n";
+    out << "\"\n";
     begin = slice_end;
   }
-  out << "}," << raw.size() << "}\n";
+  out << std::dec;
+  out << "    , " << compressed.size() << "\n  },\n  " << raw.size() << "\n}\n";
 
   return 0;
 }
@@ -145,7 +148,7 @@ int dump(int argc, char* argv[]) {
   cmd.add<size_t>(DISTANCE, 'd', "Maximum edit distance", true, size_t(1));
   cmd.add<size_t>(LINE_LENGTH, 0, "Items per line", false, size_t(40));
   cmd.add<bool>(TRANSPOSITIONS, 't', "Count transpositions", false, false);
-  cmd.add<std::string>(COMPRESSION, 0, "compression", false, "lz4");
+  cmd.add<std::string>(COMPRESSION, 0, "compression", false, "iresearch::compression::lz4");
 
   cmd.parse(argc, argv);
 

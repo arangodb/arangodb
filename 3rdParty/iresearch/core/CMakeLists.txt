@@ -152,6 +152,7 @@ set(IResearch_core_sources
   ./utils/index_utils.cpp
   ./utils/math_utils.cpp 
   ./utils/levenshtein_utils.cpp
+  ./utils/wildcard_utils.cpp
   ./utils/levenshtein_default_pdp.cpp
   ./utils/memory.cpp
   ./utils/text_format.cpp
@@ -166,6 +167,7 @@ set(IResearch_core_sources
   ./utils/network_utils.cpp
   ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
+  ./utils/attribute_range.cpp
   ${IResearch_core_os_specific_sources}
   ${IResearch_core_optimized_sources}
 )
@@ -258,6 +260,7 @@ set(IResearch_core_headers
   ./utils/bitset.hpp
   ./utils/bitvector.hpp
   ./utils/type_id.hpp
+  ./utils/attribute_range.hpp
   ./shared.hpp
   ./types.hpp
 )

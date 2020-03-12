@@ -43,6 +43,7 @@ struct OperationOptions {
         returnNew(false),
         isRestore(false),
         overwrite(false),
+        ignoreUniqueConstraints(false),
         overwriteModeUpdate(false)
         {}
 
@@ -109,6 +110,10 @@ struct OperationOptions {
   // for insert operations: do not fail if _key exists but replace the document
   bool overwrite;
 
+  // for replication; only set true if you an guarantee that any conflicts have
+  // already been removed, and are simply not reflected in the transaction read
+  bool ignoreUniqueConstraints;
+  
   // above replace becomes an update
   bool overwriteModeUpdate;
 

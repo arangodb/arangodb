@@ -23,11 +23,12 @@
 #include "levenshtein_utils.hpp"
 
 #include <unordered_map>
+#include <queue>
 #include <cmath>
 
 #include "shared.hpp"
 #include "store/store_utils.hpp"
-#include "automaton.hpp"
+#include "automaton_utils.hpp"
 #include "arena_allocator.hpp"
 #include "bit_utils.hpp"
 #include "bitset.hpp"
@@ -127,12 +128,15 @@ class parametric_state {
       }
     }
 
-    for (auto begin = positions_.data(); begin != positions_.data() + positions_.size();) {
-      if (subsumes(new_pos, *begin)) {
-        std::swap(*begin, positions_.back());
-        positions_.pop_back(); // removed positions subsumed by new_pos
-      } else {
-        ++begin;
+    if (!positions_.empty()) {
+      for (auto begin = positions_.data(), end = positions_.data() + positions_.size(); begin != end; ) {
+        if (subsumes(new_pos, *begin)) {
+          std::swap(*begin, positions_.back());
+          positions_.pop_back(); // removed positions subsumed by new_pos
+          end = positions_.data() + positions_.size();
+        } else {
+          ++begin;
+        }
       }
     }
 
@@ -190,7 +194,7 @@ class parametric_states {
   }
 
   uint32_t emplace(parametric_state&& state) {
-    const auto res = irs::map_utils::try_emplace(
+    const auto res = map_utils::try_emplace(
       states_, std::move(state), states_.size());
 
     if (res.second) {
@@ -360,43 +364,56 @@ uint32_t distance(
 // --SECTION--                                     Helpers for DFA instantiation
 // -----------------------------------------------------------------------------
 
+struct character {
+  bitset chi; // characteristic vector
+  byte_type utf8[utf8_utils::MAX_CODE_POINT_SIZE]{};
+  size_t size{};
+  uint32_t cp{}; // utf8 code point
+
+  const byte_type* begin() const noexcept { return utf8; }
+  const byte_type* end() const noexcept { return utf8 + size; }
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @return characteristic vectors for a specified word
 //////////////////////////////////////////////////////////////////////////////
-std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(
+std::vector<character> make_alphabet(
     const bytes_ref& word,
     size_t& utf8_size) {
   memory::arena<uint32_t, 16> arena;
   memory::arena_vector<uint32_t, decltype(arena)> chars(arena);
-  utf8_utils::to_utf8(word, std::back_inserter(chars));
+  utf8_utils::utf8_to_utf32<false>(word, std::back_inserter(chars));
   utf8_size = chars.size();
 
   std::sort(chars.begin(), chars.end());
   auto cbegin = chars.begin();
   auto cend = std::unique(cbegin, chars.end()); // no need to erase here
 
-  std::vector<std::pair<uint32_t, irs::bitset>> alphabet(1 + size_t(std::distance(cbegin, cend))); // +1 for rho
+  std::vector<character> alphabet(1 + size_t(std::distance(cbegin, cend))); // +1 for rho
   auto begin = alphabet.begin();
 
   // ensure we have enough capacity
   const auto capacity = utf8_size + bits_required<bitset::word_t>();
 
-  begin->first = fst::fsa::kRho;
-  begin->second.reset(capacity);
+  begin->cp = fst::fsa::kRho;
+  begin->chi.reset(capacity);
   ++begin;
 
   for (; cbegin != cend; ++cbegin, ++begin) {
     const auto c = *cbegin;
 
-    // set char
-    begin->first = c;
+    // set code point
+    begin->cp = c;
+
+    // set utf8 representation
+    begin->size = utf8_utils::utf32_to_utf8(c, begin->utf8);
 
     // evaluate characteristic vector
-    auto& bits = begin->second;
-    bits.reset(capacity);
+    auto& chi = begin->chi;
+    chi.reset(capacity);
     auto utf8_begin = word.begin();
     for (size_t i = 0; i < utf8_size; ++i) {
-      bits.reset(i, c == utf8_utils::next(utf8_begin));
+      chi.reset(i, c == utf8_utils::next(utf8_begin));
     }
     IRS_ASSERT(utf8_begin == word.end());
   }
@@ -430,16 +447,6 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
   const auto lhs = bs[word] >> align;
   const auto rhs = bs[word+1] << (bits_required<bitset::word_t>() - align);
   return (lhs | rhs) & mask;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @return true if a specified state at a given offset is accepting,
-///         false - otherwise
-//////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE bool is_accepting(
-    const parametric_description& description,
-    size_t state, size_t offset) noexcept {
-  return description.distance(state, offset) <= description.max_distance();
 }
 
 NS_END
@@ -585,24 +592,42 @@ automaton make_levenshtein_automaton(
   std::vector<automaton::StateId> transitions(description.size()*num_offsets,
                                               fst::kNoStateId);
 
-  // result automaton
   automaton a;
   a.ReserveStates(transitions.size());
-  const auto invalid_state = a.AddState(); // state without outbound transitions
-  a.SetStart(a.AddState());                // initial state
+
+  // terminal state without outbound transitions
+  const auto invalid_state = a.AddState();
+  assert(INVALID_STATE == invalid_state);
+  UNUSED(invalid_state);
+
+  // initial state
+  a.SetStart(a.AddState());
+
+  // check if start state is final
+  const auto distance = description.distance(1, utf8_size);
+
+  if (distance <= description.max_distance()) {
+    assert(distance < fst::fsa::BooleanWeight::MaxPayload);
+    a.SetFinal(a.Start(), {true, distance});
+  }
 
   // state stack
   std::vector<state> stack;
   stack.emplace_back(0, 1, a.Start());  // 0 offset, 1st parametric state, initial automaton state
 
-  while (!stack.empty()) {
+  std::vector<std::pair<bytes_ref, automaton::StateId>> arcs;
+  arcs.resize(utf8_size); // allocate space for max possible number of arcs
+
+  for (utf8_transitions_builder builder; !stack.empty(); ) {
     const auto state = stack.back();
     stack.pop_back();
+    arcs.clear();
 
     automaton::StateId default_state = fst::kNoStateId; // destination of rho transition if exist
+    bool ascii = true; // ascii only input
 
     for (auto& entry : alphabet) {
-      const auto chi = ::chi(entry.second, state.offset, mask);
+      const auto chi = ::chi(entry.chi, state.offset, mask);
       auto& transition = description.transition(state.state_id, chi);
 
       const size_t offset = transition.first ? transition.second + state.offset : 0;
@@ -610,38 +635,53 @@ automaton make_levenshtein_automaton(
       auto& to = transitions[transition.first*num_offsets + offset];
 
       if (INVALID_STATE == transition.first) {
-        to = invalid_state;
+        to = INVALID_STATE;
       } else if (fst::kNoStateId == to) {
         to = a.AddState();
 
-        if (is_accepting(description, transition.first, utf8_size - offset)) {
-          a.SetFinal(to);
+        const auto distance = description.distance(transition.first, utf8_size - offset);
+
+        if (distance <= description.max_distance()) {
+          assert(distance < fst::fsa::BooleanWeight::MaxPayload);
+          a.SetFinal(to, {true, distance});
         }
 
         stack.emplace_back(offset, transition.first, to);
       }
 
       if (chi && to != default_state) {
-        a.EmplaceArc(state.from, entry.first, to);
-      } else if (fst::kNoStateId == default_state) {
+        arcs.emplace_back(bytes_ref(entry.utf8, entry.size), to);
+        ascii &= (entry.size == 1);
+      } else {
+        assert(fst::kNoStateId == default_state || to == default_state);
         default_state = to;
       }
     }
 
-    if (fst::kNoStateId != default_state) {
-      a.EmplaceArc(state.from, fst::fsa::kRho, default_state);
+    if (INVALID_STATE == default_state && arcs.empty()) {
+      // optimization for invalid terminal state
+      a.EmplaceArc(state.from, fst::fsa::kRho, INVALID_STATE);
+    } else if (INVALID_STATE == default_state && ascii && !a.Final(state.from)) {
+      // optimization for ascii only input without default state and weight
+      for (auto& arc: arcs) {
+        assert(1 == arc.first.size());
+        a.EmplaceArc(state.from, arc.first.front(), arc.second);
+      }
+    } else {
+      builder.insert(a, state.from, default_state, arcs.begin(), arcs.end());
     }
   }
 
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
-  constexpr auto EXPECTED_PROPERTIES =
+  static constexpr auto EXPECTED_PROPERTIES =
     fst::kIDeterministic | fst::kODeterministic |
-    fst::kILabelSorted | fst::kOLabelSorted;
-  assert(a.Properties(EXPECTED_PROPERTIES, true));
+    fst::kILabelSorted | fst::kOLabelSorted |
+    fst::kAcceptor;
+  assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
 
   // ensure invalid state has no outbound transitions
-  assert(0 == a.NumArcs(invalid_state));
+  assert(0 == a.NumArcs(INVALID_STATE));
 #endif
 
   return a;
@@ -654,7 +694,7 @@ size_t edit_distance(const parametric_description& description,
 
   memory::arena<uint32_t, 16> arena;
   memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
-  utf8_utils::to_utf8(lhs, lhs_size, std::back_inserter(lhs_chars));
+  utf8_utils::utf8_to_utf32<false>(lhs, lhs_size, std::back_inserter(lhs_chars));
 
   size_t state = 1;  // current parametric state
   size_t offset = 0; // current offset
@@ -676,6 +716,47 @@ size_t edit_distance(const parametric_description& description,
   }
 
   return description.distance(state, lhs_chars.size() - offset);
+}
+
+bool edit_distance(
+    size_t& distance,
+    const parametric_description& description,
+    const byte_type* lhs, size_t lhs_size,
+    const byte_type* rhs, size_t rhs_size) {
+  assert(description);
+
+  memory::arena<uint32_t, 16> arena;
+  memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
+  if (!utf8_utils::utf8_to_utf32<true>(lhs, lhs_size, std::back_inserter(lhs_chars))) {
+    return false;
+  }
+
+  size_t state = 1;  // current parametric state
+  size_t offset = 0; // current offset
+
+  for (auto* rhs_end = rhs + rhs_size; rhs < rhs_end; ) {
+    const auto c = utf8_utils::next_checked(rhs, rhs_end);
+
+    if (utf8_utils::INVALID_CODE_POINT == c) {
+      return false;
+    }
+
+    const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
+    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto chi = ::chi(begin, end, c);
+    const auto& transition = description.transition(state, chi);
+
+    if (INVALID_STATE == transition.first) {
+      distance = description.max_distance() + 1;
+      return true;
+    }
+
+    state = transition.first;
+    offset += transition.second;
+  }
+
+  distance = description.distance(state, lhs_chars.size() - offset);
+  return true;
 }
 
 NS_END

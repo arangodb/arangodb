@@ -44,16 +44,26 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
         auto actual_terms = fields->value().iterator(matcher);
         ASSERT_NE(nullptr, actual_terms);
 
+        auto& payload = actual_terms->attributes().get<irs::payload>();
+        ASSERT_NE(nullptr, payload);
+        ASSERT_EQ(1, payload->value.size());
+
         while (expected_terms->next()) {
           auto& expected_term = expected_terms->value();
+
           auto edit_distance = irs::edit_distance(expected_term, target);
           if (edit_distance > description.max_distance()) {
             continue;
           }
 
+          SCOPED_TRACE(testing::Message("Expected term: '")
+            << irs::ref_cast<char>(expected_term));
+
           ASSERT_TRUE(actual_terms->next());
           auto& actual_term = actual_terms->value();
           ASSERT_EQ(expected_term, actual_term);
+          ASSERT_EQ(1, payload->value.size());
+          ASSERT_EQ(edit_distance, payload->value[0]);
         }
       }
     }
