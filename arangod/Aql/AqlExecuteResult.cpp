@@ -44,6 +44,20 @@ auto getStringView(velocypack::Slice slice) -> std::string_view {
 }
 }  // namespace
 
+AqlExecuteResult::AqlExecuteResult(ExecutionState state, SkipResult skipped,
+                                   SharedAqlItemBlockPtr&& block)
+    : _state(state), _skipped(skipped), _block(std::move(block)) {
+  // Make sure we only produce a valid response
+  // The block should have checked as well.
+  // We must return skipped and/or data when reporting HASMORE
+
+  // noskip && no data => state != HASMORE
+  // <=> skipped || data || state != HASMORE
+  TRI_ASSERT(!_skipped.nothingSkipped() ||
+             (_block != nullptr && _block->numEntries() > 0) ||
+             _state != ExecutionState::HASMORE);
+}
+
 auto AqlExecuteResult::state() const noexcept -> ExecutionState {
   return _state;
 }
@@ -148,9 +162,9 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     if (auto propIt = expectedPropertiesFound.find(key);
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
       if (ADB_UNLIKELY(propIt->second)) {
-        return Result(
-            TRI_ERROR_TYPE_ERROR,
-            "When deserializating AqlExecuteResult: Encountered duplicate key");
+        return Result(TRI_ERROR_TYPE_ERROR,
+                      "When deserializating AqlExecuteResult: "
+                      "Encountered duplicate key");
       }
       propIt->second = true;
     }
@@ -175,11 +189,12 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
       block = maybeBlock.get();
     } else {
       LOG_TOPIC("cc6f4", WARN, Logger::AQL)
-          << "When deserializating AqlExecuteResult: Encountered unexpected "
+          << "When deserializating AqlExecuteResult: Encountered "
+             "unexpected "
              "key "
           << keySlice.toJson();
-      // If you run into this assertion during rolling upgrades after adding a
-      // new attribute, remove it in the older version.
+      // If you run into this assertion during rolling upgrades after
+      // adding a new attribute, remove it in the older version.
       TRI_ASSERT(false);
     }
   }

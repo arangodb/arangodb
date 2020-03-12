@@ -43,8 +43,7 @@ namespace arangodb::aql {
 
 class AqlExecuteResult {
  public:
-  AqlExecuteResult(ExecutionState state, SkipResult skipped, SharedAqlItemBlockPtr&& block)
-      : _state(state), _skipped(skipped), _block(std::move(block)) {}
+  AqlExecuteResult(ExecutionState state, SkipResult skipped, SharedAqlItemBlockPtr&& block);
 
   void toVelocyPack(velocypack::Builder&, velocypack::Options const*);
   static auto fromVelocyPack(velocypack::Slice, AqlItemBlockManager&)
