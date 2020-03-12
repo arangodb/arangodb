@@ -453,7 +453,7 @@ AsyncAgencyCommManager& AsyncAgencyCommManager::getInstance() {
     return *INSTANCE;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_DISABLED, "Agency Comm Manager not initialised");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_DISABLED, "Agency Comm Manager not initialized");
 }
 
 }  // namespace arangodb
