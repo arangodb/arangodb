@@ -74,8 +74,6 @@ const flags& flags::empty_instance() {
   return instance;
 }
 
-flags::flags() { }
-
 flags::flags(flags&& rhs) noexcept
   : map_(std::move(rhs.map_)) {
 }

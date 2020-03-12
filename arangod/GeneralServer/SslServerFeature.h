@@ -51,6 +51,8 @@ class SslServerFeature : public application_features::ApplicationFeature {
  public:
   static SslServerFeature* SSL;
 
+  typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
+
   explicit SslServerFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -59,17 +61,30 @@ class SslServerFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
   virtual void verifySslOptions();
 
-  virtual std::shared_ptr<asio_ns::ssl::context> createSslContext();
+  virtual SslContextList createSslContexts();
+  size_t chooseSslContext(std::string const& serverName) const;
 
   // Dump all SSL related data into a builder, private keys
   // are hashed.
   virtual Result dumpTLSData(VPackBuilder& builder) const;
 
  protected:
+
+  struct SNIEntry {
+    std::string serverName;      // empty for default
+    std::string keyfileName;     // name of key file
+    std::string keyfileContent;  // content of key file
+    SNIEntry(std::string name, std::string keyfileName)
+      : serverName(name), keyfileName(keyfileName) {}
+  };
+
   std::string _cafile;
   std::string _cafileContent;  // the actual cert file
-  std::string _keyfile;
-  std::string _keyfileContent; // the actual keyfile
+  std::string _keyfile;        // name of default keyfile
+  // For SNI, we have two maps, one mapping to the filename for a certain
+  // server, another, to keep the actual keyfile in memory.
+  std::vector<SNIEntry> _sniEntries;   // the first entry is the default server keyfile
+  std::unordered_map<std::string, size_t> _sniServerIndex;  // map server names to indices in _sniEntries
   bool _sessionCache;
   std::string _cipherList;
   uint64_t _sslProtocol;
@@ -77,6 +92,9 @@ class SslServerFeature : public application_features::ApplicationFeature {
   std::string _ecdhCurve;
 
  private:
+  asio_ns::ssl::context createSslContextInternal(std::string keyfileName,
+                                                 std::string& content);
+
   std::string stringifySslOptions(uint64_t opts) const;
 
   std::string _rctx;

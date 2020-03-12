@@ -161,11 +161,10 @@ void collect_terms_between(
     return; // skipped current term and no more terms in segment
   }
 
-  const auto& masked_begin_term = mask_value(terms.value(), prefix_size); // the starting term for range collection
   const auto& masked_end_term = mask_value(end_term, prefix_size); // the ending term for range collection
 
   collect_terms(
-    states, sr, tr, terms, scorer, [&prefix_size, &masked_begin_level, &masked_begin_term, &masked_end_term, include_end_term](
+    states, sr, tr, terms, scorer, [&prefix_size, &masked_begin_level, &masked_end_term, include_end_term](
       const irs::term_iterator& itr
     )->bool {
       const auto& masked_current_level = mask_granularity(itr.value(), prefix_size);
