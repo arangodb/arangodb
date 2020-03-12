@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Aql/SkipResult.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -152,6 +153,12 @@ auto DistributeExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
   _queue.emplace_back(block, std::move(usedIndexes));
 }
 
+auto DistributeExecutor::ClientBlockData::addSkipResult(SkipResult const& skipResult) -> void {
+  TRI_ASSERT(_skipped.subqueryDepth() == 1 ||
+             _skipped.subqueryDepth() == skipResult.subqueryDepth());
+  _skipped.merge(skipResult, false);
+}
+
 auto DistributeExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
   return _executorHasMore || !_queue.empty();
 }
@@ -166,7 +173,8 @@ auto DistributeExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> boo
  *
  * @return SharedAqlItemBlockPtr a joind block from the queue.
  */
-auto DistributeExecutor::ClientBlockData::popJoinedBlock() -> SharedAqlItemBlockPtr {
+auto DistributeExecutor::ClientBlockData::popJoinedBlock()
+    -> std::tuple<SharedAqlItemBlockPtr, SkipResult> {
   // There are some optimizations available in this implementation.
   // Namely we could apply good logic to cut the blocks at shadow rows
   // in order to allow the IDexecutor to hand them out en-block.
@@ -208,14 +216,16 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock() -> SharedAqlItemBlock
     // Drop block form queue.
     _queue.pop_front();
   }
-  return newBlock;
+  SkipResult skip = _skipped;
+  _skipped.reset();
+  return {newBlock, skip};
 }
 
-auto DistributeExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upstreamState)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+auto DistributeExecutor::ClientBlockData::execute(AqlCallStack callStack, ExecutionState upstreamState)
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(_executor != nullptr);
   // Make sure we actually have data before you call execute
-  TRI_ASSERT(hasDataFor(call));
+  TRI_ASSERT(hasDataFor(callStack.peek()));
   if (!_executorHasMore) {
     // This cast is guaranteed, we create this a couple lines above and only
     // this executor is used here.
@@ -224,16 +234,15 @@ auto DistributeExecutor::ClientBlockData::execute(AqlCall call, ExecutionState u
     auto casted =
         static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
     TRI_ASSERT(casted != nullptr);
-    auto block = popJoinedBlock();
+    auto [block, skipped] = popJoinedBlock();
     // We will at least get one block, otherwise the hasDataFor would
     // be required to return false!
     TRI_ASSERT(block != nullptr);
 
-    casted->injectConstantBlock(block);
+    casted->injectConstantBlock(block, skipped);
     _executorHasMore = true;
   }
-  AqlCallStack stack{call};
-  auto [state, skipped, result] = _executor->execute(stack);
+  auto [state, skipped, result] = _executor->execute(callStack);
 
   // We have all data locally cannot wait here.
   TRI_ASSERT(state != ExecutionState::WAITING);
@@ -257,7 +266,7 @@ auto DistributeExecutor::ClientBlockData::execute(AqlCall call, ExecutionState u
 DistributeExecutor::DistributeExecutor(DistributeExecutorInfos const& infos)
     : _infos(infos){};
 
-auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block,
+auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
                                          std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
   std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
@@ -288,6 +297,12 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block,
       continue;
     }
     target->second.addBlock(block, std::move(value));
+  }
+
+  // Add the skipResult to all clients.
+  // It needs to be fetched once for every client.
+  for (auto& [key, map] : blockMap) {
+    map.addSkipResult(skipped);
   }
 }
 

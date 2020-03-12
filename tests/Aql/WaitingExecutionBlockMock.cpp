@@ -27,6 +27,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/QueryOptions.h"
+#include "Aql/SkipResult.h"
 
 #include "Logger/LogMacros.h"
 
@@ -65,7 +66,7 @@ std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shut
   return std::make_pair(state, res);
 }
 
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
   traceExecuteEnd(res);
@@ -73,7 +74,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
 }
 
 // NOTE: Does not care for shadowrows!
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
     AqlCallStack stack) {
   while (!stack.isRelevant()) {
     stack.pop();
@@ -87,7 +88,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
   if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     // If we ordered waiting check on _hasWaited and wait if not
     _hasWaited = true;
-    return {ExecutionState::WAITING, 0, nullptr};
+    return {ExecutionState::WAITING, SkipResult{}, nullptr};
   }
   if (_variant == WaitingBehaviour::ALWAYS) {
     // If we always wait, reset.
@@ -106,7 +107,9 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
         // Sorry we can only return one block.
         // This means we have prepared the first block.
         // But still need more data.
-        return {ExecutionState::HASMORE, skipped, result};
+        SkipResult skipRes{};
+        skipRes.didSkip(skipped);
+        return {ExecutionState::HASMORE, skipRes, result};
       } else {
         dropBlock();
         continue;
@@ -129,7 +132,9 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
         // Sorry we can only return one block.
         // This means we have prepared the first block.
         // But still need more data.
-        return {ExecutionState::HASMORE, skipped, result};
+        SkipResult skipRes{};
+        skipRes.didSkip(skipped);
+        return {ExecutionState::HASMORE, skipRes, result};
       }
 
       size_t canReturn = _data.front()->size() - _inflight;
@@ -164,16 +169,20 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
           dropBlock();
         }
       }
+      SkipResult skipRes{};
+      skipRes.didSkip(skipped);
       if (!_data.empty()) {
-        return {ExecutionState::HASMORE, skipped, result};
+        return {ExecutionState::HASMORE, skipRes, result};
       } else if (result != nullptr && result->size() < myCall.hardLimit) {
-        return {ExecutionState::HASMORE, skipped, result};
+        return {ExecutionState::HASMORE, skipRes, result};
       } else {
-        return {ExecutionState::DONE, skipped, result};
+        return {ExecutionState::DONE, skipRes, result};
       }
     }
   }
-  return {ExecutionState::DONE, skipped, result};
+  SkipResult skipRes{};
+  skipRes.didSkip(skipped);
+  return {ExecutionState::DONE, skipRes, result};
 }
 
 void WaitingExecutionBlockMock::dropBlock() {

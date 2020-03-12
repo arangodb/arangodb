@@ -39,6 +39,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ReturnExecutor.h"
+#include "Aql/SkipResult.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
@@ -564,16 +565,16 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlIte
 }
 
 auto ExecutionEngine::execute(AqlCallStack const& stack)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
   auto const res = _root->execute(stack);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (std::get<ExecutionState>(res) == ExecutionState::WAITING) {
-    auto const skipped = std::get<size_t>(res);
+    auto const skipped = std::get<SkipResult>(res);
     auto const block = std::get<SharedAqlItemBlockPtr>(res);
-    TRI_ASSERT(skipped == 0);
+    TRI_ASSERT(skipped.nothingSkipped());
     TRI_ASSERT(block == nullptr);
   }
 #endif
@@ -581,7 +582,7 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
 }
 
 auto ExecutionEngine::executeForClient(AqlCallStack const& stack, std::string const& clientId)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
@@ -597,9 +598,9 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack, std::string co
   auto const res = rootBlock->executeForClient(stack, clientId);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (std::get<ExecutionState>(res) == ExecutionState::WAITING) {
-    auto const skipped = std::get<size_t>(res);
+    auto const skipped = std::get<SkipResult>(res);
     auto const& block = std::get<SharedAqlItemBlockPtr>(res);
-    TRI_ASSERT(skipped == 0);
+    TRI_ASSERT(skipped.nothingSkipped());
     TRI_ASSERT(block == nullptr);
   }
 #endif
@@ -621,7 +622,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
   AqlCallStack compatibilityStack{AqlCall::SimulateGetSome(atMost), true};
   auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
   // We cannot trigger a skip operation from here
-  TRI_ASSERT(skipped == 0);
+  TRI_ASSERT(skipped.nothingSkipped());
   return {state, block};
 }
 
@@ -643,7 +644,7 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   // We cannot be triggered within a subquery from earlier versions.
   // Also we cannot produce anything ourselfes here.
   TRI_ASSERT(block == nullptr);
-  return {state, skipped};
+  return {state, skipped.getSkipCount()};
 }
 
 Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {

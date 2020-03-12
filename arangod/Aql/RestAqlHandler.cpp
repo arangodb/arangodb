@@ -740,7 +740,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     auto& executeCall = maybeExecuteCall.get();
 
     auto items = SharedAqlItemBlockPtr{};
-    auto skipped = size_t{};
+    auto skipped = SkipResult{};
     auto state = ExecutionState::HASMORE;
 
     // shardId is set IFF the root node is scatter or distribute

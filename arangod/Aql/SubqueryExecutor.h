@@ -118,6 +118,19 @@ class SubqueryExecutor {
    */
   auto translatedReturnType() const noexcept -> ExecutionState;
 
+  /**
+   * @brief Initiliaze the subquery with next input row
+   *        Throws if there was an error during initialize cursor
+   *
+   *
+   * @param input Container for more data
+   * @return std::tuple<ExecutionState, bool> Result state (WAITING or
+   * translatedReturnType())
+   * bool flag if we have initialized the query, if not, we require more data.
+   */
+  auto initializeSubquery(AqlItemBlockInputRange& input)
+      -> std::tuple<ExecutionState, bool>;
+
  private:
   Fetcher& _fetcher;
   SubqueryExecutorInfos& _infos;
@@ -142,6 +155,8 @@ class SubqueryExecutor {
 
   // Cache for the input row we are currently working on
   InputAqlItemRow _input;
+
+  size_t _skipped = 0;
 };
 }  // namespace aql
 }  // namespace arangodb

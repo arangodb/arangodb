@@ -1228,7 +1228,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_oneAndDone
     // First no data row
     auto [state, skipped, input] = testee.execute(stack);
     EXPECT_EQ(input.getRowIndex(), 0);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     EXPECT_EQ(state, ExecutionState::DONE);
   }  // testee is destroyed here
 }
@@ -1263,7 +1263,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_twoAndHasM
     auto [state, skipped, input] = testee.execute(stack);
     // We only have one block, no more calls to execute necessary
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     EXPECT_EQ(input.getRowIndex(), 0);
 
     // Now validate the input range

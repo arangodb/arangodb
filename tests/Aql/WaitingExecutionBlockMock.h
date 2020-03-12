@@ -35,6 +35,7 @@ class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
 struct ResourceMonitor;
+class SkipResult;
 }  // namespace aql
 
 namespace tests {
@@ -81,15 +82,15 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
       arangodb::aql::InputAqlItemRow const& input) override;
 
-  std::tuple<arangodb::aql::ExecutionState, size_t, arangodb::aql::SharedAqlItemBlockPtr> execute(
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
       arangodb::aql::AqlCallStack stack) override;
 
  private:
   void dropBlock();
 
   // Implementation of execute
-  std::tuple<arangodb::aql::ExecutionState, size_t, arangodb::aql::SharedAqlItemBlockPtr> executeWithoutTrace(
-      arangodb::aql::AqlCallStack stack);
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr>
+  executeWithoutTrace(arangodb::aql::AqlCallStack stack);
 
  private:
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;

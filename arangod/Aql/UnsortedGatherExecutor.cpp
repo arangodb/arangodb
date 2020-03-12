@@ -46,75 +46,75 @@ UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 
 auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                          OutputAqlItemRow& output)
-    -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
-  initialize(input);
+    -> std::tuple<ExecutorState, Stats, AqlCallSet> {
   while (!output.isFull() && !done()) {
     if (input.hasDataRow(currentDependency())) {
       auto [state, inputRow] = input.nextDataRow(currentDependency());
       output.copyRow(inputRow);
       TRI_ASSERT(output.produced());
       output.advanceRow();
-
-      if (state == ExecutorState::DONE) {
-        advanceDependency();
-      }
     } else {
       if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+        TRI_ASSERT(input.rangeForDependency(currentDependency()).skippedInFlight() == 0);
         advanceDependency();
       } else {
-        return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
-                currentDependency()};
+        auto callSet = AqlCallSet{};
+        callSet.calls.emplace_back(
+            AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
+        return {input.upstreamState(currentDependency()), Stats{}, callSet};
       }
     }
   }
 
   while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+    auto range = input.rangeForDependency(currentDependency());
+    if (range.upstreamState() == ExecutorState::HASMORE || range.skippedInFlight() > 0) {
+      // skippedInFlight > 0 -> output.isFull()
+      TRI_ASSERT(range.skippedInFlight() == 0 || output.isFull());
+      break;
+    }
+    TRI_ASSERT(input.rangeForDependency(currentDependency()).skippedInFlight() == 0);
     advanceDependency();
   }
 
   if (done()) {
-    // here currentDependency is invalid which will cause things to crash
-    // if we ask upstream in ExecutionBlockImpl. yolo.
     TRI_ASSERT(!input.hasDataRow());
-    return {ExecutorState::DONE, Stats{}, AqlCall{}, currentDependency()};
+    return {ExecutorState::DONE, Stats{}, AqlCallSet{}};
   } else {
-    return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
-            currentDependency()};
+    auto callSet = AqlCallSet{};
+    callSet.calls.emplace_back(
+        AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
+    return {input.upstreamState(currentDependency()), Stats{}, callSet};
   }
 }
 
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
-  while (call.needSkipMore() && !done()) {
-    if (input.hasDataRow(currentDependency())) {
-      auto [state, inputRow] = input.nextDataRow(currentDependency());
-      call.didSkip(1);
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
+  auto skipped = size_t{0};
 
-      if (state == ExecutorState::DONE) {
-        advanceDependency();
-      }
-    } else {
-      if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
-        advanceDependency();
-      } else {
-        // We need to fetch more first
-        break;
-      }
-    }
+  if (call.getOffset() > 0) {
+    skipped = input.skipForDependency(currentDependency(), call.getOffset());
+  } else {
+    skipped = input.skipAllForDependency(currentDependency());
   }
+  call.didSkip(skipped);
 
+  // Skip over dependencies that are DONE, they cannot skip more
   while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
     advanceDependency();
   }
 
+  // Here we are either done, or currentDependency() still could produce more
   if (done()) {
-    // here currentDependency is invalid which will cause things to crash
-    // if we ask upstream in ExecutionBlockImpl. yolo.
-    return {ExecutorState::DONE, Stats{}, call.getSkipCount(), AqlCall{},
-            currentDependency()};
+    return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
   } else {
-    return {input.upstreamState(currentDependency()), Stats{},
-            call.getSkipCount(), AqlCall{}, currentDependency()};
+    // If we're not done skipping, we can just request the current clientcall
+    // from upstream
+    auto callSet = AqlCallSet{};
+    if (call.needSkipMore()) {
+      callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
+    }
+    return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
   }
 }
 

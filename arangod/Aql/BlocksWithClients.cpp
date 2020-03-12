@@ -35,6 +35,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/ScatterExecutor.h"
+#include "Aql/SkipResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -150,7 +151,8 @@ size_t BlocksWithClientsImpl<Executor>::getClientId(std::string const& shardId) 
 }
 
 template <class Executor>
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>::execute(AqlCallStack stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+BlocksWithClientsImpl<Executor>::execute(AqlCallStack stack) {
   // This will not be implemented here!
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -159,19 +161,19 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> BlocksWithClientsImpl<
 template <class Executor>
 auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
                                                        std::string const& clientId)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
-  // traceExecuteBegin(stack);
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  traceExecuteBegin(stack, clientId);
   auto res = executeWithoutTraceForClient(stack, clientId);
-  // traceExecuteEnd(res);
+  traceExecuteEnd(res, clientId);
   return res;
 }
 
 template <class Executor>
 auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack stack,
                                                                    std::string const& clientId)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(!clientId.empty());
-  if (clientId.empty()) {
+  if (ADB_UNLIKELY(clientId.empty())) {
     // Security bailout to avoid UB
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "got empty distribution id");
@@ -179,7 +181,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
 
   auto it = _clientBlockData.find(clientId);
   TRI_ASSERT(it != _clientBlockData.end());
-  if (it == _clientBlockData.end()) {
+  if (ADB_UNLIKELY(it == _clientBlockData.end())) {
     // Security bailout to avoid UB
     std::string message("AQL: unknown distribution id ");
     message.append(clientId);
@@ -192,21 +194,32 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
   // We do not have anymore data locally.
   // Need to fetch more from upstream
   auto& dataContainer = it->second;
+  while (true) {
+    while (!dataContainer.hasDataFor(call)) {
+      if (_upstreamState == ExecutionState::DONE) {
+        // We are done, with everything, we will not be able to fetch any more rows
+        return {_upstreamState, SkipResult{}, nullptr};
+      }
 
-  while (!dataContainer.hasDataFor(call)) {
-    if (_upstreamState == ExecutionState::DONE) {
-      // We are done, with everything, we will not be able to fetch any more rows
-      return {_upstreamState, 0, nullptr};
+      auto state = fetchMore(stack);
+      if (state == ExecutionState::WAITING) {
+        return {state, SkipResult{}, nullptr};
+      }
+      _upstreamState = state;
     }
-
-    auto state = fetchMore(stack);
-    if (state == ExecutionState::WAITING) {
-      return {state, 0, nullptr};
+    {
+      // If we get here we have data and can return it.
+      // However the call might force us to drop everything (e.g. hardLimit ==
+      // 0) So we need to refetch data eventually.
+      stack.pushCall(call);
+      auto [state, skipped, result] = dataContainer.execute(stack, _upstreamState);
+      if (state == ExecutionState::DONE || !skipped.nothingSkipped() || result != nullptr) {
+        // We have a valid result.
+        return {state, skipped, result};
+      }
+      stack.popCall();
     }
-    _upstreamState = state;
   }
-  // If we get here we have data and can return it.
-  return dataContainer.execute(call, _upstreamState);
 }
 
 template <class Executor>
@@ -224,10 +237,9 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
   TRI_ASSERT(_dependencies.size() == 1);
   auto [state, skipped, block] = _dependencies[0]->execute(stack);
 
-  // We can never ever forward skip!
   // We could need the row in a different block, and once skipped
   // we cannot get it back.
-  TRI_ASSERT(skipped == 0);
+  TRI_ASSERT(skipped.getSkipCount() == 0);
 
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -236,7 +248,7 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
   // Waiting -> no block
   TRI_ASSERT(state != ExecutionState::WAITING || block == nullptr);
   if (block != nullptr) {
-    _executor.distributeBlock(block, _clientBlockData);
+    _executor.distributeBlock(block, skipped, _clientBlockData);
   }
 
   return state;
@@ -249,7 +261,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>
     size_t atMost, std::string const& shardId) {
   AqlCallStack stack(AqlCall::SimulateGetSome(atMost), true);
   auto [state, skipped, block] = executeForClient(stack, shardId);
-  TRI_ASSERT(skipped == 0);
+  TRI_ASSERT(skipped.nothingSkipped());
   return {state, block};
 }
 
@@ -261,7 +273,7 @@ std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSomeForSh
   AqlCallStack stack(AqlCall::SimulateSkipSome(atMost), true);
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(block == nullptr);
-  return {state, skipped};
+  return {state, skipped.getSkipCount()};
 }
 
 template class ::arangodb::aql::BlocksWithClientsImpl<ScatterExecutor>;

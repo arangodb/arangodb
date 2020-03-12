@@ -39,14 +39,13 @@ MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
   TRI_ASSERT(nrInputRanges > 0);
 }
 
-auto MultiAqlItemBlockInputRange::resizeIfNecessary(ExecutorState state, size_t skipped,
-                                                    size_t nrInputRanges) -> void {
+auto MultiAqlItemBlockInputRange::resizeOnce(ExecutorState state, size_t skipped,
+                                             size_t nrInputRanges) -> void {
+  // Is expected to be called exactly once to set the number of dependencies.
   // We never want to reduce the number of dependencies.
   TRI_ASSERT(_inputs.size() <= nrInputRanges);
   TRI_ASSERT(nrInputRanges > 0);
-  if (_inputs.size() < nrInputRanges) {
-    _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
-  }
+  _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
 }
 
 auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
@@ -69,6 +68,7 @@ auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
 
 auto MultiAqlItemBlockInputRange::rangeForDependency(size_t const dependency)
     -> AqlItemBlockInputRange& {
+  TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency);
 }
 
@@ -81,6 +81,12 @@ auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
 auto MultiAqlItemBlockInputRange::skipAll(size_t const dependency) noexcept -> std::size_t {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).skipAll();
+}
+
+auto MultiAqlItemBlockInputRange::skippedInFlight(size_t const dependency) const
+    noexcept -> std::size_t {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).skippedInFlight();
 }
 
 auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
@@ -128,7 +134,7 @@ auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const
 }
 
 auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
-                                                AqlItemBlockInputRange& range) -> void {
+                                                AqlItemBlockInputRange const& range) -> void {
   TRI_ASSERT(dependency < _inputs.size());
   _inputs.at(dependency) = range;
 }
@@ -142,9 +148,13 @@ auto MultiAqlItemBlockInputRange::isDone() const -> bool {
   return res;
 }
 
+auto MultiAqlItemBlockInputRange::state() const -> ExecutorState {
+  return isDone() ? ExecutorState::DONE : ExecutorState::HASMORE;
+}
+
 auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   for (size_t i = 0; i < _inputs.size(); i++) {
-    _inputs.at(i).skipAllRemainingDataRows();
+    std::ignore = _inputs.at(i).skipAllRemainingDataRows();
     if (_inputs.at(i).upstreamState() == ExecutorState::HASMORE) {
       return i;
     }
@@ -152,6 +162,23 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   return 0;
 }
 
+// Subtract up to count rows from the local _skipped state
+auto MultiAqlItemBlockInputRange::skipForDependency(size_t const dependency,
+                                                    size_t count) -> size_t {
+  return _inputs.at(dependency).skip(count);
+}
+
+// Skipp all that is available
+auto MultiAqlItemBlockInputRange::skipAllForDependency(size_t const dependency) -> size_t {
+  return _inputs.at(dependency).skipAll();
+}
+
 auto MultiAqlItemBlockInputRange::numberDependencies() const noexcept -> size_t {
   return _inputs.size();
+}
+
+auto MultiAqlItemBlockInputRange::reset() -> void {
+  for (size_t i = 0; i < _inputs.size(); ++i) {
+    _inputs[i] = AqlItemBlockInputRange(ExecutorState::HASMORE);
+  }
 }

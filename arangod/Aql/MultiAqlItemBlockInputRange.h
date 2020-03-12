@@ -62,26 +62,35 @@ class MultiAqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(size_t const dependency);
   auto skipAll(size_t const dependency) noexcept -> std::size_t;
 
+  [[nodiscard]] auto skippedInFlight(size_t dependency) const noexcept -> std::size_t;
+
   bool hasShadowRow() const noexcept;
 
   arangodb::aql::ShadowAqlItemRow peekShadowRow() const;
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
   auto isDone() const -> bool;
+  auto state() const -> ExecutorState;
 
-  auto resizeIfNecessary(ExecutorState state, size_t skipped, size_t nrInputRanges) -> void;
+  auto resizeOnce(ExecutorState state, size_t skipped, size_t nrInputRanges) -> void;
 
-  auto getBlock(size_t const dependency = 0) const noexcept -> SharedAqlItemBlockPtr;
+  [[nodiscard]] auto getBlock(size_t dependency = 0) const noexcept -> SharedAqlItemBlockPtr;
 
-  auto setDependency(size_t const dependency, AqlItemBlockInputRange& range) -> void;
+  auto setDependency(size_t dependency, AqlItemBlockInputRange const& range) -> void;
 
+  // This discards all remaining data rows
   auto skipAllRemainingDataRows() -> size_t;
+
+  // Subtract up to count rows from the local _skipped state
+  auto skipForDependency(size_t const dependency, size_t count) -> size_t;
+  // Skipp all that is available
+  auto skipAllForDependency(size_t const dependency) -> size_t;
 
   auto numberDependencies() const noexcept -> size_t;
 
- private:
-  ExecutorState _finalState{ExecutorState::HASMORE};
+  auto reset() -> void;
 
+ private:
   std::vector<AqlItemBlockInputRange> _inputs;
 };
 

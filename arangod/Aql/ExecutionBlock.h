@@ -26,6 +26,7 @@
 
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/SkipResult.h"
 #include "Basics/Result.h"
 
 #include <cstdint>
@@ -114,19 +115,21 @@ class ExecutionBlock {
   ///          * WAITING: We have async operation going on, nothing happend, please call again
   ///          * HASMORE: Here is some data in the request range, there is still more, if required call again
   ///          * DONE: Here is some data, and there will be no further data available.
-  ///        2. size_t: Amount of documents skipped.
+  ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
-  virtual std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) = 0;
+  virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) = 0;
 
   [[nodiscard]] bool isInSplicedSubquery() const noexcept;
 
  protected:
   // Trace the start of a execute call
-  void traceExecuteBegin(AqlCallStack const& stack);
+  void traceExecuteBegin(AqlCallStack const& stack,
+                         std::string const& clientId = "");
 
   // Trace the end of a execute call, potentially with result
-  auto traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result)
-      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+  auto traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
+                       std::string const& clientId = "")
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;

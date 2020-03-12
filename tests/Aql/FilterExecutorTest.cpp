@@ -23,9 +23,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
+
+#include "AqlItemBlockHelper.h"
+#include "ExecutorTestHelper.h"
+#include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
@@ -46,7 +48,11 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-class FilterExecutorTest : public ::testing::Test {
+using FilterExecutorTestHelper = ExecutorTestHelper<2, 2>;
+using FilterExecutorSplitType = FilterExecutorTestHelper::SplitType;
+using FilterExecutorInputParam = std::tuple<FilterExecutorSplitType>;
+
+class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInputParam> {
  protected:
   ExecutionState state;
   ResourceMonitor monitor;
@@ -62,460 +68,118 @@ class FilterExecutorTest : public ::testing::Test {
         outputRegisters(make_shared_unordered_set()),
         registersToKeep(outputRegisters),
         infos(0, 1, 1, {}, {}) {}
+
+  auto getSplit() -> FilterExecutorSplitType {
+    auto [split] = GetParam();
+    return split;
+  }
+
+  auto buildInfos() -> FilterExecutorInfos {
+    return FilterExecutorInfos{0, 2, 2, {}, {0, 1}};
+  }
 };
 
-TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input.steal(), false);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
+template <size_t... vs>
+const FilterExecutorSplitType splitIntoBlocks =
+    FilterExecutorSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const FilterExecutorSplitType splitStep = FilterExecutorSplitType{step};
 
-  OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+INSTANTIATE_TEST_CASE_P(FilterExecutor, FilterExecutorTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<1>, splitStep<2>));
+
+TEST_P(FilterExecutorTest, empty_input) {
+  auto infos = buildInfos();
+  AqlCall call{};
+  ExecutionStats{};
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<FilterExecutor>(std::move(infos))
+      .setInputValue({})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input.steal(), true);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
+TEST_P(FilterExecutorTest, values) {
+  auto infos = buildInfos();
+  AqlCall call{};
+  ExecutionStats{};
+  ExecutorTestHelper<2, 2>(*fakedQuery)
+      .setExecBlock<FilterExecutor>(std::move(infos))
+      .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
+                                      RowBuilder<2>{0, 2}, RowBuilder<2>{0, 3},
+                                      RowBuilder<2>{0, 4}, RowBuilder<2>{0, 5},
+                                      RowBuilder<2>{0, 6}, RowBuilder<2>{0, 7}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{1, 0}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
-  auto input = VPackParser::fromJson(
-      "[ [true], [false], [true], [false], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input->steal(), false);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 0);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 1);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(stats.getFiltered(), 2);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(stats.getFiltered(), 0);
-  ASSERT_FALSE(row.produced());
+TEST_P(FilterExecutorTest, odd_values) {
+  auto infos = buildInfos();
+  AqlCall call{};
+  ExecutionStats{};
+  ExecutorTestHelper<2, 2>(*fakedQuery)
+      .setExecBlock<FilterExecutor>(std::move(infos))
+      .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
+                                      RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
+                                      RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
+                                      RowBuilder<2>{1, 6}, RowBuilder<2>{0, 7}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{1, 2},
+                                             RowBuilder<2>{1, 4}, RowBuilder<2>{1, 6}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
-  auto input = VPackParser::fromJson(
-      "[ [true], [false], [true], [false], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input->steal(), true);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear());
-
-  /*
-  1  produce => WAIT                 RES1
-  2  produce => HASMORE, Row 1     RES1
-  3  => WAIT                         RES2
-  4  => WAIT                         RES2
-  5   => HASMORE, Row 3            RES2
-  6   => WAIT,                       RES3
-  7   => WAIT,                       RES3
-  8   => WAIT,                       RES3
-  9   => DONE, Row 6               RES3
-  */
-
-  // 1
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 2
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 3
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 4
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  // We have one filter here
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  // 5
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 6
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 7
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  // 7
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  // 8
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  ASSERT_EQ(stats.getFiltered(), 0);
+TEST_P(FilterExecutorTest, skip_and_odd_values) {
+  auto infos = buildInfos();
+  AqlCall call{3};
+  ExecutionStats{};
+  ExecutorTestHelper<2, 2>(*fakedQuery)
+      .setExecBlock<FilterExecutor>(std::move(infos))
+      .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
+                                      RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
+                                      RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
+                                      RowBuilder<2>{1, 6}, RowBuilder<2>{0, 7}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{1, 6}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(3)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(FilterExecutorTest,
-       there_are_rows_in_the_upstream_and_the_last_one_has_to_be_filtered_the_producer_does_not_wait) {
-  auto input = VPackParser::fromJson(
-      "[ [true], [false], [true], [false], [false], [true], [false] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input->steal(), false);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 0);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 1);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 2);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(stats.getFiltered(), 1);
-  ASSERT_FALSE(row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(stats.getFiltered(), 0);
-  ASSERT_FALSE(row.produced());
-}
-
-TEST_F(FilterExecutorTest,
-       there_are_rows_in_the_upstream_and_the_last_one_has_to_be_filtered_the_producer_waits) {
-  auto input = VPackParser::fromJson(
-      "[ [true], [false], [true], [false], [false], [true], [false] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input->steal(), true);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-
-  /*
-  produce => WAIT                  RES1
-  produce => HASMORE, Row 1        RES1
-  => WAIT                          RES2
-  => WAIT                          RES2
-   => HASMORE, Row 3               RES2
-   => WAIT,                        RES3
-   => WAIT,                        RES3
-   => WAIT,                        RES3
-   => HASMORE, Row 6               RES3
-   => WAITING,                     RES3
-   => DONE, no output!             RES3
-    */
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-}
-
-TEST_F(FilterExecutorTest, test_produce_datarange) {
-  // This fetcher will not be called!
-  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, fakeUnusedBlock->steal(), false);
-
-  // This is the relevant part of the test
-  FilterExecutor testee(fetcher, infos);
-  SharedAqlItemBlockPtr inBlock =
-      buildBlock<1>(itemBlockManager,
-                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
-
-  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
-
-  OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-  EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(input, output);
-  EXPECT_EQ(state, ExecutorState::DONE);
-  EXPECT_EQ(stats.getFiltered(), 2);
-  EXPECT_EQ(output.numRowsWritten(), 3);
-  EXPECT_FALSE(input.hasDataRow());
-}
-
-TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
-  // This fetcher will not be called!
-  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, fakeUnusedBlock->steal(), false);
-
-  // This is the relevant part of the test
-  FilterExecutor testee(fetcher, infos);
-  SharedAqlItemBlockPtr inBlock =
-      buildBlock<1>(itemBlockManager,
-                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
-  size_t hardLimit = 1000;
-  AqlItemBlockInputRange input{ExecutorState::HASMORE, 0, inBlock, 0};
-  AqlCall limitedCall{};
-  limitedCall.hardLimit = hardLimit;
-  OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear(), std::move(limitedCall));
-  EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(input, output);
-  EXPECT_EQ(state, ExecutorState::HASMORE);
-  EXPECT_EQ(stats.getFiltered(), 2);
-  EXPECT_EQ(output.numRowsWritten(), 3);
-  EXPECT_FALSE(input.hasDataRow());
-  // Test the Call we send to upstream
-  EXPECT_EQ(call.offset, 0);
-  EXPECT_FALSE(call.hasHardLimit());
-  // We have a given softLimit, so we do not do overfetching
-  EXPECT_EQ(call.getLimit(), hardLimit - 3);
-  EXPECT_FALSE(call.fullCount);
-}
-
-TEST_F(FilterExecutorTest, test_skip_datarange_need_more) {
-  // This fetcher will not be called!
-  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, fakeUnusedBlock->steal(), false);
-
-  // This is the relevant part of the test
-  FilterExecutor testee(fetcher, infos);
-  SharedAqlItemBlockPtr inBlock =
-      buildBlock<1>(itemBlockManager,
-                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
-
-  AqlItemBlockInputRange input{ExecutorState::HASMORE, 0, inBlock, 0};
-  AqlCall clientCall;
-  clientCall.offset = 1000;
-
-  auto const [state, stats, skipped, call] = testee.skipRowsRange(input, clientCall);
-  // TODO check stats
-  EXPECT_EQ(state, ExecutorState::HASMORE);
-  EXPECT_EQ(skipped, 3);
-  EXPECT_EQ(clientCall.getOffset(), 1000 - 3);
-  EXPECT_FALSE(input.hasDataRow());
-
-  // Test the Call we send to upstream
-  EXPECT_EQ(call.offset, 0);
-  EXPECT_FALSE(call.hasHardLimit());
-  // Avoid overfetching. I do not have a strong requirement on this
-  // test, however this is what we do right now.
-  EXPECT_EQ(call.getLimit(), 997);
-  EXPECT_FALSE(call.fullCount);
-}
-
-TEST_F(FilterExecutorTest, test_produce_datarange_has_more) {
-  // This fetcher will not be called!
-  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, fakeUnusedBlock->steal(), false);
-
-  // This is the relevant part of the test
-  FilterExecutor testee(fetcher, infos);
-  SharedAqlItemBlockPtr inBlock =
-      buildBlock<1>(itemBlockManager,
-                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
-
-  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
-  block.reset(new AqlItemBlock(itemBlockManager, 2, 1));
-  OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-
-  auto const [state, stats, call] = testee.produceRows(input, output);
-  EXPECT_EQ(state, ExecutorState::HASMORE);
-  EXPECT_EQ(stats.getFiltered(), 1);
-  EXPECT_EQ(output.numRowsWritten(), 2);
-  EXPECT_TRUE(input.hasDataRow());
-  // We still have two values in block: false and true
-  {
-    // pop false
-    auto const [state, row] = input.nextDataRow();
-    EXPECT_EQ(state, ExecutorState::HASMORE);
-    EXPECT_FALSE(row.getValue(0).toBoolean());
-  }
-  {
-    // pop true
-    auto const [state, row] = input.nextDataRow();
-    EXPECT_EQ(state, ExecutorState::DONE);
-    EXPECT_TRUE(row.getValue(0).toBoolean());
-  }
-  EXPECT_FALSE(input.hasDataRow());
-}
-
-TEST_F(FilterExecutorTest, test_skip_datarange_has_more) {
-  // This fetcher will not be called!
-  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, fakeUnusedBlock->steal(), false);
-
-  // This is the relevant part of the test
-  FilterExecutor testee(fetcher, infos);
-  SharedAqlItemBlockPtr inBlock =
-      buildBlock<1>(itemBlockManager,
-                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
-
-  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
-  AqlCall clientCall;
-  clientCall.offset = 2;
-  auto const [state, stats, skipped, call] = testee.skipRowsRange(input, clientCall);
-  // TODO check stats
-  EXPECT_EQ(state, ExecutorState::HASMORE);
-  EXPECT_EQ(skipped, 2);
-  EXPECT_EQ(clientCall.getOffset(), 0);
-  EXPECT_TRUE(input.hasDataRow());
-  // We still have two values in block: false and true
-  {
-    // pop false
-    auto const [state, row] = input.nextDataRow();
-    EXPECT_EQ(state, ExecutorState::HASMORE);
-    EXPECT_FALSE(row.getValue(0).toBoolean());
-  }
-  {
-    // pop true
-    auto const [state, row] = input.nextDataRow();
-    EXPECT_EQ(state, ExecutorState::DONE);
-    EXPECT_TRUE(row.getValue(0).toBoolean());
-  }
-  EXPECT_FALSE(input.hasDataRow());
-}
+TEST_P(FilterExecutorTest, hard_limit) {
+  auto infos = buildInfos();
+  AqlCall call{};
+  call.hardLimit = 0;
+  call.fullCount = true;
+  ExecutionStats{};
+  ExecutorTestHelper<2, 2>(*fakedQuery)
+      .setExecBlock<FilterExecutor>(std::move(infos))
+      .setInputValue(MatrixBuilder<2>{})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}  // namespace aql
 
 }  // namespace aql
 }  // namespace tests

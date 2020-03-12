@@ -25,6 +25,7 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/SkipResult.h"
 
 #include <utility>
 
@@ -42,23 +43,22 @@ namespace arangodb::aql {
 
 class AqlExecuteResult {
  public:
-  AqlExecuteResult(ExecutionState state, std::size_t skipped, SharedAqlItemBlockPtr&& block)
-      : _state(state), _skipped(skipped), _block(std::move(block)) {}
+  AqlExecuteResult(ExecutionState state, SkipResult skipped, SharedAqlItemBlockPtr&& block);
 
   void toVelocyPack(velocypack::Builder&, velocypack::Options const*);
   static auto fromVelocyPack(velocypack::Slice, AqlItemBlockManager&)
       -> ResultT<AqlExecuteResult>;
 
   [[nodiscard]] auto state() const noexcept -> ExecutionState;
-  [[nodiscard]] auto skipped() const noexcept -> std::size_t;
+  [[nodiscard]] auto skipped() const noexcept -> SkipResult;
   [[nodiscard]] auto block() const noexcept -> SharedAqlItemBlockPtr const&;
 
   [[nodiscard]] auto asTuple() const noexcept
-      -> std::tuple<ExecutionState, std::size_t, SharedAqlItemBlockPtr>;
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
  private:
   ExecutionState _state = ExecutionState::HASMORE;
-  std::size_t _skipped = 0;
+  SkipResult _skipped{};
   SharedAqlItemBlockPtr _block = nullptr;
 };
 

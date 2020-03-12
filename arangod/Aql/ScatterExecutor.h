@@ -31,6 +31,7 @@
 namespace arangodb {
 namespace aql {
 
+class SkipResult;
 class ExecutionEngine;
 class ScatterNode;
 
@@ -56,14 +57,14 @@ class ScatterExecutor {
                     ExecutorInfos const& scatterInfos);
 
     auto clear() -> void;
-    auto addBlock(SharedAqlItemBlockPtr block) -> void;
+    auto addBlock(SharedAqlItemBlockPtr block, SkipResult skipped) -> void;
     auto hasDataFor(AqlCall const& call) -> bool;
 
-    auto execute(AqlCall call, ExecutionState upstreamState)
-        -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+    auto execute(AqlCallStack callStack, ExecutionState upstreamState)
+        -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
    private:
-    std::deque<SharedAqlItemBlockPtr> _queue;
+    std::deque<std::tuple<SharedAqlItemBlockPtr, SkipResult>> _queue;
     // This is unique_ptr to get away with everything beeing forward declared...
     std::unique_ptr<ExecutionBlock> _executor;
     bool _executorHasMore;
@@ -72,7 +73,7 @@ class ScatterExecutor {
   ScatterExecutor(ExecutorInfos const&);
   ~ScatterExecutor() = default;
 
-  auto distributeBlock(SharedAqlItemBlockPtr block,
+  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
                        std::unordered_map<std::string, ClientBlockData>& blockMap) const
       -> void;
 };

@@ -40,6 +40,8 @@ enum class RestVerb;
 
 namespace arangodb::aql {
 
+class SkipResult;
+
 // The RemoteBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
 class RemoteExecutor final {};
@@ -65,7 +67,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
-  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 
   [[nodiscard]] auto api() const noexcept -> Api;
 
@@ -83,13 +85,13 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
   auto executeWithoutTrace(AqlCallStack stack)
-      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   auto executeViaOldApi(AqlCallStack stack)
-      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   auto executeViaNewApi(AqlCallStack stack)
-      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   [[nodiscard]] auto deserializeExecuteCallResultBody(velocypack::Slice) const
       -> ResultT<AqlExecuteResult>;

@@ -21,8 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MultiDepFetcherHelper.h"
-#include "gtest/gtest.h"
 #include "Aql/AqlItemRowPrinter.h"
+#include "gtest/gtest.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
@@ -30,7 +30,6 @@
 #include "Aql/ShadowAqlItemRow.h"
 
 #include <velocypack/Slice.h>
-
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -69,8 +68,10 @@ void arangodb::tests::aql::runFetcher(arangodb::aql::MultiDependencySingleRowFet
         auto const& args = iop.first;
         auto const& expected = iop.second;
         auto stack = AqlCallStack(AqlCall{args.atMost, 0, 0, false});
-        auto [state, skipped, ignore] = testee.executeForDependency(args.dependency, stack);
-        auto actual = std::pair<ExecutionState, size_t>(state, skipped);
+        auto [state, skippedRes, ignore] =
+            testee.executeForDependency(args.dependency, stack);
+        auto actual =
+            std::pair<ExecutionState, size_t>(state, skippedRes.getSkipCount());
         EXPECT_EQ(expected, actual) << "during step " << i;
       }
       void operator()(ConcreteFetcherIOPair<FetchShadowRow> const& iop) {

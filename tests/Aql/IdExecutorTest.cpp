@@ -297,7 +297,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
       AqlCallStack stack(std::move(call));
       auto const& [state, skipped, block] = testee.execute(stack);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       EXPECT_EQ(block, nullptr);
     }
     {
@@ -312,7 +312,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
       AqlCallStack stack(std::move(call));
       auto const& [state, skipped, block] = testee.execute(stack);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       ASSERT_NE(block, nullptr);
       EXPECT_EQ(block->size(), 1);
       auto const& val = block->getValueReference(0, 0);
@@ -340,7 +340,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
       AqlCallStack stack(std::move(call));
       auto const& [state, skipped, block] = testee.execute(stack);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       EXPECT_EQ(block, nullptr);
     }
     {
@@ -356,7 +356,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
       AqlCallStack stack(std::move(call));
       auto const& [state, skipped, block] = testee.execute(stack);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 1);
+      EXPECT_EQ(skipped.getSkipCount(), 1);
       ASSERT_EQ(block, nullptr);
     }
   }
@@ -381,7 +381,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
       AqlCallStack stack(std::move(call));
       auto const& [state, skipped, block] = testee.execute(stack);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
       EXPECT_EQ(block, nullptr);
     }
     {
@@ -398,7 +398,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
       AqlCallStack stack(std::move(call));
       auto const& [state, skipped, block] = testee.execute(stack);
       EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 1);
+      EXPECT_EQ(skipped.getSkipCount(), 1);
       ASSERT_EQ(block, nullptr);
     }
   }
@@ -443,7 +443,8 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher) {
     // Inject block
     auto inputBlock =
         buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}});
-    testee.injectConstantBlock(inputBlock);
+
+    testee.injectConstantBlock(inputBlock, SkipResult{});
   }
   {
     // Now call with too small hardLimit
@@ -455,9 +456,9 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher) {
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
     if (useFullCount()) {
-      EXPECT_EQ(skipped, 4);
+      EXPECT_EQ(skipped.getSkipCount(), 4);
     } else {
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
     }
 
     asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
@@ -468,7 +469,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher) {
     AqlCallStack stack(std::move(call));
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     EXPECT_EQ(block, nullptr);
   }
 }
@@ -480,7 +481,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_at_end) {
     auto inputBlock =
         buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}},
                       {{5, 0}, {6, 1}});
-    testee.injectConstantBlock(inputBlock);
+    testee.injectConstantBlock(inputBlock, SkipResult{});
   }
   {
     // Now call with too small hardLimit
@@ -493,9 +494,9 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_at_end) {
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
     if (useFullCount()) {
-      EXPECT_EQ(skipped, 2);
+      EXPECT_EQ(skipped.getSkipCount(), 2);
     } else {
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
     }
     asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
@@ -505,7 +506,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_at_end) {
     AqlCallStack stack(std::move(call));
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     EXPECT_EQ(block, nullptr);
   }
 }
@@ -517,7 +518,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_in_between) {
     auto inputBlock =
         buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}},
                       {{3, 0}, {4, 1}, {6, 0}});
-    testee.injectConstantBlock(inputBlock);
+    testee.injectConstantBlock(inputBlock, SkipResult{});
   }
   {
     // Now call with too small hardLimit
@@ -530,9 +531,9 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_in_between) {
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     if (useFullCount()) {
-      EXPECT_EQ(skipped, 1);
+      EXPECT_EQ(skipped.getSkipCount(), 1);
     } else {
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
     }
     asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
@@ -544,7 +545,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_in_between) {
     AqlCallStack stack(std::move(call));
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
 }
@@ -557,7 +558,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     auto inputBlock =
         buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}},
                       {{3, 0}, {4, 1}, {5, 0}, {6, 0}});
-    testee.injectConstantBlock(inputBlock);
+    testee.injectConstantBlock(inputBlock, SkipResult{});
   }
   // We can only return until the next top-level shadow row is reached.
   {
@@ -571,9 +572,9 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     if (useFullCount()) {
-      EXPECT_EQ(skipped, 1);
+      EXPECT_EQ(skipped.getSkipCount(), 1);
     } else {
-      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(skipped.getSkipCount(), 0);
     }
     asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
@@ -586,7 +587,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     AqlCallStack stack(std::move(call));
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
@@ -598,7 +599,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     AqlCallStack stack(std::move(call));
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
@@ -607,7 +608,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     AqlCallStack stack(std::move(call));
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     EXPECT_EQ(block, nullptr);
   }
 }
