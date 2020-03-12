@@ -310,7 +310,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_sort) {
   verifySubquerySplicing(query, 1);
 
   auto expected = arangodb::velocypack::Parser::fromJson(R"([[6,5,4,3,2,1], [12,10,8,6,4,2]])");
-  verifyQueryResult(query, expected->slice(), R"({})", R"({"profile": 3})");
+  verifyQueryResult(query, expected->slice());
 }
 
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__inner_limit_offset) {
@@ -488,7 +488,6 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_empty_subqueries) {
     RETURN [results]
   )aql";
   auto const expectedString = R"res([[[]]])res";
-
   verifySubquerySplicing(queryString, 2);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
