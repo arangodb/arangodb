@@ -2275,8 +2275,8 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
 
   if (filter) {
     filter->push_back(
-          irs::by_phrase::levenshtein_term{withTranspositions, static_cast<irs::byte_type>(maxDistance), scoringLimit,
-                                           &arangodb::iresearch::getParametricDescription,
+          irs::by_phrase::levenshtein_term{withTranspositions, static_cast<irs::byte_type>(maxDistance),
+                                           scoringLimit, &arangodb::iresearch::getParametricDescription,
                                            irs::ref_cast<irs::byte_type>(target)}, firstOffset);
   }
   return {};
