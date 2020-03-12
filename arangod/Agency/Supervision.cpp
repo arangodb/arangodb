@@ -922,10 +922,10 @@ void Supervision::run() {
           }
 
           bool maintenanceMode = false;
-          if (_snapshot.has(supervisionMaintenance)) {
+          if (_snapshot->has(supervisionMaintenance)) {
             try {
-              if (_snapshot.get(supervisionMaintenance).isString()) {
-                std::string tmp = _snapshot.get(supervisionMaintenance).getString();
+              if (_snapshot->get(supervisionMaintenance).isString()) {
+                std::string tmp = _snapshot->get(supervisionMaintenance).getString();
                 if (tmp.size() < 18) { // legacy behaviour
                   maintenanceMode = true;
                 } else {
@@ -1410,8 +1410,8 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
 // Remove expired hot backup lock if exists
 void Supervision::unlockHotBackup() {
   _lock.assertLockedByCurrentThread();
-  if (_snapshot.has(HOTBACKUP_KEY)) {
-    Node tmp = _snapshot(HOTBACKUP_KEY);
+  if (_snapshot->has(HOTBACKUP_KEY)) {
+    Node tmp = (*_snapshot)(HOTBACKUP_KEY);
     if (tmp.isString()) {
       if (std::chrono::system_clock::now() > stringToTimepoint(tmp.getString())) {
         VPackBuilder unlock;
