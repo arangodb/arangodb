@@ -148,7 +148,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
 
   uint64ToPersistent(internals.buffer(), objectId);
   internals.buffer().append(word.data(), word.length());
-  internals.push_back(static_cast<const char>(0xFFU));
+  internals.push_back(static_cast<char>(0xFFU));
   // 0xFF is higher than any valud utf-8 character
   return b;
 }
@@ -284,7 +284,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
 
       _internals.separate();
       _internals.push_back(static_cast<char>(_type));
-      _internals.push_back(static_cast<const char>(0xFFU));
+      _internals.push_back(static_cast<char>(0xFFU));
       break;
     }
     case RocksDBEntryType::CounterValue:
