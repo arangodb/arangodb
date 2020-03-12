@@ -2530,7 +2530,7 @@ class num_put_facet: public std::num_put<CharType> {
         return nullptr;
       }
 
-      return std::move(ctx);
+      return ctx;
     }
 
     void reset(const std::ios_base& str) {
@@ -3660,7 +3660,7 @@ NS_BEGIN( locale_utils )
   ) {
     return std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(locale);
   }
-#elif defined(_MSC_VER) && _MSC_VER <= 1923// MSVC2015/MSVC2017/MSVC2019
+#elif defined(_MSC_VER) && _MSC_VER <= 1924// MSVC2015/MSVC2017/MSVC2019
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
