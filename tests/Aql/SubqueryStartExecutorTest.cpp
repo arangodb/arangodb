@@ -386,7 +386,7 @@ TEST_P(SubqueryStartExecutorTest, skip_in_outer_subquery) {
         .setCallStack(queryStack(AqlCall{1, false, AqlCall::Infinity{}}, AqlCall{}))
         .run();
   } else {
-    // The feature is not available in 3.7 or earlier.
+    // The feature is not available in 3.6 or earlier.
   }
 }
 
