@@ -60,7 +60,7 @@ function ValidationBasicsSuite () {
       } catch (ex) {}
       validatorJson = {
         level : "strict",
-        rule : { zahlen : { type : "array", items : { type : "number", maximum : 6 }}},
+        rule : { properties: { zahlen : { type : "array", items : { type : "number", maximum : 6 }}}},
         message : "Json-Schema validation failed",
         type : "json"
       };

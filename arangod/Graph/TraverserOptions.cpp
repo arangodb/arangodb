@@ -638,7 +638,6 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
     auto idNode = dirCmp->getMemberUnchecked(1);
     TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-    idNode->stealComputedValue();
     idNode->setStringValue(vertexId.data(), vertexId.length());
   }
   if (edge.isExternal()) {

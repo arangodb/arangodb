@@ -3740,13 +3740,7 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t
   // convert name to upper case
   std::transform(functionName.begin(), functionName.end(), functionName.begin(), ::toupper);
 
-  if (functionName.find(':') == std::string::npos) {
-    // prepend default namespace for internal functions
-    return std::make_pair(std::move(functionName), true);
-  }
-
-  // user-defined function
-  return std::make_pair(std::move(functionName), false);
+  return std::make_pair(std::move(functionName), functionName.find(':') == std::string::npos);
 }
 
 /// @brief create a node of the specified type

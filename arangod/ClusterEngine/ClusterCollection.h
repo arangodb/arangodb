@@ -111,6 +111,7 @@ class ClusterCollection final : public PhysicalCollection {
 
   std::unique_ptr<IndexIterator> getSortedAllIterator(transaction::Methods* trx) const;
 
+
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////

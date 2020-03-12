@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,29 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
-/// @author Frank Celler
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_OPTIONS_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_OPTIONS_H 1
-
-#include <functional>
-#include <memory>
-
-#include <curl/curl.h>
+#include "ReplicationIterator.h"
 
 namespace arangodb {
-namespace communicator {
-class Options {
- public:
-  double requestTimeout = 120.0;
-  double connectionTimeout = 2.0;
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::shared_ptr<std::function<void(CURLcode)>> _curlRcFn;
-#endif
-};
-}  // namespace communicator
-}  // namespace arangodb
 
-#endif
+ReplicationIterator::ReplicationIterator(LogicalCollection& collection)
+    : _collection(collection) {}
+
+LogicalCollection& ReplicationIterator::collection() const {
+  return _collection;
+}
+
+RevisionReplicationIterator::RevisionReplicationIterator(LogicalCollection& collection)
+    : ReplicationIterator(collection) {}
+
+ReplicationIterator::Ordering RevisionReplicationIterator::order() const {
+  return Ordering::Revision;
+}
+
+}  // namespace arangodb
