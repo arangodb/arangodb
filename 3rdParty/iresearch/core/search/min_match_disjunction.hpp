@@ -97,8 +97,8 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator_t& rhs) {
           return lhs + cost::extract(rhs->attributes(), 0);
+        });
       });
-    });
 
     // prepare external heap
     heap_.resize(itrs_.size());
@@ -239,7 +239,40 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief calculates total count of matched iterators. This value could be
+  ///        greater than required min_match. All matched iterators points
+  ///        to current matched document after this call.
+  /// @returns total matched iterators count
+  //////////////////////////////////////////////////////////////////////////////
+  size_t count_matched() {
+    push_valid_to_lead();
+    return lead_;
+  }
+
  private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief push all valid iterators to lead
+  //////////////////////////////////////////////////////////////////////////////
+  inline void push_valid_to_lead() {
+    for(auto lead = this->lead(), begin = heap_.begin();
+      lead != begin && top().value() <= doc_.value;) {
+      // hitch head
+      if (top().value() == doc_.value) {
+        // got hit here
+        add_lead();
+        --lead;
+      } else {
+        if (doc_limits::eof(top()->seek(doc_.value))) {
+          // iterator exhausted
+          remove_top();
+        } else {
+          refresh_top();
+        }
+      }
+    }
+  }
+
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
@@ -383,34 +416,17 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     ++lead_;
   }
 
+
   inline void score_impl(byte_type* lhs) {
     assert(!heap_.empty());
 
-    // push all valid iterators to lead
-    {
-      for(auto lead = this->lead(), begin = heap_.begin();
-          lead != begin && top().value() <= doc_.value;) {
-        // hitch head
-        if (top().value() == doc_.value) {
-          // got hit here
-          add_lead();
-          --lead;
-        } else {
-          if (doc_limits::eof(top()->seek(doc_.value))) {
-            // iterator exhausted
-            remove_top();
-          } else {
-            refresh_top();
-          }
-        }
-      }
-    }
+    push_valid_to_lead();
 
     // score lead iterators
     const irs::byte_type** pVal = scores_vals_.data();
     std::for_each(
         lead(), heap_.end(),
-        [this, lhs, &pVal](size_t it) {
+        [this, &pVal](size_t it) {
           assert(it < itrs_.size());
           detail::evaluate_score_iter(pVal, itrs_[it]);
         });

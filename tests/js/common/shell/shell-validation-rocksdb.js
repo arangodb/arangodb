@@ -31,7 +31,6 @@ var jsunity = require("jsunity");
 
 const internal = require("internal");
 const db = internal.db;
-const print = internal.print;
 const arangodb = require("@arangodb");
 const ERRORS = arangodb.errors;
 
@@ -43,35 +42,15 @@ let sleepInCluster = () => {
   }
 };
 
+const goodDoc = { "zahlen" : [1, 2, 3, 4] };
+const badDoc = { "zahlen" : "1, 2, 3, 4" };
+
 function ValidationBasicsSuite () {
-  const validatorsStart=[
-    {
-        type : "bool",
-        rule : true,
-        message : "Hit tautology rule.",
-        //description : "This rule is always successful"
-    },
-    {
-        type : "bool",
-        rule : false,
-        message : "Hit always-fail rule.",
-        //description : "This rule always fails"
-    },
-    {
-        type : "aql",
-        level : "new",
-        rule : "RETURN TRUE",
-        message : "Another tautology rule!",
-    }
-  ];
-
-
   const skipOptions = { skipDocumentValidation : true };
 
   const testCollectionName = "TestValidationCollection";
   var testCollection;
-  var validatorsTrueOnly;
-  var validatorsFalseOnly;
+  var validatorJson;
 
   return {
 
@@ -79,19 +58,13 @@ function ValidationBasicsSuite () {
       try {
         db._drop(testCollectionName);
       } catch (ex) {}
-      testCollection = db._create(testCollectionName, { "validators" :  validatorsStart });
-      validatorsTrueOnly = [ {
-        type : "bool",
-        level : "new",
-        rule : true,
-        message : "First rule of the tautology club is the first rule of the tautology club.",
-      } ];
-      validatorsFalseOnly = [ {
-        type : "bool",
-        level : "moderate",
-        rule : false,
-        message : "Oh no what a nightmare!",
-      } ];
+      validatorJson = {
+        level : "strict",
+        rule : { properties: { zahlen : { type : "array", items : { type : "number", maximum : 6 }}}},
+        message : "Json-Schema validation failed",
+        type : "json"
+      };
+      testCollection = db._create(testCollectionName, { "validation" :  validatorJson });
     },
 
     tearDown : () => {
@@ -102,36 +75,33 @@ function ValidationBasicsSuite () {
 
     // properties ////////////////////////////////////////////////////////////////////////////////////////
     testProperties : () => {
-      const v = validatorsStart;
+      const v = validatorJson;
       var props = testCollection.properties();
       assertTrue(props !== undefined);
-      assertEqual(props.validators.length, 3);
-      assertEqual(props.validators[0].type, v[0].type);
-      assertEqual(props.validators[0].rule, v[0].rule);
-      assertEqual(props.validators[0].message, v[0].message);
-      assertEqual(props.validators[0].level, "strict");
-
-      assertEqual(props.validators[2].type, v[2].type);
-      assertEqual(props.validators[2].level, v[2].level);
+      assertEqual(props.validation.type, v.type);
+      assertEqual(props.validation.rule, v.rule);
+      assertEqual(props.validation.message, v.message);
+      assertEqual(props.validation.level, v.level);
     },
 
     testPropertiesUpdate : () => {
-      const v =  validatorsTrueOnly;
-      testCollection.properties({"validators" : v});
+      let v =  validatorJson;
+      v.level = "none";
+
+      testCollection.properties({"validation" : v});
 
       var props = testCollection.properties();
+      assertEqual(props.validation.type, v.type);
+      assertEqual(props.validation.rule, v.rule);
+      assertEqual(props.validation.message, v.message);
+      assertEqual(props.validation.level, v.level);
       assertTrue(props !== undefined);
-      assertEqual(props.validators.length, 1);
-      assertEqual(props.validators[0].type, "bool");
-      assertEqual(props.validators[0].rule, true);
-      assertEqual(props.validators[0].message, v[0].message);
-      assertEqual(props.validators[0].level, v[0].level);
     },
 
-    testPropertiesUpdateNoArray : () => {
-      const v =  validatorsTrueOnly[0];
+    testPropertiesUpdateNoObject : () => {
+      const v =  "hund";
       try {
-        testCollection.properties({"validators" : v});
+        testCollection.properties({"validation" : v});
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_BAD_PARAMETER.code, err.errorNum);
@@ -141,7 +111,7 @@ function ValidationBasicsSuite () {
     // insert ////////////////////////////////////////////////////////////////////////////////////////////
     testDocumentsShellInsert : () => {
       try {
-        testCollection.insert({"foo" : "bar"});
+        testCollection.insert(badDoc);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
@@ -149,13 +119,13 @@ function ValidationBasicsSuite () {
     },
 
     testDocumentsShellInsertSkip : () => {
-      testCollection.insert({"foo" : "bar"}, skipOptions);
+      testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
     },
 
     testAQLInsert : () => {
       try {
-        db._query(`INSERT {"foo" : "bar"} INTO ${testCollectionName}`);
+        db._query(`INSERT {"zahlen" : "1, 2, 3, 4"} INTO ${testCollectionName}`);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
@@ -163,16 +133,16 @@ function ValidationBasicsSuite () {
     },
 
     testAQLInsertSkip : () => {
-      db._query(`INSERT {"foo" : "bar"} INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
+      db._query(`INSERT {"zahlen" : "1, 2, 3, 4"} INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
       assertEqual(testCollection.toArray().length, 1);
     },
 
     testDocumentsShellUpdate : () => {
-      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let doc = testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
 
       try {
-        testCollection.update(doc._key, {"foo" : "baz"});
+        testCollection.update(doc._key, badDoc);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
@@ -181,19 +151,19 @@ function ValidationBasicsSuite () {
 
     // update ////////////////////////////////////////////////////////////////////////////////////////////
     testDocumentsShellUpdateSkip : () => {
-      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let doc = testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
 
-      testCollection.update(doc._key, {"foo" : "baz"}, skipOptions);
+      testCollection.update(doc._key, badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
     },
 
     testAQLUpdate : () => {
-      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let doc = testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
 
       try {
-        db._query(`UPDATE "${doc._key}" WITH {"foo" : "baz"} INTO ${testCollectionName}`);
+        db._query(`UPDATE "${doc._key}" WITH {"zahlen" : "baz"} INTO ${testCollectionName}`);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
@@ -201,28 +171,28 @@ function ValidationBasicsSuite () {
     },
 
     testAQLUpdateSkip : () => {
-      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let doc = testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
 
-      db._query(`UPDATE "${doc._key}" WITH {"foo" : "baz"} INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
+      db._query(`UPDATE "${doc._key}" WITH {"zahlen" : "baz"} INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
       assertEqual(testCollection.toArray().length, 1);
     },
 
     // replace ///////////////////////////////////////////////////////////////////////////////////////////
     testDocumentsShellReplaceSkip : () => {
-      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let doc = testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
 
-      testCollection.replace(doc._key, {"foo" : "baz"}, skipOptions);
+      testCollection.replace(doc._key, badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
     },
 
     testAQLReplace : () => {
-      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let doc = testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
 
       try {
-        db._query(`REPLACE "${doc._key}" WITH {"foo" : "baz"} INTO ${testCollectionName}`);
+        db._query(`REPLACE "${doc._key}" WITH {"zahlen" : "baz"} INTO ${testCollectionName}`);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
@@ -230,94 +200,105 @@ function ValidationBasicsSuite () {
     },
 
     testAQLReplaceSkip : () => {
-      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let doc = testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
 
-      db._query(`REPLACE "${doc._key}" WITH {"foo" : "baz"} INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
+      db._query(`REPLACE "${doc._key}" WITH {"zahlen" : "baz"} INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
       assertEqual(testCollection.toArray().length, 1);
     },
 
     // levels ////////////////////////////////////////////////////////////////////////////////////////////
     testLevelNone : () => {
-      const v =  validatorsFalseOnly;
-      const v0 =  v[0];
-      v0.level = "none";
-      testCollection.properties({"validators" : v });
+      const v =  validatorJson;
+      v.level = "none";
+      testCollection.properties({"validation" : v });
       sleepInCluster();
-      assertEqual(testCollection.properties().validators[0].level, v0.level);
-      let  doc = testCollection.insert({"foo" : "bar"});
+      assertEqual(testCollection.properties().validation.level, v.level);
+      let  doc = testCollection.insert(badDoc);
     },
 
     testLevelNew : () => {
-      const v =  validatorsFalseOnly;
-      const v0 =  v[0];
-      v0.level = "new";
-      testCollection.properties({"validators" : v });
+      const v =  validatorJson;
+      v.level = "new";
+      testCollection.properties({"validation" : v });
       sleepInCluster();
-      assertEqual(testCollection.properties().validators[0].level, v0.level);
+      assertEqual(testCollection.properties().validation.level, v.level);
 
-      let  doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let  doc = testCollection.insert(badDoc, skipOptions);
       try {
-        testCollection.insert({"foo" : "bar"});
+        testCollection.insert(badDoc);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
-      testCollection.replace(doc._key, {"foo" : "baz"});
-      testCollection.update(doc._key, {"foo" : "poo"});
+      testCollection.replace(doc._key, badDoc);
+      testCollection.update(doc._key, badDoc);
     },
 
     testLevelModerate : () => {
-      const v =  validatorsFalseOnly;
-      const v0 =  v[0];
-      v0.level = "moderate";
-      testCollection.properties({"validators" : v });
+      const v =  validatorJson;
+      v.level = "moderate";
+      testCollection.properties({"validation" : v });
       sleepInCluster();
-      assertEqual(testCollection.properties().validators[0].level, v0.level);
+      assertEqual(testCollection.properties().validation.level, v.level);
 
-      let  doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let  doc = testCollection.insert(badDoc, skipOptions);
       try {
-        testCollection.insert({"foo" : "bar"});
+        testCollection.insert(badDoc);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
 
-      testCollection.replace(doc._key, {"foo" : "baz"});
-      testCollection.update(doc._key, {"foo" : "poo"});
+      testCollection.replace(doc._key, badDoc);
+      testCollection.update(doc._key, badDoc);
     },
 
     testLevelStict : () => {
-      const v =  validatorsFalseOnly;
-      const v0 =  v[0];
-      v0.level = "strict";
-      testCollection.properties({"validators" : v });
+      const v =  validatorJson;
+      v.level = "strict";
+      testCollection.properties({"validation" : v });
       sleepInCluster();
-      assertEqual(testCollection.properties().validators[0].level, v0.level);
+      assertEqual(testCollection.properties().validation.level, v.level);
 
-      let  doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      let  doc = testCollection.insert(badDoc, skipOptions);
 
       try {
-        testCollection.insert({"foo" : "bar"});
+        testCollection.insert(badDoc);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
 
       try {
-        testCollection.replace(doc._key, {"foo" : "baz"});
+        testCollection.replace(doc._key, badDoc);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
 
       try {
-        testCollection.update(doc._key, {"foo" : "poo"});
+        testCollection.update(doc._key, badDoc);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
 
+    },
+    // json  ////////////////////////////////////////////////////////////////////////////////////////////
+    testJson : () => {
+      const v =  validatorJson;
+      v.level = "strict";
+      testCollection.properties({"validation" : v });
+      sleepInCluster();
+
+      let  doc = testCollection.insert(goodDoc, skipOptions);
+      try {
+        testCollection.insert(badDoc);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
     },
 ////////////////////////////////////////////////////////////////////////////////
   }; // return

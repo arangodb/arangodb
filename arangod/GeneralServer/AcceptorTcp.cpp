@@ -264,7 +264,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   // select the io context for this socket
   auto& ctx = _server.selectIoContext();
 
-  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContext());
+  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto handler = [this](asio_ns::error_code const& ec) {
     if (ec) {
       handleError(ec);

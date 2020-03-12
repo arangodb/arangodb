@@ -51,14 +51,14 @@ static const AqlValue EmptyValue;
 SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
     : groupLength(0),
       count(count),
+      _shouldDeleteBuilderBuffer(true),
       infos(infos),
-      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _shouldDeleteBuilderBuffer(true) {
+      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(Aggregator::fromTypeString(infos.getTransaction(), aggName));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
-};
+}
 
 SortedCollectExecutor::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {

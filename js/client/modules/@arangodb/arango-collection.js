@@ -373,7 +373,8 @@ ArangoCollection.prototype.properties = function (properties) {
     'distributeShardsLike': false,
     'shardingStrategy': false,
     'cacheEnabled': true,
-    'validators' : [ ]
+    'usesRevisionsAsDocumentIds': false,
+    'validation' : null
   };
   var a;
 
@@ -387,7 +388,6 @@ ArangoCollection.prototype.properties = function (properties) {
 
     for (a in attributes) {
       if (attributes.hasOwnProperty(a) &&
-        attributes[a] &&
         properties.hasOwnProperty(a)) {
         body[a] = properties[a];
       }

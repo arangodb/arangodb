@@ -653,8 +653,8 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 /// @brief inserts a document into the index
 Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice const& doc,
-                                 Index::OperationMode mode) {
+                                 velocypack::Slice const& doc, OperationOptions& options) {
+  Index::OperationMode mode = options.indexOperationMode;
   Result res;
   rocksdb::Status s;
   ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
@@ -680,13 +680,15 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
     for (RocksDBKey& key : elements) {
-      s = mthds->GetForUpdate(_cf, key.string(), &existing);
-      if (s.ok()) {  // detected conflicting index entry
-        res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-        break;
-      } else if (!s.IsNotFound()) {
-        res.reset(rocksutils::convertStatus(s));
-        break;
+      if (!options.ignoreUniqueConstraints) {
+        s = mthds->GetForUpdate(_cf, key.string(), &existing);
+        if (s.ok()) {  // detected conflicting index entry
+          res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+          break;
+        } else if (!s.IsNotFound()) {
+          res.reset(rocksutils::convertStatus(s));
+          break;
+        }
       }
       s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/true);
       if (!s.ok()) {

@@ -36,8 +36,9 @@
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "Transaction/Context.h"
@@ -96,6 +97,10 @@ RocksDBReplicationContext::~RocksDBReplicationContext() {
 
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
 
+rocksdb::Snapshot const* RocksDBReplicationContext::snapshot() {
+  return _snapshot;
+}
+
 uint64_t RocksDBReplicationContext::snapshotTick() {
   MUTEX_LOCKER(locker, _contextLock);
   lazyCreateSnapshot();
@@ -152,6 +157,9 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
     return std::make_tuple(TRI_ERROR_BAD_PARAMETER, 0, 0);
   }
   TRI_voc_cid_t cid = logical->id();
+
+  LOG_TOPIC("71235", TRACE, Logger::REPLICATION)
+      << "binding replication context " << id() << " to collection '" << cname << "'";
 
   MUTEX_LOCKER(writeLocker, _contextLock);
 
@@ -821,11 +829,16 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   if (res != TRI_ERROR_NO_ERROR) {  // collection was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
+
+  LOG_TOPIC("71236", TRACE, Logger::REPLICATION)
+      << "replication created iterator for collection '" << coll->name() << "'";
 }
 
 RocksDBReplicationContext::CollectionIterator::~CollectionIterator() {
   TRI_ASSERT(!vocbase.isDangling());
   vocbase.releaseCollection(logical.get());
+  LOG_TOPIC("71237", TRACE, Logger::REPLICATION)
+      << "replication released iterator for collection '" << logical->name() << "'";
   logical.reset();
   vocbase.release();
 }

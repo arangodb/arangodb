@@ -195,17 +195,18 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
   }
 }
 
-void RocksDBTransactionCollection::prepareCommit(uint64_t trxId, uint64_t preCommitSeq) {
+void RocksDBTransactionCollection::prepareTransaction(uint64_t trxId, uint64_t beginSeq) {
   TRI_ASSERT(_collection != nullptr);
-  if (hasOperations() || !_trackedIndexOperations.empty()) {
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-    coll->meta().placeBlocker(trxId, preCommitSeq);
+    TRI_ASSERT(beginSeq > 0);
+    coll->meta().placeBlocker(trxId, beginSeq);
   }
 }
 
 void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   TRI_ASSERT(_collection != nullptr);
-  if (hasOperations() || !_trackedIndexOperations.empty()) {
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     coll->meta().removeBlocker(trxId);
   }
@@ -220,6 +221,12 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   if (hasOperations()) {
     TRI_ASSERT(_revision != 0 && commitSeq != 0);
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
+  }
+
+  // update the revision tree
+  if (!_trackedOperations.empty()) {
+    rcoll->bufferUpdates(commitSeq, std::move(_trackedOperations.inserts),
+                         std::move(_trackedOperations.removals));
   }
 
   // Update the index estimates.
@@ -239,7 +246,7 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
     }
   }
 
-  if (hasOperations() || !_trackedIndexOperations.empty()) {
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     rcoll->meta().removeBlocker(trxId);
   }
 
@@ -247,16 +254,27 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
+  _trackedOperations.clear();
   _trackedIndexOperations.clear();
 }
 
+void RocksDBTransactionCollection::trackInsert(TRI_voc_rid_t rid) {
+  if (_collection->syncByRevision()) {
+    _trackedOperations.inserts.emplace_back(static_cast<std::size_t>(rid));
+  }
+}
+
+void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
+  if (_collection->syncByRevision()) {
+    _trackedOperations.removals.emplace_back(static_cast<std::size_t>(rid));
+  }
+}
+
 void RocksDBTransactionCollection::trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash) {
-  // First list is Inserts
   _trackedIndexOperations[iid].inserts.emplace_back(hash);
 }
 
 void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash) {
-  // Second list is Removes
   _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 
