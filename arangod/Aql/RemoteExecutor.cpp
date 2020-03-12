@@ -31,6 +31,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RestAqlHandler.h"
+#include "Aql/SkipResult.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -153,8 +154,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
     traceGetSomeRequest(builder.slice(), atMost);
   }
 
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome",
-                              std::move(buffer));
+  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome", std::move(buffer));
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -432,7 +432,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   // Use the old getSome/SkipSome API.
   auto myCall = stack.popCall();
 
@@ -444,7 +444,9 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
     if (state != ExecutionState::WAITING) {
       myCall.didSkip(skipped);
     }
-    return {state, skipped, nullptr};
+    SkipResult skipRes{};
+    skipRes.didSkip(skipped);
+    return {state, skipRes, nullptr};
   } else if (AqlCall::IsGetSomeCall(myCall)) {
     auto const [state, block] = getSomeWithoutTrace(myCall.getLimit());
     // We do not need to count as softLimit will be overwritten, and hard cannot be set.
@@ -452,20 +454,22 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
       // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
       myCall.didProduce(block->size());
       if (myCall.getLimit() == 0) {
-        return {ExecutionState::DONE, 0, block};
+        return {ExecutionState::DONE, SkipResult{}, block};
       }
     }
 
-    return {state, 0, block};
+    return {state, SkipResult{}, block};
   } else if (AqlCall::IsFullCountCall(myCall)) {
     auto const [state, skipped] = skipSome(ExecutionBlock::SkipAllSize());
     if (state != ExecutionState::WAITING) {
       myCall.didSkip(skipped);
     }
-    return {state, skipped, nullptr};
+    SkipResult skipRes{};
+    skipRes.didSkip(skipped);
+    return {state, skipRes, nullptr};
   } else if (AqlCall::IsFastForwardCall(myCall)) {
     // No idea if DONE is correct here...
-    return {ExecutionState::DONE, 0, nullptr};
+    return {ExecutionState::DONE, SkipResult{}, nullptr};
   }
 
   // Should never get here!
@@ -473,14 +477,14 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
   return traceExecuteEnd(res);
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
--> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   if (ADB_UNLIKELY(api() == Api::GET_SOME)) {
     return executeViaOldApi(stack);
   }
@@ -489,7 +493,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -509,7 +513,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
 
   if (_requestInFlight) {
     // Already sent a shutdown request, but haven't got an answer yet.
-    return {ExecutionState::WAITING, 0, nullptr};
+    return {ExecutionState::WAITING, SkipResult{}, nullptr};
   }
 
   // For every call we simply forward via HTTP
@@ -553,7 +557,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return {ExecutionState::WAITING, 0, nullptr};
+  return {ExecutionState::WAITING, SkipResult{}, nullptr};
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(VPackSlice const slice) const
@@ -564,14 +568,16 @@ auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(VPackS
 
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
-    return Result{TRI_ERROR_TYPE_ERROR, "When parsing execute result: expected object, got "s + slice.typeName()};
+    return Result{TRI_ERROR_TYPE_ERROR,
+                  "When parsing execute result: expected object, got "s + slice.typeName()};
   }
 
   if (auto value = slice.get(StaticStrings::AqlRemoteResult); !value.isNone()) {
     return AqlExecuteResult::fromVelocyPack(value, _engine->itemBlockManager());
   }
 
-  return Result{TRI_ERROR_TYPE_ERROR, "When parsing execute result: field result missing"};
+  return Result{TRI_ERROR_TYPE_ERROR,
+                "When parsing execute result: field result missing"};
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::serializeExecuteCallBody(AqlCallStack const& callStack) const
@@ -661,10 +667,10 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
     req->header.addMeta("x-shard-id", _ownName);
     req->header.addMeta("shard-id", _ownName);  // deprecated in 3.7, remove later
   }
-  
+
   LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
-      << "request to '" << _server
-      << "' '" << fuerte::to_string(type) << " " << req->header.path << "'";
+      << "request to '" << _server << "' '" << fuerte::to_string(type) << " "
+      << req->header.path << "'";
 
   network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
 

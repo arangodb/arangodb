@@ -42,7 +42,7 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCall call)
   // We can only use this constructor on relevant levels
   // Alothers need to use passThrough constructor
   TRI_ASSERT(other._depth == 0);
-  _operations.push(std::move(call));
+  _operations.emplace_back(std::move(call));
   _compatibilityMode3_6 = other._compatibilityMode3_6;
 }
 
@@ -51,7 +51,7 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other)
       _depth(other._depth),
       _compatibilityMode3_6(other._compatibilityMode3_6) {}
 
-AqlCallStack::AqlCallStack(std::stack<AqlCall>&& operations)
+AqlCallStack::AqlCallStack(std::vector<AqlCall>&& operations)
     : _operations(std::move(operations)) {}
 
 bool AqlCallStack::isRelevant() const { return _depth == 0; }
@@ -68,40 +68,41 @@ AqlCall AqlCallStack::popCall() {
     // to the upwards subquery.
     // => Simply put another fetchAll Call on the stack.
     // This code is to be removed in the next version after 3.7
-    _operations.push(AqlCall{});
+    _operations.emplace_back(AqlCall{});
   }
-  auto call = _operations.top();
-  _operations.pop();
+  auto call = _operations.back();
+  _operations.pop_back();
   return call;
 }
 
 AqlCall const& AqlCallStack::peek() const {
   TRI_ASSERT(isRelevant());
+  TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
+  if (is36Compatible() && _operations.empty()) {
+    // This is only for compatibility with 3.6
+    // there we do not have the stack beeing passed-through
+    // in AQL, we only have a single call.
+    // We can only get into this state in the abscence of
+    // LIMIT => we always do an unlimted softLimit call
+    // to the upwards subquery.
+    // => Simply put another fetchAll Call on the stack.
+    // This code is to be removed in the next version after 3.7
+    _operations.emplace_back(AqlCall{});
+  }
   TRI_ASSERT(!_operations.empty());
-  return _operations.top();
+  return _operations.back();
 }
 
 void AqlCallStack::pushCall(AqlCall&& call) {
   // TODO is this correct on subqueries?
   TRI_ASSERT(isRelevant());
-  _operations.push(call);
+  _operations.emplace_back(std::move(call));
 }
 
 void AqlCallStack::pushCall(AqlCall const& call) {
   // TODO is this correct on subqueries?
   TRI_ASSERT(isRelevant());
-  _operations.push(call);
-}
-
-void AqlCallStack::stackUpMissingCalls() {
-  while (!isRelevant()) {
-    // For every depth, we add an additional default call.
-    // The default is to produce unlimited many results,
-    // using DefaultBatchSize each.
-    _operations.emplace(AqlCall{});
-    _depth--;
-  }
-  TRI_ASSERT(isRelevant());
+  _operations.emplace_back(call);
 }
 
 void AqlCallStack::pop() {
@@ -133,8 +134,9 @@ auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice) -> ResultT<AqlC
                   "When deserializing AqlCallStack: stack is empty");
   }
 
-  auto stack = std::stack<AqlCall>{};
+  auto stack = std::vector<AqlCall>{};
   auto i = std::size_t{0};
+  stack.reserve(slice.length());
   for (auto const entry : VPackArrayIterator(slice)) {
     auto maybeAqlCall = AqlCall::fromVelocyPack(entry);
 
@@ -146,7 +148,7 @@ auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice) -> ResultT<AqlC
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
 
-    stack.emplace(maybeAqlCall.get());
+    stack.emplace_back(maybeAqlCall.get());
 
     ++i;
   }
@@ -157,19 +159,8 @@ auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice) -> ResultT<AqlC
 }
 
 void AqlCallStack::toVelocyPack(velocypack::Builder& builder) const {
-  auto reverseStack = std::vector<AqlCall>{};
-  reverseStack.reserve(_operations.size());
-  {
-    auto ops = _operations;
-    while (!ops.empty()) {
-      reverseStack.emplace_back(ops.top());
-      ops.pop();
-    }
-  }
-
   builder.openArray();
-  for (auto it = reverseStack.rbegin(); it != reverseStack.rend(); ++it) {
-    auto const& call = *it;
+  for (auto const& call : _operations) {
     call.toVelocyPack(builder);
   }
   builder.close();
@@ -178,19 +169,50 @@ void AqlCallStack::toVelocyPack(velocypack::Builder& builder) const {
 auto AqlCallStack::toString() const -> std::string {
   auto result = std::string{};
   result += "[";
-  auto ops = _operations;
-  if (!ops.empty()) {
-    auto op = ops.top();
-    ops.pop();
+  bool isFirst = true;
+  for (auto const& op : _operations) {
+    if (!isFirst) {
+      result += ",";
+    }
+    isFirst = false;
     result += " ";
     result += op.toString();
-    while (!ops.empty()) {
-      op = ops.top();
-      ops.pop();
-      result += ", ";
-      result += op.toString();
-    }
   }
   result += " ]";
   return result;
+}
+
+auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallStack {
+  AqlCallStack res{*this};
+  std::replace_if(
+      res._operations.begin(), res._operations.end(),
+      [](auto const&) -> bool { return true; }, AqlCall{});
+  return res;
+}
+
+auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
+  return std::any_of(_operations.begin(), _operations.end(), [](AqlCall const& call) -> bool {
+    return call.needSkipMore() || call.hardLimit == 0;
+  });
+}
+
+auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
+  TRI_ASSERT(needToSkipSubquery());
+  for (size_t i = 0; i < _operations.size(); ++i) {
+    auto& call = _operations.at(i);
+    if (call.needSkipMore() || call.hardLimit == 0) {
+      return _operations.size() - i - 1;
+    }
+  }
+  // unreachable
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+}
+
+auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
+  // depth 0 is back of vector
+  TRI_ASSERT(_operations.size() > depth);
+  // Take the depth-most from top of the vector.
+  auto& call = *(_operations.rbegin() + depth);
+  return call;
 }

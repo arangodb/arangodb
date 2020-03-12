@@ -48,6 +48,7 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 class ExecutionNode;
+class SkipResult;
 
 class ClientsExecutorInfos {
  public:
@@ -87,7 +88,7 @@ class BlocksWithClients {
    * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
    */
   virtual auto executeForClient(AqlCallStack stack, std::string const& clientId)
-      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> = 0;
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> = 0;
 };
 
 /**
@@ -130,7 +131,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) final;
 
   /// @brief execute: shouldn't be used, use executeForClient
-  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 
   /**
    * @brief Execute for client.
@@ -141,7 +142,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
    * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
    */
   auto executeForClient(AqlCallStack stack, std::string const& clientId)
-      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> override;
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> override;
 
  private:
   /**
@@ -152,7 +153,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
    * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
    */
   auto executeWithoutTraceForClient(AqlCallStack stack, std::string const& clientId)
-      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   /**
    * @brief Load more data from upstream and distribute it into _clientBlockData

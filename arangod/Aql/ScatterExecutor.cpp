@@ -64,10 +64,11 @@ auto ScatterExecutor::ClientBlockData::clear() -> void {
   _executorHasMore = false;
 }
 
-auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> void {
+auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
+                                                SkipResult skipped) -> void {
   // NOTE:
-  // There given ItemBlock will be reused in all requesting blocks.
-  // However, the next followwing block could be passthrough.
+  // The given ItemBlock will be reused in all requesting blocks.
+  // However, the next following block could be passthrough.
   // If it is, it will modify that data stored in block.
   // If now anther client requests the same block, it is not
   // the original any more, but a modified version.
@@ -75,20 +76,20 @@ auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> 
   // is empty. If another peer-calculation has written to this value
   // this assertion does not hold true anymore.
   // Hence we are required to do an indepth cloning here.
-  _queue.emplace_back(block->slice(0, block->size()));
+  _queue.emplace_back(block->slice(0, block->size()), skipped);
 }
 
 auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
   return _executorHasMore || !_queue.empty();
 }
 
-auto ScatterExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upstreamState)
-    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, ExecutionState upstreamState)
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(_executor != nullptr);
   // Make sure we actually have data before you call execute
-  TRI_ASSERT(hasDataFor(call));
+  TRI_ASSERT(hasDataFor(callStack.peek()));
   if (!_executorHasMore) {
-    auto const& block = _queue.front();
+    auto const& [block, skipResult] = _queue.front();
     // This cast is guaranteed, we create this a couple lines above and only
     // this executor is used here.
     // Unfortunately i did not get a version compiled were i could only forward
@@ -96,12 +97,11 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upst
     auto casted =
         static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
     TRI_ASSERT(casted != nullptr);
-    casted->injectConstantBlock(block);
+    casted->injectConstantBlock(block, skipResult);
     _executorHasMore = true;
     _queue.pop_front();
   }
-  AqlCallStack stack{call};
-  auto [state, skipped, result] = _executor->execute(stack);
+  auto [state, skipped, result] = _executor->execute(callStack);
 
   // We have all data locally cannot wait here.
   TRI_ASSERT(state != ExecutionState::WAITING);
@@ -124,12 +124,12 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upst
 
 ScatterExecutor::ScatterExecutor(ExecutorInfos const&){};
 
-auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr block,
+auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
                                       std::unordered_map<std::string, ClientBlockData>& blockMap) const
     -> void {
   // Scatter returns every block on every client as is.
   for (auto& [id, list] : blockMap) {
-    list.addBlock(block);
+    list.addBlock(block, skipped);
   }
 }
 

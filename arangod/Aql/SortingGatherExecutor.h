@@ -29,6 +29,8 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 
+#include <optional>
+
 namespace arangodb {
 
 namespace transaction {

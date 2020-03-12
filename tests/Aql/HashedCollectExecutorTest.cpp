@@ -257,7 +257,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
     AqlCallStack stack{call};
     auto const [state, skipped, result] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     ASSERT_NE(result, nullptr);
     asserthelper::ValidateBlocksAreEqualUnordered(result, buildExpectedOutput(),
                                                   matchedRows, 2, registersToTest);
@@ -270,7 +270,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
     AqlCallStack stack{call};
     auto const [state, skipped, result] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(skipped.getSkipCount(), 0);
     ASSERT_NE(result, nullptr);
     asserthelper::ValidateBlocksAreEqualUnordered(result, buildExpectedOutput(),
                                                   matchedRows, 0, registersToTest);

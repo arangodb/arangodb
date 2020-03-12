@@ -52,6 +52,8 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
 class ShadowAqlItemRow;
+class SkipResult;
+class ParallelUnsortedGatherExecutor;
 class MultiDependencySingleRowFetcher;
 
 template <typename T, typename... Es>
@@ -223,7 +225,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<ConstFetcher>>>>
-  auto injectConstantBlock(SharedAqlItemBlockPtr block) -> void;
+  auto injectConstantBlock(SharedAqlItemBlockPtr block, SkipResult skipped) -> void;
 
   [[nodiscard]] Infos const& infos() const;
 
@@ -242,9 +244,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///          * WAITING: We have async operation going on, nothing happend, please call again
   ///          * HASMORE: Here is some data in the request range, there is still more, if required call again
   ///          * DONE: Here is some data, and there will be no further data available.
-  ///        2. size_t: Amount of documents skipped.
+  ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
-  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
   [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
@@ -253,9 +255,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /**
    * @brief Inner execute() part, without the tracing calls.
    */
-  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
-  std::tuple<ExecutionState, size_t, typename Fetcher::DataRange> executeFetcher(
+  std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
       AqlCallStack& stack, AqlCallType const& aqlCall);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
@@ -329,6 +331,26 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void resetExecutor();
 
+  // Forwarding of ShadowRows if the executor has SideEffects.
+  // This skips over ShadowRows, and counts them in the correct
+  // position of the callStack as "skipped".
+  // as soon as we reach a place where there is no skip
+  // ordered in the outer shadow rows, this call
+  // will fall back to shadowRowForwardning.
+  [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
+                                                   SkipResult& skipResult) -> ExecState;
+
+  /**
+   * @brief Transition to the next state after shadowRows
+   *
+   * @param state the state returned by the getShadowRowCall
+   * @param range the current data range
+   * @return ExecState The next state
+   */
+  [[nodiscard]] auto nextStateAfterShadowRows(ExecutorState const& state,
+                                              DataRange const& range) const
+      noexcept -> ExecState;
+
   void initOnce();
 
   [[nodiscard]] auto executorNeedsCall(AqlCallType& call) const noexcept -> bool;
@@ -361,7 +383,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   InternalState _state;
 
-  size_t _skipped{};
+  SkipResult _skipped{};
 
   DataRange _lastRange;
 

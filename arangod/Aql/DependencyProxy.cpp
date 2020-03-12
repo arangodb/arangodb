@@ -32,10 +32,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 template <BlockPassthrough blockPassthrough>
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
   ExecutionState state = ExecutionState::HASMORE;
-  size_t skipped = 0;
+  SkipResult skipped;
   SharedAqlItemBlockPtr block = nullptr;
   // Note: upstreamBlock will return next dependency
   // if we need to loop here
@@ -47,16 +47,16 @@ DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
         break;
       }
     }
-  } while (state != ExecutionState::WAITING && skipped == 0 && block == nullptr);
+  } while (state != ExecutionState::WAITING && skipped.nothingSkipped() && block == nullptr);
   return {state, skipped, block};
 }
 
 template <BlockPassthrough blockPassthrough>
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> DependencyProxy<blockPassthrough>::executeForDependency(
-    size_t dependency, AqlCallStack& stack) {
-  // TODO: assert dependency in range
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
+                                                        AqlCallStack& stack) {
   ExecutionState state = ExecutionState::HASMORE;
-  size_t skipped = 0;
+  SkipResult skipped;
   SharedAqlItemBlockPtr block = nullptr;
 
   if (!_distributeId.empty()) {
@@ -81,7 +81,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> DependencyProxy<blockP
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  if (skipped == 0 && block == nullptr) {
+  if (skipped.nothingSkipped() && block == nullptr) {
     // We're either waiting or Done
     TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::WAITING);
   }
@@ -99,7 +99,7 @@ ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {
   AqlCallStack stack = _injectedStack;
   stack.pushCall(AqlCall::SimulateGetSome(atMost));
   // Also temporary, will not be used here.
-  size_t skipped = 0;
+  SkipResult skipped;
   do {
     // Note: upstreamBlock will return next dependency
     // if we need to loop here
@@ -115,7 +115,7 @@ ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {
     }
     // Cannot do skipping here
     // Temporary!
-    TRI_ASSERT(skipped == 0);
+    TRI_ASSERT(skipped.nothingSkipped());
 
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(block == nullptr);
@@ -190,7 +190,7 @@ DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, si
   AqlCallStack stack = _injectedStack;
   stack.pushCall(AqlCall::SimulateGetSome(atMost));
   // Also temporary, will not be used here.
-  size_t skipped = 0;
+  SkipResult skipped{};
 
   if (_distributeId.empty()) {
     std::tie(state, skipped, block) = upstream.execute(stack);
@@ -199,7 +199,7 @@ DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, si
     std::tie(state, skipped, block) =
         upstreamWithClient->executeForClient(stack, _distributeId);
   }
-  TRI_ASSERT(skipped == 0);
+  TRI_ASSERT(skipped.nothingSkipped());
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -244,7 +244,7 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSomeFor
   SharedAqlItemBlockPtr block;
 
   while (state == ExecutionState::HASMORE && _skipped < atMost) {
-    size_t skippedNow;
+    SkipResult skippedNow;
     TRI_ASSERT(_skipped <= atMost);
     {
       // Make sure we call with the correct offset
@@ -255,14 +255,14 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSomeFor
     }
     std::tie(state, skippedNow, block) = upstream.execute(stack);
     if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(skippedNow == 0);
+      TRI_ASSERT(skippedNow.nothingSkipped());
       return {state, 0};
     }
     // Temporary.
     // If we return a block here it will be lost
     TRI_ASSERT(block == nullptr);
 
-    _skipped += skippedNow;
+    _skipped += skippedNow.getSkipCount();
     TRI_ASSERT(_skipped <= atMost);
   }
   TRI_ASSERT(state != ExecutionState::WAITING);
@@ -290,7 +290,7 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
   SharedAqlItemBlockPtr block;
 
   while (_skipped < toSkip) {
-    size_t skippedNow;
+    SkipResult skippedNow;
     // Note: upstreamBlock will return next dependency
     // if we need to loop here
     TRI_ASSERT(_skipped <= toSkip);
@@ -309,10 +309,10 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
           upstreamWithClient->executeForClient(stack, _distributeId);
     }
 
-    TRI_ASSERT(skippedNow <= toSkip - _skipped);
+    TRI_ASSERT(skippedNow.getSkipCount() <= toSkip - _skipped);
 
     if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(skippedNow == 0);
+      TRI_ASSERT(skippedNow.nothingSkipped());
       return {state, 0};
     }
 
@@ -320,7 +320,7 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
     // If we return a block here it will be lost
     TRI_ASSERT(block == nullptr);
 
-    _skipped += skippedNow;
+    _skipped += skippedNow.getSkipCount();
 
     // When the current dependency is done, advance.
     if (state == ExecutionState::DONE) {

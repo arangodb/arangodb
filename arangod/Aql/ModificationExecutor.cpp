@@ -201,7 +201,6 @@ template <typename FetcherType, typename ModifierType>
     doCollect(input, output.numRowsLeft());
     upstreamState = input.upstreamState();
   }
-
   if (_modifier.nrOfOperations() > 0) {
     _modifier.transact();
 
@@ -266,7 +265,6 @@ template <typename FetcherType, typename ModifierType>
         stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
         stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
       }
-
       call.didSkip(_modifier.nrOfOperations());
     }
   }

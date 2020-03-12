@@ -44,11 +44,25 @@ auto getStringView(velocypack::Slice slice) -> std::string_view {
 }
 }  // namespace
 
+AqlExecuteResult::AqlExecuteResult(ExecutionState state, SkipResult skipped,
+                                   SharedAqlItemBlockPtr&& block)
+    : _state(state), _skipped(skipped), _block(std::move(block)) {
+  // Make sure we only produce a valid response
+  // The block should have checked as well.
+  // We must return skipped and/or data when reporting HASMORE
+
+  // noskip && no data => state != HASMORE
+  // <=> skipped || data || state != HASMORE
+  TRI_ASSERT(!_skipped.nothingSkipped() ||
+             (_block != nullptr && _block->numEntries() > 0) ||
+             _state != ExecutionState::HASMORE);
+}
+
 auto AqlExecuteResult::state() const noexcept -> ExecutionState {
   return _state;
 }
 
-auto AqlExecuteResult::skipped() const noexcept -> std::size_t {
+auto AqlExecuteResult::skipped() const noexcept -> SkipResult {
   return _skipped;
 }
 
@@ -75,7 +89,8 @@ void AqlExecuteResult::toVelocyPack(velocypack::Builder& builder,
 
   builder.openObject();
   builder.add(StaticStrings::AqlRemoteState, stateToValue(state()));
-  builder.add(StaticStrings::AqlRemoteSkipped, Value(skipped()));
+  builder.add(Value(StaticStrings::AqlRemoteSkipped));
+  skipped().toVelocyPack(builder);
   if (block() != nullptr) {
     ObjectBuilder guard(&builder, StaticStrings::AqlRemoteBlock);
     block()->toVelocyPack(options, builder);
@@ -101,7 +116,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   expectedPropertiesFound.emplace(StaticStrings::AqlRemoteBlock, false);
 
   auto state = ExecutionState::HASMORE;
-  auto skipped = std::size_t{};
+  auto skipped = SkipResult{};
   auto block = SharedAqlItemBlockPtr{};
 
   auto const readState = [](velocypack::Slice slice) -> ResultT<ExecutionState> {
@@ -127,24 +142,6 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     }
   };
 
-  auto const readSkipped = [](velocypack::Slice slice) -> ResultT<std::size_t> {
-    if (!slice.isInteger()) {
-      auto message = std::string{
-          "When deserializating AqlExecuteResult: When reading skipped: "
-          "Unexpected type "};
-      message += slice.typeName();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
-    }
-    try {
-      return slice.getNumber<std::size_t>();
-    } catch (velocypack::Exception const& ex) {
-      auto message = std::string{
-          "When deserializating AqlExecuteResult: When reading skipped: "};
-      message += ex.what();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
-    }
-  };
-
   auto const readBlock = [&itemBlockManager](velocypack::Slice slice) -> ResultT<SharedAqlItemBlockPtr> {
     if (slice.isNull()) {
       return SharedAqlItemBlockPtr{nullptr};
@@ -165,9 +162,9 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     if (auto propIt = expectedPropertiesFound.find(key);
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
       if (ADB_UNLIKELY(propIt->second)) {
-        return Result(
-            TRI_ERROR_TYPE_ERROR,
-            "When deserializating AqlExecuteResult: Encountered duplicate key");
+        return Result(TRI_ERROR_TYPE_ERROR,
+                      "When deserializating AqlExecuteResult: "
+                      "Encountered duplicate key");
       }
       propIt->second = true;
     }
@@ -179,7 +176,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
       }
       state = maybeState.get();
     } else if (key == StaticStrings::AqlRemoteSkipped) {
-      auto maybeSkipped = readSkipped(it.value);
+      auto maybeSkipped = SkipResult::fromVelocyPack(it.value);
       if (maybeSkipped.fail()) {
         return std::move(maybeSkipped).result();
       }
@@ -192,11 +189,12 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
       block = maybeBlock.get();
     } else {
       LOG_TOPIC("cc6f4", WARN, Logger::AQL)
-          << "When deserializating AqlExecuteResult: Encountered unexpected "
+          << "When deserializating AqlExecuteResult: Encountered "
+             "unexpected "
              "key "
           << keySlice.toJson();
-      // If you run into this assertion during rolling upgrades after adding a
-      // new attribute, remove it in the older version.
+      // If you run into this assertion during rolling upgrades after
+      // adding a new attribute, remove it in the older version.
       TRI_ASSERT(false);
     }
   }
@@ -214,6 +212,6 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
 }
 
 auto AqlExecuteResult::asTuple() const noexcept
-    -> std::tuple<ExecutionState, std::size_t, SharedAqlItemBlockPtr> {
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   return {state(), skipped(), block()};
 }

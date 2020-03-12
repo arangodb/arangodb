@@ -147,6 +147,8 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
         ++dep._rowIndex;
       }
     }
+    // We have delivered a shadowRow, we now may get additional subquery skip counters again.
+    _didReturnSubquerySkips = false;
   }
 
   ExecutionState const state = allDone ? ExecutionState::DONE : ExecutionState::HASMORE;
@@ -370,11 +372,11 @@ auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> voi
 
 auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependency,
                                                            AqlCallStack& stack)
-    -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange> {
+    -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
   auto [state, skipped, block] = _dependencyProxy->executeForDependency(dependency, stack);
 
   if (state == ExecutionState::WAITING) {
-    return {state, 0, AqlItemBlockInputRange{ExecutorState::HASMORE}};
+    return {state, SkipResult{}, AqlItemBlockInputRange{ExecutorState::HASMORE}};
   }
   ExecutorState execState =
       state == ExecutionState::DONE ? ExecutorState::DONE : ExecutorState::HASMORE;
@@ -382,16 +384,17 @@ auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependen
   _dependencyStates.at(dependency) = state;
 
   if (block == nullptr) {
-    return {state, skipped, AqlItemBlockInputRange{execState, skipped}};
+    return {state, skipped, AqlItemBlockInputRange{execState, skipped.getSkipCount()}};
   }
   TRI_ASSERT(block != nullptr);
   auto [start, end] = block->getRelevantRange();
-  return {state, skipped, AqlItemBlockInputRange{execState, skipped, block, start}};
+  return {state, skipped,
+          AqlItemBlockInputRange{execState, skipped.getSkipCount(), block, start}};
 }
 
 auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
                                               AqlCallSet const& aqlCallSet)
-    -> std::tuple<ExecutionState, size_t, std::vector<std::pair<size_t, AqlItemBlockInputRange>>> {
+    -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>> {
   TRI_ASSERT(_callsInFlight.size() == numberDependencies());
 
   auto ranges = std::vector<std::pair<size_t, AqlItemBlockInputRange>>{};
@@ -400,7 +403,7 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
   auto depCallIdx = size_t{0};
   auto allAskedDepsAreWaiting = true;
   auto askedAtLeastOneDep = false;
-  auto skippedTotal = size_t{0};
+  auto skippedTotal = SkipResult{};
   // Iterate in parallel over `_callsInFlight` and `aqlCall.calls`.
   // _callsInFlight[i] corresponds to aqlCalls.calls[k] iff
   // aqlCalls.calls[k].dependency = i.
@@ -435,16 +438,46 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
         // Got a result, call is no longer in flight
         maybeCallInFlight = std::nullopt;
         allAskedDepsAreWaiting = false;
+
+        // NOTE:
+        // in this fetcher case we do not have and do not want to have
+        // any control of the order the upstream responses are entering.
+        // Every of the upstream response will contain an identical skipped
+        // stack on the subqueries.
+        // We only need to forward the skipping of any one of those.
+        // So we implemented the following logic to return the skip
+        // information for the first on that arrives and all other
+        // subquery skip informations will be discarded.
+        if (!_didReturnSubquerySkips) {
+          // We have nothing skipped locally.
+          TRI_ASSERT(skippedTotal.subqueryDepth() == 1);
+          TRI_ASSERT(skippedTotal.getSkipCount() == 0);
+
+          // We forward the skip block as is.
+          // This will also include the skips on subquery level
+          skippedTotal = skipped;
+          // Do this only once.
+          // The first response will contain the amount of rows skipped
+          // in subquery
+          _didReturnSubquerySkips = true;
+        } else {
+          // We only need the skip amount on the top level.
+          // Another dependency has forwarded the subquery level skips
+          // already
+          skippedTotal.mergeOnlyTopLevel(skipped);
+        }
+
       } else {
-        TRI_ASSERT(skipped == 0);
+        TRI_ASSERT(skipped.nothingSkipped());
       }
-      skippedTotal += skipped;
+
       ranges.emplace_back(dependency, range);
     }
   }
 
   auto const state = std::invoke([&]() {
     if (askedAtLeastOneDep && allAskedDepsAreWaiting) {
+      TRI_ASSERT(skippedTotal.nothingSkipped());
       return ExecutionState::WAITING;
     } else {
       return upstreamState();

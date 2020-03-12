@@ -39,6 +39,7 @@ class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do need one
@@ -137,10 +138,10 @@ class MultiDependencySingleRowFetcher {
   auto useStack(AqlCallStack const& stack) -> void;
 
   [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
-      -> std::tuple<ExecutionState, size_t, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
+      -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
 
   [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
-      -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange>;
+      -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
   [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
@@ -157,6 +158,8 @@ class MultiDependencySingleRowFetcher {
   ///        It's size is >0 after init() is called, and this is currently used
   ///        in initOnce() to make sure that init() is called exactly once.
   std::vector<std::optional<AqlCallStack>> _callsInFlight;
+
+  bool _didReturnSubquerySkips{false};
 
  private:
   /**
