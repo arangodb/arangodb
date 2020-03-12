@@ -288,7 +288,6 @@ class Graph {
   uint64_t _numberOfShards;
 
   /// @brief replication factor of this graph
-  /// if the value is set to 0, it will be threaten as a satellite graph
   uint64_t _replicationFactor;
 
   /// @brief write concern for this graph
@@ -296,6 +295,9 @@ class Graph {
 
   /// @brief revision of this graph
   std::string _rev;
+
+  /// @brief whether this graph is a satellite graph
+  bool _isSatellite = false;
 };
 
 // helper functions

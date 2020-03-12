@@ -92,7 +92,9 @@ Graph::Graph(velocypack::Slice const& slice)
       _replicationFactor(
           Helper::getNumericValue<uint64_t>(slice, StaticStrings::ReplicationFactor, 1)),
       _writeConcern(::getWriteConcern(slice)),
-      _rev(Helper::getStringValue(slice, StaticStrings::RevString, "")) {
+      _rev(Helper::getStringValue(slice, StaticStrings::RevString, "")),
+      _isSatellite(Helper::getStringRef(slice, StaticStrings::ReplicationFactor,
+                                        velocypack::StringRef("")) == StaticStrings::Satellite) {
   // If this happens we have a document without an _key Attribute.
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -116,9 +118,11 @@ Graph::Graph(velocypack::Slice const& slice)
   if (slice.hasKey(StaticStrings::GraphOrphans)) {
     insertOrphanCollections(slice.get(StaticStrings::GraphOrphans));
   }
-  if (slice.hasKey(StaticStrings::ReplicationFactor) &&
-      slice.get(StaticStrings::ReplicationFactor).isString() &&
-      slice.get(StaticStrings::ReplicationFactor).isEqualString(StaticStrings::Satellite)) {
+  TRI_ASSERT((slice.hasKey(StaticStrings::ReplicationFactor) &&
+              slice.get(StaticStrings::ReplicationFactor).isString() &&
+              slice.get(StaticStrings::ReplicationFactor).isEqualString(StaticStrings::Satellite)) ==
+             _isSatellite);
+  if (_isSatellite) {
     setReplicationFactor(0);
   }
 }
@@ -146,12 +150,18 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
   if (options.isObject()) {
     _numberOfShards =
         Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
-    if (Helper::getStringValue(options.get(StaticStrings::ReplicationFactor),
-                               "1") == StaticStrings::Satellite) {
+    if (Helper::getStringRef(options.get(StaticStrings::ReplicationFactor),
+                             velocypack::StringRef("")) == StaticStrings::Satellite) {
+      _isSatellite = true;
       setReplicationFactor(0);
     } else {
       _replicationFactor =
           Helper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
+      if (_replicationFactor < 1) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       StaticStrings::ReplicationFactor +
+                                           " must be greater than zero");
+      }
       _writeConcern = ::getWriteConcern(options);
     }
   }
@@ -698,10 +708,7 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 bool Graph::isSmart() const { return false; }
 
 bool Graph::isSatellite() const {
-  if (replicationFactor() == 0) {
-    return true;
-  }
-  return false;
+  return _isSatellite;
 }
 
 void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
@@ -713,6 +720,9 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   if (!isSatellite()) {
     builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern()));  // deprecated
     builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern()));
+    TRI_ASSERT(replicationFactor() > 0);
+  } else {
+    TRI_ASSERT(replicationFactor() == 0);
   }
 
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
