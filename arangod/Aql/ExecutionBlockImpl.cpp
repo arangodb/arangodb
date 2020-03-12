@@ -1253,7 +1253,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
       // If the executor has side effects, we cannot bypass any subqueries
       // by skipping them. SO we need to fetch all shadow rows in order to
       // trigger this Executor with everthing from above.
-      // NOTE: The Executor needs to discard shadowRows, and do the
+      // NOTE: The Executor needs to discard shadowRows, and do the accouting.
       static_assert(std::is_same_v<AqlCall, std::decay_t<decltype(aqlCall)>>);
       auto fetchAllStack = stack.createEquivalentFetchAllShadowRowsStack();
       fetchAllStack.pushCall(aqlCall);
