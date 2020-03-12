@@ -87,6 +87,7 @@ set(IReSearch_tests_sources
   ./search/phrase_filter_tests.cpp
   ./search/column_existence_filter_test.cpp
   ./search/same_position_filter_tests.cpp
+  ./search/ngram_similarity_filter_tests.cpp
   ./iql/parser_common_test.cpp
   ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
@@ -107,6 +108,7 @@ set(IReSearch_tests_sources
   ./utils/encryption_test.cpp
   ./utils/locale_utils_tests.cpp
   ./utils/levenshtein_utils_test.cpp
+  ./utils/wildcard_utils_test.cpp
   ./utils/ref_counter_tests.cpp
   ./utils/memory_tests.cpp
   ./utils/string_tests.cpp
@@ -120,6 +122,7 @@ set(IReSearch_tests_sources
   ./utils/fst_builder_test.cpp
   ./utils/fst_utils_test.cpp
   ./utils/fst_string_weight_test.cpp
+  ./utils/ngram_match_utils_tests.cpp
   ./tests_param.cpp
   ./tests_main.cpp
 )
@@ -163,6 +166,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./formats/formats_10_tests.cpp
   ./formats/formats_11_tests.cpp
   ./formats/formats_12_tests.cpp
+  ./formats/formats_13_tests.cpp
   ./iql/parser_test.cpp
 )
 

@@ -80,7 +80,7 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   result.reserve(65536);
 
   {
-    std::lock_guard<std::mutex> guard(_lock);
+    std::lock_guard<std::recursive_mutex> guard(_lock);
     for (auto const& i : _registry) {
       i.second->toPrometheus(result);
     }
@@ -104,23 +104,38 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 }
 
 Counter& MetricsFeature::counter (
-  std::string const& name, uint64_t const& val, std::string const& help) {
+  std::initializer_list<std::string> const& key, uint64_t const& val,
+  std::string const& help) {
+  return counter(metrics_key(key), val, help);
+}
 
-  std::string labels;
+Counter& MetricsFeature::counter (
+  metrics_key const& mk, uint64_t const& val,
+  std::string const& help) {
+
+  std::string labels = mk.labels;
   if (ServerState::instance() != nullptr) {
+    if (!labels.empty()) {
+      labels += ",";
+    }
     labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
   }
-  auto metric = std::make_shared<Counter>(val, name, help, labels);
+  auto metric = std::make_shared<Counter>(val, mk.name, help, labels);
   bool success = false;
   {
-    std::lock_guard<std::mutex> guard(_lock);
-    success = _registry.emplace(name, std::dynamic_pointer_cast<Metric>(metric)).second;
+    std::lock_guard<std::recursive_mutex> guard(_lock);
+    success = _registry.emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
   }
   if (!success) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("counter ") + name + " alredy exists");
+      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " alredy exists");
   }
   return *metric;
+}
+
+Counter& MetricsFeature::counter (
+  std::string const& name, uint64_t const& val, std::string const& help) {
+  return counter(metrics_key(name), val, help);
 }
 
 ServerStatistics& MetricsFeature::serverStatistics() {
@@ -128,27 +143,74 @@ ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;
 }
 
-Counter& MetricsFeature::counter(std::string const& name) {
+
+Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key) {
+  metrics_key mk(key);
   std::shared_ptr<Counter> metric = nullptr;
   std::string error;
   {
-    std::lock_guard<std::mutex> guard(_lock);
-    registry_type::const_iterator it = _registry.find(name);
+    std::lock_guard<std::recursive_mutex> guard(_lock);
+    registry_type::const_iterator it = _registry.find(mk);
     if (it == _registry.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + name);
+      it = _registry.find(mk.name);
+      if (it == _registry.end()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, std::string("No counter booked as ") + mk.name);
+      } else {
+        auto tmp = std::dynamic_pointer_cast<Counter>(it->second);
+        return counter(mk, 0, tmp->help());
+      }
     }
     try {
       metric = std::dynamic_pointer_cast<Counter>(it->second);
       if (metric == nullptr) {
-        error = std::string("Failed to retrieve counter ") + name;
+
+        error = std::string("Failed to retrieve counter ") + mk.name;
       }
     } catch (std::exception const& e) {
-      error = std::string("Failed to retrieve counter ") + name +  ": " + e.what();
+      error = std::string("Failed to retrieve counter ") + mk.name +  ": " + e.what();
     }
   }
   if (!error.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
   }
   return *metric;
+}
+
+
+Counter& MetricsFeature::counter (std::string const& name) {
+  return counter({name});
+}
+
+metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
+  TRI_ASSERT(il.size() > 0);
+  TRI_ASSERT(il.size() < 3);
+  name = *il.begin();
+  if (il.size() == 2) {
+    labels = *(il.begin()+1);
+  }
+  _hash = std::hash<std::string>{}(name + labels);
+}
+
+metrics_key::metrics_key(std::string const& name) : name(name) {
+  _hash = std::hash<std::string>{}(name);
+}
+
+metrics_key::metrics_key(std::string const& name, std::string const& labels) :
+  name(name), labels(labels) {
+  _hash = std::hash<std::string>{}(name + labels);
+}
+
+std::size_t metrics_key::hash() const noexcept {
+  return _hash;
+}
+
+bool metrics_key::operator== (metrics_key const& other) const {
+  return name == other.name && labels == other.labels;
+}
+
+namespace std {
+std::size_t hash<arangodb::metrics_key>::operator()(arangodb::metrics_key const& m) const noexcept {
+  return m.hash();
+}
 }

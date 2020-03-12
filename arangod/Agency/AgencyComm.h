@@ -740,7 +740,7 @@ class AgencyComm {
 
  private:
   application_features::ApplicationServer& _server;
-  Histogram<lin_scale_t<uint64_t>>& _agency_comm_request_time_ms;
+  Histogram<log_scale_t<uint64_t>>& _agency_comm_request_time_ms;
 };
 }  // namespace arangodb
 

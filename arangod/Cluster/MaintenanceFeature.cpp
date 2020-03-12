@@ -164,27 +164,25 @@ void MaintenanceFeature::start() {
       metricsFeature.histogram(StaticStrings::MaintenancePhaseTwoRuntimeMs,
                                log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
                                "Maintenance Phase 2 runtime histogram [ms]");
-  _phase2_runtime_msec_lin =
-      metricsFeature.histogram("maintenance_phase2_runtime_msec_lin",
-                               lin_scale_t<uint64_t>(50., 1.0e3, 10),
-                               "Maintenance Phase 2 runtime histogram [ms]");
+
   _agency_sync_total_runtime_msec =
       metricsFeature.histogram(StaticStrings::MaintenanceAgencySyncRuntimeMs,
                                log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
                                "Total time spend on agency sync [ms]");
 
   _phase1_accum_runtime_msec =
-      metricsFeature.counter(StaticStrings::MaintenancePhaseOneAccumRuntimeMs, 0,
-                             "Accumulated runtime of phase one");
+      metricsFeature.counter(StaticStrings::MaintenancePhaseOneAccumRuntimeMs,
+                             0, "Accumulated runtime of phase one");
   _phase2_accum_runtime_msec =
-      metricsFeature.counter(StaticStrings::MaintenancePhaseTwoAccumRuntimeMs, 0,
-                             "Accumulated runtime of phase two");
+      metricsFeature.counter(StaticStrings::MaintenancePhaseTwoAccumRuntimeMs,
+                             0, "Accumulated runtime of phase two");
   _agency_sync_total_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenanceAgencySyncAccumRuntimeMs,
                              0, "Accumulated runtime of agency sync phase");
 
   _shards_out_of_sync = metricsFeature.gauge<uint64_t>(
-      StaticStrings::ShardsOutOfSync, 0, "Number of leader shards not fully replicated");
+      StaticStrings::ShardsOutOfSync, 0,
+      "Number of leader shards not fully replicated");
   _shards_total_count =
       metricsFeature.gauge<uint64_t>(StaticStrings::ShardsTotalCount, 0,
                                      "Number of shards on this machine");
@@ -194,6 +192,45 @@ void MaintenanceFeature::start() {
   _shards_not_replicated_count =
       metricsFeature.gauge<uint64_t>(StaticStrings::ShardsNotReplicated, 0,
                                      "Number of shards not replicated at all");
+
+  _action_duplicated_counter = metricsFeature.counter(
+      StaticStrings::ActionDuplicateCounter, 0,
+      "Counter of action that have been discarded because of a duplicate");
+  _action_registered_counter = metricsFeature.counter(
+      StaticStrings::ActionRegisteredCounter, 0,
+      "Counter of action that have been registered in the action registry");
+  _action_done_counter =
+      metricsFeature.counter(StaticStrings::ActionDoneCounter, 0,
+                             "Counter of action that are done and have been "
+                             "removed from the registry");
+
+  const char* instrumentedActions[] = {CREATE_COLLECTION, CREATE_DATABASE,
+                                       UPDATE_COLLECTION, SYNCHRONIZE_SHARD,
+                                       DROP_COLLECTION,   DROP_DATABASE,
+                                       DROP_INDEX};
+
+  for (const char* action : instrumentedActions) {
+    std::string action_label = std::string{"action=\""} + action + '"';
+
+    _maintenance_job_metrics_map.try_emplace(
+        action,
+        metricsFeature.histogram({StaticStrings::MaintenanceActionRuntimeMs, action_label},
+                                 log_scale_t<uint64_t>(4, 82, 86400.0e3, 10),
+                                 "Time spend execution the action [ms]"),
+        metricsFeature.histogram(
+            {StaticStrings::MaintenanceActionQueueTimeMs, action_label},
+            log_scale_t<uint64_t>(2, 82, 86400.0e3, 12),
+            "Time spend in the queue before execution [ms]"),
+
+        metricsFeature.counter({StaticStrings::MaintenanceActionAccumRuntimeMs, action_label},
+                               0, "Accumulated action runtime"),
+
+        metricsFeature.counter({StaticStrings::MaintenanceActionAccumQueueTimeMs, action_label},
+                               0, "Accumulated action queue time"),
+
+        metricsFeature.counter({StaticStrings::MaintenanceActionFailureCounter, action_label},
+                               0, "Failure counter for the action"));
+  }
 
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
@@ -377,6 +414,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
       // action already exist, need write lock to prevent race
       result.reset(TRI_ERROR_BAD_PARAMETER,
                    "addAction called while similar action already processing.");
+      _action_duplicated_counter->get().operator++();
     }  // else
 
     // executeNow process on this thread, right now!
@@ -425,6 +463,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
       // action already exist, need write lock to prevent race
       result.reset(TRI_ERROR_BAD_PARAMETER,
                    "addAction called while similar action already processing.");
+      _action_duplicated_counter->get().operator++();
     }  // else
 
     // executeNow process on this thread, right now!
@@ -472,6 +511,7 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
   //   lock condition variable
   {
     _actionRegistry.push_back(action);
+    _action_registered_counter->get().operator++();
 
     if (!executeNow) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
@@ -588,13 +628,18 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
       // as well clean up those jobs in the _actionRegistry, which are
       // in state DONE:
       if (RandomGenerator::interval(uint32_t(10)) == 0) {
+        size_t actions_removed = 0;
         for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop;) {
           if ((*loop)->done()) {
             loop = _actionRegistry.erase(loop);
+            actions_removed++;
           } else {
             ++loop;
           }  // else
         }    // for
+        if (actions_removed > 0) {
+          _action_done_counter->get().count(actions_removed);
+        }
       }
     }  // WRITE
 

@@ -155,7 +155,7 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
   if (this->_config._authenticationType == AuthenticationType::Basic) {
     _authHeader.append("Authorization: Basic ");
     _authHeader.append(
-        fu::encodeBase64(this->_config._user + ":" + this->_config._password));
+        fu::encodeBase64(this->_config._user + ":" + this->_config._password, true));
     _authHeader.append("\r\n");
   } else if (this->_config._authenticationType == AuthenticationType::Jwt) {
     if (this->_config._jwtToken.empty()) {

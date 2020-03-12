@@ -111,6 +111,15 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Upgrade agency
   void upgradeAgency();
 
+  /// @brief Upgrade hot backup entry, if 0
+  void upgradeMaintenance(VPackBuilder& builder);
+
+  /// @brief Upgrade maintenance key, if "on"
+  void upgradeBackupKey(VPackBuilder& builder);
+
+  /// @brief remove hotbackup lock in agency, if expired
+  void unlockHotBackup();
+
   static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
   static constexpr char const* HEALTH_STATUS_BAD = "BAD";
   static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
@@ -253,7 +262,12 @@ class Supervision : public arangodb::CriticalThread {
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
 
+ public:
   Histogram<log_scale_t<uint64_t>>& _supervision_runtime_msec;
+  Histogram<log_scale_t<uint64_t>>& _supervision_runtime_wait_for_sync_msec;
+  Counter& _supervision_accum_runtime_msec;
+  Counter& _supervision_accum_runtime_wait_for_sync_msec;
+  Counter& _supervision_failed_server_counter;
 };
 
 /**

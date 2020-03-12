@@ -281,7 +281,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /**
    * @brief copy all error maps (shards, indexes and databases) for Maintenance
    *
-   * @param  errors  errors struct into which all maintenace feature error are copied
+   * @param  errors  errors struct into which all maintenance feature error are copied
    * @return         success
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
@@ -456,12 +456,29 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;
   std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase2_runtime_msec;
-  std::optional<std::reference_wrapper<Histogram<lin_scale_t<uint64_t>>>> _phase2_runtime_msec_lin;
   std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _agency_sync_total_runtime_msec;
 
   std::optional<std::reference_wrapper<Counter>> _phase1_accum_runtime_msec;
   std::optional<std::reference_wrapper<Counter>> _phase2_accum_runtime_msec;
   std::optional<std::reference_wrapper<Counter>> _agency_sync_total_accum_runtime_msec;
+
+  std::optional<std::reference_wrapper<Counter>> _action_duplicated_counter;
+  std::optional<std::reference_wrapper<Counter>> _action_registered_counter;
+  std::optional<std::reference_wrapper<Counter>> _action_done_counter;
+
+  struct ActionMetrics {
+    Histogram<log_scale_t<uint64_t>>& _runtime_histogram;
+    Histogram<log_scale_t<uint64_t>>& _queue_time_histogram;
+    Counter& _accum_runtime;
+    Counter& _accum_queue_time;
+    Counter& _failure_counter;
+
+    ActionMetrics(Histogram<log_scale_t<uint64_t>>& a, Histogram<log_scale_t<uint64_t>>& b, Counter& c, Counter& d, Counter& e) :
+      _runtime_histogram(a), _queue_time_histogram(b), _accum_runtime(c), _accum_queue_time(d), _failure_counter(e) {}
+  };
+
+  std::unordered_map<std::string, ActionMetrics> _maintenance_job_metrics_map;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _maintenance_action_runtime_msec;
 
   std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_out_of_sync;
   std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_total_count;

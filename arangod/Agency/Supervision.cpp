@@ -176,8 +176,25 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _selfShutdown(false),
       _upgraded(false),
       _supervision_runtime_msec(server.getFeature<arangodb::MetricsFeature>().histogram(
-          "agency_supervision_runtime_msec", log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
-          "Agency Supervision runtime histogram [ms]")) {}
+          StaticStrings::SupervisionRuntimeMs, log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
+          "Agency Supervision runtime histogram [ms]")),
+      _supervision_runtime_wait_for_sync_msec(
+          server.getFeature<arangodb::MetricsFeature>().histogram(
+              StaticStrings::SupervisionRuntimeWaitForSyncMs,
+              log_scale_t<uint64_t>(2, 10., 2.0e3, 10),
+              "Agency Supervision wait for replication time [ms]")),
+      _supervision_accum_runtime_msec(
+          server.getFeature<arangodb::MetricsFeature>().counter(
+              StaticStrings::SupervisionAccumRuntimeMs, 0,
+              "Accumulated Supervision Runtime [ms]")),
+      _supervision_accum_runtime_wait_for_sync_msec(
+          server.getFeature<arangodb::MetricsFeature>().counter(
+              StaticStrings::SupervisionAccumRuntimeWaitForSyncMs, 0,
+              "Accumulated Supervision  wait for replication time  [ms]")),
+      _supervision_failed_server_counter(
+          server.getFeature<arangodb::MetricsFeature>().counter(
+              StaticStrings::SupervisionFailedServerCount, 0,
+              "Counter for FailedServer jobs")) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
@@ -187,6 +204,7 @@ Supervision::~Supervision() {
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const supervisionPrefix = "/Supervision";
+static std::string const supervisionMaintenance = "/Supervision/Maintenance";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
@@ -292,6 +310,8 @@ void Supervision::upgradeAgency() {
     fixPrototypeChain(builder);
     upgradeOne(builder);
     upgradeHealthRecords(builder);
+    upgradeMaintenance(builder);
+    upgradeBackupKey(builder);
   }
 
   LOG_TOPIC("f7315", DEBUG, Logger::AGENCY)
@@ -303,6 +323,69 @@ void Supervision::upgradeAgency() {
 
   _upgraded = true;
 }
+
+
+void Supervision::upgradeMaintenance(VPackBuilder& builder) {
+  _lock.assertLockedByCurrentThread();
+  if (_snapshot.has(supervisionMaintenance)) {
+
+    std::string maintenanceState;
+    try {
+      maintenanceState = _snapshot.get(supervisionMaintenance).getString();
+    } catch (std::exception const& e) {
+      LOG_TOPIC("cf235", ERR, Logger::SUPERVISION)
+        << "Supervision maintenance key in agency is not a string. This should never happen and will prevent hot backups. " << e.what();
+      return;
+    }
+
+    if (maintenanceState == "on") {
+      VPackArrayBuilder trx(&builder);
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(
+          supervisionMaintenance,
+          VPackValue(
+            timepointToString(
+              std::chrono::system_clock::now() + std::chrono::hours(1))));
+      }
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(supervisionMaintenance, VPackValue(maintenanceState));
+      }
+    }
+  }
+}
+
+
+void Supervision::upgradeBackupKey(VPackBuilder& builder) {
+
+  // Upgrade /arango/Target/HotBackup/Create from 0 to time out
+
+  _lock.assertLockedByCurrentThread();
+  if (_snapshot.has(HOTBACKUP_KEY)) {
+
+    Node const& tmp  = _snapshot(HOTBACKUP_KEY);
+    if (tmp.isNumber()) {
+      if (tmp.getInt() == 0) {
+
+        VPackArrayBuilder trx(&builder);
+        {
+          VPackObjectBuilder o(&builder);
+          builder.add(
+            HOTBACKUP_KEY,
+            VPackValue(
+              timepointToString(
+                std::chrono::system_clock::now() + std::chrono::hours(1))));
+        }
+        {
+          VPackObjectBuilder o(&builder);
+          builder.add(HOTBACKUP_KEY, VPackValue(0));
+        }
+      }
+    }
+  }
+}
+
 
 void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
                             HealthRecord& persisted, HealthRecord& transisted,
@@ -334,6 +417,7 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
+      agent->supervision()._supervision_failed_server_counter.operator++();
       FailedServer(snapshot, agent, std::to_string(jobId), "supervision", serverID)
           .create(envelope);
     }
@@ -836,12 +920,37 @@ void Supervision::run() {
           LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION)
               << "Finished updateSnapshot";
 
-          if (!_snapshot.has("Supervision/Maintenance")) {
-            reportStatus("Normal");
 
-            if (!_upgraded) {
-              upgradeAgency();
+          if (!_upgraded) {
+            upgradeAgency();
+          }
+
+          bool maintenanceMode = false;
+          if (_snapshot.has(supervisionMaintenance)) {
+            try {
+              if (_snapshot.get(supervisionMaintenance).isString()) {
+                std::string tmp = _snapshot.get(supervisionMaintenance).getString();
+                if (tmp.size() < 18) { // legacy behaviour
+                  maintenanceMode = true;
+                } else {
+                  auto const maintenanceExpires = stringToTimepoint(tmp);
+                  if (maintenanceExpires >= std::chrono::system_clock::now()) {
+                    maintenanceMode = true;
+                  }
+                }
+              } else { // legacy behaviour
+                maintenanceMode = true;
+              }
+            } catch (std::exception const& e) {
+                LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
+                  << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups. " << e.what();
+              return;
             }
+          }
+
+          if (!maintenanceMode) {
+
+            reportStatus("Normal");
 
             _haveAborts = false;
 
@@ -890,6 +999,8 @@ void Supervision::run() {
       if (_agent->leading()) {
         index_t leaderIndex = _agent->index();
         if (leaderIndex != 0) {
+          auto wait_for_repl_start = std::chrono::steady_clock::now();
+
           while (!this->isStopping() && _agent->leading()) {
             auto result = _agent->waitFor(leaderIndex);
             if (result == Agent::raft_commit_t::TIMEOUT) {  // Oh snap
@@ -902,6 +1013,13 @@ void Supervision::run() {
               break;
             }
           }
+
+          auto wait_for_repl_end = std::chrono::steady_clock::now();
+          auto repl_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             wait_for_repl_end - wait_for_repl_start)
+                             .count();
+          _supervision_runtime_wait_for_sync_msec.count(repl_ms);
+          _supervision_accum_runtime_wait_for_sync_msec.count(repl_ms);
         }
       }
 
@@ -910,6 +1028,7 @@ void Supervision::run() {
                          .count();
 
       _supervision_runtime_msec.count(lapTime / 1000);
+      _supervision_accum_runtime_msec.count(lapTime / 1000);
 
       if (lapTime < 1000000) {
         _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
@@ -1138,10 +1257,34 @@ void Supervision::cleanupLostCollections(Node const& snapshot,
   }
 }
 
+
+// Remove expired hot backup lock if exists
+void Supervision::unlockHotBackup() {
+  _lock.assertLockedByCurrentThread();
+  if (_snapshot.has(HOTBACKUP_KEY)) {
+    Node tmp = _snapshot(HOTBACKUP_KEY);
+    if (tmp.isString()) {
+      if (std::chrono::system_clock::now() > stringToTimepoint(tmp.getString())) {
+        VPackBuilder unlock;
+        { VPackArrayBuilder trxs(&unlock);
+          { VPackObjectBuilder u(&unlock);
+            unlock.add(VPackValue(HOTBACKUP_KEY));
+            { VPackObjectBuilder o(&unlock);
+              unlock.add("op", VPackValue("delete")); }}}
+        write_ret_t res = singleWriteTransaction(_agent, unlock, false);
+      }
+    }
+  }
+}
+
+
 // Guarded by caller
 bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
+  LOG_TOPIC("67eef", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
+  unlockHotBackup();
+
   LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin shrinkCluster";
   shrinkCluster();
 

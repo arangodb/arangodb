@@ -70,6 +70,7 @@ class StaticStrings {
   static std::string const Prefix;
   static std::string const OverWrite;
   static std::string const OverWriteMode;
+  static std::string const PreserveRevisionIds;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -264,6 +265,8 @@ class StaticStrings {
   static std::string const RevisionTreeNodes;
   static std::string const RevisionTreeRangeMax;
   static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeRanges;
+  static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
 
   // generic attribute names
@@ -305,9 +308,21 @@ class StaticStrings {
   static std::string const MaintenancePhaseTwoRuntimeMs;
   static std::string const MaintenanceAgencySyncRuntimeMs;
 
+
+  static std::string const MaintenanceActionRuntimeMs;
+  static std::string const MaintenanceActionAccumRuntimeMs;
+  static std::string const MaintenanceActionFailureCounter;
+  static std::string const MaintenanceActionQueueTimeMs;
+  static std::string const MaintenanceActionAccumQueueTimeMs;
+
   static std::string const MaintenancePhaseOneAccumRuntimeMs;
   static std::string const MaintenancePhaseTwoAccumRuntimeMs;
   static std::string const MaintenanceAgencySyncAccumRuntimeMs;
+
+
+  static std::string const ActionDuplicateCounter;
+  static std::string const ActionRegisteredCounter;
+  static std::string const ActionDoneCounter;
 
   static std::string const ShardsOutOfSync;
   static std::string const ShardsTotalCount;
@@ -323,6 +338,12 @@ class StaticStrings {
   static std::string const SchedulerNumWorker;
 
   static std::string const DroppedFollowerCount;
+
+  static std::string const SupervisionRuntimeMs;
+  static std::string const SupervisionRuntimeWaitForSyncMs;
+  static std::string const SupervisionAccumRuntimeMs;
+  static std::string const SupervisionAccumRuntimeWaitForSyncMs;
+  static std::string const SupervisionFailedServerCount;
 
 };
 }  // namespace arangodb

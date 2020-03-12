@@ -29,6 +29,7 @@
 #include <chrono>
 #include <string>
 
+#include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
 #include "Basics/Common.h"
@@ -133,6 +134,15 @@ class HybridLogicalClock {
 
   static uint64_t decodeTimeStamp(std::string const& s) {
     return decodeTimeStamp(s.data(), s.size());
+  }
+
+  static uint64_t decodeTimeStamp(velocypack::Slice const& s) {
+    if (!s.isString()) {
+      return std::numeric_limits<std::uint64_t>::max();
+    }
+    velocypack::ValueLength l;
+    char const* p = s.getString(l);
+    return decodeTimeStamp(p, l);
   }
 
   static uint64_t decodeTimeStamp(char const* p, size_t len) {

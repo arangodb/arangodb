@@ -1,6 +1,25 @@
 devel
 -----
 
+* Supervision hot backup and supervision maintenance modes ttl fix.
+
+* Fix a bug that leads to graph traversals yielding empty output when none of the
+  output variables (vertex, edge, path) are used. This is relevant when a query 
+  is only interested in a COUNT of the outputs, for example.
+
+* MoveShard to check, if target is in sync follower before promotion
+  to leader.
+
+* Agency ttl bug fix
+
+* Added the SNI feature for TLS. This means that one can configure multiple
+  server keys and certificate chains and the system dynamically uses
+  the right one depending on the value of the TLS servername extension.
+  This allows to use different TLS setups for the same server which is
+  reachable behind different DNS names, for example (enterprise only).
+
+* Do not create a reboot tracker for empty serverId ubin sync repl.
+
 * Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
   AQL functions when invoking an AQL query from the arangosh or a client application.
   Previously, invoking an AQL query and using the `CALL` or `APPLY` AQL functions
@@ -44,7 +63,7 @@ devel
 
   the execution of the `sub2` subquery can be delayed to after the SORT and LIMIT,
   turning it into
-      
+
       FOR doc IN collection1
         LET sub1 = FIRST(FOR sub IN collection2 FILTER sub.ref == doc._key RETURN sub)
         SORT sub1
@@ -99,7 +118,7 @@ devel
   from the named graph are needed, the `edgeCollections` option can be a handy
   performance optimization.
 
-* Make arangobench return a proper error message when its initial attempt to 
+* Make arangobench return a proper error message when its initial attempt to
   create the test collection fails.
 
 * In some cases with a COLLECT LIMIT situation on a small limit the collect
@@ -268,6 +287,7 @@ devel
 
   Like for the existing variant the `overwrite` flag has to be set to true.
   Then the update version can be selected by setting the `overwriteMode` to `"update"`.
+
 
 * Updated ArangoDB Starter to 0.14.13.
 

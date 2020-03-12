@@ -1244,7 +1244,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
       }
     }
 
-    // maintenace actions
+    // maintenance actions
     report.add(VPackValue("actions"));
     {
       VPackObjectBuilder agency(&report);
@@ -1272,7 +1272,6 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
   auto end = std::chrono::steady_clock::now();
   uint64_t total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   feature._phase2_runtime_msec->get().count(total_ms);
-  feature._phase2_runtime_msec_lin->get().count(total_ms);
   feature._phase2_accum_runtime_msec->get().count(total_ms);
 
   feature._shards_out_of_sync->get().operator=(shardStats.numOutOfSyncShards);
