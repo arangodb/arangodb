@@ -177,7 +177,6 @@ auto MakeSkipResult(size_t const i) -> SkipResult {
 
 auto const testingAqlExecuteResults = ::testing::ValuesIn(std::array{
     AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), nullptr},
-    AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(0), nullptr},
     AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(4), nullptr},
     AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), buildBlock<1>(manager, {{42}})},
     AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(3),
