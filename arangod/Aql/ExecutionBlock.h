@@ -153,10 +153,12 @@ class ExecutionBlock {
 
  protected:
   // Trace the start of a execute call
-  void traceExecuteBegin(AqlCallStack const& stack);
+  void traceExecuteBegin(AqlCallStack const& stack,
+                         std::string const& clientId = "");
 
   // Trace the end of a execute call, potentially with result
-  auto traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result)
+  auto traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
+                       std::string const& clientId = "")
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;

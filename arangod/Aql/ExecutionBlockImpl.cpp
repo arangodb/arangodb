@@ -1772,17 +1772,21 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       TRI_ASSERT(_execState == ExecState::CHECKCALL ||
                  _execState == ExecState::SHADOWROWS || _execState == ExecState::UPSTREAM ||
                  _execState == ExecState::PRODUCE || _execState == ExecState::SKIP);
-
-      // As it can return WAITING in produce call, there could be some rows written into the output.
-      // So let us update the call with the last state we have.
-      if (_execState == ExecState::PRODUCE && _outputItemRow != nullptr &&
-          _outputItemRow->isInitialized()) {
-        clientCall = _outputItemRow->getClientCall();
-      }
     } else {
       // We can only have returned the following internal states
       TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
                  _execState == ExecState::UPSTREAM);
+    }
+
+    // In some executors we may write something into the output, but then return waiting.
+    // In this case we are not allowed to lose the call we have been working on, we have
+    // noted down created or skipped rows in there.
+    // The client is disallowed to change her mind anyways
+    // so we simply continue to work on the call we already have
+    // The guarantee is, if we have returned the block, and modified
+    // our local call, then the outputItemRow is not initialized
+    if (_outputItemRow != nullptr && _outputItemRow->isInitialized()) {
+      clientCall = _outputItemRow->getClientCall();
     }
 
     // Skip can only be > 0 if we are in upstream cases, or if we got injected a block
@@ -2192,7 +2196,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
                  (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
     }
-    // We must return skipped and/or data when reportingHASMORE
+    // We must return skipped and/or data when reporting HASMORE
     TRI_ASSERT(_upstreamState != ExecutionState::HASMORE ||
                (!skipped.nothingSkipped() ||
                 (outputBlock != nullptr && outputBlock->numEntries() > 0)));

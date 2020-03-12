@@ -200,9 +200,9 @@ template <class Executor>
 auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
                                                        std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  // traceExecuteBegin(stack);
+  traceExecuteBegin(stack, clientId);
   auto res = executeWithoutTraceForClient(stack, clientId);
-  // traceExecuteEnd(res);
+  traceExecuteEnd(res, clientId);
   return res;
 }
 
@@ -232,22 +232,32 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
   // We do not have anymore data locally.
   // Need to fetch more from upstream
   auto& dataContainer = it->second;
+  while (true) {
+    while (!dataContainer.hasDataFor(call)) {
+      if (_upstreamState == ExecutionState::DONE) {
+        // We are done, with everything, we will not be able to fetch any more rows
+        return {_upstreamState, SkipResult{}, nullptr};
+      }
 
-  while (!dataContainer.hasDataFor(call)) {
-    if (_upstreamState == ExecutionState::DONE) {
-      // We are done, with everything, we will not be able to fetch any more rows
-      return {_upstreamState, SkipResult{}, nullptr};
+      auto state = fetchMore(stack);
+      if (state == ExecutionState::WAITING) {
+        return {state, SkipResult{}, nullptr};
+      }
+      _upstreamState = state;
     }
-
-    auto state = fetchMore(stack);
-    if (state == ExecutionState::WAITING) {
-      return {state, SkipResult{}, nullptr};
+    {
+      // If we get here we have data and can return it.
+      // However the call might force us to drop everything (e.g. hardLimit ==
+      // 0) So we need to refetch data eventually.
+      stack.pushCall(call);
+      auto [state, skipped, result] = dataContainer.execute(stack, _upstreamState);
+      if (state == ExecutionState::DONE || !skipped.nothingSkipped() || result != nullptr) {
+        // We have a valid result.
+        return {state, skipped, result};
+      }
+      stack.popCall();
     }
-    _upstreamState = state;
   }
-  // If we get here we have data and can return it.
-  stack.pushCall(call);
-  return dataContainer.execute(stack, _upstreamState);
 }
 
 template <class Executor>
