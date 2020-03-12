@@ -44,6 +44,7 @@ enum class ExecutionState;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
@@ -110,7 +111,7 @@ class AllRowsFetcher {
    *   size_t => Amount of documents skipped
    *   DataRange => Resulting data
    */
-  std::tuple<ExecutionState, size_t, DataRange> execute(AqlCallStack& stack);
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
 
   /**
    * @brief Fetch one new AqlItemRow from upstream.

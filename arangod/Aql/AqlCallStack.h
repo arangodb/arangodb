@@ -63,13 +63,8 @@ class AqlCallStack {
   // Put another call on top of the stack.
   void pushCall(AqlCall&& call);
 
-  // fill up all missing calls within this stack s.t. we reach depth == 0
-  // This needs to be called if an executor requires to be fully executed, even if skipped,
-  // even if the subquery it is located in is skipped.
-  // The default operations added here will correspond to produce all Rows, unlimitted.
-  // e.g. every Modification Executor needs to call this functionality, as modifictions need to be
-  // performed even if skipped.
-  void stackUpMissingCalls();
+  // Put another call on top of the stack.
+  void pushCall(AqlCall const& call);
 
   // Pops one subquery level.
   // if this isRelevent it pops the top-most call from the stack.
@@ -92,12 +87,58 @@ class AqlCallStack {
 
   void toVelocyPack(velocypack::Builder& builder) const;
 
- private:
-  explicit AqlCallStack(std::stack<AqlCall>&& operations);
+  auto is36Compatible() const noexcept -> bool { return _compatibilityMode3_6; }
+
+  /**
+   * @brief Create an equivalent call stack that does a full-produce
+   *        of all Subquery levels. This is required for blocks
+   *        that are not allowed to be bpassed.
+   *        The top-most call remains unmodified, as the Executor might
+   *        require some soft limit on it.
+   *
+   * @return AqlCallStack a stack of equivalent size, that does not skip
+   *         on any lower subquery.
+   */
+  auto createEquivalentFetchAllShadowRowsStack() const -> AqlCallStack;
+
+  /**
+   * @brief Check if we are in a subquery that is in-fact required to
+   *        be skipped. This is relevant for executors that have created
+   *        an equivalentFetchAllShadowRows stack, in order to decide if
+   *        the need to produce output or if they are skipped.
+   *
+   * @return true
+   * @return false
+   */
+  auto needToSkipSubquery() const noexcept -> bool;
+
+  /**
+   * @brief This is only valid if needToSkipSubquery is true.
+   *        It will resolve to the heighest subquery level
+   *        (outermost) that needs to be skipped.
+   *
+   *
+   * @return size_t Depth of the subquery that asks to be skipped.
+   */
+  auto shadowRowDepthToSkip() const -> size_t;
+
+  /**
+   * @brief Get a reference to the call at the given shadowRowDepth
+   *
+   * @param depth ShadowRow depth we need to work on
+   * @return AqlCall& reference to the call, can be modified.
+   */
+  auto modifyCallAtDepth(size_t depth) -> AqlCall&;
 
  private:
-  // The list of operations, stacked by depth (e.g. bottom element is from main query)
-  std::stack<AqlCall> _operations;
+  explicit AqlCallStack(std::vector<AqlCall>&& operations);
+
+ private:
+  // The list of operations, stacked by depth (e.g. bottom element is from main
+  // query) NOTE: This is only mutable on 3.6 compatibility mode. We need to
+  // inject an additional call in any const operation here just to pretend we
+  // are not empty. Can be removed after 3.7.
+  mutable std::vector<AqlCall> _operations;
 
   // The depth of subqueries that have not issued calls into operations,
   // as they have been skipped.

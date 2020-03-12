@@ -219,12 +219,13 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
   Aql/AqlCall.cpp
+  Aql/AqlCallSet.cpp
   Aql/AqlCallStack.cpp
   Aql/AqlExecuteResult.cpp
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
-  Aql/AqlItemBlockInputRange.cpp
   Aql/AqlItemBlockInputMatrix.cpp
+  Aql/AqlItemBlockInputRange.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
   Aql/AqlItemMatrix.cpp
@@ -348,6 +349,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SimpleModifier.cpp
   Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
+  Aql/SkipResult.cpp
   Aql/SortCondition.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp

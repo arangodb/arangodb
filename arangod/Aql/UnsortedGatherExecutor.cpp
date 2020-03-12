@@ -41,133 +41,87 @@ struct Dependency {
 };
 
 UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher) {}
+    : _fetcher{fetcher} {}
 
 UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 
 auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                          OutputAqlItemRow& output)
-    -> std::tuple<ExecutorState, Stats, AqlCall, size_t> {
+    -> std::tuple<ExecutorState, Stats, AqlCallSet> {
   while (!output.isFull() && !done()) {
     if (input.hasDataRow(currentDependency())) {
       auto [state, inputRow] = input.nextDataRow(currentDependency());
       output.copyRow(inputRow);
       TRI_ASSERT(output.produced());
       output.advanceRow();
-
-      if (state == ExecutorState::DONE) {
-        advanceDependency();
-      }
     } else {
       if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+        TRI_ASSERT(input.rangeForDependency(currentDependency()).skippedInFlight() == 0);
         advanceDependency();
       } else {
-        return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
-                currentDependency()};
+        auto callSet = AqlCallSet{};
+        callSet.calls.emplace_back(
+            AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
+        return {input.upstreamState(currentDependency()), Stats{}, callSet};
       }
     }
   }
 
   while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+    auto range = input.rangeForDependency(currentDependency());
+    if (range.upstreamState() == ExecutorState::HASMORE || range.skippedInFlight() > 0) {
+      // skippedInFlight > 0 -> output.isFull()
+      TRI_ASSERT(range.skippedInFlight() == 0 || output.isFull());
+      break;
+    }
+    TRI_ASSERT(input.rangeForDependency(currentDependency()).skippedInFlight() == 0);
     advanceDependency();
   }
 
   if (done()) {
-    // here currentDependency is invalid which will cause things to crash
-    // if we ask upstream in ExecutionBlockImpl. yolo.
     TRI_ASSERT(!input.hasDataRow());
-    return {ExecutorState::DONE, Stats{}, AqlCall{}, currentDependency()};
+    return {ExecutorState::DONE, Stats{}, AqlCallSet{}};
   } else {
-    return {input.upstreamState(currentDependency()), Stats{}, AqlCall{},
-            currentDependency()};
+    auto callSet = AqlCallSet{};
+    callSet.calls.emplace_back(
+        AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
+    return {input.upstreamState(currentDependency()), Stats{}, callSet};
   }
 }
 
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, Stats, size_t, AqlCall, size_t> {
-  while (call.needSkipMore() && !done()) {
-    if (input.hasDataRow(currentDependency())) {
-      auto [state, inputRow] = input.nextDataRow(currentDependency());
-      call.didSkip(1);
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
+  auto skipped = size_t{0};
 
-      if (state == ExecutorState::DONE) {
-        advanceDependency();
-      }
-    } else {
-      if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
-        advanceDependency();
-      } else {
-        // We need to fetch more first
-        break;
-      }
-    }
+  if (call.getOffset() > 0) {
+    skipped = input.skipForDependency(currentDependency(), call.getOffset());
+  } else {
+    skipped = input.skipAllForDependency(currentDependency());
   }
+  call.didSkip(skipped);
 
+  // Skip over dependencies that are DONE, they cannot skip more
   while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
     advanceDependency();
   }
 
+  // Here we are either done, or currentDependency() still could produce more
   if (done()) {
-    // here currentDependency is invalid which will cause things to crash
-    // if we ask upstream in ExecutionBlockImpl. yolo.
-    return {ExecutorState::DONE, Stats{}, call.getSkipCount(), AqlCall{},
-            currentDependency()};
+    return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
   } else {
-    return {input.upstreamState(currentDependency()), Stats{},
-            call.getSkipCount(), AqlCall{}, currentDependency()};
+    // If we're not done skipping, we can just request the current clientcall
+    // from upstream
+    auto callSet = AqlCallSet{};
+    if (call.needSkipMore()) {
+      callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
+    }
+    return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
   }
 }
-
-auto UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output)
-    -> std::pair<ExecutionState, Stats> {
-  while (!output.isFull() && !done()) {
-    // Note that fetchNextRow may return DONE (because the current dependency is
-    // DONE), and also return an unitialized row in that case, but we are not
-    // DONE completely - that's what `done()` is for.
-    auto [state, inputRow] = fetchNextRow(output.numRowsLeft());
-    if (state == ExecutionState::WAITING) {
-      return {state, {}};
-    }
-    // HASMORE => inputRow.isInitialized()
-    TRI_ASSERT(state == ExecutionState::DONE || inputRow.isInitialized());
-    if (inputRow.isInitialized()) {
-      output.copyRow(inputRow);
-      TRI_ASSERT(output.produced());
-      output.advanceRow();
-    }
-  }
-
-  auto state = done() ? ExecutionState::DONE : ExecutionState::HASMORE;
-  return {state, {}};
-}
-
-auto UnsortedGatherExecutor::fetcher() const noexcept -> const Fetcher& {
-  return _fetcher;
-}
-
-auto UnsortedGatherExecutor::fetcher() noexcept -> Fetcher& { return _fetcher; }
 
 auto UnsortedGatherExecutor::numDependencies() const
     noexcept(noexcept(_fetcher.numberDependencies())) -> size_t {
   return _fetcher.numberDependencies();
-}
-
-auto UnsortedGatherExecutor::fetchNextRow(size_t atMost)
-    -> std::pair<ExecutionState, InputAqlItemRow> {
-  auto res = fetcher().fetchRowForDependency(currentDependency(), atMost);
-  if (res.first == ExecutionState::DONE) {
-    advanceDependency();
-  }
-  return res;
-}
-
-auto UnsortedGatherExecutor::skipNextRows(size_t atMost)
-    -> std::pair<ExecutionState, size_t> {
-  auto res = fetcher().skipRowsForDependency(currentDependency(), atMost);
-  if (res.first == ExecutionState::DONE) {
-    advanceDependency();
-  }
-  return res;
 }
 
 auto UnsortedGatherExecutor::done() const noexcept -> bool {
@@ -181,27 +135,4 @@ auto UnsortedGatherExecutor::currentDependency() const noexcept -> size_t {
 auto UnsortedGatherExecutor::advanceDependency() noexcept -> void {
   TRI_ASSERT(_currentDependency < numDependencies());
   ++_currentDependency;
-}
-
-auto UnsortedGatherExecutor::skipRows(size_t const atMost)
-    -> std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> {
-  auto const rowsLeftToSkip = [&atMost, &skipped = this->_skipped]() {
-    TRI_ASSERT(atMost >= skipped);
-    return atMost - skipped;
-  };
-  while (rowsLeftToSkip() > 0 && !done()) {
-    // Note that skipNextRow may return DONE (because the current dependency is
-    // DONE), and also return an unitialized row in that case, but we are not
-    // DONE completely - that's what `done()` is for.
-    auto [state, skipped] = skipNextRows(rowsLeftToSkip());
-    _skipped += skipped;
-    if (state == ExecutionState::WAITING) {
-      return {state, {}, 0};
-    }
-  }
-
-  auto state = done() ? ExecutionState::DONE : ExecutionState::HASMORE;
-  auto skipped = size_t{0};
-  std::swap(skipped, _skipped);
-  return {state, {}, skipped};
 }

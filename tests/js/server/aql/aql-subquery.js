@@ -343,8 +343,8 @@ function ahuacatlSubqueryTestSuite () {
 /// A count collect block will produce an output even if it does not get an input
 /// specifically it will rightfully count 0.
 /// The insert block will write into the collection if it gets an input.
-/// So the assertion here is, that if a subquery has no input, than all it's
-/// Parts do not have side-effects, but the subquery still prduces valid results
+/// Even if the outer subquery is skipped. Henve we require to have documents
+/// inserted here.
 ////////////////////////////////////////////////////////////////////////////////
     testCollectWithinEmptyNestedSubquery: function () {
       const colName = "UnitTestSubqueryCollection";
@@ -367,7 +367,7 @@ function ahuacatlSubqueryTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(expected, actual);
-        assertEqual(db[colName].count(), 0);
+        assertEqual(db[colName].count(), 1);
       } finally {
         db._drop(colName);
       }

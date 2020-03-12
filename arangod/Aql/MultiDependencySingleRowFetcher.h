@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 #define ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 
+#include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -32,13 +33,13 @@
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do need one
@@ -89,6 +90,8 @@ class MultiDependencySingleRowFetcher {
   explicit MultiDependencySingleRowFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~MultiDependencySingleRowFetcher() = default;
 
+  void init();
+
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   MultiDependencySingleRowFetcher();
@@ -134,8 +137,13 @@ class MultiDependencySingleRowFetcher {
   //@deprecated
   auto useStack(AqlCallStack const& stack) -> void;
 
-  auto executeForDependency(size_t const dependency, AqlCallStack& stack)
-      -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange>;
+  [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
+      -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
+
+  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
+      -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
+
+  [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
@@ -145,6 +153,13 @@ class MultiDependencySingleRowFetcher {
    */
   std::vector<DependencyInfo> _dependencyInfos;
   std::vector<ExecutionState> _dependencyStates;
+
+  /// @brief Only needed for parallel executors; could be omitted otherwise
+  ///        It's size is >0 after init() is called, and this is currently used
+  ///        in initOnce() to make sure that init() is called exactly once.
+  std::vector<std::optional<AqlCallStack>> _callsInFlight;
+
+  bool _didReturnSubquerySkips{false};
 
  private:
   /**
@@ -177,7 +192,6 @@ class MultiDependencySingleRowFetcher {
   bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

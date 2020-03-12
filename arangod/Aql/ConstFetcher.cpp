@@ -25,6 +25,7 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Aql/SkipResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
@@ -37,7 +38,7 @@ ConstFetcher::ConstFetcher(DependencyProxy& executionBlock)
     : _currentBlock{nullptr}, _rowIndex(0) {}
 
 auto ConstFetcher::execute(AqlCallStack& stack)
-    -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange> {
+    -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
   // Note this fetcher can only be executed on top level (it is the singleton, or test)
   TRI_ASSERT(stack.isRelevant());
   // We only peek the call here, as we do not take over ownership.
@@ -45,7 +46,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   auto call = stack.peek();
   if (_blockForPassThrough == nullptr) {
     // we are done, nothing to move arround here.
-    return {ExecutionState::DONE, 0, AqlItemBlockInputRange{ExecutorState::DONE}};
+    return {ExecutionState::DONE, SkipResult{}, AqlItemBlockInputRange{ExecutorState::DONE}};
   }
   std::vector<std::pair<size_t, size_t>> sliceIndexes;
   sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->size());
@@ -152,7 +153,10 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     SharedAqlItemBlockPtr resultBlock = _blockForPassThrough;
     _blockForPassThrough.reset(nullptr);
     _rowIndex = 0;
-    return {ExecutionState::DONE, call.getSkipCount(),
+    SkipResult skipped{};
+    skipped.didSkip(call.getSkipCount());
+
+    return {ExecutionState::DONE, skipped,
             DataRange{ExecutorState::DONE, call.getSkipCount(), resultBlock, 0}};
   }
 
@@ -176,7 +180,9 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     // No data to be returned
     // Block is dropped.
     resultBlock = nullptr;
-    return {ExecutionState::DONE, call.getSkipCount(),
+    SkipResult skipped{};
+    skipped.didSkip(call.getSkipCount());
+    return {ExecutionState::DONE, skipped,
             DataRange{ExecutorState::DONE, call.getSkipCount()}};
   }
 
@@ -187,8 +193,9 @@ auto ConstFetcher::execute(AqlCallStack& stack)
       _blockForPassThrough == nullptr ? ExecutorState::DONE : ExecutorState::HASMORE;
 
   resultBlock = resultBlock->slice(sliceIndexes);
-  return {resState, call.getSkipCount(),
-          DataRange{rangeState, call.getSkipCount(), resultBlock, 0}};
+  SkipResult skipped{};
+  skipped.didSkip(call.getSkipCount());
+  return {resState, skipped, DataRange{rangeState, call.getSkipCount(), resultBlock, 0}};
 }
 
 void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {

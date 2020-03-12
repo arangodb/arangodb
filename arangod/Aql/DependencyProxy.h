@@ -37,6 +37,7 @@
 namespace arangodb::aql {
 class ExecutionBlock;
 class AqlItemBlockManager;
+class SkipResult;
 
 /**
  * @brief Thin interface to access the methods of ExecutionBlock that are
@@ -74,9 +75,9 @@ class DependencyProxy {
   TEST_VIRTUAL ~DependencyProxy() = default;
 
   // TODO Implement and document properly!
-  TEST_VIRTUAL std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack& stack);
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack& stack);
 
-  TEST_VIRTUAL std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeForDependency(
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeForDependency(
       size_t dependency, AqlCallStack& stack);
 
   // This is only TEST_VIRTUAL, so we ignore this lint warning:

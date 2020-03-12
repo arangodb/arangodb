@@ -47,6 +47,7 @@ class ExecutionNode;
 class ExecutionPlan;
 class QueryRegistry;
 class Query;
+class SkipResult;
 enum class SerializationFormat;
 
 class ExecutionEngine {
@@ -98,10 +99,10 @@ class ExecutionEngine {
   std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   auto execute(AqlCallStack const& stack)
-      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   auto executeForClient(AqlCallStack const& stack, std::string const& clientId)
-      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   /// @brief getSome
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost);

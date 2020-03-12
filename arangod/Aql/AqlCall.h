@@ -28,6 +28,7 @@
 #include "Cluster/ResultT.h"
 
 #include <cstddef>
+#include <iosfwd>
 #include <variant>
 
 namespace arangodb::velocypack {
@@ -50,14 +51,14 @@ struct AqlCall {
 
   AqlCall() = default;
   // Replacements for struct initialization
-  explicit AqlCall(size_t offset, Limit softLimit = Infinity{},
-                   Limit hardLimit = Infinity{}, bool fullCount = false)
+  explicit constexpr AqlCall(size_t offset, Limit softLimit = Infinity{},
+                             Limit hardLimit = Infinity{}, bool fullCount = false)
       : offset{offset}, softLimit{softLimit}, hardLimit{hardLimit}, fullCount{fullCount} {}
 
   enum class LimitType { SOFT, HARD };
-  AqlCall(size_t offset, bool fullCount, Infinity)
+  constexpr AqlCall(size_t offset, bool fullCount, Infinity)
       : offset{offset}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fullCount} {}
-  AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
+  constexpr AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
       : offset{offset},
         softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},
         hardLimit{limitType == LimitType::HARD ? Limit{limit} : Limit{Infinity{}}},
@@ -158,6 +159,7 @@ struct AqlCall {
     return skippedRows;
   }
 
+  // TODO this is the same as shouldSkip(), remove one of them.
   [[nodiscard]] bool needSkipMore() const noexcept {
     return (0 < getOffset()) || (getLimit() == 0 && needsFullCount());
   }
@@ -174,6 +176,8 @@ struct AqlCall {
     std::visit(minus, hardLimit);
   }
 
+  bool hasLimit() const { return hasHardLimit() || hasSoftLimit(); }
+
   bool hasHardLimit() const {
     return !std::holds_alternative<AqlCall::Infinity>(hardLimit);
   }
@@ -184,6 +188,7 @@ struct AqlCall {
 
   bool needsFullCount() const { return fullCount; }
 
+  // TODO this is the same as needSkipMore(), remove one of them.
   bool shouldSkip() const {
     return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
   }
@@ -198,6 +203,15 @@ constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
   }
   return std::get<size_t>(a) < std::get<size_t>(b);
 }
+
+constexpr bool operator<(AqlCall::Limit const& a, size_t b) {
+  if (std::holds_alternative<AqlCall::Infinity>(a)) {
+    return false;
+  }
+  return std::get<size_t>(a) < b;
+}
+
+constexpr bool operator<(size_t a, AqlCall::Limit const& b) { return !(b < a); }
 
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
   return std::visit(overload{[n](size_t const& i) -> AqlCall::Limit {
@@ -243,22 +257,10 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
          left.skippedRows == right.skippedRows;
 }
 
-inline std::ostream& operator<<(std::ostream& out,
-                                const arangodb::aql::AqlCall::Limit& limit) {
-  return std::visit(arangodb::overload{[&out](size_t const& i) -> std::ostream& {
-                                         return out << i;
-                                       },
-                                       [&out](arangodb::aql::AqlCall::Infinity const&) -> std::ostream& {
-                                         return out << "unlimited";
-                                       }},
-                    limit);
-}
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::Limit& limit)
+    -> std::ostream&;
 
-inline std::ostream& operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) {
-  return out << "{ skip: " << call.getOffset() << ", softLimit: " << call.softLimit
-             << ", hardLimit: " << call.hardLimit
-             << ", fullCount: " << std::boolalpha << call.fullCount << " }";
-}
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;
 
 }  // namespace arangodb::aql
 

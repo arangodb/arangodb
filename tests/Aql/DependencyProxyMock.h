@@ -33,6 +33,9 @@
 #include <queue>
 
 namespace arangodb {
+namespace aql {
+class SkipResult;
+}
 namespace tests {
 namespace aql {
 
@@ -51,7 +54,7 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
 
   std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  std::tuple<arangodb::aql::ExecutionState, size_t, arangodb::aql::SharedAqlItemBlockPtr> execute(
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
       arangodb::aql::AqlCallStack& stack) override;
 
  private:
@@ -101,8 +104,7 @@ class MultiDependencyProxyMock
 
   // NOLINTNEXTLINE google-default-arguments
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlockForDependency(
-      size_t dependency,
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
+      size_t dependency, size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
 
   std::pair<arangodb::aql::ExecutionState, size_t> skipSomeForDependency(size_t dependency,
                                                                          size_t atMost) override;

@@ -315,10 +315,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @returns sort mode for the specified number of shards
   static SortMode evaluateSortMode(size_t numberOfShards,
-                                   size_t shardsRequiredForHeapMerge = 5) noexcept {
-    return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap
-                                                        : SortMode::MinElement;
-  }
+                                   size_t shardsRequiredForHeapMerge = 5) noexcept;
 
   /// @brief constructor with an id
   GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, 

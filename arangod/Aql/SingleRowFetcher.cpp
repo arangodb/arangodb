@@ -30,6 +30,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/SkipResult.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -77,28 +78,31 @@ SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
 }
 
 template <BlockPassthrough passBlocksThrough>
-std::tuple<ExecutionState, size_t, AqlItemBlockInputRange>
+std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>
 SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
   auto [state, skipped, block] = _dependencyProxy->execute(stack);
   if (state == ExecutionState::WAITING) {
     // On waiting we have nothing to return
-    return {state, 0, AqlItemBlockInputRange{ExecutorState::HASMORE}};
+    return {state, SkipResult{}, AqlItemBlockInputRange{ExecutorState::HASMORE}};
   }
   if (block == nullptr) {
     if (state == ExecutionState::HASMORE) {
-      return {state, skipped, AqlItemBlockInputRange{ExecutorState::HASMORE, skipped}};
+      return {state, skipped,
+              AqlItemBlockInputRange{ExecutorState::HASMORE, skipped.getSkipCount()}};
     }
-    return {state, skipped, AqlItemBlockInputRange{ExecutorState::DONE, skipped}};
+    return {state, skipped,
+            AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount()}};
   }
 
   auto [start, end] = block->getRelevantRange();
   if (state == ExecutionState::HASMORE) {
     TRI_ASSERT(block != nullptr);
     return {state, skipped,
-            AqlItemBlockInputRange{ExecutorState::HASMORE, skipped, block, start}};
+            AqlItemBlockInputRange{ExecutorState::HASMORE,
+                                   skipped.getSkipCount(), block, start}};
   }
   return {state, skipped,
-          AqlItemBlockInputRange{ExecutorState::DONE, skipped, block, start}};
+          AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(), block, start}};
 }
 
 template <BlockPassthrough passBlocksThrough>
