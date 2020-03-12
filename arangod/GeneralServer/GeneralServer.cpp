@@ -33,7 +33,6 @@
 #include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -185,18 +184,41 @@ IoContext& GeneralServer::selectIoContext() {
   return _contexts[lowpos];
 }
 
-std::shared_ptr<asio_ns::ssl::context> GeneralServer::sslContext() {
+#ifdef USE_ENTERPRISE
+extern int clientHelloCallback(SSL* ssl, int* al, void* arg);
+#endif
+
+SslServerFeature::SslContextList GeneralServer::sslContexts() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
-  if (!_sslContext) {
-    _sslContext = SslServerFeature::SSL->createSslContext();
+  if (!_sslContexts) {
+    _sslContexts = SslServerFeature::SSL->createSslContexts();
+#ifdef USE_ENTERPRISE
+    if (_sslContexts->size() > 0) {
+      // Set a client hello callback such that we have a chance to change the SSL context:
+      SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
+    }
+#endif
   }
-  return _sslContext;
+  return _sslContexts;
+}
+
+SSL_CTX* GeneralServer::getSSL_CTX(size_t index) {
+  std::lock_guard<std::mutex> guard(_sslContextMutex);
+  return (*_sslContexts)[index].native_handle();
 }
 
 Result GeneralServer::reloadTLS() {
-  std::lock_guard<std::mutex> guard(_sslContextMutex);
   try {
-    _sslContext = SslServerFeature::SSL->createSslContext();
+    {
+      std::lock_guard<std::mutex> guard(_sslContextMutex);
+      _sslContexts = SslServerFeature::SSL->createSslContexts();
+#ifdef USE_ENTERPRISE
+      if (_sslContexts->size() > 0) {
+        // Set a client hello callback such that we have a chance to change the SSL context:
+        SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
+      }
+#endif
+    }
     // Now cancel every acceptor once, such that a new AsioSocket is generated which will
     // use the new context. Otherwise, the first connection will still use the old certs:
     for (auto& a : _acceptors) {

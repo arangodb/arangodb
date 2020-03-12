@@ -89,14 +89,18 @@ std::string jwt::generateRawJwt(std::string const& secret, VPackSlice const& bod
     headerBuilder.add("typ", VPackValue("JWT"));
   }
 
-  std::string fullMessage(encodeBase64(headerBuilder.toJson()) + "." +
-                          encodeBase64(body.toJson()));
+  // https://tools.ietf.org/html/rfc7515#section-2 requires
+  // JWT to use base64-encoding without trailing padding `=` chars
+  bool const pad = false;
+
+  std::string fullMessage(encodeBase64(headerBuilder.toJson(), pad) + "." +
+                          encodeBase64(body.toJson(), pad));
 
   std::string signature =
       sslHMAC(secret.c_str(), secret.length(), fullMessage.c_str(),
               fullMessage.length(), Algorithm::ALGORITHM_SHA256);
 
-  return fullMessage + "." + encodeBase64U(signature);
+  return fullMessage + "." + encodeBase64U(signature, pad);
 }
 
 // code from ArangoDBs SslInterface.cpp
