@@ -202,7 +202,7 @@ class TraversalNode : public virtual GraphNode {
   //        You are not responsible for it!
   Expression* pruneExpression() const { return _pruneExpression.get(); }
 
-  /// @brief Overrides GraphNode::Options with a more specific return type
+  /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
   auto options() const -> traverser::TraverserOptions*;
 
