@@ -109,11 +109,8 @@ struct basic_sort : irs::sort {
       return nullptr; // do not need to collect stats
     }
 
-    void add(irs::byte_type* dst, const irs::byte_type* src) const override {
-      score_cast<size_t>(dst) += score_cast<size_t>(src);
-    }
-
-    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start, const size_t size, size_t offset) const {
+    virtual void merge(irs::byte_type* dst, const irs::byte_type** src_start,
+                       const size_t size, size_t offset) const override {
       score_cast<size_t>(dst + offset) = 0;
       for (size_t i = 0; i < size; ++i) {
         score_cast<size_t>(dst + offset) += score_cast<size_t>(src_start[i]  + offset);

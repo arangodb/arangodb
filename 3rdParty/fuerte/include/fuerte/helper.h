@@ -112,8 +112,8 @@ std::string mapToKeys(std::unordered_map<K, V, A> map) {
   return _detail::mapToKeys(map.begin(), map.end());
 }
 
-std::string encodeBase64(std::string const&);
-std::string encodeBase64U(std::string const&);
+std::string encodeBase64(std::string const&, bool pad);
+std::string encodeBase64U(std::string const&, bool pad);
 
 void toLowerInPlace(std::string& str);
 

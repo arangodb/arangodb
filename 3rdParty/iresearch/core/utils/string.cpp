@@ -56,9 +56,9 @@ NS_END
 
 NS_ROOT
 
-/* -------------------------------------------------------------------
- * basic_string_ref
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                   basic_string_ref implementation
+// -----------------------------------------------------------------------------
 
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
@@ -93,5 +93,5 @@ size_t hash(const string_ref& value) noexcept {
   return get_hash(value.c_str(), value.size());
 }
 
-NS_END // detail
+NS_END // hash_utils
 NS_END
