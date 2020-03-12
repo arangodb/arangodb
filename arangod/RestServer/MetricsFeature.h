@@ -87,11 +87,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
              std::string const& help = std::string()) {
 
     std::string labels = mk.labels;
-    if (ServerState::instance() != nullptr) {
+    if (ServerState::instance() != nullptr &&
+        ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
       if (!labels.empty()) {
         labels += ",";
       }
-      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+      labels += "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
+        "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
 
     auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);
@@ -180,11 +182,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
     metrics_key mk(key);
     std::string labels = mk.labels;
-    if (ServerState::instance() != nullptr) {
+    if (ServerState::instance() != nullptr &&
+        ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
       if (!labels.empty()) {
         labels += ",";
       }
-      labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+      labels += "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
+        "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
     auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, labels);
     bool success = false;

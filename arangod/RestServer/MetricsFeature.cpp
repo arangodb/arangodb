@@ -114,11 +114,13 @@ Counter& MetricsFeature::counter (
   std::string const& help) {
 
   std::string labels = mk.labels;
-  if (ServerState::instance() != nullptr) {
+  if (ServerState::instance() != nullptr &&
+      ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
     if (!labels.empty()) {
       labels += ",";
     }
-    labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+    labels += "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
+      "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
   }
   auto metric = std::make_shared<Counter>(val, mk.name, help, labels);
   bool success = false;
