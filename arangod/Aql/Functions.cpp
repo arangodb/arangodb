@@ -1589,6 +1589,14 @@ namespace {
   AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx, transaction::Methods* trx,
     VPackFunctionParameters const& args) {
 
+    if (args.size() < 3) {
+      registerWarning(
+        ctx, AFN,
+        arangodb::Result{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                          "Minimum 3 arguments are expected." });
+      return AqlValue(AqlValueHintNull());
+    }
+
     auto const& attribute = extractFunctionParameterValue(args, 0);
     if (ADB_UNLIKELY(!attribute.isString())) {
       arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
@@ -1739,19 +1747,15 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
     targetNgrams.push_back(token.value());
   }
 
-  if (targetNgrams.empty() && attrNgrams.empty()) {
-    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintBool{true} };
-  }
-
-  size_t thresholdMatches = (size_t)std::ceil((float_t)targetNgrams.size() * threshold);
-
+  // consider only non empty ngrams sets. As no ngrams emitted - means no data in index = no match
   if (!targetNgrams.empty() && !attrNgrams.empty()) {
+    size_t thresholdMatches = (size_t)std::ceil((float_t)targetNgrams.size() * threshold);
     size_t d = 0; // will store upper-left cell value for current cache row
     std::vector<size_t> cache(attrNgrams.size() + 1, 0);
     for (auto const& targetNgram : targetNgrams) {
       size_t s_ngram_idx = 1;
       for (; s_ngram_idx <= attrNgrams.size(); ++s_ngram_idx) {
-        size_t curMatches = d +  (size_t)(attrNgrams[s_ngram_idx + 1] == targetNgram);
+        size_t curMatches = d +  (size_t)(attrNgrams[s_ngram_idx - 1] == targetNgram);
         if (curMatches >= thresholdMatches ) {
           return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintBool{true} };
         }

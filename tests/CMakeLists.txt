@@ -52,6 +52,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/LimitExecutorTest.cpp
   Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
+  Aql/NgramMatchFunctionTest.cpp
+  Aql/NgramSimilarityFunctionTest.cpp
+  Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/QueryHelper.cpp
   Aql/RemoveExecutorTest.cpp
