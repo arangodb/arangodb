@@ -94,7 +94,9 @@ function runArangodRecovery (params) {
     if (useEncryption) {
       const key = '01234567890123456789012345678901';
       let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
-      fs.makeDirectory(keyDir);
+      if (!fs.exists(keyDir)) {  // needed on win32
+        fs.makeDirectory(keyDir);
+      }
       pu.cleanupDBDirectoriesAppend(keyDir);
     
       let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
