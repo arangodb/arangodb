@@ -259,7 +259,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
                        VertexRef& join, std::optional<double>& currentBest);
 
  private:
-  bool _traversalDone;
+  bool _traversalDone{true};
 
   VertexRef _start;
   VertexRef _end;

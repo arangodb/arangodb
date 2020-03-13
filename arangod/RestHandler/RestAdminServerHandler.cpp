@@ -217,6 +217,7 @@ void RestAdminServerHandler::handleMode() {
 void RestAdminServerHandler::handleDatabaseDefaults() {
   auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice());
   VPackBuilder builder;
+
   builder.openObject();
   addClusterOptions(builder, defaults);
   builder.close();

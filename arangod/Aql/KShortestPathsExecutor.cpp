@@ -232,7 +232,9 @@ auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
   tmp->clear();
 
   if (_finder.getNextPathAql(*tmp.builder())) {
-    output.cloneValueInto(_infos.getOutputRegister(), _inputRow, AqlValue(*tmp.builder()));
+    AqlValue path{*tmp.builder()};
+    AqlValueGuard guard{path, true};
+    output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
     output.advanceRow();
   }
 }

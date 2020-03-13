@@ -168,13 +168,15 @@ auto ShortestPathExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
   while (!output.isFull() && _posInPath < _path->length()) {
     if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
       AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
-      output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
-                            _inputRow, vertex);
+      AqlValueGuard guard{vertex, true};
+      output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
+                           _inputRow, guard);
     }
     if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
       AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
-      output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
-                            _inputRow, edge);
+      AqlValueGuard guard{edge, true};
+      output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
+                           _inputRow, guard);
     }
     output.advanceRow();
     _posInPath++;
