@@ -268,13 +268,18 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
     MapRemoteToSnippet& queryIds, std::unordered_map<size_t, size_t>& nodeAliases) {
+  LOG_DEVEL << "==== buildEngines DBServerServerBased: ====" << queryIds;
+  LOG_DEVEL << "nodeAliases: " << nodeAliases;
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
   if (dbServers.empty()) {
     // No snippets to be placed on dbservers
+    LOG_DEVEL << "++++ exit no servers" << nodeAliases;
     return TRI_ERROR_NO_ERROR;
   }
+
+  LOG_DEVEL << "relevant servers: " << dbServers;
   // We at least have one Snippet, or one graph node.
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
@@ -283,6 +288,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr only happens on controlled shutdown
+    LOG_DEVEL << "++++ no pool";
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
@@ -300,6 +306,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.skipScheduler = true;  // hack to speed up future.get()
   options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
+  LOG_DEVEL << "dbServers: " << dbServers;
   for (auto const& server : dbServers) {
     std::string const serverDest = "server:" + server;
 
@@ -342,6 +349,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       // This is possible in the satellite case.
       // The leader of a read-only satellite is potentially
       // not part of the query.
+      LOG_DEVEL << "++ continue" << dbServers;
+      LOG_DEVEL << "infoSlice:" << infoSlice.toJson();
+      if(infoSlice.hasKey("snippets")) {
+        LOG_DEVEL << "snippets: " << infoSlice.get("snippets").toJson();
+      }
+      LOG_DEVEL << infoSlice.toJson();
       continue;
     }
     TRI_ASSERT((infoSlice.hasKey("snippets") && infoSlice.get("snippets").isObject() &&
@@ -365,10 +378,13 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
           << server << " responded with " << code << " -> " << message;
       LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson();
+      LOG_DEVEL << "++ res fail" << message;
       return {code, message};
     }
 
+
     VPackSlice response = res.response->slice();
+    LOG_DEVEL << "--- response dbserverpars.buildEngines ---";
     if (response.isNone()) {
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
@@ -376,6 +392,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     if (!result.ok()) {
       return result;
     }
+
+    LOG_DEVEL << "queryIds:" << queryIds;
+    LOG_DEVEL << response.toJson();
   }
   cleanupGuard.cancel();
   return TRI_ERROR_NO_ERROR;

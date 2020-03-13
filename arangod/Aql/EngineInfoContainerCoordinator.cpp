@@ -75,6 +75,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   auto engine = query.engine();
 
+  TRI_ASSERT(!dbServerQueryIds.empty());
   auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
   if (!res.ok()) {
     return res;

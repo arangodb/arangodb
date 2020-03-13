@@ -136,6 +136,10 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 
       // now we'll create a remote node for each shard and add it to the
       // gather node (eb->addDependency)
+      LOG_DEVEL << "------------------------------------------------";
+      LOG_DEVEL << "remote id" << remoteNode->id();
+      LOG_DEVEL << "queryIds"  << queryIds;
+
       auto serversForRemote = queryIds.find(remoteNode->id());
       // Planning gone terribly wrong. The RemoteNode does not have a
       // counter-part to fetch data from.
@@ -485,6 +489,8 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     if (res.fail()) {
       return res;
     }
+
+    TRI_ASSERT(!queryIds.empty());
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.

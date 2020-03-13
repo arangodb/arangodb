@@ -201,7 +201,9 @@ std::vector<Collection const*> ShardLocking::getUsedCollections() const {
 }
 
 std::vector<ServerID> ShardLocking::getRelevantServers() {
+  LOG_DEVEL << "=== get relevant servers ===";
   if (_collectionLocking.empty()) {
+    LOG_DEVEL << "exit empty locking";
     // Nothing todo, there are no DBServers
     return {};
   }
