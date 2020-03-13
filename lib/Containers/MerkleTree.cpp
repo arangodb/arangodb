@@ -220,6 +220,11 @@ MerkleTree<BranchingBits, LockStripes>::deserialize(velocypack::Slice slice) {
     return tree;
   }
 
+  read = slice.get(StaticStrings::RevisionTreeBranchingFactor);
+  if (!read.isNumber() || read.getNumber<std::size_t>() != BranchingFactor) {
+    return tree;
+  }
+
   read = slice.get(StaticStrings::RevisionTreeMaxDepth);
   if (!read.isNumber()) {
     return tree;
@@ -567,6 +572,7 @@ void MerkleTree<BranchingBits, LockStripes>::serialize(velocypack::Builder& outp
   velocypack::ObjectBuilder topLevelGuard(&output);
   output.add(StaticStrings::RevisionTreeVersion, velocypack::Value(::CurrentVersion));
   output.add(StaticStrings::RevisionTreeMaxDepth, velocypack::Value(depth));
+  output.add(StaticStrings::RevisionTreeBranchingFactor, velocypack::Value(BranchingFactor));
   output.add(StaticStrings::RevisionTreeRangeMax,
              basics::HybridLogicalClock::encodeTimeStampToValuePair(meta().rangeMax, ridBuffer));
   output.add(StaticStrings::RevisionTreeRangeMin,
