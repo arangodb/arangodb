@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
 #define ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
 
+#include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
@@ -38,17 +39,18 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class IdExecutorInfos;
 class SharedAqlItemBlockPtr;
+struct AqlCall;
 
 /**
-* @brief Produces all rows from its dependencies, which may be more than one,
-* in some unspecified order. It is, purposefully, strictly synchronous, and
-* always waits for an answer before requesting the next row(s). This is as
-* opposed to the ParallelUnsortedGather, which already starts fetching the next
-* dependenci(es) while waiting for an answer.
-*
-* The actual implementation fetches all available rows from the first
-* dependency, then from the second, and so forth. But that is not guaranteed.
-*/
+ * @brief Produces all rows from its dependencies, which may be more than one,
+ * in some unspecified order. It is, purposefully, strictly synchronous, and
+ * always waits for an answer before requesting the next row(s). This is as
+ * opposed to the ParallelUnsortedGather, which already starts fetching the next
+ * dependenci(es) while waiting for an answer.
+ *
+ * The actual implementation fetches all available rows from the first
+ * dependency, then from the second, and so forth. But that is not guaranteed.
+ */
 class UnsortedGatherExecutor {
  public:
   struct Properties {
@@ -72,32 +74,42 @@ class UnsortedGatherExecutor {
   ~UnsortedGatherExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief Produce rows
    *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
+   * @param input DataRange delivered by the fetcher
+   * @param output place to write rows to
+   * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
+   *   ExecutorState: DONE or HASMORE (only within a subquery)
+   *   Stats: Stats gerenated here
+   *   AqlCallSet: Request to upstream
    */
-  [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
-      -> std::pair<ExecutionState, Stats>;
+  [[nodiscard]] auto produceRows(typename Fetcher::DataRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCallSet>;
 
-  [[nodiscard]] auto skipRows(size_t atMost) -> std::tuple<ExecutionState, NoStats, size_t>;
+  /**
+   * @brief Skip rows
+   *
+   * @param input DataRange delivered by the fetcher
+   * @param call skip request form consumer
+   * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
+   *   ExecutorState: DONE or HASMORE (only within a subquery)
+   *   Stats: Stats gerenated here
+   *   size_t: Number of rows skipped
+   *   AqlCallSet: Request to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
  private:
   [[nodiscard]] auto numDependencies() const
       noexcept(noexcept(static_cast<Fetcher*>(nullptr)->numberDependencies())) -> size_t;
-  [[nodiscard]] auto fetcher() const noexcept -> Fetcher const&;
-  [[nodiscard]] auto fetcher() noexcept -> Fetcher&;
   [[nodiscard]] auto done() const noexcept -> bool;
   [[nodiscard]] auto currentDependency() const noexcept -> size_t;
-  [[nodiscard]] auto fetchNextRow(size_t atMost)
-      -> std::pair<ExecutionState, InputAqlItemRow>;
-  [[nodiscard]] auto skipNextRows(size_t atMost) -> std::pair<ExecutionState, size_t>;
   auto advanceDependency() noexcept -> void;
 
  private:
   Fetcher& _fetcher;
   size_t _currentDependency{0};
-  size_t _skipped{0};
 };
 
 }  // namespace arangodb::aql

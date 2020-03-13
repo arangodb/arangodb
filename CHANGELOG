@@ -1,6 +1,17 @@
 devel
 -----
 
+
+* `splice-subqueries` optimization is not limited by any type of operation within the
+  subquery any more. It can now be applied on every subquery and will be by default.
+  However they may be a performance impact on some queries where splice-subqueries
+  are not as performant as non-spliced subqueries. This is due to internal memory
+  management right now and will be addressed in future versions. Spliced subqueries
+  can be less performant if the query around the subquery is complex and requires
+  lots of variables, or variables with large content, but the subquery itself
+  does not require a lot of variables and produces many intermediate results
+  s.t. good batching within the query does not pay off against memory overhead.
+
 * Supervision to clean up zombie servers after 24h, if no
   responsibility for shards.
 
