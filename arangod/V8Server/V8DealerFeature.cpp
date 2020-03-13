@@ -60,6 +60,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-deadline.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
@@ -1426,7 +1427,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       TRI_InitV8UserFunctions(isolate, localContext);
       TRI_InitV8UserStructures(isolate, localContext);
       TRI_InitV8Buffer(isolate);
-      TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules, true);
+      TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
       TRI_InitV8ServerUtils(isolate);
       TRI_InitV8Shell(isolate);
       TRI_InitV8Ttl(isolate);

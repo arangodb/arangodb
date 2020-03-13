@@ -27,7 +27,6 @@
 #include <stddef.h>
 #include <cstdint>
 #include <string>
-#include <chrono>
 
 #include <v8.h>
 
@@ -102,15 +101,6 @@ static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
   auto ret = static_cast<T*>(val);
   return ret;
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set a point in time after which we will abort external connection
-////////////////////////////////////////////////////////////////////////////////
-void setExecutionDeadlineInMS(uint64_t timeout);
-bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args);
-double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
-std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reports an exception
@@ -197,8 +187,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate*);
 void TRI_InitV8Utils(v8::Isolate* isolate,
                      v8::Handle<v8::Context>,
                      std::string const& startupPath,
-                     std::string const& modules,
-                     bool server);
+                     std::string const& modules);
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args);
 

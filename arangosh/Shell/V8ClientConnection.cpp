@@ -47,6 +47,7 @@
 #include "V8/v8-buffer.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8/v8-deadline.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>

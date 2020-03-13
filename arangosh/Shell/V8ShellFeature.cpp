@@ -54,6 +54,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-deadline.h"
 #include "V8/v8-vpack.h"
 
 #include <regex>
@@ -1099,7 +1100,8 @@ void V8ShellFeature::initGlobals() {
   // all the other entries are only used for the modules
 
   TRI_InitV8Buffer(_isolate);
-  TRI_InitV8Utils(_isolate, context, _startupDirectory, modules, false);
+  TRI_InitV8Utils(_isolate, context, _startupDirectory, modules);
+  TRI_InitV8Deadline(_isolate, context, _startupDirectory, modules);
   TRI_InitV8Shell(_isolate);
 
   // pager functions (overwrite existing SYS_OUTPUT from InitV8Utils)
