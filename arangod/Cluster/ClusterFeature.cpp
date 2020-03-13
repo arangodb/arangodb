@@ -104,11 +104,17 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnDBServer));
 
   options->addOption("--cluster.agency-prefix", "agency prefix",
                      new StringParameter(&_agencyPrefix),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnDBServer));
 
   options->addOption("--cluster.my-role", "this server's role",
                      new StringParameter(&_myRole));
@@ -116,67 +122,94 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.my-address",
                      "this server's endpoint (cluster internal)",
                      new StringParameter(&_myEndpoint),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnDBServer));
 
   options->addOption("--cluster.my-advertised-endpoint",
                      "this server's advertised endpoint (e.g. external IP "
                      "address or load balancer, optional)",
                      new StringParameter(&_myAdvertisedEndpoint),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnDBServer));
 
   options->addOption("--cluster.write-concern",
                      "write concern used for writes to new collections",
                      new UInt32Parameter(&_writeConcern),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator))
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator))
                      .setIntroducedIn(30600);
 
   options->addOption("--cluster.system-replication-factor",
                      "default replication factor for system collections",
                      new UInt32Parameter(&_systemReplicationFactor),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator));
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator));
 
   options->addOption("--cluster.default-replication-factor",
                      "default replication factor for non-system collections",
                      new UInt32Parameter(&_defaultReplicationFactor),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator))
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator))
                      .setIntroducedIn(30600);
 
   options->addOption("--cluster.min-replication-factor",
                      "minimum replication factor for new collections",
                      new UInt32Parameter(&_minReplicationFactor),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator))
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator))
                      .setIntroducedIn(30600);
 
   options->addOption("--cluster.max-replication-factor",
                      "maximum replication factor for new collections (0 = unrestricted)",
                      new UInt32Parameter(&_maxReplicationFactor),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator))
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator))
                      .setIntroducedIn(30600);
 
   options->addOption("--cluster.max-number-of-shards",
                      "maximum number of shards when creating new collections (0 = unrestricted)",
                      new UInt32Parameter(&_maxNumberOfShards),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator))
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator))
                      .setIntroducedIn(30501);
 
   options->addOption("--cluster.force-one-shard",
                      "force one-shard mode for all new collections",
                      new BooleanParameter(&_forceOneShard),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator))
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator))
                      .setIntroducedIn(30600);
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
       "active coordinator will wait for all replicas to create collection",
       new BooleanParameter(&_createWaitsForSyncReplication),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnDBServer,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--cluster.index-create-timeout",
       "amount of time (in seconds) the coordinator will wait for an index to "
       "be created before giving up",
       new DoubleParameter(&_indexCreationTimeout),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnCoordinator));
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::Hidden));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

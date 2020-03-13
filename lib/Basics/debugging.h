@@ -128,6 +128,7 @@ struct is_associative {
 
   template <typename U>
   static char test(U&&, typename U::key_type* = 0);
+
   static constexpr bool value = sizeof(test(std::declval<T>())) == 1;
 };
 
