@@ -77,7 +77,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 void MetricsFeature::toPrometheus(std::string& result) const {
 
   // minimize reallocs
-  result.reserve(65536);
+  result.reserve(32768);
 
   {
     std::lock_guard<std::recursive_mutex> guard(_lock);
@@ -114,11 +114,13 @@ Counter& MetricsFeature::counter (
   std::string const& help) {
 
   std::string labels = mk.labels;
-  if (ServerState::instance() != nullptr) {
+  if (ServerState::instance() != nullptr &&
+      ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
     if (!labels.empty()) {
       labels += ",";
     }
-    labels += "shortname=\"" + ServerState::instance()->getShortName() + "\"";
+    labels += "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
+      "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
   }
   auto metric = std::make_shared<Counter>(val, mk.name, help, labels);
   bool success = false;
