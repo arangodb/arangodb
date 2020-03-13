@@ -1664,7 +1664,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
     }
     case FastForwardVariant::FETCHER: {
       LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
-      auto const dependency = inputRange.skipAllRemainingDataRows();
+      ADB_IGNORE_UNUSED auto const dependency = inputRange.skipAllRemainingDataRows();
       auto constexpr fastForwardCall = AqlCall{0, false, 0, AqlCall::LimitType::HARD};
       auto const call = std::invoke([&]() -> AqlCallType {
         if constexpr (std::is_same_v<AqlCallType, AqlCall>) {

@@ -348,7 +348,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
 
   uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
-  auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  // auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
   EXPECT_EQ(vocbase.lookupCollection("UnitTestCollection")
                 ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked
@@ -381,9 +381,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
 TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
   auto [split] = GetParam();
 
-  uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
-  auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
@@ -402,9 +400,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
 TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default) {
   auto [split] = GetParam();
 
-  uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
-  auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name":
