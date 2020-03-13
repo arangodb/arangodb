@@ -1050,7 +1050,10 @@ std::vector<std::string> Store::split(std::string const& str) {
   return result;
 }
 
-
+/**
+ * @brief Unguarded pointer to a node path in this store.
+ *        Caller must enforce locking.
+ */
 Node const* Store::node(std::string const& path) const {
   return &_node(path);
 }

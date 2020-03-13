@@ -129,8 +129,9 @@ class Store {
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
 
-  /// @brief get node from this store. Unprotected! Caller must guard the store.
-  Node const* node(std::string const& path) const;
+  /// @brief get node from this store.
+  /// Unprotected! Caller must guard the store.
+  Node const* node(std::string const& path = std::string("/")) const;
 
   /// @brief Copy out a node
   Node get(std::string const& path = std::string("/")) const;
