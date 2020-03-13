@@ -41,9 +41,9 @@
 #include "SslServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
@@ -176,8 +176,12 @@ void SslServerFeature::verifySslOptions() {
     FATAL_ERROR_EXIT();
   }
 
+  // Set up first _sniEntry:
+  _sniEntries.clear();
+  _sniEntries.emplace_back("", _keyfile);
+
   try {
-    createSslContext();
+    createSslContexts();  // just to test if everything works
   } catch (...) {
     LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL)
         << "cannot create SSL context";
@@ -197,10 +201,10 @@ class BIOGuard {
 };
 }  // namespace
 
-static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
-                                unsigned char *outlen, const unsigned char *in,
-                                unsigned int inlen, void *arg) {
-  int rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+static int alpn_select_proto_cb(SSL* ssl, const unsigned char** out,
+                                unsigned char* outlen, const unsigned char* in,
+                                unsigned int inlen, void* arg) {
+  int rv = nghttp2_select_next_protocol((unsigned char**)out, outlen, in, inlen);
 
   if (rv != 1) {
     return SSL_TLSEXT_ERR_NOACK;
@@ -209,15 +213,21 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
   return SSL_TLSEXT_ERR_OK;
 }
 
-std::shared_ptr<asio_ns::ssl::context> SslServerFeature::createSslContext() {
+asio_ns::ssl::context SslServerFeature::createSslContextInternal(std::string keyfilename,
+                                                                 std::string& content) {
+  // This method creates an SSL context using the keyfile in `keyfilename`
+  // It is used internally if the public method `createSslContext`
+  // is called and if the hello callback happens and a non-default
+  // servername extension is detected, then with a non-empty servername.
+  // If all goes well, the string `content` is set to the content of the keyfile.
   try {
-    std::string keyfileContent = FileUtils::slurp(_keyfile);
+    std::string keyfileContent = FileUtils::slurp(keyfilename);
     // create context
-    std::shared_ptr<asio_ns::ssl::context> sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
-    _keyfileContent = std::move(keyfileContent);
+    asio_ns::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), keyfilename);
+    content = std::move(keyfileContent);
 
     // and use this native handle
-    asio_ns::ssl::context::native_handle_type nativeContext = sslContext->native_handle();
+    asio_ns::ssl::context::native_handle_type nativeContext = sslContext.native_handle();
 
     // set cache mode
     SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache ? SSL_SESS_CACHE_SERVER
@@ -229,7 +239,7 @@ std::shared_ptr<asio_ns::ssl::context> SslServerFeature::createSslContext() {
     }
 
     // set options
-    sslContext->set_options(static_cast<long>(_sslOptions));
+    sslContext.set_options(static_cast<long>(_sslOptions));
 
     if (!_cipherList.empty()) {
       if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
@@ -332,9 +342,9 @@ std::shared_ptr<asio_ns::ssl::context> SslServerFeature::createSslContext() {
       SSL_CTX_set_client_CA_list(nativeContext, certNames);
     }
 
-    sslContext->set_verify_mode(SSL_VERIFY_NONE);
+    sslContext.set_verify_mode(SSL_VERIFY_NONE);
 
-    SSL_CTX_set_alpn_select_cb(sslContext->native_handle(), alpn_select_proto_cb, NULL);
+    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
 
     return sslContext;
   } catch (std::exception const& ex) {
@@ -345,6 +355,28 @@ std::shared_ptr<asio_ns::ssl::context> SslServerFeature::createSslContext() {
     LOG_TOPIC("1217f", ERR, arangodb::Logger::SSL)
         << "failed to create SSL context, cannot create HTTPS server";
     throw std::runtime_error("cannot create SSL context");
+  }
+}
+
+SslServerFeature::SslContextList SslServerFeature::createSslContexts() {
+  auto result = std::make_shared<std::vector<asio_ns::ssl::context>>();
+  for (size_t i = 0; i < _sniEntries.size(); ++i) {
+    auto res = createSslContextInternal(_sniEntries[i].keyfileName,
+                                        _sniEntries[i].keyfileContent);
+    result->emplace_back(std::move(res));
+  }
+  return result;
+}
+
+size_t SslServerFeature::chooseSslContext(std::string const& serverName) const {
+  // Note that the map _sniServerIndex is basically immutable after the
+  // startup phase, since the number of SNI entries cannot be changed
+  // at runtime. Therefore, we do not need any protection here.
+  auto it = _sniServerIndex.find(serverName);
+  if (it == _sniServerIndex.end()) {
+    return 0;
+  } else {
+    return it->second;
   }
 }
 
@@ -593,8 +625,8 @@ std::string SslServerFeature::stringifySslOptions(uint64_t opts) const {
   return result.substr(2);
 }
 
-
-static void splitPEM(std::string const& pem, std::vector<std::string>& certs, std::vector<std::string>& keys) {
+static void splitPEM(std::string const& pem, std::vector<std::string>& certs,
+                     std::vector<std::string>& keys) {
   std::vector<std::string> result;
   size_t pos = 0;
   while (pos < pem.size()) {
@@ -638,7 +670,8 @@ static void splitPEM(std::string const& pem, std::vector<std::string>& certs, st
 
 static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string attrName) {
   if (pem.empty()) {
-    { VPackObjectBuilder guard(&builder, attrName);
+    {
+      VPackObjectBuilder guard(&builder, attrName);
       return;
     }
   }
@@ -672,9 +705,18 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string a
 // Dump all SSL related data into a builder, private keys
 // are hashed.
 Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
-  { VPackObjectBuilder guard(&builder);
-    dumpPEM(_keyfileContent, builder, "keyfile");
-    dumpPEM(_cafileContent, builder, "clientCA");
+  {
+    VPackObjectBuilder guard(&builder);
+    if (!_sniEntries.empty()) {
+      dumpPEM(_sniEntries[0].keyfileContent, builder, "keyfile");
+      dumpPEM(_cafileContent, builder, "clientCA");
+      if (_sniEntries.size() > 1) {
+        VPackObjectBuilder guard2(&builder, "SNI");
+        for (size_t i = 1; i < _sniEntries.size(); ++i) {
+          dumpPEM(_sniEntries[i].keyfileContent, builder, _sniEntries[i].serverName);
+        }
+      }
+    }
   }
   return Result(TRI_ERROR_NO_ERROR);
 }

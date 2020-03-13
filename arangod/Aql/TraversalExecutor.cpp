@@ -54,7 +54,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _inputRegister(inputRegister),
       _filterConditionVariables(std::move(filterConditionVariables)) {
   TRI_ASSERT(_traverser != nullptr);
-  TRI_ASSERT(!_registerMapping.empty());
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
@@ -198,6 +197,13 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.pathRegister(), _inputRow, guard);
     }
+
+    // No output is requested from the register plan. We still need
+    // to copy the inputRow for the query to yield correct results.
+    if (!_infos.useVertexOutput() && !_infos.useEdgeOutput() && !_infos.usePathOutput()) {
+      output.copyRow(_inputRow);
+    }
+
     output.advanceRow();
   }
 }

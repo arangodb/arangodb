@@ -35,6 +35,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -134,32 +135,40 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     : LogicalDataSource(
           LogicalCollection::category(),
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
-          vocbase, Helper::extractIdValue(info),
-          ::readGloballyUniqueId(info),
+          vocbase, Helper::extractIdValue(info), ::readGloballyUniqueId(info),
           Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId)),
           ::readStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
           TRI_vocbase_t::IsSystemName(
               ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
-      _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(info, "version",
-                                                    static_cast<uint32_t>(currentVersion())))),
+      _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
+          info, "version", static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
-                                                          TRI_COL_TYPE_UNKNOWN)),
+                                                         TRI_COL_TYPE_UNKNOWN)),
       _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
       _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
+      _isSmartChild(Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
+      _usesRevisionsAsDocumentIds(
+          Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
+      _minRevision(isSmartChild()
+                       ? 0
+                       : Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision,
+                                                                0)),
       _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
+      _syncByRevision(determineSyncByRevision()),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
+
   TRI_ASSERT(info.isObject());
 
   if (!TRI_vocbase_t::IsAllowedName(info)) {
@@ -175,7 +184,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
 
-  auto res = updateValidators(info.get(StaticStrings::Validators));
+  auto res = updateValidators(info.get(StaticStrings::Validation));
   if(res.fail()){
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -260,43 +269,21 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   return category;
 }
 
-Result LogicalCollection::updateValidators(VPackSlice validatorArray) {
+Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
   using namespace std::literals::string_literals;
-  if(validatorArray.isNone()) {
+  if(validatorSlice.isNone() || validatorSlice.isNull()) {
     return { TRI_ERROR_NO_ERROR };
-  } else if (!validatorArray.isArray()) {
-    return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validators are not given in an array."};
+  } else if (!validatorSlice.isObject()) {
+    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
   }
 
   std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
-  for(VPackSlice validatorSlice : VPackArrayIterator(validatorArray)) {
-    if(!validatorSlice.isObject()){
-      return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
-    }
 
-    try {
-      std::unique_ptr<ValidatorBase> validator;
-      auto typeSlice = validatorSlice.get(StaticStrings::ValidatorParameterType);
-      if(typeSlice.isNone()) {
-        validator = std::make_unique<ValidatorAQL>(validatorSlice);
-      } else if (typeSlice.isString()) {
-        auto type = typeSlice.copyString();
-        std::transform(type.begin(),type.end(),type.begin(),[](unsigned char c){ return std::tolower(c); });
-        if (type == StaticStrings::ValidatorTypeAQL) {
-          validator = std::make_unique<ValidatorAQL>(validatorSlice);
-        } else if (type == StaticStrings::ValidatorTypeBool) {
-          validator = std::make_unique<ValidatorBool>(validatorSlice);
-        } else {
-          return {TRI_ERROR_BAD_PARAMETER, "Validator type '" + typeSlice.copyString() + "' is not supported."};
-        }
-      } else {
-        return {TRI_ERROR_BAD_PARAMETER, "Validator type is not a string."};
-      }
-
-      newVec->push_back(std::move(validator));
-    } catch (std::exception const& ex) {
-      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
-    }
+  try {
+    auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
+    newVec->push_back(std::move(validator));
+  } catch (std::exception const& ex) {
+    return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
   }
 
   std::atomic_store_explicit(&_validators, newVec, std::memory_order_relaxed);
@@ -427,6 +414,10 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
   return documents;
 }
 
+bool LogicalCollection::hasClusterWideUniqueRevs() const {
+  return usesRevisionsAsDocumentIds() && isSmartChild();
+}
+
 uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
 
 TRI_col_type_e LogicalCollection::type() const { return _type; }
@@ -475,8 +466,31 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   return _physical->revision(trx);
 }
 
+bool LogicalCollection::usesRevisionsAsDocumentIds() const {
+  return _usesRevisionsAsDocumentIds;
+}
+
+TRI_voc_rid_t LogicalCollection::minRevision() const {
+  return _minRevision;
+}
+
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
+}
+
+bool LogicalCollection::syncByRevision() const { return _syncByRevision; }
+
+bool LogicalCollection::determineSyncByRevision() const {
+  if (!system() && version() >= LogicalCollection::Version::v37) {
+    auto& server = vocbase().server();
+    if (server.hasFeature<EngineSelectorFeature>() &&
+        server.hasFeature<ReplicationFeature>()) {
+      auto& engine = server.getFeature<EngineSelectorFeature>();
+      auto& replication = server.getFeature<ReplicationFeature>();
+      return engine.isRocksDB() && replication.syncByRevision();
+    }
+  }
+  return false;
 }
 
 IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid) {
@@ -718,13 +732,17 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
   // Validators
   {
-    result.add(VPackValue(StaticStrings::Validators));
+    result.add(VPackValue(StaticStrings::Validation));
     validatorsToVelocyPack(result);
   }
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
-
+  result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
+  result.add(StaticStrings::UsesRevisionsAsDocumentIds,
+             VPackValue(usesRevisionsAsDocumentIds()));
+  result.add(StaticStrings::MinRevision, VPackValue(minRevision()));
+             
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
   }
@@ -797,7 +815,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
 
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
-  auto res = updateValidators(slice.get(StaticStrings::Validators));
+  auto res = updateValidators(slice.get(StaticStrings::Validation));
   if(res.fail()){
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1006,24 +1024,22 @@ void LogicalCollection::persistPhysicalCollection() {
   getPhysical()->setPath(path);
 }
 
+basics::ReadWriteLock& LogicalCollection::statusLock() {
+  return _statusLock;
+}
+
 /// @brief Defer a callback to be executed when the collection
 ///        can be dropped. The callback is supposed to drop
 ///        the collection and it is guaranteed that no one is using
 ///        it at that moment.
 void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) {
+  _syncByRevision = false;  // safety to make sure we can do physical cleanup
   _physical->deferDropCollection(callback);
 }
 
 /// @brief reads an element from the document collection
 Result LogicalCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result, bool lock) {
-  TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
-  return getPhysical()->read(trx, key, result, lock);
-}
-
-Result LogicalCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::Slice const& key,
                                ManagedDocumentResult& result, bool lock) {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
   return getPhysical()->read(trx, key, result, lock);
@@ -1128,30 +1144,30 @@ VPackSlice LogicalCollection::keyOptions() const {
 }
 
 void LogicalCollection::validatorsToVelocyPack(VPackBuilder& b) const {
-  VPackArrayBuilder guard(&b);
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
-  if (vals == nullptr) { return ; }
-  for(auto const& validator : *vals) {
-    validator->toVelocyPack(b);
+  if(vals == nullptr || vals->empty()){
+    b.add(VPackSlice::nullSlice());
+    return;
   }
+  vals->front()->toVelocyPack(b);
 }
 
-Result LogicalCollection::validate(VPackSlice s) const {
+Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(s, VPackSlice::noneSlice(), true)) {
+    if(!validator->validate(s, VPackSlice::noneSlice(), true, options)) {
       return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
     }
   }
   return {};
 }
 
-Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc) const {
+Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const* options) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(modifiedDoc, oldDoc, false)) {
+    if(!validator->validate(modifiedDoc, oldDoc, false, options)) {
       return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
     }
   }

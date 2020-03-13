@@ -169,7 +169,7 @@ template<typename T1, typename U, typename A1, typename A2>
 inline bool operator==(const arena_allocator<T1, A1>& lhs,
   const arena_allocator<U, A2>& rhs) noexcept {
   return std::is_same<A1, A2>::value && 
-    lhs.arena_ == reinterpret_cast<const void*>(rhs.arena_);
+         lhs.arena_ == reinterpret_cast<const void*>(rhs.arena_);
 }
 
 template<typename T, size_t N>

@@ -411,7 +411,6 @@ function unitTestPrettyPrintResults (options, results) {
           }
 
           let details = successCases[name];
-
           if (details.skipped) {
             SuccessMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
           } else {
@@ -443,7 +442,11 @@ function unitTestPrettyPrintResults (options, results) {
             continue;
           }
 
-          m = '    [FAILED]  ' + name;
+          if (name === 'SKIPPED') {
+            m = '    [SKIPPED]  the following tests were skipped due to the server not being in a trustworthy state anymore.';
+          } else {
+            m = '    [FAILED]  ' + name;
+          }
           failedMessages += RED + m + RESET + '\n\n';
           onlyFailedMessages += m + '\n\n';
 

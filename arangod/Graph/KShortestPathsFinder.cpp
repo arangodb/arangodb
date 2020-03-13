@@ -43,7 +43,10 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _traversalDone(true) {}
+    : ShortestPathFinder(options) {
+  _forwardCursor = options.buildCursor(false);
+  _backwardCursor = options.buildCursor(true);
+}
 
 KShortestPathsFinder::~KShortestPathsFinder() = default;
 
@@ -129,22 +132,13 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
 
 void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direction direction,
                                                         std::vector<Step>& steps) {
-  std::unique_ptr<EdgeCursor> edgeCursor;
-
-  switch (direction) {
-    case BACKWARD:
-      edgeCursor.reset(_options.nextReverseCursor(vertex));
-      break;
-    case FORWARD:
-      edgeCursor.reset(_options.nextCursor(vertex));
-      break;
-    default:
-      TRI_ASSERT(false);
-  }
+  EdgeCursor* cursor =
+      direction == BACKWARD ? _backwardCursor.get() : _forwardCursor.get();
+  cursor->rearm(vertex, 0);
 
   // TODO: This is a bit of a hack
   if (_options.useWeight()) {
-    auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
       if (edge.isString()) {
         VPackSlice doc = _options.cache()->lookupToken(eid);
         double weight = _options.weightEdge(doc);
@@ -162,10 +156,9 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
           steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
         }
       }
-    };
-    edgeCursor->readAll(callback);
+    });
   } else {
-    auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
       if (edge.isString()) {
         if (edge.compareString(vertex.data(), vertex.length()) != 0) {
           VertexRef id = _options.cache()->persistString(VertexRef(edge));
@@ -181,8 +174,7 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
           steps.emplace_back(std::move(eid), id, 1);
         }
       }
-    };
-    edgeCursor->readAll(callback);
+    });
   }
 }
 

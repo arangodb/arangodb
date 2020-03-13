@@ -54,7 +54,7 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
-static std::vector<std::string> const cmp{JOURNAL_SIZE, WAIT_FOR_SYNC, DO_COMPACT, VALIDATORS, INDEX_BUCKETS, CACHE_ENABLED};
+static std::vector<std::string> const cmp{JOURNAL_SIZE, WAIT_FOR_SYNC, DO_COMPACT, VALIDATION, CACHE_ENABLED};
 
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
@@ -1221,7 +1221,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
       }
     }
 
-    // maintenace actions
+    // maintenance actions
     report.add(VPackValue("actions"));
     {
       VPackObjectBuilder agency(&report);

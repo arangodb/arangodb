@@ -125,6 +125,7 @@ set(IResearch_core_sources
   ./search/multiterm_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
+  ./search/ngram_similarity_filter.cpp
   ./store/data_input.cpp 
   ./store/data_output.cpp 
   ./store/directory.cpp 
@@ -151,6 +152,7 @@ set(IResearch_core_sources
   ./utils/index_utils.cpp
   ./utils/math_utils.cpp 
   ./utils/levenshtein_utils.cpp
+  ./utils/wildcard_utils.cpp
   ./utils/levenshtein_default_pdp.cpp
   ./utils/memory.cpp
   ./utils/text_format.cpp
@@ -165,6 +167,7 @@ set(IResearch_core_sources
   ./utils/network_utils.cpp
   ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
+  ./utils/attribute_range.cpp
   ${IResearch_core_os_specific_sources}
   ${IResearch_core_optimized_sources}
 )
@@ -212,6 +215,7 @@ set(IResearch_core_headers
   ./search/disjunction.hpp
   ./search/conjunction.hpp
   ./search/exclusion.hpp
+  ./search/ngram_similarity_filter.hpp
   ./store/data_input.hpp
   ./store/data_output.hpp
   ./store/directory.hpp
@@ -256,6 +260,7 @@ set(IResearch_core_headers
   ./utils/bitset.hpp
   ./utils/bitvector.hpp
   ./utils/type_id.hpp
+  ./utils/attribute_range.hpp
   ./shared.hpp
   ./types.hpp
 )
@@ -589,6 +594,7 @@ if(MSVC)
     ${Unwind_STATIC_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
+    ${SIMD_LIBRARY_STATIC}
   )
 endif()
 

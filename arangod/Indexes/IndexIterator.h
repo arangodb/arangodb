@@ -84,7 +84,7 @@ class IndexIterator {
   virtual char const* typeName() const = 0;
 
   /// @brief return the underlying collection
-  /// note: this may return a nullptr in case we are dealing with the EmptyIndexIterator! 
+  /// this is guaranteed to be a non-nullptr
   LogicalCollection* collection() const { return _collection; }
 
   transaction::Methods* transaction() const { return _trx; }

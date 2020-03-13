@@ -97,7 +97,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _keys(std::move(keys)),
         _keysIterator(_keys->slice()),
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
-        _builderIterator(arangodb::velocypack::Slice::emptyArraySlice()),
+        _builderIterator(VPackArrayIterator::Empty{}),
         _lastKey(VPackSlice::nullSlice()) {
     TRI_ASSERT(_keys != nullptr);
     TRI_ASSERT(_keys->slice().isArray());
@@ -174,7 +174,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       if (_cache) {
         for (size_t attempts = 0; attempts < 10; ++attempts) {
           // Try to read from cache
-          auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
+          auto finding = _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
           if (finding.found()) {
             needRocksLookup = false;
             // We got sth. in the cache
@@ -196,7 +196,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
                 _builderIterator.next();
                 limit--;
               }
-              _builderIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
+              _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
             } else {
               // We need to copy it.
               // And then we just get back to beginning of the loop
@@ -261,8 +261,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     resetInplaceMemory();
     _keysIterator.reset();
     _lastKey = VPackSlice::nullSlice();
-    _builderIterator =
-        VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
+    _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
   }
 
   /// @brief index supports rearming
@@ -450,7 +449,7 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc, Index::OperationMode mode) {
+                                velocypack::Slice const& doc, OperationOptions& options) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());

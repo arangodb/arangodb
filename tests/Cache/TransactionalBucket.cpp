@@ -21,18 +21,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/TransactionalBucket.h"
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-
 #include "gtest/gtest.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
+
+#include "Basics/debugging.h"
+#include "Cache/TransactionalBucket.h"
 
 using namespace arangodb::cache;
 
@@ -68,14 +67,14 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
-  uint32_t hashes[9] = {1, 2, 3, 4, 5,
-                        6, 7, 8, 9};  // don't have to be real, but should be unique and non-zero
-  uint64_t keys[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-  uint64_t values[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  std::uint32_t hashes[9] = {1, 2, 3, 4, 5,
+                             6, 7, 8, 9};  // don't have to be real, but should be unique and non-zero
+  std::uint64_t keys[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  std::uint64_t values[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
   CachedValue* ptrs[9];
-  for (size_t i = 0; i < 9; i++) {
-    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t), &(values[i]),
-                                     sizeof(uint64_t));
+  for (std::size_t i = 0; i < 9; i++) {
+    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(std::uint64_t),
+                                     &(values[i]), sizeof(std::uint64_t));
     TRI_ASSERT(ptrs[i] != nullptr);
   }
 
@@ -84,7 +83,7 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
 
   // insert three to fill
   ASSERT_FALSE(bucket->isFull());
-  for (size_t i = 0; i < 8; i++) {
+  for (std::size_t i = 0; i < 8; i++) {
     bucket->insert(hashes[i], ptrs[i]);
     if (i < 7) {
       ASSERT_FALSE(bucket->isFull());
@@ -92,7 +91,7 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
       ASSERT_TRUE(bucket->isFull());
     }
   }
-  for (size_t i = 0; i < 7; i++) {
+  for (std::size_t i = 0; i < 7; i++) {
     CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
@@ -105,7 +104,7 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
   bucket->unlock();
 
   // cleanup
-  for (size_t i = 0; i < 9; i++) {
+  for (std::size_t i = 0; i < 9; i++) {
     delete ptrs[i];
   }
 }
@@ -114,23 +113,23 @@ TEST(CacheTransactionalBucketTest, verify_that_removal_works_as_expected) {
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
-  uint32_t hashes[3] = {1, 2, 3};  // don't have to be real, but should be unique and non-zero
-  uint64_t keys[3] = {0, 1, 2};
-  uint64_t values[3] = {0, 1, 2};
+  std::uint32_t hashes[3] = {1, 2, 3};  // don't have to be real, but should be unique and non-zero
+  std::uint64_t keys[3] = {0, 1, 2};
+  std::uint64_t values[3] = {0, 1, 2};
   CachedValue* ptrs[3];
-  for (size_t i = 0; i < 3; i++) {
-    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t), &(values[i]),
-                                     sizeof(uint64_t));
+  for (std::size_t i = 0; i < 3; i++) {
+    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(std::uint64_t),
+                                     &(values[i]), sizeof(std::uint64_t));
     TRI_ASSERT(ptrs[i] != nullptr);
   }
 
   success = bucket->lock(-1LL);
   ASSERT_TRUE(success);
 
-  for (size_t i = 0; i < 3; i++) {
+  for (std::size_t i = 0; i < 3; i++) {
     bucket->insert(hashes[i], ptrs[i]);
   }
-  for (size_t i = 0; i < 3; i++) {
+  for (std::size_t i = 0; i < 3; i++) {
     CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
@@ -152,7 +151,7 @@ TEST(CacheTransactionalBucketTest, verify_that_removal_works_as_expected) {
   bucket->unlock();
 
   // cleanup
-  for (size_t i = 0; i < 3; i++) {
+  for (std::size_t i = 0; i < 3; i++) {
     delete ptrs[i];
   }
 }
@@ -161,14 +160,14 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
-  uint32_t hashes[9] = {1, 2, 3, 4, 5,
-                        6, 7, 8, 9};  // don't have to be real, but should be unique and non-zero
-  uint64_t keys[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-  uint64_t values[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  std::uint32_t hashes[9] = {1, 2, 3, 4, 5,
+                             6, 7, 8, 9};  // don't have to be real, but should be unique and non-zero
+  std::uint64_t keys[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  std::uint64_t values[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
   CachedValue* ptrs[9];
-  for (size_t i = 0; i < 9; i++) {
-    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t), &(values[i]),
-                                     sizeof(uint64_t));
+  for (std::size_t i = 0; i < 9; i++) {
+    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(std::uint64_t),
+                                     &(values[i]), sizeof(std::uint64_t));
     TRI_ASSERT(ptrs[i] != nullptr);
   }
 
@@ -177,7 +176,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
 
   // insert three to fill
   ASSERT_FALSE(bucket->isFull());
-  for (size_t i = 0; i < 8; i++) {
+  for (std::size_t i = 0; i < 8; i++) {
     bucket->insert(hashes[i], ptrs[i]);
     if (i < 7) {
       ASSERT_FALSE(bucket->isFull());
@@ -185,7 +184,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
       ASSERT_TRUE(bucket->isFull());
     }
   }
-  for (size_t i = 0; i < 8; i++) {
+  for (std::size_t i = 0; i < 8; i++) {
     CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
@@ -214,7 +213,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   bucket->unlock();
 
   // cleanup
-  for (size_t i = 0; i < 9; i++) {
+  for (std::size_t i = 0; i < 9; i++) {
     delete ptrs[i];
   }
 }
@@ -224,14 +223,14 @@ TEST(CacheTransactionalBucketTest, verify_that_blacklisting_works_as_expected) {
   bool success;
   CachedValue* res;
 
-  uint32_t hashes[8] = {1, 1, 2, 3, 4,
-                        5, 6, 7};  // don't have to be real, want some overlap
-  uint64_t keys[8] = {0, 1, 2, 3, 4, 5, 6, 7};
-  uint64_t values[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::uint32_t hashes[8] = {1, 1, 2, 3, 4,
+                             5, 6, 7};  // don't have to be real, want some overlap
+  std::uint64_t keys[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::uint64_t values[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   CachedValue* ptrs[8];
-  for (size_t i = 0; i < 8; i++) {
-    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t), &(values[i]),
-                                     sizeof(uint64_t));
+  for (std::size_t i = 0; i < 8; i++) {
+    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(std::uint64_t),
+                                     &(values[i]), sizeof(std::uint64_t));
     TRI_ASSERT(ptrs[i] != nullptr);
   }
 
@@ -241,7 +240,7 @@ TEST(CacheTransactionalBucketTest, verify_that_blacklisting_works_as_expected) {
 
   // insert eight to fill
   ASSERT_FALSE(bucket->isFull());
-  for (size_t i = 0; i < 8; i++) {
+  for (std::size_t i = 0; i < 8; i++) {
     bucket->insert(hashes[i], ptrs[i]);
     if (i < 7) {
       ASSERT_FALSE(bucket->isFull());
@@ -249,16 +248,16 @@ TEST(CacheTransactionalBucketTest, verify_that_blacklisting_works_as_expected) {
       ASSERT_TRUE(bucket->isFull());
     }
   }
-  for (size_t i = 0; i < 8; i++) {
+  for (std::size_t i = 0; i < 8; i++) {
     res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
   // blacklist 1-5 to fill blacklist
-  for (size_t i = 1; i < 6; i++) {
+  for (std::size_t i = 1; i < 6; i++) {
     bucket->blacklist(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
   }
-  for (size_t i = 1; i < 6; i++) {
+  for (std::size_t i = 1; i < 6; i++) {
     ASSERT_TRUE(bucket->isBlacklisted(hashes[i]));
     res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(nullptr, res);
@@ -288,13 +287,13 @@ TEST(CacheTransactionalBucketTest, verify_that_blacklisting_works_as_expected) {
   bucket->lock(-1LL);
   bucket->updateBlacklistTerm(2ULL);
   ASSERT_FALSE(bucket->isFullyBlacklisted());
-  for (size_t i = 0; i < 7; i++) {
+  for (std::size_t i = 0; i < 7; i++) {
     ASSERT_FALSE(bucket->isBlacklisted(hashes[i]));
   }
   bucket->unlock();
 
   // cleanup
-  for (size_t i = 0; i < 8; i++) {
+  for (std::size_t i = 0; i < 8; i++) {
     delete ptrs[i];
   }
 }

@@ -102,7 +102,6 @@ void TRI_LogBacktrace();
 void TRI_FlushDebugging();
 void TRI_FlushDebugging(char const* file, int line, char const* message);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container traits
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +110,8 @@ namespace container_traits {
 
 using tc = char[2];
 
-template<typename T> struct is_container {
+template <typename T>
+struct is_container {
   static tc& test(...);
 
   template <typename U>
@@ -119,15 +119,17 @@ template<typename T> struct is_container {
   static constexpr bool value = sizeof(test(std::declval<T>())) == 1;
 };
 
-template< class T >
+template <class T>
 inline constexpr bool is_container_v = is_container<T>::value;
 
-template < typename T > struct is_associative {
-  static tc& test(...) ;
-  
-  template < typename U >
-  static char test(U&&, typename U::key_type* = 0) ;
-  static constexpr bool value = sizeof( test( std::declval<T>() ) ) == 1 ;
+template <typename T>
+struct is_associative {
+  static tc& test(...);
+
+  template <typename U>
+  static char test(U&&, typename U::key_type* = 0);
+
+  static constexpr bool value = sizeof(test(std::declval<T>())) == 1;
 };
 
 }  // namespace container_traits
@@ -139,21 +141,21 @@ struct remove_cvref {
 template <class T>
 using remove_cvref_t = typename remove_cvref<T>::type;
 
-template < typename T > struct is_container :
-  std::conditional_t<(container_traits::is_container_v<T> || std::is_array_v<T>)
-                   && !std::is_same_v<char *, std::decay_t<T>>
-                   && !std::is_same_v<char const*, std::decay_t<T>>
-                   && !std::is_same_v<unsigned char *, std::decay_t<T>>
-                   && !std::is_same_v<unsigned char const*, std::decay_t<T>>
-                   && !std::is_same_v<std::string, std::decay_t<T>>
-                   && !std::is_same_v<std::string_view, std::decay_t<T>>,
-                   std::true_type, std::false_type > {};
+template <typename T>
+struct is_container
+    : std::conditional<(container_traits::is_container<T>::value || std::is_array<T>::value) &&
+                           !std::is_same_v<char*, typename std::decay<T>::type> &&
+                           !std::is_same_v<char const*, typename std::decay<T>::type> &&
+                           !std::is_same_v<unsigned char*, typename std::decay<T>::type> &&
+                           !std::is_same_v<unsigned char const*, typename std::decay<T>::type> &&
+                           !std::is_same_v<T, std::string> && !std::is_same_v<T, std::string_view> &&
+                           !std::is_same_v<T, const std::string>,
+                       std::true_type, std::false_type>::type {};
 
-template < typename T > struct is_associative :
-  std::conditional< container_traits::is_container<T>::value && container_traits::is_associative<T>::value,
-                    std::true_type, std::false_type >::type {};
-
-
+template <typename T>
+struct is_associative
+    : std::conditional<container_traits::is_container<T>::value && container_traits::is_associative<T>::value,
+                       std::true_type, std::false_type>::type {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief no std::enable_if_t in c++11
@@ -161,8 +163,8 @@ template < typename T > struct is_associative :
 
 #if __cplusplus <= 201103L
 namespace std {
-template< bool B, class T = void >
-using enable_if_t = typename std::enable_if<B,T>::type;
+template <bool B, class T = void>
+using enable_if_t = typename std::enable_if<B, T>::type;
 }
 #endif
 
@@ -170,9 +172,9 @@ using enable_if_t = typename std::enable_if<B,T>::type;
 /// @brief forward declaration for pair output below
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename T>
-std::enable_if_t<is_container<T>::value, std::ostream&>
-operator<< (std::ostream& o, T const& t);
+template <typename T>
+std::enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
+                                                                   T const& t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump pair contents to an ostream
@@ -188,20 +190,19 @@ std::ostream& operator<<(std::ostream& stream, std::pair<T1, T2> const& obj) {
 /// @brief dump vector contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
 
-template<bool b>
+template <bool b>
 struct conpar {
   static char const open;
   static char const close;
 };
 
-template< bool B, class T = void >
-using enable_if_t = typename std::enable_if<B,T>::type;
+template <bool B, class T = void>
+using enable_if_t = typename std::enable_if<B, T>::type;
 
-template<typename T>
-enable_if_t<is_container<T>::value, std::ostream&>
-operator<< (std::ostream& o, T const& t) {
+template <typename T>
+enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T const& t) {
   o << conpar<is_associative<T>::value>::open;
-  bool first = true;  
+  bool first = true;
   for (auto const& i : t) {
     if (first) {
       o << " ";
@@ -209,10 +210,10 @@ operator<< (std::ostream& o, T const& t) {
     } else {
       o << ", ";
     }
-    o << i ;
+    o << i;
   }
   o << " " << conpar<is_associative<T>::value>::close;
-  return o;  
+  return o;
 }
 
 /// @brief assert
