@@ -1,6 +1,7 @@
 devel
 -----
 
+
 * `splice-subqueries` optimization is not limited by any type of operation within the
   subquery any more. It can now be applied on every subquery and will be by default.
   However they may be a performance impact on some queries where splice-subqueries
@@ -10,6 +11,9 @@ devel
   lots of variables, or variables with large content, but the subquery itself
   does not require a lot of variables and produces many intermediate results
   s.t. good batching within the query does not pay off against memory overhead.
+
+* Supervision to clean up zombie servers after 24h, if no
+  responsibility for shards.
 
 * Fix SORT RAND() LIMIT 1 optimization for RocksDB when only a projection of the
   attributes was used. When a projection was used and that projection was
@@ -24,7 +28,7 @@ devel
 * Supervision hot backup and supervision maintenance modes ttl fix.
 
 * Fix a bug that leads to graph traversals yielding empty output when none of the
-  output variables (vertex, edge, path) are used. This is relevant when a query 
+  output variables (vertex, edge, path) are used. This is relevant when a query
   is only interested in a COUNT of the outputs, for example.
 
 * MoveShard to check, if target is in sync follower before promotion
