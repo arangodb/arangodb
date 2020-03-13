@@ -1048,11 +1048,25 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
 
     return createOutputRow(newBlock, std::move(call));
   } else {
-    if (!inputRange.hasShadowRow() && !inputRange.hasDataRow()) {
-      // On empty input do not yet create output.
-      SharedAqlItemBlockPtr newBlock{nullptr};
-      return createOutputRow(newBlock, std::move(call));
+    if constexpr (isMultiDepExecutor<Executor>) {
+      // MultiDepExecutor wpuld require dependency handling.
+      // We do not have it here.
+      if (!inputRange.hasShadowRow() && !inputRange.hasDataRow()) {
+        // On empty input do not yet create output.
+        // We are going to ask again later
+        SharedAqlItemBlockPtr newBlock{nullptr};
+        return createOutputRow(newBlock, std::move(call));
+      }
+    } else {
+      if (!inputRange.hasShadowRow() && !inputRange.hasDataRow() &&
+          inputRange.upstreamState() == ExecutorState::HASMORE) {
+        // On empty input do not yet create output.
+        // We are going to ask again later
+        SharedAqlItemBlockPtr newBlock{nullptr};
+        return createOutputRow(newBlock, std::move(call));
+      }
     }
+
     // Non-Passthrough variant, we need to allocate the block ourselfs
     size_t blockSize = ExecutionBlock::DefaultBatchSize;
     if constexpr (hasExpectedNumberOfRowsNew<Executor>::value) {
