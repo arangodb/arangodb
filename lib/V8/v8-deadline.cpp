@@ -110,5 +110,5 @@ void TRI_InitV8Deadline(v8::Isolate* isolate,
 {
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
-                               JS_SetExecutionDeatlineTo);
+                               JS_SetExecutionDeadlineTo);
 }
