@@ -66,7 +66,7 @@ bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args)
   }
 
   auto isolate = args.GetIsolate();
-  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, "Deadline for remote reached!", true);
+  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, "Execution deadline reached!", true);
   return true;
 }
 
