@@ -131,3 +131,9 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
 
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
+
+[[nodiscard]] auto ReturnExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                                           AqlCall const& call) const
+    noexcept -> size_t {
+  return input.countDataRows();
+}
