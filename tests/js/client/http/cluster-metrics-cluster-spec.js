@@ -41,27 +41,26 @@ const expectOneBucketChanged = (actual, old) => {
 };
 
 const MetricNames = {
-  HEARTBEAT_BUCKET: "heartbeat_send_time_msec_bucket",
-  QUERY_TIME: "arangodb_aql_total_query_time_ms",
-  PHASE_1_BUCKET: "maintenance_phase1_runtime_msec_bucket",
-  PHASE_1_COUNT: "maintenance_phase1_runtime_msec_count",
-  PHASE_2_BUCKET: "maintenance_phase2_runtime_msec_bucket",
-  PHASE_2_COUNT: "maintenance_phase2_runtime_msec_count",
-  SHARD_COUNT: "shards_total_count",
-  SHARD_LEADER_COUNT: "shards_leader_count",
-  HEARTBEAT_BUCKET: "heartbeat_send_time_msec_bucket",
-  HEARTBEAT_COUNT: "heartbeat_send_time_msec_count",
-  SUPERVISION_BUCKET: "agency_supervision_runtime_msec_bucket",
-  SUPERVISION_COUNT: "agency_supervision_runtime_msec_count"
+  QUERY_TIME: "arangodb_aql_total_query_time_msec",
+  PHASE_1_BUCKET: "arangodb_maintenance_phase1_runtime_msec_bucket",
+  PHASE_1_COUNT: "arangodb_maintenance_phase1_runtime_msec_count",
+  PHASE_2_BUCKET: "arangodb_maintenance_phase2_runtime_msec_bucket",
+  PHASE_2_COUNT: "arangodb_maintenance_phase2_runtime_msec_count",
+  SHARD_COUNT: "arangodb_shards_total_count",
+  SHARD_LEADER_COUNT: "arangodb_shards_leader_count",
+  HEARTBEAT_BUCKET: "arangodb_heartbeat_send_time_msec_bucket",
+  HEARTBEAT_COUNT: "arangodb_heartbeat_send_time_msec_count",
+  SUPERVISION_BUCKET: "arangodb_agency_supervision_runtime_msec_bucket",
+  SUPERVISION_COUNT: "arangodb_agency_supervision_runtime_msec_count"
 };
 
 class Watcher {
   beforeCoordinator(metrics) {};
   afterCoordinator(metrics) {};
   beforeDBServer(metrics) {};
-  afterDBServer(metrics) {}; 
+  afterDBServer(metrics) {};
   beforeAgent(metrics) {};
-  afterAgent(metrics) {}; 
+  afterAgent(metrics) {};
 }
 
 class CoordinatorValueWatcher extends Watcher {
@@ -313,7 +312,7 @@ describe('_admin/metrics', () => {
     before(() => {
       servers = getServers();
     });
-    
+
     const prometheusToJson = (prometheus) => {
       const lines = prometheus.split('\n').filter((s) => !s.startsWith('#') && s !== '');
       const res = {};
@@ -338,7 +337,7 @@ describe('_admin/metrics', () => {
 
     const loadMetrics = (role, idx) =>  {
       const url = `${servers.get(role)[idx]}/_admin/metrics`;
-      
+
       const res = request({
         json: true,
         method: 'GET',
@@ -355,7 +354,7 @@ describe('_admin/metrics', () => {
       for (const [key, value] of Object.entries(rhs)) {
         if (value instanceof Object) {
           for (const [bucket, content] of Object.entries(value)) {
-            lhs[key][bucket] += content 
+            lhs[key][bucket] += content
           }
         } else {
           lhs[key] += rhs[key];
