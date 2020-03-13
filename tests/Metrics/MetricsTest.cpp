@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+#include "Basics/system-compiler.h"
 
 #include "RestServer/Metrics.h"
 
@@ -96,10 +97,11 @@ template<typename Scale> void histogram_test(Scale const& scale) {
   bool constexpr linear = (Scale::scale_type == ScaleType::LINEAR);
 
   int buckets = static_cast<int>(scale.n());
-  T mx = scale.high(), mn = scale.low(), d, base = 0.;
-  T span = mx - mn, step = span/static_cast<T>(buckets),
-    mmin = (std::is_floating_point<T>::value) ? span / T(1.e6) : T(1),
-    one(1), ten(10);
+  T mx = scale.high(), mn = scale.low(), d;
+  ADB_IGNORE_UNUSED T base = 0.;
+  T span = mx - mn;
+  ADB_IGNORE_UNUSED T step = span / static_cast<T>(buckets);
+  T mmin = (std::is_floating_point<T>::value) ? span / T(1.e6) : T(1), one(1), ten(10);
 
   if constexpr (!linear) {
     base = scale.base();
