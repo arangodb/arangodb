@@ -462,6 +462,12 @@ void payloaded_json_field_factory(
   const json_doc_generator::json_value& data
 );
 
+void normalized_string_json_field_factory(
+  tests::document& doc,
+  const std::string& name,
+  const json_doc_generator::json_value& data
+);
+
 NS_END // tests
 
 #endif // IRESEARCH_INDEX_TESTS_H

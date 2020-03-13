@@ -164,18 +164,65 @@ order::prepared order::prepare() const {
 // --SECTION--                                                        collectors
 // -----------------------------------------------------------------------------
 
-order::prepared::collectors::collectors(
-    const order::prepared& buckets,
-    size_t terms_count)
+template<template<typename...> class T>
+order::prepared::collectors<T>::collectors(const order::prepared& buckets)
   : buckets_(buckets.order_) {
   field_collectors_.reserve(buckets_.size());
-  term_collectors_.reserve(buckets_.size() * terms_count);
 
   // add field collectors from each bucket
   for (auto& entry: buckets_) {
     assert(entry.bucket); // ensured by order::prepare
     field_collectors_.emplace_back(entry.bucket->prepare_field_collector());
   }
+}
+
+template<template<typename...> class T>
+order::prepared::collectors<T>::collectors(collectors<T>&& other) noexcept
+  : buckets_(other.buckets_),
+    field_collectors_(std::move(other.field_collectors_)),
+    term_collectors_(std::move(other.term_collectors_)) {
+}
+
+template<template<typename...> class T>
+void order::prepared::collectors<T>::collect(
+    const sub_reader& segment,
+    const term_reader& field) const {
+  for (auto& entry: field_collectors_) {
+    if (entry) { // may be null if prepare_field_collector() returned nullptr
+      entry->collect(segment, field);
+    }
+  }
+}
+
+template<template<typename...> class T>
+void order::prepared::collectors<T>::empty_finish(
+    byte_type* stats_buf,
+    const index_reader& index) const {
+  // special case where term statistics collection is not applicable
+  // e.g. by_column_existence filter
+  assert(field_collectors_.size() == buckets_.size()); // enforced by allocation in the constructor
+
+  for (size_t i = 0, count = field_collectors_.size(); i < count; ++i) {
+    auto& sort = buckets_[i];
+    assert(sort.bucket); // ensured by order::prepare
+
+    sort.bucket->collect(
+      stats_buf + sort.stats_offset, // where stats for bucket start
+      index,
+      field_collectors_[i].get(),
+      nullptr
+    );
+  }
+}
+
+template class order::prepared::collectors<order::prepared::FixedContainer>;
+template class order::prepared::collectors<order::prepared::VariadicContainer>;
+
+order::prepared::fixed_terms_collectors::fixed_terms_collectors(
+    const order::prepared& buckets,
+    size_t terms_count)
+  : collectors<order::prepared::FixedContainer>(buckets) {
+  term_collectors_.reserve(buckets_.size() * terms_count);
 
   // add term collectors from each bucket
   // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
@@ -187,29 +234,19 @@ order::prepared::collectors::collectors(
   }
 }
 
-order::prepared::collectors::collectors(collectors&& other) noexcept
-  : buckets_(other.buckets_),
-    field_collectors_(std::move(other.field_collectors_)),
-    term_collectors_(std::move(other.term_collectors_)) {
+order::prepared::fixed_terms_collectors::fixed_terms_collectors(fixed_terms_collectors&& other) noexcept
+  : collectors<order::prepared::FixedContainer>(std::move(other)) {
 }
 
-void order::prepared::collectors::collect(
-    const sub_reader& segment,
-    const term_reader& field) const {
-  for (auto& entry: field_collectors_) {
-    if (entry) { // may be null if prepare_field_collector() returned nullptr
-      entry->collect(segment, field);
-    }
-  }
-}
-
-void order::prepared::collectors::collect(
+void order::prepared::fixed_terms_collectors::collect(
     const sub_reader& segment,
     const term_reader& field,
     size_t term_offset,
     const attribute_view& term_attrs) const {
-  for (size_t i = 0, count = buckets_.size(); i < count; ++i) {
-    const auto idx = term_offset * buckets_.size() + i;
+  size_t count = buckets_.size();
+  size_t term_offset_count = term_offset * count;
+  for (size_t i = 0; i < count; ++i) {
+    const auto idx = term_offset_count + i;
     assert(idx < term_collectors_.size()); // enforced by allocation in the constructor
     auto& entry = term_collectors_[idx];
 
@@ -219,25 +256,13 @@ void order::prepared::collectors::collect(
   }
 }
 
-void order::prepared::collectors::finish(
+void order::prepared::fixed_terms_collectors::finish(
     byte_type* stats_buf,
     const index_reader& index) const {
   // special case where term statistics collection is not applicable
   // e.g. by_column_existence filter
   if (term_collectors_.empty()) {
-    assert(field_collectors_.size() == buckets_.size()); // enforced by allocation in the constructor
-
-    for (size_t i = 0, count = field_collectors_.size(); i < count; ++i) {
-      auto& sort = buckets_[i];
-      assert(sort.bucket); // ensured by order::prepare
-
-      sort.bucket->collect(
-        stats_buf + sort.stats_offset, // where stats for bucket start
-        index,
-        field_collectors_[i].get(),
-        nullptr
-      );
-    }
+    empty_finish(stats_buf, index);
   } else {
     auto bucket_count = buckets_.size();
     assert(term_collectors_.size() % bucket_count == 0); // enforced by allocation in the constructor
@@ -258,7 +283,7 @@ void order::prepared::collectors::finish(
   }
 }
 
-size_t order::prepared::collectors::push_back() {
+size_t order::prepared::fixed_terms_collectors::push_back() {
   auto term_offset = term_collectors_.size() / buckets_.size();
 
   term_collectors_.reserve(term_collectors_.size() + buckets_.size());
@@ -269,6 +294,76 @@ size_t order::prepared::collectors::push_back() {
   }
 
   return term_offset;
+}
+
+order::prepared::variadic_terms_collectors::variadic_terms_collectors(
+    const order::prepared& buckets,
+    size_t terms_count)
+  : collectors<order::prepared::VariadicContainer>(buckets) {
+  term_collectors_.resize(buckets_.size());
+
+  // reserve minimal term collectors count
+  for (auto& tc : term_collectors_) {
+    tc.reserve(terms_count);
+  }
+}
+
+order::prepared::variadic_terms_collectors::variadic_terms_collectors(variadic_terms_collectors&& other) noexcept
+  : collectors<order::prepared::VariadicContainer>(std::move(other)) {
+}
+
+void order::prepared::variadic_terms_collectors::collect(
+    const sub_reader& segment,
+    const term_reader& field,
+    size_t /*term_offset*/,
+    const attribute_view& term_attrs) const {
+  for (size_t i = 0, count = buckets_.size(); i < count; ++i) {
+    auto& entry = buckets_[i];
+    assert(entry.bucket); // ensured by order::prepare
+    auto& tc = term_collectors_[i];
+    tc.emplace_back(entry.bucket->prepare_term_collector());
+    auto& e = tc.back();
+
+    if (e) { // may be null if prepare_term_collector() returned nullptr
+      e->collect(segment, field, term_attrs);
+    }
+  }
+}
+
+void order::prepared::variadic_terms_collectors::finish(
+    byte_type* stats_buf,
+    const index_reader& index) const {
+  // special case where term statistics collection is not applicable
+  // e.g. by_column_existence filter
+  if (term_collectors_.empty()) {
+    empty_finish(stats_buf, index);
+  } else {
+    auto count = term_collectors_.size();
+    assert(count == buckets_.size());
+
+    for (size_t i = 0; i < count; ++i) {
+      const auto& sort = buckets_[i];
+      assert(sort.bucket); // ensured by order::prepare
+
+      assert(i < field_collectors_.size());
+      const auto& tc = term_collectors_[i];
+      const auto* fc = field_collectors_[i].get();
+      for (size_t j = 0, tc_count = tc.size(); j < tc_count; ++j) {
+        sort.bucket->collect(
+          stats_buf + sort.stats_offset, // where stats for bucket start
+          index,
+          fc,
+          tc[j].get()
+        );
+      }
+    }
+  }
+}
+
+size_t order::prepared::variadic_terms_collectors::push_back() {
+  assert(false); // unsupported
+
+  return 0;
 }
 
 // ----------------------------------------------------------------------------

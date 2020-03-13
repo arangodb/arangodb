@@ -222,13 +222,7 @@ struct custom_sort: public irs::sort {
       return irs::memory::make_unique<collector>(sort_);
     }
 
-    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
-      if (sort_.scorer_add) {
-        sort_.scorer_add(score_cast(dst), score_cast(src));
-      }
-    }
-
-    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start, const size_t size, size_t offset) const {
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start, const size_t size, size_t offset) const override {
       score_cast(dst + offset) = irs::type_limits<irs::type_t::doc_id_t>::invalid();;
       for (size_t i = 0; i < size; ++i) {
         if (sort_.scorer_add) {
@@ -249,7 +243,7 @@ struct custom_sort: public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect_term;
   std::function<void(irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collectors_collect_;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
-  std::pair<irs::score_ctx_ptr, irs::score_f>(*prepare_scorer)(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&){};
+  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
@@ -372,7 +366,7 @@ struct frequency_sort: public irs::sort {
       return irs::memory::make_unique<term_collector>();
     }
 
-    virtual void  merge(irs::byte_type* dst_buf, const irs::byte_type** src_start, const size_t size, size_t offset) const {
+    virtual void merge(irs::byte_type* dst_buf, const irs::byte_type** src_start, const size_t size, size_t offset) const override {
       auto& score = score_cast(dst_buf + offset);
       score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       score.value = std::numeric_limits<double>::infinity();
@@ -389,21 +383,6 @@ struct frequency_sort: public irs::sort {
         }
         dst.value += src.value;
       }
-    }
-
-    virtual void add(irs::byte_type* dst_buf, const irs::byte_type* src_buf) const override {
-      auto& dst = score_cast(dst_buf);
-      auto& src = score_cast(src_buf);
-
-      ASSERT_TRUE(src.prepared);
-      ASSERT_TRUE(dst.prepared);
-
-      if (std::numeric_limits<double>::infinity()) {
-        dst.id = src.id;
-        dst.value = 0;
-      }
-
-      dst.value += src.value;
     }
 
     virtual bool less(const irs::byte_type* lhs_buf, const irs::byte_type* rhs_buf) const override {
