@@ -667,7 +667,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  if (isExecutionDeadlineReached(args)) {
+  if (isExecutionDeadlineReached(isolate)) {
     return;
   }
   TRI_GET_GLOBALS();
@@ -3884,7 +3884,7 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isExecutionDeadlineReached(args)) {
+  if (isExecutionDeadlineReached(isolate)) {
     return;
   }
 
@@ -3941,7 +3941,7 @@ static void JS_Time(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (isExecutionDeadlineReached(args)) {
+  if (isExecutionDeadlineReached(isolate)) {
     return;
   }
 

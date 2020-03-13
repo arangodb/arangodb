@@ -55,7 +55,7 @@ static void JS_SetExecutionDeadlineTo(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_END
 }
 
-bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args) {
+bool isExecutionDeadlineReached(v8::Isolate* isolate) {
   auto when = executionDeadline;
   if (when < 0.00001) {
     return false;
@@ -65,7 +65,6 @@ bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args)
     return false;
   }
 
-  auto isolate = args.GetIsolate();
   TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, "Execution deadline reached!", true);
   return true;
 }
@@ -103,10 +102,7 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::millise
 
 }
 
-void TRI_InitV8Deadline(v8::Isolate* isolate,
-                        v8::Handle<v8::Context>,
-                        std::string const& startupPath,
-                        std::string const& modules)
+void TRI_InitV8Deadline(v8::Isolate* isolate)
 {
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),

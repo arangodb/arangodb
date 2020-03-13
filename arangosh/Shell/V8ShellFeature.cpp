@@ -1101,7 +1101,7 @@ void V8ShellFeature::initGlobals() {
 
   TRI_InitV8Buffer(_isolate);
   TRI_InitV8Utils(_isolate, context, _startupDirectory, modules);
-  TRI_InitV8Deadline(_isolate, context, _startupDirectory, modules);
+  TRI_InitV8Deadline(_isolate);
   TRI_InitV8Shell(_isolate);
 
   // pager functions (overwrite existing SYS_OUTPUT from InitV8Utils)

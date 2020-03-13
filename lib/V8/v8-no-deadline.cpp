@@ -25,7 +25,7 @@
 void setExecutionDeadlineInMS(uint64_t timeout) {
 }
 
-bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args) {
+bool isExecutionDeadlineReached(v8::Isolate* isolate) {
   return false;
 }
 
@@ -37,9 +37,6 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::millise
   return timeout;
 }
 
-void TRI_InitV8Deadline(v8::Isolate* isolate,
-                        v8::Handle<v8::Context>,
-                        std::string const& startupPath,
-                        std::string const& modules)
+void TRI_InitV8Deadline(v8::Isolate* isolate)
 {
 }

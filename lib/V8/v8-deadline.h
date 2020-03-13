@@ -30,13 +30,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
 ////////////////////////////////////////////////////////////////////////////////
-bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args);
+bool isExecutionDeadlineReached(v8::Isolate* isolate);
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
 std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout);
 
-void TRI_InitV8Deadline(v8::Isolate* isolate,
-                        v8::Handle<v8::Context>,
-                        std::string const& startupPath,
-                        std::string const& modules);
+void TRI_InitV8Deadline(v8::Isolate* isolate);
 
 #endif
