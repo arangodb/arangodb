@@ -99,6 +99,19 @@ class OutputAqlItemRow {
   void copyBlockInternalRegister(InputAqlItemRow const& sourceRow,
                                  RegisterId input, RegisterId output);
 
+  /**
+   * @brief This function will only work if input and output
+   *        have the same block.
+   *        We will "copy" all rows in the input block into the output.
+   *        No Registers will be modified.
+   *
+   * @param sourceRow The input source row.
+   *                  Requirements:
+   *                    - Input and Output blocks are the same
+   *                    - Input and Output row position are identical
+   */
+  auto fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows) -> void;
+
   [[nodiscard]] std::size_t getNrRegisters() const {
     return block().getNrRegs();
   }
