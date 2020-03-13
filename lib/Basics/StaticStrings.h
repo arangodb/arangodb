@@ -70,6 +70,7 @@ class StaticStrings {
   static std::string const Prefix;
   static std::string const OverWrite;
   static std::string const OverWriteMode;
+  static std::string const PreserveRevisionIds;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -258,12 +259,15 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
+  static std::string const RevisionTreeBranchingFactor;
   static std::string const RevisionTreeCount;
   static std::string const RevisionTreeHash;
   static std::string const RevisionTreeMaxDepth;
   static std::string const RevisionTreeNodes;
   static std::string const RevisionTreeRangeMax;
   static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeRanges;
+  static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
 
   // generic attribute names

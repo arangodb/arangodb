@@ -65,6 +65,7 @@ std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::ReplaceExisting("replaceExisting");
 std::string const StaticStrings::OverWrite("overwrite");
 std::string const StaticStrings::OverWriteMode("overwriteMode");
+std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
@@ -279,12 +280,15 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
+std::string const StaticStrings::RevisionTreeBranchingFactor("branchingFactor");
 std::string const StaticStrings::RevisionTreeCount("count");
 std::string const StaticStrings::RevisionTreeHash("hash");
 std::string const StaticStrings::RevisionTreeMaxDepth("maxDepth");
 std::string const StaticStrings::RevisionTreeNodes("nodes");
 std::string const StaticStrings::RevisionTreeRangeMax("rangeMax");
 std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
+std::string const StaticStrings::RevisionTreeRanges("ranges");
+std::string const StaticStrings::RevisionTreeResume("resume");
 std::string const StaticStrings::RevisionTreeVersion("version");
 
 // Generic attribute names

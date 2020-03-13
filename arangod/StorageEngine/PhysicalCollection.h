@@ -233,6 +233,8 @@ class PhysicalCollection {
   virtual void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
   virtual void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
 
+  TRI_voc_rid_t newRevisionId() const;
+
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 
@@ -240,8 +242,6 @@ class PhysicalCollection {
   virtual void figuresSpecific(arangodb::velocypack::Builder&) = 0;
 
   // SECTION: Document pre commit preperation
-
-  TRI_voc_rid_t newRevisionId() const;
 
   bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
 

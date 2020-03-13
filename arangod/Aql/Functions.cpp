@@ -1491,7 +1491,7 @@ AqlValue Functions::ToBase64(ExpressionContext*, transaction::Methods* trx,
   ::appendAsString(trx, adapter, value);
 
   std::string encoded =
-      basics::StringUtils::encodeBase64(std::string(buffer->begin(), buffer->length()));
+      basics::StringUtils::encodeBase64(buffer->begin(), buffer->length());
 
   return AqlValue(encoded);
 }

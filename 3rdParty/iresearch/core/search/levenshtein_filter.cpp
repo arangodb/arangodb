@@ -24,6 +24,7 @@
 
 #include "shared.hpp"
 #include "limited_sample_scorer.hpp"
+#include "term_query.hpp"
 #include "index/index_reader.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/levenshtein_utils.hpp"
@@ -37,27 +38,29 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_edit_distance)
 DEFINE_FACTORY_DEFAULT(by_edit_distance)
 
-filter::prepared::ptr by_edit_distance::prepare(
+/*static*/ filter::prepared::ptr by_edit_distance::prepare(
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const attribute_view& ctx) const {
-  if (0 == max_distance_) {
-    return by_term::prepare(index, order, boost, ctx);
+    const string_ref& field,
+    const bytes_ref& term,
+    size_t scored_terms_limit,
+    byte_type max_distance,
+    pdp_f provider,
+    bool with_transpositions) {
+  if (0 == max_distance) {
+    return term_query::make(index, order, boost, field, term);
   }
 
-  assert(provider_);
-  const auto& d = (*provider_)(max_distance_, with_transpositions_);
+  assert(provider);
+  const auto& d = (*provider)(max_distance, with_transpositions);
 
   if (!d) {
     return prepared::empty();
   }
 
-  boost *= this->boost();
-  const string_ref field = this->field();
-
-  return prepare_automaton_filter(field, make_levenshtein_automaton(d, term()),
-                                  scored_terms_limit(), index, order, boost);
+  return prepare_automaton_filter(field, make_levenshtein_automaton(d, term),
+                                  scored_terms_limit, index, order, boost);
 }
 
 by_edit_distance::by_edit_distance() noexcept

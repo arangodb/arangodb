@@ -35,11 +35,17 @@
 
 struct invalid_feature { };
 
+#ifdef PYRESEARCH_DLL
+#define PYRESEARCH_API __declspec(dllexport)
+#else
+#define PYRESEARCH_API
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 /// @brief python proxy for irs::doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class doc_iterator {
+class PYRESEARCH_API doc_iterator {
  public:
   ~doc_iterator() SWIG_noexcept { }
 
@@ -69,7 +75,7 @@ class doc_iterator {
 /// @class term_iterator
 /// @brief python proxy for irs::term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator {
+class PYRESEARCH_API  term_iterator {
  public:
   ~term_iterator() SWIG_noexcept { }
 
@@ -98,7 +104,7 @@ class term_iterator {
   friend class field_reader;
 
   term_iterator(irs::seek_term_iterator::ptr&& it) SWIG_noexcept 
-    : it_(std::move(it)) {
+    :it_(irs::memory::make_shared(std::move(it))) {
   }
 
   std::shared_ptr<irs::seek_term_iterator> it_;
@@ -108,7 +114,7 @@ class term_iterator {
 /// @class column_meta
 /// @brief python proxy for irs::column_meta
 ///////////////////////////////////////////////////////////////////////////////
-class column_meta {
+class PYRESEARCH_API  column_meta {
  public:
   ~column_meta() SWIG_noexcept { }
 
@@ -129,7 +135,7 @@ class column_meta {
 /// @class column_iterator
 /// @brief python proxy for irs::column_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class column_iterator {
+class PYRESEARCH_API  column_iterator {
  public:
   ~column_iterator() SWIG_noexcept { }
 
@@ -153,7 +159,7 @@ class column_iterator {
 /// @class column_values_reader
 /// @brief python proxy for irs::columnstore_reader::values_reader_f
 ///////////////////////////////////////////////////////////////////////////////
-class column_values_reader {
+class PYRESEARCH_API  column_values_reader {
  public:
   ~column_values_reader() SWIG_noexcept { }
 
@@ -182,7 +188,7 @@ class column_values_reader {
 /// @class column_reader
 /// @brief python proxy for irs::columnstore_reader::column_reader
 ///////////////////////////////////////////////////////////////////////////////
-class column_reader {
+class PYRESEARCH_API  column_reader {
  public:
   ~column_reader() SWIG_noexcept { }
 
@@ -214,7 +220,7 @@ class column_reader {
 /// @class field_reader
 /// @brief python proxy for irs::term_reader
 ///////////////////////////////////////////////////////////////////////////////
-class field_reader {
+class PYRESEARCH_API  field_reader {
  public:
   ~field_reader() SWIG_noexcept { }
 
@@ -265,7 +271,7 @@ class field_reader {
 /// @class field_iterator
 /// @brief python proxy for irs::field_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class field_iterator {
+class PYRESEARCH_API  field_iterator {
  public:
   ~field_iterator() SWIG_noexcept { }
 
@@ -289,7 +295,7 @@ class field_iterator {
 /// @class segment_reader
 /// @brief python proxy for irs::segment_reader
 ///////////////////////////////////////////////////////////////////////////////
-class segment_reader {
+class PYRESEARCH_API  segment_reader {
  public:
   ~segment_reader() SWIG_noexcept { }
 
@@ -325,7 +331,7 @@ class segment_reader {
 /// @class segment_iterator
 /// @brief python iterator for index_reader proxy
 ///////////////////////////////////////////////////////////////////////////////
-class segment_iterator {
+class PYRESEARCH_API   segment_iterator {
  public:
   segment_reader next() {
     if (begin_ == end_) {
@@ -358,7 +364,7 @@ class segment_iterator {
 /// @class index_reader
 /// @brief python proxy for irs::index_reader
 ///////////////////////////////////////////////////////////////////////////////
-class index_reader {
+class PYRESEARCH_API  index_reader {
  public:
   static index_reader open(const char* path);
 

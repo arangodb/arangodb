@@ -206,6 +206,7 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceTest.cpp
   ${RCFILE}
   Metrics/MetricsTest.cpp
+  Metrics/MetricsFeatureTest.cpp
   Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp

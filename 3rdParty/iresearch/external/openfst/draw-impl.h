@@ -14,7 +14,6 @@
 #include <fst/fst.h>
 #include <fst/symbol-table.h>
 #include <fst/util.h>
-#include <fst/script/fst-class.h>
 
 namespace fst {
 
@@ -261,8 +260,7 @@ inline void drawFst(
     int fontsize = 14,
     int precision = 5,
     const std::string& float_format = "g",
-    bool show_weight_one = false
-) {
+    bool show_weight_one = false) {
   FstDrawer<typename Fst::Arc> drawer(
     fst, isyms, osyms, ssyms, accep, title, width, height,
     partrait, vertical, randsep, nodesep, fontsize, precision,
@@ -270,6 +268,39 @@ inline void drawFst(
   );
 
   drawer.Draw(&strm, dest);
+}
+
+template<typename Fst>
+inline bool drawFst(
+    const Fst& fst,
+    const std::string& dest,
+    const SymbolTable* isyms = nullptr,
+    const SymbolTable* osyms = nullptr,
+    const SymbolTable* ssyms = nullptr,
+    bool accep = false,
+    const std::string& title = "",
+    float width = 11,
+    float height = 8.5,
+    bool partrait = true,
+    bool vertical = false,
+    float randsep = 0.4,
+    float nodesep = 0.25,
+    int fontsize = 14,
+    int precision = 5,
+    const std::string& float_format = "g",
+    bool show_weight_one = false) {
+  std::fstream stream;
+  stream.open(dest, std::fstream::binary | std::fstream::out);
+  if (!stream) {
+    return false;
+  }
+
+  fst::drawFst(
+    fst, stream, dest, isyms, osyms, ssyms, accep, title,
+    width, height, partrait, vertical, randsep, nodesep,
+    fontsize, precision, float_format, show_weight_one);
+
+  return true;
 }
 
 }  // namespace fst
