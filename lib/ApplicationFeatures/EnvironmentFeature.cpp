@@ -222,6 +222,12 @@ void EnvironmentFeature::prepare() {
           if (res == 0) {
             double swapSpace = static_cast<double>(info.totalswap);
             double ram = static_cast<double>(PhysicalMemory::getValue());
+            std::string overriddenmsg;
+            if (PhysicalMemory::overridden()) {
+              overriddenmsg = " (overridden by environment variable)";
+            }
+            LOG_TOPIC("25362", INFO, Logger::MEMORY)
+                << "Available physical memory: " << ram << overriddenmsg;
             double rr = (ram >= swapSpace) ? 100.0 * ((ram - swapSpace) / ram) : 0.0;
             if (static_cast<double>(r) < 0.99 * rr) {
               LOG_TOPIC("b0a75", WARN, Logger::MEMORY)
