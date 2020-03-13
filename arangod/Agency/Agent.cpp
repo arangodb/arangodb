@@ -302,6 +302,11 @@ index_t Agent::index() {
 
 }
 
+///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
+index_t Agent::confirmed(std::string const& agentId) const {
+  return _confirmed.at(agentId.empty() ? _config.id() : agentId);
+}
+
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   auto startTime = steady_clock::now();
@@ -879,6 +884,9 @@ void Agent::load() {
   }
 
   _loaded = true;
+  if (size() == 1) {
+    endPrepareLeadership();
+  }
 
 }
 
@@ -2148,5 +2156,11 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
   }
 }
 
+std::vector<log_t> Agent::logs(index_t begin, index_t end) const {
+  return _state.get(begin, end);
+}
+
+
 }  // namespace consensus
 }  // namespace arangodb
+

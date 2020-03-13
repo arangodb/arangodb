@@ -120,6 +120,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.my-address",
                      "this server's endpoint (cluster internal)",
                      new StringParameter(&_myEndpoint),
+
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                                   arangodb::options::Flags::OnCoordinator,
                                                   arangodb::options::Flags::OnDBServer));
@@ -193,9 +194,9 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "active coordinator will wait for all replicas to create collection",
       new BooleanParameter(&_createWaitsForSyncReplication),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                   arangodb::options::Flags::Hidden,
                                    arangodb::options::Flags::OnCoordinator,
-                                   arangodb::options::Flags::OnDBServer));
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--cluster.index-create-timeout",
@@ -203,8 +204,8 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "be created before giving up",
       new DoubleParameter(&_indexCreationTimeout),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                   arangodb::options::Flags::Hidden,
-                                   arangodb::options::Flags::OnCoordinator));
+                                   arangodb::options::Flags::OnCoordinator,
+                                   arangodb::options::Flags::Hidden));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -563,7 +564,8 @@ void ClusterFeature::start() {
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
     _dropped_follower_counter = server().getFeature<arangodb::MetricsFeature>().counter(
-        StaticStrings::DroppedFollowerCount, 0, "Number of drop-follower events");
+        StaticStrings::DroppedFollowerCount, 0,
+        "Number of drop-follower events");
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)

@@ -280,6 +280,7 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
+std::string const StaticStrings::RevisionTreeBranchingFactor("branchingFactor");
 std::string const StaticStrings::RevisionTreeCount("count");
 std::string const StaticStrings::RevisionTreeHash("hash");
 std::string const StaticStrings::RevisionTreeMaxDepth("maxDepth");

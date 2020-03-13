@@ -145,7 +145,6 @@ ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;
 }
 
-
 Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key) {
   metrics_key mk(key);
   std::shared_ptr<Counter> metric = nullptr;
@@ -166,7 +165,6 @@ Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key)
     try {
       metric = std::dynamic_pointer_cast<Counter>(it->second);
       if (metric == nullptr) {
-
         error = std::string("Failed to retrieve counter ") + mk.name;
       }
     } catch (std::exception const& e) {
@@ -178,7 +176,6 @@ Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key)
   }
   return *metric;
 }
-
 
 Counter& MetricsFeature::counter (std::string const& name) {
   return counter({name});

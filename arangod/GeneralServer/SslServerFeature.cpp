@@ -704,12 +704,14 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string a
 // are hashed.
 Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
   { VPackObjectBuilder guard(&builder);
-    dumpPEM(_sniEntries[0].keyfileContent, builder, "keyfile");
-    dumpPEM(_cafileContent, builder, "clientCA");
-    if (_sniEntries.size() > 1) {
-      VPackObjectBuilder guard2(&builder, "SNI");
-      for (size_t i = 1; i < _sniEntries.size(); ++i) {
-        dumpPEM(_sniEntries[i].keyfileContent, builder, _sniEntries[i].serverName);
+    if (!_sniEntries.empty()) {
+      dumpPEM(_sniEntries[0].keyfileContent, builder, "keyfile");
+      dumpPEM(_cafileContent, builder, "clientCA");
+      if (_sniEntries.size() > 1) {
+        VPackObjectBuilder guard2(&builder, "SNI");
+        for (size_t i = 1; i < _sniEntries.size(); ++i) {
+          dumpPEM(_sniEntries[i].keyfileContent, builder, _sniEntries[i].serverName);
+        }
       }
     }
   }
