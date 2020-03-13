@@ -114,6 +114,7 @@ CREATE_HAS_MEMBER_CHECK(skipRows, hasSkipRows);
 CREATE_HAS_MEMBER_CHECK(fetchBlockForPassthrough, hasFetchBlockForPassthrough);
 CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
 CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
+CREATE_HAS_MEMBER_CHECK(expectedNumberOfRowsNew, hasExpectedNumberOfRowsNew);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // Forward declaration of Test Executors.
@@ -1032,7 +1033,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 
 // TODO: We need to define the size of this block based on Input / Executor / Subquery depth
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
+auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
     -> std::unique_ptr<OutputAqlItemRow> {
   if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
     SharedAqlItemBlockPtr newBlock{nullptr};
@@ -1047,8 +1048,22 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
 
     return createOutputRow(newBlock, std::move(call));
   } else {
+    if (!inputRange.hasShadowRow() && !inputRange.hasDataRow()) {
+      // On empty input do not yet create output.
+      SharedAqlItemBlockPtr newBlock{nullptr};
+      return createOutputRow(newBlock, std::move(call));
+    }
     // Non-Passthrough variant, we need to allocate the block ourselfs
     size_t blockSize = ExecutionBlock::DefaultBatchSize;
+    if constexpr (hasExpectedNumberOfRowsNew<Executor>::value) {
+      blockSize = _executor.expectedNumberOfRowsNew(inputRange, call);
+      // The executor cannot expect to produce more then the limit!
+      TRI_ASSERT(blockSize <= call.getLimit());
+
+      blockSize += inputRange.countShadowRows();
+      // We have an upper bound by DefaultBatchSize;
+      blockSize = std::min(ExecutionBlock::DefaultBatchSize, blockSize);
+    }
     SharedAqlItemBlockPtr newBlock =
         _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
     return createOutputRow(newBlock, std::move(call));
@@ -1056,9 +1071,10 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
 }
 
 template <class Executor>
-void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
+void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call,
+                                                     DataRange const& inputRange) {
   if (_outputItemRow == nullptr || !_outputItemRow->isInitialized()) {
-    _outputItemRow = allocateOutputBlock(std::move(call));
+    _outputItemRow = allocateOutputBlock(std::move(call), inputRange);
   } else {
     _outputItemRow->setCall(std::move(call));
   }
@@ -1939,9 +1955,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             TRI_ASSERT(!stack.empty());
             AqlCall const& subqueryCall = stack.peek();
             AqlCall copyCall = subqueryCall;
-            ensureOutputBlock(std::move(copyCall));
+            ensureOutputBlock(std::move(copyCall), _lastRange);
           } else {
-            ensureOutputBlock(std::move(clientCall));
+            ensureOutputBlock(std::move(clientCall), _lastRange);
           }
           TRI_ASSERT(_outputItemRow);
           TRI_ASSERT(!_executorReturnedDone);
@@ -2133,9 +2149,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             TRI_ASSERT(!stack.empty());
             AqlCall const& subqueryCall = stack.peek();
             AqlCall copyCall = subqueryCall;
-            ensureOutputBlock(std::move(copyCall));
+            ensureOutputBlock(std::move(copyCall), _lastRange);
           } else {
-            ensureOutputBlock(std::move(clientCall));
+            ensureOutputBlock(std::move(clientCall), _lastRange);
           }
 
           TRI_ASSERT(!_outputItemRow->allRowsUsed());

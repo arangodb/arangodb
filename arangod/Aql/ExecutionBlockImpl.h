@@ -309,12 +309,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] ExecutionState fetchShadowRowInternal();
 
   // Allocate an output block and install a call in it
-  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call)
+  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
       -> std::unique_ptr<OutputAqlItemRow>;
 
-  // Ensure that we have an output block of the desired dimenstions
+  // Ensure that we have an output block of the desired dimensions
   // Will as a side effect modify _outputItemRow
-  void ensureOutputBlock(AqlCall&& call);
+  void ensureOutputBlock(AqlCall&& call, DataRange const& inputRange);
 
   // Compute the next state based on the given call.
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
