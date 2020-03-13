@@ -115,7 +115,7 @@ class MMFilesDocumentPosition {
   // the _fid value is set, and to a datafile otherwise
   inline bool pointsToWal() const noexcept {
     // check whether the WAL bit is set
-    return ((_fid.id() & MMFilesDatafileHelper::WalFileBitmask()) != 0);
+    return FileId{_fid.id() & MMFilesDatafileHelper::WalFileBitmask()}.isSet();
   }
 
   inline operator bool() const noexcept {

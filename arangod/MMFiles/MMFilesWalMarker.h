@@ -86,7 +86,7 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
   MMFilesMarkerEnvelope(MMFilesMarker const* other, FileId fid)
       : _other(other), _fid(fid), _size(other->getSize()) {
     // we must always have a datafile id, and a reasonable marker size
-    TRI_ASSERT(_fid.id() > 0);
+    TRI_ASSERT(_fid.isSet());
     TRI_ASSERT(_size >= sizeof(MMFilesMarker));
   }
 

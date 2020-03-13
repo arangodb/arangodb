@@ -59,7 +59,7 @@ bool Identifier::operator>(Identifier const& other) const {
 }
 
 bool Identifier::operator>=(Identifier const& other) const {
-  return _id > other._id;
+  return _id >= other._id;
 }
 
 void Identifier::clear() { _id = 0; }

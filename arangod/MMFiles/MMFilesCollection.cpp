@@ -81,7 +81,7 @@ struct OpenIteratorState {
   LogicalCollection* _collection;
   arangodb::MMFilesPrimaryIndex* _primaryIndex;
   TRI_voc_tid_t _tid{0};
-  FileId _fid{0};
+  FileId _fid{FileId::none()};
   std::unordered_map<FileId, MMFilesDatafileStatisticsContainer*> _stats;
   MMFilesDatafileStatisticsContainer* _dfi{nullptr};
   transaction::Methods* _trx;

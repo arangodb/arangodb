@@ -47,7 +47,7 @@ struct MMFilesCollectorOperation {
     TRI_ASSERT(datafilePosition != nullptr);
     TRI_ASSERT(datafileMarkerSize > 0);
     TRI_ASSERT(walPosition != nullptr);
-    TRI_ASSERT(datafileId.id() > 0);
+    TRI_ASSERT(datafileId.isSet());
   }
 
   char const* datafilePosition;
