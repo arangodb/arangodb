@@ -1,11 +1,15 @@
 devel
 -----
 
+* Supervision to clean up zombie servers after 24h, if no
+  responsibility for shards.
+
 * Fix SORT RAND() LIMIT 1 optimization for RocksDB when only a projection of the
-  attributes was used. When a projection was used and that projection was covered
-  by an index (e.g. `_key` via the primary index), then the access pattern was
-  transformed from random order collection seek to an index access, which always
-  resulted in the same index entry to be returned and not a random one.
+  attributes was used. When a projection was used and that projection was
+  covered by an index (e.g. `_key` via the primary index), then the access
+  pattern was transformed from random order collection seek to an index access,
+  which always resulted in the same index entry to be returned and not a random
+  one.
 
 * Mark server startup options `--foxx.*`, `--frontend.*` and `--javascript.*`
   as single server and Coordinator only for documentation (`--dump-options`).
@@ -13,7 +17,7 @@ devel
 * Supervision hot backup and supervision maintenance modes ttl fix.
 
 * Fix a bug that leads to graph traversals yielding empty output when none of the
-  output variables (vertex, edge, path) are used. This is relevant when a query 
+  output variables (vertex, edge, path) are used. This is relevant when a query
   is only interested in a COUNT of the outputs, for example.
 
 * MoveShard to check, if target is in sync follower before promotion
