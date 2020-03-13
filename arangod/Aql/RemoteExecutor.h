@@ -23,17 +23,24 @@
 #ifndef ARANGOD_AQL_REMOTE_EXECUTOR_H
 #define ARANGOD_AQL_REMOTE_EXECUTOR_H
 
+#include "Aql/AqlExecuteResult.h"
 #include "Aql/ClusterNodes.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutorInfos.h"
+
+#include <fuerte/message.h>
 
 #include <mutex>
 
-#include <fuerte/message.h>
-#include <fuerte/types.h>
+namespace arangodb::fuerte {
+inline namespace v1 {
+enum class RestVerb;
+}
+}  // namespace arangodb::fuerte
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
+
+class SkipResult;
 
 // The RemoteBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
@@ -45,12 +52,14 @@ class RemoteExecutor final {};
 template <>
 class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
  public:
+  using Api = ::arangodb::aql::RemoteNode::Api;
+
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (server, ownName and queryId) should probably be
   // moved into some RemoteExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, RemoteNode const* node,
                      ExecutorInfos&& infos, std::string const& server,
-                     std::string const& ownName, std::string const& queryId);
+                     std::string const& ownName, std::string const& queryId, Api);
 
   ~ExecutionBlockImpl() override = default;
 
@@ -61,6 +70,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   std::pair<ExecutionState, Result> shutdown(int errorCode) override;
+
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+
+  [[nodiscard]] auto api() const noexcept -> Api;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
@@ -75,6 +88,20 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
+  auto executeWithoutTrace(AqlCallStack stack)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
+  auto executeViaOldApi(AqlCallStack stack)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
+  auto executeViaNewApi(AqlCallStack stack)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
+  [[nodiscard]] auto deserializeExecuteCallResultBody(velocypack::Slice) const
+      -> ResultT<AqlExecuteResult>;
+  [[nodiscard]] auto serializeExecuteCallBody(AqlCallStack const& callStack) const
+      -> velocypack::Buffer<uint8_t>;
+
   ExecutorInfos const& infos() const { return _infos; }
 
   Query const& getQuery() const { return _query; }
@@ -83,12 +110,18 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// reactivated
   arangodb::Result sendAsyncRequest(fuerte::RestVerb type, std::string const& urlPart,
                                     velocypack::Buffer<uint8_t>&& body);
-  
+
   // _communicationMutex *must* be locked for this!
   unsigned generateRequestTicket();
 
+  void traceExecuteRequest(velocypack::Slice slice, AqlCallStack const& callStack);
+  void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
+  void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
+  void traceInitializeCursorRequest(velocypack::Slice slice);
+  void traceShutdownRequest(velocypack::Slice slice, int errorCode);
+  void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
+
  private:
-  
   enum class ReqState {
     None,
     SendingGetSome,
@@ -98,7 +131,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
     SendingShutdown,
     GotShutdown
   };
-  
+
   ExecutorInfos _infos;
 
   Query const& _query;
@@ -116,7 +149,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief whether or not this block will forward initialize,
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
-  
+
   std::mutex _communicationMutex;
 
   /// @brief the last unprocessed result. Make sure to reset it
@@ -125,23 +158,18 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
-  
+
   unsigned _lastTicket;  /// used to check for canceled requests
-  
+
   bool _requestInFlight;
-  
+
   bool _hasTriggeredShutdown;
 
-//  bool _didReceiveShutdownRequest;
-
-  void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
-  void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
-  void traceInitializeCursorRequest(velocypack::Slice slice);
-  void traceShutdownRequest(velocypack::Slice slice, int errorCode);
-  void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
+  /// @brief Whether to use the pre-3.7 getSome/skipSome API, instead of the
+  ///        execute API. Used for rolling upgrades, so can be removed in 3.8.
+  Api _apiToUse = Api::EXECUTE;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_REMOTE_EXECUTOR_H

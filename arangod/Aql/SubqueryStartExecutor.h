@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
 #define ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 
@@ -49,47 +51,35 @@ class SubqueryStartExecutor {
   using Infos = ExecutorInfos;
   using Stats = NoStats;
   SubqueryStartExecutor(Fetcher& fetcher, Infos& infos);
-  ~SubqueryStartExecutor();
+  ~SubqueryStartExecutor() = default;
 
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[deprecated]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  /**
-   * @brief Estimate of expected number of rows.
-   *
-   * @return ExecutionState, merely taken from upstream,
-   *         size_t number of rows we are likely to produce (at most)
-   *
-   */
+  // produceRows for SubqueryStart reads a data row from its input and produces
+  // a copy of that row and a shadow row. This requires some amount of internal
+  // state as it can happen that after producing the copied data row the output
+  // is full, and hence we need to return ExecutorState::HASMORE to be able to
+  // produce the shadow row
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  // skipRowsRange just skips input rows and reports how many rows it skipped
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+
+  // Produce a shadow row *if* we have either skipped or output a datarow
+  // previously
+  auto produceShadowRow(AqlItemBlockInputRange& input, OutputAqlItemRow& output) -> bool;
+
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  enum class State {
-    READ_DATA_ROW,
-    PRODUCE_DATA_ROW,
-    PRODUCE_SHADOW_ROW,
-    PASS_SHADOW_ROW
-  };
-
-  auto static stateToString(State state) -> std::string;
-
  private:
-  // Fetcher to get data.
-  Fetcher& _fetcher;
-
   // Upstream state, used to determine if we are done with all subqueries
-  ExecutionState _upstreamState{ExecutionState::HASMORE};
+  ExecutorState _upstreamState{ExecutorState::HASMORE};
 
   // Cache for the input row we are currently working on
-  InputAqlItemRow _input{CreateInvalidInputRowHint{}};
-
-  // Internal state
-  State _internalState{State::READ_DATA_ROW};
+  InputAqlItemRow _inputRow{CreateInvalidInputRowHint{}};
 };
 }  // namespace aql
 }  // namespace arangodb
