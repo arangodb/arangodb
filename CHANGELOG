@@ -1,7 +1,9 @@
 devel
 -----
 
-
+* Allow to override the detected total amount of memory via an environment
+  variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
+ 
 * `splice-subqueries` optimization is not limited by any type of operation within the
   subquery any more. It can now be applied on every subquery and will be by default.
   However they may be a performance impact on some queries where splice-subqueries
