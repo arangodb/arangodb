@@ -31,7 +31,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
 ////////////////////////////////////////////////////////////////////////////////
-void setExecutionDeadlineInMS(uint64_t timeout);
 bool isExecutionDeadlineReached(v8::FunctionCallbackInfo<v8::Value> const& args);
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
 std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout);

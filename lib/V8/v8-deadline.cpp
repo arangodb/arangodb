@@ -30,14 +30,6 @@
 /// @brief set a point in time after which we will abort external connection
 ////////////////////////////////////////////////////////////////////////////////
 static double executionDeadline = 0.0;
-// arangosh only: set a deadline
-void setExecutionDeadlineInMS(uint64_t timeout) {
-  if (timeout == 0) {
-    executionDeadline = 0.0;
-  } else {
-    executionDeadline = TRI_microtime() + timeout / 1000;
-  }
-}
 
 // arangosh only: set a deadline
 static void JS_SetExecutionDeatlineTo(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -53,7 +45,11 @@ static void JS_SetExecutionDeatlineTo(v8::FunctionCallbackInfo<v8::Value> const&
   auto now = TRI_microtime();
 
   auto n = TRI_ObjectToUInt64(isolate, args[0], false);
-  setExecutionDeadlineInMS(n);
+  if (n == 0) {
+    executionDeadline = 0.0;
+  } else {
+    executionDeadline = TRI_microtime() + n / 1000;
+  }
 
   TRI_V8_RETURN_BOOL((when > 0.00001) && (now - when > 0.0) );
   TRI_V8_TRY_CATCH_END
