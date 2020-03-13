@@ -129,7 +129,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 
   // remove everything from the highest remote key until the end of the key
   // range
-  auto index = coll->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
+  auto index = coll->lookupIndex(IndexId::primary());  // RocksDBCollection->primaryIndex() is private
   TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 

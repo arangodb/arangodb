@@ -848,7 +848,7 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
     _sortedIterator = sorted;
 
     if (sorted) {
-      auto index = logical->getPhysical()->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
+      auto index = logical->getPhysical()->lookupIndex(IndexId::primary());  // RocksDBCollection->primaryIndex() is private
       TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
       auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
       bounds = RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId());
