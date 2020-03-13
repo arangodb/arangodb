@@ -16,7 +16,7 @@ for i in `seq 1 1`; do
         wait $IRESEARCH_PID
 
         echo iresearch.stdout.${MAX_LINES}.search.log.$i
-        cat iresearch.stdout.${MAX_LINES}.search.log.$i | grep 'Query execution' | sort
+        cat iresearch.stdout.${MAX_LINES}.search.log.$i | grep 'Query' | sort
     done
 done
 

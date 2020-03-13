@@ -7,6 +7,9 @@ devel
   transformed from random order collection seek to an index access, which always
   resulted in the same index entry to be returned and not a random one.
 
+* Mark server startup options `--foxx.*`, `--frontend.*` and `--javascript.*`
+  as single server and Coordinator only for documentation (`--dump-options`).
+
 * Supervision hot backup and supervision maintenance modes ttl fix.
 
 * Fix a bug that leads to graph traversals yielding empty output when none of the

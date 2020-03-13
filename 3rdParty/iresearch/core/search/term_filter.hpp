@@ -44,7 +44,7 @@ class IRESEARCH_API by_term : public filter {
     return *this;
   }
 
-  const std::string& field() const { 
+  const std::string& field() const noexcept {
     return fld_; 
   }
 
@@ -71,7 +71,7 @@ class IRESEARCH_API by_term : public filter {
     const attribute_view& ctx
   ) const override;
 
-  const bstring& term() const { 
+  const bstring& term() const noexcept {
     return term_;
   }
 
