@@ -779,10 +779,10 @@ bool Supervision::updateSnapshot() {
         _spearhead = _agent->spearhead();
         if (_spearhead.has(_agencyPrefix)) {
           _lastUpdateIndex = _agent->confirmed();
-          _snapshot = _spearhead.node(_agencyPrefix);
+          _snapshot = _spearhead.nodePtr(_agencyPrefix);
         } else {
           _lastUpdateIndex = 0;
-          _snapshot = _spearhead.node();
+          _snapshot = _spearhead.nodePtr();
         }
       }
     });
@@ -793,7 +793,7 @@ bool Supervision::updateSnapshot() {
     });
     if (logs.size() > 0) {
       _lastUpdateIndex = _spearhead.applyTransactions(logs);
-      _snapshot = _spearhead.node(_agencyPrefix);
+      _snapshot = _spearhead.nodePtr(_agencyPrefix);
     }
   }
   // ***************************************************************************
@@ -1178,7 +1178,7 @@ std::unordered_map<ServerID, std::string> deletionCandidates (
       }
 
       // We are still here?
-      serverList.emplace(std::pair<ServerID, std::string>{serverId.first, persistedTimeStamp});
+      serverList.emplace(serverId.first, persistedTimeStamp);
     }
   }
 
@@ -1275,9 +1275,9 @@ void Supervision::cleanupExpiredServers(Node const& snapshot, Node const& transi
     }
   }
   if (servers.size() > 0) {
-    _nextServerCleanup = std::chrono::system_clock::now() + std::chrono::seconds(3600);
     _agent->write(envelope);
   }
+  _nextServerCleanup = std::chrono::system_clock::now() + std::chrono::seconds(3600);
 
 }
 
@@ -2284,7 +2284,7 @@ void Supervision::beginShutdown() {
 Node const& Supervision::snapshot() const {
   if (_snapshot == nullptr) {
     _snapshot = (_spearhead.has(_agencyPrefix)) ?
-      _spearhead.node(_agencyPrefix) : _spearhead.node();
+      _spearhead.nodePtr(_agencyPrefix) : _spearhead.nodePtr();
   }
   return *_snapshot;
 }

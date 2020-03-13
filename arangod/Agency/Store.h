@@ -131,7 +131,7 @@ class Store {
 
   /// @brief get node from this store.
   /// Unprotected! Caller must guard the store.
-  Node const* node(std::string const& path = std::string("/")) const;
+  Node const* nodePtr(std::string const& path = std::string("/")) const;
 
   /// @brief Copy out a node
   Node get(std::string const& path = std::string("/")) const;
