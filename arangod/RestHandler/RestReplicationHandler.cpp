@@ -1219,11 +1219,17 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   toMerge.add("id", VPackValue(newId));
 
   if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+    auto const isSatellite =
+        VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
+                                       velocypack::StringRef{""}) == StaticStrings::Satellite;
+
     // force one shard, and force distributeShardsLike to be "_graphs"
     toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-    if (!_vocbase.IsSystemName(name)) {
+    if (!_vocbase.IsSystemName(name) && !isSatellite) {
       // system-collections will be sharded normally. only user collections will
-      // get the forced sharding
+      // get the forced sharding.
+      // satellite collections must not be sharded like a non-satellite
+      // collection.
       toMerge.add(StaticStrings::DistributeShardsLike,
                   VPackValue(_vocbase.shardingPrototypeName()));
     }
