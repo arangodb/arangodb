@@ -2,10 +2,11 @@ devel
 -----
 
 * Fix SORT RAND() LIMIT 1 optimization for RocksDB when only a projection of the
-  attributes was used. When a projection was used and that projection was covered
-  by an index (e.g. `_key` via the primary index), then the access pattern was
-  transformed from random order collection seek to an index access, which always
-  resulted in the same index entry to be returned and not a random one.
+  attributes was used. When a projection was used and that projection was
+  covered by an index (e.g. `_key` via the primary index), then the access
+  pattern was transformed from random order collection seek to an index access,
+  which always resulted in the same index entry to be returned and not a random
+  one.
 
 * Mark server startup options `--foxx.*`, `--frontend.*` and `--javascript.*`
   as single server and Coordinator only for documentation (`--dump-options`).
