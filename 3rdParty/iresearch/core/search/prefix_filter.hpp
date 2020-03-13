@@ -64,7 +64,7 @@ class IRESEARCH_API by_prefix : public by_term {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
-  by_prefix& scored_terms_limit(size_t limit) {
+  by_prefix& scored_terms_limit(size_t limit) noexcept {
     scored_terms_limit_ = limit;
     return *this;
   }
@@ -72,7 +72,7 @@ class IRESEARCH_API by_prefix : public by_term {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
-  size_t scored_terms_limit() const {
+  size_t scored_terms_limit() const noexcept {
     return scored_terms_limit_;
   }
 

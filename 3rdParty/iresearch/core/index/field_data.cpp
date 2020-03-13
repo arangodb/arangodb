@@ -238,6 +238,10 @@ class pos_iterator final: public irs::position {
     return true;
   }
 
+  virtual void reset() override {
+    assert(false); // unsupported
+  }
+
  private:
   Reader prox_in_;
   const frequency* freq_{}; // number of term positions in a document

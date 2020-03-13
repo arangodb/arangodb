@@ -1,8 +1,10 @@
 devel
 -----
 
-
 * Add DTRACE points to track a request through the infrastructure.
+
+* Mark server startup options `--foxx.*`, `--frontend.*` and `--javascript.*`
+  as single server and Coordinator only for documentation (`--dump-options`).
 
 * Supervision hot backup and supervision maintenance modes ttl fix.
 
