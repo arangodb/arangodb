@@ -22,7 +22,8 @@ void from_value(Consumer& consumer,
                 const VPackSlice& slice,
                 VPackOptions const* options,
                 VPackSlice const* base,
-                bool ignore_special) {
+                arangodb::validation::SpecialProperties special
+                ) {
     switch (slice.type()) {
         case arangodb::velocypack::ValueType::Illegal:
             throw std::logic_error("unable to produce events from illegal values");
@@ -66,7 +67,7 @@ void from_value(Consumer& consumer,
         case arangodb::velocypack::ValueType::Array: {
             consumer.begin_array(slice.length());
             for (const auto& element : VPackArrayIterator(slice)) {
-                Recurse(consumer, element, options, &slice, ignore_special);
+                Recurse(consumer, element, options, &slice, special);
                 consumer.element();
             }
             consumer.end_array(slice.length());
@@ -81,12 +82,42 @@ void from_value(Consumer& consumer,
                 if (key.isString()) {
                     auto key_ref = key.stringRef();
                     consumer.key(std::string_view(key_ref.data(), key_ref.length()));
-                    Recurse(consumer, element.value, options, &slice, ignore_special);
+                    Recurse(consumer, element.value, options, &slice, special);
                     consumer.member();
-                } else if (!ignore_special) {
+                } else if (special != arangodb::validation::SpecialProperties::None) {
                     std::string translated_key;
                     using namespace arangodb::basics;
                     uint8_t which = static_cast<uint8_t>(key.getUInt()) + VelocyPackHelper::AttributeBase;
+
+                    switch (which) {
+                      case VelocyPackHelper::KeyAttribute: {
+                        if(!enum_contains_value(special, arangodb::validation::SpecialProperties::Key)){
+                          continue;
+                        }
+                        break;
+                      }
+                      case VelocyPackHelper::IdAttribute: {
+                        if(!enum_contains_value(special, arangodb::validation::SpecialProperties::Id)){
+                          continue;
+                        }
+                        break;
+                      }
+                      case VelocyPackHelper::RevAttribute: {
+                        if(!enum_contains_value(special, arangodb::validation::SpecialProperties::Rev)){
+                          continue;
+                        }
+                        break;
+                      }
+                      case VelocyPackHelper::FromAttribute:
+                        [[ fallthrough ]];
+                      case VelocyPackHelper::ToAttribute: {
+                        if(!enum_contains_value(special, arangodb::validation::SpecialProperties::FromTo)){
+                          continue;
+                        }
+                        break;
+                      }
+                    }
+
                     consumer.key(arangodb::validation::id_to_string(which));
                     VPackSlice val = VPackSlice(element.key.begin() + 1);
                     arangodb::velocypack::ValueLength length;
@@ -95,7 +126,7 @@ void from_value(Consumer& consumer,
                         char const* pointer = val.getString(length);
                         consumer.string(std::string_view(pointer, length));
                     } else {
-                        Recurse(consumer, val, options, &slice, ignore_special);
+                        Recurse(consumer, val, options, &slice, special);
                     }
                 } // ! ignore_special
             }
@@ -107,7 +138,7 @@ void from_value(Consumer& consumer,
                     VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal())),
                     options,
                     base,
-                    ignore_special);
+                    special);
             return;
         }
 
@@ -137,12 +168,12 @@ void from_value(Consumer& consumer,
                 const VPackSlice& slice,
                 VPackOptions const* options,
                 VPackSlice const* base,
-                bool ignore_special) {
+                arangodb::validation::SpecialProperties special) {
     // clang-format off
-    from_value<static_cast<void (*)(Consumer&, const VPackSlice&, VPackOptions const*, VPackSlice const*, bool)>(&from_value<Traits, Consumer>)
+    from_value<static_cast<void (*)(Consumer&, const VPackSlice&, VPackOptions const*, VPackSlice const*, arangodb::validation::SpecialProperties)>(&from_value<Traits, Consumer>)
               ,Traits
               ,Consumer
-              >(consumer, slice, options, base, ignore_special);
+              >(consumer, slice, options, base, special);
     // clang-format on
 }
 

@@ -1,7 +1,7 @@
 #ifndef ARANGO_SCHEMA_VALIADTION_TYPES_HEADER
 #define ARANGO_SCHEMA_VALIADTION_TYPES_HEADER 1
 
-#if __has_include("Basics/VelocyPackHelper")
+#if __has_include("Basics/VelocyPackHelper.h")
     #include "Basics/VelocyPackHelper.h"
 #else
     #include <cstdint>
@@ -21,8 +21,24 @@ class VelocyPackHelper {
 
 #include <string>
 namespace arangodb::validation {
+
+enum class SpecialProperties {
+  None = 0,
+  Key = 1,
+  Id = 2,
+  Rev = 4,
+  FromTo = 8,
+  All = 15,
+};
+
 [[nodiscard]] std::string const& id_to_string(std::uint8_t);
+
+[[nodiscard]] inline bool enum_contains_value(SpecialProperties tested, SpecialProperties test_for) {
+  auto tested_int = static_cast<std::underlying_type_t<SpecialProperties>>(tested);
+  auto test_for_int = static_cast<std::underlying_type_t<SpecialProperties>>(test_for);
+  return tested_int & test_for_int;
 }
 
+} // namespace arangodb::validation
 
 #endif

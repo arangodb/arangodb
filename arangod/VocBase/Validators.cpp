@@ -51,7 +51,7 @@ std::string const&  to_string(ValidationLevel level) {
 //////////////////////////////////////////////////////////////////////////////
 
 ValidatorBase::ValidatorBase(VPackSlice params)
-    : _level(ValidationLevel::Strict) {
+    : _level(ValidationLevel::Strict), _special(validation::SpecialProperties::None) {
   // parse message
   auto msgSlice = params.get(StaticStrings::ValidatorParameterMessage);
   if (msgSlice.isString()) {
@@ -141,7 +141,7 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
   _builder.add(rule);
 }
 bool ValidatorJsonSchema::validateDerived(VPackSlice slice, VPackOptions const* options) const {
-  return validation::validate(slice, options, *_schema);
+  return validation::validate(*_schema, _special, slice, options);
 }
 void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidatorParameterRule, _builder.slice());

@@ -33,6 +33,7 @@
 #include <string>
 
 #include <tao/json/forward.hpp>
+#include <validation/types.hpp>
 
 namespace tao::json {
    template< template< typename... > class Traits >
@@ -63,6 +64,7 @@ struct ValidatorBase {
 
   std::string _message;
   ValidationLevel _level;
+  validation::SpecialProperties _special;
 };
 
 struct ValidatorJsonSchema : public ValidatorBase {
