@@ -181,3 +181,13 @@ auto AqlItemBlockInputRange::skipAll() noexcept -> std::size_t {
   _skipped = 0;
   return skipped;
 }
+
+auto AqlItemBlockInputRange::countDataRows() const noexcept -> std::size_t {
+  auto const& block = getBlock();
+  return block->size() - block->getShadowRowIndexes().size();
+}
+
+auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
+  auto const& block = getBlock();
+  return block->getShadowRowIndexes().size();
+}
