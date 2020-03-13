@@ -134,63 +134,116 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.gc-frequency",
       "JavaScript time-based garbage collection frequency (each x seconds)",
       new DoubleParameter(&_gcFrequency),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.gc-interval",
       "JavaScript request-based garbage collection interval (each x requests)",
       new UInt64Parameter(&_gcInterval),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
-  options->addOption("--javascript.app-path", "directory for Foxx applications",
-                     new StringParameter(&_appPath));
+  options->addOption(
+      "--javascript.app-path", "directory for Foxx applications",
+      new StringParameter(&_appPath),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.startup-directory",
       "path to the directory containing JavaScript startup scripts",
-      new StringParameter(&_startupDirectory));
+      new StringParameter(&_startupDirectory),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
-  options->addOption("--javascript.module-directory",
-                     "additional paths containing JavaScript modules",
-                     new VectorParameter<StringParameter>(&_moduleDirectories),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--javascript.module-directory",
+      "additional paths containing JavaScript modules",
+      new VectorParameter<StringParameter>(&_moduleDirectories),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.copy-installation",
       "copy contents of 'javascript.startup-directory' on first start",
-      new BooleanParameter(&_copyInstallation));
+      new BooleanParameter(&_copyInstallation),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
-  options->addOption("--javascript.v8-contexts",
-                     "maximum number of V8 contexts that are created for "
-                     "executing JavaScript actions",
-                     new UInt64Parameter(&_nrMaxContexts));
+  options->addOption(
+      "--javascript.v8-contexts",
+      "maximum number of V8 contexts that are created for "
+      "executing JavaScript actions",
+      new UInt64Parameter(&_nrMaxContexts),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
-  options->addOption("--javascript.v8-contexts-minimum",
-                     "minimum number of V8 contexts that keep available for "
-                     "executing JavaScript actions",
-                     new UInt64Parameter(&_nrMinContexts));
+  options->addOption(
+      "--javascript.v8-contexts-minimum",
+      "minimum number of V8 contexts that keep available for "
+      "executing JavaScript actions",
+      new UInt64Parameter(&_nrMinContexts),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.v8-contexts-max-invocations",
       "maximum number of invocations for each V8 context before it is disposed",
       new UInt64Parameter(&_maxContextInvocations),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.v8-contexts-max-age",
       "maximum age for each V8 context (in seconds) before it is disposed",
       new DoubleParameter(&_maxContextAge),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
       new BooleanParameter(&_allowAdminExecute),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 
-  options->addOption("--javascript.enabled", "enable the V8 JavaScript engine",
-                     new BooleanParameter(&_enableJS),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--javascript.enabled", "enable the V8 JavaScript engine",
+      new BooleanParameter(&_enableJS),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle,
+      arangodb::options::Flags::Hidden));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

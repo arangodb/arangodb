@@ -73,6 +73,10 @@ option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
+option(USE_CCACHE "Use CCACHE if present" ON)
+
+set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
+
 add_option_gprof(FALSE)
 
 if (USE_VALGRIND)
@@ -118,8 +122,6 @@ endif()
 ### setup ccache
 ################################################################################
 
-option(USE_CCACHE "Use CCACHE if present" ON)
-
 if (USE_CCACHE)
   find_program(CCACHE_FOUND ccache)
 
@@ -128,7 +130,11 @@ if (USE_CCACHE)
   endif(CCACHE_FOUND)
 endif()
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+################################################################################
+### setup platform dependent optimizations
+################################################################################
+
+if (USE_SIMDCOMP)
   include(OptimizeForArchitecture)
   OptimizeForArchitecture()
 
@@ -265,6 +271,7 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}.err
+    CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
   pvs_studio_add_target(
@@ -273,6 +280,16 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}-html.err
+    CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
+  )
+
+  pvs_studio_add_target(
+    TARGET ${PVS_STUDIO_TARGET_NAME}-xml ALL
+    FORMAT xml
+    ANALYZE ${PVS_STUDIO_ANALYZE}
+    MODE GA:1,2 OP
+    LOG ${IResearch_TARGET_NAME}-xml.err
+    CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 endif()
 
