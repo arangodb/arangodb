@@ -47,8 +47,8 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
     return {ExecutorState::DONE, NoStats{}, AqlCall{}};
   }
   TRI_ASSERT(!_inputRow.isInitialized());
-  TRI_ASSERT(!output.isFull());
   if (input.hasDataRow()) {
+    TRI_ASSERT(!output.isFull());
     std::tie(_upstreamState, _inputRow) = input.peekDataRow();
     output.copyRow(_inputRow);
     output.advanceRow();
