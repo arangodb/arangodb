@@ -24,7 +24,6 @@
 #ifndef ARANGODB_V8_V8__DEADLINE_H
 #define ARANGODB_V8_V8__DEADLINE_H 1
 
-#include <cstdint>
 #include <chrono>
 #include <v8.h>
 
