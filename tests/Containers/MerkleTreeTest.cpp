@@ -53,10 +53,8 @@ bool diffAsExpected(arangodb::containers::MerkleTree<3, 64>& t1,
   std::vector<std::pair<std::size_t, std::size_t>> d2 = t2.diff(t1);
 
   auto printTrees = [&t1, &t2]() -> void {
-    LOG_DEVEL << "T1:";
-    LOG_DEVEL << t1;
-    LOG_DEVEL << "T2:";
-    LOG_DEVEL << t2;
+    LOG_DEVEL << "T1: " << t1;
+    LOG_DEVEL << "T2: " << t2;
   };
 
   if (d1.size() != expected.size() || d2.size() != expected.size()) {

@@ -108,7 +108,6 @@ template<typename Scale> void histogram_test(Scale const& scale) {
   }
   Histogram h(scale, "hist_test", "Hist test");
 
-  std::cout << h << std::endl;
   //lower bucket bounds
   for (int i = 0; i < buckets; ++i) {
     if constexpr (linear) {
@@ -117,10 +116,8 @@ template<typename Scale> void histogram_test(Scale const& scale) {
       d = mn + (mx-mn) * pow(base, i-buckets) + mmin;
     }
     h.count(d);
-    std::cout << d << " ";
 //    ASSERT_DOUBLE_EQ(h.load(i), 1);
   }
-  std::cout << std::endl;
 
   //upper bucket bounds
   for (int i = 0; i < buckets; ++i) {
@@ -130,10 +127,8 @@ template<typename Scale> void histogram_test(Scale const& scale) {
       d = mn + (mx-mn) * pow(base, i-buckets+1) - mmin;
     }
     h.count(d);
-    std::cout << d << " ";
 //    ASSERT_DOUBLE_EQ(h.load(i), 2);
   }
-  std::cout << std::endl;
 
   //below lower limit
   h.count(mn - one);
@@ -146,11 +141,8 @@ template<typename Scale> void histogram_test(Scale const& scale) {
 //  ASSERT_DOUBLE_EQ(h.load(buckets-1), 5);
 
   // dump
-  std::cout << h << std::endl;
   std::string s;
   h.toPrometheus(s);
-  std::cout << s << std::endl;
-
 }
 
 
