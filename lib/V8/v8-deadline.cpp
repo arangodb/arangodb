@@ -32,7 +32,7 @@
 static double executionDeadline = 0.0;
 
 // arangosh only: set a deadline
-static void JS_SetExecutionDeatlineTo(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_SetExecutionDeadlineTo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
