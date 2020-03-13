@@ -791,7 +791,7 @@ bool Supervision::updateSnapshot() {
     _agent->executeLockedRead([&]() {
       logs = _agent->logs(_lastUpdateIndex + 1);
     });
-    if (logs.size() > 0) {
+    if (!logs.empty() && !(logs.size() == 1 && _lastUpdateIndex == logs.front().index)) {
       _lastUpdateIndex = _spearhead.applyTransactions(logs);
       _snapshot = _spearhead.nodePtr(_agencyPrefix);
     }
