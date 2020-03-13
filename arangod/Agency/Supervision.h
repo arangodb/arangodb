@@ -26,7 +26,7 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
-#include "Agency/Node.h"
+#include "Agency/Store.h"
 #include "Agency/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
@@ -36,7 +36,6 @@ namespace arangodb {
 namespace consensus {
 
 class Agent;
-class Store;
 
 struct check_t {
   bool good;
@@ -130,6 +129,10 @@ class Supervision : public arangodb::CriticalThread {
   }
 
  private:
+
+  /// @brief get reference to the spearhead snapshot
+  Node const& snapshot() const ;
+
   /// @brief decide, if we can start supervision ahead of armageddon delay
   bool earlyBird() const;
 
@@ -183,6 +186,10 @@ class Supervision : public arangodb::CriticalThread {
   // @brief
   void cleanupFinishedAndFailedJobs();
 
+  // @brief these servers have gone for too long without any responsibility
+  //        and this are safely removable and so they are
+  void cleanupExpiredServers(Node const&, Node const&);
+
   void workJobs();
 
   /// @brief Get unique ids from agency
@@ -232,7 +239,8 @@ class Supervision : public arangodb::CriticalThread {
 
   Mutex _lock;   // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent; /**< @brief My agent */
-  Node _snapshot;
+  Store _spearhead;
+  mutable Node const* _snapshot;
   Node _transient;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
@@ -243,6 +251,8 @@ class Supervision : public arangodb::CriticalThread {
   double _okThreshold;
   uint64_t _jobId;
   uint64_t _jobIdMax;
+  uint64_t _lastUpdateIndex;
+
   bool _haveAborts;        /**< @brief We have accumulated pending aborts in a round */
 
   // mop: this feels very hacky...we have a hen and egg problem here
@@ -256,6 +266,7 @@ class Supervision : public arangodb::CriticalThread {
   bool _selfShutdown;
 
   std::atomic<bool> _upgraded;
+  std::chrono::system_clock::time_point _nextServerCleanup;
 
   std::string serverHealth(std::string const&);
 
