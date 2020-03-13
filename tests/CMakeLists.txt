@@ -26,6 +26,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/SupervisionTest.cpp
   Aql/AllRowsFetcherTest.cpp
   Aql/AqlHelper.cpp
+  Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
@@ -49,25 +50,33 @@ set(ARANGODB_TESTS_SOURCES
   Aql/IdExecutorTest.cpp
   Aql/IndexNodeTest.cpp
   Aql/InsertExecutorTest.cpp
+  Aql/KShortestPathsExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
+  Aql/MockTypedNode.cpp
   Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/QueryHelper.cpp
+  Aql/RemoteExecutorTest.cpp
   Aql/RemoveExecutorTest.cpp
   Aql/ReplaceExecutorTest.cpp
   Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
+  Aql/ScatterExecutorTest.cpp
   Aql/ShortestPathExecutorTest.cpp
+  Aql/SkipResultTest.cpp
   Aql/SingleRowFetcherTest.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
+  Aql/SplicedSubqueryIntegrationTest.cpp
+  Aql/SubqueryExecutorTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
+  Aql/TestLambdaExecutor.cpp
   Aql/TraversalExecutorTest.cpp
   Aql/UpdateExecutorTest.cpp
   Aql/UpsertExecutorTest.cpp
@@ -203,6 +212,7 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceTest.cpp
   ${RCFILE}
   Metrics/MetricsTest.cpp
+  Metrics/MetricsFeatureTest.cpp
   Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
