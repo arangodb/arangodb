@@ -89,6 +89,8 @@ class AsyncAgencyCommManager final {
     INSTANCE.reset(new AsyncAgencyCommManager(server));
   }
 
+  static AsyncAgencyCommManager& getInstance();
+
   explicit AsyncAgencyCommManager(application_features::ApplicationServer&);
 
   void addEndpoint(std::string const& endpoint);
@@ -199,9 +201,7 @@ class AsyncAgencyComm final {
                                               velocypack::Buffer<uint8_t>&& body) const;
 
  public:
-  AsyncAgencyComm() : _manager(*AsyncAgencyCommManager::INSTANCE) {}
-  explicit AsyncAgencyComm(AsyncAgencyCommManager* manager)
-      : _manager(*manager) {}
+  AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
       : _manager(manager) {}
 

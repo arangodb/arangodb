@@ -3,7 +3,7 @@ Upload is done throug pushing data to Prometheus PushGateway. Script requires Py
 Pushgateway need to be installed using Pip command: pip install prometheus_client
 
 Script run parameters:
-python PythonBenchmark.py <Path-to-benchmark-logs> <Platform-used-to-run-benchmark> <Branch-user-to-run-benchmark> <Push-gate-url> <Job-name>
+python PythonBenchmark.py <Path-to-benchmark-logs> <Platform-used-to-run-benchmark> <Branch-user-to-run-benchmark> <Push-gate-url> <Job-name> 
 
 Sample call: python PythonBenchmark.py C:\Data Windows10 master localhost:9091 benchmark
 

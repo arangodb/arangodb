@@ -1,6 +1,24 @@
 devel
 -----
 
+* Fix SORT RAND() LIMIT 1 optimization for RocksDB when only a projection of the
+  attributes was used. When a projection was used and that projection was covered
+  by an index (e.g. `_key` via the primary index), then the access pattern was
+  transformed from random order collection seek to an index access, which always
+  resulted in the same index entry to be returned and not a random one.
+
+* Mark server startup options `--foxx.*`, `--frontend.*` and `--javascript.*`
+  as single server and Coordinator only for documentation (`--dump-options`).
+
+* Supervision hot backup and supervision maintenance modes ttl fix.
+
+* Fix a bug that leads to graph traversals yielding empty output when none of the
+  output variables (vertex, edge, path) are used. This is relevant when a query 
+  is only interested in a COUNT of the outputs, for example.
+
+* MoveShard to check, if target is in sync follower before promotion
+  to leader.
+
 * Agency ttl bug fix
 
 * Added the SNI feature for TLS. This means that one can configure multiple
@@ -278,6 +296,7 @@ devel
 
   Like for the existing variant the `overwrite` flag has to be set to true.
   Then the update version can be selected by setting the `overwriteMode` to `"update"`.
+
 
 * Updated ArangoDB Starter to 0.14.13.
 
