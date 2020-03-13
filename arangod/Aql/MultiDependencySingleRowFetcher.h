@@ -23,21 +23,23 @@
 #ifndef ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 #define ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 
+#include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/MultiAqlItemBlockInputRange.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do need one
@@ -84,8 +86,11 @@ class MultiDependencySingleRowFetcher {
   };
 
  public:
+  using DataRange = MultiAqlItemBlockInputRange;
   explicit MultiDependencySingleRowFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~MultiDependencySingleRowFetcher() = default;
+
+  void init();
 
  protected:
   // only for testing! Does not initialize _dependencyProxy!
@@ -127,8 +132,18 @@ class MultiDependencySingleRowFetcher {
 
   std::pair<ExecutionState, size_t> skipRowsForDependency(size_t dependency, size_t atMost);
 
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize);
+  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
+
+  //@deprecated
+  auto useStack(AqlCallStack const& stack) -> void;
+
+  [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
+      -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
+
+  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
+      -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
+
+  [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
@@ -137,6 +152,14 @@ class MultiDependencySingleRowFetcher {
    * @brief Holds the information for all dependencies
    */
   std::vector<DependencyInfo> _dependencyInfos;
+  std::vector<ExecutionState> _dependencyStates;
+
+  /// @brief Only needed for parallel executors; could be omitted otherwise
+  ///        It's size is >0 after init() is called, and this is currently used
+  ///        in initOnce() to make sure that init() is called exactly once.
+  std::vector<std::optional<AqlCallStack>> _callsInFlight;
+
+  bool _didReturnSubquerySkips{false};
 
  private:
   /**
@@ -159,17 +182,16 @@ class MultiDependencySingleRowFetcher {
   bool isLastRowInBlock(DependencyInfo const& info) const;
 
   /**
-  * @brief If it returns true, there are no more data row in the current subquery
-  * level. If it returns false, there may or may not be more.
-  */
+   * @brief If it returns true, there are no more data row in the current
+   * subquery level. If it returns false, there may or may not be more.
+   */
   bool noMoreDataRows(DependencyInfo const& info) const;
-  
+
   bool isAtShadowRow(DependencyInfo const& info) const;
 
   bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

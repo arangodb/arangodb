@@ -128,7 +128,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     auto res = _manager->extendLifetime(id, ttl);
     if (res.fail()) {
-      generateError(res.result());
+      generateError(std::move(res).result());
       return;
     }
 

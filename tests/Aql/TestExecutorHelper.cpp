@@ -27,9 +27,9 @@
 
 #include "Basics/Common.h"
 
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Logger/LogMacros.h"
 
@@ -38,7 +38,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-TestExecutorHelper::TestExecutorHelper(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
+TestExecutorHelper::TestExecutorHelper(Fetcher& fetcher, Infos& infos)
+    : _infos(infos), _fetcher(fetcher){};
 TestExecutorHelper::~TestExecutorHelper() = default;
 
 std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRows(OutputAqlItemRow& output) {
@@ -68,7 +69,7 @@ std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRows(OutputAql
 
     output.copyRow(input);
     return {state, stats};
-    //stats.incrFiltered();
+    // stats.incrFiltered();
   }
 }
 
