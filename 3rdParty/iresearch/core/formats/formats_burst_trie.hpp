@@ -396,7 +396,7 @@ class field_reader final : public irs::field_reader {
 
   virtual const irs::term_reader* field(const string_ref& field) const override;
   virtual irs::field_iterator::ptr iterator() const override;
-  virtual size_t size() const override;
+  virtual size_t size() const noexcept override;
 
  private:
   friend class detail::term_iterator_base;

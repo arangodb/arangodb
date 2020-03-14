@@ -786,6 +786,7 @@ class automaton_term_iterator final : public term_iterator_base {
     : term_iterator_base(owner),
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher) {
+    attrs_.emplace(payload_);
   }
 
   virtual bool next() override;
@@ -893,6 +894,14 @@ class automaton_term_iterator final : public term_iterator_base {
     automaton::StateId state_;  // state to which current block belongs
   }; // block_iterator
 
+  struct payload : irs::payload {
+    payload() noexcept {
+      irs::payload::value = bytes_ref(&value, sizeof(value));
+    }
+
+    automaton::Weight::PayloadType value;
+  }; // payload
+
   typedef std::deque<block_iterator> block_stack_t;
 
   block_iterator* pop_block() noexcept {
@@ -924,6 +933,7 @@ class automaton_term_iterator final : public term_iterator_base {
   automaton_table_matcher* matcher_;
   block_stack_t block_stack_;
   block_iterator* cur_block_{};
+  payload payload_{}; // payload of the matched automaton state
 }; // automaton_term_iterator
 
 bool automaton_term_iterator::next() {
@@ -999,7 +1009,9 @@ bool automaton_term_iterator::next() {
 
     switch (cur_block_->type()) {
       case ET_TERM: {
-        if (acceptor_->Final(state)) {
+        const auto weight = acceptor_->Final(state);
+        if (weight) {
+          payload_.value = weight.Payload();
           copy(suffix, cur_block_->prefix(), suffix_size);
           match = MATCH;
         }
@@ -2437,7 +2449,7 @@ irs::field_iterator::ptr field_reader::iterator() const {
   return memory::make_managed<irs::field_iterator, true>(it.release());
 }
 
-size_t field_reader::size() const {
+size_t field_reader::size() const noexcept {
   return fields_.size();
 }
 

@@ -39,7 +39,7 @@ term_query::ptr term_query::make(
     const string_ref& field,
     const bytes_ref& term) {
   term_query::states_t states(index.size());
-  auto collectors = ord.prepare_collectors(1);
+  auto collectors = ord.fixed_prepare_collectors(1);
 
   // iterate over the segments
   for (const auto& segment : index) {

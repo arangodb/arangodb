@@ -83,13 +83,18 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
           "agency_agent_write_no_leader", 0, "Agency write no leader")),
       _read_ok(
         _server.getFeature<arangodb::MetricsFeature>().counter(
-          "agency_agent_read_ok", 0, "Agency write ok")),
+          "agency_agent_read_ok", 0, "Agency read ok")),
       _read_no_leader(
         _server.getFeature<arangodb::MetricsFeature>().counter(
-          "agency_agent_read_no_leader", 0, "Agency write no leader")),
+          "agency_agent_read_no_leader", 0, "Agency read no leader")),
       _write_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "agency_agent_write_hist", 10, 0., 20., "Agency write histogram [ms]")) {
+          "agency_agent_write_hist", log_scale_t(2.f, 0.f, 200.f, 10),
+          "Agency write histogram [ms]")),
+      _commit_hist_msec(
+        _server.getFeature<arangodb::MetricsFeature>().histogram(
+          "agency_agent_commit_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
+          "Agency RAFT commit histogram [ms]")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -101,6 +106,11 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
 
 /// This agent's id
 std::string Agent::id() const { return _config.id(); }
+
+// Under no circumstances guard the member. Metrics guard themselves.
+decltype(Agent::_commit_hist_msec) Agent::commitHist() const {
+  return _commit_hist_msec;
+}
 
 /// Agent's id is set once from state machine
 bool Agent::id(std::string const& id) {
@@ -290,6 +300,11 @@ index_t Agent::index() {
   MUTEX_LOCKER(tiLocker, _tiLock);
   return _confirmed[id()];
 
+}
+
+///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
+index_t Agent::confirmed(std::string const& agentId) const {
+  return _confirmed.at(agentId.empty() ? _config.id() : agentId);
 }
 
 //  AgentCallback reports id of follower and its highest processed index
@@ -869,6 +884,9 @@ void Agent::load() {
   }
 
   _loaded = true;
+  if (size() == 1) {
+    endPrepareLeadership();
+  }
 
 }
 
@@ -1221,7 +1239,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
     _write_hist_msec.count(
-      duration<double,std::milli>(high_resolution_clock::now()-start).count());
+      duration<float,std::milli>(high_resolution_clock::now()-start).count());
   }
 
   // Maximum log index
@@ -1276,7 +1294,7 @@ read_ret_t Agent::read(query_t const& query) {
   // Retrieve data from readDB
   std::vector<bool> success = _readDB.read(query, result);
 
-  ++_read_no_leader;
+  ++_read_ok;
   return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 
@@ -2138,5 +2156,11 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
   }
 }
 
+std::vector<log_t> Agent::logs(index_t begin, index_t end) const {
+  return _state.get(begin, end);
+}
+
+
 }  // namespace consensus
 }  // namespace arangodb
+

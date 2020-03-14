@@ -956,8 +956,8 @@ struct skip_context : skip_state {
 struct doc_state {
   const index_input* pos_in;
   const index_input* pay_in;
-  version10::term_meta* term_state;
-  uint32_t* freq;
+  const version10::term_meta* term_state;
+  const uint32_t* freq;
   uint32_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;
@@ -1368,6 +1368,7 @@ struct position_impl<IteratorTraits, false, false> {
       throw io_error("failed to reopen positions input");
     }
 
+    cookie_.file_pointer_ = state.term_state->pos_start;
     pos_in_->seek(state.term_state->pos_start);
     freq_ = state.freq;
     features_ = state.features;
@@ -1380,6 +1381,15 @@ struct position_impl<IteratorTraits, false, false> {
     pos_in_->seek(state.pos_ptr);
     pend_pos_ = state.pend_pos;
     buf_pos_ = postings_writer_base::BLOCK_SIZE;
+    cookie_.pend_pos_ = pend_pos_;
+  }
+
+  void reset() {
+    if (std::numeric_limits<size_t>::max() != cookie_.file_pointer_) {
+      buf_pos_ = postings_writer_base::BLOCK_SIZE;
+      pend_pos_ = cookie_.pend_pos_;
+      pos_in_->seek(cookie_.file_pointer_);
+    }
   }
 
   void read_attributes() { }
@@ -1431,6 +1441,11 @@ struct position_impl<IteratorTraits, false, false> {
   uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE }; // current position in pos_deltas_ buffer
   index_input::ptr pos_in_;
   features features_;
+
+  struct cookie {
+    uint32_t pend_pos_{};
+    size_t file_pointer_ = std::numeric_limits<size_t>::max();
+  } cookie_;
 }; // position_impl
 
 template<typename IteratorTraits, bool Position = IteratorTraits::position()>
@@ -1474,6 +1489,11 @@ class position final : public irs::position,
     return true;
   }
 
+  virtual void reset() override {
+    value_ = pos_limits::invalid();
+    impl::reset();
+  }
+
   // prepares iterator to work
   // or notifies iterator that doc iterator has skipped to a new block
   using impl::prepare;
@@ -1481,6 +1501,7 @@ class position final : public irs::position,
   // notify iterator that corresponding doc_iterator has moved forward
   void notify(uint32_t n) {
     this->pend_pos_ += n;
+    this->cookie_.pend_pos_ += n;
   }
 
   void clear() noexcept {
@@ -1617,6 +1638,13 @@ class doc_iterator final : public irs::doc_iterator_base {
         pos_.prepare(state);
         attrs_.emplace(pos_);
       }
+    }
+
+    if (1 == term_state_.docs_count) {
+      *docs_ = (doc_limits::min)() + term_state_.e_single_doc;
+      *doc_freqs_ = term_freq_;
+      doc_freq_ = doc_freqs_;
+      ++end_;
     }
   }
 
@@ -1763,6 +1791,8 @@ class doc_iterator final : public irs::doc_iterator_base {
   }
 
   void refill() {
+    // should never call refill for singleton documents
+    assert(1 != term_state_.docs_count);
     const auto left = term_state_.docs_count - cur_pos_;
 
     if (left >= postings_writer_base::BLOCK_SIZE) {
@@ -1789,12 +1819,6 @@ class doc_iterator final : public irs::doc_iterator_base {
       }
 
       end_ = docs_ + postings_writer_base::BLOCK_SIZE;
-    } else if (1 == term_state_.docs_count) {
-      docs_[0] = term_state_.e_single_doc;
-      if (term_freq_) {
-        doc_freqs_[0] = term_freq_;
-      }
-      end_ = docs_ + 1;
     } else {
       read_end_block(left);
       end_ = docs_ + left;
@@ -1806,7 +1830,7 @@ class doc_iterator final : public irs::doc_iterator_base {
     }
 
     begin_ = docs_;
-    doc_freq_ = docs_ + postings_writer_base::BLOCK_SIZE;
+    doc_freq_ = doc_freqs_;
   }
 
   std::vector<skip_state> skip_levels_;

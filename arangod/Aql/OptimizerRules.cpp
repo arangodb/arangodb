@@ -7407,19 +7407,11 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
-      // These nodes do not initiate a skip themselves, and thus are fine.
-      return false;
     case ExecutionNode::NORESULTS:
-      // no results currently cannot work, as they do not fetch from above.
     case ExecutionNode::LIMIT:
-      // limit blocks currently cannot work, both due to skipping and due to the
-      // limit and passthrough, which forbids passing shadow rows.
-      return true;
-    case ExecutionNode::COLLECT: {
-      auto const collectNode = ExecutionNode::castTo<CollectNode const*>(node);
-      // Collect nodes skip iff using the COUNT method.
-      return collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT;
-    }
+    case ExecutionNode::COLLECT:
+      // These nodes are fine
+      return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -7429,7 +7421,7 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
       "report this error. Try turning off the splice-subqueries rule to get "
       "your query working.",
       node->getTypeString().c_str());
-}
+}  // namespace
 
 void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
                                        containers::SmallVector<SubqueryNode*>& result) {
@@ -7668,7 +7660,8 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
 
       // Create new end node
       auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(),
-                                                   inVariable, sq->outVariable());
+                                                   inVariable, sq->outVariable(),
+                                                   sq->isModificationSubquery());
       // start and end inherit this property from the subquery node
       end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
       // insert a SubqueryEndNode after the SubqueryNode sq

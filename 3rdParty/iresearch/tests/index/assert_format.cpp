@@ -173,9 +173,8 @@ void index_segment::add(const ifield& f) {
   while (stream.next()) {
     tests::term& trm = fld.add(term->value());
     tests::posting& pst = trm.add(doc_id);
-
-    pst.add(fld.pos, fld.offs, attrs);
     fld.pos += inc->value;
+    pst.add(fld.pos, fld.offs, attrs);
     empty = false;
   }
 
@@ -348,7 +347,7 @@ class doc_iterator : public irs::doc_iterator {
 
   virtual bool next() override {
     if (next_ == data_.postings.end()) {
-      doc_.value = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      doc_.value = irs::type_limits<irs::type_t::doc_id_t>::eof();
       return false;
     }
 
@@ -400,6 +399,7 @@ class doc_iterator : public irs::doc_iterator {
 
     bool next() override {
       if ( next_ == owner_.prev_->positions().end() ) {
+        value_ = irs::type_limits<irs::type_t::pos_t>::eof();
         return false;
       }
 
@@ -410,6 +410,10 @@ class doc_iterator : public irs::doc_iterator {
       ++next_;
 
       return true;
+    }
+
+    virtual void reset() override {
+      assert(false); // unsupported
     }
 
    private:
@@ -680,6 +684,8 @@ void assert_term(
 
   ASSERT_EQ(expected_docs->attributes().features() & requested_features, actual_docs->attributes().features() & requested_features);
 
+  ASSERT_TRUE(!irs::doc_limits::valid(expected_docs->value()));
+  ASSERT_TRUE(!irs::doc_limits::valid(actual_docs->value()));
   // check docs
   for (; expected_docs->next();) {
     ASSERT_TRUE(actual_docs->next());
@@ -711,7 +717,8 @@ void assert_term(
         auto& expected_pay = expected_pos->attributes().get<irs::payload>();
         auto& actual_pay = actual_pos->attributes().get<irs::payload>();
         if (expected_pay) ASSERT_FALSE(!actual_pay);
-
+        ASSERT_TRUE(!irs::pos_limits::valid(expected_pos->value()));
+        ASSERT_TRUE(!irs::pos_limits::valid(actual_pos->value()));
         for (; expected_pos->next();) {
           ASSERT_TRUE(actual_pos->next());
           ASSERT_EQ(expected_pos->value(), actual_pos->value());
@@ -725,13 +732,15 @@ void assert_term(
             ASSERT_EQ(expected_pay->value, actual_pay->value);
           }
         }
-
         ASSERT_FALSE(actual_pos->next());
+        ASSERT_TRUE(irs::pos_limits::eof(expected_pos->value()));
+        ASSERT_TRUE(irs::pos_limits::eof(actual_pos->value()));
       }
     }
   }
-
   ASSERT_FALSE(actual_docs->next());
+  ASSERT_TRUE(irs::doc_limits::eof(expected_docs->value()));
+  ASSERT_TRUE(irs::doc_limits::eof(actual_docs->value()));
 }
 
 void assert_terms_next(
