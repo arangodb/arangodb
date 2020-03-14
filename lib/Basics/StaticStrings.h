@@ -295,10 +295,19 @@ class StaticStrings {
   static std::string const ValidatorParameterLevel;
   static std::string const ValidatorParameterType;
   static std::string const ValidatorParameterRule;
+  static std::string const ValidatorParameterSpecialProperties;
 
   static std::string const ValidatorTypeJsonSchema;
   static std::string const ValidatorTypeAQL;
   static std::string const ValidatorTypeBool;
+
+  static std::string const ValidatorPropertyAll;
+  static std::string const ValidatorPropertyNone;
+  static std::string const ValidatorPropertyKey;
+  static std::string const ValidatorPropertyId;
+  static std::string const ValidatorPropertyRev;
+  static std::string const ValidatorPropertyFrom;
+  static std::string const ValidatorPropertyTo;
 };
 }  // namespace arangodb
 

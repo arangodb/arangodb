@@ -23,21 +23,25 @@ class VelocyPackHelper {
 namespace arangodb::validation {
 
 enum class SpecialProperties {
-  None = 0,
-  Key = 1,
-  Id = 2,
-  Rev = 4,
-  FromTo = 8,
-  All = 15,
+    None = 0,
+    Key = 1,
+    Id = 2,
+    Rev = 4,
+    From = 8,
+    To = 16,
+    All = 31,
 };
 
 [[nodiscard]] std::string const& id_to_string(std::uint8_t);
 
 [[nodiscard]] inline bool enum_contains_value(SpecialProperties tested, SpecialProperties test_for) {
-  auto tested_int = static_cast<std::underlying_type_t<SpecialProperties>>(tested);
-  auto test_for_int = static_cast<std::underlying_type_t<SpecialProperties>>(test_for);
-  return tested_int & test_for_int;
+    auto tested_int = static_cast<std::underlying_type_t<SpecialProperties>>(tested);
+    auto test_for_int = static_cast<std::underlying_type_t<SpecialProperties>>(test_for);
+    return tested_int & test_for_int;
 }
+
+[[nodiscard]] SpecialProperties view_to_special(std::string_view);
+[[nodiscard]] bool skip_special(std::string_view, SpecialProperties);
 
 } // namespace arangodb::validation
 

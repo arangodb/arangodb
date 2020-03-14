@@ -90,13 +90,44 @@ std::string const to_string = "_to";
 } // namespace
 
 namespace arangodb::validation {
+SpecialProperties view_to_special(std::string_view view) {
+    if (view == key_string) {
+        return SpecialProperties::Key;
+    } else if (view == id_string) {
+        return SpecialProperties::Id;
+    } else if (view == rev_string) {
+        return SpecialProperties::Rev;
+    } else if (view == to_string) {
+        return SpecialProperties::From;
+    } else if (view == from_string) {
+        return SpecialProperties::To;
+    } else {
+        return SpecialProperties::None;
+    }
+}
 
-bool validate(
-    tao::json::schema const& schema,
-    SpecialProperties special,
-    VPackSlice const doc,
-    VPackOptions const* options
-    ) {
+bool skip_special(std::string_view view, SpecialProperties special) {
+    auto len = view.length();
+    if (len < 3 || len > 5) {
+        return false;
+    }
+
+    auto search = view_to_special(view);
+    if (search == SpecialProperties::None) {
+        return false;
+    }
+
+    if (enum_contains_value(special, search)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool validate(tao::json::schema const& schema,
+              SpecialProperties special,
+              VPackSlice const doc,
+              VPackOptions const* options) {
     return ::validate(schema, special, doc, options);
 }
 
@@ -104,8 +135,10 @@ bool validate(tao::json::value const& doc, tao::json::schema const& schema) {
     return schema.validate(doc);
 }
 
-tao::json::value
-    slice_to_value(VPackSlice const& slice, SpecialProperties special, VPackOptions const* options, VPackSlice const* base) {
+tao::json::value slice_to_value(VPackSlice const& slice,
+                                SpecialProperties special,
+                                VPackOptions const* options,
+                                VPackSlice const* base) {
     tao::json::value rv;
     switch (slice.type()) {
         case VPackValueType::Null: {

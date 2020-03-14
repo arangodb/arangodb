@@ -22,8 +22,8 @@ void from_value(Consumer& consumer,
                 const VPackSlice& slice,
                 VPackOptions const* options,
                 VPackSlice const* base,
-                arangodb::validation::SpecialProperties special
-                ) {
+                arangodb::validation::SpecialProperties special) {
+
     switch (slice.type()) {
         case arangodb::velocypack::ValueType::Illegal:
             throw std::logic_error("unable to produce events from illegal values");
@@ -53,7 +53,8 @@ void from_value(Consumer& consumer,
 
         case arangodb::velocypack::ValueType::String: {
             auto ref = slice.stringRef();
-            consumer.string(std::string_view(ref.data(), ref.length()));
+            auto view = std::string_view(ref.data(), ref.length());
+            consumer.string(view);
             return;
         }
 
@@ -80,8 +81,12 @@ void from_value(Consumer& consumer,
             for (const auto& element : VPackObjectIterator(slice)) {
                 VPackSlice key = element.key;
                 if (key.isString()) {
-                    auto key_ref = key.stringRef();
-                    consumer.key(std::string_view(key_ref.data(), key_ref.length()));
+                    auto ref = key.stringRef();
+                    auto view = std::string_view(ref.data(), ref.length());
+                    if (skip_special(view, special)) {
+                        continue;
+                    }
+                    consumer.key(std::string_view(view));
                     Recurse(consumer, element.value, options, &slice, special);
                     consumer.member();
                 } else if (special != arangodb::validation::SpecialProperties::None) {
@@ -90,32 +95,35 @@ void from_value(Consumer& consumer,
                     uint8_t which = static_cast<uint8_t>(key.getUInt()) + VelocyPackHelper::AttributeBase;
 
                     switch (which) {
-                      case VelocyPackHelper::KeyAttribute: {
-                        if(!enum_contains_value(special, arangodb::validation::SpecialProperties::Key)){
-                          continue;
+                        case VelocyPackHelper::KeyAttribute: {
+                            if (!enum_contains_value(special, arangodb::validation::SpecialProperties::Key)) {
+                                continue;
+                            }
+                            break;
                         }
-                        break;
-                      }
-                      case VelocyPackHelper::IdAttribute: {
-                        if(!enum_contains_value(special, arangodb::validation::SpecialProperties::Id)){
-                          continue;
+                        case VelocyPackHelper::IdAttribute: {
+                            if (!enum_contains_value(special, arangodb::validation::SpecialProperties::Id)) {
+                                continue;
+                            }
+                            break;
                         }
-                        break;
-                      }
-                      case VelocyPackHelper::RevAttribute: {
-                        if(!enum_contains_value(special, arangodb::validation::SpecialProperties::Rev)){
-                          continue;
+                        case VelocyPackHelper::RevAttribute: {
+                            if (!enum_contains_value(special, arangodb::validation::SpecialProperties::Rev)) {
+                                continue;
+                            }
+                            break;
                         }
-                        break;
-                      }
-                      case VelocyPackHelper::FromAttribute:
-                        [[ fallthrough ]];
-                      case VelocyPackHelper::ToAttribute: {
-                        if(!enum_contains_value(special, arangodb::validation::SpecialProperties::FromTo)){
-                          continue;
+                        case VelocyPackHelper::FromAttribute:
+                            if (!enum_contains_value(special, arangodb::validation::SpecialProperties::From)) {
+                                continue;
+                            }
+                            break;
+                        case VelocyPackHelper::ToAttribute: {
+                            if (!enum_contains_value(special, arangodb::validation::SpecialProperties::To)) {
+                                continue;
+                            }
+                            break;
                         }
-                        break;
-                      }
                     }
 
                     consumer.key(arangodb::validation::id_to_string(which));
@@ -134,11 +142,8 @@ void from_value(Consumer& consumer,
             return;
         }
         case VPackValueType::External: {
-            Recurse(consumer,
-                    VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal())),
-                    options,
-                    base,
-                    special);
+            Recurse(
+                consumer, VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal())), options, base, special);
             return;
         }
 

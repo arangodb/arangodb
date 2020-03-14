@@ -320,7 +320,16 @@ std::string const StaticStrings::ValidatorParameterMessage("message");
 std::string const StaticStrings::ValidatorParameterLevel("level");
 std::string const StaticStrings::ValidatorParameterType("type");
 std::string const StaticStrings::ValidatorParameterRule("rule");
+std::string const StaticStrings::ValidatorParameterSpecialProperties("special");
 
 std::string const StaticStrings::ValidatorTypeAQL("aql");
 std::string const StaticStrings::ValidatorTypeJsonSchema("json");
 std::string const StaticStrings::ValidatorTypeBool("bool");
+
+std::string const StaticStrings::ValidatorPropertyNone("none");
+std::string const StaticStrings::ValidatorPropertyId("id");
+std::string const StaticStrings::ValidatorPropertyKey("key");
+std::string const StaticStrings::ValidatorPropertyRev("rev");
+std::string const StaticStrings::ValidatorPropertyFrom("from");
+std::string const StaticStrings::ValidatorPropertyTo("to");
+std::string const StaticStrings::ValidatorPropertyAll("all");

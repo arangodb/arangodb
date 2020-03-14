@@ -7,8 +7,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <tao/json/from_file.hpp>
 #include "types.hpp"
+#include <tao/json/from_file.hpp>
 
 namespace tao::json {
 template<template<typename...> class Traits>
@@ -16,11 +16,10 @@ class basic_schema;
 }
 
 namespace arangodb::validation {
-[[nodiscard]] bool validate(
-    tao::json::basic_schema<tao::json::traits> const& schema,
-    SpecialProperties special,
-    VPackSlice const doc,
-    VPackOptions const*);
+[[nodiscard]] bool validate(tao::json::basic_schema<tao::json::traits> const& schema,
+                            SpecialProperties special,
+                            VPackSlice const doc,
+                            VPackOptions const*);
 
 
 [[nodiscard]] tao::json::value slice_to_value(VPackSlice const& doc,
