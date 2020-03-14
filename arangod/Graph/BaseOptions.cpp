@@ -175,15 +175,17 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query)
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _tmpVar(nullptr) {}
 
-BaseOptions::BaseOptions(BaseOptions const& other)
+BaseOptions::BaseOptions(BaseOptions const& other, bool const allowAlreadyBuiltCopy)
     : _query(other._query),
       _ctx(_query),
       _trx(other._trx),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _tmpVar(nullptr) {
-  TRI_ASSERT(other._baseLookupInfos.empty());
-  TRI_ASSERT(other._tmpVar == nullptr);
+  if (!allowAlreadyBuiltCopy) {
+    TRI_ASSERT(other._baseLookupInfos.empty());
+    TRI_ASSERT(other._tmpVar == nullptr);
+  }
 }
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)

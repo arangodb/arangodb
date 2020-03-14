@@ -88,7 +88,7 @@ class KShortestPathsNode : public virtual GraphNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const override;
 
   bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
   Variable const& pathOutVariable() const {

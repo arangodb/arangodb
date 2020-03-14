@@ -453,7 +453,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _vocbase(other._vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
-      _graphObj(nullptr),
+      _graphObj(other.graph()),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
@@ -461,7 +461,8 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _directions(other._directions),
       _options(std::move(options)),
       _optionsBuilt(false),
-      _isSmart(other.isSmart()) {
+      _isSmart(other.isSmart()),
+      _collectionToShard(other._collectionToShard) {
   setGraphInfoAndCopyColls(other.edgeColls(), other.vertexColls());
 }
 

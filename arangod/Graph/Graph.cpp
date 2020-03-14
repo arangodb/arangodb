@@ -167,6 +167,10 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
   }
 }
 
+auto Graph::clone() const -> std::unique_ptr<Graph> {
+  return std::make_unique<std::decay_t<decltype(*this)>>(*this);
+}
+
 void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
   if (!edgeDefs.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

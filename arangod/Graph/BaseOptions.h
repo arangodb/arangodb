@@ -91,7 +91,10 @@ struct BaseOptions {
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  explicit BaseOptions(BaseOptions const&);
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
+  ///        the planning phase; however, the options have to be prepared again
+  ///        (see GraphNode::prepareOptions() and its overrides)
+  BaseOptions(BaseOptions const&, bool allowAlreadyBuiltCopy = false);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
   BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);

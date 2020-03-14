@@ -99,7 +99,11 @@ class TraversalNode : public virtual GraphNode {
   /// Does not clone recursively, does not clone properties (`other.plan()` is
   /// expected to be the same as `plan)`, and does not register this node in the
   /// plan.
-  TraversalNode(ExecutionPlan& plan, TraversalNode const& other);
+  /// When allowAlreadyBuiltCopy is true, allows copying a node which options
+  /// are already prepared. prepareOptions() has to be called on the copy if
+  /// the options were already prepared on other (_optionsBuilt)!
+  TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
+                bool allowAlreadyBuiltCopy = false);
 
  public:
   /// @brief return the type of the node
@@ -116,7 +120,7 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const override;
 
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }

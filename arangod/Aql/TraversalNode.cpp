@@ -278,14 +278,17 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
 // This constructor is only used from SatelliteTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
-TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other)
+TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
+                             bool const allowAlreadyBuiltCopy)
     : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),
       _pathOutVariable(nullptr),
       _inVariable(other._inVariable),
       _vertexId(other._vertexId),
       _fromCondition(nullptr),
       _toCondition(nullptr) {
-  TRI_ASSERT(!other._optionsBuilt);
+  if (!allowAlreadyBuiltCopy) {
+    TRI_ASSERT(!other._optionsBuilt);
+  }
   other.traversalCloneHelper(plan, *this, false);
 }
 
@@ -541,14 +544,17 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 /// @brief clone ExecutionNode recursively
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
-  TRI_ASSERT(!_optionsBuilt);
-  auto oldOpts = options();
-  std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts);
+  auto* oldOpts = options();
+  std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts, true);
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
                                            _directions, std::move(tmp));
 
   traversalCloneHelper(*plan, *c, withProperties);
+
+  if (_optionsBuilt) {
+    c->prepareOptions();
+  }
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }

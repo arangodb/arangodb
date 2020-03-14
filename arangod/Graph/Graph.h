@@ -133,6 +133,11 @@ class Graph {
   Graph(std::string&& graphName, velocypack::Slice const& info,
         velocypack::Slice const& options);
 
+  /**
+  * @brief virtual copy constructor
+  */
+  virtual auto clone() const -> std::unique_ptr<Graph>;
+
  public:
   virtual ~Graph() = default;
 

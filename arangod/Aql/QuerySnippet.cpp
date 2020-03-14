@@ -362,6 +362,8 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
           }
         }
       } else {
+        TRI_ASSERT(graphNode->isUsedAsSatellite());
+        TRI_ASSERT(USE_ENTERPRISE);
         for (auto* aqlCollection : graphNode->collections()) {
           auto const& shards = shardLocking.shardsForSnippet(id(), aqlCollection);
           for (auto const& shard : shards) {
@@ -391,7 +393,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
     std::set<ShardID> myExp;
 
     auto modNode = dynamic_cast<CollectionAccessingNode const*>(exp.node);
-    // Only accessing nodes can endup here.
+    // Only accessing nodes can end up here.
     TRI_ASSERT(modNode != nullptr);
     auto col = modNode->collection();
     // Should be hit earlier, a modification node here is required to have a collection

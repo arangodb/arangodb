@@ -86,7 +86,7 @@ class ShortestPathNode : public virtual GraphNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const override;
 
   /// @brief Test if this node uses an in variable or constant for start
   bool usesStartInVariable() const { return _inStartVariable != nullptr; }
