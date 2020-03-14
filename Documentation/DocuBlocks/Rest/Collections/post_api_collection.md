@@ -54,6 +54,11 @@ This option is meaningful for the MMFiles storage engine only.
 additional options for key generation. If specified, then *keyOptions*
 should be a JSON array containing the following attributes:
 
+@RESTBODYPARAM{validation,object,optional,post_api_collection_opts}
+Optional object that specifies the collection level document valiation. The
+keys `rule`, `level` and `message` must follow the rules documented in
+[Document Validation](document-validation.html)
+
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
 *traditional*, *autoincrement*, *uuid* and *padded*.<br>

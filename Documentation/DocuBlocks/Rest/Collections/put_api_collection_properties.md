@@ -66,8 +66,10 @@ On success an object with the following attributes is returned:
     generating keys and supplying own key values in the *_key* attribute
     of documents is considered an error.
 
-- *validation*: Object describing the document validation used for this
-  collection.
+* *validation* (optional, default is *null*, **rocksdb-only**): 
+  Object that specifies the collection level document valiation. The keys
+  `rule`, `level` and `message` must follow the rules documented in
+  [Document Validation](document-validation.html)
 
 **Note**: except for *waitForSync*, *journalSize* and *name*, collection
 properties **cannot be changed** once a collection is created. To rename
