@@ -363,7 +363,9 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
         }
       } else {
         TRI_ASSERT(graphNode->isUsedAsSatellite());
-        TRI_ASSERT(USE_ENTERPRISE);
+#ifndef USE_ENTERPRISE
+        TRI_ASSERT(false);
+#endif
         for (auto* aqlCollection : graphNode->collections()) {
           auto const& shards = shardLocking.shardsForSnippet(id(), aqlCollection);
           for (auto const& shard : shards) {
