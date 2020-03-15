@@ -67,7 +67,7 @@ void arangodb::tests::aql::runFetcher(arangodb::aql::MultiDependencySingleRowFet
       void operator()(ConcreteFetcherIOPair<SkipRowsForDependency> const& iop) {
         auto const& args = iop.first;
         auto const& expected = iop.second;
-        auto stack = AqlCallStack(AqlCall{args.atMost, 0, 0, false});
+        auto stack = AqlCallStack(AqlCall{args.atMost, 0, AqlCall::Infinity{}, false});
         auto [state, skippedRes, ignore] =
             testee.executeForDependency(args.dependency, stack);
         auto actual =

@@ -26,10 +26,12 @@
 #include "AqlItemBlockHelper.h"
 #include "AqlItemRowPrinter.h"
 #include "DependencyProxyMock.h"
+#include "ExecutorTestHelper.h"
 #include "MultiDepFetcherHelper.h"
 #include "gtest/gtest.h"
 
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/ResourceUsage.h"
@@ -377,7 +379,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
        no_blocks_upstream_multiple_dependencies_the_producers_dont_wait) {
   VPackBuilder input;
   size_t numDeps = 3;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 0, numDeps};
+  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, 0, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   for (size_t i = 0; i < numDeps; ++i) {
     dependencyProxyMock.getDependencyMock(i).shouldReturn(ExecutionState::DONE, nullptr);
@@ -404,7 +407,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
        no_blocks_upstream_multiple_dependencies_the_producers_wait) {
   VPackBuilder input;
   size_t numDeps = 3;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 0, numDeps};
+  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, 0, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   for (size_t i = 0; i < numDeps; ++i) {
     dependencyProxyMock.getDependencyMock(i)
@@ -439,7 +443,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
        single_upstream_block_with_a_single_row_multi_dependency_the_producer_returns_done_immediately) {
   VPackBuilder input;
   size_t numDeps = 3;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, {{42}});
   SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, {{23}});
@@ -480,7 +485,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
        single_upstream_block_with_a_single_row_multi_dependency_the_producer_returns_hasmore_then_done_with_a_nullptr) {
   VPackBuilder input;
   size_t numDeps = 3;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, {{42}});
   SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, {{23}});
@@ -530,7 +536,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
        single_upstream_block_with_a_single_row_multi_dependency_the_producer_waits_then_returns_done) {
   VPackBuilder input;
   size_t numDeps = 3;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, {{42}});
   SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, {{23}});
@@ -580,7 +587,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
        single_upstream_block_with_a_single_row_multi_dependency_the_producer_waits_returns_more_then_done) {
   VPackBuilder input;
   size_t numDeps = 3;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, {{42}});
   SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, {{23}});
@@ -641,7 +649,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 TEST_F(MultiDependencySingleRowFetcherTest,
        multiple_blocks_upstream_multiple_dependencies_the_producer_does_not_wait) {
   size_t numDeps = 3;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1Dep1 =
@@ -720,7 +729,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 TEST_F(MultiDependencySingleRowFetcherTest,
        multiple_blocks_upstream_multiple_dependencies_the_producer_waits) {
   size_t numDeps = 3;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1Dep1 =
@@ -828,7 +838,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 TEST_F(MultiDependencySingleRowFetcherTest,
        multiple_blocks_upstream_multiple_dependencies_the_producer_waits_and_doesnt_return_done_asap) {
   size_t numDeps = 3;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1Dep1 =
@@ -947,15 +958,46 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
 using CutAt = uint64_t;
 
-class MultiDependencySingleRowFetcherShadowRowTest : public testing::TestWithParam<CutAt> {
+class MultiDependencySingleRowFetcherShadowRowTest
+    : public AqlExecutorTestCaseWithParam<CutAt> {
  protected:
-  ResourceMonitor monitor{};
-  AqlItemBlockManager itemBlockManager;
-
-  MultiDependencySingleRowFetcherShadowRowTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
+  MultiDependencySingleRowFetcherShadowRowTest() {}
 
   uint64_t cutAt() const { return GetParam(); }
+
+  auto blockAlternatingDataAndShadowRows(std::vector<int> const& values)
+      -> std::unique_ptr<ExecutionBlock> {
+    std::deque<SharedAqlItemBlockPtr> blockDeque;
+    {
+      // Build the result
+      MatrixBuilder<1> matrixBuilder;
+      for (auto const& val : values) {
+        matrixBuilder.emplace_back(RowBuilder<1>{{val}});
+      }
+      SharedAqlItemBlockPtr block =
+          buildBlock<1>(itemBlockManager, std::move(matrixBuilder));
+
+      for (size_t row = 0; row < block->size(); ++row) {
+        if (row % 2 == 1) {
+          block->setShadowRowDepth(row, AqlValue{AqlValueHintUInt{0}});
+        }
+      }
+
+      if (cutAt() != 0 && cutAt() < block->size()) {
+        SharedAqlItemBlockPtr block1 = block->slice(0, cutAt());
+        SharedAqlItemBlockPtr block2 = block->slice(cutAt(), block->size());
+        blockDeque.emplace_back(block1);
+        blockDeque.emplace_back(block2);
+      } else {
+        blockDeque.emplace_back(block);
+      }
+    }
+
+    auto execBlock = std::make_unique<WaitingExecutionBlockMock>(
+        fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+        WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+    return execBlock;
+  }
 
   std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> alternatingDataAndShadowRows(
       std::vector<int> const& values) {
@@ -1274,20 +1316,19 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, fetch_shadow_rows_2_deps_re
 }
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_skip_shadow_row_test) {
-  constexpr size_t numDeps = 1;
-  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  auto waitingBlock = blockAlternatingDataAndShadowRows({0, 1, 2, 3});
+  auto inputRegs = make_shared_unordered_set({0});
+  std::vector<ExecutionBlock*> deps{waitingBlock.get()};
+  DependencyProxy<BlockPassthrough::Disable> dependencyProxy{deps, itemBlockManager,
+                                                             inputRegs, 1, nullptr};
 
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(
-      alternatingDataAndShadowRows({0, 1, 2, 3}));
-
-  MultiDependencySingleRowFetcher testee{dependencyProxyMock};
+  MultiDependencySingleRowFetcher testee{dependencyProxy};
   testee.initDependencies();
 
   auto ioPairs = std::vector<FetcherIOPair>{};
   auto add = [&ioPairs](auto call, auto result) {
     ioPairs.emplace_back(std::make_pair(call, result));
   };
-
 
   add(SkipRowsForDependency{0, 1000},
       SkipRowsForDependency::Result{ExecutionState::DONE, 1});
