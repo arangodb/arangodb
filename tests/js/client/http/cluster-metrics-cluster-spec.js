@@ -314,21 +314,39 @@ describe('_admin/metrics', () => {
     servers = getServers();
   });
 
+  const extractKeyAndLabel = (key) => {
+    const start = key.indexOf('{');
+    const labels = new Map();
+    if (start === -1) {
+      return [key, labels];
+    }
+    const labelPart = key.substring(start + 1, key.length - 1);
+    for (const l of labelPart.split(",")) {
+      const [lab, val] = l.split("=");
+      labels.set(lab,val);
+    }
+    return [
+      key.substring(0, start),
+      labels
+    ];
+  }
+
     const prometheusToJson = (prometheus) => {
       const lines = prometheus.split('\n').filter((s) => !s.startsWith('#') && s !== '');
       const res = {};
       for (const l of lines) {
-        const [key, count] = l.split(' ');
-        if (key.indexOf('{le="') !== -1) {
+        const [keypart, count] = l.split(' ');
+        const [key, labels] = extractKeyAndLabel(keypart);
+        if (labels.has("le")) {
           // Bucket case
           // We only check for:
           // identifier{le="range"}
-          // For all other buckt-types this code will fail
-          const [base, bucket] = key.split('{le="');
-          res[base] = res[base] || {};
-          res[base][bucket.substr(0, bucket.length -2)] = parseFloat(count);
+          // For all other bucket-types this code will fail
+          res[key] = res[key] || {};
+          res[key][labels.get("le")] = parseFloat(count);
         } else {
           // evertyhing else
+          // We ignore other labels for now.
           res[key] = parseFloat(count);
         }
 
