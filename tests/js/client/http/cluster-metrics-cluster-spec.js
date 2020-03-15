@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, beforeEach, afterEach, it, global */
+/* global describe, beforeEach, afterEach, it, global, before,  */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -26,6 +26,7 @@
 
 const {expect} = require('chai');
 const request = require("@arangodb/request");
+const db = require("internal").db;
 
 
 const expectOneBucketChanged = (actual, old) => {
@@ -66,7 +67,7 @@ class Watcher {
 class CoordinatorValueWatcher extends Watcher {
   constructor(metric) {
     super();
-    this._metric = metric
+    this._metric = metric;
     this._before = null;
   }
 
@@ -84,7 +85,7 @@ class CoordinatorValueWatcher extends Watcher {
 class CoordinatorBucketWatcher extends Watcher {
   constructor(metric) {
     super();
-    this._metric = metric
+    this._metric = metric;
     this._before = null;
   }
 
@@ -102,7 +103,7 @@ class CoordinatorBucketWatcher extends Watcher {
 class DBServerValueWatcher extends Watcher {
   constructor(metric) {
     super();
-    this._metric = metric
+    this._metric = metric;
     this._before = null;
   }
 
@@ -120,7 +121,7 @@ class DBServerValueWatcher extends Watcher {
 class DBServerBucketWatcher extends Watcher {
   constructor(metric) {
     super();
-    this._metric = metric
+    this._metric = metric;
     this._before = null;
   }
 
@@ -138,7 +139,7 @@ class DBServerBucketWatcher extends Watcher {
 class AgentValueWatcher extends Watcher {
   constructor(metric) {
     super();
-    this._metric = metric
+    this._metric = metric;
     this._before = null;
   }
 
@@ -156,7 +157,7 @@ class AgentValueWatcher extends Watcher {
 class AgentBucketWatcher extends Watcher {
   constructor(metric) {
     super();
-    this._metric = metric
+    this._metric = metric;
     this._before = null;
   }
 
@@ -305,13 +306,13 @@ describe('_admin/metrics', () => {
       list.get(role).push(endpointToURL(endpoint));
     }
     return list;
-};
+  };
 
+  let servers;
 
-    let servers;
-    before(() => {
-      servers = getServers();
-    });
+  before(() => {
+    servers = getServers();
+  });
 
     const prometheusToJson = (prometheus) => {
       const lines = prometheus.split('\n').filter((s) => !s.startsWith('#') && s !== '');
@@ -354,14 +355,14 @@ describe('_admin/metrics', () => {
       for (const [key, value] of Object.entries(rhs)) {
         if (value instanceof Object) {
           for (const [bucket, content] of Object.entries(value)) {
-            lhs[key][bucket] += content
+            lhs[key][bucket] += content;
           }
         } else {
           lhs[key] += rhs[key];
         }
       }
       return lhs;
-    }
+    };
 
     const loadAllMetrics = (role) => {
       return servers.get(role).map((_, i) => loadMetrics(role, i)).reduce(joinMetrics, {});
