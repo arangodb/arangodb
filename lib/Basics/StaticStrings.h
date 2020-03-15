@@ -284,7 +284,25 @@ class StaticStrings {
   static std::string const UpgradeEnvName;
   static std::string const BackupToDeleteName;
   static std::string const BackupSearchToDeleteName;
+
+  // aql api strings
   static std::string const SerializationFormat;
+  static std::string const AqlRemoteApi;
+  static std::string const AqlRemoteExecute;
+  static std::string const AqlRemoteCallStack;
+  static std::string const AqlRemoteLimit;
+  static std::string const AqlRemoteLimitType;
+  static std::string const AqlRemoteLimitTypeSoft;
+  static std::string const AqlRemoteLimitTypeHard;
+  static std::string const AqlRemoteFullCount;
+  static std::string const AqlRemoteOffset;
+  static std::string const AqlRemoteInfinity;
+  static std::string const AqlRemoteResult;
+  static std::string const AqlRemoteBlock;
+  static std::string const AqlRemoteSkipped;
+  static std::string const AqlRemoteState;
+  static std::string const AqlRemoteStateDone;
+  static std::string const AqlRemoteStateHasmore;
 
   // validation
   static std::string const ValidatorLevelNone;

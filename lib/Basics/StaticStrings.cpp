@@ -56,7 +56,8 @@ std::string const StaticStrings::ReturnNewString("returnNew");
 std::string const StaticStrings::ReturnOldString("returnOld");
 std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
-std::string const StaticStrings::SkipDocumentValidation("skipDocumentValidation");
+std::string const StaticStrings::SkipDocumentValidation(
+    "skipDocumentValidation");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
 std::string const StaticStrings::Group("group");
@@ -309,7 +310,25 @@ std::string const StaticStrings::UpgradeEnvName(
 std::string const StaticStrings::BackupToDeleteName("DIRECTORY_TO_DELETE");
 std::string const StaticStrings::BackupSearchToDeleteName(
     "DIRECTORY_TO_DELETE_SEARCH");
+
+// aql api strings
 std::string const StaticStrings::SerializationFormat("serializationFormat");
+std::string const StaticStrings::AqlRemoteApi("api");
+std::string const StaticStrings::AqlRemoteExecute("execute");
+std::string const StaticStrings::AqlRemoteCallStack("callStack");
+std::string const StaticStrings::AqlRemoteLimit("limit");
+std::string const StaticStrings::AqlRemoteLimitType("limitType");
+std::string const StaticStrings::AqlRemoteLimitTypeSoft("soft");
+std::string const StaticStrings::AqlRemoteLimitTypeHard("hard");
+std::string const StaticStrings::AqlRemoteFullCount("fullCount");
+std::string const StaticStrings::AqlRemoteOffset("offset");
+std::string const StaticStrings::AqlRemoteInfinity("infinity");
+std::string const StaticStrings::AqlRemoteResult("result");
+std::string const StaticStrings::AqlRemoteBlock("block");
+std::string const StaticStrings::AqlRemoteSkipped("skipped");
+std::string const StaticStrings::AqlRemoteState("state");
+std::string const StaticStrings::AqlRemoteStateDone("done");
+std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
 
 // validation
 std::string const StaticStrings::ValidatorLevelNone("none");

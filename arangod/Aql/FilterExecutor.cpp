@@ -25,7 +25,9 @@
 
 #include "FilterExecutor.h"
 
-#include "Aql/AqlValue.h"
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallStack.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -48,9 +50,12 @@ FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nr
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister) {}
 
-RegisterId FilterExecutorInfos::getInputRegister() const noexcept { return _inputRegister; }
+RegisterId FilterExecutorInfos::getInputRegister() const noexcept {
+  return _inputRegister;
+}
 
-FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher) {}
+FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos)
+    : _infos(infos), _fetcher(fetcher) {}
 
 FilterExecutor::~FilterExecutor() = default;
 
@@ -95,3 +100,56 @@ std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t at
   return _fetcher.preFetchNumberOfRows(atMost);
 }
 
+auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  FilterStats stats{};
+  while (inputRange.hasDataRow() && call.needSkipMore()) {
+    auto const [unused, input] = inputRange.nextDataRow();
+    if (!input) {
+      TRI_ASSERT(!inputRange.hasDataRow());
+      break;
+    }
+    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+      call.didSkip(1);
+    } else {
+      stats.incrFiltered();
+    }
+  }
+
+  AqlCall upstreamCall{};
+  if (call.needSkipMore() && call.getLimit() == 0) {
+    // FullCount case, we need to skip more, but limit is reached.
+    upstreamCall.softLimit = ExecutionBlock::SkipAllSize();
+  } else {
+    upstreamCall.softLimit = call.getOffset();
+  }
+
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
+}
+
+auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  TRI_IF_FAILURE("FilterExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  FilterStats stats{};
+
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    auto const& [state, input] = inputRange.nextDataRow();
+    TRI_ASSERT(input.isInitialized());
+    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+      output.copyRow(input);
+      output.advanceRow();
+    } else {
+      stats.incrFiltered();
+    }
+  }
+
+  AqlCall upstreamCall{};
+  auto const& clientCall = output.getClientCall();
+  // This is a optimistic fetch. We do not do any overfetching here, only if we
+  // pass through all rows this fetch is correct, otherwise we have too few rows.
+  upstreamCall.softLimit = clientCall.getOffset() +
+                           (std::min)(clientCall.softLimit, clientCall.hardLimit);
+  return {inputRange.upstreamState(), stats, upstreamCall};
+}

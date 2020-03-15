@@ -350,58 +350,25 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
   RowType const otherInvalidRow = createInvalidRow<RowType>();
 
   // same rows must be equal
-  EXPECT_TRUE((RowType{block, 0}.operator==(RowType{block, 0})));
-  EXPECT_TRUE((RowType{block, 0} == RowType{block, 0}));
-  EXPECT_TRUE((RowType{block, 1}.operator==(RowType{block, 1})));
-  EXPECT_TRUE((RowType{block, 1} == RowType{block, 1}));
-  EXPECT_FALSE((RowType{block, 0}.operator!=(RowType{block, 0})));
-  EXPECT_FALSE((RowType{block, 0} != RowType{block, 0}));
-  EXPECT_FALSE((RowType{block, 1}.operator!=(RowType{block, 1})));
-  EXPECT_FALSE((RowType{block, 1} != RowType{block, 1}));
+  EXPECT_TRUE((RowType{block, 0}.isSameBlockAndIndex(RowType{block, 0})));
+  EXPECT_TRUE((RowType{block, 1}.isSameBlockAndIndex(RowType{block, 1})));
 
   // different rows in the same block must be non-equal
-  EXPECT_FALSE((RowType{block, 0}.operator==(RowType{block, 1})));
-  EXPECT_FALSE((RowType{block, 0} == RowType{block, 1}));
-  EXPECT_FALSE((RowType{block, 1}.operator==(RowType{block, 0})));
-  EXPECT_FALSE((RowType{block, 1} == RowType{block, 0}));
-  EXPECT_TRUE((RowType{block, 0}.operator!=(RowType{block, 1})));
-  EXPECT_TRUE((RowType{block, 0} != RowType{block, 1}));
-  EXPECT_TRUE((RowType{block, 1}.operator!=(RowType{block, 0})));
-  EXPECT_TRUE((RowType{block, 1} != RowType{block, 0}));
+  EXPECT_FALSE((RowType{block, 0}.isSameBlockAndIndex(RowType{block, 1})));
+  EXPECT_FALSE((RowType{block, 1}.isSameBlockAndIndex(RowType{block, 0})));
 
   // rows in different blocks must be non-equal
-  EXPECT_FALSE((RowType{block, 0}.operator==(RowType{otherBlock, 0})));
-  EXPECT_FALSE((RowType{block, 0} == RowType{otherBlock, 0}));
-  EXPECT_FALSE((RowType{block, 1}.operator==(RowType{otherBlock, 0})));
-  EXPECT_FALSE((RowType{block, 1} == RowType{otherBlock, 0}));
-  EXPECT_FALSE((RowType{otherBlock, 0}.operator==(RowType{block, 0})));
-  EXPECT_FALSE((RowType{otherBlock, 0} == RowType{block, 0}));
-  EXPECT_FALSE((RowType{otherBlock, 0}.operator==(RowType{block, 1})));
-  EXPECT_FALSE((RowType{otherBlock, 0} == RowType{block, 1}));
-  EXPECT_TRUE((RowType{block, 0}.operator!=(RowType{otherBlock, 0})));
-  EXPECT_TRUE((RowType{block, 0} != RowType{otherBlock, 0}));
-  EXPECT_TRUE((RowType{block, 1}.operator!=(RowType{otherBlock, 0})));
-  EXPECT_TRUE((RowType{block, 1} != RowType{otherBlock, 0}));
-  EXPECT_TRUE((RowType{otherBlock, 0}.operator!=(RowType{block, 0})));
-  EXPECT_TRUE((RowType{otherBlock, 0} != RowType{block, 0}));
-  EXPECT_TRUE((RowType{otherBlock, 0}.operator!=(RowType{block, 1})));
-  EXPECT_TRUE((RowType{otherBlock, 0} != RowType{block, 1}));
+  EXPECT_FALSE((RowType{block, 0}.isSameBlockAndIndex(RowType{otherBlock, 0})));
+  EXPECT_FALSE((RowType{block, 1}.isSameBlockAndIndex(RowType{otherBlock, 0})));
+  EXPECT_FALSE((RowType{otherBlock, 0}.isSameBlockAndIndex(RowType{block, 0})));
+  EXPECT_FALSE((RowType{otherBlock, 0}.isSameBlockAndIndex(RowType{block, 1})));
 
   // comparisons with an invalid row must be false
-  EXPECT_FALSE((RowType{block, 0}.operator==(invalidRow)));
-  EXPECT_FALSE((RowType{block, 0} == invalidRow));
-  EXPECT_FALSE((invalidRow.operator==(RowType{block, 0})));
-  EXPECT_FALSE((invalidRow == RowType{block, 0}));
-  EXPECT_TRUE((RowType{block, 0}.operator!=(invalidRow)));
-  EXPECT_TRUE((RowType{block, 0} != invalidRow));
-  EXPECT_TRUE((invalidRow.operator!=(RowType{block, 0})));
-  EXPECT_TRUE((invalidRow != RowType{block, 0}));
+  EXPECT_FALSE((RowType{block, 0}.isSameBlockAndIndex(invalidRow)));
+  EXPECT_FALSE((invalidRow.isSameBlockAndIndex(RowType{block, 0})));
 
   // two invalid rows must be equal
-  EXPECT_TRUE((invalidRow.operator==(otherInvalidRow)));
-  EXPECT_TRUE((invalidRow == otherInvalidRow));
-  EXPECT_FALSE((invalidRow.operator!=(otherInvalidRow)));
-  EXPECT_FALSE((invalidRow != otherInvalidRow));
+  EXPECT_TRUE((invalidRow.isSameBlockAndIndex(otherInvalidRow)));
 }
 
 TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
