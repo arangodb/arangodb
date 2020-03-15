@@ -1072,7 +1072,11 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
     if constexpr (hasExpectedNumberOfRowsNew<Executor>::value) {
       blockSize = _executor.expectedNumberOfRowsNew(inputRange, call);
       // The executor cannot expect to produce more then the limit!
-      TRI_ASSERT(blockSize <= call.getLimit());
+      if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
+        // Except the subqueryStartExecutor, it's limit differs
+        // from it's output (it needs to count the new ShadowRows in addition)
+        TRI_ASSERT(blockSize <= call.getLimit());
+      }
 
       blockSize += inputRange.countShadowRows();
       // We have an upper bound by DefaultBatchSize;
