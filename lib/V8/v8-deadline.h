@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,22 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PHYSICAL_MEMORY_H
-#define ARANGODB_BASICS_PHYSICAL_MEMORY_H 1
+#ifndef ARANGODB_V8_V8__DEADLINE_H
+#define ARANGODB_V8_V8__DEADLINE_H 1
 
-#include <cstdint>
+#include <chrono>
+#include <v8.h>
 
-namespace arangodb {
-namespace PhysicalMemory {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a point in time after which we will abort external connection
+////////////////////////////////////////////////////////////////////////////////
+bool isExecutionDeadlineReached(v8::Isolate* isolate);
+double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout);
 
-/// @brief return system's physical memory
-uint64_t getValue();
-bool overridden();
-
-} 
-}  // namespace arangodb
+void TRI_InitV8Deadline(v8::Isolate* isolate);
 
 #endif

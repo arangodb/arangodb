@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,22 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
+#include "v8-deadline.h"
+// arangod dummy implementation doing nothing
+void setExecutionDeadlineInMS(uint64_t timeout) {
+}
 
-#ifndef ARANGODB_BASICS_PHYSICAL_MEMORY_H
-#define ARANGODB_BASICS_PHYSICAL_MEMORY_H 1
+bool isExecutionDeadlineReached(v8::Isolate* isolate) {
+  return false;
+}
 
-#include <cstdint>
+double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
+  return timeoutSeconds;
+}
 
-namespace arangodb {
-namespace PhysicalMemory {
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout) {
+  return timeout;
+}
 
-/// @brief return system's physical memory
-uint64_t getValue();
-bool overridden();
-
-} 
-}  // namespace arangodb
-
-#endif
+void TRI_InitV8Deadline(v8::Isolate* isolate)
+{
+}

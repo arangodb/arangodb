@@ -103,7 +103,6 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-
   TRI_ASSERT(!inputRange.hasDataRow());
   if (_infos.doCount()) {
     stats.addCounted(output.numRowsWritten());

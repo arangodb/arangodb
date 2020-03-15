@@ -259,6 +259,7 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
+  static std::string const RevisionTreeBranchingFactor;
   static std::string const RevisionTreeCount;
   static std::string const RevisionTreeHash;
   static std::string const RevisionTreeMaxDepth;

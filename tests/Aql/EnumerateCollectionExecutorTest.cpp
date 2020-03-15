@@ -244,8 +244,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
 // new framework tests
 
 // This is only to get a split-type. The Type is independent of actual template parameters
-using EnumerateCollectionTestHelper =
-    ExecutorTestHelper<1, 1>;
+using EnumerateCollectionTestHelper = ExecutorTestHelper<1, 1>;
 using EnumerateCollectionSplitType = EnumerateCollectionTestHelper::SplitType;
 using EnumerateCollectionInputParam = std::tuple<EnumerateCollectionSplitType>;
 
@@ -288,8 +287,7 @@ class EnumerateCollectionExecutorTestProduce
         useRawPointers(false),
         random(false),
         infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
-              projections, coveringIndexAttributePositions, useRawPointers, random) {
-  }
+              projections, coveringIndexAttributePositions, useRawPointers, random) {}
 
   auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
                  RegisterId nrOutputRegister = 1,
@@ -313,7 +311,8 @@ class EnumerateCollectionExecutorTestProduce
         R"aql(INSERT {_key: "testee1", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection RETURN NEW)aql";
     SCOPED_TRACE(insertQuery);
     auto queryRes = arangodb::tests::executeQuery(vocbase, insertQuery, {});
-    queryResults.push_back(queryRes.data.get()->slice().at(0).toJson(queryRes.context->getVPackOptions()));
+    queryResults.push_back(queryRes.data.get()->slice().at(0).toJson(
+        queryRes.context->getVPackOptions()));
 
     for (size_t i = 2; i <= amount; i++) {
       std::string insertQueryPart1 = R"aql(INSERT {_key: "testee)aql";
@@ -323,7 +322,8 @@ class EnumerateCollectionExecutorTestProduce
       std::string finalQuery = insertQueryPart1 + insertQueryPart2 + insertQueryPart3;
       SCOPED_TRACE(finalQuery);
       auto queryResInner = arangodb::tests::executeQuery(vocbase, finalQuery, {});
-      queryResults.push_back(queryResInner.data.get()->slice().at(0).toJson(queryResInner.context->getVPackOptions()));
+      queryResults.push_back(queryResInner.data.get()->slice().at(0).toJson(
+          queryResInner.context->getVPackOptions()));
     }
 
     return queryRes.context->getVPackOptions();
@@ -348,7 +348,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
 
   uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
-  auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  // auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
   EXPECT_EQ(vocbase.lookupCollection("UnitTestCollection")
                 ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked
@@ -383,7 +383,8 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
 
   uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
-  auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  // auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
@@ -397,20 +398,21 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
       .run();
 }
 
-
 // DISABLED because we need to be able to compare real documents (currently not possible)
 TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default) {
   auto [split] = GetParam();
 
   uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
-  auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name":
-"UnitTestCollection" })"}}}) .setInputSplitType(split) .setCall(AqlCall{5,
-AqlCall::Infinity{}, AqlCall::Infinity{}, false}) .expectSkipped(5) .expectOutput({0},
-{{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
+"UnitTestCollection" })"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{5, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
+      .expectSkipped(5)
+      .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::DONE)
       .setExecBlock<EnumerateCollectionExecutor>(std::move(makeInfos()))
       .run();

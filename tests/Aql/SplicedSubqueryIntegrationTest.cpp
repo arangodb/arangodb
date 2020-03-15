@@ -470,7 +470,6 @@ TEST_P(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
 
 TEST_P(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
   auto call = AqlCall{10};
-  LOG_DEVEL << call;
   auto pipeline = createSubquery(createAssertPipeline());
 
   executorTestHelper.setPipeline(std::move(pipeline))
@@ -485,7 +484,6 @@ TEST_P(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
 
 TEST_P(SplicedSubqueryIntegrationTest, check_soft_limit_subquery) {
   auto call = AqlCall{0, false, 4, AqlCall::LimitType::SOFT};
-  LOG_DEVEL << call;
   auto pipeline = createSubquery(createAssertPipeline());
 
   ExecutorTestHelper<1, 2>{*fakedQuery}

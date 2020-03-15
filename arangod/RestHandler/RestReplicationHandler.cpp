@@ -3001,13 +3001,6 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
     return false;
   }
 
-  // determine end tick for dump
-  ctx.tickEnd = std::numeric_limits<TRI_voc_tick_t>::max();
-  std::string const& value2 = _request->value("to", found);
-  if (found) {
-    ctx.tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
-  }
-
   ctx.iter =
       ctx.collection->getPhysical()->getReplicationIterator(ReplicationIterator::Ordering::Revision,
                                                             ctx.batchId);
@@ -3048,12 +3041,6 @@ void RestReplicationHandler::handleCommandRevisionTree() {
 void RestReplicationHandler::handleCommandRebuildRevisionTree() {
   RevisionOperationContext ctx;
   if (!prepareRevisionOperation(ctx)) {
-    return;
-  }
-
-  if (!ctx.collection->syncByRevision()) {
-    generateError(Result(TRI_ERROR_BAD_PARAMETER,
-                         "collection does not support revision tree commands"));
     return;
   }
 
