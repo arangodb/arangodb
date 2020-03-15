@@ -199,3 +199,10 @@ std::pair<ExecutionState, size_t> SubqueryEndExecutor::expectedNumberOfRows(size
   std::tie(state, expected) = _fetcher.preFetchNumberOfRows(atMost);
   return {state, expected};
 }
+
+[[nodiscard]] auto SubqueryEndExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  // This executor will not produce any more rows based on it's inbound data rows
+  // It will produce 1 row per ShadowRow, this is handled outside of this block.
+  return 0;
+}

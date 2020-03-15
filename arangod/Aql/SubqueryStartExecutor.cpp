@@ -100,3 +100,8 @@ auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
   TRI_ASSERT(false);
   return {ExecutionState::DONE, 0};
 }
+
+[[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  return std::min<size_t>({1, call.getLimit(), input.countDataRows()});
+}

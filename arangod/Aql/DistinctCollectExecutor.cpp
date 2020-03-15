@@ -85,6 +85,14 @@ std::pair<ExecutionState, size_t> DistinctCollectExecutor::expectedNumberOfRows(
   return _fetcher.preFetchNumberOfRows(atMost);
 }
 
+[[nodiscard]] auto DistinctCollectExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  // Worst case assumption:
+  // For every input row we have a new group.
+  // We will never produce more then asked for
+  return std::min(call.getLimit(), input.countDataRows());
+}
+
 void DistinctCollectExecutor::destroyValues() {
   // destroy all AqlValues captured
   for (auto& value : _seen) {

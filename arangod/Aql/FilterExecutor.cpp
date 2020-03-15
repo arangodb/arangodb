@@ -153,3 +153,9 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
                            (std::min)(clientCall.softLimit, clientCall.hardLimit);
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
+
+[[nodiscard]] auto FilterExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                                           AqlCall const& call) const
+    noexcept -> size_t {
+  return std::min(call.getLimit(), input.countDataRows());
+}

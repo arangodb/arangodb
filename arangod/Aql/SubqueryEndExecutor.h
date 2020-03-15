@@ -88,6 +88,9 @@ class SubqueryEndExecutor {
   [[deprecated]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
   // produceRows accumulates all input rows it can get into _accumulator, which
   // will then be read out by ExecutionBlockImpl
   // TODO: can the production of output be moved to produceRows again?
