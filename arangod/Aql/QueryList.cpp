@@ -149,7 +149,7 @@ void QueryList::remove(Query* query) {
   double const now = TRI_microtime();
 
   query->vocbase().server().getFeature<arangodb::MetricsFeature>().counter(
-      StaticStrings::AqlQueryRuntimeMs) += 1000 * (now - started);
+      StaticStrings::AqlQueryRuntimeMs) += static_cast<uint64_t>(1000 * (now - started));
 
   try {
     // check if we need to push the query into the list of slow queries
