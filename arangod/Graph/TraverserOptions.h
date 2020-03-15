@@ -103,7 +103,10 @@ struct TraverserOptions : public graph::BaseOptions {
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  TraverserOptions(TraverserOptions const&);
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
+  ///        the planning phase; however, the options have to be prepared again
+  ///        (see TraversalNode::prepareOptions())
+  TraverserOptions(TraverserOptions const& other, bool allowAlreadyBuiltCopy = false);
   TraverserOptions& operator=(TraverserOptions const&) = delete;
 
   virtual ~TraverserOptions();
