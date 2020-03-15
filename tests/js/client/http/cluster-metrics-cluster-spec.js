@@ -329,7 +329,7 @@ describe('_admin/metrics', () => {
       key.substring(0, start),
       labels
     ];
-  }
+  };
 
     const prometheusToJson = (prometheus) => {
       const lines = prometheus.split('\n').filter((s) => !s.startsWith('#') && s !== '');
