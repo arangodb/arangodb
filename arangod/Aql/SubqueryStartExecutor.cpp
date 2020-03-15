@@ -103,5 +103,17 @@ auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
 
 [[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
-  return std::min<size_t>({1, call.getLimit(), input.countDataRows()});
+  // NOTE:
+  // As soon as we can overfetch data, this needs to be modified to
+  // returnVlaue * countDataRows();
+  if (input.countDataRows() > 0) {
+    // We will write one ShadowRow
+    if (call.getLimit() > 0) {
+      // We will write one DataRow
+      return 2;
+    }
+    return 1;
+  }
+  // Nothing to create here.
+  return 0;
 }
