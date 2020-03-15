@@ -316,9 +316,17 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+          auto const isSatellite =
+              Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
+                                   velocypack::StringRef{""}) == StaticStrings::Satellite;
           // force one shard, and force distributeShardsLike to be "_graphs"
           helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-          helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
+          if (!isSatellite) {
+            // satellite collections must not be sharded like a non-satellite
+            // collection.
+            helper.add(StaticStrings::DistributeShardsLike,
+                       VPackValue(vocbase.shardingPrototypeName()));
+          }
         } else if (vocbase.sharding() == "single" && numberOfShards <= 1) {
           auto distributeSlice = info.properties.get(StaticStrings::DistributeShardsLike);
           if (distributeSlice.isNone()) {
