@@ -86,6 +86,8 @@ class AqlItemBlockInputRange {
    */
   [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
 
+  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+
  private:
   bool isIndexValid(std::size_t index) const noexcept;
 

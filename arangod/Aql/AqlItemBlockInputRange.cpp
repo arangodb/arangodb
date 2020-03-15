@@ -197,3 +197,7 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
   auto const& block = getBlock();
   return block->getShadowRowIndexes().size();
 }
+
+[[nodiscard]] auto AqlItemBlockInputRange::finalState() const noexcept -> ExecutorState {
+  return _finalState;
+}

@@ -1082,6 +1082,11 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // We have an upper bound by DefaultBatchSize;
       blockSize = std::min(ExecutionBlock::DefaultBatchSize, blockSize);
     }
+    if (blockSize == 0) {
+      // There is no data to be produced
+      SharedAqlItemBlockPtr newBlock{nullptr};
+      return createOutputRow(newBlock, std::move(call));
+    }
     SharedAqlItemBlockPtr newBlock =
         _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
     return createOutputRow(newBlock, std::move(call));
