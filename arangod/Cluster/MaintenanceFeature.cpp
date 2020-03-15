@@ -158,16 +158,16 @@ void MaintenanceFeature::start() {
 
   _phase1_runtime_msec =
       metricsFeature.histogram(StaticStrings::MaintenancePhaseOneRuntimeMs,
-                               log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
+                               log_scale_t<uint64_t>(2, 50, 8000, 10),
                                "Maintenance Phase 1 runtime histogram [ms]");
   _phase2_runtime_msec =
       metricsFeature.histogram(StaticStrings::MaintenancePhaseTwoRuntimeMs,
-                               log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
+                               log_scale_t<uint64_t>(2, 50, 8000, 10),
                                "Maintenance Phase 2 runtime histogram [ms]");
 
   _agency_sync_total_runtime_msec =
       metricsFeature.histogram(StaticStrings::MaintenanceAgencySyncRuntimeMs,
-                               log_scale_t<uint64_t>(2, 50., 8.0e3, 10),
+                               log_scale_t<uint64_t>(2, 50, 8000, 10),
                                "Total time spend on agency sync [ms]");
 
   _phase1_accum_runtime_msec =
@@ -215,11 +215,11 @@ void MaintenanceFeature::start() {
     _maintenance_job_metrics_map.try_emplace(
         action,
         metricsFeature.histogram({StaticStrings::MaintenanceActionRuntimeMs, action_label},
-                                 log_scale_t<uint64_t>(4, 82, 86400.0e3, 10),
+                                 log_scale_t<uint64_t>(4, 82, 86400000, 10),
                                  "Time spend execution the action [ms]"),
         metricsFeature.histogram(
             {StaticStrings::MaintenanceActionQueueTimeMs, action_label},
-            log_scale_t<uint64_t>(2, 82, 86400.0e3, 12),
+            log_scale_t<uint64_t>(2, 82, 86400000, 12),
             "Time spend in the queue before execution [ms]"),
 
         metricsFeature.counter({StaticStrings::MaintenanceActionAccumRuntimeMs, action_label},

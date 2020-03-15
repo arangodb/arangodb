@@ -422,7 +422,7 @@ void ClusterFeature::prepare() {
   }
 
   server().getFeature<arangodb::MetricsFeature>().histogram(
-      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58.0, 120e3, 10),
+      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
       "Request time for Agency requests");
 
   // create callback registery
