@@ -571,7 +571,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         // No condition, no optimize
         break;
       }
-      auto options = static_cast<traverser::TraverserOptions*>(node->options());
+      auto options = node->options();
       auto const& varsValidInTraversal = node->getVarsValid();
 
       bool conditionIsImpossible = false;
