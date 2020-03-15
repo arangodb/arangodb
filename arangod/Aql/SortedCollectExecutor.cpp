@@ -301,12 +301,16 @@ std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(si
 
 [[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
-  // Worst case assumption:
-  // For every input row we have a new group.
-  // If we have an open group right now, we need to add 1 to this estimate.
-  // We will never produce more then asked for
-  return std::min(call.getLimit(),
-                  input.countDataRows() + (_currentGroup.isValid() ? 1 : 0));
+  if (input.finalState() == ExecutorState::DONE) {
+    // Worst case assumption:
+    // For every input row we have a new group.
+    // If we have an open group right now, we need to add 1 to this estimate.
+    // We will never produce more then asked for
+    return std::min(call.getLimit(),
+                    input.countDataRows() + (_currentGroup.isValid() ? 1 : 0));
+  }
+  // Otherwise we do not know.
+  return call.getLimit();
 }
 
 auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
