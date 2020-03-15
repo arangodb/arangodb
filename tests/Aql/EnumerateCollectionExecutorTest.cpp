@@ -68,7 +68,7 @@ static const std::string GetAllDocs =
 
 using CursorType = arangodb::transaction::Methods::CursorType;
 
-class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<true> {
+class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
  protected:
   ExecutionState state;
   AqlItemBlockManager itemBlockManager;
