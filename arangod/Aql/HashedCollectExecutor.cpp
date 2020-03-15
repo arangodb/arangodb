@@ -367,7 +367,12 @@ std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(si
       // Worst case assumption:
       // For every input row we have a new group.
       // We will never produce more then asked for
-      return std::min(call.getLimit(), input.countDataRows());
+      auto estOnInput = input.countDataRows();
+      if (estOnInput == 0 && _infos.getGroupRegisters().empty()) {
+        // Special case, on empty input we will produce 1 output
+        estOnInput = 1;
+      }
+      return std::min(call.getLimit(), estOnInput);
     }
     // Otherwise we do not know.
     return call.getLimit();

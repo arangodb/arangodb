@@ -306,8 +306,17 @@ std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(si
     // For every input row we have a new group.
     // If we have an open group right now, we need to add 1 to this estimate.
     // We will never produce more then asked for
-    return std::min(call.getLimit(),
-                    input.countDataRows() + (_currentGroup.isValid() ? 1 : 0));
+    auto estOnInput = input.countDataRows();
+    if (_currentGroup.isValid()) {
+      // Have one group still to write,
+      // that is not part of this input.
+      estOnInput += 1;
+    }
+    if (estOnInput == 0 && _infos.getGroupRegisters().empty()) {
+      // Special case, on empty input we will produce 1 output
+      estOnInput = 1;
+    }
+    return std::min(call.getLimit(), estOnInput);
   }
   // Otherwise we do not know.
   return call.getLimit();
