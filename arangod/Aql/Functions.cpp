@@ -1586,56 +1586,55 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
 
 
 namespace {
-  template<bool search_semantics>
-  AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx, transaction::Methods* trx,
-    VPackFunctionParameters const& args) {
-
-    if (args.size() < 3) {
-      registerWarning(
-        ctx, AFN,
-        arangodb::Result{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                          "Minimum 3 arguments are expected." });
-      return AqlValue(AqlValueHintNull());
-    }
-
-    auto const& attribute = extractFunctionParameterValue(args, 0);
-    if (ADB_UNLIKELY(!attribute.isString())) {
-      arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-      return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
-    }
-    auto const attributeValue = arangodb::iresearch::getStringRef(attribute.slice());
-
-    auto const& target = extractFunctionParameterValue(args, 1);
-    if (ADB_UNLIKELY(!target.isString())) {
-      arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-      return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
-    }
-    auto const targetValue = arangodb::iresearch::getStringRef(target.slice());
-
-    auto const& ngramSize = extractFunctionParameterValue(args, 2);
-    if (ADB_UNLIKELY(!ngramSize.isNumber())) {
-      arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-      return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
-    }
-    auto const ngramSizeValue = ngramSize.toInt64();
-
-    if (ADB_UNLIKELY(ngramSizeValue < 1)) {
-      arangodb::aql::registerWarning(ctx, AFN,
-                                     arangodb::Result{TRI_ERROR_BAD_PARAMETER,
-                                                      "Invalid ngram size. Should be 1 or greater"});
-      return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
-    }
-
-    auto utf32Attribute = basics::StringUtils::characterCodes(attributeValue.c_str(), attributeValue.size());
-    auto utf32Target = basics::StringUtils::characterCodes(targetValue.c_str(), targetValue.size());
-
-    auto const similarity =
-        irs::ngram_similarity<uint32_t, search_semantics>(
-            utf32Target.data(), utf32Target.size(),
-            utf32Attribute.data(), utf32Attribute.size(),
-            ngramSizeValue);
-    return AqlValue(AqlValueHintDouble(similarity));
+template<bool search_semantics>
+AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx, transaction::Methods* trx,
+                               VPackFunctionParameters const& args) {
+  if (args.size() < 3) {
+    registerWarning(
+      ctx, AFN,
+      arangodb::Result{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                        "Minimum 3 arguments are expected." });
+    return AqlValue(AqlValueHintNull());
   }
+
+  auto const& attribute = extractFunctionParameterValue(args, 0);
+  if (ADB_UNLIKELY(!attribute.isString())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto const attributeValue = arangodb::iresearch::getStringRef(attribute.slice());
+
+  auto const& target = extractFunctionParameterValue(args, 1);
+  if (ADB_UNLIKELY(!target.isString())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto const targetValue = arangodb::iresearch::getStringRef(target.slice());
+
+  auto const& ngramSize = extractFunctionParameterValue(args, 2);
+  if (ADB_UNLIKELY(!ngramSize.isNumber())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto const ngramSizeValue = ngramSize.toInt64();
+
+  if (ADB_UNLIKELY(ngramSizeValue < 1)) {
+    arangodb::aql::registerWarning(ctx, AFN,
+                                    arangodb::Result{TRI_ERROR_BAD_PARAMETER,
+                                                    "Invalid ngram size. Should be 1 or greater"});
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+
+  auto utf32Attribute = basics::StringUtils::characterCodes(attributeValue.c_str(), attributeValue.size());
+  auto utf32Target = basics::StringUtils::characterCodes(targetValue.c_str(), targetValue.size());
+
+  auto const similarity =
+      irs::ngram_similarity<uint32_t, search_semantics>(
+          utf32Target.data(), utf32Target.size(),
+          utf32Attribute.data(), utf32Attribute.size(),
+          ngramSizeValue);
+  return AqlValue(AqlValueHintDouble(similarity));
+}
 }
 
 /// Executes NGRAM_SIMILARITY based on binary ngram similarity
@@ -6756,7 +6755,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   if (offset.isNull(true)) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
@@ -6776,7 +6775,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
   AqlValueMaterializer materializer(trx);
   VPackSlice arraySlice = materializer.slice(baseArray, false);
   VPackSlice replaceValue = materializer.slice(newValue, false);
-  
+
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
 

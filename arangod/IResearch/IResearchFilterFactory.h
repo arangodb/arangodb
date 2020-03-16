@@ -55,7 +55,7 @@ struct FilterFactory {
 };  // FilterFactory
 
 
-class FilterConstants {
+struct FilterConstants {
   FilterConstants() = delete;
  public:
   // Defaults
