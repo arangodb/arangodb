@@ -563,7 +563,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
 #ifdef USE_ENTERPRISE
   {
-    Result res = ensureSmartCollectionSharding(graph, waitForSync, documentCollectionsToCreate);
+    Result res = ensureEnterpriseCollectionSharding(graph, waitForSync, documentCollectionsToCreate);
     if (res.fail()) {
       return res;
     }
@@ -597,6 +597,30 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   std::vector<std::shared_ptr<LogicalCollection>> created;
   return methods::Collections::create(
       vocbase, collectionsToCreate, waitForSync, true, false, nullptr, created);
+};
+
+bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
+  bool onlySatellites = true;
+
+  for (auto const& cname : graph->vertexCollections()) {
+    if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
+      onlySatellites = false;
+    }
+    if (!onlySatellites) {
+      break; // quick exit
+    }
+  }
+
+  for (auto const& cname : graph->edgeCollections()) {
+    if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
+      onlySatellites = false;
+    }
+    if (!onlySatellites) {
+      break; // quick exit
+    }
+  }
+
+  return onlySatellites;
 };
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,

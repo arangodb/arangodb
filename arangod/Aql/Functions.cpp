@@ -60,8 +60,11 @@
 #include "Pregel/Worker.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "IResearch/IResearchPDP.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -73,7 +76,10 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
+#include "utils/ngram_match_utils.hpp"
+
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -1577,6 +1583,195 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
 
   return AqlValue(AqlValueHintInt(encoded));
 }
+
+
+namespace {
+template<bool search_semantics>
+AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx, transaction::Methods* trx,
+                               VPackFunctionParameters const& args) {
+  if (args.size() < 3) {
+    registerWarning(
+      ctx, AFN,
+      arangodb::Result{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                        "Minimum 3 arguments are expected." });
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto const& attribute = extractFunctionParameterValue(args, 0);
+  if (ADB_UNLIKELY(!attribute.isString())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto const attributeValue = arangodb::iresearch::getStringRef(attribute.slice());
+
+  auto const& target = extractFunctionParameterValue(args, 1);
+  if (ADB_UNLIKELY(!target.isString())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto const targetValue = arangodb::iresearch::getStringRef(target.slice());
+
+  auto const& ngramSize = extractFunctionParameterValue(args, 2);
+  if (ADB_UNLIKELY(!ngramSize.isNumber())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto const ngramSizeValue = ngramSize.toInt64();
+
+  if (ADB_UNLIKELY(ngramSizeValue < 1)) {
+    arangodb::aql::registerWarning(ctx, AFN,
+                                    arangodb::Result{TRI_ERROR_BAD_PARAMETER,
+                                                    "Invalid ngram size. Should be 1 or greater"});
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+
+  auto utf32Attribute = basics::StringUtils::characterCodes(attributeValue.c_str(), attributeValue.size());
+  auto utf32Target = basics::StringUtils::characterCodes(targetValue.c_str(), targetValue.size());
+
+  auto const similarity =
+      irs::ngram_similarity<uint32_t, search_semantics>(
+          utf32Target.data(), utf32Target.size(),
+          utf32Attribute.data(), utf32Attribute.size(),
+          ngramSizeValue);
+  return AqlValue(AqlValueHintDouble(similarity));
+}
+}
+
+/// Executes NGRAM_SIMILARITY based on binary ngram similarity
+AqlValue Functions::NgramSimilarity(ExpressionContext* ctx, transaction::Methods* trx,
+                               VPackFunctionParameters const& args) {
+  static char const* AFN = "NGRAM_SIMILARITY";
+  return NgramSimilarityHelper<true>(AFN, ctx, trx, args);
+}
+
+/// Executes NGRAM_POSITIONAL_SIMILARITY based on positional ngram similarity
+AqlValue Functions::NgramPositionalSimilarity(ExpressionContext* ctx, transaction::Methods* trx,
+  VPackFunctionParameters const& args) {
+  static char const* AFN = "NGRAM_POSITIONAL_SIMILARITY";
+  return NgramSimilarityHelper<false>(AFN, ctx, trx, args);
+}
+
+/// Executes NGRAM_MATCH based on binary ngram similarity
+AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx,
+                               VPackFunctionParameters const& args) {
+  static char const* AFN = "NGRAM_MATCH";
+
+  auto const argc = args.size();
+
+  if (argc < 3) { // for const evaluation we need analyzer to be set explicitly (we can`t access filter context)
+                  // but we can`t set analyzer as mandatory in function AQL signature - this will break SEARCH
+    registerWarning(
+        ctx, AFN,
+      arangodb::Result{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                        "Minimum 3 arguments are expected."});
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto const& attribute = extractFunctionParameterValue(args, 0);
+  if (ADB_UNLIKELY(!attribute.isString())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto const attributeValue = iresearch::getStringRef(attribute.slice());
+
+  auto const& target = extractFunctionParameterValue(args, 1);
+  if (ADB_UNLIKELY(!target.isString())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto const targetValue = iresearch::getStringRef(target.slice());
+
+  auto threshold = arangodb::iresearch::FilterConstants::DefaultNgramMatchThreshold;
+  size_t analyzerPosition = 2;
+  if (argc > 3) {// 4 args given. 3rd is threshold
+    auto const& thresholdArg = extractFunctionParameterValue(args, 2);
+    analyzerPosition = 3;
+    if (ADB_UNLIKELY(!thresholdArg.isNumber())) {
+      arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+      return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+    }
+    threshold = thresholdArg.toDouble();
+    if (threshold <= 0 || threshold > 1) {
+      arangodb::aql::registerWarning(
+          ctx, AFN,
+          arangodb::Result{TRI_ERROR_BAD_PARAMETER, "Threshold must be between 0 and 1" });
+    }
+  }
+
+  auto const& analyzerArg = extractFunctionParameterValue(args, analyzerPosition);
+  if (ADB_UNLIKELY(!analyzerArg.isString())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  if (ADB_UNLIKELY(nullptr == trx)) {
+    arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto const analyzerId = arangodb::iresearch::getStringRef(analyzerArg.slice());
+  auto& server = trx->vocbase().server();
+  if (!server.hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+    arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto& analyzerFeature = server.getFeature<iresearch::IResearchAnalyzerFeature>();
+
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+    ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+    : nullptr;
+
+  if (ADB_UNLIKELY(nullptr == sysVocbase)) {
+    arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase);
+  if (!analyzer) {
+    arangodb::aql::registerWarning(
+      ctx, AFN,
+      arangodb::Result{ TRI_ERROR_BAD_PARAMETER, "Unable to load requested analyzer" });
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+
+  auto analyzerImpl = analyzer->get();
+  TRI_ASSERT(analyzerImpl);
+  irs::term_attribute const& token = *analyzerImpl->attributes().get<irs::term_attribute>();
+
+  std::vector<irs::bstring> attrNgrams;
+  analyzerImpl->reset(attributeValue);
+  while (analyzerImpl->next()) {
+    attrNgrams.push_back(token.value());
+  }
+
+  std::vector<irs::bstring> targetNgrams;
+  analyzerImpl->reset(targetValue);
+  while (analyzerImpl->next()) {
+    targetNgrams.push_back(token.value());
+  }
+
+  // consider only non empty ngrams sets. As no ngrams emitted - means no data in index = no match
+  if (!targetNgrams.empty() && !attrNgrams.empty()) {
+    size_t thresholdMatches = (size_t)std::ceil((float_t)targetNgrams.size() * threshold);
+    size_t d = 0; // will store upper-left cell value for current cache row
+    std::vector<size_t> cache(attrNgrams.size() + 1, 0);
+    for (auto const& targetNgram : targetNgrams) {
+      size_t s_ngram_idx = 1;
+      for (; s_ngram_idx <= attrNgrams.size(); ++s_ngram_idx) {
+        size_t curMatches = d +  (size_t)(attrNgrams[s_ngram_idx - 1] == targetNgram);
+        if (curMatches >= thresholdMatches) {
+          return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintBool{true} };
+        }
+        auto tmp = cache[s_ngram_idx];
+        cache[s_ngram_idx] =
+          std::max(
+            std::max(cache[s_ngram_idx - 1],
+              cache[s_ngram_idx]),
+            curMatches);
+        d = tmp;
+      }
+    }
+  }
+  return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintBool{false} };
+}
+
 
 /// Executes LEVENSHTEIN_MATCH
 AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Methods* trx,
@@ -6560,7 +6755,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   if (offset.isNull(true)) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
@@ -6580,7 +6775,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
   AqlValueMaterializer materializer(trx);
   VPackSlice arraySlice = materializer.slice(baseArray, false);
   VPackSlice replaceValue = materializer.slice(newValue, false);
-  
+
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
 

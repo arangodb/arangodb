@@ -26,6 +26,7 @@
 
 #include "Basics/Thread.h"
 #include "Cluster/Action.h"
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
 
@@ -83,6 +84,8 @@ class MaintenanceWorker : public Thread {
 
  private:
   MaintenanceWorker(MaintenanceWorker const&) = delete;
+
+  void recordJobStats(bool failed);
 
 };  // class MaintenanceWorker
 

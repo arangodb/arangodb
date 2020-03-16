@@ -30,6 +30,7 @@
 #include <list>
 #include <mutex>
 
+#include "RestServer/Metrics.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -170,6 +171,10 @@ class SupervisedScheduler final : public Scheduler {
   // Check if we are allowed to pull from a queue with the given index
   // This is used to give priority to "FAST" and "MED" lanes accordingly.
   bool canPullFromQueue(uint64_t queueIdx) const;
+
+  Gauge<uint64_t>& _metricsQueueLength;
+  Gauge<uint64_t>& _metricsAwakeThreads;
+  Gauge<uint64_t>& _metricsNumWorkerThreads;
 };
 
 }  // namespace arangodb
