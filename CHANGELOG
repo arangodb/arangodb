@@ -8,6 +8,9 @@ v3.6.3 (XXXX-XX-XX)
   which always resulted in the same index entry to be returned and not a random
   one.
 
+* Allow to override the detected total amount of memory via an environment
+  variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
+
 
 v3.6.2 (2020-03-05)
 -------------------
