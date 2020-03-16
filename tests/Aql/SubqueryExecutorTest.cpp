@@ -116,7 +116,7 @@ class SubqueryExecutorIntegrationTest
 
         body.get().emplace_back(std::move(subqueryStart));
     */
-    return std::move(body);
+    return body;
   }
 
   auto createSubquery() -> Pipeline { return createSubquery(Pipeline()); }
