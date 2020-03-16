@@ -69,7 +69,8 @@ function ValidationBasicsSuite () {
             },
             name : {
               type : "string",
-              items : { minLength: 3, maxLength: 10 }
+              minLength: 4,
+              maxLength: 10
             },
             number : {
               type : "number",
@@ -320,31 +321,44 @@ function ValidationBasicsSuite () {
 
     testJsonRequire  : () => {
       p = {
-        ...validatorJson.rule.properties,
+        ...validatorJson.rule,
         required: [ "zahlen", "name" ]
       };
-      validatorJson.rule.properties = p;
+      validatorJson.rule = p;
       validatorJson.level = "strict";
-      const validation =  validatorJson;
-      print(validation.rule)
 
-
-      testCollection.properties({ "validation" : validation });
+      testCollection.properties({ "validation" : validatorJson });
       sleepInCluster();
 
-      //print(testCollection.properties().validation.rule)
+      try {
+        //name missing
+        testCollection.insert({
+          "zahlen" : [1,2,3,4,5],
+        });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
 
-      //let  doc = testCollection.insert({
-      //  "zahlen" : [1,2,3,4,5],
+      try {
+        //name too short
+        testCollection.insert({
+          "zahlen" : [1,2,3,4,5],
+          "name" : "ulf"
+        });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
 
-      //});
+      {
+        // good document
+        testCollection.insert({
+          "zahlen" : [1,2,3,4,5],
+          "name" : "guterName"
+        });
+      }
 
-      //try {
-      //  testCollection.insert(badDoc);
-      //  fail();
-      //} catch (err) {
-      //  assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
-      //}
     },
 
 ////////////////////////////////////////////////////////////////////////////////

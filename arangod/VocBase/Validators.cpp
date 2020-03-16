@@ -175,41 +175,29 @@ std::string const& ValidatorBool::type() const {
 /////////////////////////////////////////////////////////////////////////////
 
 ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(params) {
-  LOG_DEVEL << "try to add";
   auto rule = params.get(StaticStrings::ValidatorParameterRule);
   if (!rule.isObject()) {
-    LOG_DEVEL << "not an object";
-    LOG_DEVEL << rule.toJson();
-    LOG_DEVEL << params.toJson();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, "No valid schema in rule attribute given (no object)");
+    std::string msg = "No valid schema in rule attribute given (no object): ";
+    msg += params.toJson();
+    LOG_TOPIC("ababf", ERR, Logger::VALIDATION) << msg;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
   }
-  tao::json::value taoRuleValue;
-  try {
-    taoRuleValue = validation::slice_to_value(rule);
-    LOG_DEVEL << "converted to taoValue";
-  } catch (std::exception const &ex) {
-    LOG_DEVEL << "conversion failed" << ex.what();
-  }
-  if(taoRuleValue.is_object()){
-    LOG_DEVEL << "is object";
-    LOG_DEVEL << tao::json::to_string(taoRuleValue, 4);
-  } else {
-    LOG_DEVEL << "is not object";
-    LOG_DEVEL << rule.toJson();
-    LOG_DEVEL << tao::json::to_string(taoRuleValue, 4);
-  }
+  auto taoRuleValue = validation::slice_to_value(rule);
   try {
     _schema = std::make_shared<tao::json::schema>(taoRuleValue);
     _builder.add(rule);
-    LOG_DEVEL << "added";
   } catch (std::exception const& ex) {
-    LOG_DEVEL << "failed to create schema: " << ex.what();
+    auto valueString =  tao::json::to_string(taoRuleValue, 4);
+    auto msg = std::string("invalid object") + valueString + "exception: " + ex.what();
+    LOG_TOPIC("ababe", ERR, Logger::VALIDATION) << msg;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
   }
 }
 bool ValidatorJsonSchema::validateDerived(VPackSlice slice, VPackOptions const* options) const {
   return validation::validate(*_schema, _special, slice, options);
 }
 void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
+  TRI_ASSERT(!_builder.slice().isNone());
   b.add(StaticStrings::ValidatorParameterRule, _builder.slice());
 }
 std::string const& ValidatorJsonSchema::type() const {
