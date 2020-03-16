@@ -64,16 +64,16 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
   // expected FST properties
   static constexpr auto FST_PROPERTIES =
-      (MATCH_TYPE == MATCH_INPUT ? kNoIEpsilons : kNoOEpsilons)
-      | (MATCH_TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted)
-      | (MATCH_TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
-      | kAcceptor;
+    (MATCH_TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted)
+    | (MATCH_TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
+    | kAcceptor;
 
   explicit TableMatcher(const FST& fst, Label rho)
     : start_labels_(fst::getStartLabels<F, MatchInput>(fst)),
       arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
       rho_(rho), fst_(&fst),
       error_(fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES) {
+    assert(!error_);
     const size_t numLabels = start_labels_.size();
 
     // initialize transition table

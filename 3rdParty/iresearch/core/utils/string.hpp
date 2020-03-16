@@ -314,6 +314,42 @@ inline bool starts_with(
   return 0 == first.compare(0, second.size(), second.c_str(), second.size());
 }
 
+template<typename Char>
+inline size_t common_prefix_length(
+    const Char* lhs, size_t lhs_size,
+    const Char* rhs, size_t rhs_size) noexcept {
+  static_assert(1 == sizeof(Char), "1 != sizeof(Char)");
+
+  const size_t* lhs_block = reinterpret_cast<const size_t*>(lhs);
+  const size_t* rhs_block = reinterpret_cast<const size_t*>(rhs);
+
+  size_t size = std::min(lhs_size, rhs_size);
+
+  while (size >= sizeof(size_t) && *lhs_block == *rhs_block) {
+    ++lhs_block;
+    ++rhs_block;
+    size -= sizeof(size_t);
+  }
+
+  const Char* lhs_block_start = reinterpret_cast<const Char*>(lhs_block);
+  const Char* rhs_block_start = reinterpret_cast<const Char*>(rhs_block);
+
+  while (size && *lhs_block_start == *rhs_block_start) {
+    ++lhs_block_start;
+    ++rhs_block_start;
+    --size;
+  }
+
+  return lhs_block_start - lhs;
+}
+
+template<typename Char, typename Traits>
+inline size_t common_prefix_length(
+    const basic_string_ref<Char, Traits>& lhs,
+    const basic_string_ref<Char, Traits>& rhs) noexcept {
+  return common_prefix_length(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
+}
+
 template< typename _Elem, typename _Traits >
 inline bool starts_with( const basic_string_ref< _Elem, _Traits >& first,
                          const _Elem* second ) {

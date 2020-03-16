@@ -43,9 +43,11 @@ for i in `seq 1 5`; do
         echo lucene.stdlog.${MAX_LINES}.search.log.$i
         cat lucene.stdlog.${MAX_LINES}.search.log.$i | grep 'Query execution' | sort
 #tar czf iresearch.data.$i.$j.tgz ../iresearch.data
+        du -s ../iresearch.data | awk '{print $1}' >  iresearch.${MAX_LINES}.indexSize.log.$i
         rm -r ../iresearch.data || {
             ls -la bin && cat iresearch.stderr.${MAX_LINES}.index.log.$i
         }
+        du -s ../lucene.data | awk '{print $1}' >  lucene.${MAX_LINES}.indexSize.log.$i
         rm -r ../lucene.data || {
             ls -la bin && cat lucene.stderr.${MAX_LINES}.index.log.$i
         }

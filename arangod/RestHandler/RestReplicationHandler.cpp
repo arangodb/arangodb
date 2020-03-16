@@ -1219,11 +1219,17 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   toMerge.add("id", VPackValue(newId));
 
   if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+    auto const isSatellite =
+        VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
+                                       velocypack::StringRef{""}) == StaticStrings::Satellite;
+
     // force one shard, and force distributeShardsLike to be "_graphs"
     toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-    if (!_vocbase.IsSystemName(name)) {
+    if (!_vocbase.IsSystemName(name) && !isSatellite) {
       // system-collections will be sharded normally. only user collections will
-      // get the forced sharding
+      // get the forced sharding.
+      // satellite collections must not be sharded like a non-satellite
+      // collection.
       toMerge.add(StaticStrings::DistributeShardsLike,
                   VPackValue(_vocbase.shardingPrototypeName()));
     }
@@ -3001,13 +3007,6 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
     return false;
   }
 
-  // determine end tick for dump
-  ctx.tickEnd = std::numeric_limits<TRI_voc_tick_t>::max();
-  std::string const& value2 = _request->value("to", found);
-  if (found) {
-    ctx.tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
-  }
-
   ctx.iter =
       ctx.collection->getPhysical()->getReplicationIterator(ReplicationIterator::Ordering::Revision,
                                                             ctx.batchId);
@@ -3048,12 +3047,6 @@ void RestReplicationHandler::handleCommandRevisionTree() {
 void RestReplicationHandler::handleCommandRebuildRevisionTree() {
   RevisionOperationContext ctx;
   if (!prepareRevisionOperation(ctx)) {
-    return;
-  }
-
-  if (!ctx.collection->syncByRevision()) {
-    generateError(Result(TRI_ERROR_BAD_PARAMETER,
-                         "collection does not support revision tree commands"));
     return;
   }
 

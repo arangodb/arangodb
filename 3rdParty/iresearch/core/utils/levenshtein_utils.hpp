@@ -73,7 +73,9 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size,
 /// @param rhs string to compare
 /// @returns edit distance
 ////////////////////////////////////////////////////////////////////////////////
-inline size_t edit_distance(const bytes_ref& lhs, const bytes_ref& rhs) {
+template<typename Char>
+inline size_t edit_distance(const basic_string_ref<Char>& lhs,
+                            const basic_string_ref<Char>& rhs) {
   return edit_distance(lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
 
@@ -236,8 +238,9 @@ IRESEARCH_API parametric_description read(data_input& in);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief instantiates DFA based on provided parametric description and target
 /// @param description parametric description
-/// @param target actual "string" (utf8 encoded)
+/// @param target valid UTF-8 encoded string
 /// @returns DFA
+/// @note if 'target' isn't a valid UTF-8 sequence, behaviour is undefined
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API automaton make_levenshtein_automaton(
   const parametric_description& description,
@@ -275,6 +278,47 @@ inline size_t edit_distance(
     const bytes_ref& lhs,
     const bytes_ref& rhs) {
   return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evaluates edit distance between the specified words up to
+///        specified in description.max_distance.
+/// @param evaluated edit distance
+/// @param description parametric description
+/// @param lhs string to compare (utf8 encoded)
+/// @param lhs_size size of the string to comprare
+/// @param rhs string to compare (utf8 encoded)
+/// @param rhs_size size of the string to comprare
+/// @returns true if both lhs_string and rhs_strign are valid UTF-8 sequences,
+///          false - otherwise
+/// @note accepts only valid descriptions, calling function with
+///       invalid description is undefined behaviour
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API bool edit_distance(
+  size_t& distance,
+  const parametric_description& description,
+  const byte_type* lhs, size_t lhs_size,
+  const byte_type* rhs, size_t rhs_size);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evaluates edit distance between the specified words up to
+///        specified in description.max_distance
+/// @param description parametric description
+/// @param lhs string to compare (utf8 encoded)
+/// @param rhs string to compare (utf8 encoded)
+/// @returns true if both lhs_string and rhs_strign are valid UTF-8 sequences,
+///          false - otherwise
+/// @note accepts only valid descriptions, calling function with
+///       invalid description is undefined behaviour
+////////////////////////////////////////////////////////////////////////////////
+inline bool edit_distance(
+    size_t& distance,
+    const parametric_description& description,
+    const bytes_ref& lhs,
+    const bytes_ref& rhs) {
+  return edit_distance(distance, description,
+                       lhs.begin(), lhs.size(),
+                       rhs.begin(), rhs.size());
 }
 
 NS_END

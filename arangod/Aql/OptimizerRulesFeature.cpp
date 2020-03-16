@@ -305,10 +305,6 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeTraversalPathVariable,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // prepare traversal info
-  registerRule("prepare-traversals", prepareTraversalsRule, OptimizerRule::prepareTraversalsRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::Hidden));
-
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,
                OptimizerRule::substituteSingleDocumentOperations,
@@ -376,6 +372,11 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 
 #ifdef USE_ENTERPRISE
+  registerRule("scatter-satellite-graphs", scatterSatelliteGraphRule,
+               OptimizerRule::scatterSatelliteGraphRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
   registerRule("remove-satellite-joins", removeSatelliteJoinsRule,
                OptimizerRule::removeSatelliteJoinsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,

@@ -370,9 +370,9 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     }
 
     size_t buf_len = 0;
-    constexpr const size_t buf_size = 1024; // arbitrary size
+    constexpr size_t buf_size = 1024; // arbitrary size
     char buf[buf_size];
-    std::thread thread([&pipefd, level, out, &buf, &buf_len, buf_size]()->void {
+    std::thread thread([&pipefd, level, out, &buf, &buf_len]()->void {
       for (char ch; read(pipefd[0], &ch, 1) > 0;) {
         if (ch != '\n') {
           if (buf_len < buf_size - 1) {

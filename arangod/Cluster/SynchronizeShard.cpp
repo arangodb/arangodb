@@ -936,7 +936,7 @@ bool SynchronizeShard::first() {
                             leader, lastTick, builder);
       if (!tickResult.ok()) {
         LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << syncRes.errorMessage();
-        _result.reset(tickResult.result());
+        _result.reset(std::move(tickResult).result());
         return false;
       }
       lastTick = tickResult.get();

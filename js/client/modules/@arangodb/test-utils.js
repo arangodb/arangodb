@@ -37,7 +37,7 @@ const sleep = require('internal').sleep;
 const download = require('internal').download;
 const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
-
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -890,10 +890,23 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
   
   try {
+    SetGlobalExecutionDeadlineTo(options.oneTestTimeout * 1000);
     let result = testFunc();
+    let timeout = SetGlobalExecutionDeadlineTo(0.0);
+    if (timeout) {
+      return {
+        timeout: true,
+        forceTerminate: true,
+        status: false,
+        message: "test ran into timeout. Original test status: " + JSON.stringify(result),
+      };
+    }
     return result;
   } catch (ex) {
+    let timeout = SetGlobalExecutionDeadlineTo(0.0);
     return {
+      timeout: timeout,
+      forceTerminate: true,
       status: false,
       message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
       stack: ex.stack

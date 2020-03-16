@@ -20,10 +20,15 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
+#include "ExecutorTestHelper.h"
+#include "RowFetcherHelper.h"
+
+#include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockHelper.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Aql/SubqueryStartExecutor.h"
@@ -32,6 +37,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
@@ -47,25 +53,37 @@ ExecutorInfos MakeBaseInfos(RegisterId numRegs) {
   }
   return ExecutorInfos(emptyRegisterList, emptyRegisterList, numRegs, numRegs, {}, toKeep);
 }
-
-void TestShadowRow(SharedAqlItemBlockPtr const& block, size_t row, bool isRelevant) {
-  EXPECT_TRUE(block->isShadowRow(row));
-  // We do this additional if, in order to allow the outer test loop to continue
-  // even if we do not have a shadow row.
-  if (block->isShadowRow(row)) {
-    ShadowAqlItemRow shadow{block, row};
-    EXPECT_EQ(shadow.isRelevant(), isRelevant) << "Testing row " << row;
-  }
-}
 }  // namespace
 
-class SubqueryStartExecutorTest : public ::testing::Test {
+// We need to be backwards compatible, with version 3.6
+// There we do not get a fullStack, but only a single entry.
+// We have a compatibility mode Stack for this version
+// These tests can be removed again in the branch for the version
+// after 3.7.*
+enum CompatibilityMode { VERSION36, VERSION37 };
+class SubqueryStartExecutorTest
+    : public AqlExecutorTestCaseWithParam<CompatibilityMode, false> {
  protected:
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  auto GetCompatMode() const -> CompatibilityMode {
+    auto const mode = GetParam();
+    return mode;
+  }
+
+  auto queryStack(AqlCall fromSubqueryEnd, AqlCall insideSubquery) const -> AqlCallStack {
+    if (GetCompatMode() == CompatibilityMode::VERSION36) {
+      return AqlCallStack{insideSubquery, true};
+    }
+    AqlCallStack stack(fromSubqueryEnd);
+    stack.pushCall(std::move(insideSubquery));
+    return stack;
+  }
 };
 
-TEST_F(SubqueryStartExecutorTest, check_properties) {
+INSTANTIATE_TEST_CASE_P(SubqueryStartExecutorTest, SubqueryStartExecutorTest,
+                        ::testing::Values(CompatibilityMode::VERSION36,
+                                          CompatibilityMode::VERSION37));
+
+TEST_P(SubqueryStartExecutorTest, check_properties) {
   EXPECT_TRUE(SubqueryStartExecutor::Properties::preservesOrder)
       << "The block has no effect on ordering of elements, it adds additional "
          "rows only.";
@@ -76,178 +94,380 @@ TEST_F(SubqueryStartExecutorTest, check_properties) {
          "input. (Might be less if input contains shadowRows";
 }
 
-TEST_F(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input.steal(), false);
-  auto infos = MakeBaseInfos(1);
-  SubqueryStartExecutor testee(fetcher, infos);
-
-  NoStats stats{};
-  ExecutionState state{ExecutionState::HASMORE};
-  OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(output);
-  EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_FALSE(output.produced());
-  EXPECT_EQ(output.numRowsWritten(), 0);
+TEST_P(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {})
+      .expectSkipped(0, 0)
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run();
 }
 
-TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
-  auto input = VPackParser::fromJson(R"([
-      ["a"]
-  ])");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input->steal(), false);
-  auto infos = MakeBaseInfos(1);
-  SubqueryStartExecutor testee(fetcher, infos);
-
-  NoStats stats{};
-  ExecutionState state{ExecutionState::HASMORE};
-  OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(output);
-  EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_FALSE(output.produced());
-  EXPECT_EQ(output.numRowsWritten(), 2);
-
-  block = output.stealBlock();
-  EXPECT_FALSE(block->isShadowRow(0));
-  TestShadowRow(block, 1, true);
+TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectSkipped(0, 0)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run();
 }
 
-TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_single_pass) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
-  auto input = VPackParser::fromJson(R"([
-      ["a"],
-      ["b"],
-      ["c"]
-  ])");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input->steal(), false);
-  auto infos = MakeBaseInfos(1);
-  SubqueryStartExecutor testee(fetcher, infos);
-
-  NoStats stats{};
-  ExecutionState state{ExecutionState::HASMORE};
-  OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(output);
-  EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_FALSE(output.produced());
-  EXPECT_EQ(output.numRowsWritten(), 6);
-
-  block = output.stealBlock();
-  EXPECT_FALSE(block->isShadowRow(0));
-  TestShadowRow(block, 1, true);
-  EXPECT_FALSE(block->isShadowRow(2));
-  TestShadowRow(block, 3, true);
-  EXPECT_FALSE(block->isShadowRow(4));
-  TestShadowRow(block, 5, true);
+// NOTE: The following two tests exclude each other.
+// Right now we can only support 1 ShadowRow per request, we cannot do a look-ahead of
+// calls. As soon as we can this test needs to re removed, and the one blow needs to be activated.
+TEST_P(SubqueryStartExecutorTest,
+       adds_only_one_shadowrow_even_if_more_input_is_available_in_single_pass) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::HASMORE)
+      .expectSkipped(0, 0)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run();
 }
 
-TEST_F(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
-  auto input = VPackParser::fromJson(R"([
-      ["a"],
-      ["b"],
-      ["c"]
-  ])");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input->steal(), false);
-  auto infos = MakeBaseInfos(1);
-  SubqueryStartExecutor testee(fetcher, infos);
+// NOTE: This test and the one right above do exclude each other.
+// This is the behaviour we would like to have eventually
+// As soon as we can support Call look-aheads we need to enable this test.
+// and it needs to pass then
+TEST_P(SubqueryStartExecutorTest, DISABLED_adds_a_shadowrow_after_every_input_line_in_single_pass) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectSkipped(0, 0)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}},
+                    {{1, 0}, {3, 0}, {5, 0}})
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run();
+}
 
-  NoStats stats{};
-  ExecutionState state{ExecutionState::HASMORE};
+// NOTE: As soon as the single_pass test is enabled this test is superflous.
+// It will be identical to the one above
+TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectSkipped(0, 0)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}},
+                    {{1, 0}, {3, 0}, {5, 0}})
+      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+      .run(true);
+}
+
+TEST_P(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
+  // NOTE: This test relies on batchSizes beeing handled correctly and we do not over-allocate memory
+  // Also it tests, that ShadowRows go into place accounting of the output block (count as 1 line)
+
+  // NOTE: Reduce batch size to 1, to enforce a too small output block
+  ExecutionBlock::setDefaultBatchSize(1);
+  TRI_DEFER(ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize););
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 3, 1)};
-    OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear()};
-    std::tie(state, stats) = testee.produceRows(output);
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    EXPECT_FALSE(output.produced());
-    EXPECT_EQ(output.numRowsWritten(), 3);
-
-    block = output.stealBlock();
-    EXPECT_FALSE(block->isShadowRow(0));
-    TestShadowRow(block, 1, true);
-    EXPECT_FALSE(block->isShadowRow(2));
+    // First test: Validate that the shadowRow is not written
+    // We only do a single call here
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::HASMORE)
+        .expectSkipped(0, 0)
+        .expectOutput({0}, {{R"("a")"}}, {})
+        .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+        .run();
   }
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 3, 1)};
-    OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear()};
-    std::tie(state, stats) = testee.produceRows(output);
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(output.produced());
-    EXPECT_EQ(output.numRowsWritten(), 3);
-
-    block = output.stealBlock();
-    TestShadowRow(block, 0, true);
-    EXPECT_FALSE(block->isShadowRow(1));
-    TestShadowRow(block, 2, true);
+    // Second test: Validate that the shadowRow is eventually written
+    // if we call often enough
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::DONE)
+        .expectSkipped(0, 0)
+        .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
+        .setCallStack(queryStack(AqlCall{}, AqlCall{}))
+        .run(true);
   }
 }
 
-// TODO:
-// This test can be enabled and should work as soon as the Fetcher skips non-relevant Subqueries
-TEST_F(SubqueryStartExecutorTest, does_only_add_shadowrows_on_data_rows) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
-  auto input = VPackParser::fromJson(R"([
-      ["a"],
-      ["b"],
-      ["c"]
-  ])");
+TEST_P(SubqueryStartExecutorTest, skip_in_subquery) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{R"("a")"}}, {{0, 0}})
+      .expectSkipped(0, 1)
+      .setCallStack(queryStack(AqlCall{}, AqlCall{10, false}))
+      .run();
+}
 
-  auto infos = MakeBaseInfos(1);
+TEST_P(SubqueryStartExecutorTest, fullCount_in_subquery) {
+  ExecutorTestHelper<1, 1>(*fakedQuery)
+      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{R"("a")"}}, {{0, 0}})
+      .expectSkipped(0, 1)
+      .setCallStack(queryStack(AqlCall{}, AqlCall{0, true, 0, AqlCall::LimitType::HARD}))
+      .run();
+}
+
+TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
+  ExecutorTestHelper<1, 1> helper(*fakedQuery);
+  AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
+  stack.pushCall(AqlCall{});
+  Pipeline pipe{};
+  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                 ExecutionNode::SUBQUERY_START))
+      .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                 ExecutionNode::SUBQUERY_START));
+
+  if (GetCompatMode() == CompatibilityMode::VERSION36) {
+    // We will not get this infromation because the
+    // query stack is too small on purpose
+    helper.expectSkipped(0, 0);
+  } else {
+    helper.expectSkipped(0, 0, 0);
+  }
+
+  helper.setPipeline(std::move(pipe))
+      .setInputValue({{R"("a")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("a")"}}, {{1, 0}, {2, 1}})
+      .setCallStack(stack)
+      .run();
+}
+
+TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call) {
+  ExecutorTestHelper<1, 1> helper(*fakedQuery);
+  AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
+  stack.pushCall(AqlCall{});
+  Pipeline pipe{};
+  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                 ExecutionNode::SUBQUERY_START))
+      .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                 ExecutionNode::SUBQUERY_START));
+
+  if (GetCompatMode() == CompatibilityMode::VERSION36) {
+    // We will not get this infromation because the
+    // query stack is too small on purpose
+    helper.expectSkipped(0, 0);
+  } else {
+    helper.expectSkipped(0, 0, 0);
+  }
+
+  helper.setPipeline(std::move(pipe))
+      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::HASMORE)
+      .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("a")"}}, {{1, 0}, {2, 1}})
+      .setCallStack(stack)
+      .run();
+}
+
+TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_requests) {
+  ExecutorTestHelper<1, 1> helper(*fakedQuery);
+  AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
+  stack.pushCall(AqlCall{});
+  Pipeline pipe{};
+  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                 ExecutionNode::SUBQUERY_START))
+      .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                 ExecutionNode::SUBQUERY_START));
+  if (GetCompatMode() == CompatibilityMode::VERSION36) {
+    // We will not get this infromation because the
+    // query stack is too small on purpose
+    helper.expectSkipped(0, 0);
+  } else {
+    helper.expectSkipped(0, 0, 0);
+  }
+  helper.setPipeline(std::move(pipe))
+      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput(
+          {0},
+          {{R"("a")"}, {R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}, {R"("c")"}},
+          {{1, 0}, {2, 1}, {4, 0}, {5, 1}, {7, 0}, {8, 1}})
+      .setCallStack(stack)
+      .run(true);
+}
+
+TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_space) {
+  // NOTE: This test relies on batchSizes beeing handled correctly and we do not over-allocate memory
+  // Also it tests, that ShadowRows go into place accounting of the output block (count as 1 line)
+
+  // NOTE: Reduce batch size to 2, to enforce a too small output block, in between the shadow Rows
+  ExecutionBlock::setDefaultBatchSize(2);
+  TRI_DEFER(ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize););
   {
-    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-        itemBlockManager, input->steal(), false);
-    SubqueryStartExecutor testee(fetcher, infos);
+    // First test: Validate that the shadowRow is not written
+    // We only do a single call here
+    ExecutorTestHelper<1, 1> helper(*fakedQuery);
+    AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
+    stack.pushCall(AqlCall{});
+    Pipeline pipe{};
+    pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                   ExecutionNode::SUBQUERY_START))
+        .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                   ExecutionNode::SUBQUERY_START));
 
-    NoStats stats{};
-    ExecutionState state{ExecutionState::HASMORE};
-    OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear()};
-    std::tie(state, stats) = testee.produceRows(output);
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(output.produced());
-    ASSERT_EQ(output.numRowsWritten(), 6);
-    block = output.stealBlock();
-    EXPECT_FALSE(block->isShadowRow(0));
-    TestShadowRow(block, 1, true);
-    EXPECT_FALSE(block->isShadowRow(2));
-    TestShadowRow(block, 3, true);
-    EXPECT_FALSE(block->isShadowRow(4));
-    TestShadowRow(block, 5, true);
-    // Taken from test above. We now have produced a block
-    // having 3 data rows alternating with 3 shadow rows
+    if (GetCompatMode() == CompatibilityMode::VERSION36) {
+      // We will not get this infromation because the
+      // query stack is too small on purpose
+      helper.expectSkipped(0, 0);
+    } else {
+      helper.expectSkipped(0, 0, 0);
+    }
+    helper.setPipeline(std::move(pipe))
+        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::HASMORE)
+        .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
+        .setCallStack(stack)
+        .run();
   }
   {
-    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager,
-                                                                               6, false, block);
-    SubqueryStartExecutor testee(fetcher, infos);
-    block.reset(new AqlItemBlock(itemBlockManager, 1000, 1));
+    // Second test: Validate that the shadowRow is eventually written
+    // Wedo call as many times as we need to.
+    ExecutorTestHelper<1, 1> helper(*fakedQuery);
+    AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
+    stack.pushCall(AqlCall{});
+    Pipeline pipe{};
+    pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                   ExecutionNode::SUBQUERY_START))
+        .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
+                                                                   ExecutionNode::SUBQUERY_START));
 
-    NoStats stats{};
-    ExecutionState state{ExecutionState::HASMORE};
-    OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear()};
-    std::tie(state, stats) = testee.produceRows(output);
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(output.produced());
-    ASSERT_EQ(output.numRowsWritten(), 9);
-    block = output.stealBlock();
-    EXPECT_FALSE(block->isShadowRow(0));
-    TestShadowRow(block, 1, true);
-    TestShadowRow(block, 2, false);
-    EXPECT_FALSE(block->isShadowRow(3));
-    TestShadowRow(block, 4, true);
-    TestShadowRow(block, 5, false);
-    EXPECT_FALSE(block->isShadowRow(6));
-    TestShadowRow(block, 7, true);
-    TestShadowRow(block, 8, false);
+    if (GetCompatMode() == CompatibilityMode::VERSION36) {
+      // We will not get this infromation because the
+      // query stack is too small on purpose
+      helper.expectSkipped(0, 0);
+    } else {
+      helper.expectSkipped(0, 0, 0);
+    }
+
+    helper.setPipeline(std::move(pipe))
+        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::DONE)
+        .expectOutput(
+            {0},
+            {{R"("a")"}, {R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}, {R"("c")"}},
+            {{1, 0}, {2, 1}, {4, 0}, {5, 1}, {7, 0}, {8, 1}})
+        .setCallStack(stack)
+        .run(true);
+  }
+}
+
+TEST_P(SubqueryStartExecutorTest, skip_in_outer_subquery) {
+  if (GetCompatMode() == CompatibilityMode::VERSION37) {
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}, {R"("b")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::DONE)
+        .expectOutput({0}, {{R"("b")"}, {R"("b")"}}, {{1, 0}})
+        .expectSkipped(1, 0)
+        .setCallStack(queryStack(AqlCall{1, false, AqlCall::Infinity{}}, AqlCall{}))
+        .run();
+  } else {
+    // The feature is not available in 3.6 or earlier.
+  }
+}
+
+TEST_P(SubqueryStartExecutorTest, DISABLED_skip_only_in_outer_subquery) {
+  if (GetCompatMode() == CompatibilityMode::VERSION37) {
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}, {R"("b")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::DONE)
+        .expectOutput({0}, {})
+        .expectSkipped(1, 0)
+        .setCallStack(queryStack(AqlCall{1, false}, AqlCall{}))
+        .run();
+  } else {
+    // The feature is not available in 3.7 or earlier.
+  }
+}
+
+TEST_P(SubqueryStartExecutorTest, fullCount_in_outer_subquery) {
+  if (GetCompatMode() == CompatibilityMode::VERSION37) {
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::DONE)
+        .expectOutput({0}, {})
+        .expectSkipped(6, 0)
+        .setCallStack(queryStack(AqlCall{0, true, 0, AqlCall::LimitType::HARD}, AqlCall{}))
+        .run();
+  } else {
+    // The feature is not available in 3.7 or earlier.
+  }
+}
+
+TEST_P(SubqueryStartExecutorTest, fastForward_in_inner_subquery) {
+  if (GetCompatMode() == CompatibilityMode::VERSION37) {
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::HASMORE)
+        .expectOutput({0}, {{R"("a")"}}, {{0, 0}})
+        .expectSkipped(0, 0)
+        .setCallStack(queryStack(AqlCall{0, false, AqlCall::Infinity{}},
+                                 AqlCall{0, false, 0, AqlCall::LimitType::HARD}))
+        .run();
+  } else {
+    // The feature is not available in 3.7 or earlier.
+  }
+}
+
+TEST_P(SubqueryStartExecutorTest, skip_out_skip_in) {
+  if (GetCompatMode() == CompatibilityMode::VERSION37) {
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::HASMORE)
+        .expectOutput({0}, {{R"("c")"}}, {{0, 0}})
+        .expectSkipped(2, 1)
+        .setCallStack(queryStack(AqlCall{2, false, AqlCall::Infinity{}},
+                                 AqlCall{10, false, AqlCall::Infinity{}}))
+        .run();
+  } else {
+    // The feature is not available in 3.7 or earlier.
+  }
+}
+
+TEST_P(SubqueryStartExecutorTest, fullbypass_in_outer_subquery) {
+  if (GetCompatMode() == CompatibilityMode::VERSION37) {
+    ExecutorTestHelper<1, 1>(*fakedQuery)
+        .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::DONE)
+        .expectOutput({0}, {})
+        .expectSkipped(0, 0)
+        .setCallStack(queryStack(AqlCall{0, false, 0, AqlCall::LimitType::HARD}, AqlCall{}))
+        .run();
+  } else {
+    // The feature is not available in 3.7 or earlier.
   }
 }

@@ -62,6 +62,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -114,10 +115,8 @@ struct custom_sort : public irs::sort {
     };
 
     struct scorer : public irs::score_ctx {
-      scorer(const custom_sort& sort,
-             const irs::sub_reader& segment_reader,
-             const irs::term_reader& term_reader,
-             const irs::byte_type* stats,
+      scorer(const custom_sort& sort, const irs::sub_reader& segment_reader,
+             const irs::term_reader& term_reader, const irs::byte_type* stats,
              const irs::attribute_view& document_attrs)
           : document_attrs_(document_attrs),
             stats_(stats),
@@ -136,8 +135,7 @@ struct custom_sort : public irs::sort {
 
     prepared(const custom_sort& sort) : sort_(sort) {}
 
-    virtual void collect(irs::byte_type* filter_attrs,
-                         const irs::index_reader& index,
+    virtual void collect(irs::byte_type* filter_attrs, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
       if (sort_.collector_finish) {
@@ -158,34 +156,29 @@ struct custom_sort : public irs::sort {
     }
 
     virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
-        irs::sub_reader const& segment_reader,
-        irs::term_reader const& term_reader,
+        irs::sub_reader const& segment_reader, irs::term_reader const& term_reader,
         irs::byte_type const* filter_node_attrs,
-        irs::attribute_view const& document_attrs,
-        irs::boost_t boost) const override {
+        irs::attribute_view const& document_attrs, irs::boost_t boost) const override {
       if (sort_.prepare_scorer) {
-        return sort_.prepare_scorer(
-          segment_reader, term_reader,
-          filter_node_attrs, document_attrs, boost);
+        return sort_.prepare_scorer(segment_reader, term_reader,
+                                    filter_node_attrs, document_attrs, boost);
       }
 
-      return {
-        std::make_unique<custom_sort::prepared::scorer>(
-          sort_, segment_reader, term_reader,
-          filter_node_attrs, document_attrs),
-        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
-          auto& ctxImpl = *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
+      return {std::make_unique<custom_sort::prepared::scorer>(sort_, segment_reader, term_reader,
+                                                              filter_node_attrs, document_attrs),
+              [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
+                auto& ctxImpl =
+                    *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
 
-          EXPECT_TRUE(score_buf);
-          auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
+                EXPECT_TRUE(score_buf);
+                auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
 
-          doc_id = ctxImpl.document_attrs_.get<irs::document>()->value;
+                doc_id = ctxImpl.document_attrs_.get<irs::document>()->value;
 
-          if (ctxImpl.sort_.scorer_score) {
-            ctxImpl.sort_.scorer_score(doc_id);
-          }
-        }
-      };
+                if (ctxImpl.sort_.scorer_score) {
+                  ctxImpl.sort_.scorer_score(doc_id);
+                }
+              }};
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
@@ -200,8 +193,8 @@ struct custom_sort : public irs::sort {
       score_cast(score) = irs::doc_limits::invalid();
     }
 
-    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
-      const size_t size, size_t offset) const  override {
+    virtual void merge(irs::byte_type* dst, const irs::byte_type** src_start,
+                       const size_t size, size_t offset) const override {
       auto& casted_dst = score_cast(dst + offset);
       casted_dst = irs::doc_limits::invalid();
       for (size_t i = 0; i < size; ++i) {
@@ -223,7 +216,9 @@ struct custom_sort : public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> term_collector_collect;
   std::function<void(irs::byte_type*, const irs::index_reader&)> collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&, irs::boost_t)> prepare_scorer;
+  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(
+      const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&, irs::boost_t)>
+      prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
@@ -259,12 +254,14 @@ struct IResearchExpressionFilterTest
     arangodb::tests::init(true);
 
     // setup required application features
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                                     systemDBInfo(server));
     features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
                               system.get()),
                           false);  // required for IResearchAnalyzerFeature
@@ -802,7 +799,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     queryCtx.emplace(execCtx);
 
     auto prepared = filter.prepare(*reader, irs::order::prepared::unordered(),
-                                   queryCtx);  // invalid context provided
+                                   queryCtx);       // invalid context provided
     EXPECT_EQ(irs::no_boost(), prepared->boost());  // no boost set
     auto column = segment.column_reader("name");
     ASSERT_TRUE(column);

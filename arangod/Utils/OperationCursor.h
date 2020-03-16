@@ -114,6 +114,12 @@ struct OperationCursor {
   ///        afterwards Check hasMore()==true before using this NOTE: This will
   ///        throw on OUT_OF_MEMORY
   void skip(uint64_t toSkip, uint64_t& skipped);
+
+  /// @brief skip all elements.
+  ///        skipped will be increased by the amount of skipped elements
+  ///        afterwards Check hasMore()==true before using this NOTE: This will
+  ///        throw on OUT_OF_MEMORY
+  void skipAll(uint64_t& skipped);
 };
 
 }  // namespace arangodb

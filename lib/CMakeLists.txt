@@ -302,7 +302,14 @@ add_library(arango_v8 STATIC
   V8/v8-utils.cpp
   V8/v8-vpack.cpp
   V8/v8-environment.cpp
-)
+  )
+add_library(arango_v8_deadline STATIC
+  V8/v8-deadline.cpp
+  )
+
+add_library(arango_v8_no_deadline STATIC
+  V8/v8-no-deadline.cpp
+  )
 
 target_link_libraries(arango_v8
     boost_system

@@ -396,6 +396,7 @@ void RocksDBEngine::start() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
 
+  bool createdEngineDir = false;
   if (!basics::FileUtils::isDirectory(_path)) {
     std::string systemErrorStr;
     long errorNo;
@@ -405,6 +406,7 @@ void RocksDBEngine::start() {
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("b2958", TRACE, arangodb::Logger::ENGINES)
           << "created RocksDB data directory '" << _path << "'";
+      createdEngineDir = true;
     } else {
       LOG_TOPIC("a5ae3", FATAL, arangodb::Logger::ENGINES)
           << "unable to create RocksDB data directory '" << _path
@@ -487,8 +489,9 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
 
 #ifdef USE_ENTERPRISE
-  configureEnterpriseRocksDBOptions(_options);
-  startEnterprise();
+  configureEnterpriseRocksDBOptions(_options, createdEngineDir);
+#else
+  ((void)createdEngineDir);
 #endif
 
   _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsHigh),

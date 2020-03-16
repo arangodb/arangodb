@@ -348,14 +348,35 @@ class RocksDBEngine final : public StorageEngine {
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
-  void startEnterprise();
-  void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
+  void configureEnterpriseRocksDBOptions(rocksdb::Options& options, bool createdEngineDir);
   void validateJournalFiles() const;
+  
+  Result readUserEncryptionKeys(std::map<std::string, std::string>& outlist) const;
 
   enterprise::RocksDBEngineEEData _eeData;
 
 public:
+  
+  bool isEncryptionEnabled() const;
+  
   std::string const& getEncryptionKey();
+  
+  std::string getEncryptionTypeFile() const;
+  
+  std::string getKeyStoreFolder() const;
+  
+  std::vector<std::string> userEncryptionKeys() const;
+  
+  /// rotate user-provided keys, writes out the internal key files
+  Result rotateUserEncryptionKeys();
+  
+private:
+  
+  /// load encryption at rest key from keystore
+  Result decryptInternalKeystore();
+  /// encrypt the internal keystore with all user keys
+  Result encryptInternalKeystore();
+  
 #endif
 private:
   // activate generation of SHA256 files to parallel .sst files
