@@ -125,11 +125,12 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
+  using namespace std::chrono;
+  using clock = std::chrono::steady_clock;
+  auto start = clock::now();
   TRI_ASSERT(AgencyCommManager::isEnabled());
   AgencyComm comm(_server);
 
-  using namespace std::chrono;
-  using clock = std::chrono::steady_clock;
 
   LOG_TOPIC("62fd8", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
@@ -176,7 +177,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
-  auto start = clock::now();
   try {
     // in previous life handlePlanChange
 
@@ -331,7 +331,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     result.errorMessage = "Report from phase 1 and 2 was not closed.";
   }
 
-  auto took = duration<double>(clock::now() - start).count();
+  auto end = clock::now();
+  auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  mfeature._agency_sync_total_runtime_msec->get().count(total_ms);
+  mfeature._agency_sync_total_accum_runtime_msec->get().count(total_ms);
+  auto took = duration<double>(end - start).count();
   if (took > 30.0) {
     LOG_TOPIC("83cb8", WARN, Logger::MAINTENANCE)
         << "DBServerAgencySync::execute "

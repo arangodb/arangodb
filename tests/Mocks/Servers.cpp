@@ -88,7 +88,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/core/demangle.hpp>
-    using namespace arangodb;
+using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
@@ -221,6 +221,7 @@ class TemplateSpecializer {
 
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false, false);
+  server.addFeature<arangodb::MetricsFeature>(false);
   // We do not need any features from this phase
 }
 
@@ -449,7 +450,8 @@ std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransac
                                                           noCollections, opts);
 }
 
-std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activateTracing, std::string queryString) const {
+std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activateTracing,
+                                                                     std::string queryString) const {
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
   bindParams->close();
@@ -466,7 +468,8 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
                                              arangodb::aql::QueryPart::PART_DEPENDENT);
   query->injectTransaction(createFakeTransaction());
 
-  auto engine = std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
+  auto engine =
+      std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
   query->setEngine(std::move(engine));
 
   return query;

@@ -319,6 +319,52 @@ class StaticStrings {
   static std::string const ValidatorTypeJsonSchema;
   static std::string const ValidatorTypeAQL;
   static std::string const ValidatorTypeBool;
+
+  // metrics prometheus labels
+  static std::string const HeartbeatSendTimeMs;
+  static std::string const HeartbeatFailureCounter;
+
+  static std::string const MaintenancePhaseOneRuntimeMs;
+  static std::string const MaintenancePhaseTwoRuntimeMs;
+  static std::string const MaintenanceAgencySyncRuntimeMs;
+
+
+  static std::string const MaintenanceActionRuntimeMs;
+  static std::string const MaintenanceActionAccumRuntimeMs;
+  static std::string const MaintenanceActionFailureCounter;
+  static std::string const MaintenanceActionQueueTimeMs;
+  static std::string const MaintenanceActionAccumQueueTimeMs;
+
+  static std::string const MaintenancePhaseOneAccumRuntimeMs;
+  static std::string const MaintenancePhaseTwoAccumRuntimeMs;
+  static std::string const MaintenanceAgencySyncAccumRuntimeMs;
+
+
+  static std::string const ActionDuplicateCounter;
+  static std::string const ActionRegisteredCounter;
+  static std::string const ActionDoneCounter;
+
+  static std::string const ShardsOutOfSync;
+  static std::string const ShardsTotalCount;
+  static std::string const ShardsLeaderCount;
+  static std::string const ShardsNotReplicated;
+
+  static std::string const AgencyCommRequestTimeMs;
+
+  static std::string const AqlQueryRuntimeMs;
+
+  static std::string const SchedulerQueueLength;
+  static std::string const SchedulerAwakeWorkers;
+  static std::string const SchedulerNumWorker;
+
+  static std::string const DroppedFollowerCount;
+
+  static std::string const SupervisionRuntimeMs;
+  static std::string const SupervisionRuntimeWaitForSyncMs;
+  static std::string const SupervisionAccumRuntimeMs;
+  static std::string const SupervisionAccumRuntimeWaitForSyncMs;
+  static std::string const SupervisionFailedServerCount;
+
 };
 }  // namespace arangodb
 

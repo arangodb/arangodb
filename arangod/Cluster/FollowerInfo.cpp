@@ -25,6 +25,7 @@
 #include "FollowerInfo.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -200,6 +201,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
       _canWrite = false;
     }
     // we are finished
+    _docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().getDroppedFollowerCounter()++;
     LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
         << "Removing follower " << sid << " from " << _docColl->name() << "succeeded";
     return agencyRes;
@@ -345,7 +347,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   AgencyComm ac(_docColl->vocbase().server());
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
-      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
+      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
     AgencyReadTransaction trx(std::vector<std::string>(
