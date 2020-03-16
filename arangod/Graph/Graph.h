@@ -141,7 +141,7 @@ class Graph {
  public:
   virtual ~Graph() = default;
 
-  static Result validateOrphanCollection(const velocypack::Slice& orphanDefinition);
+  [[nodiscard]] static Result validateOrphanCollection(velocypack::Slice const& orphanDefinition);
 
   virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
 
