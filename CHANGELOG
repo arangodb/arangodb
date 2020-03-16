@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added satellite graphs.
+
 * Allow to override the detected total amount of memory via an environment
   variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
  
