@@ -1,6 +1,8 @@
 devel
 -----
 
+* Rebuild UI and update swagger.
+
 * Added ability to store values in ArangoSearch views.
 
 * Added LIKE operator/function support to SEARCH clause.
