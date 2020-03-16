@@ -38,8 +38,8 @@ using namespace arangodb::maintenance;
 
 std::string const ActionBase::FAST_TRACK = "fastTrack";
 
-inline static std::chrono::steady_clock::duration secs_since_epoch() {
-  return std::chrono::steady_clock::now().time_since_epoch();
+inline static std::chrono::system_clock::duration secs_since_epoch() {
+  return std::chrono::system_clock::now().time_since_epoch();
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
