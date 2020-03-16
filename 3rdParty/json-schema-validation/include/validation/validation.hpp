@@ -23,7 +23,7 @@ namespace arangodb::validation {
 
 
 [[nodiscard]] tao::json::value slice_to_value(VPackSlice const& doc,
-                                              SpecialProperties special = SpecialProperties::All,
+                                              SpecialProperties special = SpecialProperties::None,
                                               VPackOptions const* options = &VPackOptions::Defaults,
                                               VPackSlice const* = nullptr);
 
