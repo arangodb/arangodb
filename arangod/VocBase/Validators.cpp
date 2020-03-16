@@ -96,8 +96,7 @@ ValidatorBase::ValidatorBase(VPackSlice params)
                                      "Valid validation levels are: " + StaticStrings::ValidatorLevelNone +
                                          ", " + StaticStrings::ValidatorLevelNew +
                                          ", " + StaticStrings::ValidatorLevelModerate +
-                                         ", " + StaticStrings::ValidatorLevelStrict +
-                                         "");
+                                         ", " + StaticStrings::ValidatorLevelStrict);
     }
   }
 

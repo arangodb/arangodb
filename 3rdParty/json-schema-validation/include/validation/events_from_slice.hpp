@@ -113,11 +113,12 @@ void from_value(Consumer& consumer,
                             }
                             break;
                         }
-                        case VelocyPackHelper::FromAttribute:
+                        case VelocyPackHelper::FromAttribute: {
                             if (!enum_contains_value(special, arangodb::validation::SpecialProperties::From)) {
                                 continue;
                             }
                             break;
+                        }
                         case VelocyPackHelper::ToAttribute: {
                             if (!enum_contains_value(special, arangodb::validation::SpecialProperties::To)) {
                                 continue;

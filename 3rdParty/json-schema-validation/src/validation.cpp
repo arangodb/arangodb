@@ -97,9 +97,9 @@ SpecialProperties view_to_special(std::string_view view) {
         return SpecialProperties::Id;
     } else if (view == rev_string) {
         return SpecialProperties::Rev;
-    } else if (view == to_string) {
-        return SpecialProperties::From;
     } else if (view == from_string) {
+        return SpecialProperties::From;
+    } else if (view == to_string) {
         return SpecialProperties::To;
     } else {
         return SpecialProperties::None;
