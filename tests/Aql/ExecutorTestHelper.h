@@ -163,7 +163,7 @@ struct Pipeline {
 
   virtual ~Pipeline() {
     for (auto&& b : _pipeline) {
-      b.release();
+      b.reset(nullptr);
     }
   };
 
@@ -189,7 +189,7 @@ struct Pipeline {
     return *this;
   }
 
- private:
+private:
   PipelineStorage _pipeline;
 };
 
