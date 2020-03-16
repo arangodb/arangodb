@@ -284,6 +284,24 @@ TEST_P(InputRangeTest, multi_shadow_rows_batches_in_block) {
   validateEndReached(testee);
 }
 
+TEST_P(InputRangeTest, multi_shadow_rows_batches_with_skip) {
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}, {{7}}},
+                    {{3, 0}, {4, 1}, {5, 0}, {6, 1}});
+  auto testee = createFromBlock(inputBlock);
+
+  validateNextIsDataRow(testee, ExecutorState::HASMORE, 1);
+  validateNextIsDataRow(testee, ExecutorState::HASMORE, 2);
+  validateNextIsDataRow(testee, ExecutorState::DONE, 3);
+  validateNextIsShadowRow(testee, ExecutorState::HASMORE, 4, 0);
+  validateNextIsShadowRow(testee, ExecutorState::DONE, 5, 1);
+  validateNextIsShadowRow(testee, ExecutorState::HASMORE, 6, 0);
+
+  // Last Row needs to return upstream State
+  validateNextIsShadowRow(testee, GetParam(), 7, 1);
+  validateEndReached(testee);
+}
+
 INSTANTIATE_TEST_CASE_P(AqlItemBlockInputRangeTest, InputRangeTest,
                         ::testing::Values(ExecutorState::DONE, ExecutorState::HASMORE));
 

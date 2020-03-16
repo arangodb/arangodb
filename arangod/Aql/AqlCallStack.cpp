@@ -41,23 +41,18 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCall call)
     : _operations{other._operations} {
   // We can only use this constructor on relevant levels
   // Alothers need to use passThrough constructor
-  TRI_ASSERT(other._depth == 0);
   _operations.emplace_back(std::move(call));
   _compatibilityMode3_6 = other._compatibilityMode3_6;
 }
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other)
     : _operations{other._operations},
-      _depth(other._depth),
       _compatibilityMode3_6(other._compatibilityMode3_6) {}
 
 AqlCallStack::AqlCallStack(std::vector<AqlCall>&& operations)
     : _operations(std::move(operations)) {}
 
-bool AqlCallStack::isRelevant() const { return _depth == 0; }
-
 AqlCall AqlCallStack::popCall() {
-  TRI_ASSERT(isRelevant());
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
   if (_compatibilityMode3_6 && _operations.empty()) {
     // This is only for compatibility with 3.6
@@ -76,7 +71,6 @@ AqlCall AqlCallStack::popCall() {
 }
 
 AqlCall const& AqlCallStack::peek() const {
-  TRI_ASSERT(isRelevant());
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
   if (is36Compatible() && _operations.empty()) {
     // This is only for compatibility with 3.6
@@ -94,32 +88,11 @@ AqlCall const& AqlCallStack::peek() const {
 }
 
 void AqlCallStack::pushCall(AqlCall&& call) {
-  // TODO is this correct on subqueries?
-  TRI_ASSERT(isRelevant());
   _operations.emplace_back(std::move(call));
 }
 
 void AqlCallStack::pushCall(AqlCall const& call) {
-  // TODO is this correct on subqueries?
-  TRI_ASSERT(isRelevant());
   _operations.emplace_back(call);
-}
-
-void AqlCallStack::pop() {
-  if (isRelevant()) {
-    // We have one element to pop
-    std::ignore = popCall();
-  } else {
-    _depth--;
-  }
-}
-
-auto AqlCallStack::increaseSubqueryDepth() -> void {
-  // Avoid overflow. If you actually have a subquery nesting of size_t many subqueries
-  // there is a rather high chance that your query will not perform well.
-  TRI_ASSERT(_depth < std::numeric_limits<size_t>::max() - 2);
-  _depth++;
-  TRI_ASSERT(!isRelevant());
 }
 
 auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice) -> ResultT<AqlCallStack> {

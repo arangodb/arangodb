@@ -49,9 +49,6 @@ class AqlCallStack {
 
   auto toString() const -> std::string;
 
-  // Quick test is this CallStack is of local relevance, or it is sufficient to pass it through
-  bool isRelevant() const;
-
   // Get the top most Call element (this must be relevant).
   // This is popped of the stack and caller can take responsibility for it
   AqlCall popCall();
@@ -66,24 +63,12 @@ class AqlCallStack {
   // Put another call on top of the stack.
   void pushCall(AqlCall const& call);
 
-  // Pops one subquery level.
-  // if this isRelevent it pops the top-most call from the stack.
-  // if this is not revelent it reduces the depth by 1.
-  // Can be savely called on every subquery Start.
-  void pop();
-
-  // Increase the subquery by one, not placing another call on the stack
-  // This is used to bypass all executors until we reach the next subquery start.
-  void increaseSubqueryDepth();
-
   // TODO: Remove me again, only used to fake DONE
   [[deprecated]] auto empty() const noexcept -> bool {
-    return _operations.empty() && _depth == 0;
+    return _operations.empty();
   }
 
-  auto subqueryLevel() const noexcept -> size_t {
-    return _operations.size() + _depth;
-  }
+  auto subqueryLevel() const noexcept -> size_t { return _operations.size(); }
 
   void toVelocyPack(velocypack::Builder& builder) const;
 
@@ -139,12 +124,6 @@ class AqlCallStack {
   // inject an additional call in any const operation here just to pretend we
   // are not empty. Can be removed after 3.7.
   mutable std::vector<AqlCall> _operations;
-
-  // The depth of subqueries that have not issued calls into operations,
-  // as they have been skipped.
-  // In most cases this will be zero.
-  // However if we skip a subquery that has a nested subquery this depth will be 1 in the nested subquery.
-  size_t _depth{0};
 
   // This flag will be set if and only if
   // we are called with the 3.6 and earlier API

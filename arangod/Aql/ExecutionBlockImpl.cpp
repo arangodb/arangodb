@@ -1787,18 +1787,6 @@ template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   if constexpr (isNewStyleExecutor<Executor>) {
-    if (!stack.isRelevant()) {
-      LOG_QUERY("bf029", DEBUG) << "subquery bypassing executor " << printBlockInfo();
-      // We are bypassing subqueries.
-      // This executor is not allowed to perform actions
-      // However we need to maintain the upstream state.
-      SkipResult skippedLocal;
-      typename Fetcher::DataRange bypassedRange{ExecutorState::HASMORE};
-      std::tie(_upstreamState, skippedLocal, bypassedRange) =
-          executeFetcher(stack, _upstreamRequest);
-      return {_upstreamState, skippedLocal, bypassedRange.getBlock()};
-    }
-
     AqlCall clientCall = stack.popCall();
     ExecutorState localExecutorState = ExecutorState::DONE;
 

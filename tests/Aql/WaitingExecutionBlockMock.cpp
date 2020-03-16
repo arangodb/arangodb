@@ -124,9 +124,6 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
 // NOTE: Does not care for shadowrows!
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
     AqlCallStack stack) {
-  while (!stack.isRelevant()) {
-    stack.pop();
-  }
   auto myCall = stack.popCall();
 
   TRI_ASSERT(!(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0}));

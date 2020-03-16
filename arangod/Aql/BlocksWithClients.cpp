@@ -227,7 +227,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
   }
 
   // This call is only used internally.
-  auto call = stack.isRelevant() ? stack.popCall() : AqlCall{};
+  auto call = stack.popCall();
 
   // We do not have anymore data locally.
   // Need to fetch more from upstream
