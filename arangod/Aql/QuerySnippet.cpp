@@ -65,7 +65,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
     case ExecutionNode::K_SHORTEST_PATHS: {
       auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
       auto const isSatellite = graphNode->isUsedAsSatellite();
-      _expansions.emplace_back(node, false, isSatellite);
+      _expansions.emplace_back(node, !isSatellite, isSatellite);
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -77,7 +77,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       _expansions.emplace_back(node, false, false);
       break;
     }
-  case ExecutionNode::MATERIALIZE: {
+    case ExecutionNode::MATERIALIZE: {
       auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
       // Materialize index node - true
       // Materialize view node - false
@@ -334,20 +334,21 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
           }
         }
       }
-      continue;
-    } else if ( exp.node->getType() == ExecutionNode::TRAVERSAL
-             || exp.node->getType() == ExecutionNode::SHORTEST_PATH
-             || exp.node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
-
+    } else if (exp.node->getType() == ExecutionNode::TRAVERSAL ||
+               exp.node->getType() == ExecutionNode::SHORTEST_PATH ||
+               exp.node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
       // the same translation is copied to all servers
       // there are no local expansions
 
       auto* graphNode = ExecutionNode::castTo<GraphNode*>(exp.node);
-      graphNode->setCollectionToShard({}); //clear previous information
+      graphNode->setCollectionToShard({});  // clear previous information
 
       TRI_ASSERT(graphNode->isUsedAsSatellite() == exp.isSatellite);
 
       if (!exp.isSatellite) {
+        // This is either one shard or a single satellite graph which is not used
+        // as satellite graph.
+        uint64_t numShards = 0;
         for (auto* aqlCollection : graphNode->collections()) {
           auto const& shards = aqlCollection->shardIds();
           TRI_ASSERT(!shards->empty());
@@ -358,89 +359,102 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
               // to be used in toVelocyPack methods of classes derived
               // from GraphNode
               graphNode->addCollectionToShard(aqlCollection->name(), shard);
+
+              numShards++;
             }
           }
+        }
+
+        if (numShards == 0) {
+          return {TRI_ERROR_CLUSTER_NOT_LEADER};
+        }
+
+        bool foundEnoughShards = numShards == graphNode->collections().size();
+        TRI_ASSERT(foundEnoughShards);
+        if (!foundEnoughShards) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
         }
       } else {
         TRI_ASSERT(graphNode->isUsedAsSatellite());
 #ifndef USE_ENTERPRISE
         TRI_ASSERT(false);
 #endif
+
         for (auto* aqlCollection : graphNode->collections()) {
           auto const& shards = shardLocking.shardsForSnippet(id(), aqlCollection);
+          TRI_ASSERT(shards.size() == 1);
           for (auto const& shard : shards) {
             // If we find a shard here that is not in this mapping,
             // we have 1) a problem with locking before that should have thrown
             // 2) a problem with shardMapping lookup that should have thrown before
             TRI_ASSERT(shardMapping.find(shard) != shardMapping.end());
-            // Could we replace the outer if/else on isSatellite with this branch
-            // here, and remove the upper part?
+            // Could we replace the outer if/else on isSatellite with this
+            // branch here, and remove the upper part?
             //   if (check->second == server || exp.isSatellite) {...}
 
             graphNode->addCollectionToShard(aqlCollection->name(), shard);
-
             // This case currently does not exist and is not handled here.
             TRI_ASSERT(!exp.doExpand);
           }
         }
       }
 
-      continue; // skip rest - there are no local expansions
-    }
-    // exp.node is now either an enumerate collection, index, or modification.
-
-    // It is of utmost importance that this is an ordered set of Shards.
-    // We can only join identical indexes of shards for each collection
-    // locally.
-    std::set<ShardID> myExp;
-
-    auto modNode = dynamic_cast<CollectionAccessingNode const*>(exp.node);
-    // Only accessing nodes can end up here.
-    TRI_ASSERT(modNode != nullptr);
-    auto col = modNode->collection();
-    // Should be hit earlier, a modification node here is required to have a collection
-    TRI_ASSERT(col != nullptr);
-    auto const& shards = shardLocking.shardsForSnippet(id(), col);
-    for (auto const& s : shards) {
-      auto check = shardMapping.find(s);
-      // If we find a shard here that is not in this mapping,
-      // we have 1) a problem with locking before that should have thrown
-      // 2) a problem with shardMapping lookup that should have thrown before
-      TRI_ASSERT(check != shardMapping.end());
-      if (check->second == server || exp.isSatellite) {
-        // add all shards on satellites.
-        // and all shards where this server is the leader
-        myExp.emplace(s);
-      }
-    }
-    if (myExp.empty()) {
-      return {TRI_ERROR_CLUSTER_NOT_LEADER};
-    }
-    // For all other Nodes we can inject a single shard at a time.
-    // Always use the list of nodes we maintain to hold the first
-    // of all shards.
-    // We later use a cone mechanism to inject other shards of permutation
-    auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
-    TRI_ASSERT(collectionAccessingNode != nullptr);
-    collectionAccessingNode->setUsedShard(*myExp.begin());
-    if (exp.doExpand) {
-      TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
-      // All parts need to have exact same size, they need to be permutated pairwise!
-      TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.size() == numberOfShardsToPermutate);
-      // set the max loop index (note this will essentially be done only once)
-      numberOfShardsToPermutate = myExp.size();
-      if (numberOfShardsToPermutate > 1) {
-        // Only in this case we really need to do an expansion
-        // Otherwise we get away with only using the main stream for
-        // this server
-        // NOTE: This might differ between servers.
-        // One server might require an expansion (many shards) while another does not (only one shard).
-        localExpansions.emplace(exp.node, std::move(myExp));
-      }
     } else {
-      TRI_ASSERT(myExp.size() == 1);
+      // exp.node is now either an enumerate collection, index, or modification.
+
+      // It is of utmost importance that this is an ordered set of Shards.
+      // We can only join identical indexes of shards for each collection
+      // locally.
+      std::set<ShardID> myExp;
+
+      auto modNode = dynamic_cast<CollectionAccessingNode const*>(exp.node);
+      // Only accessing nodes can end up here.
+      TRI_ASSERT(modNode != nullptr);
+      auto col = modNode->collection();
+      // Should be hit earlier, a modification node here is required to have a collection
+      TRI_ASSERT(col != nullptr);
+      auto const& shards = shardLocking.shardsForSnippet(id(), col);
+      for (auto const& s : shards) {
+        auto check = shardMapping.find(s);
+        // If we find a shard here that is not in this mapping,
+        // we have 1) a problem with locking before that should have thrown
+        // 2) a problem with shardMapping lookup that should have thrown before
+        TRI_ASSERT(check != shardMapping.end());
+        if (check->second == server || exp.isSatellite) {
+          // add all shards on satellites.
+          // and all shards where this server is the leader
+          myExp.emplace(s);
+        }
+      }
+      if (myExp.empty()) {
+        return {TRI_ERROR_CLUSTER_NOT_LEADER};
+      }
+      // For all other Nodes we can inject a single shard at a time.
+      // Always use the list of nodes we maintain to hold the first
+      // of all shards.
+      // We later use a cone mechanism to inject other shards of permutation
+      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
+      TRI_ASSERT(collectionAccessingNode != nullptr);
+      collectionAccessingNode->setUsedShard(*myExp.begin());
+      if (exp.doExpand) {
+        TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
+        // All parts need to have exact same size, they need to be permutated pairwise!
+        TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.size() == numberOfShardsToPermutate);
+        // set the max loop index (note this will essentially be done only once)
+        numberOfShardsToPermutate = myExp.size();
+        if (numberOfShardsToPermutate > 1) {
+          // Only in this case we really need to do an expansion
+          // Otherwise we get away with only using the main stream for
+          // this server
+          // NOTE: This might differ between servers.
+          // One server might require an expansion (many shards) while another does not (only one shard).
+          localExpansions.emplace(exp.node, std::move(myExp));
+        }
+      } else {
+        TRI_ASSERT(myExp.size() == 1);
+      }
     }
-  } // for _expansions - end;
+  }  // for _expansions - end;
   return {localExpansions};
 }
 
