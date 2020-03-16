@@ -55,6 +55,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/MockTypedNode.cpp
   Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
+  Aql/NgramMatchFunctionTest.cpp
+  Aql/NgramSimilarityFunctionTest.cpp
+  Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/QueryHelper.cpp
   Aql/RemoteExecutorTest.cpp
