@@ -52,15 +52,19 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/Helpers.h"
 #include "Transaction/Context.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Hints.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
@@ -1252,6 +1256,89 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t diff) {
   auto seq = rocksutils::latestSequenceNumber();
   meta().adjustNumberDocuments(seq, /*revId*/ 0, diff);
+}
+
+Result RocksDBCollection::upgrade() {
+  Result res{};
+  if (_logicalCollection.version() >= LogicalCollection::Version::v37) {
+    return res;
+  }
+
+  {
+    // update properties with new temporary object ids
+    velocypack::Builder oldProps;
+    velocypack::Builder newProps;
+    {
+      methods::Collections::Context collectionContext(_logicalCollection.vocbase(),
+                                                      _logicalCollection);
+      methods::Collections::properties(collectionContext, oldProps);
+      {
+        {
+          velocypack::ObjectBuilder collectionGuard{&newProps};
+
+          // copy everything other than the indices
+          for (velocypack::ObjectIteratorPair it :
+               velocypack::ObjectIterator(oldProps.slice())) {
+            if (velocypack::StringRef(it.key) != StaticStrings::Indexes) {
+              newProps.add(it.key);
+              newProps.add(it.value);
+            }
+          }
+
+          // now handle the indices
+          {
+            velocypack::ArrayBuilder indexesGuard(&newProps, StaticStrings::Indexes);
+            velocypack::Slice allIndices = oldProps.slice().get(StaticStrings::Indexes);
+            for (velocypack::Slice indexProps : velocypack::ArrayIterator(allIndices)) {
+              velocypack::ObjectBuilder indexGuard(&newProps);
+              // copy all properties
+              for (velocypack::ObjectIteratorPair it :
+                   velocypack::ObjectIterator(indexProps)) {
+                newProps.add(it.key);
+                newProps.add(it.value);
+              }
+              // now add the new temp object id to the index
+              newProps.add(StaticStrings::TempObjectId,
+                           velocypack::Value(TRI_NewTickServer()));
+            }
+          }
+
+          // now add the temp object id to the collection
+          newProps.add(StaticStrings::TempObjectId,
+                       velocypack::Value(TRI_NewTickServer()));
+        }
+      }
+    }
+
+    methods::Collections::updateProperties(_logicalCollection, newProps.slice());
+    // TODO read new properties from object and add accessor methods
+  }
+
+  {
+    std::shared_ptr<transaction::Context> context =
+        transaction::StandaloneContext::Create(_logicalCollection.vocbase());
+    SingleCollectionTransaction trx(context, _logicalCollection, AccessMode::Type::WRITE);
+    trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
+    trx.addHint(transaction::Hints::Hint::RECOVERY);
+    res = trx.begin();
+    if (res.fail()) {
+      return res;
+    }
+
+    // TODO iterate over documents and copy into new id-space with revisions
+
+    // TODO iterate over index entries and copy into new id-space with revisions
+
+    // TODO swap regular and temp ids for collection and indices and update version in properties atomically
+  }
+
+  // TODO remove data from old id spaces for collection, drop temp id
+
+  // TODO remove data from old id spaces for indices, drop temp ids
+
+  return res;
 }
 
 /// @brief return engine-specific figures
