@@ -61,6 +61,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "IResearch/IResearchPDP.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -1681,7 +1682,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
   }
   auto const targetValue = iresearch::getStringRef(target.slice());
 
-  double_t threshold = 0.7;//!!!! to constants!
+  auto threshold = arangodb::iresearch::FilterConstants::DefaultNgramMatchThreshold;
   size_t analyzerPosition = 2;
   if (argc > 3) {// 4 args given. 3rd is threshold
     auto const& thresholdArg = extractFunctionParameterValue(args, 2);

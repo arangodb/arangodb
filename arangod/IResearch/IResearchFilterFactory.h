@@ -54,6 +54,15 @@ struct FilterFactory {
                      arangodb::aql::AstNode const& node);
 };  // FilterFactory
 
+
+class FilterConstants {
+  FilterConstants() = delete;
+ public:
+  // Defaults
+  static constexpr size_t DefaultScoringTermsLimit { 128 };
+  static constexpr double_t DefaultNgramMatchThreshold { 0.7 };
+};
+
 }  // namespace iresearch
 }  // namespace arangodb
 
