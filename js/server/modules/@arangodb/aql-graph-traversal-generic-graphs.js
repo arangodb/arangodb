@@ -28,12 +28,14 @@
 const tryRequire = (module) => {
   try {
     return require(module);
-  } catch(e) {}
+  } catch (e) {
+  }
 };
 
 const internal = require("internal");
 const db = internal.db;
 const sgm = tryRequire("@arangodb/smart-graph");
+const satgm = tryRequire("@arangodb/satellite-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
 const assert = require("jsunity").jsUnity.assertions;
@@ -43,10 +45,11 @@ const TestVariants = Object.freeze({
   SingleServer: 1,
   GeneralGraph: 2,
   SmartGraph: 3,
+  SatelliteGraph: 4
 });
 
 class TestGraph {
-  constructor (graphName, edges, eRel, vn, en, protoSmartSharding, testVariant, numberOfShards) {
+  constructor(graphName, edges, eRel, vn, en, protoSmartSharding, testVariant, numberOfShards) {
     this.graphName = graphName;
     this.edges = edges;
     this.eRel = eRel;
@@ -75,6 +78,13 @@ class TestGraph {
           isSmart: true
         };
         sgm._create(this.name(), [this.eRel], [], options);
+        break;
+      }
+      case TestVariants.SatelliteGraph: {
+        const options = {
+          replicationFactor: 'satellite'
+        };
+        satgm._create(this.name(), [this.eRel], [], options);
         break;
       }
     }
@@ -144,12 +154,12 @@ class TestGraph {
 
     const done = () => !
       _.values(exampleAttributeByShard)
-      .includes(null);
+        .includes(null);
     let i = 0;
     // const key = this.enterprise ? ProtoGraph.smartAttr() : "_key";
     const key = "_key";
     while (!done()) {
-      const value = this.enterprise ? i.toString() + ":" : i.toString() ;
+      const value = this.enterprise ? i.toString() + ":" : i.toString();
       const doc = {[key]: value};
 
       let shard;
@@ -170,9 +180,11 @@ class TestGraph {
 }
 
 class ProtoGraph {
-  static smartAttr() { return "smart"; }
+  static smartAttr() {
+    return "smart";
+  }
 
-  constructor (name, edges, generalShardings, smartShardings) {
+  constructor(name, edges, generalShardings, smartShardings) {
     this.protoGraphName = name;
     this.edges = edges;
     this.generalShardings = generalShardings;
@@ -193,7 +205,7 @@ class ProtoGraph {
   }
 
   prepareGeneralGraphs() {
-    return this.generalShardings.map(numberOfShards =>  {
+    return this.generalShardings.map(numberOfShards => {
       const suffix = `_${numberOfShards}shards`;
       const vn = this.protoGraphName + '_Vertex' + suffix;
       const en = this.protoGraphName + '_Edge' + suffix;
@@ -206,7 +218,7 @@ class ProtoGraph {
   }
 
   prepareSmartGraphs() {
-    return this.smartShardings.map((sharding, idx) =>  {
+    return this.smartShardings.map((sharding, idx) => {
       const {numberOfShards, vertexSharding} = sharding;
       const suffix = ProtoGraph._buildSmartSuffix(sharding, idx);
 
@@ -220,6 +232,19 @@ class ProtoGraph {
     });
   }
 
+  prepareSatelliteGraphs() {
+    // We're not able to test multiple shards in a Satellite Graph as a Satellite Graph has only one shard by default
+    const suffix = '_satellite';
+    const numberOfShards = 1;
+    const vn = this.protoGraphName + '_Vertex' + suffix;
+    const en = this.protoGraphName + '_Edge' + suffix;
+    const gn = this.protoGraphName + '_Graph' + suffix;
+
+    const eRel = cgm._relation(en, vn, vn);
+
+    return [new TestGraph(gn, this.edges, eRel, vn, en, [], TestVariants.SatelliteGraph, numberOfShards)];
+  }
+
   static _buildSmartSuffix({numberOfShards, vertexSharding, name}, shardingIndex) {
     if (name) {
       return `_${name}`;
@@ -231,7 +256,7 @@ class ProtoGraph {
     //   "_2shards_s0-AB_s1-C"
     let suffix = `_${numberOfShards}shards_` +
       _.toPairs(
-        _.groupBy(vertexSharding, ([,s]) => s)
+        _.groupBy(vertexSharding, ([, s]) => s)
       ).map(
         ([s, vs]) => 's' + s + '-' + vs.map(([v,]) => v).join('')
       ).join('_');
@@ -694,9 +719,9 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
   assert.assertEqual('v510', vertices[vertices.length - 1]);
 
   const vi = (v) => Number(v.match(/^v(\d+)$/)[1]);
-  const vertexLevel = (v) => Math.floor(Math.log2(vi(v)+1));
+  const vertexLevel = (v) => Math.floor(Math.log2(vi(v) + 1));
   const parent = (v) => 'v' + parentIdx(vi(v));
-  const ancestor = (v, i) => i === 0 ? v : ancestor(parent(v), i-1);
+  const ancestor = (v, i) => i === 0 ? v : ancestor(parent(v), i - 1);
 
   // when splitting the tree into perfect subtrees of depth 3 (this is
   // non-ambiguous), these helper functions return, for a given vertex,
@@ -723,7 +748,7 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
       { // one shard per three levels
         name: "oneShardPerThreeLevels",
         numberOfShards: 3,
-        vertexSharding: vertices.map(v => [v, Math.floor(vertexLevel(v)/3)]),
+        vertexSharding: vertices.map(v => [v, Math.floor(vertexLevel(v) / 3)]),
       },
       { // one shard per level
         name: "oneShardPerLevel",
@@ -748,7 +773,8 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
         //  ...
         name: "diagonalCutSharding",
         numberOfShards: 2,
-        vertexSharding: vertices.map(v => [v, [2,4,8,16,32,64,128,256].includes(vi(v)) ? 1 : 0]),},
+        vertexSharding: vertices.map(v => [v, [2, 4, 8, 16, 32, 64, 128, 256].includes(vi(v)) ? 1 : 0]),
+      },
       { // perfect subtrees of depth 3, each in different shards
         name: "perfectSubtreeSharding",
         numberOfShards: 73,

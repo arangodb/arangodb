@@ -21,8 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DependencyProxyMock.h"
+#include <Logger/LogMacros.h>
 
 #include "gtest/gtest.h"
+
+#include "Aql/SkipResult.h"
 
 #include <velocypack/Options.h>
 
@@ -104,6 +107,9 @@ DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::
   for (RegisterId i = 0; i < this->getNrInputRegisters(); i++) {
     inputRegisters->emplace(i);
   }
+  // keep the block address
+  _block = block;
+
   return andThenReturn({state, block});
 }
 
@@ -123,6 +129,14 @@ DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::
   }
 
   return *this;
+}
+
+template <BlockPassthrough passBlocksThrough>
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+DependencyProxyMock<passBlocksThrough>::execute(AqlCallStack& stack) {
+  TRI_ASSERT(_block != nullptr);
+  SkipResult res{};
+  return {arangodb::aql::ExecutionState::DONE, res, _block};
 }
 
 template <BlockPassthrough passBlocksThrough>

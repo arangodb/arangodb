@@ -30,9 +30,16 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos) {}
+NoResultsExecutor::NoResultsExecutor(Fetcher&, ExecutorInfos&) {}
 NoResultsExecutor::~NoResultsExecutor() = default;
 
-std::pair<ExecutionState, NoStats> NoResultsExecutor::produceRows(OutputAqlItemRow& output) {
-  return {ExecutionState::DONE, NoStats{}};
+auto NoResultsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output) const
+    noexcept -> std::tuple<ExecutorState, Stats, AqlCall> {
+  return {ExecutorState::DONE, NoStats{}, AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 }
+
+auto NoResultsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const
+    noexcept -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  return {inputRange.upstreamState(), NoStats{}, 0,
+          AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
+};

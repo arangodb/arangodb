@@ -39,6 +39,7 @@ struct AqlValueGroupHash {
   AqlValueGroupHash(transaction::Methods* trx, size_t num);
 
   size_t operator()(std::vector<AqlValue> const& value) const;
+  size_t operator()(AqlValue const& value) const;
 
   transaction::Methods* _trx;
   size_t const _num;
@@ -49,9 +50,11 @@ struct AqlValueGroupEqual {
   explicit AqlValueGroupEqual(transaction::Methods* trx);
 
   bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const;
+  bool operator()(AqlValue const& lhs, AqlValue const& rhs) const;
 
   transaction::Methods* _trx;
 };
+
 
 }  // namespace aql
 }  // namespace arangodb
