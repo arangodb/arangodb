@@ -56,8 +56,6 @@ struct FilterFactory {
 
 
 struct FilterConstants {
-  FilterConstants() = delete;
- public:
   // Defaults
   static constexpr size_t DefaultScoringTermsLimit { 128 };
   static constexpr double_t DefaultNgramMatchThreshold { 0.7 };
