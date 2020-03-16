@@ -62,12 +62,15 @@ class StaticStrings {
   static std::string const ReturnOldString;
   static std::string const SilentString;
   static std::string const WaitForSyncString;
+  static std::string const SkipDocumentValidation;
   static std::string const IsSynchronousReplicationString;
   static std::string const Group;
   static std::string const Namespace;
   static std::string const ReplaceExisting;
   static std::string const Prefix;
   static std::string const OverWrite;
+  static std::string const OverWriteMode;
+  static std::string const PreserveRevisionIds;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -207,6 +210,7 @@ class StaticStrings {
   // collection attributes
   static std::string const NumberOfShards;
   static std::string const IsSmart;
+  static std::string const IsSmartChild;
   static std::string const DistributeShardsLike;
   static std::string const CacheEnabled;
   static std::string const IndexBuckets;
@@ -214,16 +218,20 @@ class StaticStrings {
   static std::string const DoCompact;
   static std::string const ReplicationFactor;
   static std::string const MinReplicationFactor;
+  static std::string const MinRevision;
   static std::string const ShardKeys;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
+  static std::string const UsesRevisionsAsDocumentIds;
+  static std::string const Validation;
   static std::string const WriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
   static std::string const GraphIsSmart;
+  static std::string const GraphIsSatellite;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
@@ -252,6 +260,16 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
+  static std::string const RevisionTreeBranchingFactor;
+  static std::string const RevisionTreeCount;
+  static std::string const RevisionTreeHash;
+  static std::string const RevisionTreeMaxDepth;
+  static std::string const RevisionTreeNodes;
+  static std::string const RevisionTreeRangeMax;
+  static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeRanges;
+  static std::string const RevisionTreeResume;
+  static std::string const RevisionTreeVersion;
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -267,7 +285,86 @@ class StaticStrings {
   static std::string const UpgradeEnvName;
   static std::string const BackupToDeleteName;
   static std::string const BackupSearchToDeleteName;
+
+  // aql api strings
   static std::string const SerializationFormat;
+  static std::string const AqlRemoteApi;
+  static std::string const AqlRemoteExecute;
+  static std::string const AqlRemoteCallStack;
+  static std::string const AqlRemoteLimit;
+  static std::string const AqlRemoteLimitType;
+  static std::string const AqlRemoteLimitTypeSoft;
+  static std::string const AqlRemoteLimitTypeHard;
+  static std::string const AqlRemoteFullCount;
+  static std::string const AqlRemoteOffset;
+  static std::string const AqlRemoteInfinity;
+  static std::string const AqlRemoteResult;
+  static std::string const AqlRemoteBlock;
+  static std::string const AqlRemoteSkipped;
+  static std::string const AqlRemoteState;
+  static std::string const AqlRemoteStateDone;
+  static std::string const AqlRemoteStateHasmore;
+
+  // validation
+  static std::string const ValidatorLevelNone;
+  static std::string const ValidatorLevelNew;
+  static std::string const ValidatorLevelModerate;
+  static std::string const ValidatorLevelStrict;
+
+  static std::string const ValidatorParameterMessage;
+  static std::string const ValidatorParameterLevel;
+  static std::string const ValidatorParameterType;
+  static std::string const ValidatorParameterRule;
+
+  static std::string const ValidatorTypeJsonSchema;
+  static std::string const ValidatorTypeAQL;
+  static std::string const ValidatorTypeBool;
+
+  // metrics prometheus labels
+  static std::string const HeartbeatSendTimeMs;
+  static std::string const HeartbeatFailureCounter;
+
+  static std::string const MaintenancePhaseOneRuntimeMs;
+  static std::string const MaintenancePhaseTwoRuntimeMs;
+  static std::string const MaintenanceAgencySyncRuntimeMs;
+
+
+  static std::string const MaintenanceActionRuntimeMs;
+  static std::string const MaintenanceActionAccumRuntimeMs;
+  static std::string const MaintenanceActionFailureCounter;
+  static std::string const MaintenanceActionQueueTimeMs;
+  static std::string const MaintenanceActionAccumQueueTimeMs;
+
+  static std::string const MaintenancePhaseOneAccumRuntimeMs;
+  static std::string const MaintenancePhaseTwoAccumRuntimeMs;
+  static std::string const MaintenanceAgencySyncAccumRuntimeMs;
+
+
+  static std::string const ActionDuplicateCounter;
+  static std::string const ActionRegisteredCounter;
+  static std::string const ActionDoneCounter;
+
+  static std::string const ShardsOutOfSync;
+  static std::string const ShardsTotalCount;
+  static std::string const ShardsLeaderCount;
+  static std::string const ShardsNotReplicated;
+
+  static std::string const AgencyCommRequestTimeMs;
+
+  static std::string const AqlQueryRuntimeMs;
+
+  static std::string const SchedulerQueueLength;
+  static std::string const SchedulerAwakeWorkers;
+  static std::string const SchedulerNumWorker;
+
+  static std::string const DroppedFollowerCount;
+
+  static std::string const SupervisionRuntimeMs;
+  static std::string const SupervisionRuntimeWaitForSyncMs;
+  static std::string const SupervisionAccumRuntimeMs;
+  static std::string const SupervisionAccumRuntimeWaitForSyncMs;
+  static std::string const SupervisionFailedServerCount;
+
 };
 }  // namespace arangodb
 

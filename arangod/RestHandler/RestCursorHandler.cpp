@@ -207,8 +207,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
   std::shared_ptr<VPackBuilder> bindVarsBuilder;
   if (!bindVars.isNone()) {
-    bindVarsBuilder.reset(new VPackBuilder);
-    bindVarsBuilder->add(bindVars);
+    bindVarsBuilder = std::make_unique<VPackBuilder>(bindVars);
   }
 
   TRI_ASSERT(_options == nullptr);
@@ -270,7 +269,7 @@ RestStatus RestCursorHandler::processQuery() {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "Illegal state in RestQueryHandler, query not found.");
+        "Illegal state in RestCursorHandler, query not found.");
   }
 
   {
@@ -390,7 +389,7 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.size() < 1) {
+  if (suffixes.empty()) {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 

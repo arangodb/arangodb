@@ -1,0 +1,41 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ps{
+    Currencies{
+        AFA{
+            "AFA",
+            "افغانۍ (1927–2002)",
+        }
+        AFN{
+            "؋",
+            "افغانۍ",
+        }
+        PKR{
+            "PKR",
+            "پاکستانۍ کلداره",
+        }
+        XXX{
+            "¤",
+            "نامعلومه مروجه پېسې",
+        }
+    }
+    CurrencyPlurals{
+        AFA{
+            one{"افغانۍ (1927–2002)"}
+            other{"افغانۍ (1927–2002)"}
+        }
+        AFN{
+            one{"افغانۍ"}
+            other{"افغانۍ"}
+        }
+        PKR{
+            one{"پاکستانۍ کلداره"}
+            other{"پاکستانۍ کلدارې"}
+        }
+        XXX{
+            one{"(د نامعلومه مروجه پېسو واحد)"}
+            other{"(نامعلومه مروجه پېسې)"}
+        }
+    }
+    Version{"2.1.49.82"}
+}

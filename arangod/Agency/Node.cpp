@@ -1,26 +1,3 @@
-///////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Kaveh Vahedipour
-////////////////////////////////////////////////////////////////////////////////
-
 #include "Node.h"
 #include "Store.h"
 
@@ -427,8 +404,7 @@ Store* Node::getStore() {
 ValueType Node::valueType() const { return slice().type(); }
 
 // file time to live entry for this node to now + millis
-bool Node::addTimeToLive(long millis) {
-  auto tkey = std::chrono::system_clock::now() + std::chrono::milliseconds(millis);
+bool Node::addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tkey) {
   store().timeTable().insert(std::pair<TimePoint, std::string>(tkey, uri()));
   _ttl = tkey;
   return true;
@@ -463,6 +439,8 @@ namespace consensus {
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 
+  using namespace std::chrono;
+
   if (!slice.hasKey("new")) {
     return ResultT<std::shared_ptr<Node>>::error(
       TRI_ERROR_FAILED, std::string(
@@ -486,11 +464,22 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
   if (slice.hasKey("ttl")) {
     VPackSlice ttl_v = slice.get("ttl");
     if (ttl_v.isNumber()) {
+
+      // ttl in millisconds
       long ttl =
           1000l * ((ttl_v.isDouble())
-                       ? static_cast<long>(slice.get("ttl").getNumber<double>())
-                       : static_cast<long>(slice.get("ttl").getNumber<int>()));
-      addTimeToLive(ttl);
+                   ? static_cast<long>(slice.get("ttl").getNumber<double>())
+                   : static_cast<long>(slice.get("ttl").getNumber<int>()));
+
+      // calclate expiry time
+      auto const expires = slice.hasKey("epoch_millis") ?
+        time_point<system_clock>(
+          milliseconds(slice.get("epoch_millis").getNumber<uint64_t>() + ttl)) :
+        system_clock::now() + milliseconds(ttl);
+
+      // set ttl limit
+      addTimeToLive(expires);
+
     } else {
       LOG_TOPIC("66da2", WARN, Logger::AGENCY)
           << "Non-number value assigned to ttl: " << ttl_v.toJson();

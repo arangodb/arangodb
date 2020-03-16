@@ -28,6 +28,7 @@
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/SingleServerEdgeCursor.h"
 #include "Indexes/Index.h"
 #include "Transaction/Helpers.h"
 
@@ -48,12 +49,7 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query)
       multiThreaded(true) {}
 
 ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice const& info)
-    : BaseOptions(query),
-      direction("outbound"),
-      weightAttribute(""),
-      defaultWeight(1),
-      bidirectional(true),
-      multiThreaded(true) {
+    : ShortestPathOptions(query) {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
@@ -179,30 +175,16 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) const {
       edge, weightAttribute.c_str(), defaultWeight);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursor(arangodb::velocypack::StringRef vid) {
+std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
+  ensureCache();
+
   if (_isCoordinator) {
-    return nextCursorCoordinator(vid);
+    return std::make_unique<ClusterShortestPathEdgeCursor>(this, backward);
   }
-  return nextCursorLocal(vid, _baseLookupInfos);
+  
+  return std::make_unique<SingleServerEdgeCursor>(this, _tmpVar, nullptr, backward ? _reverseLookupInfos : _baseLookupInfos);
 }
-
-EdgeCursor* ShortestPathOptions::nextReverseCursor(arangodb::velocypack::StringRef vid) {
-  if (_isCoordinator) {
-    return nextReverseCursorCoordinator(vid);
-  }
-  return nextCursorLocal(vid, _reverseLookupInfos);
-}
-
-EdgeCursor* ShortestPathOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid) {
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, false, this);
-  return cursor.release();
-}
-
-EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(arangodb::velocypack::StringRef vid) {
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, true, this);
-  return cursor.release();
-}
-
+  
 void ShortestPathOptions::fetchVerticesCoordinator(
     std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
   // TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
@@ -217,7 +199,7 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache = ch->cache();
 
   std::unordered_set<arangodb::velocypack::StringRef> fetch;
-  for (auto it : vertexIds) {
+  for (auto const& it : vertexIds) {
     if (cache.find(it) == cache.end()) {
       // We do not have this vertex
       fetch.emplace(it);
@@ -234,3 +216,17 @@ void ShortestPathOptions::isQueryKilledCallback() const {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }
+
+ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
+                                         bool const allowAlreadyBuiltCopy)
+    : BaseOptions(other, allowAlreadyBuiltCopy),
+      start{other.start},
+      direction{other.direction},
+      weightAttribute{other.weightAttribute},
+      defaultWeight{other.defaultWeight},
+      bidirectional{other.bidirectional},
+      multiThreaded{other.multiThreaded},
+      end{other.end},
+      startBuilder{other.startBuilder},
+      endBuilder{other.endBuilder},
+      _reverseLookupInfos{other._reverseLookupInfos} {}

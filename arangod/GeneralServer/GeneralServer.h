@@ -26,8 +26,10 @@
 #ifndef ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H
 #define ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H 1
 
+#include "Basics/Result.h"
 #include "Basics/Thread.h"
 #include "GeneralServer/IoContext.h"
+#include "GeneralServer/SslServerFeature.h"
 
 #include <mutex>
 
@@ -61,9 +63,12 @@ class GeneralServer {
   void stopWorking();
 
   IoContext& selectIoContext();
-  asio_ns::ssl::context& sslContext();
+  SslServerFeature::SslContextList sslContexts();
+  SSL_CTX* getSSL_CTX(size_t index);
 
   application_features::ApplicationServer& server() const;
+
+  Result reloadTLS();
 
  protected:
   bool openEndpoint(IoContext& ioContext, Endpoint* endpoint);
@@ -80,7 +85,7 @@ class GeneralServer {
   /// protect ssl context creation
   std::mutex _sslContextMutex;
   /// global SSL context to use here
-  std::unique_ptr<asio_ns::ssl::context> _sslContext;
+  SslServerFeature::SslContextList _sslContexts;
 };
 }  // namespace rest
 }  // namespace arangodb

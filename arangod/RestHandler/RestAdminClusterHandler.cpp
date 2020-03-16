@@ -652,7 +652,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
           }
 
           resetResponse(rest::ResponseCode::ACCEPTED);
-          response()->setPayload(std::move(payload), true);
+          response()->setPayload(std::move(payload));
 
         } else {
           generateError(result.asResult());
@@ -779,7 +779,7 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
                   }
 
                   resetResponse(rest::ResponseCode::OK);
-                  response()->setPayload(std::move(payload), true);
+                  response()->setPayload(std::move(payload));
                   return;
                 }
               }
@@ -867,7 +867,7 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
               }
 
               resetResponse(rest::ResponseCode::ACCEPTED);
-              response()->setPayload(std::move(payload), true);
+              response()->setPayload(std::move(payload));
             } else {
               generateError(result.asResult());
             }
@@ -916,7 +916,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
             if (result.ok()) {
               resetResponse(ResponseCode(result.statusCode()));  // I quit if the values are not the HTTP Status Codes
               auto payload = result.response->stealPayload();
-              response()->setPayload(std::move(*payload), true);
+              response()->setPayload(std::move(*payload));
             } else {
               switch (result.error) {
                 case fuerte::Error::Canceled:
@@ -981,7 +981,7 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
     result.add(StaticStrings::Code, VPackValue(200));
   }
   resetResponse(rest::ResponseCode::OK);
-  response()->setPayload(std::move(resultBody), true);
+  response()->setPayload(std::move(resultBody));
   return RestStatus::DONE;
 }
 
@@ -1003,7 +1003,7 @@ RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(std::st
     result.add(StaticStrings::Code, VPackValue(200));
   }
   resetResponse(rest::ResponseCode::OK);
-  response()->setPayload(std::move(resultBody), true);
+  response()->setPayload(std::move(resultBody));
   return RestStatus::DONE;
 }
 
@@ -1044,6 +1044,12 @@ RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
 }
 
 RestStatus RestAdminClusterHandler::handleGetMaintenance() {
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
   auto maintenancePath =
       arangodb::cluster::paths::root()->arango()->supervision()->state()->mode();
 
@@ -1061,7 +1067,7 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
               }  // use generateOk instead
 
               resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(body), true);
+              response()->setPayload(std::move(body));
             } else {
               generateError(result.asResult());
             }
@@ -1111,7 +1117,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionS
             }
 
             resetResponse(rest::ResponseCode::OK);
-            response()->setPayload(std::move(body), true);
+            response()->setPayload(std::move(body));
           }
         } else {
           generateError(result.asResult());
@@ -1154,6 +1160,12 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
 }
 
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -1186,6 +1198,12 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
     return RestStatus::DONE;
   }
 
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
   switch (request()->requestType()) {
     case rest::RequestType::GET:
       return handleGetMaintenance();
@@ -1198,6 +1216,12 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
 }
 
 RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
 
   VPackBuffer<uint8_t> trx;
@@ -1237,7 +1261,7 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
               }
 
               resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(body), true);
+              response()->setPayload(std::move(body));
             } else {
               generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                             "agency communication failed");
@@ -1255,6 +1279,12 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
 RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
     return RestStatus::DONE;
   }
 
@@ -1346,7 +1376,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
                 builder.add(StaticStrings::Error, VPackValue(false));
                 builder.add("code", VPackValue(200));
               }
-              response()->setPayload(std::move(responseBody), true);
+              response()->setPayload(std::move(responseBody));
               resetResponse(rest::ResponseCode::OK);
             } else {
               generateError(result.asResult());
@@ -1394,6 +1424,12 @@ RestStatus RestAdminClusterHandler::handleHealth() {
       !ServerState::instance()->isSingleServer()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on single server and coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
     return RestStatus::DONE;
   }
 
@@ -1470,7 +1506,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                 builder.add(StaticStrings::Code, VPackValue(200));
               }
               resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(responseBody), true);
+              response()->setPayload(std::move(responseBody));
             } else {
               generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                             "agency communication failed");
@@ -1649,7 +1685,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
         builder.add("code", VPackValue(202));
       }
       resetResponse(rest::ResponseCode::ACCEPTED);
-      response()->setPayload(std::move(responseBody), true);
+      response()->setPayload(std::move(responseBody));
 
     } else {
       generateError(result.asResult());

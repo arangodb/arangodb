@@ -441,15 +441,15 @@ arangodb::Result SynchronizeShard::getReadLock(
     body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
   auto buf = body.steal();
 
-  auto const url = DB + database + REPL_HOLD_READ_LOCK;
-
   // Try to POST the lock body. If POST fails, we should just exit and retry
   // SynchroShard anew. 
   network::RequestOptions options;
-    options.timeout = network::Timeout(timeout);
-    auto res = network::sendRequest(
-      pool, endpoint, fuerte::RestVerb::Post,
-      url, *buf, options).get();
+  options.timeout = network::Timeout(timeout);
+  options.database = database;
+  
+  auto res = network::sendRequest(
+    pool, endpoint, fuerte::RestVerb::Post,
+    REPL_HOLD_READ_LOCK, *buf, options).get();
 
   if (!res.fail() && res.response->statusCode() == fuerte::StatusOK) {
     // Habemus clausum, we have a lock
@@ -475,11 +475,20 @@ arangodb::Result SynchronizeShard::getReadLock(
 
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   try {
-    auto r = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, url,
+    auto r = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, REPL_HOLD_READ_LOCK,
                                   *buf, options)
                  .get();
     if (r.fail() || r.response->statusCode() != fuerte::StatusOK) {
-      std::string addendum = network::fuerteToArangoErrorMessage(r);
+      std::string addendum;
+      if (r.fail()) {
+        addendum = network::fuerteToArangoErrorMessage(r);
+      } else {
+        addendum.append("code '")
+                .append(std::to_string(r.statusCode()))
+                .append("', error '")
+                .append(network::resultFromBody(r.slice(), TRI_ERROR_INTERNAL).errorMessage())
+                .append("'");
+      }
       LOG_TOPIC("4f34d", ERR, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard - "
           << collection << ": " << addendum;
@@ -926,7 +935,7 @@ bool SynchronizeShard::first() {
                             leader, lastTick, builder);
       if (!tickResult.ok()) {
         LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << syncRes.errorMessage();
-        _result.reset(tickResult.result());
+        _result.reset(std::move(tickResult).result());
         return false;
       }
       lastTick = tickResult.get();

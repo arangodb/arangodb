@@ -38,6 +38,7 @@ struct ResourceUsage {
   constexpr ResourceUsage() 
       : memoryUsage(0), 
         peakMemoryUsage(0) {}
+
   ResourceUsage(ResourceUsage const& other) = default;
 
   void clear() { 

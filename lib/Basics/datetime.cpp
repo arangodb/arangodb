@@ -607,7 +607,8 @@ int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
     }
     ++p;
   }
-  result = arangodb::NumberUtils::atoi_positive_unchecked<int>(dateTime.data(), p);
+  bool valid;
+  result = arangodb::NumberUtils::atoi_positive<int>(dateTime.data(), p, valid);
   return static_cast<int>(p - dateTime.data());
 }
 
@@ -805,7 +806,8 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
     }
   } 
 
-  // LOG_DEVEL << "year: " << result.year 
+  // LOG_TOPIC("51643", TRACE, Logger::FIXME)
+  //           << "year: " << result.year 
   //           << ", month: " << result.month 
   //           << ", day: " << result.day 
   //           << ", hour: " << result.hour 

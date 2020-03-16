@@ -78,7 +78,7 @@ class IRESEARCH_API by_range : public filter {
     return *this;
   }
 
-  const std::string& field() const { 
+  const std::string& field() const noexcept {
     return fld_; 
   }
 
@@ -130,7 +130,7 @@ class IRESEARCH_API by_range : public filter {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
-  by_range& scored_terms_limit(size_t limit) {
+  by_range& scored_terms_limit(size_t limit) noexcept {
     scored_terms_limit_ = limit;
     return *this;
   }
@@ -138,7 +138,7 @@ class IRESEARCH_API by_range : public filter {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
-  size_t scored_terms_limit() const {
+  size_t scored_terms_limit() const noexcept {
     return scored_terms_limit_;
   }
 

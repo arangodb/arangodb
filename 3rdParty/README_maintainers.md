@@ -116,6 +116,8 @@ http://s2geometry.io/
 Compression library
 https://github.com/google/snappy
 
+We change the target `snappy` to `snapy-dyn` so cmake doesn't interfere targets with the static library (that we need)
+
 ## snowball
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.
@@ -174,6 +176,16 @@ the _Execute_ button.
 Note that to account for changes introduced by new versions of swagger-ui,
 the stylistic CSS changes may need to be adjusted manually even when
 applied correctly.
+
+## taocpp::json
+
+Json Parser library
+Contains TaoCpp PEGTL - PEG Parsing library
+
+Upstream is: https://github.com/taocpp/json
+
+- On upgrade do not add unnecessary files (e.g. src, tests, contrib)
+  and update the commit hash in `./taocpp-json.version`.
 
 ## V8
 

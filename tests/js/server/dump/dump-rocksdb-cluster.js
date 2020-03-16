@@ -43,19 +43,6 @@ function dumpTestSuite () {
   'use strict';
 
   return {
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test db properties
@@ -815,7 +802,22 @@ function dumpTestEnterpriseSuite () {
       assertEqual(props.cleanupIntervalStep, 456);
       assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
       assertEqual(props.consolidationPolicy.type, "bytes_accum");
-    }
+    },
+
+    testJobsAndQueues : function() {
+      assertEqual("test", db._jobs.document("test")._key);
+      assertEqual("test", db._queues.document("test")._key);
+    },
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test whether the test collection has been restored
+////////////////////////////////////////////////////////////////////////////////
+    testSmartGraphAttribute : function () {
+      assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray().length, 1);
+      let doc = db.UnitTestRestoreSmartGraphRegressionVertices.toArray()[0];
+      assertEqual(doc.cheesyness, "bread");
+      assertTrue(doc._key.startsWith("cheese:"));
+    },
   };
 }
 

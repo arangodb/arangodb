@@ -127,7 +127,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _replicationFactor = 0;
       _writeConcern = 0;
       _numberOfShards = 1;
-      _distributeShardsLike = "";
       _avoidServers.clear();
       isError = false;
       isASatellite = true;
@@ -451,7 +450,7 @@ std::shared_ptr<std::vector<ShardID>> ShardingInfo::shardListAsShardID() const {
   for (auto const& mapElement : *_shardIds) {
     vector->emplace_back(mapElement.first);
   }
-  std::sort(vector->begin(), vector->end());
+  sortShardNamesNumerically(*vector);
   return vector;
 }
 
@@ -516,11 +515,16 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
 
     if (enforceReplicationFactor) {
       auto enforceSlice = slice.get("enforceReplicationFactor");
-      if (!enforceSlice.isBool() || enforceSlice.getBool()) { 
+      if (!enforceSlice.isBool() || enforceSlice.getBool()) {
         auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
         if (replicationFactorSlice.isNumber()) {
           int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
-          if (replicationFactorProbe <= 0) {
+          if (replicationFactorProbe == 0) {
+            // TODO: Which configuration for satellites are valid regarding minRepl and writeConcern
+            // valid for creating a satellite collection
+            return Result();
+          }
+          if (replicationFactorProbe < 0) {
             return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
           }
 
@@ -568,4 +572,15 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
   }
 
   return Result();
+}
+
+void ShardingInfo::sortShardNamesNumerically(std::vector<ShardID>& list) {
+  // We need to sort numerically, so s99 is before s100:
+  std::sort(list.begin(), list.end(), [](ShardID const& lhs, ShardID const& rhs) {
+    TRI_ASSERT(lhs.size() > 1 && lhs[0] == 's');
+    uint64_t l = basics::StringUtils::uint64(lhs.c_str() + 1, lhs.size() - 1);
+    TRI_ASSERT(rhs.size() > 1 && rhs[0] == 's');
+    uint64_t r = basics::StringUtils::uint64(rhs.c_str() + 1, rhs.size() - 1);
+    return l < r;
+  });
 }

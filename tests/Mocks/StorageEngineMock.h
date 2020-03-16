@@ -81,6 +81,8 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::transaction::Methods* trx) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(
       arangodb::transaction::Methods* trx) const override;
+  virtual std::unique_ptr<arangodb::ReplicationIterator> getReplicationIterator(
+      arangodb::ReplicationIterator::Ordering, uint64_t) override;
   virtual void getPropertiesVPack(arangodb::velocypack::Builder&) const override;
   virtual arangodb::Result insert(arangodb::transaction::Methods* trx,
                                   arangodb::velocypack::Slice const newSlice,
@@ -99,9 +101,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
   virtual arangodb::Result read(arangodb::transaction::Methods*,
                                 arangodb::velocypack::StringRef const& key,
-                                arangodb::ManagedDocumentResult& result, bool) override;
-  virtual arangodb::Result read(arangodb::transaction::Methods*,
-                                arangodb::velocypack::Slice const& key,
                                 arangodb::ManagedDocumentResult& result, bool) override;
   virtual bool readDocument(arangodb::transaction::Methods* trx,
                             arangodb::LocalDocumentId const& token,

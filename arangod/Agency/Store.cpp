@@ -35,6 +35,7 @@
 #include "Network/NetworkFeature.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
@@ -113,6 +114,15 @@ Store& Store::operator=(Store&& rhs) {
 
 /// Default dtor
 Store::~Store() = default;
+
+index_t Store::applyTransactions(std::vector<log_t> const& queries) {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+
+  for (auto const& query : queries) {
+    applies(Slice(query.entry->data()));
+  }
+  return queries.empty() ? 0 : queries.back().index;
+}
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
@@ -279,7 +289,8 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
               if (pos == std::string::npos || pos == 0) {
                 break;
               } else {
-                uri = uri.substr(0, pos);
+                // this is superior to  uri = uri.substr(0, pos);
+                uri.resize(pos);
               }
             }
           }
@@ -534,13 +545,59 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               break;
             }
           }
+        } else if (oper == "intersectionEmpty") {  // in
+          auto const nslice = node->slice();
+          if (!op.value.isArray()) { // right hand side must be array will
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
+          } else {
+            if (!found) {
+              continue;
+            }
+            if (nslice.isArray()) {
+              bool found_ = false;
+              std::unordered_set<
+                VPackSlice, arangodb::velocypack::NormalizedCompare::Hash,
+                arangodb::velocypack::NormalizedCompare::Equal> elems;
+              Slice shorter, longer;
+
+              if (nslice.length() <= op.value.length()) {
+                longer = op.value;
+                shorter = nslice;
+              } else {
+                shorter = nslice;
+                longer = op.value;
+              }
+
+              for (auto const i : VPackArrayIterator(shorter)) {
+                elems.emplace(i);
+              }
+              for (auto const i : VPackArrayIterator(longer)) {
+                if (elems.find(i) != elems.end()) {
+                  found_ = true;
+                  break;
+                }
+              }
+              if (!found_) {
+                continue;
+              }
+              ret.push_back(precond.key);
+              if (mode == FIRST_FAIL) {
+                break;
+              }
+            }
+          }
         } else {
-          // Objects without any of the above cases are not considered to
-          // be a precondition:
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
           LOG_TOPIC("44419", WARN, Logger::AGENCY)
-              << "Malformed object-type precondition was ignored: "
-              << "key: " << precond.key.toJson()
-              << " value: " << precond.value.toJson();
+            << "Malformed object-type precondition was failed: "
+            << "key: " << precond.key.toJson()
+            << " value: " << precond.value.toJson();
         }
       }
     } else {
@@ -991,4 +1048,12 @@ std::vector<std::string> Store::split(std::string const& str) {
   }
 
   return result;
+}
+
+/**
+ * @brief Unguarded pointer to a node path in this store.
+ *        Caller must enforce locking.
+ */
+Node const* Store::nodePtr(std::string const& path) const {
+  return &_node(path);
 }

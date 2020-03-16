@@ -24,6 +24,7 @@
 #define ARANGOD_GENERAL_SERVER_ASIOSOCKET_H 1
 
 #include "GeneralServer/IoContext.h"
+#include "GeneralServer/SslServerFeature.h"
 
 namespace arangodb {
 namespace rest {
@@ -87,8 +88,8 @@ struct AsioSocket<SocketType::Tcp> {
 
 template <>
 struct AsioSocket<SocketType::Ssl> {
-  AsioSocket(arangodb::rest::IoContext& ctx, asio_ns::ssl::context& sslContext)
-      : context(ctx), socket(ctx.io_context, sslContext), timer(ctx.io_context) {
+  AsioSocket(arangodb::rest::IoContext& ctx, SslServerFeature::SslContextList sslContexts)
+      : context(ctx), storedSslContexts(std::move(sslContexts)), socket(ctx.io_context, (*storedSslContexts)[0]), timer(ctx.io_context) {
     context.incClients();
   }
 
@@ -143,6 +144,7 @@ struct AsioSocket<SocketType::Ssl> {
   }
 
   arangodb::rest::IoContext& context;
+  SslServerFeature::SslContextList storedSslContexts;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::ip::tcp::acceptor::endpoint_type peer;
   asio_ns::steady_timer timer;

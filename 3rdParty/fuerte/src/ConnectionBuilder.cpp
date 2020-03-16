@@ -88,7 +88,7 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
   }
 
   // Start the connection implementation
-  result->startConnection();
+  result->start();
 
   return result;
 }
@@ -119,7 +119,7 @@ void parseSchema(std::string const& schema,
       conf._protocolType = ProtocolType::Vst;
     } else if (proto == "http") {
       conf._protocolType = ProtocolType::Http;
-    } else if (proto == "h2") {
+    } else if (proto == "h2" || proto == "http2") {
       conf._protocolType = ProtocolType::Http2;
     }
 
@@ -139,10 +139,10 @@ void parseSchema(std::string const& schema,
     } else if (proto == "unix") {
       conf._socketType = SocketType::Unix;
       conf._protocolType = ProtocolType::Http;
-    } else if (proto == "h2") {
+    } else if (proto == "h2" || proto == "http2") {
       conf._socketType = SocketType::Tcp;
       conf._protocolType = ProtocolType::Http2;
-    } else if (proto == "h2s") {
+    } else if (proto == "h2s" || proto == "https2") {
       conf._socketType = SocketType::Ssl;
       conf._protocolType = ProtocolType::Http2;
     }

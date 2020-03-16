@@ -55,7 +55,7 @@ struct IRESEARCH_API offset : attribute {
 };
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class offset 
+/// @class increment 
 /// @brief represents token increment in a stream 
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API increment : basic_attribute<uint32_t> {
@@ -173,6 +173,10 @@ class IRESEARCH_API position
   DECLARE_REFERENCE(position);
   DECLARE_TYPE_ID(attribute::type_id);
 
+  static irs::position* extract(const attribute_view& attrs) noexcept {
+    return attrs.get<irs::position>().get();
+  }
+
   const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
@@ -185,6 +189,8 @@ class IRESEARCH_API position
   value_t value() const noexcept {
     return value_;
   }
+
+  virtual void reset() = 0;
 
   virtual bool next() = 0;
 

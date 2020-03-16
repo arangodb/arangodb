@@ -44,6 +44,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   void start() override;
   void beginShutdown() override;
   void stop() override;
+  void unprepare() override;
 
   /// @brief global connection pool
   arangodb::network::ConnectionPool* pool() const;
@@ -53,9 +54,10 @@ class NetworkFeature final : public application_features::ApplicationFeature {
 #endif
 
  private:
-  uint32_t _numIOThreads;
+  std::string _protocol;
   uint64_t _maxOpenConnections;
   uint64_t _idleTtlMilli;
+  uint32_t _numIOThreads;
   bool _verifyHosts;
 
   std::mutex _workItemMutex;

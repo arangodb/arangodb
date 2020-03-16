@@ -24,6 +24,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "RestServer/AqlFeature.h"
@@ -82,6 +83,7 @@ Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
 }
 
 void AqlFunctionFeature::add(Function const& func) {
+  TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
   TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
   // add function to the map
   _functionNames.try_emplace(func.name, func);
@@ -217,7 +219,10 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
-
+  add({"LEVENSHTEIN_MATCH", ".,.,.|.", flags, &Functions::LevenshteinMatch});  // (attribute, target, max distance, [include transpositions])
+  add({"NGRAM_MATCH", ".,.|.,.", flags, &Functions::NgramMatch}); // (attribute, target, [threshold, analyzer]) OR (attribute, target, [analyzer])
+  add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity}); // (attribute, target, ngram size)
+  add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags, &Functions::NgramPositionalSimilarity}); // (attribute, target, ngram size)
   // special flags:
   add({"RANDOM_TOKEN", ".", Function::makeFlags(FF::CanRunOnDBServer),
        &Functions::RandomToken});  // not deterministic and not cacheable
@@ -266,6 +271,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"MINUS", ".,.|+", flags, &Functions::Minus});
   add({"OUTERSECTION", ".,.|+", flags, &Functions::Outersection});
   add({"INTERSECTION", ".,.|+", flags, &Functions::Intersection});
+  add({"JACCARD", ".,.", flags, &Functions::Jaccard});
   add({"FLATTEN", ".|.", flags, &Functions::Flatten});
   add({"LENGTH", ".", flags, &Functions::Length});
   // COUNT is an alias for LENGTH
@@ -308,6 +314,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REMOVE_VALUE", ".,.|.", flags, &Functions::RemoveValue});
   add({"REMOVE_VALUES", ".,.", flags, &Functions::RemoveValues});
   add({"REMOVE_NTH", ".,.", flags, &Functions::RemoveNth});
+  add({"REPLACE_NTH", ".,.,.|.", flags, &Functions::ReplaceNth});
 
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic

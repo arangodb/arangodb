@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+nn{
+    Version{"2.1.19.14"}
+    collations{
+        search{
+            Sequence{"[import nb-u-co-search]"}
+            Version{"35.1"}
+        }
+        standard{
+            Sequence{"[import nb-u-co-standard]"}
+            Version{"35.1"}
+        }
+    }
+}

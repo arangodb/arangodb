@@ -129,15 +129,25 @@ void AcceptorTcp<T>::close() {
     _asioSocket->timer.cancel();
   }
   if (_open) {
+    _open = false;  // make sure the _open flag is `false` before we
+                    // cancel/close the acceptor, since otherwise the
+                    // handleError method will restart async_accept.
     _acceptor.close();
     _asioSocket.reset();
   }
-  _open = false;
+}
+
+template<SocketType T>
+void AcceptorTcp<T>::cancel() {
+  _acceptor.cancel();
 }
 
 template <>
 void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
-  TRI_ASSERT(!_asioSocket);
+  // In most cases _asioSocket will be nullptr here, however, if
+  // the async_accept returns with an error, then an old _asioSocket
+  // is already set. Therefore, we do no longer assert here that
+  // _asioSocket is nullptr.
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
 
   _asioSocket.reset(new AsioSocket<SocketType::Tcp>(_server.selectIoContext()));
@@ -245,13 +255,16 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
 
 template <>
 void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
-  TRI_ASSERT(!_asioSocket);
+  // In most cases _asioSocket will be nullptr here, however, if
+  // the async_accept returns with an error, then an old _asioSocket
+  // is already set. Therefore, we do no longer assert here that
+  // _asioSocket is nullptr.
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::SSL);
 
   // select the io context for this socket
   auto& ctx = _server.selectIoContext();
 
-  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContext());
+  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto handler = [this](asio_ns::error_code const& ec) {
     if (ec) {
       handleError(ec);

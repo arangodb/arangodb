@@ -141,7 +141,7 @@ std::vector<std::shared_ptr<RocksDBRecoveryHelper>> RocksDBEngine::_recoveryHelp
 RocksDBFilePurgePreventer::RocksDBFilePurgePreventer(RocksDBEngine* engine)
     : _engine(engine) {
   TRI_ASSERT(_engine != nullptr);
-  _engine->_purgeLock.readLock();
+  _engine->_purgeLock.lockRead();
 }
 
 RocksDBFilePurgePreventer::~RocksDBFilePurgePreventer() {
@@ -160,7 +160,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBEngine* engine)
     : _engine(nullptr) {
   TRI_ASSERT(engine != nullptr);
 
-  if (engine->_purgeLock.tryWriteLock()) {
+  if (engine->_purgeLock.tryLockWrite()) {
     // we got the lock
     _engine = engine;
   }
@@ -304,7 +304,7 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "initial timeout after which unused WAL files deletion kicks in after "
       "server start",
       new DoubleParameter(&_pruneWaitTimeInitial),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
@@ -312,18 +312,18 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.create-sha-files",
                      "enable generation of sha256 files for each .sst file",
                      new BooleanParameter(&_createShaFiles),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Enterprise));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
       "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
       new UInt64Parameter(&_maxWalArchiveSizeLimit),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -396,6 +396,7 @@ void RocksDBEngine::start() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
 
+  bool createdEngineDir = false;
   if (!basics::FileUtils::isDirectory(_path)) {
     std::string systemErrorStr;
     long errorNo;
@@ -405,6 +406,7 @@ void RocksDBEngine::start() {
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("b2958", TRACE, arangodb::Logger::ENGINES)
           << "created RocksDB data directory '" << _path << "'";
+      createdEngineDir = true;
     } else {
       LOG_TOPIC("a5ae3", FATAL, arangodb::Logger::ENGINES)
           << "unable to create RocksDB data directory '" << _path
@@ -487,8 +489,9 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
 
 #ifdef USE_ENTERPRISE
-  configureEnterpriseRocksDBOptions(_options);
-  startEnterprise();
+  configureEnterpriseRocksDBOptions(_options, createdEngineDir);
+#else
+  ((void)createdEngineDir);
 #endif
 
   _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsHigh),
@@ -882,8 +885,8 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSl
   if (!info.hasKey("objectId")) {
     builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
   }
-  if (!info.hasKey("cacheEnabled") || !info.get("cacheEnabled").isBool()) {
-    builder.add("cacheEnabled", VPackValue(false));
+  if (!info.get(StaticStrings::CacheEnabled).isBool()) {
+    builder.add(StaticStrings::CacheEnabled, VPackValue(false));
   }
 }
 
