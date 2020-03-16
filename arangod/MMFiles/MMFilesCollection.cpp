@@ -1433,12 +1433,12 @@ std::vector<MMFilesCollection::DatafileDescription> MMFilesCollection::datafiles
     DatafileDescription entry = {datafile, datafile->_dataMin, datafile->_dataMax,
                                  datafile->_tickMax, isJournal};
     LOG_TOPIC("2e4d2", TRACE, arangodb::Logger::DATAFILES)
-        << "checking datafile " << datafile->fid().id() << " with data range "
+        << "checking datafile " << datafile->fid() << " with data range "
         << datafile->_dataMin << " - " << datafile->_dataMax
         << ", tick max: " << datafile->_tickMax;
 
     LOG_TOPIC("730fa", TRACE, arangodb::Logger::REPLICATION)
-        << "checking datafile " << datafile->fid().id() << " with data range "
+        << "checking datafile " << datafile->fid() << " with data range "
         << datafile->_dataMin << " - " << datafile->_dataMax
         << ", tick max: " << datafile->_tickMax;
 

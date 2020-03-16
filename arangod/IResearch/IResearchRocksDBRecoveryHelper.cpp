@@ -21,16 +21,34 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchRocksDBRecoveryHelper.h"
-#include "Basics/Common.h"
-#include "IResearchCommon.h"
-#include "IResearchLink.h"
-#include "IResearchLinkHelper.h"
-#include "IResearchRocksDBLink.h"
-#include "IResearchView.h"
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <rocksdb/db.h>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+#include "IResearch/IResearchRocksDBRecoveryHelper.h"
+
+#include "Basics/Exceptions.h"
+#include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchRocksDBLink.h"
 #include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -40,10 +58,13 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
+
+namespace arangodb::transaction {
+class Context;
+}
 
 namespace {
 

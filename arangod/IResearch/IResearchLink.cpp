@@ -379,13 +379,13 @@ void IResearchLink::afterTruncate() {
     _dataStore._reader = _dataStore._reader.reopen();
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
-        << "caught exception while truncating arangosearch link '" << id().id()
+        << "caught exception while truncating arangosearch link '" << id()
         << "': " << e.what();
     IR_LOG_EXCEPTION();
     throw;
   } catch (...) {
     LOG_TOPIC("79a7d", WARN, iresearch::TOPIC)
-        << "caught exception while truncating arangosearch link '" << id().id() << "'";
+        << "caught exception while truncating arangosearch link '" << id() << "'";
     IR_LOG_EXCEPTION();
     throw;
   }
@@ -438,21 +438,21 @@ void IResearchLink::batchInsert(
     catch (basics::Exception const& e) {
       LOG_TOPIC("72aa5", WARN, iresearch::TOPIC)
           << "caught exception while inserting batch into arangosearch link '"
-          << id().id() << "': " << e.code() << " " << e.what();
+          << id() << "': " << e.code() << " " << e.what();
       IR_LOG_EXCEPTION();
       queue->setStatus(e.code());
     }
     catch (std::exception const& e) {
       LOG_TOPIC("3cbae", WARN, iresearch::TOPIC)
           << "caught exception while inserting batch into arangosearch link '"
-          << id().id() << "': " << e.what();
+          << id() << "': " << e.what();
       IR_LOG_EXCEPTION();
       queue->setStatus(TRI_ERROR_INTERNAL);
     }
     catch (...) {
       LOG_TOPIC("3da8d", WARN, iresearch::TOPIC)
           << "caught exception while inserting batch into arangosearch link '"
-          << id().id() << "'";
+          << id() << "'";
       IR_LOG_EXCEPTION();
       queue->setStatus(TRI_ERROR_INTERNAL);
     }
@@ -487,7 +487,7 @@ void IResearchLink::batchInsert(
       LOG_TOPIC("7d258", WARN, iresearch::TOPIC)
           << "failed to lock arangosearch link while inserting a batch into "
              "arangosearch link '"
-          << id().id() << "', tid '" << state.id() << "'";
+          << id() << "', tid '" << state.id() << "'";
 
       // the current link is no longer valid (checked after ReadLock acquisition)
       queue->setStatus(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
@@ -507,7 +507,7 @@ void IResearchLink::batchInsert(
       LOG_TOPIC("61780", WARN, iresearch::TOPIC)
           << "failed to store state into a TransactionState for batch insert "
              "into arangosearch link '"
-          << id().id() << "', tid '" << state.id() << "'";
+          << id() << "', tid '" << state.id() << "'";
       queue->setStatus(TRI_ERROR_INTERNAL);
 
       return;
@@ -544,8 +544,8 @@ Result IResearchLink::cleanupUnsafe() {
   }
 
   LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
-      << "successful cleanup of arangosearch link '" << id().id()
-      << "', run id '" << size_t(&runId) << "'";
+      << "successful cleanup of arangosearch link '" << id() << "', run id '"
+      << size_t(&runId) << "'";
 
   return {};
 }
@@ -622,17 +622,15 @@ Result IResearchLink::commitUnsafe(bool wait) {
       // nothing more to do
       LOG_TOPIC("37bcf", WARN, iresearch::TOPIC)
           << "failed to update snapshot after commit, run id '" << size_t(&runId)
-          << "', reuse the existing snapshot for arangosearch link '"
-          << id().id() << "'";
+          << "', reuse the existing snapshot for arangosearch link '" << id() << "'";
 
       return {};
     }
 
     if (_dataStore._reader == reader) {
       LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
-          << "no changes registered for arangosearch link '" << id().id()
-          << "' got last operation tick '" << _lastCommittedTick
-          << "', run id '" << size_t(&runId) << "'";
+          << "no changes registered for arangosearch link '" << id() << "' got last operation tick '"
+          << _lastCommittedTick << "', run id '" << size_t(&runId) << "'";
 
       // no changes, can release the latest tick before commit
       subscription->tick(lastTickBeforeCommit);
@@ -650,8 +648,8 @@ Result IResearchLink::commitUnsafe(bool wait) {
     aql::QueryCache::instance()->invalidate(&(_collection.vocbase()), _viewGuid);
 
     LOG_TOPIC("7e328", TRACE, iresearch::TOPIC)
-        << "successful sync of arangosearch link '" << id().id()
-        << "', docs count '" << reader->docs_count() << "', live docs count '"
+        << "successful sync of arangosearch link '" << id() << "', docs count '"
+        << reader->docs_count() << "', live docs count '"
         << reader->live_docs_count() << "', last operation tick '"
         << _lastCommittedTick << "', run id '" << size_t(&runId) << "'";
   } catch (basics::Exception const& e) {
@@ -716,7 +714,7 @@ Result IResearchLink::consolidateUnsafe(
   }
 
   LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
-      << "successful consolidation of arangosearch link '" << id().id()
+      << "successful consolidation of arangosearch link '" << id()
       << "', run id '" << size_t(&runId) << "'";
 
   return {};
@@ -1094,9 +1092,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
 
       LOG_TOPIC("7e028", TRACE, iresearch::TOPIC)
           << "successfully opened existing data store data store reader for "
-             "link '" +
-                 std::to_string(id().id())
-          << "', docs count '" << _dataStore._reader->docs_count()
+          << "link '" << id() << "', docs count '" << _dataStore._reader->docs_count()
           << "', live docs count '" << _dataStore._reader->live_docs_count()
           << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
@@ -1161,7 +1157,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   }
 
   LOG_TOPIC("7e128", TRACE, iresearch::TOPIC)
-      << "data store reader for link '" + std::to_string(id().id())
+      << "data store reader for link '" << id()
       << "' is initialized with recovery tick '" << _dataStore._recoveryTick << "'";
 
   // reset data store meta, will be updated at runtime via properties(...)
@@ -1208,10 +1204,10 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
 
         if (dataStore._recoveryTick > link->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
-              << "arangosearch link '" << link->id().id() << "' is recovered at tick '"
+              << "arangosearch link '" << link->id() << "' is recovered at tick '"
               << dataStore._recoveryTick << "' less than storage engine tick '"
               << link->_engine->recoveryTick() << "', it seems WAL tail was lost and link '"
-              << link->id().id() << "' is out of sync with the underlying collection '"
+              << link->id() << "' is out of sync with the underlying collection '"
               << link->collection().name() << "', consider to re-create the link in order to synchronize them.";
         }
 
@@ -1219,12 +1215,12 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
         dataStore._inRecovery = link->_engine->inRecovery();
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
-            << "starting sync for arangosearch link '" << link->id().id() << "'";
+            << "starting sync for arangosearch link '" << link->id() << "'";
 
         auto res = link->commitUnsafe(true);
 
         LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
-            << "finished sync for arangosearch link '" << link->id().id() << "'";
+            << "finished sync for arangosearch link '" << link->id() << "'";
 
         // register flush subscription
         flushFeature.registerFlushSubscription(link->_flushSubscription);
@@ -1292,7 +1288,7 @@ void IResearchLink::setupMaintenance() {
 
       if (!res.ok()) {
         LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
-            << "error while committing arangosearch link '" << id().id()
+            << "error while committing arangosearch link '" << id()
             << "': " << res.errorNumber() << " " << res.errorMessage();
       } else if (state._cleanupIntervalStep // if enabled
                  && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
@@ -1301,7 +1297,7 @@ void IResearchLink::setupMaintenance() {
 
         if (!res.ok()) {
           LOG_TOPIC("130de", WARN, iresearch::TOPIC)
-              << "error while cleaning up arangosearch link '" << id().id()
+              << "error while cleaning up arangosearch link '" << id()
               << "': " << res.errorNumber() << " " << res.errorMessage();
         }
       }
@@ -1362,7 +1358,7 @@ void IResearchLink::setupMaintenance() {
 
       if (!res.ok()) {
         LOG_TOPIC("bce4f", WARN, iresearch::TOPIC)
-            << "error while consolidating arangosearch link '" << id().id()
+            << "error while consolidating arangosearch link '" << id()
             << "': " << res.errorNumber() << " " << res.errorMessage();
       } else if (state._cleanupIntervalStep // if enabled
                  && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
@@ -1371,7 +1367,7 @@ void IResearchLink::setupMaintenance() {
 
         if (!res.ok()) {
           LOG_TOPIC("31941", WARN, iresearch::TOPIC)
-              << "error while cleaning up arangosearch link '" << id().id()
+              << "error while cleaning up arangosearch link '" << id()
               << "': " << res.errorNumber() << " " << res.errorMessage();
         }
       }
@@ -1578,13 +1574,13 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
   } catch (std::exception const& e) {
     LOG_TOPIC("c50c8", ERR, iresearch::TOPIC)
         << "caught exception while modifying properties of arangosearch link '"
-        << id().id() << "': " << e.what();
+        << id() << "': " << e.what();
     IR_LOG_EXCEPTION();
     throw;
   } catch (...) {
     LOG_TOPIC("ad1eb", WARN, iresearch::TOPIC)
         << "caught exception while modifying properties of arangosearch link '"
-        << id().id() << "'";
+        << id() << "'";
     IR_LOG_EXCEPTION();
     throw;
   }
@@ -1692,7 +1688,7 @@ IResearchLink::Snapshot IResearchLink::snapshot() const {
     LOG_TOPIC("f42dc", WARN, iresearch::TOPIC)
         << "failed to lock arangosearch link while retrieving snapshot from "
            "arangosearch link '"
-        << id().id() << "'";
+        << id() << "'";
 
     return Snapshot();  // return an empty reader
   }

@@ -700,7 +700,7 @@ bool TRI_IterateDatafile(MMFilesDatafile* datafile,
 
   LOG_TOPIC("8ccdf", DEBUG, arangodb::Logger::DATAFILES)
       << "iterating over datafile '" << datafile->getName()
-      << "', fid: " << datafile->fid().id() << ", size: " << datafile->currentSize();
+      << "', fid: " << datafile->fid() << ", size: " << datafile->currentSize();
 
   char const* ptr = datafile->data();
   char const* end = ptr + datafile->currentSize();
@@ -746,7 +746,7 @@ Result TRI_IterateDatafile(MMFilesDatafile* datafile,
 
   LOG_TOPIC("32e89", DEBUG, arangodb::Logger::DATAFILES)
       << "iterating over datafile '" << datafile->getName()
-      << "', fid: " << datafile->fid().id() << ", size: " << datafile->currentSize();
+      << "', fid: " << datafile->fid() << ", size: " << datafile->currentSize();
 
   char const* ptr = datafile->data();
   char const* end = ptr + datafile->currentSize();
@@ -791,7 +791,7 @@ bool TRI_IterateDatafile(MMFilesDatafile* datafile,
                          std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb) {
   LOG_TOPIC("dab1d", DEBUG, arangodb::Logger::DATAFILES)
       << "iterating over datafile '" << datafile->getName()
-      << "', fid: " << datafile->fid().id() << ", size: " << datafile->currentSize();
+      << "', fid: " << datafile->fid() << ", size: " << datafile->currentSize();
 
   char const* ptr = datafile->data();
   char const* end = ptr + datafile->currentSize();

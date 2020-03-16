@@ -22,8 +22,8 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_LOCAL_DOCUMENT_ID_H
-#define ARANGOD_VOCBASE_LOCAL_DOCUMENT_ID_H 1
+#ifndef ARANGOD_VOCBASE_IDENTIFIERS_LOCAL_DOCUMENT_ID_H
+#define ARANGOD_VOCBASE_IDENTIFIERS_LOCAL_DOCUMENT_ID_H 1
 
 #include "Basics/Identifier.h"
 #include "VocBase/ticks.h"

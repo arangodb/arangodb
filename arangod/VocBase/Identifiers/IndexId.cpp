@@ -21,28 +21,16 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_SERVER_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_SERVER_ID_H 1
-
-#include "Basics/Identifier.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
-/// @brief server id type
-class ServerId : public arangodb::basics::Identifier {
- public:
-  constexpr ServerId() noexcept : Identifier() {}
-  constexpr explicit ServerId(BaseType id) noexcept : Identifier(id) {}
+bool IndexId::isNone() const {
+  return id() == std::numeric_limits<BaseType>::max();
+}
 
- public:
-  /// @brief create a not-set file id
-  static constexpr ServerId none() { return ServerId{0}; }
-};
+bool IndexId::isPrimary() const { return id() == 0; }
 
-static_assert(sizeof(ServerId) == sizeof(ServerId::BaseType),
-              "invalid size of ServerId");
+bool IndexId::isEdge() const { return id() == 1 || id() == 2; }
+
 }  // namespace arangodb
-
-DECLARE_HASH_FOR_IDENTIFIER(arangodb::ServerId)
-
-#endif

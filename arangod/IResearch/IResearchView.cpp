@@ -476,7 +476,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
       if (!link->properties(linkBuilder, Serialization::Inventory == context).ok()) { // link definitions are not output if forPersistence
         LOG_TOPIC("713ad", WARN, arangodb::iresearch::TOPIC)
-            << "failed to generate json for arangosearch link '" << link->id().id()
+            << "failed to generate json for arangosearch link '" << link->id()
             << "' while generating json for arangosearch view '" << name() << "'";
 
         return true; // skip invalid link definitions

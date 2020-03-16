@@ -22,7 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
+#include <string>
 
 #include "Basics/Identifier.h"
 
@@ -65,3 +65,7 @@ bool Identifier::operator>=(Identifier const& other) const {
 void Identifier::clear() { _id = 0; }
 
 }  // namespace arangodb::basics
+
+std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i) {
+  return s << std::to_string(i.id());
+}

@@ -39,6 +39,8 @@ class FileId : public arangodb::basics::Identifier {
   static constexpr FileId none() { return FileId{0}; }
 };
 
+static_assert(sizeof(FileId) == sizeof(FileId::BaseType),
+              "invalid size of FileId");
 }  // namespace arangodb
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::FileId)

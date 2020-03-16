@@ -24,26 +24,23 @@
 #ifndef ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H
 #define ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H 1
 
+#include <cstdint>
 #include <set>
 
-#include <velocypack/velocypack-aliases.h>
+#include <rocksdb/slice.h>
+#include <rocksdb/types.h>
 
+#include "Basics/Identifier.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
-class Result;
 class DatabaseFeature;
-class LogicalCollection;
 class RocksDBEngine;
 
 namespace iresearch {
-
-class IResearchLink;
 
 class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:

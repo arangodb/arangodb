@@ -420,14 +420,14 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
     int res = ex.code();
 
     LOG_TOPIC("9d55c", DEBUG, Logger::COLLECTOR)
-        << "collecting logfile " << logfile->id().id() << " failed: " << ex.what();
+        << "collecting logfile " << logfile->id() << " failed: " << ex.what();
 
     return res;
   } catch (...) {
     _logfileManager.forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
 
     LOG_TOPIC("56d6f", DEBUG, Logger::COLLECTOR)
-        << "collecting logfile " << logfile->id().id() << " failed";
+        << "collecting logfile " << logfile->id() << " failed";
 
     return TRI_ERROR_INTERNAL;
   }

@@ -794,7 +794,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     MMFilesDatafile* df = datafiles[i];
     if (df->state() == TRI_DF_STATE_OPEN_ERROR || df->state() == TRI_DF_STATE_WRITE_ERROR) {
       LOG_TOPIC("275f3", WARN, Logger::COMPACTOR)
-          << "cannot compact datafile " << df->fid().id() << " of collection '"
+          << "cannot compact datafile " << df->fid() << " of collection '"
           << collection->name() << "' because it has errors";
       physical->setCompactionStatus(ReasonCorrupted);
       return false;
@@ -811,7 +811,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
     if (dfi.numberUncollected > 0) {
       LOG_TOPIC("efb09", DEBUG, Logger::COMPACTOR)
-          << "cannot compact datafile " << df->fid().id() << " of collection '"
+          << "cannot compact datafile " << df->fid() << " of collection '"
           << collection->name() << "' because it still has uncollected entries";
       start = i + 1;
       break;
@@ -888,8 +888,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     TRI_ASSERT(reason != nullptr);
 
     LOG_TOPIC("d870a", DEBUG, Logger::COMPACTOR)
-        << "found datafile #" << i
-        << " eligible for compaction. fid: " << df->fid().id()
+        << "found datafile #" << i << " eligible for compaction. fid: " << df->fid()
         << ", size: " << df->maximalSize() << ", reason: " << reason
         << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive
         << ", numberDeletions: " << dfi.numberDeletions

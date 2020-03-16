@@ -27,6 +27,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <ostream>
 
 namespace arangodb::basics {
 
@@ -88,6 +89,8 @@ static_assert(sizeof(Identifier) == sizeof(Identifier::BaseType),
               "invalid size of Identifier");
 }  // namespace arangodb::basics
 
+std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i);
+
 #define DECLARE_HASH_FOR_IDENTIFIER(T)                        \
   namespace std {                                             \
   template <>                                                 \
@@ -97,6 +100,7 @@ static_assert(sizeof(Identifier) == sizeof(Identifier::BaseType),
     }                                                         \
   };                                                          \
   }  // namespace std
+DECLARE_HASH_FOR_IDENTIFIER(arangodb::basics::Identifier)
 
 #define DECLARE_EQUAL_FOR_IDENTIFIER(T)                                      \
   namespace std {                                                            \
@@ -105,5 +109,6 @@ static_assert(sizeof(Identifier) == sizeof(Identifier::BaseType),
     bool operator()(T const& lhs, T const& rhs) const { return lhs == rhs; } \
   };                                                                         \
   }  // namespace std
+DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::basics::Identifier)
 
 #endif

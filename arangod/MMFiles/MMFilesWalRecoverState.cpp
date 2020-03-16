@@ -933,7 +933,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (!ok) {
           LOG_TOPIC("3a1aa", WARN, arangodb::Logger::ENGINES)
-              << "cannot create index " << indexId.id() << ", collection "
+              << "cannot create index " << indexId << ", collection "
               << collectionId << " in database " << databaseId;
           ++state->errorCount;
 
@@ -945,7 +945,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             TRI_ASSERT(unused != nullptr);
           } catch (basics::Exception const&) {
             LOG_TOPIC("92fdf", WARN, arangodb::Logger::ENGINES)
-                << "cannot create index " << indexId.id() << ", collection "
+                << "cannot create index " << indexId << ", collection "
                 << collectionId << " in database " << databaseId;
             ++state->errorCount;
             return state->canContinue();
@@ -1266,7 +1266,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         LOG_TOPIC("bb61e", TRACE, arangodb::Logger::ENGINES)
             << "found drop index marker. databaseId: " << databaseId
-            << ", collectionId: " << collectionId << ", indexId: " << indexId.id();
+            << ", collectionId: " << collectionId << ", indexId: " << indexId;
 
         if (state->isDropped(databaseId, collectionId)) {
           return true;

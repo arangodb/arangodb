@@ -120,7 +120,7 @@ int ServerIdFeature::readId() {
   }
 
   LOG_TOPIC("281bf", TRACE, arangodb::Logger::FIXME)
-      << "using existing server id: " << foundId.id();
+      << "using existing server id: " << foundId;
 
   if (foundId.empty()) {
     return TRI_ERROR_INTERNAL;

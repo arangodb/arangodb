@@ -412,7 +412,7 @@ arangodb::Result modifyLinks( // modify links
                             // stale links lower)
           && state._linkDefinitionsOffset >= linkDefinitions.size()) {  // link removal request
         LOG_TOPIC("a58da", TRACE, arangodb::iresearch::TOPIC)
-            << "found link '" << state._link->id().id() << "' for collection '"
+            << "found link '" << state._link->id() << "' for collection '"
             << state._collection->name() << "' - slated for removal";
         auto cid = state._collection->id();
 
@@ -429,13 +429,13 @@ arangodb::Result modifyLinks( // modify links
       if (state._link  // links currently exists
           && state._linkDefinitionsOffset < linkDefinitions.size()) {  // link update request
         LOG_TOPIC("8419d", TRACE, arangodb::iresearch::TOPIC)
-            << "found link '" << state._link->id().id() << "' for collection '"
+            << "found link '" << state._link->id() << "' for collection '"
             << state._collection->name() << "' - slated for update";
         collectionsToUpdate.emplace(state._collection->id());
       }
 
       LOG_TOPIC_IF("e9a8c", TRACE, arangodb::iresearch::TOPIC, state._link)
-          << "found link '" << state._link->id().id() << "' for collection '"
+          << "found link '" << state._link->id() << "' for collection '"
           << state._collection->name() << "' - unsure what to do";
 
       LOG_TOPIC_IF("b01be", TRACE, arangodb::iresearch::TOPIC, !state._link)
@@ -461,7 +461,7 @@ arangodb::Result modifyLinks( // modify links
         itr = linkModifications.erase(itr);
         LOG_TOPIC("5c99e", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, came from stale list, for link '"
-            << state._link->id().id() << "'";
+            << state._link->id() << "'";
 
         continue;
       }
@@ -483,7 +483,7 @@ arangodb::Result modifyLinks( // modify links
         itr = linkModifications.erase(itr);
         LOG_TOPIC("1d095", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, remove+update, for link '"
-            << state._link->id().id() << "'";
+            << state._link->id() << "'";
 
         continue;
       }
@@ -497,7 +497,7 @@ arangodb::Result modifyLinks( // modify links
         itr = linkModifications.erase(itr);
         LOG_TOPIC("4c196", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, no change, for link '"
-            << state._link->id().id() << "'";
+            << state._link->id() << "'";
 
         continue;
       }

@@ -24,6 +24,8 @@
 #ifndef ARANGOD_VOCBASE_IDENTIFIERS_INDEX_ID_H
 #define ARANGOD_VOCBASE_IDENTIFIERS_INDEX_ID_H 1
 
+#include <limits>
+
 #include "Basics/Identifier.h"
 
 namespace arangodb {
@@ -34,9 +36,9 @@ class IndexId : public arangodb::basics::Identifier {
   constexpr explicit IndexId(BaseType id) noexcept : Identifier(id) {}
 
  public:
-  bool isNone() const { return id() == std::numeric_limits<BaseType>::max(); }
-  bool isPrimary() const { return id() == 0; }
-  bool isEdge() const { return id() == 1 || id() == 2; }
+  bool isNone() const;
+  bool isPrimary() const;
+  bool isEdge() const;
 
  public:
   /// @brief create an invalid index id
@@ -57,6 +59,8 @@ class IndexId : public arangodb::basics::Identifier {
   static constexpr IndexId edge() { return IndexId{1}; }
 };
 
+static_assert(sizeof(IndexId) == sizeof(IndexId::BaseType),
+              "invalid size of IndexId");
 }  // namespace arangodb
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::IndexId)

@@ -490,7 +490,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
 std::string Index::context() const {
   std::ostringstream result;
 
-  result << "index { id: " << id().id() << ", type: " << oldtypeName()
+  result << "index { id: " << id() << ", type: " << oldtypeName()
          << ", collection: " << _collection.vocbase().name() << "/"
          << _collection.name() << ", unique: " << (_unique ? "true" : "false")
          << ", fields: ";
