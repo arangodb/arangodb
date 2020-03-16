@@ -154,13 +154,12 @@ void EnvironmentFeature::prepare() {
   }
 
   // Report memory found:
-  uint64_t ram = PhysicalMemory::getValue();
   std::string overriddenmsg;
-  if (PhysicalMemory::overridden()) {
+  if (TRI_PhysicalMemoryOverridden) {
     overriddenmsg = " (overridden by environment variable)";
   }
   LOG_TOPIC("25362", INFO, Logger::MEMORY)
-  << "Available physical memory: " << ram << overriddenmsg;
+    << "Available physical memory: " << TRI_PhysicalMemory << overriddenmsg;
 
   // test local ipv6 support
   try {
