@@ -143,17 +143,12 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
 /// do not start threads in prepare
 void MaintenanceFeature::prepare() {}  // MaintenanceFeature::prepare
 
-void MaintenanceFeature::start() {
-  auto serverState = ServerState::instance();
-
-  // _forceActivation is set by the catch tests
-  if (!_forceActivation && (serverState->isAgent() || serverState->isSingleServer())) {
-    LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE)
-        << "Disable maintenance-threads"
-        << " for single-server or agents.";
+void MaintenanceFeature::initializeMetrics() {
+  if (_phase1_runtime_msec.has_value()) {
+    // Already initialized.
+    // This actually is only necessary because of tests
     return;
   }
-
   auto& metricsFeature = server().getFeature<arangodb::MetricsFeature>();
 
   _phase1_runtime_msec =
@@ -231,6 +226,20 @@ void MaintenanceFeature::start() {
         metricsFeature.counter({StaticStrings::MaintenanceActionFailureCounter, action_label},
                                0, "Failure counter for the action"));
   }
+}
+
+void MaintenanceFeature::start() {
+  auto serverState = ServerState::instance();
+
+  // _forceActivation is set by the catch tests
+  if (!_forceActivation && (serverState->isAgent() || serverState->isSingleServer())) {
+    LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE)
+        << "Disable maintenance-threads"
+        << " for single-server or agents.";
+    return;
+  }
+
+  initializeMetrics();
 
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
