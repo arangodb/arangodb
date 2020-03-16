@@ -45,9 +45,9 @@ Returns an object containing all collection properties.
   time.
 
 * *validation* (optional, default is *null*, **rocksdb-only**): 
-  Object that specifies the collection level document valiation. The keys
-  `rule`, `level` and `message` must follow the rules documented in
-  [Document Validation](document-validation.html)
+  Object that specifies the collection level document validation for documents.
+  The attribute keys `rule`, `level` and `message` must follow the rules
+  documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
 In a cluster setup, the result will also contain the following attributes:
 
