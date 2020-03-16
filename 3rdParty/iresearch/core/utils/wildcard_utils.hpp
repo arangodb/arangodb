@@ -28,11 +28,13 @@
 NS_ROOT
 
 enum class WildcardType {
-  INVALID  = 0, // invalid input sequence
-  TERM,         // foo
-  MATCH_ALL,    // *
-  PREFIX,       // foo*
-  WILDCARD      // f_o*
+  INVALID  = 0,   // invalid input sequence
+  TERM_ESCAPED,   // f\*o
+  TERM,           // foo
+  MATCH_ALL,      // *
+  PREFIX_ESCAPED, // fo\*
+  PREFIX,         // foo*
+  WILDCARD        // f_o*
 };
 
 IRESEARCH_API WildcardType wildcard_type(const bytes_ref& pattern) noexcept;

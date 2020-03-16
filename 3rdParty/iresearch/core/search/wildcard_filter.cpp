@@ -31,6 +31,27 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
+NS_LOCAL
+
+inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
+  out.reserve(in.size());
+
+  bool copy = true;
+  std::copy_if(in.begin(), in.end(), std::back_inserter(out),
+               [&copy](irs::byte_type c) {
+    if (c == irs::WildcardMatch::ESCAPE) {
+      copy = !copy;
+    } else {
+      copy = true;
+    }
+    return copy;
+  });
+
+  return out;
+}
+
+NS_END
+
 NS_ROOT
 
 DEFINE_FILTER_TYPE(by_wildcard)
@@ -41,17 +62,24 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     const order::prepared& order,
     boost_t boost,
     const string_ref& field,
-    const bstring& term,
+    bytes_ref term,
     size_t scored_terms_limit) {
+  bstring buf;
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
       return prepared::empty();
+    case WildcardType::TERM_ESCAPED:
+      term = unescape(term, buf);
+      [[fallthrough]];
     case WildcardType::TERM:
       return term_query::make(index, order, boost, field, term);
     case WildcardType::MATCH_ALL:
       return by_prefix::prepare(index, order, boost, field,
                                 bytes_ref::EMPTY, // empty prefix == match all
                                 scored_terms_limit);
+    case WildcardType::PREFIX_ESCAPED:
+      term = unescape(term, buf);
+      [[fallthrough]];
     case WildcardType::PREFIX: {
       assert(!term.empty());
       const auto* begin = term.c_str();
