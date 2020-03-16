@@ -1619,8 +1619,8 @@ namespace {
     auto const ngramSizeValue = ngramSize.toInt64();
 
     if (ADB_UNLIKELY(ngramSizeValue < 1)) {
-      arangodb::aql::registerWarning(ctx, AFN, 
-                                     arangodb::Result{TRI_ERROR_BAD_PARAMETER, 
+      arangodb::aql::registerWarning(ctx, AFN,
+                                     arangodb::Result{TRI_ERROR_BAD_PARAMETER,
                                                       "Invalid ngram size. Should be 1 or greater"});
       return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
     }
@@ -1628,7 +1628,7 @@ namespace {
     auto utf32Attribute = basics::StringUtils::characterCodes(attributeValue.c_str(), attributeValue.size());
     auto utf32Target = basics::StringUtils::characterCodes(targetValue.c_str(), targetValue.size());
 
-    auto const similarity = 
+    auto const similarity =
         irs::ngram_similarity<uint32_t, search_semantics>(
             utf32Target.data(), utf32Target.size(),
             utf32Attribute.data(), utf32Attribute.size(),
@@ -1637,14 +1637,14 @@ namespace {
   }
 }
 
-/// Executes NGRAM_SIMILARITY based on binary ngram similarity 
+/// Executes NGRAM_SIMILARITY based on binary ngram similarity
 AqlValue Functions::NgramSimilarity(ExpressionContext* ctx, transaction::Methods* trx,
                                VPackFunctionParameters const& args) {
   static char const* AFN = "NGRAM_SIMILARITY";
   return NgramSimilarityHelper<true>(AFN, ctx, trx, args);
 }
 
-/// Executes NGRAM_POSITIONAL_SIMILARITY based on positional ngram similarity 
+/// Executes NGRAM_POSITIONAL_SIMILARITY based on positional ngram similarity
 AqlValue Functions::NgramPositionalSimilarity(ExpressionContext* ctx, transaction::Methods* trx,
   VPackFunctionParameters const& args) {
   static char const* AFN = "NGRAM_POSITIONAL_SIMILARITY";
@@ -1659,9 +1659,9 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
   auto const argc = args.size();
 
   if (argc < 3) { // for const evaluation we need analyzer to be set explicitly (we can`t access filter context)
-                  // but we can`t set analyzer as mandatory in function AQL signature - this will break SEARCH 
+                  // but we can`t set analyzer as mandatory in function AQL signature - this will break SEARCH
     registerWarning(
-        ctx, AFN, 
+        ctx, AFN,
       arangodb::Result{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
                         "Minimum 3 arguments are expected."});
     return AqlValue(AqlValueHintNull());
@@ -1696,7 +1696,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
           ctx, AFN,
           arangodb::Result{TRI_ERROR_BAD_PARAMETER, "Threshold must be between 0 and 1" });
     }
-  } 
+  }
 
   auto const& analyzerArg = extractFunctionParameterValue(args, analyzerPosition);
   if (ADB_UNLIKELY(!analyzerArg.isString())) {
@@ -1756,7 +1756,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
       size_t s_ngram_idx = 1;
       for (; s_ngram_idx <= attrNgrams.size(); ++s_ngram_idx) {
         size_t curMatches = d +  (size_t)(attrNgrams[s_ngram_idx - 1] == targetNgram);
-        if (curMatches >= thresholdMatches ) {
+        if (curMatches >= thresholdMatches) {
           return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintBool{true} };
         }
         auto tmp = cache[s_ngram_idx];
