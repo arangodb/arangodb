@@ -258,15 +258,11 @@ struct OptimizerRule {
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
-    distributeFilternCalcToClusterRule,
+    distributeFilterCalcToClusterRule,
 
     // move SortNodes into the distribution.
     // adjust gathernode to also contain the sort criteria.
     distributeSortToClusterRule,
-
-    // try to get rid of a RemoteNode->ScatterNode combination which has
-    // only a SingletonNode and possibly some CalculationNodes as dependencies
-    removeUnnecessaryRemoteScatterRule,
 
 #ifdef USE_ENTERPRISE
     // move traversal on satellite graph to db server and add scatter / gather / remote
@@ -277,6 +273,10 @@ struct OptimizerRule {
     // the work twice otherwise
     removeSatelliteJoinsRule,
 #endif
+
+    // try to get rid of a RemoteNode->ScatterNode combination which has
+    // only a SingletonNode and possibly some CalculationNodes as dependencies
+    removeUnnecessaryRemoteScatterRule,
 
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule,
