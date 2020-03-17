@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix premature access to temporary path before a user-specified path was
+  read from the config options.
+
 * Rebuild UI and update swagger.
 
 * Added ability to store values in ArangoSearch views.
