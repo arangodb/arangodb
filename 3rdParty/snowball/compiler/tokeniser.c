@@ -193,6 +193,7 @@ static int read_literal_string(struct tokeniser * t, int c) {
                             }
                             SIZE(t->b) += put_utf8(codepoint, t->b + SIZE(t->b));
                         } else {
+                            symbol sym;
                             if (t->encoding == ENC_SINGLEBYTE) {
                                 /* Only ISO-8859-1 is handled this way - for
                                  * other single-byte character sets you need
@@ -209,7 +210,7 @@ static int read_literal_string(struct tokeniser * t, int c) {
                                     error1(t, "character values exceed 64K");
                                 }
                             }
-                            symbol sym = codepoint;
+                            sym = codepoint;
                             t->b = add_to_b(t->b, 1, &sym);
                         }
                     } else

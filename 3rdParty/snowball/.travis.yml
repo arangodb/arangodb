@@ -4,10 +4,10 @@ matrix:
   include:
     - language: c
       compiler: gcc
-      env: c_tests=y cc_append=' -std=c90 -Werror'
+      env: c_tests=y cc_append=' -std=c90 -Wdeclaration-after-statement -Werror'
     - language: c
       compiler: clang
-      env: c_tests=y cc_append=' -std=c90 -Werror'
+      env: c_tests=y cc_append=' -std=c90 -Wdeclaration-after-statement -Werror'
     - language: java
       env: JAVA=java JAVAC=javac
     - language: go

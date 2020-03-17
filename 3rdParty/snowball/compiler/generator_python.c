@@ -332,8 +332,8 @@ static void generate_or(struct generator * g, struct node * p) {
         exit(1);
     }
     while (p->right != 0) {
-        g->failure_label = new_label(g);
-        int label = g->failure_label;
+        int label = new_label(g);
+        g->failure_label = label;
         wsetlab_begin(g);
         generate(g, p);
         if (!g->unreachable) {
@@ -375,15 +375,14 @@ static void generate_not(struct generator * g, struct node * p) {
 
     int a0 = g->failure_label;
     struct str * a1 = str_copy(g->failure_str);
+    int label = new_label(g);
+    g->failure_label = label;
+    str_clear(g->failure_str);
 
     write_comment(g, p);
     if (keep_c) {
         write_savecursor(g, p, savevar);
     }
-
-    g->failure_label = new_label(g);
-    int label = g->failure_label;
-    str_clear(g->failure_str);
 
     wsetlab_begin(g);
 
@@ -407,14 +406,14 @@ static void generate_try(struct generator * g, struct node * p) {
 
     struct str * savevar = vars_newname(g);
     int keep_c = K_needed(g, p->left);
+    int label = new_label(g);
+    g->failure_label = label;
 
     write_comment(g, p);
-    if (keep_c) write_savecursor(g, p, savevar);
-
-    g->failure_label = new_label(g);
-    int label = g->failure_label;
-
-    if (keep_c) restore_string(p, g->failure_str, savevar);
+    if (keep_c) {
+        write_savecursor(g, p, savevar);
+        restore_string(p, g->failure_str, savevar);
+    }
 
     wsetlab_begin(g);
     generate(g, p->left);
@@ -481,8 +480,8 @@ static void generate_do(struct generator * g, struct node * p) {
         g->V[0] = p->left->name;
         w(g, "~M~V0()~N");
     } else {
-        g->failure_label = new_label(g);
-        int label = g->failure_label;
+        int label = new_label(g);
+        g->failure_label = label;
         str_clear(g->failure_str);
 
         wsetlab_begin(g);
@@ -515,6 +514,15 @@ static void generate_GO_grouping(struct generator * g, struct node * p, int is_g
 }
 
 static void generate_GO(struct generator * g, struct node * p, int style) {
+    int end_unreachable;
+    struct str * savevar;
+    int keep_c;
+
+    int a0;
+    struct str * a1;
+
+    int golab;
+    int label;
 
     if (p->left->type == c_grouping || p->left->type == c_non) {
         /* Special case for "goto" or "gopast" when used on a grouping or an
@@ -528,21 +536,21 @@ static void generate_GO(struct generator * g, struct node * p, int style) {
         return;
     }
 
-    int end_unreachable = false;
-    struct str * savevar = vars_newname(g);
-    int keep_c = style == 1 || repeat_restore(g, p->left);
+    end_unreachable = false;
+    savevar = vars_newname(g);
+    keep_c = style == 1 || repeat_restore(g, p->left);
 
-    int a0 = g->failure_label;
-    struct str * a1 = str_copy(g->failure_str);
+    a0 = g->failure_label;
+    a1 = str_copy(g->failure_str);
 
-    int golab = new_label(g);
+    golab = new_label(g);
     write_comment(g, p);
     w(g, "~Mtry:~N~+"
              "~Mwhile True:~N~+");
     if (keep_c) write_savecursor(g, p, savevar);
 
-    g->failure_label = new_label(g);
-    int label = g->failure_label;
+    label = new_label(g);
+    g->failure_label = label;
     wsetlab_begin(g);
     generate(g, p->left);
 
@@ -595,11 +603,11 @@ static void generate_repeat_or_atleast(struct generator * g, struct node * p, st
 
     struct str * savevar = vars_newname(g);
     int keep_c = repeat_restore(g, p->left);
+    int label = new_label(g);
+    g->failure_label = label;
     writef(g, "~Mwhile True:~N~+", p);
     if (keep_c) write_savecursor(g, p, savevar);
 
-    g->failure_label = new_label(g);
-    int label = g->failure_label;
     str_clear(g->failure_str);
     wsetlab_begin(g);
     generate(g, p->left);

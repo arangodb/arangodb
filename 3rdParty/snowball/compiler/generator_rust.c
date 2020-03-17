@@ -338,8 +338,8 @@ static void generate_or(struct generator * g, struct node * p) {
         exit(1);
     }
     while (p->right != 0) {
-        g->failure_label = new_label(g);
-        int label = g->failure_label;
+        int label = new_label(g);
+        g->failure_label = label;
         wsetlab_begin(g, label);
         generate(g, p);
         if (!g->unreachable) {
@@ -381,14 +381,14 @@ static void generate_not(struct generator * g, struct node * p) {
 
     int a0 = g->failure_label;
     struct str * a1 = str_copy(g->failure_str);
+    int label = new_label(g);
+    g->failure_label = label;
 
     write_comment(g, p);
     if (keep_c) {
         write_savecursor(g, p, savevar);
     }
 
-    g->failure_label = new_label(g);
-    int label = g->failure_label;
     str_clear(g->failure_str);
 
     wsetlab_begin(g, label);
@@ -413,14 +413,14 @@ static void generate_try(struct generator * g, struct node * p) {
 
     struct str * savevar = vars_newname(g);
     int keep_c = K_needed(g, p->left);
+    int label = new_label(g);
+    g->failure_label = label;
 
     write_comment(g, p);
-    if (keep_c) write_savecursor(g, p, savevar);
-
-    g->failure_label = new_label(g);
-    int label = g->failure_label;
-
-    if (keep_c) restore_string(p, g->failure_str, savevar);
+    if (keep_c) {
+        write_savecursor(g, p, savevar);
+        restore_string(p, g->failure_str, savevar);
+    }
     wsetlab_begin(g, label);
     generate(g, p->left);
     wsetlab_end(g, label);
@@ -486,8 +486,8 @@ static void generate_do(struct generator * g, struct node * p) {
         g->V[0] = p->left->name;
         w(g, "~M~W0(env, context);~N");
     } else {
-        g->failure_label = new_label(g);
-        int label = g->failure_label;
+        int label = new_label(g);
+        g->failure_label = label;
         str_clear(g->failure_str);
 
         wsetlab_begin(g, label);

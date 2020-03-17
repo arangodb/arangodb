@@ -247,7 +247,7 @@ Behavioural changes to existing algorithms
 * Finish:
 
   + Adjust the Finnish algorithm not to mangle numbers.  This change also
-    means it tends to leave foreign words along.  Fixes #66.
+    means it tends to leave foreign words alone.  Fixes #66.
 
 * Danish:
 

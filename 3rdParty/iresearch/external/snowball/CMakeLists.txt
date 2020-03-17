@@ -182,9 +182,6 @@ SET(SNOWBALL_RUNTIME
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime/api.c
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime/utilities.c
 )
-#SET(LIBSTEMMER_SOURCES libstemmer/libstemmer.c)
-#SET(LIBSTEMMER_HEADERS include/libstemmer.h libstemmer/modules.h libstemmer/modules_utf8.h)
-#SET(LIBSTEMMER_EXTRA libstemmer/modules.txt libstemmer/libstemmer_c.in)
 
 SET(STEMWORDS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/examples/stemwords.c)
 SET(MODULES_H "modules.h")
