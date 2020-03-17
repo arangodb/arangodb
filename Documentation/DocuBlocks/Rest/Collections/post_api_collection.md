@@ -54,12 +54,17 @@ This option is meaningful for the MMFiles storage engine only.
 additional options for key generation. If specified, then *keyOptions*
 should be a JSON array containing the following attributes:
 
+@RESTBODYPARAM{validation,object,optional,post_api_collection_opts}
+Optional object that specifies the collection level schema validation for
+documents. The attribute keys `rule`, `level` and `message` must follow the
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
 *traditional*, *autoincrement*, *uuid* and *padded*.<br>
 The *traditional* key generator generates numerical keys in ascending order.
 The *autoincrement* key generator generates numerical keys in ascending order,
-the inital offset and the spacing can be configured
+the initial offset and the spacing can be configured
 The *padded* key generator generates keys of a fixed length (16 bytes) in
 ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
 engine, which will slightly benefit keys that are inserted in lexicographically

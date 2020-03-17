@@ -146,7 +146,6 @@ ServerStatistics& MetricsFeature::serverStatistics() {
 }
 
 Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key) {
-
   metrics_key mk(key);
   std::shared_ptr<Counter> metric = nullptr;
   std::string error;
