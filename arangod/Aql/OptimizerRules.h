@@ -172,7 +172,7 @@ void restrictToSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief move collect to the DB servers in cluster
 void collectInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
-void distributeFilternCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+void distributeFilterCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                         OptimizerRule const&);
 
 void distributeSortToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,

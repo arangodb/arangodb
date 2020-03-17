@@ -356,8 +356,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
   // distribute operations in cluster
-  registerRule("distribute-filtercalc-to-cluster", distributeFilternCalcToClusterRule,
-               OptimizerRule::distributeFilternCalcToClusterRule,
+  registerRule("distribute-filtercalc-to-cluster", distributeFilterCalcToClusterRule,
+               OptimizerRule::distributeFilterCalcToClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 

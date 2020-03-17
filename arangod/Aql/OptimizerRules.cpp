@@ -4365,7 +4365,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 /// this rule modifies the plan in place
 /// filters are moved as far up in the plan as possible to make result sets
 /// as small as possible as early as possible
-void arangodb::aql::distributeFilternCalcToClusterRule(Optimizer* opt,
+void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
                                                        std::unique_ptr<ExecutionPlan> plan,
                                                        OptimizerRule const& rule) {
   bool modified = false;
@@ -4643,7 +4643,7 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(Optimizer* opt,
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
   for (auto& n : nodes) {
-    // check if the remote node is preceeded by a scatter node and any number of
+    // check if the remote node is preceded by a scatter node and any number of
     // calculation and singleton nodes. if yes, remove remote and scatter
     if (!n->hasDependency()) {
       continue;
