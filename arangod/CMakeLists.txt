@@ -218,8 +218,14 @@ set(LIB_ARANGO_PREGEL_SOURCES
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
+  Aql/AqlCall.cpp
+  Aql/AqlCallSet.cpp
+  Aql/AqlCallStack.cpp
+  Aql/AqlExecuteResult.cpp
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
+  Aql/AqlItemBlockInputMatrix.cpp
+  Aql/AqlItemBlockInputRange.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
   Aql/AqlItemMatrix.cpp
@@ -294,12 +300,14 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/KShortestPathsNode.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
+  Aql/LimitStats.cpp
   Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorHelpers.cpp
   Aql/ModificationExecutorInfos.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
+  Aql/MultiAqlItemBlockInputRange.cpp
   Aql/MultiDependencySingleRowFetcher.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
@@ -341,6 +349,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SimpleModifier.cpp
   Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
+  Aql/SkipResult.cpp
   Aql/SortCondition.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp
@@ -417,6 +426,7 @@ set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
 )
 
 set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
+  StorageEngine/ReplicationIterator.cpp
   StorageEngine/WalAccess.cpp
 )
 
@@ -850,6 +860,7 @@ target_link_libraries(arango_aql arango_network)
 
 target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache boost_system)
+target_link_libraries(arango_cache arango::validation)
 
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
@@ -866,6 +877,7 @@ target_link_libraries(arango_graph boost_boost)
 
 target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
+target_link_libraries(arango_indexes arango::validation)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
@@ -884,6 +896,7 @@ target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)
 target_link_libraries(arango_network llhttp)
 target_link_libraries(arango_network nghttp2)
+target_link_libraries(arango_network arango::validation)
 
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
@@ -899,6 +912,8 @@ target_link_libraries(arango_rocksdb arango_geo)
 target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
+target_link_libraries(arango_rocksdb arango::validation)
+target_link_libraries(arango_storage_engine_common arango::validation)
 
 if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
@@ -911,19 +926,24 @@ target_link_libraries(arango_storage_engine arango_cluster_engine)
 target_link_libraries(arango_storage_engine arango_cluster_methods)
 target_link_libraries(arango_storage_engine arango_mmfiles)
 target_link_libraries(arango_storage_engine arango_rocksdb)
+target_link_libraries(arango_storage_engine arango::validation)
 
 target_link_libraries(arango_utils boost_boost)
+target_link_libraries(arango_utils arango::validation)
 
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_iresearch)
 target_link_libraries(arango_v8server arango_replication)
-target_link_libraries(arango_v8server arango_v8 ${V8_LIBS})
+target_link_libraries(arango_v8server arango_v8)
+target_link_libraries(arango_v8server arango_v8_no_deadline)
+target_link_libraries(arango_v8server ${V8_LIBS})
 
 target_link_libraries(arango_vocbase arango_agency)
 target_link_libraries(arango_vocbase arango_cluster_methods)
 target_link_libraries(arango_vocbase arango_indexes)
 target_link_libraries(arango_vocbase arango_replication)
 target_link_libraries(arango_vocbase boost_system)
+target_link_libraries(arango_vocbase arango::validation)
 
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)

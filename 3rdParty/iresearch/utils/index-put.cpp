@@ -475,7 +475,10 @@ int put(
       while (!batch_provider.done_.load()) {
         {
           SCOPED_LOCK_NAMED(consolidation_mutex, lock);
-          consolidation_cv.wait(lock);
+          if (std::cv_status::timeout ==
+              consolidation_cv.wait_for(lock, std::chrono::seconds(5))) {
+            continue;
+          }
         }
 
         {

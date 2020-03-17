@@ -23,6 +23,8 @@
 #include "Basics/operating-system.h"
 
 #include "Basics/PhysicalMemory.h"
+#include "Basics/StringUtils.h"
+#include "Basics/files.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -90,10 +92,32 @@ uint64_t physicalMemoryImpl() {
 #endif
 #endif
 
-
 struct PhysicalMemoryCache {
-  PhysicalMemoryCache() : cachedValue(physicalMemoryImpl()) {}
-  uint64_t const cachedValue;
+  PhysicalMemoryCache() : cachedValue(physicalMemoryImpl()), overridden(false) {
+    std::string value;
+    if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY", value)) {
+      if (!value.empty()) {
+        uint64_t multiplier = 1;
+        if (value.back() == 'G' || value.back() == 'g') {
+          multiplier = 1024*1024*1024;
+          value.pop_back();
+        } else if (value.back() == 'M' || value.back() == 'm') {
+          multiplier = 1024 * 1024;
+          value.pop_back();
+        } else if (value.back() == 'K' || value.back() == 'k') {
+          multiplier = 1024;
+          value.pop_back();
+        }
+        uint64_t v = arangodb::basics::StringUtils::uint64(value) * multiplier;
+        if (v != 0) {
+          cachedValue = v;
+          overridden = true;
+        }
+      }
+    }
+  }
+  uint64_t cachedValue;
+  bool overridden;
 };
 
 PhysicalMemoryCache const cache;
@@ -103,4 +127,9 @@ PhysicalMemoryCache const cache;
 /// @brief return physical memory size from cache
 uint64_t arangodb::PhysicalMemory::getValue() {
   return ::cache.cachedValue;
+}
+
+/// @brief return if physical memory size was overridden
+bool arangodb::PhysicalMemory::overridden() {
+  return ::cache.overridden;
 }

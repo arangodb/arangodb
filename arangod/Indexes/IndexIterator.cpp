@@ -31,7 +31,7 @@ using namespace arangodb;
 
 IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods* trx)
     : _collection(collection), _trx(trx) {
-  // note: collection may be a nullptr here, if we are dealing with the EmptyIndexIterator
+  TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);
 }
 

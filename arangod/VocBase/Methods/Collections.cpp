@@ -46,6 +46,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
@@ -256,6 +257,9 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   TRI_ASSERT(!vocbase.isDangling());
   bool haveShardingFeature = ServerState::instance()->isCoordinator() &&
                              vocbase.server().hasFeature<ShardingFeature>();
+  bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
+  bool useRevs =
+      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB();
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
@@ -287,6 +291,15 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
+    if (addUseRevs) {
+      helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
+                 arangodb::velocypack::Value(useRevs));
+      bool isSmartChild =
+          Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
+      TRI_voc_rid_t minRev = isSmartChild ? 0 : TRI_HybridLogicalClock();
+      helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
+    }
+
     if (ServerState::instance()->isCoordinator()) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
@@ -303,9 +316,17 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+          auto const isSatellite =
+              Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
+                                   velocypack::StringRef{""}) == StaticStrings::Satellite;
           // force one shard, and force distributeShardsLike to be "_graphs"
           helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-          helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
+          if (!isSatellite) {
+            // satellite collections must not be sharded like a non-satellite
+            // collection.
+            helper.add(StaticStrings::DistributeShardsLike,
+                       VPackValue(vocbase.shardingPrototypeName()));
+          }
         } else if (vocbase.sharding() == "single" && numberOfShards <= 1) {
           auto distributeSlice = info.properties.get(StaticStrings::DistributeShardsLike);
           if (distributeSlice.isNone()) {

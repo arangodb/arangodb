@@ -47,6 +47,7 @@ class AqlItemMatrix;
 class ConstrainedLessThan;
 class ExecutorInfos;
 class InputAqlItemRow;
+class AqlItemBlockInputRange;
 class NoStats;
 class OutputAqlItemRow;
 class SortExecutorInfos;
@@ -70,14 +71,20 @@ class ConstrainedSortExecutor {
   ~ConstrainedSortExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
+  /**
+   * @brief skip the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   /**
    * @brief This Executor knows how many rows it will produce and most by itself
@@ -86,8 +93,8 @@ class ConstrainedSortExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  bool compareInput(size_t const& rosPos, InputAqlItemRow& row) const;
-  arangodb::Result pushRow(InputAqlItemRow& row);
+  bool compareInput(size_t const& rosPos, InputAqlItemRow const& row) const;
+  arangodb::Result pushRow(InputAqlItemRow const& row);
 
   // We're done producing when we've emitted all rows from our heap.
   bool doneProducing() const noexcept;
@@ -97,7 +104,7 @@ class ConstrainedSortExecutor {
   // sort as well. This is for fullCount queries only.
   bool doneSkipping() const noexcept;
 
-  ExecutionState consumeInput();
+  ExecutorState consumeInput(AqlItemBlockInputRange& inputRange);
 
  private:
   Infos& _infos;

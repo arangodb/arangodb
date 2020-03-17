@@ -18,22 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_TRANSACTION_H
 #define ARANGODB_CACHE_TRANSACTION_H
 
-#include "Basics/Common.h"
+#include <cstdint>
 
-#include <stdint.h>
 namespace arangodb {
 namespace cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Structure to maintain information about an individual transaction.
 struct Transaction {
-  uint64_t term;
+  std::uint64_t term;
   bool readOnly;
   bool sensitive;
 

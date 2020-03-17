@@ -96,7 +96,9 @@ class AsyncAgencyCommManager final {
     INSTANCE = std::make_unique<AsyncAgencyCommManager>(server);
   }
 
+
   static bool isEnabled() { return INSTANCE != nullptr; }
+  static AsyncAgencyCommManager& getInstance();
 
   explicit AsyncAgencyCommManager(application_features::ApplicationServer&);
 
@@ -223,9 +225,7 @@ class AsyncAgencyComm final {
                                               velocypack::Buffer<uint8_t>&& body) const;
 
  public:
-  AsyncAgencyComm() : _manager(*AsyncAgencyCommManager::INSTANCE) {}
-  explicit AsyncAgencyComm(AsyncAgencyCommManager* manager)
-      : _manager(*manager) {}
+  AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
       : _manager(manager) {}
 

@@ -40,12 +40,14 @@
 namespace arangodb {
 class Result;
 namespace aql {
+class AqlCallStack;
 class AqlItemBlock;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
 class QueryRegistry;
 class Query;
+class SkipResult;
 enum class SerializationFormat;
 
 class ExecutionEngine {
@@ -96,6 +98,12 @@ class ExecutionEngine {
   /// return waiting
   std::pair<ExecutionState, Result> shutdown(int errorCode);
 
+  auto execute(AqlCallStack const& stack)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
+  auto executeForClient(AqlCallStack const& stack, std::string const& clientId)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
   /// @brief getSome
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost);
 
@@ -117,6 +125,8 @@ class ExecutionEngine {
 
   /// @brief accessor to the memory recyler for AqlItemBlocks
   TEST_VIRTUAL AqlItemBlockManager& itemBlockManager();
+
+  auto getStats() const noexcept -> ExecutionStats const&;
 
  public:
   /// @brief execution statistics for the query

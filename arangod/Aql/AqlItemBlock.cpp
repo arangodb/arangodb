@@ -73,7 +73,7 @@ inline void CopyValueOver(std::unordered_set<AqlValue>& cache, AqlValue const& a
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
-    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0) {
+    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
   // check that the nrRegs value is somewhat sensible
   // this compare value is arbitrary, but having so many registers in a single
@@ -111,13 +111,14 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   VPackSlice data = slice.get("data");
   VPackSlice raw = slice.get("raw");
 
+  VPackArrayIterator rawIterator(raw);
+
   std::vector<AqlValue> madeHere;
-  madeHere.reserve(static_cast<size_t>(raw.length()));
+  madeHere.reserve(static_cast<size_t>(rawIterator.size()));
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
 
   VPackArrayIterator dataIterator(data);
-  VPackArrayIterator rawIterator(raw);
 
   auto storeSingleValue = [this](size_t row, RegisterId column, VPackArrayIterator& it,
                                  std::vector<AqlValue>& madeHere) {
@@ -302,7 +303,8 @@ void AqlItemBlock::destroy() noexcept {
       return;
     }
 
-    for (size_t i = 0; i < numEntries(); i++) {
+    size_t const n = numEntries();
+    for (size_t i = 0; i < n; i++) {
       auto& it = _data[i];
       if (it.requiresDestruction()) {
         auto it2 = _valueCount.find(it);
@@ -354,7 +356,8 @@ void AqlItemBlock::shrink(size_t nrItems) {
   // adjust the size of the block
   _nrItems = nrItems;
 
-  for (size_t i = numEntries(); i < _data.size(); ++i) {
+  size_t const n = numEntries();
+  for (size_t i = n; i < _data.size(); ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
       auto it = _valueCount.find(a);
@@ -448,20 +451,58 @@ void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear)
 SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to);
   TRI_ASSERT(to <= _nrItems);
+  return slice({{from, to}});
+}
+
+/**
+ * @brief Slice multiple ranges out of this AqlItemBlock.
+ *        This does a deep copy of all entries
+ *
+ * @param ranges list of ranges from(included) -> to(excluded)
+ *        Every range needs to be valid from[i] < to[i]
+ *        And every range needs to be within the block to[i] <= size()
+ *        The list is required to be ordered to[i] <= from[i+1]
+ *
+ * @return SharedAqlItemBlockPtr A block where all the slices are contained in the order of the list
+ */
+auto AqlItemBlock::slice(std::vector<std::pair<size_t, size_t>> const& ranges) const
+    -> SharedAqlItemBlockPtr {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Analyze correctness of ranges
+  TRI_ASSERT(!ranges.empty());
+  for (size_t i = 0; i < ranges.size(); ++i) {
+    auto const& [from, to] = ranges[i];
+    // Range is valid
+    TRI_ASSERT(from < to);
+    TRI_ASSERT(to <= _nrItems);
+    if (i > 0) {
+      // List is ordered
+      TRI_ASSERT(ranges[i - 1].second <= from);
+    }
+  }
+#endif
+  size_t numRows = 0;
+  for (auto const& [from, to] : ranges) {
+    numRows += to - from;
+  }
 
   std::unordered_set<AqlValue> cache;
-  cache.reserve((to - from) * _nrRegs / 4 + 1);
+  cache.reserve(numRows * _nrRegs / 4 + 1);
 
-  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
-
-  for (size_t row = from; row < to; row++) {
-    // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
-    for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue const& a(_data[getAddress(row, col)]);
-      ::CopyValueOver(cache, a, row - from, col, res);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(numRows, _nrRegs)};
+  size_t targetRow = 0;
+  for (auto const& [from, to] : ranges) {
+    for (size_t row = from; row < to; row++, targetRow++) {
+      // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
+      for (RegisterId col = 0; col < _nrRegs; col++) {
+        AqlValue const& a(_data[getAddress(row, col)]);
+        ::CopyValueOver(cache, a, targetRow, col, res);
+      }
+      res->copySubQueryDepthFromOtherBlock(targetRow, *this, row);
     }
-    res->copySubQueryDepthFromOtherBlock(row - from, *this, row);
   }
+
+  TRI_ASSERT(res->size() == numRows);
 
   return res;
 }
@@ -917,6 +958,21 @@ void AqlItemBlock::steal(AqlValue const& value) {
 RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
 
 size_t AqlItemBlock::size() const noexcept { return _nrItems; }
+
+std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
+  // NOTE:
+  // Right now we can only support a range of datarows, that ends
+  // In a range of ShadowRows.
+  // After a shadow row, we do NOT know how to continue with
+  // The next Executor.
+  // So we can hardcode to return 0 -> firstShadowRow || endOfBlock
+  if (hasShadowRows()) {
+    auto const& shadows = getShadowRowIndexes();
+    TRI_ASSERT(!shadows.empty());
+    return {0, *shadows.begin()};
+  }
+  return {0, size()};
+}
 
 size_t AqlItemBlock::numEntries() const { return internalNrRegs() * _nrItems; }
 

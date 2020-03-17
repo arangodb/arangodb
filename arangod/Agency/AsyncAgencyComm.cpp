@@ -534,6 +534,13 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(network::Timeout timeou
 }
 
 std::unique_ptr<AsyncAgencyCommManager> AsyncAgencyCommManager::INSTANCE = nullptr;
+AsyncAgencyCommManager& AsyncAgencyCommManager::getInstance() {
+  if (INSTANCE) {
+    return *INSTANCE;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_DISABLED, "Agency Comm Manager not initialized");
+}
 
 std::string AsyncAgencyCommManager::endpointsString() const {
   std::unique_lock<std::mutex> guard(_lock);

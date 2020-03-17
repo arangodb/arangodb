@@ -1048,6 +1048,12 @@ RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
 }
 
 RestStatus RestAdminClusterHandler::handleGetMaintenance() {
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
   auto maintenancePath =
       arangodb::cluster::paths::root()->arango()->supervision()->state()->mode();
 
@@ -1158,6 +1164,12 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
 }
 
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -1190,6 +1202,12 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
     return RestStatus::DONE;
   }
 
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
   switch (request()->requestType()) {
     case rest::RequestType::GET:
       return handleGetMaintenance();
@@ -1202,6 +1220,12 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
 }
 
 RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
 
   VPackBuffer<uint8_t> trx;
@@ -1259,6 +1283,12 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
 RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
     return RestStatus::DONE;
   }
 
@@ -1398,6 +1428,12 @@ RestStatus RestAdminClusterHandler::handleHealth() {
       !ServerState::instance()->isSingleServer()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on single server and coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
     return RestStatus::DONE;
   }
 

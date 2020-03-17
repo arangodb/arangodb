@@ -25,6 +25,7 @@
 #include "FollowerInfo.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -191,6 +192,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
       _canWrite = false;
     }
     // we are finished
+    _docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().getDroppedFollowerCounter()++;
     LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
         << "Removing follower " << sid << " from " << _docColl->name() << "succeeded";
     return agencyRes;

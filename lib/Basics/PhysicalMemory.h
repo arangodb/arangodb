@@ -30,6 +30,7 @@ namespace PhysicalMemory {
 
 /// @brief return system's physical memory
 uint64_t getValue();
+bool overridden();
 
 } 
 }  // namespace arangodb

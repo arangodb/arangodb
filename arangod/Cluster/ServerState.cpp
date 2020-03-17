@@ -495,10 +495,10 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
       return "Coordinator";
     case ROLE_SINGLE:
       return "Single";
-
-    case ROLE_UNDEFINED:
-    case ROLE_AGENT: {
-      TRI_ASSERT(false);
+    case ROLE_AGENT: 
+      return "Agent";
+    case ROLE_UNDEFINED: {
+      return "Undefined";
     }
   }
   return "INVALID_CLUSTER_ROLE";
@@ -741,6 +741,14 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
   LOG_TOPIC("309d7", FATAL, Logger::STARTUP)
       << "Couldn't register shortname for " << _id;
   return false;
+}
+
+std::string ServerState::getShortName() const {
+  std::stringstream ss;  // ShortName
+  auto num = getShortId();
+  size_t width = std::max(std::to_string(num + 1).size(), static_cast<size_t>(4));
+  ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0') << num + 1;
+  return ss.str();
 }
 
 bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersistedId) {

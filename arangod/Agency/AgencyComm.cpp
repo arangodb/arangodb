@@ -46,6 +46,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
@@ -53,6 +54,7 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
+#include "RestServer/MetricsFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -599,7 +601,9 @@ std::string AgencyCommHelper::generateStamp() {
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
-    : _server(server) {}
+    : _server(server),
+      _agency_comm_request_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram<log_scale_t<uint64_t>>(
+          StaticStrings::AgencyCommRequestTimeMs)) {}
 
 AgencyCommResult AgencyComm::sendServerState() {
   // construct JSON value { "status": "...", "time": "..." }
@@ -1200,6 +1204,15 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       }
     }
   }
+
+  std::string url;
+  auto started = std::chrono::steady_clock::now();
+
+  TRI_DEFER({
+    auto end = std::chrono::steady_clock::now();
+
+    _agency_comm_request_time_ms.count(std::chrono::duration_cast<std::chrono::milliseconds>(end - started).count());
+  });
 
   static std::string const writeURL{"/_api/agency/write"};
   bool isWriteTrans = (initialUrl == writeURL);

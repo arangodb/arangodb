@@ -62,9 +62,7 @@ class MockServer {
   void init();
 
   TRI_vocbase_t& getSystemDatabase() const;
-  std::string const testFilesystemPath() const {
-    return _testFilesystemPath;
-  }
+  std::string const testFilesystemPath() const { return _testFilesystemPath; }
 
   // add a feature to the underlying server, keep track of it;
   // all added features will be prepared in startFeatures(), and unprepared in
@@ -101,9 +99,7 @@ class MockServer {
   void stopFeatures();
 
  protected:
-
-  arangodb::application_features::ApplicationServer::State
-    _oldApplicationServerState;
+  arangodb::application_features::ApplicationServer::State _oldApplicationServerState;
   arangodb::application_features::ApplicationServer _server;
   StorageEngineMock _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
@@ -133,7 +129,7 @@ class MockAqlServer : public MockServer,
   ~MockAqlServer();
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
-  std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
+  std::unique_ptr<arangodb::aql::Query> createFakeQuery(bool activateTracing = false, std::string queryString = "") const;
 };
 
 class MockRestServer : public MockServer,

@@ -145,10 +145,8 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
                   "SORT CONCAT(a, e) LIMIT 10 RETURN d.obj.e.e1";
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
-        return obj.type === "SubqueryNode";
-      })[0].subquery.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].noMaterialization);
+      })[1].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([14, 4]);
