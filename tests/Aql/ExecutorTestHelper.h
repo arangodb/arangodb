@@ -90,8 +90,8 @@ class asserthelper {
       -> void;
 };
 
+// A wrapper to ensure correct order of deallocation of Execution Blocks
 using ExecBlock = std::unique_ptr<ExecutionBlock>;
-
 struct Pipeline {
   using PipelineStorage = std::deque<ExecBlock>;
 
@@ -137,16 +137,6 @@ struct Pipeline {
  private:
   PipelineStorage _pipeline;
 };
-
-inline auto concatPipelines(Pipeline&& bottom, Pipeline&& top) -> Pipeline {
-  if (!bottom.empty()) {
-    bottom.get().back()->addDependency(top.get().begin()->get());
-  }
-  bottom.get().insert(std::end(bottom.get()), std::make_move_iterator(top.get().begin()),
-                      std::make_move_iterator(top.get().end()));
-
-  return std::move(bottom);
-}
 
 template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
 struct ExecutorTestHelper {
