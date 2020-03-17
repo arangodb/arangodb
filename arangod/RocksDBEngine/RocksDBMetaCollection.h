@@ -58,7 +58,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override final { return 0; }
   uint64_t objectId() const { return _objectId; }
-  
+  uint64_t tempObjectId() const { return _tempObjectId; }
+
   RocksDBMetadata& meta() { return _meta; }
   
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override final;
@@ -110,6 +111,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
+  virtual Result updateProperties(VPackSlice const& slice, bool doSync) override;
+
  public:
   
   /// return bounds for all documents
@@ -127,7 +130,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
  protected:
   RocksDBMetadata _meta;     /// collection metadata
-  uint64_t const _objectId;  /// rocksdb-specific object id for collection
+  uint64_t _objectId;        /// rocksdb-specific object id for collection
+  uint64_t _tempObjectId;    /// rocksdb-specific object id for collection
   /// @brief collection lock used for write access
   mutable basics::ReadWriteLock _exclusiveLock;
 

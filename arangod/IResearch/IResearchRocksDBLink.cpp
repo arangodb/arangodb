@@ -67,7 +67,7 @@ void IResearchRocksDBLink::toVelocyPack( // generate definition
 
   builder.openObject();
 
-  if (!properties(builder, forPersistence).ok()) {
+  if (!IResearchLink::properties(builder, forPersistence).ok()) {
     THROW_ARANGO_EXCEPTION(arangodb::Result( // result
       TRI_ERROR_INTERNAL, // code
       std::string("failed to generate link definition for arangosearch view RocksDB link '") + std::to_string(arangodb::Index::id()) + "'"

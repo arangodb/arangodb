@@ -58,9 +58,10 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
                            std::string const& name,
                            std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                            bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
-                           uint64_t objectId, bool useCache)
+                           uint64_t objectId, uint64_t tempObjectId, bool useCache)
     : Index(id, collection, name, attributes, unique, sparse),
       _objectId(::ensureObjectId(objectId)),
+      _tempObjectId(tempObjectId),
       _cf(cf),
       _cache(nullptr),
       _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
@@ -79,7 +80,10 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
                            arangodb::velocypack::Slice const& info,
                            rocksdb::ColumnFamilyHandle* cf, bool useCache)
     : Index(id, collection, info),
-      _objectId(::ensureObjectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId")))),
+      _objectId(::ensureObjectId(
+          basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId))),
+      _tempObjectId(basics::VelocyPackHelper::getNumericValue<std::uint64_t>(info, StaticStrings::TempObjectId,
+                                                                             0)),
       _cf(cf),
       _cache(nullptr),
       _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
@@ -326,4 +330,48 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectI
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+}
+
+Result RocksDBIndex::properties(velocypack::Slice slice) {
+  Result res;
+
+  std::uint64_t plannedObjectId =
+      basics::VelocyPackHelper::getNumericValue<std::uint64_t>(slice, StaticStrings::ObjectId,
+                                                               _objectId);
+  std::uint64_t plannedTempObjectId =
+      basics::VelocyPackHelper::getNumericValue<std::uint64_t>(slice, StaticStrings::TempObjectId,
+                                                               0);
+
+  auto cleanup = [this](std::uint64_t id) -> Result {
+    try {
+      rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+      RocksDBKeyBounds bounds = getBounds(type(), id, unique());
+      return rocksutils::removeLargeRange(db, bounds, true, true);
+    } catch (arangodb::basics::Exception& ex) {
+      if (ex.code() == TRI_ERROR_NOT_IMPLEMENTED) {
+        return Result{};
+      }
+      throw ex;
+    }
+  };
+
+  if (plannedObjectId == _objectId && plannedTempObjectId != _tempObjectId) {
+    // just temp id has changed
+    std::uint64_t cleanupRange = (plannedTempObjectId == 0) ? _objectId : 0;
+    _tempObjectId = plannedTempObjectId;
+    if (cleanupRange != 0) {
+      res = cleanup(cleanupRange);
+    }
+  } else if (plannedTempObjectId != _tempObjectId) {
+    TRI_ASSERT(plannedObjectId != _objectId);
+    TRI_ASSERT(plannedObjectId != 0);
+    TRI_ASSERT(plannedObjectId = _tempObjectId);
+    // swapping in new range
+    std::uint64_t cleanupRange = _objectId;
+    _tempObjectId = plannedTempObjectId;
+    _objectId = plannedObjectId;
+    res = cleanup(cleanupRange);
+  }
+
+  return res;
 }

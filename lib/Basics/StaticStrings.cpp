@@ -237,14 +237,14 @@ std::string const StaticStrings::IndexBuckets("indexBuckets");
 std::string const StaticStrings::JournalSize("journalSize");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::MinRevision("minRevision");
-std::string const StaticStrings::ObjectId("_objectId");
+std::string const StaticStrings::ObjectId("objectId");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::Satellite("satellite");
 std::string const StaticStrings::ShardKeys("shardKeys");
 std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
-std::string const StaticStrings::TempObjectId("_tempObjectId");
+std::string const StaticStrings::TempObjectId("tempObjectId");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Validation("validation");

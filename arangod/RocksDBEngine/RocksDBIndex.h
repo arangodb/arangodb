@@ -63,6 +63,7 @@ class RocksDBIndex : public Index {
                     std::underlying_type<Index::Serialize>::type) const override;
 
   uint64_t objectId() const { return _objectId; }
+  uint64_t tempObjectId() const { return _tempObjectId; }
 
   /// @brief if true this index should not be shown externally
   virtual bool isHidden() const override {
@@ -123,11 +124,13 @@ class RocksDBIndex : public Index {
 
   bool isPersistent() const override final { return true; }
 
+  Result properties(velocypack::Slice);
+
  protected:
   RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
-               uint64_t objectId, bool useCache);
+               uint64_t objectId, uint64_t tempObjectId, bool useCache);
 
   RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
                arangodb::velocypack::Slice const& info,
@@ -141,6 +144,7 @@ class RocksDBIndex : public Index {
 
  protected:
   uint64_t _objectId;
+  uint64_t _tempObjectId;
   rocksdb::ColumnFamilyHandle* _cf;
 
   mutable std::shared_ptr<cache::Cache> _cache;

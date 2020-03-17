@@ -120,6 +120,8 @@ RocksDBCollection::~RocksDBCollection() {
 }
 
 Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync) {
+  RocksDBMetaCollection::updateProperties(slice, doSync);  // base first
+
   auto isSys = _logicalCollection.system();
 
   _cacheEnabled =
@@ -1312,6 +1314,7 @@ Result RocksDBCollection::upgrade() {
 
     methods::Collections::updateProperties(_logicalCollection, newProps.slice());
     // TODO read new properties from object and add accessor methods
+    // TODO write rest method to trigger upgrade
   }
 
   {
@@ -1337,6 +1340,8 @@ Result RocksDBCollection::upgrade() {
   // TODO remove data from old id spaces for collection, drop temp id
 
   // TODO remove data from old id spaces for indices, drop temp ids
+
+  // TODO write recovery method to trigger post-recovery cleanup if we failed
 
   return res;
 }

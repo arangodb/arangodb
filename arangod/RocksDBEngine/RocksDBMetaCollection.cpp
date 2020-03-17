@@ -20,7 +20,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "RocksDBMetaCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -45,6 +44,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -52,7 +52,9 @@ using namespace arangodb;
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
     : PhysicalCollection(collection, info),
-      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
+      _objectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId)),
+      _tempObjectId(basics::VelocyPackHelper::getNumericValue<std::uint64_t>(info, StaticStrings::TempObjectId,
+                                                                             0)),
       _revisionTreeApplied(0),
       _revisionTreeSerializedSeq(0),
       _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
@@ -77,6 +79,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              PhysicalCollection const* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId),
+      _tempObjectId(static_cast<RocksDBMetaCollection const*>(physical)->_tempObjectId),
       _revisionTreeApplied(0) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   rocksutils::globalRocksEngine()->addCollectionMapping(_objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
@@ -611,6 +614,63 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
     std::unique_lock<std::mutex> guard(_revisionBufferLock);
     _revisionTruncateBuffer.emplace(seq);
   });
+  return res;
+}
+
+Result RocksDBMetaCollection::updateProperties(velocypack::Slice const& slice, bool doSync) {
+  Result res;
+
+  std::uint64_t plannedObjectId =
+      basics::VelocyPackHelper::getNumericValue<std::uint64_t>(slice, StaticStrings::ObjectId,
+                                                               _objectId);
+  std::uint64_t plannedTempObjectId =
+      basics::VelocyPackHelper::getNumericValue<std::uint64_t>(slice, StaticStrings::TempObjectId,
+                                                               0);
+
+  velocypack::Slice indices = slice.get(StaticStrings::Indexes);
+  if (!indices.isArray()) {
+    res.reset(TRI_ERROR_BAD_PARAMETER, "missing or bad index properties");
+    return res;
+  }
+  for (velocypack::Slice index : velocypack::ArrayIterator(indices)) {
+    TRI_idx_iid_t iid{basics::VelocyPackHelper::stringUInt64(index, StaticStrings::IndexId)};
+    auto idx = lookupIndex(iid);
+    if (!idx) {
+      res.reset(TRI_ERROR_BAD_PARAMETER,
+                "invalid index id '" + std::to_string(iid) + "'");
+      return res;
+    }
+    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+    res = ridx->properties(index);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  auto cleanup = [](std::uint64_t id) -> Result {
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(id);
+    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    return rocksutils::removeLargeRange(db, bounds, true, true);
+  };
+
+  if (plannedObjectId == _objectId && plannedTempObjectId != _tempObjectId) {
+    // just temp id has changed
+    std::uint64_t cleanupRange = (plannedTempObjectId == 0) ? _objectId : 0;
+    _tempObjectId = plannedTempObjectId;
+    if (cleanupRange != 0) {
+      res = cleanup(cleanupRange);
+    }
+  } else if (plannedTempObjectId != _tempObjectId) {
+    TRI_ASSERT(plannedObjectId != _objectId);
+    TRI_ASSERT(plannedObjectId != 0);
+    TRI_ASSERT(plannedObjectId = _tempObjectId);
+    // swapping in new range
+    std::uint64_t cleanupRange = _objectId;
+    _tempObjectId = plannedTempObjectId;
+    _objectId = plannedObjectId;
+    res = cleanup(cleanupRange);
+  }
+
   return res;
 }
 
