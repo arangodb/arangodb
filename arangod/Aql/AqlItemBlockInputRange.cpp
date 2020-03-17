@@ -153,16 +153,12 @@ ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
     return ExecutorState::DONE;
   } else {
     static_assert(RowType::SHADOW == type);
-    // We Return HASMORE, if the next shadow row is NOT relevant.
-    // So we can directly fetch the next shadow row without informing
-    // the executor about an empty subquery.
-    if (isShadowRow) {
-      ShadowAqlItemRow nextRow{_block, testRowIndex};
-      if (!nextRow.isRelevant()) {
-        return ExecutorState::HASMORE;
-      }
-    }
-    return ExecutorState::DONE;
+    // We checked the case of index invalid above
+    // hence we have something now.
+    // On the ShadowRow state we only need to return DONE
+    // if there is absolutely nothing left.
+    // So We have something => Return HASMORE;
+    return ExecutorState::HASMORE;
   }
 }
 

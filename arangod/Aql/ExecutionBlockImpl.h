@@ -142,6 +142,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     UPSTREAM,
     // We are done with a subquery, we need to pass forward ShadowRows
     SHADOWROWS,
+    // We have passed the shadowRows and check if we can continue with the next subquery
+    NEXTSUBQUERY,
     // Locally done, ready to return, will set state to resetted
     DONE
   };
@@ -340,20 +342,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
                                                    SkipResult& skipResult) -> ExecState;
 
-  /**
-   * @brief Transition to the next state after shadowRows
-   *
-   * @param state the state returned by the getShadowRowCall
-   * @param range the current data range
-   * @return ExecState The next state
-   */
-  [[nodiscard]] auto nextStateAfterShadowRows(ExecutorState const& state,
-                                              DataRange const& range) const
-      noexcept -> ExecState;
-
   void initOnce();
 
   [[nodiscard]] auto executorNeedsCall(AqlCallType& call) const noexcept -> bool;
+
+  auto memorizeCall(AqlCall const& call) noexcept -> void;
+
+  [[nodiscard]] auto createUpstreamCall(AqlCall const& call) -> AqlCallList;
 
  private:
   /**
@@ -390,6 +385,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ExecState _execState;
 
   AqlCallType _upstreamRequest;
+
+  std::optional<AqlCallType> _defaultUpstreamRequest{std::nullopt};
+
+  bool _hasMemorizedCall{false};
 
   AqlCall _clientRequest;
 
