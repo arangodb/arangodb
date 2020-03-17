@@ -211,6 +211,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Convencience size of agency
   size_t size() const;
 
+  Supervision& supervision() { return _supervision; }
+  Supervision const& supervision() const { return _supervision; }
+
   /// @brief Rebuild DBs by applying state log to empty DB
   void rebuildDBs();
 

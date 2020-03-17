@@ -3,6 +3,18 @@ devel
 
 * Added satellite graphs.
 
+* Rebuild UI and update swagger.
+
+* Added ability to store values in ArangoSearch views.
+
+* Added LIKE operator/function support to SEARCH clause.
+
+* Added NGRAM_SIMILARITY and NGRAM_POSITIONAL_SIMILARITY functions for
+  calculating Ngram similarity.
+
+* Added ngram fuzzy search. Supported by NGRAM_MATCH filter function for SEARCH
+  clause.
+
 * Allow to override the detected total amount of memory via an environment
   variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
  

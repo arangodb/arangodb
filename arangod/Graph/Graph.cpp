@@ -193,8 +193,7 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
         "'orphanCollections' are not an array in the graph definition");
   }
   for (auto const& c : VPackArrayIterator(arr)) {
-    TRI_ASSERT(c.isString());
-    validateOrphanCollection(c);
+    THROW_ARANGO_EXCEPTION_IF_FAIL(validateOrphanCollection(c));
     addOrphanCollection(c.copyString());
   }
 }

@@ -2237,7 +2237,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
     };
   }
 
-  scoringLimit = 128; // FIXME make configurable
+  scoringLimit = FilterConstants::DefaultScoringTermsLimit;
 
   return {};
 }
@@ -2623,7 +2623,7 @@ arangodb::Result fromFuncNgramMatch(
     }
   }
 
-  double_t threshold = 0.7;
+  auto threshold = FilterConstants::DefaultNgramMatchThreshold;
   TRI_ASSERT(filterCtx.analyzer);
   auto analyzerPool = filterCtx.analyzer;
 
@@ -2769,7 +2769,7 @@ arangodb::Result fromFuncStartsWith(
     return rv;
   }
 
-  size_t scoringLimit = 128;  // FIXME make configurable
+  size_t scoringLimit = FilterConstants::DefaultScoringTermsLimit;
 
   if (argc > 2) {
     // 3rd (optional) argument defines a number of scored terms
@@ -2915,7 +2915,7 @@ arangodb::Result fromFuncLike(
     return res;
   }
 
-  const size_t scoringLimit = 128;  // FIXME make configurable
+  const auto scoringLimit = FilterConstants::DefaultScoringTermsLimit;
 
   if (filter) {
     std::string name;
