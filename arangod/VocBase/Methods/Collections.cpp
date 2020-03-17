@@ -899,6 +899,30 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   return futures::makeFuture(res);
 }
 
+futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
+                                             LogicalCollection const& coll) {
+  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
+  if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
+    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    auto cid = std::to_string(coll.id());
+    auto& feature = vocbase.server().getFeature<ClusterFeature>();
+    return upgradeOnCoordinator(feature, vocbase.name(), cid);
+  }
+
+  Result res;
+  PhysicalCollection* physical = coll.getPhysical();
+  if (!physical) {
+    res.reset(TRI_ERROR_INTERNAL, "collection not found");
+    return futures::makeFuture(res);
+  }
+  res = physical->upgrade();
+
+  return futures::makeFuture(res);
+}
+
 futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();

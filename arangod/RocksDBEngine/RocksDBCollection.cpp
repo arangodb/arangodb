@@ -1266,10 +1266,12 @@ Result RocksDBCollection::upgrade() {
     return res;
   }
 
+  return res;  // shortcut
+
+  velocypack::Builder newProps;
   {
     // update properties with new temporary object ids
     velocypack::Builder oldProps;
-    velocypack::Builder newProps;
     {
       methods::Collections::Context collectionContext(_logicalCollection.vocbase(),
                                                       _logicalCollection);
@@ -1313,7 +1315,6 @@ Result RocksDBCollection::upgrade() {
     }
 
     methods::Collections::updateProperties(_logicalCollection, newProps.slice());
-    // TODO read new properties from object and add accessor methods
     // TODO write rest method to trigger upgrade
   }
 
@@ -1335,6 +1336,8 @@ Result RocksDBCollection::upgrade() {
     // TODO iterate over index entries and copy into new id-space with revisions
 
     // TODO swap regular and temp ids for collection and indices and update version in properties atomically
+
+    // TODO make sure collection props are set right for revisions and replication
   }
 
   // TODO remove data from old id spaces for collection, drop temp id
@@ -1342,6 +1345,8 @@ Result RocksDBCollection::upgrade() {
   // TODO remove data from old id spaces for indices, drop temp ids
 
   // TODO write recovery method to trigger post-recovery cleanup if we failed
+
+  // TODO handle smart edge collections?
 
   return res;
 }

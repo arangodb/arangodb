@@ -990,6 +990,53 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
       .thenValue([](OperationResult&& opRes) -> Result { return opRes.result; });
 }
 
+futures::Future<Result> upgradeOnCoordinator(ClusterFeature& feature,
+                                             std::string const& dbname,
+                                             std::string const& cid) {
+  // Set a few variables needed for our work:
+  ClusterInfo& ci = feature.clusterInfo();
+
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  collinfo = ci.getCollectionNT(dbname, cid);
+  if (collinfo == nullptr) {
+    return futures::makeFuture(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+  }
+
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+
+  network::RequestOptions opts;
+  opts.database = dbname;
+  opts.timeout = network::Timeout(300.0);  // TODO make larger?
+
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(shards->size());
+
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+  for (auto const& p : *shards) {
+    // handler expects valid velocypack body (empty object minimum)
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(VPackSlice::emptyObjectSlice().begin(), 1);
+
+    auto future =
+        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
+                             "/_api/collection/" +
+                                 StringUtils::urlEncode(p.first) + "/upgrade",
+                             std::move(buffer), opts);
+    futures.emplace_back(std::move(future));
+  }
+
+  auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
+    return handleResponsesFromAllShards(results,
+                                        [](Result&, VPackBuilder&, ShardID&, VPackSlice) -> void {
+                                          // we don't care about response bodies, just that the requests succeeded
+                                        });
+  };
+  return futures::collectAll(std::move(futures))
+      .thenValue(std::move(cb))
+      .thenValue([](OperationResult&& opRes) -> Result { return opRes.result; });
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
