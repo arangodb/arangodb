@@ -110,9 +110,9 @@ auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
     // We will write one ShadowRow
     if (call.getLimit() > 0) {
       // We will write one DataRow
-      return 2;
+      return 2 * input.countDataRows();
     }
-    return 1;
+    return input.countDataRows();
   }
   // Nothing to create here.
   return 0;

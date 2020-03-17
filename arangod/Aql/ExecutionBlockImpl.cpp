@@ -1070,7 +1070,6 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
 
     // Non-Passthrough variant, we need to allocate the block ourselfs
     size_t blockSize = ExecutionBlock::DefaultBatchSize;
-#if false
     if constexpr (hasExpectedNumberOfRowsNew<Executor>::value) {
       blockSize = _executor.expectedNumberOfRowsNew(inputRange, call);
       // The executor cannot expect to produce more then the limit!
@@ -1084,7 +1083,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // We have an upper bound by DefaultBatchSize;
       blockSize = std::min(ExecutionBlock::DefaultBatchSize, blockSize);
     }
-#endif
+
     if (blockSize == 0) {
       // There is no data to be produced
       SharedAqlItemBlockPtr newBlock{nullptr};
