@@ -30,6 +30,9 @@
 'use strict';
 const db = require("@arangodb").db;
 const isEnterprise = require("internal").isEnterprise();
+const jsunity = require('jsunity');
+const _ = require('lodash');
+const {assertEqual, assertUndefined} = jsunity.jsUnity.assertions;
 
 /**
  * @brief Only if enterprise mode:
@@ -129,6 +132,89 @@ function setupSatelliteCollections() {
     vDocs.push({value: String(i)});
   }
   db[satelliteCollectionName].save(vDocs);
+}
+
+/**
+ * @brief Only if enterprise mode:
+ *        Creates a satellite graph
+ */
+function setupSatelliteGraphs() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const satelliteGraphName = "UnitTestDumpSatelliteGraph";
+  const satelliteVertexCollection1Name = "UnitTestDumpSatelliteVertexCollection1";
+  const satelliteVertexCollection2Name = "UnitTestDumpSatelliteVertexCollection2";
+  const satelliteOrphanCollectionName = "UnitTestDumpSatelliteOrphanCollection";
+  const satelliteEdgeCollection1Name = "UnitTestDumpSatelliteEdgeCollection1";
+  const satelliteEdgeCollection2Name = "UnitTestDumpSatelliteEdgeCollection2";
+
+  const satgm = require('@arangodb/satellite-graph.js');
+
+  // Add satelliteVertexCollection1Name first, so we can expect it to be
+  // distributeShardsLike leader
+  const satelliteGraph = satgm._create(satelliteGraphName, [], [satelliteVertexCollection1Name]);
+  satelliteGraph._extendEdgeDefinitions(satgm._relation(satelliteEdgeCollection1Name, satelliteVertexCollection1Name, satelliteVertexCollection2Name));
+  satelliteGraph._extendEdgeDefinitions(satgm._relation(satelliteEdgeCollection2Name, satelliteVertexCollection2Name, satelliteVertexCollection1Name));
+  satelliteGraph._addVertexCollection(satelliteOrphanCollectionName, true);
+
+  // Expect satelliteVertexCollection1Name to be the distributeShardsLike leader.
+  // This will be tested to be unchanged after restore, thus the assertion here.
+  assertUndefined(db[satelliteVertexCollection1Name].properties().distributeShardsLike);
+  assertEqual(satelliteVertexCollection1Name, db[satelliteVertexCollection2Name].properties().distributeShardsLike);
+  assertEqual(satelliteVertexCollection1Name, db[satelliteEdgeCollection1Name].properties().distributeShardsLike);
+  assertEqual(satelliteVertexCollection1Name, db[satelliteEdgeCollection2Name].properties().distributeShardsLike);
+  assertEqual(satelliteVertexCollection1Name, db[satelliteOrphanCollectionName].properties().distributeShardsLike);
+
+  // add a circle with 100 vertices over multiple collections.
+  // vertexCol1 will contain uneven vertices, vertexCol2 even vertices.
+  // edgeCol1 will contain edges (v1, v2), i.e. from uneven to even, and
+  // edgeCol2 the other way round.
+  // It also adds 100 vertices to the orphan collection.
+  db._query(`
+    FOR i IN 1..100
+      LET vertexKey = CONCAT("v", i)
+      LET unevenVertices = (
+        FILTER i % 2 == 1
+        INSERT { _key: vertexKey }
+          INTO @@vertexCol1
+      )
+      LET evenVertices = (
+        FILTER i % 2 == 0
+        INSERT { _key: vertexKey }
+          INTO @@vertexCol2
+      )
+      LET from = CONCAT(i % 2 == 1 ? @vertexCol1 : @vertexCol2, "/v", i)
+      LET to = CONCAT((i+1) % 2 == 1 ? @vertexCol1 : @vertexCol2, "/v", i % 100 + 1)
+      LET unevenEdges = (
+        FILTER i % 2 == 1
+        INSERT { _from: from, _to: to }
+          INTO @@edgeCol1
+      )
+      LET evenEdges = (
+        FILTER i % 2 == 0
+        INSERT { _from: from, _to: to }
+          INTO @@edgeCol2
+      )
+      INSERT { _key: CONCAT("w", i) }
+        INTO @@orphanCol
+  `, {
+    '@vertexCol1': satelliteVertexCollection1Name,
+    '@vertexCol2': satelliteVertexCollection2Name,
+    'vertexCol1': satelliteVertexCollection1Name,
+    'vertexCol2': satelliteVertexCollection2Name,
+    '@edgeCol1': satelliteEdgeCollection1Name,
+    '@edgeCol2': satelliteEdgeCollection2Name,
+    '@orphanCol': satelliteOrphanCollectionName,
+  });
+  const res = db._query(`
+    FOR v, e, p IN 100 OUTBOUND "UnitTestDumpSatelliteVertexCollection1/v1" GRAPH "UnitTestDumpSatelliteGraph"
+      RETURN p.vertices[*]._key
+  `);
+  // [ [ "v1", "v2", ..., "v99", "v100", "v1" ] ]
+  const expected = [_.range(0, 100+1).map(i => "v" + (i % 100 + 1))];
+  assertEqual(expected, res.toArray());
 }
 
 /**
@@ -338,6 +424,7 @@ function setupSmartGraphRegressionTest() {
   setupSmartGraph();
   setupSmartArangoSearch();
   setupSatelliteCollections();
+  setupSatelliteGraphs();
   setupSmartGraphRegressionTest();
 
   db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 2, numberOfShards: 7 });
