@@ -255,6 +255,18 @@ struct OptimizerRule {
     // make operations on sharded IResearch views use scatter / gather / remote
     scatterIResearchViewInClusterRule,
 
+#ifdef USE_ENTERPRISE
+    // move traversal on satellite graph to db server and add scatter / gather / remote
+    scatterSatelliteGraphRule,
+#endif
+
+#ifdef USE_ENTERPRISE
+    // remove any superfluous satellite collection joins...
+    // put it after Scatter rule because we would do
+    // the work twice otherwise
+    removeSatelliteJoinsRule,
+#endif
+
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
@@ -263,16 +275,6 @@ struct OptimizerRule {
     // move SortNodes into the distribution.
     // adjust gathernode to also contain the sort criteria.
     distributeSortToClusterRule,
-
-#ifdef USE_ENTERPRISE
-    // move traversal on satellite graph to db server and add scatter / gather / remote
-    scatterSatelliteGraphRule,
-
-    // remove any superflous satellite collection joins...
-    // put it after Scatter rule because we would do
-    // the work twice otherwise
-    removeSatelliteJoinsRule,
-#endif
 
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
