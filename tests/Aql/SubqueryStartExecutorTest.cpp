@@ -226,14 +226,14 @@ TEST_P(SubqueryStartExecutorTest, fullCount_in_subquery) {
 }
 
 TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
-  ExecutorTestHelper<1, 1> helper(*fakedQuery);
+  auto helper = ExecutorTestHelper<1, 1>();
+
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
   stack.pushCall(AqlCall{});
-  Pipeline pipe{};
-  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                 ExecutionNode::SUBQUERY_START))
-      .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                 ExecutionNode::SUBQUERY_START));
+
+  helper
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
 
   if (GetCompatMode() == CompatibilityMode::VERSION36) {
     // We will not get this infromation because the
@@ -243,8 +243,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
     helper.expectSkipped(0, 0, 0);
   }
 
-  helper.setPipeline(std::move(pipe))
-      .setInputValue({{R"("a")"}})
+  helper.setInputValue({{R"("a")"}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
       .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("a")"}}, {{1, 0}, {2, 1}})
@@ -253,14 +252,13 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
 }
 
 TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call) {
-  ExecutorTestHelper<1, 1> helper(*fakedQuery);
+  auto helper = ExecutorTestHelper<1, 1>();
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
   stack.pushCall(AqlCall{});
-  Pipeline pipe{};
-  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                 ExecutionNode::SUBQUERY_START))
-      .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                 ExecutionNode::SUBQUERY_START));
+
+  helper
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
 
   if (GetCompatMode() == CompatibilityMode::VERSION36) {
     // We will not get this infromation because the
@@ -270,8 +268,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call)
     helper.expectSkipped(0, 0, 0);
   }
 
-  helper.setPipeline(std::move(pipe))
-      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
+  helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::HASMORE)
       .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("a")"}}, {{1, 0}, {2, 1}})
@@ -280,14 +277,13 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call)
 }
 
 TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_requests) {
-  ExecutorTestHelper<1, 1> helper(*fakedQuery);
+  auto helper = ExecutorTestHelper<1, 1>();
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
   stack.pushCall(AqlCall{});
-  Pipeline pipe{};
-  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                 ExecutionNode::SUBQUERY_START))
-      .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                 ExecutionNode::SUBQUERY_START));
+
+  helper
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
   if (GetCompatMode() == CompatibilityMode::VERSION36) {
     // We will not get this infromation because the
     // query stack is too small on purpose
@@ -295,8 +291,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_request
   } else {
     helper.expectSkipped(0, 0, 0);
   }
-  helper.setPipeline(std::move(pipe))
-      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
+  helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
       .expectOutput(
@@ -317,14 +312,14 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
   {
     // First test: Validate that the shadowRow is not written
     // We only do a single call here
-    ExecutorTestHelper<1, 1> helper(*fakedQuery);
+    auto helper = ExecutorTestHelper<1, 1>();
+
     AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
     stack.pushCall(AqlCall{});
-    Pipeline pipe{};
-    pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                   ExecutionNode::SUBQUERY_START))
-        .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                   ExecutionNode::SUBQUERY_START));
+
+    helper
+        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
 
     if (GetCompatMode() == CompatibilityMode::VERSION36) {
       // We will not get this infromation because the
@@ -333,8 +328,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
     } else {
       helper.expectSkipped(0, 0, 0);
     }
-    helper.setPipeline(std::move(pipe))
-        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
+    helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
         .expectedStats(ExecutionStats{})
         .expectedState(ExecutionState::HASMORE)
         .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
@@ -344,14 +338,14 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
   {
     // Second test: Validate that the shadowRow is eventually written
     // Wedo call as many times as we need to.
-    ExecutorTestHelper<1, 1> helper(*fakedQuery);
+    auto helper = ExecutorTestHelper<1, 1>();
+
     AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
     stack.pushCall(AqlCall{});
-    Pipeline pipe{};
-    pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                   ExecutionNode::SUBQUERY_START))
-        .addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
-                                                                   ExecutionNode::SUBQUERY_START));
+
+    helper
+        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
 
     if (GetCompatMode() == CompatibilityMode::VERSION36) {
       // We will not get this infromation because the
@@ -361,8 +355,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
       helper.expectSkipped(0, 0, 0);
     }
 
-    helper.setPipeline(std::move(pipe))
-        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
+    helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
         .expectedStats(ExecutionStats{})
         .expectedState(ExecutionState::DONE)
         .expectOutput(

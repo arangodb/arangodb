@@ -135,28 +135,18 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
 // new framework tests
 using EnumerateListTestHelper = ExecutorTestHelper<1, 1>;
 using EnumerateListSplitType = EnumerateListTestHelper::SplitType;
+using EnumerateListParamType = std::tuple<EnumerateListSplitType>;
 
 class EnumerateListExecutorTestProduce
-    : public ::testing::TestWithParam<std::tuple<EnumerateListSplitType>> {
+    : public AqlExecutorTestCaseWithParam<EnumerateListParamType, false> {
  protected:
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-
-  mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
   EnumerateListExecutorInfos infos;
 
   SharedAqlItemBlockPtr block;
   NoStats stats;
 
   EnumerateListExecutorTestProduce()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        fakedQuery(server.createFakeQuery()),
-        infos(0, 1, 1, 2, {}, {0}) {
-    auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
-  }
+      : infos(0, 1, 1, 2, {}, {0}) {}
 
   auto makeInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1,
                  RegisterId nrInputRegister = 1, RegisterId nrOutputRegister = 2,
@@ -220,7 +210,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_1) {
 TEST_P(EnumerateListExecutorTestProduce, offset_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
+  ExecutorTestHelper<1,1>(*fakedQuery)
       .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
@@ -234,7 +224,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_1) {
 TEST_P(EnumerateListExecutorTestProduce, offset_2) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
+  ExecutorTestHelper<1,1>(*fakedQuery)
       .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
@@ -248,7 +238,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_2) {
 TEST_P(EnumerateListExecutorTestProduce, offset_3) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
+  ExecutorTestHelper<1,1>(*fakedQuery)
       .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
@@ -262,7 +252,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_3) {
 TEST_P(EnumerateListExecutorTestProduce, offset_4) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
+  ExecutorTestHelper<1,1>(*fakedQuery)
       .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
@@ -276,7 +266,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_4) {
 TEST_P(EnumerateListExecutorTestProduce, offset_5) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
+  ExecutorTestHelper<1,1>(*fakedQuery)
       .setExecBlock<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
