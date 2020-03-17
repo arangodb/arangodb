@@ -254,7 +254,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
   {
     AqlCall call{};
     call.softLimit = 2;
-    AqlCallStack stack{call};
+    AqlCallStack stack{AqlCallList{call}};
     auto const [state, skipped, result] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -267,7 +267,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
   {
     AqlCall call{};
     call.softLimit = 2;
-    AqlCallStack stack{call};
+    AqlCallStack stack{AqlCallList{call}};
     auto const [state, skipped, result] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 0);

@@ -28,21 +28,50 @@
 #include <optional>
 #include <vector>
 
+namespace arangodb::velocypack {
+class Builder;
+class Slice;
+}  // namespace arangodb::velocypack
+
 namespace arangodb::aql {
 
 class AqlCallList {
  public:
+  friend bool operator==(AqlCallList const& left, AqlCallList const& right);
+
+  friend auto operator<<(std::ostream& out, const arangodb::aql::AqlCallList& list)
+      -> std::ostream&;
+
   explicit AqlCallList(AqlCall const& call);
 
-  explicit AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall);
+  AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall);
 
   [[nodiscard]] auto popNextCall() -> AqlCall;
+  [[nodiscard]] auto peekNextCall() const -> AqlCall const&;
   [[nodiscard]] auto hasMoreCalls() const noexcept -> bool;
+
+  /**
+   * @brief Get a reference to the next call.
+   *        This is modifiable, but caller will not take
+   *        responsibility.
+   *
+   * @return AqlCall& reference to the call, can be modified.
+   */
+  [[nodiscard]] auto modifyNextCall() -> AqlCall&;
+
+  static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallList>;
+  auto toVelocyPack(velocypack::Builder&) const -> void;
+  auto toString() const -> std::string;
 
  private:
   std::vector<AqlCall> _specificCalls{};
   std::optional<AqlCall> _defaultCall{std::nullopt};
 };
+
+auto operator==(AqlCallList const& left, AqlCallList const& right) -> bool;
+
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCallList& list) -> std::ostream&;
+
 }  // namespace arangodb::aql
 
 #endif

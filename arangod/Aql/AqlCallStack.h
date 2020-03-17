@@ -23,7 +23,7 @@
 #ifndef ARANGOD_AQL_AQL_CALLSTACK_H
 #define ARANGOD_AQL_AQL_CALLSTACK_H 1
 
-#include "Aql/AqlCall.h"
+#include "Aql/AqlCallList.h"
 #include "Cluster/ResultT.h"
 
 #include <stack>
@@ -37,9 +37,9 @@ namespace aql {
 class AqlCallStack {
  public:
   // Initial
-  explicit AqlCallStack(AqlCall call, bool compatibilityMode3_6 = false);
+  explicit AqlCallStack(AqlCallList call, bool compatibilityMode3_6 = false);
   // Used in subquery
-  AqlCallStack(AqlCallStack const& other, AqlCall call);
+  AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
   AqlCallStack(AqlCallStack const& other);
 
@@ -49,19 +49,19 @@ class AqlCallStack {
 
   auto toString() const -> std::string;
 
-  // Get the top most Call element (this must be relevant).
+  // Get the top most Call element.
   // This is popped of the stack and caller can take responsibility for it
-  AqlCall popCall();
+  AqlCallList popCall();
 
   // Peek at the top most Call element (this must be relevant).
   // The responsibility will stay at the stack
   AqlCall const& peek() const;
 
   // Put another call on top of the stack.
-  void pushCall(AqlCall&& call);
+  void pushCall(AqlCallList&& call);
 
   // Put another call on top of the stack.
-  void pushCall(AqlCall const& call);
+  void pushCall(AqlCallList const& call);
 
   // TODO: Remove me again, only used to fake DONE
   [[deprecated]] auto empty() const noexcept -> bool {
@@ -115,15 +115,24 @@ class AqlCallStack {
    */
   auto modifyCallAtDepth(size_t depth) -> AqlCall&;
 
+  /**
+   * @brief Get a reference to the top most call.
+   *        This is modifiable, but caller will not take
+   *        responsibility.
+   *
+   * @return AqlCall& reference to the call, can be modified.
+   */
+  auto modifyTopCall() -> AqlCall&;
+
  private:
-  explicit AqlCallStack(std::vector<AqlCall>&& operations);
+  explicit AqlCallStack(std::vector<AqlCallList>&& operations);
 
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from main
   // query) NOTE: This is only mutable on 3.6 compatibility mode. We need to
   // inject an additional call in any const operation here just to pretend we
   // are not empty. Can be removed after 3.7.
-  mutable std::vector<AqlCall> _operations;
+  mutable std::vector<AqlCallList> _operations;
 
   // This flag will be set if and only if
   // we are called with the 3.6 and earlier API

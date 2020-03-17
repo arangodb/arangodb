@@ -71,10 +71,10 @@ class SubqueryStartExecutorTest
 
   auto queryStack(AqlCall fromSubqueryEnd, AqlCall insideSubquery) const -> AqlCallStack {
     if (GetCompatMode() == CompatibilityMode::VERSION36) {
-      return AqlCallStack{insideSubquery, true};
+      return AqlCallStack{AqlCallList{insideSubquery}, true};
     }
-    AqlCallStack stack(fromSubqueryEnd);
-    stack.pushCall(std::move(insideSubquery));
+    AqlCallStack stack(AqlCallList{fromSubqueryEnd});
+    stack.pushCall(AqlCallList{std::move(insideSubquery)});
     return stack;
   }
 };
@@ -228,7 +228,7 @@ TEST_P(SubqueryStartExecutorTest, fullCount_in_subquery) {
 TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
   ExecutorTestHelper<1, 1> helper(*fakedQuery);
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
-  stack.pushCall(AqlCall{});
+  stack.pushCall(AqlCallList{AqlCall{}});
   Pipeline pipe{};
   pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
                                                                  ExecutionNode::SUBQUERY_START))
@@ -255,7 +255,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
 TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call) {
   ExecutorTestHelper<1, 1> helper(*fakedQuery);
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
-  stack.pushCall(AqlCall{});
+  stack.pushCall(AqlCallList{AqlCall{}});
   Pipeline pipe{};
   pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
                                                                  ExecutionNode::SUBQUERY_START))
@@ -282,7 +282,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call)
 TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_requests) {
   ExecutorTestHelper<1, 1> helper(*fakedQuery);
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
-  stack.pushCall(AqlCall{});
+  stack.pushCall(AqlCallList{AqlCall{}});
   Pipeline pipe{};
   pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
                                                                  ExecutionNode::SUBQUERY_START))
@@ -319,7 +319,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
     // We only do a single call here
     ExecutorTestHelper<1, 1> helper(*fakedQuery);
     AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
-    stack.pushCall(AqlCall{});
+    stack.pushCall(AqlCallList{AqlCall{}});
     Pipeline pipe{};
     pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
                                                                    ExecutionNode::SUBQUERY_START))
@@ -346,7 +346,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
     // Wedo call as many times as we need to.
     ExecutorTestHelper<1, 1> helper(*fakedQuery);
     AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
-    stack.pushCall(AqlCall{});
+    stack.pushCall(AqlCallList{AqlCall{}});
     Pipeline pipe{};
     pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1),
                                                                    ExecutionNode::SUBQUERY_START))

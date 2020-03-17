@@ -45,6 +45,26 @@ TEST_F(AqlCallListTest, only_single_call) {
   EXPECT_FALSE(myCall == popped);
 }
 
+TEST_F(AqlCallListTest, only_single_call_peek) {
+  AqlCall myCall{};
+  myCall.offset = 3;
+  myCall.softLimit = 9;
+
+  AqlCallList testee(myCall);
+  EXPECT_TRUE(testee.hasMoreCalls());
+  AqlCall popped = testee.peekNextCall();
+  EXPECT_EQ(myCall, popped);
+  EXPECT_TRUE(testee.hasMoreCalls());
+
+  // Make sure calls are non-referenced
+  popped.offset = 9;
+  EXPECT_FALSE(myCall == popped);
+
+  AqlCall popped2 = testee.popNextCall();
+  EXPECT_EQ(myCall, popped2);
+  EXPECT_FALSE(testee.hasMoreCalls());
+}
+
 TEST_F(AqlCallListTest, multiple_calls) {
   AqlCall myFirstCall{};
   myFirstCall.offset = 3;
@@ -76,6 +96,61 @@ TEST_F(AqlCallListTest, multiple_calls) {
     // Modifying has no side effect on default call
     popped.didProduce(1);
     EXPECT_FALSE(popped == defaultCall);
+    // Indirect test, modifing pop has no side-effect on the internal default call.
+  }
+}
+
+TEST_F(AqlCallListTest, multiple_calls_peek) {
+  AqlCall myFirstCall{};
+  myFirstCall.offset = 3;
+  myFirstCall.softLimit = 9;
+
+  AqlCall defaultCall{};
+  defaultCall.hardLimit = 2;
+  defaultCall.fullCount = true;
+  EXPECT_FALSE(myFirstCall == defaultCall);
+
+  AqlCallList testee(myFirstCall, defaultCall);
+  {
+    // Test peek the first specific call
+    EXPECT_TRUE(testee.hasMoreCalls());
+    AqlCall peeked = testee.peekNextCall();
+    // it is equal to myFirstCall
+    EXPECT_EQ(peeked, myFirstCall);
+    EXPECT_FALSE(peeked == defaultCall);
+    EXPECT_TRUE(testee.hasMoreCalls());
+  }
+  {
+    // Test pop the First specific call
+    EXPECT_TRUE(testee.hasMoreCalls());
+    AqlCall popped = testee.popNextCall();
+    // it is equal to myFirstCall
+    EXPECT_EQ(popped, myFirstCall);
+    EXPECT_FALSE(popped == defaultCall);
+    EXPECT_TRUE(testee.hasMoreCalls());
+  }
+  // 3 is a random number, we should be able to loop here forever.
+  for (size_t i = 0; i < 3; ++i) {
+    {
+      // Test peek
+      EXPECT_TRUE(testee.hasMoreCalls());
+      AqlCall peeked = testee.peekNextCall();
+      // it is equal to myFirstCall
+      EXPECT_EQ(peeked, defaultCall);
+      EXPECT_FALSE(peeked == myFirstCall);
+      EXPECT_TRUE(testee.hasMoreCalls());
+    }
+    {
+      EXPECT_TRUE(testee.hasMoreCalls());
+      AqlCall popped = testee.popNextCall();
+      // it is equal to the defaultCall
+      EXPECT_EQ(popped, defaultCall);
+      EXPECT_FALSE(popped == myFirstCall);
+      EXPECT_TRUE(testee.hasMoreCalls());
+      // Modifying has no side effect on default call
+      popped.didProduce(1);
+      EXPECT_FALSE(popped == defaultCall);
+    }
     // Indirect test, modifing pop has no side-effect on the internal default call.
   }
 }
