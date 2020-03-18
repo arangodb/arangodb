@@ -35,6 +35,8 @@
 
 #include "process-utils.h"
 #include "Basics/system-functions.h"
+#include "Basics/StringUtils.h"
+#include "Basics/files.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
@@ -96,6 +98,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_PhysicalMemory;
+bool TRI_PhysicalMemoryOverridden;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all external processes
@@ -1653,7 +1656,31 @@ static uint64_t GetPhysicalMemory() {
 /// @brief initializes the process components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeProcess() { TRI_PhysicalMemory = GetPhysicalMemory(); }
+void TRI_InitializeProcess() {
+  TRI_PhysicalMemory = GetPhysicalMemory();
+  TRI_PhysicalMemoryOverridden = false;
+  std::string value;
+  if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY", value)) {
+    if (!value.empty()) {
+      uint64_t multiplier = 1;
+      if (value.back() == 'G' || value.back() == 'g') {
+        multiplier = 1024 * 1024 * 1024;
+        value.pop_back();
+      } else if (value.back() == 'M' || value.back() == 'm') {
+        multiplier = 1024 * 1024;
+        value.pop_back();
+      } else if (value.back() == 'K' || value.back() == 'k') {
+        multiplier = 1024;
+        value.pop_back();
+      }
+      uint64_t v = arangodb::basics::StringUtils::uint64(value) * multiplier;
+      if (v != 0) {
+        TRI_PhysicalMemory = v;
+        TRI_PhysicalMemoryOverridden = true;
+      }
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the process components
