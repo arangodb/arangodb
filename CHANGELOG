@@ -1,6 +1,8 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
+* Fix cluster representation of the collection figures for rocksdb
+
 * Fix SORT RAND() LIMIT 1 optimization for RocksDB when only a projection of the
   attributes was used. When a projection was used and that projection was
   covered by an index (e.g. `_key` via the primary index), then the access
