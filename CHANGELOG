@@ -1,6 +1,8 @@
 devel
 -----
 
+* Reactive REST API endpoint at `/_admin/auth/reload`, as it is called by DC2DC.
+
 * Fix cluster representation of the collection figures for RocksDB.
 
 * Changed behavior for creating new collections in OneShard databases
