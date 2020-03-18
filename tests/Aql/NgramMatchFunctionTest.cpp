@@ -66,7 +66,7 @@ class NgramMatchFunctionTest : public ::testing::Test {
   }
 
  protected:
-  constexpr char* TwoGramAnalyzer() { return "_system::myngram"; }
+  constexpr char const* TwoGramAnalyzer() { return "_system::myngram"; }
 
   AqlValue evaluate(AqlValue const* &Attribute,
     AqlValue const* Target,

@@ -109,12 +109,9 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
       return OperationResult(res);
     }
 
-    bool forceOneShard =
+    bool const forceOneShard =
         vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-        (vocbase.sharding() == "single" &&
-         options.get(StaticStrings::DistributeShardsLike).isNone() &&
-         arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards,
-                                                                       0) <= 1);
+        vocbase.sharding() == "single";
 
     if (forceOneShard) {
       // force a single shard with shards distributed like "_graph"

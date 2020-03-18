@@ -78,10 +78,10 @@ function OneShardPropertiesSuite () {
         assertEqual(props.replicationFactor, 2);
         assertEqual(props.writeConcern, 2);
 
-        let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 1, distributeShardsLike: "" });
+        let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 2, distributeShardsLike: "" });
         props = c.properties();
-        assertEqual(1, props.writeConcern);
-        assertEqual(1, props.replicationFactor);
+        assertEqual(2, props.writeConcern);
+        assertEqual(2, props.replicationFactor);
         assertEqual(1, props.numberOfShards);
       } else {
         assertEqual(props.sharding, undefined);
@@ -279,7 +279,7 @@ function OneShardPropertiesSuite () {
           let graphsProperties = db._collection("_graphs").properties();
 
           if (isCluster) {
-            assertEqual(colProperties.distributeShardsLike, undefined);
+            assertEqual(colProperties.distributeShardsLike, "_graphs");
             assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
           }
         }
@@ -293,8 +293,8 @@ function OneShardPropertiesSuite () {
           let graphsProperties = db._collection("_graphs").properties();
 
           if (isCluster) {
-            assertEqual(colProperties.distributeShardsLike, undefined);
-            assertEqual(colProperties.replicationFactor, nonDefaultReplicationFactor);
+            assertEqual(colProperties.distributeShardsLike, "_graphs");
+            assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
           }
         }
       }
