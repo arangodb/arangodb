@@ -90,61 +90,6 @@ class asserthelper {
       -> void;
 };
 
-/**
- * @brief Base class for ExecutorTests in Aql.
- *        It will provide a test server, including
- *        an AqlQuery, as well as the ability to generate
- *        Dummy ExecutionNodes.
- *
- * @tparam enableQueryTrace Enable Aql Profile Trace logging
- */
-template <bool enableQueryTrace = false>
-class AqlExecutorTestCase : public ::testing::Test {
- public:
-  // Creating a server instance costs a lot of time, so do it only once.
-  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
-  static void SetUpTestCase() {
-    _server = std::make_unique<mocks::MockAqlServer>();
-  }
-
-  static void TearDownTestCase() { _server.reset(); }
-
- protected:
-  AqlExecutorTestCase();
-  virtual ~AqlExecutorTestCase();
-
-  /**
-   * @brief Creates and manages a ExecutionNode.
-   *        These nodes can be used to create the Executors
-   *        Caller does not need to manage the memory.
-   *
-   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
-   */
-  auto generateNodeDummy() -> ExecutionNode*;
-
-  auto manager() const -> AqlItemBlockManager&;
-
- private:
-  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
-
- protected:
-  // available variables
-  static inline std::unique_ptr<mocks::MockAqlServer> _server;
-  ResourceMonitor monitor{};
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
-};
-
-/**
- * @brief Shortcut handle for parameterized AqlExecutorTestCases with param
- *
- * @tparam T The Test Parameter used for gtest.
- * @tparam enableQueryTrace Enable Aql Profile Trace logging
- */
-template <typename T, bool enableQueryTrace = false>
-class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace>,
-                                     public ::testing::WithParamInterface<T> {};
-
 using ExecBlock = std::unique_ptr<ExecutionBlock>;
 
 struct Pipeline {
@@ -189,7 +134,7 @@ struct Pipeline {
     return *this;
   }
 
-private:
+ private:
   PipelineStorage _pipeline;
 };
 
@@ -209,7 +154,7 @@ struct ExecutorTestHelper {
 
   ExecutorTestHelper(ExecutorTestHelper const&) = delete;
   ExecutorTestHelper(ExecutorTestHelper&&) = delete;
-  explicit ExecutorTestHelper(arangodb::aql::Query& query)
+  explicit ExecutorTestHelper(Query& query, AqlItemBlockManager& itemBlockManager)
       : _expectedSkip{},
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
@@ -217,6 +162,7 @@ struct ExecutorTestHelper {
         _appendEmptyBlock{false},
         _unorderedSkippedRows{0},
         _query(query),
+        _itemBlockManager(itemBlockManager),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
   auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
@@ -362,6 +308,22 @@ struct ExecutorTestHelper {
                                                    std::move(infos));
   }
 
+  template <typename E>
+  auto addDependency(typename E::Infos infos,
+                     ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+      -> ExecutorTestHelper& {
+    _pipeline.addDependency(createExecBlock<E>(std::move(infos), nodeType));
+    return *this;
+  }
+
+  template <typename E>
+  auto addConsumer(typename E::Infos infos,
+                   ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+      -> ExecutorTestHelper& {
+    _pipeline.addConsumer(createExecBlock<E>(std::move(infos), nodeType));
+    return *this;
+  }
+
   auto setPipeline(Pipeline pipeline) -> ExecutorTestHelper& {
     _pipeline = std::move(pipeline);
     return *this;
@@ -389,17 +351,17 @@ struct ExecutorTestHelper {
 
   auto run(bool const loop = false) -> void {
     ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
 
-    auto inputBlock = generateInputRanges(itemBlockManager);
+    auto inputBlock = generateInputRanges(_itemBlockManager);
 
     auto skippedTotal = SkipResult{};
     auto finalState = ExecutionState::HASMORE;
 
     TRI_ASSERT(!_pipeline.empty());
-    _pipeline.get().back()->addDependency(inputBlock.get());
 
-    BlockCollector allResults{&itemBlockManager};
+    _pipeline.addDependency(std::move(inputBlock));
+
+    BlockCollector allResults{&_itemBlockManager};
 
     if (!loop) {
       auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
@@ -434,7 +396,7 @@ struct ExecutorTestHelper {
           << "Executor does not yield output, although it is expected";
     } else {
       SharedAqlItemBlockPtr expectedOutputBlock =
-          buildBlock<outputColumns>(itemBlockManager, std::move(_output), _outputShadowRows);
+          buildBlock<outputColumns>(_itemBlockManager, std::move(_output), _outputShadowRows);
       std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
                                            _outputRegisters.end());
       if (_unorderedOutput) {
@@ -530,6 +492,7 @@ struct ExecutorTestHelper {
   SplitType _outputSplit = {std::monostate()};
 
   arangodb::aql::Query& _query;
+  arangodb::aql::AqlItemBlockManager& _itemBlockManager;
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;
   Pipeline _pipeline;
   std::vector<std::unique_ptr<MockTypedNode>> _execNodes;
@@ -664,6 +627,74 @@ runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
 
   return {outputRow.stealBlock(), results, stats};
 }
+
+/**
+ * @brief Base class for ExecutorTests in Aql.
+ *        It will provide a test server, including
+ *        an AqlQuery, as well as the ability to generate
+ *        Dummy ExecutionNodes.
+ *
+ * @tparam enableQueryTrace Enable Aql Profile Trace logging
+ */
+template <bool enableQueryTrace = false>
+class AqlExecutorTestCase : public ::testing::Test {
+ public:
+  // Creating a server instance costs a lot of time, so do it only once.
+  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
+  static void SetUpTestCase() {
+    _server = std::make_unique<mocks::MockAqlServer>();
+  }
+
+  static void TearDownTestCase() { _server.reset(); }
+
+ protected:
+  AqlExecutorTestCase();
+  virtual ~AqlExecutorTestCase();
+
+  /**
+   * @brief Creates and manages a ExecutionNode.
+   *        These nodes can be used to create the Executors
+   *        Caller does not need to manage the memory.
+   *
+   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
+   */
+  auto generateNodeDummy() -> ExecutionNode*;
+
+  auto manager() const -> AqlItemBlockManager&;
+
+  template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
+  auto ExecutorTestHelper()
+      -> arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns> {
+    return arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns>(*fakedQuery, itemBlockManager);
+  }
+
+  // TODO: remove me
+  template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
+  auto ExecutorTestHelper(Query& query)
+      -> arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns> {
+    return arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns>(query, itemBlockManager);
+  }
+
+ private:
+  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
+
+ protected:
+  // available variables
+  static inline std::unique_ptr<mocks::MockAqlServer> _server;
+  ResourceMonitor monitor{};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+};
+
+/**
+ * @brief Shortcut handle for parameterized AqlExecutorTestCases with param
+ *
+ * @tparam T The Test Parameter used for gtest.
+ * @tparam enableQueryTrace Enable Aql Profile Trace logging
+ */
+template <typename T, bool enableQueryTrace = false>
+class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace>,
+                                     public ::testing::WithParamInterface<T> {};
 
 }  // namespace aql
 }  // namespace tests

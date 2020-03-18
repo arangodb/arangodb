@@ -129,7 +129,7 @@ INSTANTIATE_TEST_CASE_P(CountCollectExecutor, CountCollectExecutorTest,
 
 TEST_P(CountCollectExecutorTest, empty_input) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({})
@@ -142,7 +142,7 @@ TEST_P(CountCollectExecutorTest, empty_input) {
 
 TEST_P(CountCollectExecutorTest, count_input) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -155,7 +155,7 @@ TEST_P(CountCollectExecutorTest, count_input) {
 
 TEST_P(CountCollectExecutorTest, empty_input_skip) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({})
@@ -168,7 +168,7 @@ TEST_P(CountCollectExecutorTest, empty_input_skip) {
 
 TEST_P(CountCollectExecutorTest, count_input_skip) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -181,7 +181,7 @@ TEST_P(CountCollectExecutorTest, count_input_skip) {
 
 TEST_P(CountCollectExecutorTest, empty_input_fullCount) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({})
@@ -194,7 +194,7 @@ TEST_P(CountCollectExecutorTest, empty_input_fullCount) {
 
 TEST_P(CountCollectExecutorTest, count_input_fullCount) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -207,7 +207,7 @@ TEST_P(CountCollectExecutorTest, count_input_fullCount) {
 
 TEST_P(CountCollectExecutorTest, count_input_softlimit) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -219,18 +219,13 @@ TEST_P(CountCollectExecutorTest, count_input_softlimit) {
 }
 
 TEST_P(CountCollectExecutorTest, count_in_empty_subquery) {
-  ExecutorTestHelper<1, 1> helper(*fakedQuery);
+  auto helper = ExecutorTestHelper<1, 1>();
 
-  Pipeline pipe{};
-  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeSubqueryStartInfos(),
-                                                                 ExecutionNode::SUBQUERY_START))
-      .addConsumer(helper.createExecBlock<LambdaExe>(MakeRemoveAllLinesInfos(),
-                                                     ExecutionNode::FILTER))
-      .addConsumer(helper.createExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT))
-      .addConsumer(helper.createExecBlock<SubqueryEndExecutor>(MakeSubqueryEndInfos(1),
-                                                               ExecutionNode::SUBQUERY_END));
-
-  helper.setPipeline(std::move(pipe))
+  helper
+      .addConsumer<SubqueryStartExecutor>(MakeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
+      .addConsumer<LambdaExe>(MakeRemoveAllLinesInfos(), ExecutionNode::FILTER)
+      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<SubqueryEndExecutor>(MakeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -240,18 +235,14 @@ TEST_P(CountCollectExecutorTest, count_in_empty_subquery) {
       .setCall(AqlCall{})
       .run();
 }
-
 TEST_P(CountCollectExecutorTest, count_in_subquery) {
-  ExecutorTestHelper<1, 1> helper(*fakedQuery);
+  //   ExecutorTestHelper<1, 1> helper(*fakedQuery);
+  auto helper = ExecutorTestHelper<1, 1>();
 
-  Pipeline pipe{};
-  pipe.addConsumer(helper.createExecBlock<SubqueryStartExecutor>(MakeSubqueryStartInfos(),
-                                                                 ExecutionNode::SUBQUERY_START))
-      .addConsumer(helper.createExecBlock<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT))
-      .addConsumer(helper.createExecBlock<SubqueryEndExecutor>(MakeSubqueryEndInfos(1),
-                                                               ExecutionNode::SUBQUERY_END));
-
-  helper.setPipeline(std::move(pipe))
+  helper
+      .addConsumer<SubqueryStartExecutor>(MakeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
+      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<SubqueryEndExecutor>(MakeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
