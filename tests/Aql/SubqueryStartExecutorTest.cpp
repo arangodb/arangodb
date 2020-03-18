@@ -70,11 +70,14 @@ class SubqueryStartExecutorTest
   }
 
   auto queryStack(AqlCall fromSubqueryEnd, AqlCall insideSubquery) const -> AqlCallStack {
+    AqlCallList list = insideSubquery.getOffset() == 0 && !insideSubquery.needsFullCount()
+                           ? AqlCallList{insideSubquery, insideSubquery}
+                           : AqlCallList{insideSubquery};
     if (GetCompatMode() == CompatibilityMode::VERSION36) {
-      return AqlCallStack{AqlCallList{insideSubquery}, true};
+      return AqlCallStack{list, true};
     }
     AqlCallStack stack(AqlCallList{fromSubqueryEnd});
-    stack.pushCall(AqlCallList{std::move(insideSubquery)});
+    stack.pushCall(list);
     return stack;
   }
 };
@@ -118,27 +121,7 @@ TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
       .run();
 }
 
-// NOTE: The following two tests exclude each other.
-// Right now we can only support 1 ShadowRow per request, we cannot do a look-ahead of
-// calls. As soon as we can this test needs to re removed, and the one blow needs to be activated.
-TEST_P(SubqueryStartExecutorTest,
-       adds_only_one_shadowrow_even_if_more_input_is_available_in_single_pass) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-      .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
-      .expectedStats(ExecutionStats{})
-      .expectedState(ExecutionState::HASMORE)
-      .expectSkipped(0, 0)
-      .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
-      .setCallStack(queryStack(AqlCall{}, AqlCall{}))
-      .run();
-}
-
-// NOTE: This test and the one right above do exclude each other.
-// This is the behaviour we would like to have eventually
-// As soon as we can support Call look-aheads we need to enable this test.
-// and it needs to pass then
-TEST_P(SubqueryStartExecutorTest, DISABLED_adds_a_shadowrow_after_every_input_line_in_single_pass) {
+TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_single_pass) {
   ExecutorTestHelper<1, 1>(*fakedQuery)
       .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
       .setInputValue({{{R"("a")"}}, {{R"("b")"}}, {{R"("c")"}}})
@@ -428,8 +411,9 @@ TEST_P(SubqueryStartExecutorTest, fastForward_in_inner_subquery) {
         .setExecBlock<SubqueryStartExecutor>(MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
         .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
         .expectedStats(ExecutionStats{})
-        .expectedState(ExecutionState::HASMORE)
-        .expectOutput({0}, {{R"("a")"}}, {{0, 0}})
+        .expectedState(ExecutionState::DONE)
+        .expectOutput({0}, {{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}},
+                      {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}})
         .expectSkipped(0, 0)
         .setCallStack(queryStack(AqlCall{0, false, AqlCall::Infinity{}},
                                  AqlCall{0, false, 0, AqlCall::LimitType::HARD}))
