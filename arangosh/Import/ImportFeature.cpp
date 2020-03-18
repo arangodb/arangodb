@@ -184,7 +184,7 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption(
       "--skip-validation", "skips document validation during import",
-      new BooleanParameter(&_skipValidation)).setIntroducedIn(370);
+      new BooleanParameter(&_skipValidation)).setIntroducedIn(30700);
 }
 
 void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
