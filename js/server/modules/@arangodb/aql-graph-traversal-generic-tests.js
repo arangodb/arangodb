@@ -269,7 +269,7 @@ const checkResIsValidShortestPath = (allowedPaths, actualPath) => {
 
 const checkResIsValidKShortestPath = (allowedPaths, actualPaths, expectedResults) => {
   // check that we've only got as many paths as requested
-  if (actualPaths.length !== expectedResults) {
+  if (actualPaths.length > expectedResults) {
     print("Unexpected amount of found paths!");
     print("Allowed paths are:");
     print(allowedPaths);
@@ -1774,6 +1774,53 @@ function testSmallCircleShortestPathEnabledWeightCheck(testGraph) {
   const actualPath = res.toArray();
 
   checkResIsValidShortestPath(allowedPaths, actualPath);
+}
+
+function testSmallCircleKShortestPathWithMultipleLimits(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const allowedPaths = [
+      ["A", "B", "C", "D"]
+    ];
+
+    const res = db._query(query);
+    const actualPath = res.toArray();
+
+    checkResIsValidKShortestPath(allowedPaths, actualPath, limit);
+  });
+}
+
+function testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}  
+        GRAPH ${testGraph.name()}
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const allowedPaths = [
+      ["A", "B", "C", "D"]
+    ];
+
+    const res = db._query(query);
+    const actualPath = res.toArray();
+
+    checkResIsValidKShortestPath(allowedPaths, actualPath, limit);
+  });
 }
 
 function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
@@ -3629,7 +3676,9 @@ const testsByGraph = {
     testSmallCircleBfsUniqueEdgesPathUniqueVerticesGlobal,
     testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal,
     testSmallCircleShortestPath,
-    testSmallCircleShortestPathEnabledWeightCheck
+    testSmallCircleShortestPathEnabledWeightCheck,
+    testSmallCircleKShortestPathWithMultipleLimits,
+    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits
   },
   completeGraph: {
     testCompleteGraphDfsUniqueVerticesPathD1,
