@@ -442,15 +442,19 @@ function unitTestPrettyPrintResults (options, results) {
             continue;
           }
 
+          let isSkipped = true;
           if (name === 'SKIPPED') {
             m = '    [SKIPPED]  the following tests were skipped due to the server not being in a trustworthy state anymore.';
           } else {
             m = '    [FAILED]  ' + name;
           }
+          let details = failedCases[name];
+          if (isSkipped && details.test === "") {
+            continue;
+          }
+
           failedMessages += RED + m + RESET + '\n\n';
           onlyFailedMessages += m + '\n\n';
-
-          let details = failedCases[name];
 
           let count = 0;
           for (let one in details) {
