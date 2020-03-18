@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #11275: indexes backward compatibility broken in 3.5+.
+
 * Changed behavior for creating new collections in OneShard databases
   (i.e. databases with "sharding" attribute set to "single"):
 
@@ -52,8 +54,6 @@ devel
 
 * Supervision to clean up zombie servers after 24h, if no
   responsibility for shards.
-
-* Fixed issue #11275: indexes backward compatibility broken in 3.5+.
 
 * Fix SORT RAND() LIMIT 1 optimization for RocksDB when only a projection of the
   attributes was used. When a projection was used and that projection was
