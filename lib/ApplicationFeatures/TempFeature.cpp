@@ -23,6 +23,7 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
@@ -59,6 +60,7 @@ void TempFeature::prepare() {
   TRI_SetApplicationName(_appname);
   if (!_path.empty()) {
     TRI_SetTempPath(_path);
+    CrashHandler::setTempFilename();
   }
 }
 

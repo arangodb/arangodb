@@ -340,7 +340,7 @@ struct norm_score_ctx final : public score_ctx {
   float_t norm_length_{ 0.f }; // precomputed 'k*b/avgD' if norms present, '0' otherwise
 }; // norm_score_ctx
 
-class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> {
+class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
  public:
   DEFINE_FACTORY_INLINE(prepared)
 

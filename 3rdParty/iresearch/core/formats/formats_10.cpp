@@ -1381,6 +1381,7 @@ struct position_impl<IteratorTraits, false, false> {
     pos_in_->seek(state.pos_ptr);
     pend_pos_ = state.pend_pos;
     buf_pos_ = postings_writer_base::BLOCK_SIZE;
+    cookie_.file_pointer_ = state.pos_ptr;
     cookie_.pend_pos_ = pend_pos_;
   }
 
@@ -1558,7 +1559,7 @@ struct position<IteratorTraits, false> : attribute {
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-class doc_iterator final : public irs::doc_iterator_base {
+class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
  public:
   DECLARE_SHARED_PTR(doc_iterator);
 
