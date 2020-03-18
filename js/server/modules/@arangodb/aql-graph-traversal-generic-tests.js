@@ -3254,6 +3254,29 @@ function testEasyPathShortestPath(testGraph) {
   checkResIsValidShortestPath(allowedPaths, actualPath);
 }
 
+function testEasyPathKShortestPathMultipleLimits(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const allowedPaths = [
+      ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+    ];
+
+    const res = db._query(query);
+    const actualPaths = res.toArray();
+
+    checkResIsValidKShortestPath(allowedPaths, actualPaths, limit);
+  });
+}
+
 function testEasyPathShortestPathEnabledWeightCheck(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
   const query = aql`
@@ -3271,6 +3294,30 @@ function testEasyPathShortestPathEnabledWeightCheck(testGraph) {
   const actualPath = res.toArray();
 
   checkResIsValidShortestPath(allowedPaths, actualPath);
+}
+
+function testEasyPathKShortestPathEnabledWeightCheckMultipleLimits(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}  
+        GRAPH ${testGraph.name()}
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const allowedPaths = [
+      ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+    ];
+
+    const res = db._query(query);
+    const actualPaths = res.toArray();
+
+    checkResIsValidKShortestPath(allowedPaths, actualPaths, limit);
+  });
 }
 
 function testAdvancedPathDfsUniqueVerticesPath(testGraph) {
@@ -3824,7 +3871,9 @@ const testsByGraph = {
   easyPath: {
     testEasyPathAllCombinations,
     testEasyPathShortestPath,
-    testEasyPathShortestPathEnabledWeightCheck
+    testEasyPathShortestPathEnabledWeightCheck,
+    testEasyPathKShortestPathMultipleLimits,
+    testEasyPathKShortestPathEnabledWeightCheckMultipleLimits
   },
   advancedPath: {
     testAdvancedPathDfsUniqueVerticesPath,
