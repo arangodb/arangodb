@@ -3773,6 +3773,73 @@ function testAdvancedPathShortestPath(testGraph) {
   checkResIsValidShortestPath(allowedPaths, actualPath);
 }
 
+function testAdvancedPathKShortestPathLimit1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const limit = 1;
+
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "D", "E", "H", "I"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidKShortestPath(allowedPaths, actualPaths, limit);
+}
+
+function testAdvancedPathKShortestPathLimit2(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const limit = 2;
+
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "D", "E", "H", "I"],
+    ["A", "D", "E", "F", "G", "H", "I"],
+    ["A", "B", "C", "D", "E", "H", "I"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidKShortestPath(allowedPaths, actualPaths, limit);
+}
+
+function testAdvancedPathKShortestPathLimit3(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const limit = 3;
+
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "D", "E", "H", "I"],
+    ["A", "D", "E", "F", "G", "H", "I"],
+    ["A", "B", "C", "D", "E", "H", "I"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidKShortestPath(allowedPaths, actualPaths, limit);
+}
+
 function testAdvancedPathShortestPathEnabledWeightCheck(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
@@ -3891,7 +3958,10 @@ const testsByGraph = {
     testAdvancedPathBfsUniqueEdgesUniquePathVerticesGlobal,
     testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal,
     testAdvancedPathShortestPath,
-    testAdvancedPathShortestPathEnabledWeightCheck
+    testAdvancedPathShortestPathEnabledWeightCheck,
+    testAdvancedPathKShortestPathLimit1,
+    testAdvancedPathKShortestPathLimit2,
+    testAdvancedPathKShortestPathLimit3
   },
   largeBinTree: {
     testLargeBinTreeAllCombinations,
