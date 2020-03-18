@@ -27,7 +27,7 @@
 
 #include "Aql/AqlCall.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
+#include "AqlExecutorTestCase.h"
 #include "IResearch/common.h"
 #include "Mocks/Servers.h"
 #include "QueryHelper.h"

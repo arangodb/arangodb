@@ -25,7 +25,9 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
+#include "ExecutionBlockPipeline.h"
 #include "MockTypedNode.h"
 #include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
@@ -88,54 +90,6 @@ class asserthelper {
       std::unordered_set<size_t>& matchedRows, std::size_t numRowsNotContained = 0,
       std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
       -> void;
-};
-
-// A wrapper to ensure correct order of deallocation of Execution Blocks
-using ExecBlock = std::unique_ptr<ExecutionBlock>;
-struct Pipeline {
-  using PipelineStorage = std::deque<ExecBlock>;
-
-  Pipeline() : _pipeline{} {};
-  Pipeline(ExecBlock&& init) { _pipeline.emplace_back(std::move(init)); }
-  Pipeline(std::deque<ExecBlock>&& init) : _pipeline(std::move(init)){};
-  Pipeline(Pipeline& other) = delete;
-  Pipeline(Pipeline&& other) : _pipeline(std::move(other._pipeline)){};
-
-  Pipeline& operator=(Pipeline&& other) {
-    _pipeline = std::move(other._pipeline);
-    return *this;
-  }
-
-  virtual ~Pipeline() {
-    for (auto&& b : _pipeline) {
-      b.reset(nullptr);
-    }
-  };
-
-  bool empty() const { return _pipeline.empty(); }
-  void reset() { _pipeline.clear(); }
-
-  std::deque<ExecBlock> const& get() const { return _pipeline; };
-  std::deque<ExecBlock>& get() { return _pipeline; };
-
-  Pipeline& addDependency(ExecBlock&& dependency) {
-    if (!empty()) {
-      _pipeline.back()->addDependency(dependency.get());
-    }
-    _pipeline.emplace_back(std::move(dependency));
-    return *this;
-  }
-
-  Pipeline& addConsumer(ExecBlock&& consumer) {
-    if (!empty()) {
-      consumer->addDependency(_pipeline.front().get());
-    }
-    _pipeline.emplace_front(std::move(consumer));
-    return *this;
-  }
-
- private:
-  PipelineStorage _pipeline;
 };
 
 template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
@@ -617,74 +571,6 @@ runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
 
   return {outputRow.stealBlock(), results, stats};
 }
-
-/**
- * @brief Base class for ExecutorTests in Aql.
- *        It will provide a test server, including
- *        an AqlQuery, as well as the ability to generate
- *        Dummy ExecutionNodes.
- *
- * @tparam enableQueryTrace Enable Aql Profile Trace logging
- */
-template <bool enableQueryTrace = false>
-class AqlExecutorTestCase : public ::testing::Test {
- public:
-  // Creating a server instance costs a lot of time, so do it only once.
-  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
-  static void SetUpTestCase() {
-    _server = std::make_unique<mocks::MockAqlServer>();
-  }
-
-  static void TearDownTestCase() { _server.reset(); }
-
- protected:
-  AqlExecutorTestCase();
-  virtual ~AqlExecutorTestCase();
-
-  /**
-   * @brief Creates and manages a ExecutionNode.
-   *        These nodes can be used to create the Executors
-   *        Caller does not need to manage the memory.
-   *
-   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
-   */
-  auto generateNodeDummy() -> ExecutionNode*;
-
-  auto manager() const -> AqlItemBlockManager&;
-
-  template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
-  auto ExecutorTestHelper()
-      -> arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns> {
-    return arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns>(*fakedQuery, itemBlockManager);
-  }
-
-  // TODO: remove me
-  template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
-  auto ExecutorTestHelper(Query& query)
-      -> arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns> {
-    return arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns>(query, itemBlockManager);
-  }
-
- private:
-  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
-
- protected:
-  // available variables
-  static inline std::unique_ptr<mocks::MockAqlServer> _server;
-  ResourceMonitor monitor{};
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
-};
-
-/**
- * @brief Shortcut handle for parameterized AqlExecutorTestCases with param
- *
- * @tparam T The Test Parameter used for gtest.
- * @tparam enableQueryTrace Enable Aql Profile Trace logging
- */
-template <typename T, bool enableQueryTrace = false>
-class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace>,
-                                     public ::testing::WithParamInterface<T> {};
 
 }  // namespace aql
 }  // namespace tests

@@ -26,8 +26,8 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AqlCall.h"
+#include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"

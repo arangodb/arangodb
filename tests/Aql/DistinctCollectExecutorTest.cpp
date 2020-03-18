@@ -25,6 +25,7 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlExecutorTestCase.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
@@ -35,7 +36,6 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
-#include "ExecutorTestHelper.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -129,8 +129,8 @@ template <size_t step>
 const DistinctCollectSplitType splitStep = DistinctCollectSplitType{step};
 
 INSTANTIATE_TEST_CASE_P(DistinctCollectExecutor, DistinctCollectExecutorTest,
-                        ::testing::Values(splitIntoBlocks<2, 3>,
-                                          splitIntoBlocks<3, 4>, splitStep<2>, splitStep<1>));
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<2>, splitStep<1>));
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

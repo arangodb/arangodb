@@ -46,7 +46,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
-#include "Aql/ExecutorTestHelper.h"
+#include "Aql/AqlExecutorTestCase.h"
 #include "Aql/TestLambdaExecutor.h"
 #include "Aql/WaitingExecutionBlockMock.h"
 

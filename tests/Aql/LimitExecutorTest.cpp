@@ -22,9 +22,9 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlExecutorTestCase.h"
 #include "AqlHelper.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
 #include "Mocks/Servers.h"
 #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
