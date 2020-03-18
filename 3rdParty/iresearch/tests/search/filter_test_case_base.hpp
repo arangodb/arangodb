@@ -49,7 +49,7 @@ struct boost : public irs::sort {
     irs::boost_t boost_;
   };
 
-  class prepared: public irs::sort::prepared_basic<irs::boost_t, void> {
+  class prepared: public irs::prepared_sort_basic<irs::boost_t, void> {
    public:
     DEFINE_FACTORY_INLINE(prepared)
     prepared() { }
@@ -94,7 +94,7 @@ struct boost : public irs::sort {
 struct custom_sort: public irs::sort {
   DECLARE_SORT_TYPE();
 
-  class prepared: public irs::sort::prepared_base<irs::doc_id_t, void> {
+  class prepared: public irs::prepared_sort_base<irs::doc_id_t, void> {
    public:
     class collector
       : public irs::sort::field_collector, public irs::sort::term_collector {
@@ -155,7 +155,18 @@ struct custom_sort: public irs::sort {
 
     DEFINE_FACTORY_INLINE(prepared)
 
-    prepared(const custom_sort& sort): sort_(sort) {
+    prepared(const custom_sort& sort)
+      : sort_(sort) {
+      merge_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst, const irs::byte_type** src_start, const size_t size) {
+        const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
+        const auto offset = ctx->score_offset;
+        traits_t::score_cast(dst + offset) = irs::type_limits<irs::type_t::doc_id_t>::invalid();;
+        for (size_t i = 0; i < size; ++i) {
+          if (impl->sort_.scorer_add) {
+            impl->sort_.scorer_add(traits_t::score_cast(dst + offset), traits_t::score_cast(src_start[i]  + offset));
+          }
+        }
+      };
     }
 
     virtual void collect(
@@ -211,7 +222,7 @@ struct custom_sort: public irs::sort {
     }
 
     virtual void prepare_score(irs::byte_type* score) const override {
-      score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      traits_t::score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
@@ -222,17 +233,8 @@ struct custom_sort: public irs::sort {
       return irs::memory::make_unique<collector>(sort_);
     }
 
-    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start, const size_t size, size_t offset) const override {
-      score_cast(dst + offset) = irs::type_limits<irs::type_t::doc_id_t>::invalid();;
-      for (size_t i = 0; i < size; ++i) {
-        if (sort_.scorer_add) {
-          sort_.scorer_add(score_cast(dst + offset), score_cast(src_start[i]  + offset));
-        }
-      }
-    }
-
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
-      return sort_.scorer_less ? sort_.scorer_less(score_cast(lhs), score_cast(rhs)) : false;
+      return sort_.scorer_less ? sort_.scorer_less(traits_t::score_cast(lhs), traits_t::score_cast(rhs)) : false;
     }
 
    private:
@@ -272,7 +274,41 @@ struct frequency_sort: public irs::sort {
     size_t count{};
   };
 
-  class prepared: public irs::sort::prepared_base<score_t, stats_t> {
+  struct score_traits {
+    typedef score_t score_type;
+
+    FORCE_INLINE static const score_type& score_cast(const irs::byte_type* buf) noexcept {
+      assert(buf);
+      return *reinterpret_cast<const score_type*>(buf);
+    }
+
+    FORCE_INLINE static score_type& score_cast(irs::byte_type* buf) noexcept {
+      return const_cast<score_type&>(score_cast(const_cast<const irs::byte_type*>(buf)));
+    }
+
+    static void merge(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+                      const irs::byte_type** src_start, const size_t size) {
+      const auto offset = ctx->score_offset;
+      auto& score = score_cast(dst_buf + offset);
+      score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      score.value = std::numeric_limits<double>::infinity();
+      score.prepared = true;
+      for (size_t i = 0; i < size; ++i) {
+        auto& dst = score_cast(dst_buf + offset);
+        auto& src = score_cast(src_start[i]  + offset);
+        ASSERT_TRUE(src.prepared);
+        ASSERT_TRUE(dst.prepared);
+
+        if (std::numeric_limits<double>::infinity() == dst.value) {
+          dst.id = src.id;
+          dst.value = 0;
+        }
+        dst.value += src.value;
+      }
+    }
+  };
+
+  class prepared: public irs::prepared_sort_base<score_t, stats_t, score_traits> {
    public:
     struct term_collector: public irs::sort::term_collector {
       size_t docs_count{};
@@ -307,7 +343,7 @@ struct frequency_sort: public irs::sort {
 
     DEFINE_FACTORY_INLINE(prepared)
 
-    prepared() { }
+    prepared() = default;
 
     virtual void collect(
       irs::byte_type* stats_buf,
@@ -356,7 +392,7 @@ struct frequency_sort: public irs::sort {
     }
 
     virtual void prepare_score(irs::byte_type* score_buf) const override {
-      auto& score = score_cast(score_buf);
+      auto& score = traits_t::score_cast(score_buf);
       score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       score.value = std::numeric_limits<double>::infinity();
       score.prepared = true;
@@ -366,28 +402,9 @@ struct frequency_sort: public irs::sort {
       return irs::memory::make_unique<term_collector>();
     }
 
-    virtual void merge(irs::byte_type* dst_buf, const irs::byte_type** src_start, const size_t size, size_t offset) const override {
-      auto& score = score_cast(dst_buf + offset);
-      score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      score.value = std::numeric_limits<double>::infinity();
-      score.prepared = true;
-      for (size_t i = 0; i < size; ++i) {
-        auto& dst = score_cast(dst_buf + offset);
-        auto& src = score_cast(src_start[i]  + offset);
-        ASSERT_TRUE(src.prepared);
-        ASSERT_TRUE(dst.prepared);
-
-        if (std::numeric_limits<double>::infinity()) {
-          dst.id = src.id;
-          dst.value = 0;
-        }
-        dst.value += src.value;
-      }
-    }
-
     virtual bool less(const irs::byte_type* lhs_buf, const irs::byte_type* rhs_buf) const override {
-      auto& lhs = score_cast(lhs_buf);
-      auto& rhs = score_cast(rhs_buf);
+      auto& lhs = traits_t::score_cast(lhs_buf);
+      auto& rhs = traits_t::score_cast(rhs_buf);
 
       return lhs.value == rhs.value
         ? std::less<irs::doc_id_t>()(lhs.id, rhs.id)

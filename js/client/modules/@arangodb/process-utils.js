@@ -1794,7 +1794,17 @@ function launchFinalize(options, instanceInfo, startTime) {
       return;
     }
     var port = res[1];
-    ports.push('port ' + port);
+    if (arangod.role === 'agent') {
+      if (options.sniffAgency) {
+        ports.push('port ' + port);
+      }
+    } else if (arangod.role === 'dbserver') {
+      if (options.sniffDBServers) {
+        ports.push('port ' + port);
+      }
+    } else {
+      ports.push('port ' + port);
+    }
     processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
   });
 

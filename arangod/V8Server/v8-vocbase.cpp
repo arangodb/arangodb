@@ -2237,6 +2237,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
+  
+  // max number of shards
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "FORCE_ONE_SHARD"),
+                          v8::Boolean::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().forceOneShard()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
 
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break

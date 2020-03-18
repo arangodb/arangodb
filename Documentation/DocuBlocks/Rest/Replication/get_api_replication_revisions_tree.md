@@ -4,6 +4,12 @@
 
 @RESTHEADER{GET /_api/replication/revisions/tree, Return Merkle tree for a collection,handleCommandRevisionTree}
 
+@HINTS
+{% hint 'warning' %}
+This revision-based replication endpoint will only work with the RocksDB
+engine, and with collections created in ArangoDB v3.7.0 or later.
+{% endhint %}
+
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{collection,string,required}
