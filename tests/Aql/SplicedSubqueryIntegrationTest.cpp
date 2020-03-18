@@ -254,7 +254,7 @@ INSTANTIATE_TEST_CASE_P(SplicedSubqueryIntegrationTest, SplicedSubqueryIntegrati
                                           splitStep<2>, splitStep<1>));
 
 TEST_P(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
-  auto helper = ExecutorTestHelper<1, 1>();
+  auto helper = makeExecutorTestHelper<1, 1>();
   auto call = AqlCall{};
 
   helper
@@ -270,7 +270,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, single_subquery) {
-  auto helper = ExecutorTestHelper<1, 2>();
+  auto helper = makeExecutorTestHelper<1, 2>();
   auto call = AqlCall{};
 
   helper
@@ -293,7 +293,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, single_subquery_skip_and_produce) {
-  auto helper = ExecutorTestHelper<1, 2>();
+  auto helper = makeExecutorTestHelper<1, 2>();
   auto call = AqlCall{5};
 
   helper
@@ -309,7 +309,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery_skip_and_produce) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, single_subquery_skip_all) {
-  auto helper = ExecutorTestHelper<1, 2>();
+  auto helper = makeExecutorTestHelper<1, 2>();
   auto call = AqlCall{20};
 
   helper
@@ -325,7 +325,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery_skip_all) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, single_subquery_fullcount) {
-  auto helper = ExecutorTestHelper<1, 2>();
+  auto helper = makeExecutorTestHelper<1, 2>();
   auto call = AqlCall{0, true, 0, AqlCall::LimitType::HARD};
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
@@ -342,7 +342,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery_fullcount) {
 // NOTE: This test can be enabled if we can continue
 // working on the second subquery without returning to consumer
 TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_produce_count) {
-  auto helper = ExecutorTestHelper<1, 2>();
+  auto helper = makeExecutorTestHelper<1, 2>();
   auto call = AqlCall{2, true, 2, AqlCall::LimitType::HARD};
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
@@ -357,7 +357,7 @@ TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_produce_cou
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
-  auto helper = ExecutorTestHelper<1, 1>();
+  auto helper = makeExecutorTestHelper<1, 1>();
   auto call = AqlCall{};
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
@@ -374,7 +374,7 @@ TEST_P(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, two_nested_subqueries) {
-  auto helper = ExecutorTestHelper<1, 1>();
+  auto helper = makeExecutorTestHelper<1, 1>();
   auto call = AqlCall{};
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
@@ -391,7 +391,7 @@ TEST_P(SplicedSubqueryIntegrationTest, two_nested_subqueries) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, two_sequential_subqueries) {
-  auto helper = ExecutorTestHelper<1, 1>();
+  auto helper = makeExecutorTestHelper<1, 1>();
   auto call = AqlCall{};
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
@@ -408,7 +408,7 @@ TEST_P(SplicedSubqueryIntegrationTest, two_sequential_subqueries) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
-  auto helper = ExecutorTestHelper<1, 1>();
+  auto helper = makeExecutorTestHelper<1, 1>();
   auto call = AqlCall{};
 
   helper
@@ -425,7 +425,7 @@ TEST_P(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
-  auto helper = ExecutorTestHelper<1, 1>();
+  auto helper = makeExecutorTestHelper<1, 1>();
   auto call = AqlCall{10};
 
   helper.addConsumer<LambdaExe>(makeAssertInfos(call))
@@ -441,7 +441,7 @@ TEST_P(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
-  auto helper = ExecutorTestHelper<1, 1>();
+  auto helper = makeExecutorTestHelper<1, 1>();
   auto call = AqlCall{10};
 
   helper
@@ -458,7 +458,7 @@ TEST_P(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
 };
 
 TEST_P(SplicedSubqueryIntegrationTest, check_soft_limit_subquery) {
-  auto helper = ExecutorTestHelper<1, 2>();
+  auto helper = makeExecutorTestHelper<1, 2>();
   auto call = AqlCall{0, false, 4, AqlCall::LimitType::SOFT};
 
   helper

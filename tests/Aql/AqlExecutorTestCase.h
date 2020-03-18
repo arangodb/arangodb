@@ -24,14 +24,15 @@
 
 #include "gtest/gtest.h"
 
+#include "ExecutorTestHelper.h"
+
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutorTestHelper.h"
 
 #include "Mocks/Servers.h"
 
-#include "Aql/AqlExecutorTestCase.h"
-
 using namespace arangodb::aql;
+using namespace arangodb::tests::aql;
 
 namespace arangodb {
 namespace tests {
@@ -72,16 +73,8 @@ class AqlExecutorTestCase : public ::testing::Test {
   auto manager() const -> AqlItemBlockManager&;
 
   template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
-  auto ExecutorTestHelper()
-      -> arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns> {
-    return arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns>(*fakedQuery, itemBlockManager);
-  }
-
-  // TODO: remove me
-  template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
-  auto ExecutorTestHelper(Query& query)
-      -> arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns> {
-    return arangodb::tests::aql::ExecutorTestHelper<inputColumns, outputColumns>(query, itemBlockManager);
+  auto makeExecutorTestHelper() -> ExecutorTestHelper<inputColumns, outputColumns> {
+    return ExecutorTestHelper<inputColumns, outputColumns>(*fakedQuery, itemBlockManager);
   }
 
  private:

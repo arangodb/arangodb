@@ -25,7 +25,6 @@
 
 #include "gtest/gtest.h"
 
-#include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
 #include "ExecutionBlockPipeline.h"
 #include "MockTypedNode.h"
@@ -222,36 +221,20 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0) -> ExecutorTestHelper& {
+    _unorderedOutput = expected;
+    _unorderedSkippedRows = skippedRows;
+    return *this;
+  }
+
   /**
-   * @brief Set the Execution Block object
+   * @brief Add a dependency, i.e. add an ExecutionBlock to the *end* of the execution pipeline
    *
-   * @tparam E The executor
+   * @tparam E The executor template parameter
    * @param infos to build the executor
    * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
    * @return ExecutorTestHelper&
    */
-  template <typename E>
-  auto setExecBlock(typename E::Infos infos,
-                    ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
-      -> ExecutorTestHelper& {
-    auto& testeeNode = _execNodes.emplace_back(std::move(
-        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
-    setPipeline(Pipeline{
-        std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
-                                                std::move(infos))});
-    return *this;
-  }
-
-  template <typename E>
-  auto createExecBlock(typename E::Infos infos,
-                       ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
-      -> ExecBlock {
-    auto& testeeNode = _execNodes.emplace_back(std::move(
-        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
-    return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
-                                                   std::move(infos));
-  }
-
   template <typename E>
   auto addDependency(typename E::Infos infos,
                      ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
@@ -260,22 +243,19 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  /**
+   * @brief Add a consumer, i.e. add an ExecutionBlock to the *beginning* of the execution pipeline
+   *
+   * @tparam E The executor template parameter
+   * @param infos to build the executor
+   * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
+   * @return ExecutorTestHelper&
+   */
   template <typename E>
   auto addConsumer(typename E::Infos infos,
                    ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecutorTestHelper& {
     _pipeline.addConsumer(createExecBlock<E>(std::move(infos), nodeType));
-    return *this;
-  }
-
-  auto setPipeline(Pipeline pipeline) -> ExecutorTestHelper& {
-    _pipeline = std::move(pipeline);
-    return *this;
-  }
-
-  auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0) -> ExecutorTestHelper& {
-    _unorderedOutput = expected;
-    _unorderedSkippedRows = skippedRows;
     return *this;
   }
 
@@ -358,6 +338,26 @@ struct ExecutorTestHelper {
   };
 
  private:
+  /**
+   * @brief create an ExecutionBlock without tying it into the pipeline.
+   *
+   * @tparam E The executor template parameter
+   * @param infos to build the executor
+   * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
+   * @return ExecBlock
+   *
+   * Now private to prevent us from leaking memory
+   */
+  template <typename E>
+  auto createExecBlock(typename E::Infos infos,
+                       ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+      -> ExecBlock {
+    auto& testeeNode = _execNodes.emplace_back(std::move(
+        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
+    return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
+                                                   std::move(infos));
+  }
+
   auto generateInputRanges(AqlItemBlockManager& itemBlockManager)
       -> std::unique_ptr<ExecutionBlock> {
     using VectorSizeT = std::vector<std::size_t>;
