@@ -48,6 +48,8 @@ const TestVariants = Object.freeze({
   SatelliteGraph: 4
 });
 
+const graphWeightAttribute = 'distance';
+
 class TestGraph {
   constructor(graphName, edges, eRel, vn, en, protoSmartSharding, testVariant, numberOfShards) {
     this.graphName = graphName;
@@ -102,6 +104,10 @@ class TestGraph {
     return this.graphName;
   }
 
+  weightAttribute() {
+    return graphWeightAttribute;
+  }
+
   vertex(name) {
     return this.verticesByName[name];
   }
@@ -145,9 +151,9 @@ class TestGraph {
       // check if our edge also has a weight defined and is a number
       if (edge[2] && typeof edge[2] === 'number') {
         // if found, add attribute "distance" as weightAttribute to the edge document
-        ec.save(v, w, {
-          distance: edge[2]
-        });
+        let document = {};
+        document[graphWeightAttribute] = edge[2];
+        ec.save(v, w, document);
       } else {
         ec.save(v, w, {});
       }
@@ -291,12 +297,12 @@ const protoGraphs = {};
  *       C       F
  */
 protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
-    ["A", "B"],
-    ["A", "C"],
-    ["B", "D"],
-    ["C", "D"],
-    ["D", "E"],
-    ["D", "F"],
+    ["A", "B", 100],
+    ["A", "C", 1],
+    ["B", "D", 1],
+    ["C", "D", 1],
+    ["D", "E", 1],
+    ["D", "F", 1],
   ],
   [1, 2, 5],
   [
@@ -371,10 +377,10 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
  *       D
  */
 protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
-    ["A", "B"],
-    ["B", "C"],
-    ["C", "D"],
-    ["D", "A"]
+    ["A", "B", 1],
+    ["B", "C", 1],
+    ["C", "D", 1],
+    ["D", "A", 1]
   ],
   [1, 2, 5],
   [
@@ -419,26 +425,26 @@ protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
  *        D
  */
 protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
-    ["A", "B"],
-    ["A", "C"],
-    ["A", "D"],
-    ["A", "E"],
-    ["B", "A"],
-    ["B", "C"],
-    ["B", "D"],
-    ["B", "E"],
-    ["C", "A"],
-    ["C", "B"],
-    ["C", "D"],
-    ["C", "E"],
-    ["D", "A"],
-    ["D", "B"],
-    ["D", "C"],
-    ["D", "E"],
-    ["E", "A"],
-    ["E", "B"],
-    ["E", "C"],
-    ["E", "D"]
+    ["A", "B", 2],
+    ["A", "C", 5],
+    ["A", "D", 5],
+    ["A", "E", 1],
+    ["B", "A", 1],
+    ["B", "C", 2],
+    ["B", "D", 5],
+    ["B", "E", 5],
+    ["C", "A", 5],
+    ["C", "B", 1],
+    ["C", "D", 2],
+    ["C", "E", 5],
+    ["D", "A", 5],
+    ["D", "B", 5],
+    ["D", "C", 2],
+    ["D", "E", 2],
+    ["E", "A", 2],
+    ["E", "B", 5],
+    ["E", "C", 5],
+    ["E", "D", 1]
   ],
   [1, 2, 5],
   [
@@ -486,15 +492,15 @@ protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
  *
  */
 protoGraphs.easyPath = new ProtoGraph("easyPath", [
-    ["A", "B"],
-    ["B", "C"],
-    ["C", "D"],
-    ["D", "E"],
-    ["E", "F"],
-    ["F", "G"],
-    ["G", "H"],
-    ["H", "I"],
-    ["I", "J"]
+    ["A", "B", 1],
+    ["B", "C", 2],
+    ["C", "D", 3],
+    ["D", "E", 4],
+    ["E", "F", 5],
+    ["F", "G", 6],
+    ["G", "H", 7],
+    ["H", "I", 8],
+    ["I", "J", 9]
   ],
   [1, 2, 5],
   [
@@ -573,16 +579,16 @@ protoGraphs.easyPath = new ProtoGraph("easyPath", [
  *
  */
 protoGraphs.advancedPath = new ProtoGraph("advancedPath", [
-    ["A", "B"],
-    ["A", "D"],
-    ["B", "C"],
-    ["C", "D"],
-    ["D", "E"],
-    ["E", "F"],
-    ["E", "H"],
-    ["F", "G"],
-    ["G", "H"],
-    ["H", "I"],
+    ["A", "B", 1],
+    ["A", "D", 10],
+    ["B", "C", 1],
+    ["C", "D", 1],
+    ["D", "E", 1],
+    ["E", "F", 1],
+    ["E", "H", 10],
+    ["F", "G", 1],
+    ["G", "H", 1],
+    ["H", "I", 1],
   ],
   [1, 2, 5],
   [
