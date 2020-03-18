@@ -53,6 +53,8 @@ devel
 * Supervision to clean up zombie servers after 24h, if no
   responsibility for shards.
 
+* Fixed issue #11275: indexes backward compatibility broken in 3.5+.
+
 * Fix SORT RAND() LIMIT 1 optimization for RocksDB when only a projection of the
   attributes was used. When a projection was used and that projection was
   covered by an index (e.g. `_key` via the primary index), then the access
