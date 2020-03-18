@@ -141,7 +141,16 @@ class TestGraph {
     for (const edge of edges) {
       let v = verticesByName[edge[0]];
       let w = verticesByName[edge[1]];
-      ec.save(v, w, {});
+
+      // check if our edge also has a weight defined and is a number
+      if (edge[2] && typeof edge[2] === 'number') {
+        // if found, add attribute "distance" as weightAttribute to the edge document
+        ec.save(v, w, {
+          distance: edge[2]
+        });
+      } else {
+        ec.save(v, w, {});
+      }
     }
     return verticesByName;
   }
