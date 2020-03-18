@@ -27,6 +27,7 @@ namespace arangodb {
 class CrashHandler {
  public:
   static void installCrashHandler();
+  static void setTempFilename();
 };
 
 }  // namespace arangodb

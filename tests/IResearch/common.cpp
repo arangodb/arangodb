@@ -149,20 +149,11 @@ namespace iresearch {
 namespace {
 
 struct BoostScorer : public irs::sort {
-  struct Prepared : public prepared_base<irs::boost_t, void> {
+  struct Prepared : public irs::prepared_sort_base<irs::boost_t, void> {
    public:
     DECLARE_FACTORY(Prepared);
 
     Prepared() = default;
-
-    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
-      const size_t size, size_t offset) const  override {
-      auto& casted_dst = score_cast(dst + offset);
-      casted_dst = 0.f;
-      for (size_t i = 0; i < size; ++i) {
-        casted_dst += score_cast(src_start[i] + offset);
-      }
-    }
 
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
@@ -175,7 +166,7 @@ struct BoostScorer : public irs::sort {
     }
 
     virtual bool less(irs::byte_type const* lhs, irs::byte_type const* rhs) const override {
-      return score_cast(lhs) < score_cast(rhs);
+      return traits_t::score_cast(lhs) < traits_t::score_cast(rhs);
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
@@ -183,7 +174,7 @@ struct BoostScorer : public irs::sort {
     }
 
     virtual void prepare_score(irs::byte_type* score) const override {
-      score_cast(score) = 0.f;
+      traits_t::score_cast(score) = 0.f;
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
@@ -229,20 +220,11 @@ virtual irs::sort::prepared::ptr prepare() const override {
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
 struct CustomScorer : public irs::sort {
-  struct Prepared : public irs::sort::prepared_base<float_t, void> {
+  struct Prepared : public irs::prepared_sort_base<float_t, void> {
    public:
     DECLARE_FACTORY(Prepared);
 
     Prepared(float_t i) : i(i) {}
-
-    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
-      const size_t size, size_t offset) const  override {
-      auto& casted_dst = score_cast(dst + offset);
-      casted_dst = 0.f;
-      for (size_t i = 0; i < size; ++i) {
-        casted_dst += score_cast(src_start[i] + offset);
-      }
-    }
 
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
@@ -255,7 +237,7 @@ struct CustomScorer : public irs::sort {
     }
 
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
-      return score_cast(lhs) < score_cast(rhs);
+      return traits_t::score_cast(lhs) < traits_t::score_cast(rhs);
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
@@ -263,7 +245,7 @@ struct CustomScorer : public irs::sort {
     }
 
     virtual void prepare_score(irs::byte_type* score) const override {
-      score_cast(score) = 0.f;
+      traits_t::score_cast(score) = 0.f;
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
