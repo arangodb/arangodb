@@ -343,6 +343,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   std::string curPath = CurrentShardPath(*_docColl);
   std::string planPath = PlanShardPath(*_docColl);
   AgencyComm ac;
+  int badCurrentCount = 0;
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
       LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
