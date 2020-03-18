@@ -1,7 +1,9 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
-* Legacy behaviour for maintenance mode in supervision.
+* Fixed issue #11275: indexes backward compatibility broken in 3.5+.
+
+* Legacy behavior for maintenance mode in supervision.
 
 * Fix supervision mode detection when unlocking agency in hot backup.
 
