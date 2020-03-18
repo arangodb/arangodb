@@ -276,7 +276,8 @@ const checkResIsValidKShortestPath = (allowedPaths, actualPaths, expectedResults
     print("Actual returned paths are: ");
     print(actualPaths);
   }
-  assertEqual(actualPaths.length, expectedResults);
+  // we're allowed to find less or equal the amount of the set limit
+  assertTrue(actualPaths.length <= expectedResults);
 
   if (actualPaths.length > 1) {
     // also check that if we've received multiple paths, that each of them differ
@@ -1354,9 +1355,9 @@ function testOpenDiamondShortestPathEnabledWeightCheck(testGraph) {
   checkResIsValidShortestPath(allowedPaths, actualPath);
 }
 
-function testOpenDiamondKShortestPath1AND2(testGraph) {
+function testOpenDiamondKShortestPathWithMultipleLimits(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
-  const limits = [1, 2];
+  const limits = [1, 2, 3, 4];
 
   _.each(limits, function (limit) {
     const query = aql`
@@ -1378,7 +1379,7 @@ function testOpenDiamondKShortestPath1AND2(testGraph) {
   });
 }
 
-function testOpenDiamondKShortestPathEnabledWeightCheck1(testGraph) {
+function testOpenDiamondKShortestPathEnabledWeightCheckLimit1(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const limit = 1;
   const query = aql`
@@ -3609,8 +3610,8 @@ const testsByGraph = {
     testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal,
     testOpenDiamondShortestPath,
     testOpenDiamondShortestPathEnabledWeightCheck,
-    testOpenDiamondKShortestPath1AND2,
-    testOpenDiamondKShortestPathEnabledWeightCheck1
+    testOpenDiamondKShortestPathWithMultipleLimits,
+    testOpenDiamondKShortestPathEnabledWeightCheckLimit1
   },
   smallCircle: {
     testSmallCircleDfsUniqueVerticesPath,
