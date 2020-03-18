@@ -240,6 +240,7 @@ const checkResIsValidGlobalBfsOf = (expectedVertices, actualPaths) => {
 
 const checkResIsValidShortestPath = (allowedPaths, actualPath) => {
   let pathFound = false;
+
   _.each(allowedPaths, function (currentPath) {
     let innerKeyComparison = false;
     // comparison only possible if lengths are equal, otherwise
@@ -297,10 +298,10 @@ const checkResIsValidKShortestPath = (allowedPaths, actualPaths, expectedResults
     });
   }
 
-  _.each(allowedPaths, function (allowedPath) {
+  _.each(actualPaths, function (actualPath) {
     let path = [];
     // format the result to be able to use already existing checkResIsValidShortestPath method
-    _.each(allowedPath, function (vertex) {
+    _.each(actualPath, function (vertex) {
       path.push(vertex);
     });
     checkResIsValidShortestPath(allowedPaths, path);
@@ -2972,9 +2973,6 @@ function testCompleteGraphKShortestPathLimit3(testGraph) {
   const res = db._query(query);
   const actualPath = res.toArray();
 
-  print("RESULT:");
-  print(res);
-
   checkResIsValidKShortestPath(allowedPaths, actualPath, limit);
 }
 
@@ -2995,6 +2993,48 @@ function testCompleteGraphShortestPathEnabledWeightCheck(testGraph) {
   const actualPath = res.toArray();
 
   checkResIsValidShortestPath(allowedPaths, actualPath);
+}
+
+function testCompleteGraphKShortestPathEnabledWeightCheckLimit1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const limit = 1;
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  checkResIsValidKShortestPath(allowedPaths, actualPath, limit);
+}
+
+function testCompleteGraphKShortestPathEnabledWeightCheckLimit2(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const limit = 2;
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "C"], ["A", "E", "D", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidKShortestPath(allowedPaths, actualPaths, limit);
 }
 
 function getExpectedBinTree() {
@@ -3755,7 +3795,9 @@ const testsByGraph = {
     testCompleteGraphShortestPath,
     testCompleteGraphShortestPathEnabledWeightCheck,
     testCompleteGraphKShortestPathLimit1,
-    testCompleteGraphKShortestPathLimit3
+    testCompleteGraphKShortestPathLimit3,
+    testCompleteGraphKShortestPathEnabledWeightCheckLimit1,
+    testCompleteGraphKShortestPathEnabledWeightCheckLimit2
   },
   easyPath: {
     testEasyPathAllCombinations,
