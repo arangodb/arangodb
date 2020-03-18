@@ -188,7 +188,7 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
   } catch (std::exception const& ex) {
     auto valueString =  tao::json::to_string(taoRuleValue, 4);
     auto msg = std::string("invalid object") + valueString + "exception: " + ex.what();
-    LOG_TOPIC("ababe", ERR, Logger::VALIDATION) << msg;
+    LOG_TOPIC("baabe", ERR, Logger::VALIDATION) << msg;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
   }
 }

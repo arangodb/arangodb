@@ -320,7 +320,7 @@ function ValidationBasicsSuite () {
     },
 
     testJsonRequire  : () => {
-      p = {
+      let p = {
         ...validatorJson.rule,
         required: [ "zahlen", "name" ]
       };
