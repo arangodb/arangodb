@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix cluster representation of the collection figures for RocksDB.
+
 * Changed behavior for creating new collections in OneShard databases
   (i.e. databases with "sharding" attribute set to "single"):
 
