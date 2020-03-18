@@ -30,7 +30,6 @@
 #include <map>
 
 #include "Basics/Common.h"
-#include "Basics/StringHeap.h"
 
 #include "Pregel/GraphStore.h"
 #include "Pregel/Iterators.h"

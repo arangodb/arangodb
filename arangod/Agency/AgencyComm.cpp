@@ -44,6 +44,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
@@ -51,6 +52,7 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
+#include "RestServer/MetricsFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -74,8 +76,9 @@ static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) 
   VPackObjectBuilder c(&builder);
 }
 
-const std::vector<std::string> AgencyTransaction::TypeUrl(
-    {"/read", "/write", "/transact", "/transient"});
+const std::vector<std::string> AgencyTransaction::TypeUrl({"/read", "/write",
+                                                           "/transact",
+                                                           "/transient"});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition
@@ -277,7 +280,6 @@ std::string AgencyWriteTransaction::randomClientId() {
   }
   return uuid;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION-- AgencyTransientTransaction
@@ -501,7 +503,8 @@ void AgencyCommResult::clear() {
 VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
 
 void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
-  { VPackObjectBuilder dump(&builder);
+  {
+    VPackObjectBuilder dump(&builder);
     builder.add("location", VPackValue(_location));
     builder.add("message", VPackValue(_message));
     builder.add("sent", VPackValue(_sent));
@@ -513,17 +516,22 @@ void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
     }
     builder.add("statusCode", VPackValue(_statusCode));
     builder.add(VPackValue("values"));
-    { VPackObjectBuilder v(&builder);
+    {
+      VPackObjectBuilder v(&builder);
       for (auto const& value : _values) {
         builder.add(VPackValue(value.first));
         auto const& entry = value.second;
-        { VPackObjectBuilder vv(&builder);
+        {
+          VPackObjectBuilder vv(&builder);
           builder.add("index", VPackValue(entry._index));
           builder.add("isDir", VPackValue(entry._isDir));
           if (entry._vpack != nullptr && entry._vpack->isClosed()) {
             builder.add("vpack", entry._vpack->slice());
-          }}}
-    }}
+          }
+        }
+      }
+    }
+  }
 }
 
 VPackBuilder AgencyCommResult::toVelocyPack() const {
@@ -533,10 +541,11 @@ VPackBuilder AgencyCommResult::toVelocyPack() const {
 }
 
 namespace std {
-ostream& operator<< (ostream& out, AgencyCommResult const& a) {
+ostream& operator<<(ostream& out, AgencyCommResult const& a) {
   out << a.toVelocyPack().toJson();
   return out;
-}}
+}
+}  // namespace std
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 AgencyCommManager
@@ -746,8 +755,8 @@ std::string AgencyCommManager::redirect(std::unique_ptr<httpclient::GeneralClien
   _endpoints.erase(std::remove(_endpoints.begin(), _endpoints.end(), specification),
                    _endpoints.end());
 
-  LOG_TOPIC("e6514", DEBUG, Logger::AGENCYCOMM) << "Got an agency redirect from '" << endpoint
-                                       << "' to '" << specification << "'";
+  LOG_TOPIC("e6514", DEBUG, Logger::AGENCYCOMM)
+      << "Got an agency redirect from '" << endpoint << "' to '" << specification << "'";
 
   _endpoints.push_front(specification);
 
@@ -767,7 +776,8 @@ void AgencyCommManager::addEndpoint(std::string const& endpoint) {
   }
 
   if (iter == _endpoints.end()) {
-    LOG_TOPIC("b3062", DEBUG, Logger::AGENCYCOMM) << "using agency endpoint '" << normalized << "'";
+    LOG_TOPIC("b3062", DEBUG, Logger::AGENCYCOMM)
+        << "using agency endpoint '" << normalized << "'";
     _endpoints.emplace_back(normalized);
   }
 }
@@ -792,7 +802,8 @@ void AgencyCommManager::updateEndpoints(std::vector<std::string> const& newEndpo
                       currentSet.end(), std::inserter(toAdd, toAdd.begin()));
 
   for (std::string const& rem : toRemove) {
-    LOG_TOPIC("7fc66", INFO, Logger::AGENCYCOMM) << "Removing endpoint " << rem << " from agent pool";
+    LOG_TOPIC("7fc66", INFO, Logger::AGENCYCOMM)
+        << "Removing endpoint " << rem << " from agent pool";
     _endpoints.erase(std::remove(_endpoints.begin(), _endpoints.end(), rem),
                      _endpoints.end());
   }
@@ -861,7 +872,9 @@ void AgencyCommManager::switchCurrentEndpoint() {
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
-    : _server(server) {}
+    : _server(server),
+      _agency_comm_request_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram<log_scale_t<uint64_t>>(
+          StaticStrings::AgencyCommRequestTimeMs)) {}
 
 AgencyCommResult AgencyComm::sendServerState() {
   // construct JSON value { "status": "...", "time": "..." }
@@ -995,7 +1008,8 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
     result._statusCode = 200;
 
   } catch (std::exception const& e) {
-    LOG_TOPIC("a6906", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
+    LOG_TOPIC("a6906", ERR, Logger::AGENCYCOMM)
+        << "Error transforming result: " << e.what();
     result.clear();
   } catch (...) {
     LOG_TOPIC("5391b", ERR, Logger::AGENCYCOMM)
@@ -1010,27 +1024,26 @@ AgencyCommResult AgencyComm::dump() {
   std::string url = AgencyComm::AGENCY_URL_PREFIX + "/state";
 
   AgencyCommResult result =
-    sendWithFailover(
-      arangodb::rest::RequestType::GET,
-      AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
-      url, VPackSlice::noneSlice());
+      sendWithFailover(arangodb::rest::RequestType::GET,
+                       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
+                       url, VPackSlice::noneSlice());
 
   if (!result.successful()) {
     return result;
   }
 
   try {
-
     result.setVPack(VPackParser::fromJson(result.bodyRef()));
     result._body.clear();
     result._statusCode = 200;
 
   } catch (std::exception const& e) {
-    LOG_TOPIC("8da8e", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
+    LOG_TOPIC("8da8e", ERR, Logger::AGENCYCOMM)
+        << "Error transforming result: " << e.what();
     result.clear();
   } catch (...) {
     LOG_TOPIC("b3eef", ERR, Logger::AGENCYCOMM)
-      << "Error transforming result: out of memory";
+        << "Error transforming result: out of memory";
     result.clear();
   }
 
@@ -1286,20 +1299,21 @@ application_features::ApplicationServer& AgencyComm::server() {
 }
 
 bool AgencyComm::ensureStructureInitialized() {
-  LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
+  LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM)
+      << "checking if agency is initialized";
 
   while (!_server.isStopping() && shouldInitializeStructure()) {
     LOG_TOPIC("17e16", TRACE, Logger::AGENCYCOMM)
-      << "Agency is fresh. Needs initial structure.";
+        << "Agency is fresh. Needs initial structure.";
 
     if (tryInitializeStructure()) {
       LOG_TOPIC("4c5aa", TRACE, Logger::AGENCYCOMM)
-        << "Successfully initialized agency";
+          << "Successfully initialized agency";
       break;
     }
 
     LOG_TOPIC("63f7b", INFO, Logger::AGENCYCOMM)
-      << "Initializing agency failed. We'll try again soon";
+        << "Initializing agency failed. We'll try again soon";
     // We should really have exclusive access, here, this is strange!
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -1406,10 +1420,11 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
   AgencyCommResult result;
   if (!AgencyCommManager::isEnabled()) {
     LOG_TOPIC("42fae", ERR, Logger::AGENCYCOMM)
-      << "No AgencyCommManager. Inappropriate agent usage?";
-    result.set(static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE), "No AgencyCommManager. Inappropriate agent usage?");
+        << "No AgencyCommManager. Inappropriate agent usage?";
+    result.set(static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE),
+               "No AgencyCommManager. Inappropriate agent usage?");
     return result;
-  } // if
+  }  // if
 
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
@@ -1434,6 +1449,12 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
   auto started = std::chrono::steady_clock::now();
   auto timeOut = started + std::chrono::duration<double>(timeout);
   double conTimeout = 1.0;
+
+  TRI_DEFER({
+    auto end = std::chrono::steady_clock::now();
+
+    _agency_comm_request_time_ms.count(std::chrono::duration_cast<std::chrono::milliseconds>(end - started).count());
+  });
 
   int tries = 0;
 
@@ -1564,7 +1585,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       // timeout is reached.
       // Also note that we only inquire about WriteTransactions.
       if (isWriteTrans && !clientIds.empty() && result._sent &&
-          (result._statusCode == 0 || result._statusCode == static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE))) {
+          (result._statusCode == 0 ||
+           result._statusCode == static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE))) {
         isInquiry = true;
         conTimeout = 16.0;
       }
@@ -1603,7 +1625,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
         if (outer.isObject() && outer.hasKey("results")) {
           VPackSlice results = outer.get("results");
           if (results.length() > 0) {
-            LOG_TOPIC("507f5", DEBUG, Logger::AGENCYCOMM) << "Inquired " << resultBody->toJson();
+            LOG_TOPIC("507f5", DEBUG, Logger::AGENCYCOMM)
+                << "Inquired " << resultBody->toJson();
             AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
             break;
           } else {
@@ -1646,7 +1669,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       }
     }
 
-    if (result._statusCode == 0 || result._statusCode == static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE)) {
+    if (result._statusCode == 0 ||
+        result._statusCode == static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE)) {
       // Rotate to new agent endpoint:
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
       endpoint.clear();
@@ -1655,7 +1679,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
   }
 
   // Log error
-  if (!result.successful() && result.httpCode() != static_cast<int>(rest::ResponseCode::PRECONDITION_FAILED)) {
+  if (!result.successful() &&
+      result.httpCode() != static_cast<int>(rest::ResponseCode::PRECONDITION_FAILED)) {
     LOG_TOPIC("78466", DEBUG, Logger::AGENCYCOMM)
         << "Unsuccessful AgencyComm:"
         << " errorCode: " << result.errorCode()
@@ -1708,7 +1733,8 @@ AgencyCommResult AgencyComm::send(arangodb::httpclient::GeneralClientConnection*
 
   if (response == nullptr) {
     result._message = "could not send request to agency";
-    LOG_TOPIC("4366b", TRACE, Logger::AGENCYCOMM) << "could not send request to agency";
+    LOG_TOPIC("4366b", TRACE, Logger::AGENCYCOMM)
+        << "could not send request to agency";
 
     return result;
   }
@@ -1717,7 +1743,8 @@ AgencyCommResult AgencyComm::send(arangodb::httpclient::GeneralClientConnection*
 
   if (!response->isComplete()) {
     result._message = "sending request to agency failed";
-    LOG_TOPIC("f305c", TRACE, Logger::AGENCYCOMM) << "sending request to agency failed";
+    LOG_TOPIC("f305c", TRACE, Logger::AGENCYCOMM)
+        << "sending request to agency failed";
 
     return result;
   }
@@ -1882,8 +1909,8 @@ bool AgencyComm::tryInitializeStructure() {
         << "Initializing agency with " << builder.toJson();
 
     AgencyWriteTransaction initTransaction(
-      AgencyOperation("", AgencyValueOperationType::SET, builder.slice()),
-      AgencyPrecondition("Plan", AgencyPrecondition::Type::EMPTY, true));
+        AgencyOperation("", AgencyValueOperationType::SET, builder.slice()),
+        AgencyPrecondition("Plan", AgencyPrecondition::Type::EMPTY, true));
 
     AgencyCommResult result = sendTransactionWithFailover(initTransaction);
     if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
@@ -1898,64 +1925,62 @@ bool AgencyComm::tryInitializeStructure() {
         << "Fatal error initializing agency " << e.what();
     FATAL_ERROR_EXIT();
   } catch (...) {
-    LOG_TOPIC("6cc28", FATAL, Logger::AGENCYCOMM) << "Fatal error initializing agency";
+    LOG_TOPIC("6cc28", FATAL, Logger::AGENCYCOMM)
+        << "Fatal error initializing agency";
     FATAL_ERROR_EXIT();
   }
 }
 
 bool AgencyComm::shouldInitializeStructure() {
-
   size_t nFail = 0;
 
   while (!_server.isStopping()) {
     auto result = getValues("Plan");
 
-    if (!result.successful()) { // Not 200 - 299
+    if (!result.successful()) {  // Not 200 - 299
 
       if (result.httpCode() == 401) {
         // unauthorized
-        LOG_TOPIC("32781", FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
+        LOG_TOPIC("32781", FATAL, Logger::STARTUP)
+            << "Unauthorized. Wrong credentials.";
         FATAL_ERROR_EXIT();
       }
 
       // Agency not ready yet
       LOG_TOPIC("36253", TRACE, Logger::AGENCYCOMM)
-        << "waiting for agency to become ready";
+          << "waiting for agency to become ready";
       continue;
 
     } else {
-
       // Sanity
       if (result.slice().isArray() && result.slice().length() == 1) {
-
         // No plan entry? Should initialize
         if (result.slice()[0].isObject() && result.slice()[0].length() == 0) {
           LOG_TOPIC("98732", DEBUG, Logger::AGENCYCOMM)
-            << "agency initialization should be performed";
+              << "agency initialization should be performed";
           return true;
         } else {
           LOG_TOPIC("abedb", DEBUG, Logger::AGENCYCOMM)
-            << "agency initialization under way or done";
+              << "agency initialization under way or done";
           return false;
         }
       } else {
         // Should never get here
         TRI_ASSERT(false);
         if (nFail++ < 3) {
-          LOG_TOPIC("fed52", DEBUG, Logger::AGENCYCOMM) << "What the hell just happened?";
+          LOG_TOPIC("fed52", DEBUG, Logger::AGENCYCOMM)
+              << "What the hell just happened?";
         } else {
           LOG_TOPIC("54fea", FATAL, Logger::AGENCYCOMM)
-            << "Illegal response from agency during bootstrap: "
-            << result.slice().toJson();
+              << "Illegal response from agency during bootstrap: "
+              << result.slice().toJson();
           FATAL_ERROR_EXIT();
         }
         continue;
       }
-
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
-
   }
 
   return false;

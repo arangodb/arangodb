@@ -7330,9 +7330,13 @@ parse(const CharT* format, Parsable& tp,
 
 namespace detail
 {
-
+// [tobias, 2020-03-10] I added the check
+//   !defined(_MSC_VER)
+// because this block does not compile with MSVC (at least MSVC 16 2019 / _MSC_VER = 1923).
+// If it works at some point, add `|| _MSC_VER > ...`.
 #if __cplusplus >= 201402  && (!defined(__EDG_VERSION__) || __EDG_VERSION__ > 411) \
-                           && (!defined(__SUNPRO_CC) || __SUNPRO_CC > 0x5150)
+                           && (!defined(__SUNPRO_CC) || __SUNPRO_CC > 0x5150) \
+                           && !defined(_MSC_VER)
 
 template <class CharT, std::size_t N>
 class string_literal

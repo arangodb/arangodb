@@ -125,6 +125,11 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
 
 bool AqlItemMatrix::empty() const noexcept { return _blocks.empty(); }
 
+void AqlItemMatrix::clear() {
+  _blocks.clear();
+  _size = 0;
+}
+
 RegisterId AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
 
 uint64_t AqlItemMatrix::size() const noexcept { return _size; }
@@ -215,4 +220,5 @@ ShadowAqlItemRow AqlItemMatrix::peekShadowRow() const {
 }
 
 AqlItemMatrix::AqlItemMatrix(RegisterId nrRegs)
-    : _size(0), _nrRegs(nrRegs), _lastShadowRow(InvalidRowIndex) {}
+    : _size(0), _nrRegs(nrRegs), _lastShadowRow(InvalidRowIndex) {
+}

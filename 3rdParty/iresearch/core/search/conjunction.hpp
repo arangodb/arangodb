@@ -93,7 +93,7 @@ struct score_iterator_adapter {
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class conjunction : public doc_iterator_base, score_ctx {
+class conjunction : public doc_iterator_base<doc_iterator>, score_ctx {
  public:
   typedef score_iterator_adapter<DocIterator> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
@@ -103,7 +103,7 @@ class conjunction : public doc_iterator_base, score_ctx {
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered())
     : itrs_(std::move(itrs)),
-      order_(&ord) {
+      merger_(ord.prepare_merger()) {
     assert(!itrs_.empty());
 
     // sort subnodes in ascending order by their cost
@@ -143,16 +143,25 @@ class conjunction : public doc_iterator_base, score_ctx {
         prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
           auto& self = *static_cast<const conjunction*>(ctx);
           self.scores_[0]->evaluate();
-          self.order_->merge(score, &self.scores_vals_[0], 1);
-          });
+          self.merger_(score, &self.scores_vals_[0], 1);
+        });
         break;
       case 2:
         prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
           auto& self = *static_cast<const conjunction*>(ctx);
           self.scores_[0]->evaluate();
           self.scores_[1]->evaluate();
-          self.order_->merge(score, &self.scores_vals_[0], 2);
-          });
+          self.merger_(score, &self.scores_vals_[0], 2);
+        });
+        break;
+      case 3:
+        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+          auto& self = *static_cast<const conjunction*>(ctx);
+          self.scores_[0]->evaluate();
+          self.scores_[1]->evaluate();
+          self.scores_[2]->evaluate();
+          self.merger_(score, &self.scores_vals_[0], 3);
+        });
         break;
       default:
         prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
@@ -160,8 +169,8 @@ class conjunction : public doc_iterator_base, score_ctx {
           for (auto* it_score : self.scores_) {
             it_score->evaluate();
           }
-          self.order_->merge(score, &self.scores_vals_[0], self.scores_vals_.size());
-          });
+          self.merger_(score, &self.scores_vals_[0], self.scores_vals_.size());
+        });
         break;
     }
   }
@@ -229,7 +238,7 @@ class conjunction : public doc_iterator_base, score_ctx {
   mutable std::vector<const irs::byte_type*> scores_vals_;
   const irs::document* front_doc_{};
   irs::doc_iterator* front_;
-  const irs::order::prepared* order_;
+  order::prepared::merger merger_;
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////

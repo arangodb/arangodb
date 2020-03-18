@@ -769,9 +769,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
 
 /// @brief destroy the node
 AstNode::~AstNode() {
-  if (computedValue != nullptr) {
-    delete[] computedValue;
-  }
+  freeComputedValue();
 }
 
 /// @brief return the string value of a node, as an std::string
@@ -1587,12 +1585,33 @@ bool AstNode::willUseV8() const {
     // check if the called function is one of them
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
-
+    
     if (func->implementation == nullptr) {
-      // a function without a V8 implementation
+      // a function without a C++ implementation
       setFlag(DETERMINED_V8, VALUE_V8);
       return true;
     }
+    
+    if (func->name == "CALL" || func->name == "APPLY") {
+      // CALL and APPLY can call arbitrary other functions...
+      if (numMembers() > 0 && getMemberUnchecked(0)->isStringValue()) {
+        auto s = getMemberUnchecked(0)->getStringRef();
+        if (s.find(':') != std::string::npos) {
+          // a user-defined function.
+          // this will use V8
+          setFlag(DETERMINED_V8, VALUE_V8);
+          return true;
+        }
+        // fallthrough intentional
+      } else {
+        // we are unsure about what function will be called by 
+        // CALL and APPLY. We cannot rule out user-defined functions,
+        // so we assume the worst case here
+        setFlag(DETERMINED_V8, VALUE_V8);
+        return true;
+      }
+    }
+
   }
 
   size_t const n = numMembers();
@@ -2590,14 +2609,6 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   }
 }
 
-void AstNode::stealComputedValue() {
-  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  if (computedValue != nullptr) {
-    delete[] computedValue;
-    computedValue = nullptr;
-  }
-}
-
 void AstNode::markFinalized(AstNode* subtreeRoot) {
   if ((nullptr == subtreeRoot) || subtreeRoot->hasFlag(AstNodeFlagType::FLAG_FINALIZED)) {
     return;
@@ -2828,6 +2839,8 @@ void AstNode::setIntValue(int64_t v) {
 
 void AstNode::setDoubleValue(double v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  
+  freeComputedValue();
   value.value._double = v;
 }
 
@@ -2838,6 +2851,8 @@ size_t AstNode::getStringLength() const {
 
 void AstNode::setStringValue(char const* v, size_t length) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+
+  freeComputedValue();
   // note: v may contain the NUL byte and is not necessarily
   // null-terminated itself (if from VPack)
   value.type = VALUE_TYPE_STRING;
@@ -2873,6 +2888,13 @@ void AstNode::setData(void* v) {
 void AstNode::setData(void const* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   value.value._data = const_cast<void*>(v);
+}
+
+void AstNode::freeComputedValue() {
+  if (computedValue != nullptr) {
+    delete[] computedValue;
+    computedValue = nullptr;
+  }
 }
 
 /// @brief append the AstNode to an output stream

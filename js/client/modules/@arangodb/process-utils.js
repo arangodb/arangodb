@@ -568,17 +568,23 @@ function initProcessStats(instanceInfo) {
 }
 
 function getDeltaProcessStats(instanceInfo) {
-  let deltaStats = {};
-  instanceInfo.arangods.forEach((arangod) => {
-    let newStats = getProcessStats(arangod.pid);
-    let myDeltaStats = {};
-    for (let key in arangod.stats) {
-      myDeltaStats[key] = newStats[key] - arangod.stats[key];
-    }
-    deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
-    arangod.stats = newStats;
-  });
-  return deltaStats;
+  try {
+    let deltaStats = {};
+    instanceInfo.arangods.forEach((arangod) => {
+      let newStats = getProcessStats(arangod.pid);
+      let myDeltaStats = {};
+      for (let key in arangod.stats) {
+        myDeltaStats[key] = newStats[key] - arangod.stats[key];
+      }
+      deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
+      arangod.stats = newStats;
+    });
+    return deltaStats;
+  }
+  catch (x) {
+    print("aborting stats generation");
+    return {};
+  }
 }
 
 function summarizeStats(deltaStats) {
@@ -1788,7 +1794,17 @@ function launchFinalize(options, instanceInfo, startTime) {
       return;
     }
     var port = res[1];
-    ports.push('port ' + port);
+    if (arangod.role === 'agent') {
+      if (options.sniffAgency) {
+        ports.push('port ' + port);
+      }
+    } else if (arangod.role === 'dbserver') {
+      if (options.sniffDBServers) {
+        ports.push('port ' + port);
+      }
+    } else {
+      ports.push('port ' + port);
+    }
     processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
   });
 

@@ -29,6 +29,8 @@
 #include <unistd.h>
 #endif
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #ifndef _WIN32
 #include <execinfo.h>
@@ -41,6 +43,8 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/files.h"
+#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
 #include "Logger/LoggerFeature.h"
@@ -102,6 +106,9 @@ CrashHandlerStackInitializer stackInitializer;
 /// handler callback
 std::atomic<bool> crashHandlerInvoked(false);
 
+/// @brief filename that we will use to write a backtrace into
+std::string crashFilename;
+
 /// @brief appends null-terminated string src to dst,
 /// advances dst pointer by length of src
 void appendNullTerminatedString(char const* src, char*& dst) {
@@ -116,7 +123,7 @@ void appendNullTerminatedString(char const* src, char*& dst) {
 /// in context of SIGSEGV, with a broken heap etc.
 /// Assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
-/// (1024 bytes should be more than enough).
+/// (4096 bytes should be more than enough).
 size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize) {
   // build a crash message
   char* p = s;
@@ -194,8 +201,8 @@ void crashHandler(int signal, siginfo_t* info, void*) {
 #endif
 
     try {
-      // buffer for constructing temporary log messages (to avoid malloc as much as possible)
-      char buffer[1024];
+      // buffer for constructing temporary log messages (to avoid malloc)
+      char buffer[4096];
       memset(&buffer[0], 0, sizeof(buffer));
 
       // acquire backtrace
@@ -210,26 +217,74 @@ void crashHandler(int signal, siginfo_t* info, void*) {
       LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
       arangodb::Logger::flush();
 
-      if (numFrames > 0) {
-        // note: backtrace_symbols() will allocate memory
-        char** stack = backtrace_symbols(traces, numFrames); 
-        if (stack != nullptr) {
-          for (int i = skipFrames /* ignore first frames */; i < numFrames; ++i) {
-            char* p = &buffer[0];
-            appendNullTerminatedString("- frame #", p);
-            p += arangodb::basics::StringUtils::itoa(uint64_t(i), p);
-            appendNullTerminatedString(": ", p);
-            if (strlen(stack[i]) <= sizeof(buffer) / 2) {
-              // only append stack trace to buffer if it is safe (i.e. short enough to append it)
-              appendNullTerminatedString(stack[i], p);
+      if (numFrames > 0 && !::crashFilename.empty()) {
+        // open crash file to write backtrace information into it
+        int fd = TRI_CREATE(::crashFilename.c_str(), O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+        
+        if (fd >= 0) {
+          // actually write backtrace information into file. this does not malloc!
+          backtrace_symbols_fd(traces, numFrames, fd);
+          TRI_CLOSE(fd);
 
-              // note: LOG_TOPIC() will allocate memory
-              LOG_TOPIC("308c2", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+          // reopen the file for reading it
+          fd = TRI_OPEN(::crashFilename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+          if (fd >= 0) {
+            // fill buffer with \n bytes, so we can simplify the following logic
+            memset(&buffer[0], '\n', sizeof(buffer));
+            // also make sure it is always null-terminated
+            buffer[sizeof(buffer) - 1] = '\0';
+
+            p = &buffer[0];
+            size_t bytesLeft = sizeof(buffer) - 2;
+            while (bytesLeft > 0) {
+              TRI_read_return_t n = TRI_READ(fd, p, static_cast<TRI_read_t>(bytesLeft));
+              if (n <= 0) {
+                *p = '\0';
+                break;
+              }
+              TRI_ASSERT(bytesLeft >= static_cast<size_t>(n));
+              bytesLeft -= n;
+              p += n;
             }
+
+            int frame = 0;
+            length = p - &buffer[0]; 
+            p = &buffer[0];
+            char* e = p + length;
+            while (p < e) {
+              char* split = strchr(p, '\n');
+              if (split != nullptr) {
+                length = split - p;
+              } else {
+                length = e - p;
+              }
+              if (length <= 1) {
+                break;
+              }
+              TRI_ASSERT(length > 0);
+
+              if (frame >= skipFrames) {
+                LOG_TOPIC("308c2", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(p, length);
+              }
+              
+              ++frame;
+
+              if (frame >= numFrames) {
+                break;
+              }
+
+              if (split != nullptr) {
+                p = split + 1;
+              } else {
+                // reached the end
+                p = e;
+              }
+            }
+            TRI_CLOSE(fd);
           }
-          free(stack);
-          arangodb::Logger::flush();
+
         }
+        arangodb::Logger::flush();
       }
      
       {
@@ -296,6 +351,23 @@ void CrashHandler::installCrashHandler() {
   sigaction(SIGILL, &act, nullptr);
   sigaction(SIGFPE, &act, nullptr);
   sigaction(SIGABRT, &act,nullptr);
+#endif
+}
+
+void CrashHandler::setTempFilename() {
+#ifndef _WIN32
+  if (!::crashHandlerInvoked.exchange(true)) {
+    // create a temporary filename. This filename is used later when writing
+    // crash reports. we build the filename now to not have to call malloc and
+    // such from within the signal handler.
+    long int unusedError;
+    std::string unusedMessage;
+    int res = TRI_GetTempName(nullptr, ::crashFilename, false, unusedError, unusedMessage);
+    if (res != TRI_ERROR_NO_ERROR) {
+      ::crashFilename.clear();
+    }
+    ::crashHandlerInvoked.store(false);
+  }
 #endif
 }
 

@@ -583,7 +583,8 @@ bool isFilter(arangodb::aql::Function const& func) noexcept {
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
          func.implementation == &aql::Functions::LevenshteinMatch ||
-         func.implementation == &aql::Functions::Like;
+         func.implementation == &aql::Functions::Like ||
+         func.implementation == &aql::Functions::NgramMatch;
 }
 
 bool isScorer(arangodb::aql::Function const& func) noexcept {

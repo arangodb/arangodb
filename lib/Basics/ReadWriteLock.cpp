@@ -28,8 +28,8 @@
 using namespace arangodb::basics;
 
 /// @brief locks for writing
-void ReadWriteLock::writeLock() {
-  if (tryWriteLock()) {
+void ReadWriteLock::lockWrite() {
+  if (tryLockWrite()) {
     return;
   }
 
@@ -54,7 +54,7 @@ void ReadWriteLock::writeLock() {
 
 /// @brief lock for writes with microsecond timeout
 bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
-  if (tryWriteLock()) {
+  if (tryLockWrite()) {
     return true;
   }
 
@@ -93,7 +93,7 @@ bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
 }
 
 /// @brief locks for writing, but only tries
-bool ReadWriteLock::tryWriteLock() {
+bool ReadWriteLock::tryLockWrite() {
   // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire write lock as long as no readers or writers are active,
@@ -107,14 +107,14 @@ bool ReadWriteLock::tryWriteLock() {
 }
 
 /// @brief locks for reading
-void ReadWriteLock::readLock() {
-  if (tryReadLock()) {
+void ReadWriteLock::lockRead() {
+  if (tryLockRead()) {
     return;
   }
 
   std::unique_lock<std::mutex> guard(_reader_mutex);
   while (true) {
-    if (tryReadLock()) {
+    if (tryLockRead()) {
       return;
     }
 
@@ -123,7 +123,7 @@ void ReadWriteLock::readLock() {
 }
 
 /// @brief locks for reading, tries only
-bool ReadWriteLock::tryReadLock() {
+bool ReadWriteLock::tryLockRead() {
   // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire read lock as long as no writers are active or queued

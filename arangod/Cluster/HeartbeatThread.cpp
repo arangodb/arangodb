@@ -210,7 +210,13 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _lastPlanVersionNoticed(0),
       _lastCurrentVersionNoticed(0),
       _DBServerUpdateCounter(0),
-      _agencySync(_server, this) {}
+      _agencySync(_server, this),
+      _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
+          StaticStrings::HeartbeatSendTimeMs, log_scale_t<uint64_t>(2, 4, 8000, 10),
+          "Time required to send heartbeat [ms]")),
+      _heartbeat_failure_counter(server.getFeature<arangodb::MetricsFeature>().counter(
+          StaticStrings::HeartbeatFailureCounter, 0,
+          "Counting failed heartbeat transmissions")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -321,7 +327,8 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
       for (auto const& server : VPackObjectIterator(failedServersSlice)) {
         failedServers.push_back(server.key.copyString());
       }
-      LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
+      LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT)
+          << "Updating failed servers list.";
       auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
@@ -431,13 +438,12 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
 
-  
-  _planAgencyCallback =
-    std::make_shared<AgencyCallback>(_server, "Plan/Version", updatePlan, true, false);
-  
+  _planAgencyCallback = std::make_shared<AgencyCallback>(_server, "Plan/Version",
+                                                         updatePlan, true, false);
+
   _currentAgencyCallback =
-    std::make_shared<AgencyCallback>(_server, "Current/Version", updateCurrent, true, false);
-  
+      std::make_shared<AgencyCallback>(_server, "Current/Version", updateCurrent, true, false);
+
   bool registered = false;
   while (!registered && !isStopping()) {
     registered = _agencyCallbackRegistry->registerCallback(_planAgencyCallback);
@@ -476,19 +482,11 @@ void HeartbeatThread::runDBServer() {
   // start immediately after
 
   while (!isStopping()) {
-    logThreadDeaths();
-
     try {
       auto const start = std::chrono::steady_clock::now();
+      logThreadDeaths();
       // send our state to the agency.
       sendServerState();
-      auto timeDiff = std::chrono::steady_clock::now() - start;
-      if (timeDiff > std::chrono::seconds(2)) {
-        LOG_TOPIC("77653", WARN, Logger::HEARTBEAT)
-            << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
-               "this might be causing trouble with health checks. Please "
-               "contact ArangoDB and ask for help.";
-      }
 
       if (isStopping()) {
         break;
@@ -614,7 +612,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       myIdBuilder.add(VPackValue(state->getId()));
 
       auto updateMaster = agency.casValue("/Current/Foxxmaster", foxxmasterSlice,
-                                           myIdBuilder.slice(), 0, 10.0);
+                                          myIdBuilder.slice(), 0, 10.0);
       if (updateMaster.successful()) {
         // We won the race we are the master
         ServerState::instance()->setFoxxmaster(state->getId());
@@ -692,7 +690,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       for (auto const& server : VPackObjectIterator(failedServersSlice)) {
         failedServers.push_back(server.key.copyString());
       }
-      LOG_TOPIC("43332", DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
+      LOG_TOPIC("43332", DEBUG, Logger::HEARTBEAT)
+          << "Updating failed servers list.";
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
 
@@ -979,8 +978,8 @@ void HeartbeatThread::runSingleServer() {
         config._idleMinWaitTime = 250 * 1000;       // 250ms
         config._idleMaxWaitTime = 3 * 1000 * 1000;  // 3s
         TRI_ASSERT(!config._skipCreateDrop);
-        config._includeFoxxQueues = true; // sync _queues and _jobs
-    
+        config._includeFoxxQueues = true;  // sync _queues and _jobs
+
         if (_server.hasFeature<ReplicationFeature>()) {
           auto& feature = _server.getFeature<ReplicationFeature>();
           config._connectTimeout = feature.checkConnectTimeout(config._connectTimeout);
@@ -1012,11 +1011,11 @@ void HeartbeatThread::runSingleServer() {
             debug.close();
             LOG_TOPIC("3ffb1", DEBUG, Logger::HEARTBEAT)
                 << "previous applier state was: " << debug.toJson();
-            
+
             auto config = applier->configuration();
             config._jwt = af->tokenCache().jwtToken();
             applier->reconfigure(config);
-            
+
             // reads ticks from configuration, check again next time
             applier->startTailing(0, false, 0);
             continue;
@@ -1061,17 +1060,10 @@ void HeartbeatThread::runCoordinator() {
 
   while (!isStopping()) {
     try {
-      logThreadDeaths();
       auto const start = std::chrono::steady_clock::now();
+      logThreadDeaths();
       // send our state to the agency.
       sendServerState();
-      auto timeDiff = std::chrono::steady_clock::now() - start;
-      if (timeDiff > std::chrono::seconds(2)) {
-        LOG_TOPIC("77655", WARN, Logger::HEARTBEAT)
-        << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
-           "this might be causing trouble with health checks. Please "
-           "contact ArangoDB Support.";
-      }
 
       if (isStopping()) {
         break;
@@ -1088,12 +1080,12 @@ void HeartbeatThread::runCoordinator() {
         });
         if (!queued) {
           LOG_TOPIC("aacc2", WARN, Logger::HEARTBEAT)
-          << "Could not schedule getNewsFromAgency job in scheduler. Don't "
-             "worry, this will be tried again later.";
+              << "Could not schedule getNewsFromAgency job in scheduler. Don't "
+                 "worry, this will be tried again later.";
           *getNewsRunning = 0;
         } else {
           LOG_TOPIC("aacc3", DEBUG, Logger::HEARTBEAT)
-          << "Have scheduled getNewsFromAgency job.";
+              << "Have scheduled getNewsFromAgency job.";
         }
       }
 
@@ -1333,6 +1325,20 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 bool HeartbeatThread::sendServerState() {
   LOG_TOPIC("3369a", TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
+  auto const start = std::chrono::steady_clock::now();
+  TRI_DEFER({
+    auto timeDiff = std::chrono::steady_clock::now() - start;
+    _heartbeat_send_time_ms.count(
+        std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff).count());
+
+    if (timeDiff > std::chrono::seconds(2)) {
+      LOG_TOPIC("77655", WARN, Logger::HEARTBEAT)
+          << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
+             "this might be causing trouble with health checks. Please "
+             "contact ArangoDB Support.";
+    }
+  });
+
   const AgencyCommResult result = _agency.sendServerState();
 
   if (result.successful()) {
@@ -1341,6 +1347,7 @@ bool HeartbeatThread::sendServerState() {
   }
 
   if (++_numFails % _maxFailsBeforeWarning == 0) {
+    _heartbeat_failure_counter.count();
     std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
     LOG_TOPIC("3e2f5", WARN, Logger::HEARTBEAT)

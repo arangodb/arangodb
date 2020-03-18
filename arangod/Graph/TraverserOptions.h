@@ -32,6 +32,8 @@
 
 #include <velocypack/StringRef.h>
 
+#include <memory>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -47,6 +49,10 @@ class Query;
 class TraversalNode;
 struct Variable;
 }  // namespace aql
+
+namespace graph {
+class EdgeCursor;
+}
 
 namespace traverser {
 
@@ -78,6 +84,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool useBreadthFirst;
 
+  bool useNeighbors;
+
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
@@ -95,7 +103,10 @@ struct TraverserOptions : public graph::BaseOptions {
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  TraverserOptions(TraverserOptions const&);
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
+  ///        the planning phase; however, the options have to be prepared again
+  ///        (see TraversalNode::prepareOptions())
+  TraverserOptions(TraverserOptions const& other, bool allowAlreadyBuiltCopy = false);
   TraverserOptions& operator=(TraverserOptions const&) = delete;
 
   virtual ~TraverserOptions();
@@ -117,6 +128,8 @@ struct TraverserOptions : public graph::BaseOptions {
   void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth);
+  
+  bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 
   bool vertexHasFilter(uint64_t) const;
 
@@ -132,9 +145,9 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
 
-  graph::EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid, uint64_t);
-
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
+  
+  std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
   double estimateCost(size_t& nrItems) const override;
 
@@ -148,9 +161,6 @@ struct TraverserOptions : public graph::BaseOptions {
     TRI_ASSERT(usesPrune());
     return _pruneExpression.get();
   }
-
- private:
-  graph::EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid, uint64_t);
 };
 }  // namespace traverser
 }  // namespace arangodb

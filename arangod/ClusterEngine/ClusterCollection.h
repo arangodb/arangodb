@@ -111,6 +111,7 @@ class ClusterCollection final : public PhysicalCollection {
 
   std::unique_ptr<IndexIterator> getSortedAllIterator(transaction::Methods* trx) const;
 
+
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
@@ -126,11 +127,6 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
-
-  Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
-              ManagedDocumentResult& result, bool locked) override {
-    return this->read(trx, arangodb::velocypack::StringRef(key), result, locked);
-  }
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;

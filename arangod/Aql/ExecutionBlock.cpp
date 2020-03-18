@@ -25,6 +25,7 @@
 
 #include "ExecutionBlock.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/Ast.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
@@ -44,6 +45,10 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+#define LOG_QUERY(logId, level)            \
+  LOG_TOPIC(logId, level, Logger::QUERIES) \
+      << "[query#" << this->_engine->getQuery()->id() << "] "
 
 namespace {
 
@@ -291,4 +296,87 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
 
 bool ExecutionBlock::isInSplicedSubquery() const noexcept {
   return _isInSplicedSubquery;
+}
+
+void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string const& clientId) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      auto const node = getPlanNode();
+      auto const queryId = this->_engine->getQuery()->id();
+      // TODO make sure this works also if stack is non relevant, e.g. passed through by outer subquery.
+      auto const& call = stack.peek();
+      LOG_TOPIC("1e717", INFO, Logger::QUERIES)
+          << "[query#" << queryId << "] "
+          << "execute type=" << node->getTypeString() << " call= " << call
+          << " this=" << (uintptr_t)this << " id=" << node->id()
+          << (clientId.empty() ? "" : " clientId=" + clientId);
+    }
+  }
+}
+
+auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
+                                     std::string const& clientId)
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    auto const& [state, skipped, block] = result;
+    auto const items = block != nullptr ? block->size() : 0;
+    ExecutionNode const* en = getPlanNode();
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = skipped.getSkipCount() + items;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(en->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(en->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      ExecutionNode const* node = getPlanNode();
+      LOG_QUERY("60bbc", INFO)
+          << "execute done " << printBlockInfo() << " state=" << stateToString(state)
+          << " skipped=" << skipped.getSkipCount() << " produced=" << items
+          << (clientId.empty() ? "" : " clientId=" + clientId);
+      ;
+
+      if (_profile >= PROFILE_LEVEL_TRACE_2) {
+        if (block == nullptr) {
+          LOG_QUERY("9b3f4", INFO)
+              << "execute type=" << node->getTypeString() << " result: nullptr";
+        } else {
+          VPackBuilder builder;
+          auto const options = trxVpackOptions();
+          block->toSimpleVPack(options, builder);
+          LOG_QUERY("f12f9", INFO)
+              << "execute type=" << node->getTypeString()
+              << " result: " << VPackDumper::toString(builder.slice(), options);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+auto ExecutionBlock::printTypeInfo() const -> std::string const {
+  std::stringstream stream;
+  ExecutionNode const* node = getPlanNode();
+  stream << "type=" << node->getTypeString();
+  ;
+  return stream.str();
+}
+
+auto ExecutionBlock::printBlockInfo() const -> std::string const {
+  std::stringstream stream;
+  ExecutionNode const* node = getPlanNode();
+  stream << printTypeInfo() << " this=" << (uintptr_t)this << " id=" << node->id();
+  return stream.str();
 }

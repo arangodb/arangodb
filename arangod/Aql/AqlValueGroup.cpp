@@ -45,6 +45,11 @@ size_t AqlValueGroupHash::operator()(const std::vector<AqlValue>& value) const {
   return static_cast<size_t>(hash);
 }
 
+size_t AqlValueGroupHash::operator()(AqlValue const& value) const {
+  uint64_t hash = 0x12345678;
+  return value.hash(_trx, hash);
+}
+
 AqlValueGroupEqual::AqlValueGroupEqual(arangodb::transaction::Methods* trx)
     : _trx(trx) {}
 
@@ -61,4 +66,8 @@ bool AqlValueGroupEqual::operator()(const std::vector<AqlValue>& lhs,
   }
 
   return true;
+}
+
+bool AqlValueGroupEqual::operator()(AqlValue const& lhs, AqlValue const& rhs) const {
+  return AqlValue::Compare(_trx, lhs, rhs, false) == 0;
 }
