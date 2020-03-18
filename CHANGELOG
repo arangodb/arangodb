@@ -22,6 +22,9 @@ devel
   The web interface now also hides the "Distribute shards like" settings in this
   case, and makes the "Number of shards" input box read-only.
 
+* Fix premature access to temporary path before a user-specified path was
+  read from the config options.
+
 * Rebuild UI and update swagger.
 
 * Added ability to store values in ArangoSearch views.
