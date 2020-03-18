@@ -3037,6 +3037,27 @@ function testCompleteGraphKShortestPathEnabledWeightCheckLimit2(testGraph) {
   checkResIsValidKShortestPath(allowedPaths, actualPaths, limit);
 }
 
+function testCompleteGraphKShortestPathEnabledWeightCheckLimit3(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const limit = 3;
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "C"], ["A", "B", "C"], ["A", "E", "D", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidKShortestPath(allowedPaths, actualPaths, limit);
+}
+
 function getExpectedBinTree() {
   const leftChild = vi => 2 * vi + 1;
   const rightChild = vi => 2 * vi + 2;
@@ -3797,7 +3818,8 @@ const testsByGraph = {
     testCompleteGraphKShortestPathLimit1,
     testCompleteGraphKShortestPathLimit3,
     testCompleteGraphKShortestPathEnabledWeightCheckLimit1,
-    testCompleteGraphKShortestPathEnabledWeightCheckLimit2
+    testCompleteGraphKShortestPathEnabledWeightCheckLimit2,
+    testCompleteGraphKShortestPathEnabledWeightCheckLimit3
   },
   easyPath: {
     testEasyPathAllCombinations,
