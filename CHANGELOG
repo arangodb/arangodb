@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix an endless loop in FollowerInfo::persistInAgency which could trigger
+  a hanger if a collection was dropped at the wrong time.
+
 * Fix premature access to temporary path before a user-specified path was
   read from the config options.
 
