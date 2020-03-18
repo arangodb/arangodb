@@ -241,14 +241,17 @@ const checkResIsValidGlobalBfsOf = (expectedVertices, actualPaths) => {
 const checkResIsValidShortestPath = (allowedPaths, actualPath) => {
   let pathFound = false;
   _.each(allowedPaths, function (currentPath) {
-    assertEqual(currentPath.length, actualPath.length);
     let innerKeyComparison = false;
-    for (let i = 0; i < currentPath.length; i++) {
-      if (currentPath[i] === actualPath[i][0]) {
-        innerKeyComparison = true;
-      } else {
-        innerKeyComparison = false;
-        break;
+    // comparison only possible if lengths are equal, otherwise
+    // we do not have a hit
+    if (currentPath.length === actualPath.length) {
+      for (let i = 0; i < currentPath.length; i++) {
+        if (currentPath[i] === actualPath[i][0]) {
+          innerKeyComparison = true;
+        } else {
+          innerKeyComparison = false;
+          break;
+        }
       }
     }
     if (innerKeyComparison) {
@@ -2932,6 +2935,49 @@ function testCompleteGraphShortestPath(testGraph) {
   checkResIsValidShortestPath(allowedPaths, actualPath);
 }
 
+function testCompleteGraphKShortestPathLimit1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const limit = 1;
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  checkResIsValidKShortestPath(allowedPaths, actualPath, limit);
+}
+
+function testCompleteGraphKShortestPathLimit3(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const limit = 3;
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "C"], ["A", "B", "C"], ["A", "D", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  print("RESULT:");
+  print(res);
+
+  checkResIsValidKShortestPath(allowedPaths, actualPath, limit);
+}
+
 function testCompleteGraphShortestPathEnabledWeightCheck(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
@@ -3707,7 +3753,9 @@ const testsByGraph = {
     testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD10,
     testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD10,
     testCompleteGraphShortestPath,
-    testCompleteGraphShortestPathEnabledWeightCheck
+    testCompleteGraphShortestPathEnabledWeightCheck,
+    testCompleteGraphKShortestPathLimit1,
+    testCompleteGraphKShortestPathLimit3
   },
   easyPath: {
     testEasyPathAllCombinations,
