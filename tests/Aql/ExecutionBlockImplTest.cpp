@@ -1800,7 +1800,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
 // We use two pass-through producers, that simply copy over input and assert an calls.
 // On top of them we have a 1000 line producer.
 // We expect the result to be identical to the 1000 line producer only.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_passthrough) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_passthrough) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1843,7 +1843,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_p
 // does skipping.
 // On top of them we have a 1000 line producer.
 // We expect the result to be identical to the 1000 line producer only.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_implement_skip) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_skip) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
