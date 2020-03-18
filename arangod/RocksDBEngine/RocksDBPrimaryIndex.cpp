@@ -449,14 +449,13 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
                                          arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(
-          0, collection, StaticStrings::IndexNamePrimary,
-          std::vector<std::vector<arangodb::basics::AttributeName>>(
-              {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
-          true, false, RocksDBColumnFamily::primary(),
-          basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
-          basics::VelocyPackHelper::getNumericValue<std::uint64_t>(info, StaticStrings::TempObjectId, 0),
-          static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
+    : RocksDBIndex(0, collection, StaticStrings::IndexNamePrimary,
+                   std::vector<std::vector<arangodb::basics::AttributeName>>(
+                       {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
+                   true, false, RocksDBColumnFamily::primary(),
+                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
+                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
+                   static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
       _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
   TRI_ASSERT(_objectId != 0);

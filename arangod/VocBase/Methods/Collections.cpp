@@ -259,7 +259,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                              vocbase.server().hasFeature<ShardingFeature>();
   bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
   bool useRevs =
-      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB();
+      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB() &&
+      LogicalCollection::currentVersion() >= LogicalCollection::Version::v37;
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();

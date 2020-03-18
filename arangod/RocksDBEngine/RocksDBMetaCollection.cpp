@@ -53,8 +53,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId)),
-      _tempObjectId(basics::VelocyPackHelper::getNumericValue<std::uint64_t>(info, StaticStrings::TempObjectId,
-                                                                             0)),
+      _tempObjectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId)),
       _revisionTreeApplied(0),
       _revisionTreeSerializedSeq(0),
       _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
@@ -617,58 +616,28 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
   return res;
 }
 
-Result RocksDBMetaCollection::updateProperties(velocypack::Slice const& slice, bool doSync) {
+Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
+                                           std::uint64_t plannedTempObjectId) {
   Result res;
-
-  std::uint64_t plannedObjectId =
-      basics::VelocyPackHelper::getNumericValue<std::uint64_t>(slice, StaticStrings::ObjectId,
-                                                               _objectId);
-  std::uint64_t plannedTempObjectId =
-      basics::VelocyPackHelper::getNumericValue<std::uint64_t>(slice, StaticStrings::TempObjectId,
-                                                               0);
-
-  velocypack::Slice indices = slice.get(StaticStrings::Indexes);
-  if (!indices.isArray()) {
-    res.reset(TRI_ERROR_BAD_PARAMETER, "missing or bad index properties");
-    return res;
-  }
-  for (velocypack::Slice index : velocypack::ArrayIterator(indices)) {
-    TRI_idx_iid_t iid{basics::VelocyPackHelper::stringUInt64(index, StaticStrings::IndexId)};
-    auto idx = lookupIndex(iid);
-    if (!idx) {
-      res.reset(TRI_ERROR_BAD_PARAMETER,
-                "invalid index id '" + std::to_string(iid) + "'");
-      return res;
-    }
-    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-    res = ridx->properties(index);
-    if (res.fail()) {
-      return res;
-    }
-  }
-
-  auto cleanup = [](std::uint64_t id) -> Result {
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(id);
-    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-    return rocksutils::removeLargeRange(db, bounds, true, true);
-  };
 
   if (plannedObjectId == _objectId && plannedTempObjectId != _tempObjectId) {
     // just temp id has changed
-    std::uint64_t cleanupRange = (plannedTempObjectId == 0) ? _objectId : 0;
+    std::uint64_t oldId = (plannedTempObjectId == 0) ? _tempObjectId : 0;
     _tempObjectId = plannedTempObjectId;
-    if (cleanupRange != 0) {
-      res = cleanup(cleanupRange);
+    if (oldId != 0) {  // need to clean up the old range
+      RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(oldId);
+      auto& server = _logicalCollection.vocbase().server();
+      auto& selector = server.getFeature<EngineSelectorFeature>();
+      auto& engine = selector.engine<RocksDBEngine>();
+      res = rocksutils::removeLargeRange(engine.db(), bounds, true, true);
     }
   } else if (plannedTempObjectId != _tempObjectId) {
     TRI_ASSERT(plannedObjectId != _objectId);
     TRI_ASSERT(plannedObjectId != 0);
     TRI_ASSERT(plannedObjectId = _tempObjectId);
     // swapping in new range
-    std::uint64_t cleanupRange = _objectId;
     _tempObjectId = plannedTempObjectId;
     _objectId = plannedObjectId;
-    res = cleanup(cleanupRange);
   }
 
   return res;

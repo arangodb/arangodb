@@ -124,7 +124,7 @@ class RocksDBIndex : public Index {
 
   bool isPersistent() const override final { return true; }
 
-  Result properties(velocypack::Slice);
+  Result setObjectIds(std::uint64_t plannedObjectId, std::uint64_t plannedTempObjectId);
 
  protected:
   RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,

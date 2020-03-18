@@ -111,10 +111,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
-  virtual Result updateProperties(VPackSlice const& slice, bool doSync) override;
+  Result setObjectIds(std::uint64_t plannedObjectId, std::uint64_t plannedTempObjectId);
 
  public:
-  
   /// return bounds for all documents
   virtual RocksDBKeyBounds bounds() const = 0;
   

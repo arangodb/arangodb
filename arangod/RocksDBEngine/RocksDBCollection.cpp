@@ -120,8 +120,6 @@ RocksDBCollection::~RocksDBCollection() {
 }
 
 Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync) {
-  RocksDBMetaCollection::updateProperties(slice, doSync);  // base first
-
   auto isSys = _logicalCollection.system();
 
   _cacheEnabled =
@@ -151,7 +149,8 @@ PhysicalCollection* RocksDBCollection::clone(LogicalCollection& logical) const {
 /// @brief export properties
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
-  result.add("objectId", VPackValue(std::to_string(_objectId)));
+  result.add(StaticStrings::ObjectId, VPackValue(std::to_string(_objectId)));
+  result.add(StaticStrings::TempObjectId, VPackValue(std::to_string(_tempObjectId)));
   result.add(StaticStrings::CacheEnabled, VPackValue(_cacheEnabled));
   TRI_ASSERT(result.isOpenObject());
 }
@@ -1260,82 +1259,225 @@ void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t
   meta().adjustNumberDocuments(seq, /*revId*/ 0, diff);
 }
 
+namespace {
+Result injectTemporaryObjectIdsForCollection(rocksdb::DB& db,
+                                             arangodb::LogicalCollection& collection) {
+  Result res;
+  rocksdb::WriteOptions wo;
+  rocksdb::WriteBatch batch;
+
+  // methods need lock
+  arangodb::RocksDBKey key;  // read collection info from database
+  key.constructCollection(collection.vocbase().id(), collection.id());
+  rocksdb::PinnableSlice ps;
+  rocksdb::Status s =
+      db.Get(rocksdb::ReadOptions(),
+             arangodb::RocksDBColumnFamily::definitions(), key.string(), &ps);
+  if (!s.ok()) {
+    res.reset(rocksutils::convertStatus(s));
+    return res;
+  }
+  arangodb::velocypack::Slice oldProps = arangodb::RocksDBValue::data(ps);
+
+  arangodb::velocypack::Builder builder;
+  std::uint64_t tempId;
+  std::unordered_map<std::shared_ptr<arangodb::Index>, std::uint64_t> indexTempIds;
+  {
+    arangodb::velocypack::ObjectBuilder collectionObjectGuard(&builder);
+    for (auto pair : arangodb::velocypack::ObjectIterator(oldProps)) {
+      if (pair.key.isEqualString("indexes")) {  // append new index
+        arangodb::velocypack::ArrayBuilder collectionIndicesArrayGuard(&builder, StaticStrings::Indexes);
+        for (auto idxSlice : arangodb::velocypack::ArrayIterator(pair.value)) {
+          auto idx = collection.lookupIndex(idxSlice);
+          if (!idx || idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+            builder.add(idxSlice);
+            continue;
+          }
+          arangodb::velocypack::ObjectBuilder indexObjectGuard(&builder);
+          for (auto pair : arangodb::velocypack::ObjectIterator(idxSlice)) {
+            builder.add(pair.key);
+            builder.add(pair.value);
+          }
+          tempId = TRI_NewTickServer();
+          builder.add(StaticStrings::TempObjectId,
+                      arangodb::velocypack::Value(std::to_string(tempId)));
+          indexTempIds.emplace(idx, tempId);
+        }
+        continue;
+      }
+      builder.add(pair.key);
+      builder.add(pair.value);
+    }
+    tempId = TRI_NewTickServer();
+    builder.add(StaticStrings::TempObjectId,
+                arangodb::velocypack::Value(std::to_string(tempId)));
+  }
+  auto value = RocksDBValue::Collection(builder.slice());
+  batch.Put(arangodb::RocksDBColumnFamily::definitions(), key.string(), value.string());
+  res = rocksutils::convertStatus(db.Write(wo, &batch));
+  if (res.fail()) {
+    return res;
+  }
+  auto cleanup = arangodb::scopeGuard([oldProps, &db, &key]() -> void {
+    rocksdb::WriteOptions wo;
+    rocksdb::WriteBatch batch;
+    auto value = RocksDBValue::Collection(oldProps);
+    batch.Put(arangodb::RocksDBColumnFamily::definitions(), key.string(), value.string());
+    db.Write(wo, &batch);
+  });
+
+  auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
+  TRI_ASSERT(rcoll);
+  res = rcoll->setObjectIds(rcoll->objectId(), tempId);
+  if (res.fail()) {
+    return res;
+  }
+  for (auto pair : indexTempIds) {
+    auto ridx = static_cast<arangodb::RocksDBIndex*>(pair.first.get());
+    res = ridx->setObjectIds(ridx->objectId(), pair.second);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  cleanup.cancel();  // no cleanup needed
+
+  return res;
+}
+
+Result swapObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& collection) {
+  Result res;
+  rocksdb::WriteOptions wo;
+  rocksdb::WriteBatch batch;
+
+  // methods need lock
+  arangodb::RocksDBKey key;  // read collection info from database
+  key.constructCollection(collection.vocbase().id(), collection.id());
+  rocksdb::PinnableSlice ps;
+  rocksdb::Status s =
+      db.Get(rocksdb::ReadOptions(),
+             arangodb::RocksDBColumnFamily::definitions(), key.string(), &ps);
+  if (!s.ok()) {
+    res.reset(rocksutils::convertStatus(s));
+    return res;
+  }
+  arangodb::velocypack::Slice oldProps = arangodb::RocksDBValue::data(ps);
+
+  arangodb::velocypack::Builder builder;
+  std::vector<std::shared_ptr<arangodb::Index>> indices;
+  {
+    arangodb::velocypack::ObjectBuilder collectionObjectGuard(&builder);
+    std::uint64_t objectId =
+        basics::VelocyPackHelper::stringUInt64(oldProps, StaticStrings::ObjectId);
+    std::uint64_t tempObjectId =
+        basics::VelocyPackHelper::stringUInt64(oldProps, StaticStrings::TempObjectId);
+    for (auto pair : arangodb::velocypack::ObjectIterator(oldProps)) {
+      if (pair.key.isEqualString("indexes")) {  // append new index
+        arangodb::velocypack::ArrayBuilder collectionIndicesArrayGuard(&builder, StaticStrings::Indexes);
+        for (auto idxSlice : arangodb::velocypack::ArrayIterator(pair.value)) {
+          auto idx = collection.lookupIndex(idxSlice);
+          if (!idx || idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+            builder.add(idxSlice);
+            continue;
+          }
+          arangodb::velocypack::ObjectBuilder indexObjectGuard(&builder);
+          std::uint64_t idxObjectId =
+              basics::VelocyPackHelper::stringUInt64(pair.value, StaticStrings::ObjectId);
+          std::uint64_t idxTempObjectId =
+              basics::VelocyPackHelper::stringUInt64(pair.value, StaticStrings::TempObjectId);
+          for (auto idxPair : arangodb::velocypack::ObjectIterator(idxSlice)) {
+            builder.add(idxPair.key);
+            if (idxPair.key.isEqualString(StaticStrings::ObjectId)) {
+              builder.add(arangodb::velocypack::Value(std::to_string(idxTempObjectId)));
+            } else if (idxPair.key.isEqualString(StaticStrings::TempObjectId)) {
+              builder.add(arangodb::velocypack::Value(std::to_string(idxObjectId)));
+            } else {
+              builder.add(idxPair.value);
+            }
+          }
+          indices.emplace_back(idx);
+        }
+        continue;
+      }
+      builder.add(pair.key);
+      if (pair.key.isEqualString(StaticStrings::ObjectId)) {
+        builder.add(arangodb::velocypack::Value(std::to_string(tempObjectId)));
+      } else if (pair.key.isEqualString(StaticStrings::TempObjectId)) {
+        builder.add(arangodb::velocypack::Value(std::to_string(objectId)));
+      } else {
+        builder.add(pair.value);
+      }
+    }
+  }
+  auto value = RocksDBValue::Collection(builder.slice());
+  batch.Put(arangodb::RocksDBColumnFamily::definitions(), key.string(), value.string());
+  res = rocksutils::convertStatus(db.Write(wo, &batch));
+  if (res.fail()) {
+    return res;
+  }
+  auto cleanup = arangodb::scopeGuard([oldProps, &db, &key]() -> void {
+    rocksdb::WriteOptions wo;
+    rocksdb::WriteBatch batch;
+    auto value = RocksDBValue::Collection(oldProps);
+    batch.Put(arangodb::RocksDBColumnFamily::definitions(), key.string(), value.string());
+    db.Write(wo, &batch);
+  });
+
+  auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
+  TRI_ASSERT(rcoll);
+  res = rcoll->setObjectIds(rcoll->tempObjectId(), rcoll->objectId());
+  if (res.fail()) {
+    return res;
+  }
+  for (auto idx : indices) {
+    auto ridx = static_cast<arangodb::RocksDBIndex*>(idx.get());
+    res = ridx->setObjectIds(ridx->tempObjectId(), ridx->objectId());
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  cleanup.cancel();  // no cleanup needed
+
+  return res;
+}
+}  // namespace
+
 Result RocksDBCollection::upgrade() {
   Result res{};
   if (_logicalCollection.version() >= LogicalCollection::Version::v37) {
     return res;
   }
 
-  return res;  // shortcut
+  auto& server = _logicalCollection.vocbase().server();
+  auto& selector = server.getFeature<EngineSelectorFeature>();
+  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
-  velocypack::Builder newProps;
-  {
-    // update properties with new temporary object ids
-    velocypack::Builder oldProps;
-    {
-      methods::Collections::Context collectionContext(_logicalCollection.vocbase(),
-                                                      _logicalCollection);
-      methods::Collections::properties(collectionContext, oldProps);
-      {
-        {
-          velocypack::ObjectBuilder collectionGuard{&newProps};
-
-          // copy everything other than the indices
-          for (velocypack::ObjectIteratorPair it :
-               velocypack::ObjectIterator(oldProps.slice())) {
-            if (velocypack::StringRef(it.key) != StaticStrings::Indexes) {
-              newProps.add(it.key);
-              newProps.add(it.value);
-            }
-          }
-
-          // now handle the indices
-          {
-            velocypack::ArrayBuilder indexesGuard(&newProps, StaticStrings::Indexes);
-            velocypack::Slice allIndices = oldProps.slice().get(StaticStrings::Indexes);
-            for (velocypack::Slice indexProps : velocypack::ArrayIterator(allIndices)) {
-              velocypack::ObjectBuilder indexGuard(&newProps);
-              // copy all properties
-              for (velocypack::ObjectIteratorPair it :
-                   velocypack::ObjectIterator(indexProps)) {
-                newProps.add(it.key);
-                newProps.add(it.value);
-              }
-              // now add the new temp object id to the index
-              newProps.add(StaticStrings::TempObjectId,
-                           velocypack::Value(TRI_NewTickServer()));
-            }
-          }
-
-          // now add the temp object id to the collection
-          newProps.add(StaticStrings::TempObjectId,
-                       velocypack::Value(TRI_NewTickServer()));
-        }
-      }
-    }
-
-    methods::Collections::updateProperties(_logicalCollection, newProps.slice());
-    // TODO write rest method to trigger upgrade
+  res = ::injectTemporaryObjectIdsForCollection(*engine.db(), _logicalCollection);
+  if (res.fail()) {
+    return res;
   }
+  // TODO handle cluster?
 
   {
+    // start an exclusive transaction to block access to the collection
     std::shared_ptr<transaction::Context> context =
         transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-    SingleCollectionTransaction trx(context, _logicalCollection, AccessMode::Type::WRITE);
-    trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
-    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
-    trx.addHint(transaction::Hints::Hint::RECOVERY);
+    SingleCollectionTransaction trx(context, _logicalCollection, AccessMode::Type::EXCLUSIVE);
     res = trx.begin();
     if (res.fail()) {
       return res;
     }
+    auto trxGuard = scopeGuard([&trx, &res]() -> void { trx.abort(); });
 
     // TODO iterate over documents and copy into new id-space with revisions
 
     // TODO iterate over index entries and copy into new id-space with revisions
 
-    // TODO swap regular and temp ids for collection and indices and update version in properties atomically
+    res = ::swapObjectIdsForCollection(*engine.db(), _logicalCollection);
+    if (res.fail()) {
+      return res;
+    }
 
     // TODO make sure collection props are set right for revisions and replication
   }
@@ -1346,7 +1488,9 @@ Result RocksDBCollection::upgrade() {
 
   // TODO write recovery method to trigger post-recovery cleanup if we failed
 
-  // TODO handle smart edge collections?
+  // TODO handle smart edge collections
+
+  // TODO handle rollback in case of failure
 
   return res;
 }
