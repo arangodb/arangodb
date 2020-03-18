@@ -1,8 +1,8 @@
 // LZ4 streaming API example : line-by-line logfile compression
-// Copyright : Takayuki Matsuoka
+// by Takayuki Matsuoka
 
 
-#ifdef _MSC_VER    /* Visual Studio */
+#if defined(_MSC_VER) && (_MSC_VER <= 1800)  /* Visual Studio <= 2013 */
 #  define _CRT_SECURE_NO_WARNINGS
 #  define snprintf sprintf_s
 #endif
@@ -99,7 +99,7 @@ static void test_decompress(
         uint16_t cmpBytes = 0;
 
         if (read_uint16(inpFp, &cmpBytes) != 1) break;
-        if (cmpBytes <= 0) break;
+        if (cmpBytes == 0) break;
         if (read_bin(inpFp, cmpBuf, cmpBytes) != cmpBytes) break;
 
         {

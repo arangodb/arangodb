@@ -1,5 +1,10 @@
 devel
 -----
+* Updated snowball dependency to the latest version. 
+  More stemmers are available. Built-in analyzer list
+  is unchanged.  
+
+* Updated LZ4 dependency to version 1.9.2
 
 * Fix cluster representation of the collection figures for RocksDB.
 
