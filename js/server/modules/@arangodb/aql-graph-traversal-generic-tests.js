@@ -150,7 +150,7 @@ const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
   const actualPathsSet = new Map();
   for (const path of actualPaths) {
     const p = JSON.stringify(path);
-    if(actualPathsSet.has(p)) {
+    if (actualPathsSet.has(p)) {
       actualPathsSet.set(p, actualPathsSet.get(p) + 1);
     } else {
       actualPathsSet.set(p, 1);
@@ -160,7 +160,7 @@ const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
   const expectedPathsSet = new Map();
   for (const path of expectedPaths) {
     const p = JSON.stringify(path);
-    if(expectedPathsSet.has(p)) {
+    if (expectedPathsSet.has(p)) {
       expectedPathsSet.set(p, expectedPathsSet.get(p) + 1);
     } else {
       expectedPathsSet.set(p, 1);
@@ -239,9 +239,8 @@ const checkResIsValidGlobalBfsOf = (expectedVertices, actualPaths) => {
 };
 
 const checkResIsValidShortestPath = (allowedPaths, actualPath) => {
-
   let pathFound = false;
-  _.each(allowedPaths, function(currentPath) {
+  _.each(allowedPaths, function (currentPath) {
     assertEqual(currentPath.length, actualPath.length);
     let innerKeyComparison = false;
     for (let i = 0; i < currentPath.length; i++) {
@@ -268,6 +267,41 @@ const checkResIsValidShortestPath = (allowedPaths, actualPath) => {
   assertTrue(pathFound);
 };
 
+const checkResIsValidKShortestPath = (allowedPaths, actualPaths, expectedResults) => {
+  // check that we've only got as many paths as requested
+  if (actualPaths.length !== expectedResults) {
+    print("Unexpected amount of found paths!");
+    print("Allowed paths are:");
+    print(allowedPaths);
+    print("Actual returned paths are: ");
+    print(actualPaths);
+  }
+  assertEqual(actualPaths.length, expectedResults);
+
+  if (actualPaths.length > 1) {
+    // also check that if we've received multiple paths, that each of them differ
+    // e.g.: [ [ "A", "B", "D", "F" ], [ "A", "C", "D", "F" ] ] <-- ALLOWED
+    // e.g.: [ [ "A", "B", "C", "D" ], [ "A", "B", "C", "D" ] ] <-- NOT ALLOWED
+    let currentArrayPosition = 0;
+    _.each(actualPaths, function (a) {
+      let clonedActualPaths = actualPaths.slice();
+      clonedActualPaths.splice(currentArrayPosition, 1);
+      _.each(clonedActualPaths, function (b) {
+        assertFalse(JSON.stringify(a) === JSON.stringify(b));
+      });
+      currentArrayPosition++;
+    });
+  }
+
+  _.each(allowedPaths, function (allowedPath) {
+    let path = [];
+    // format the result to be able to use already existing checkResIsValidShortestPath method
+    _.each(allowedPath, function (vertex) {
+      path.push(vertex);
+    });
+    checkResIsValidShortestPath(allowedPaths, path);
+  });
+};
 
 /**
  * @brief Tests the function checkResIsValidDfsOf(), which is used in the tests and
@@ -1318,6 +1352,51 @@ function testOpenDiamondShortestPathEnabledWeightCheck(testGraph) {
   const actualPath = res.toArray();
 
   checkResIsValidShortestPath(allowedPaths, actualPath);
+}
+
+function testOpenDiamondKShortestPath1AND2(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const limits = [1, 2];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const allowedPaths = [
+      ["A", "B", "D", "F"],
+      ["A", "C", "D", "F"]
+    ];
+
+    const res = db._query(query);
+    const actualPath = res.toArray();
+
+    checkResIsValidKShortestPath(allowedPaths, actualPath, limit);
+  });
+}
+
+function testOpenDiamondKShortestPathEnabledWeightCheck1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const limit = 1;
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  checkResIsValidKShortestPath(allowedPaths, actualPath, limit);
 }
 
 function testSmallCircleDfsUniqueVerticesPath(testGraph) {
@@ -3529,7 +3608,9 @@ const testsByGraph = {
     testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal,
     testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal,
     testOpenDiamondShortestPath,
-    testOpenDiamondShortestPathEnabledWeightCheck
+    testOpenDiamondShortestPathEnabledWeightCheck,
+    testOpenDiamondKShortestPath1AND2,
+    testOpenDiamondKShortestPathEnabledWeightCheck1
   },
   smallCircle: {
     testSmallCircleDfsUniqueVerticesPath,
