@@ -86,13 +86,13 @@ class SplicedSubqueryIntegrationTest
   }
 
   auto makeSubqueryEndInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
+    auto inputRegisterSet = make_shared_unordered_set({inputRegister});
     auto const outputRegister = RegisterId{inputRegister + 1};
-    auto inputRegisterSet = make_shared_unordered_set({});
     for (RegisterId r = 0; r <= inputRegister; ++r) {
       inputRegisterSet->emplace(r);
     }
     auto outputRegisterSet = make_shared_unordered_set({outputRegister});
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{};
+    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
 
     return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet,
                                       inputRegisterSet->size(),
@@ -259,7 +259,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
 
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList()
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -275,7 +275,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery) {
 
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -298,7 +298,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery_skip_and_produce) {
 
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -314,7 +314,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery_skip_all) {
 
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -329,7 +329,7 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery_fullcount) {
   auto call = AqlCall{0, true, 0, AqlCall::LimitType::HARD};
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -346,7 +346,7 @@ TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_produce_cou
   auto call = AqlCall{2, true, 2, AqlCall::LimitType::HARD};
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -362,8 +362,8 @@ TEST_P(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList()
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -379,8 +379,8 @@ TEST_P(SplicedSubqueryIntegrationTest, two_nested_subqueries) {
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -395,9 +395,9 @@ TEST_P(SplicedSubqueryIntegrationTest, two_sequential_subqueries) {
   auto call = AqlCall{};
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -414,7 +414,7 @@ TEST_P(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
       .addConsumer<LambdaExe>(makeDoNothingInfos())
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -430,7 +430,7 @@ TEST_P(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
 
   helper.addConsumer<LambdaExe>(makeAssertInfos(call))
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -447,7 +447,7 @@ TEST_P(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
       .addConsumer<LambdaExe>(makeAssertInfos())
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -464,7 +464,7 @@ TEST_P(SplicedSubqueryIntegrationTest, check_soft_limit_subquery) {
   helper
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
       .addConsumer<LambdaExe>(makeAssertInfos())
-      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndInfos(0), ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
