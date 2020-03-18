@@ -325,7 +325,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Executor is done, we need to handle ShadowRows of subqueries.
   // In most executors they are simply copied, in subquery executors
   // there needs to be actions applied here.
-  [[nodiscard]] auto shadowRowForwarding() -> ExecState;
+  [[nodiscard]] auto shadowRowForwarding(AqlCallStack& stack) -> ExecState;
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
