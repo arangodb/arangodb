@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "ExecutorTestHelper.h"
+#include "AqlExecutorTestCase.h"
 #include "RowFetcherHelper.h"
 
 #include "Mocks/Servers.h"
@@ -98,8 +98,8 @@ INSTANTIATE_TEST_CASE_P(ReturnExecutor, ReturnExecutorTest,
 TEST_P(ReturnExecutorTest, returns_all_from_upstream) {
   ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};  // unlimited produce
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
+  makeExecutorTestHelper()
+      .addConsumer<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -114,8 +114,8 @@ TEST_P(ReturnExecutorTest, handle_soft_limit) {
   ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};
   call.softLimit = 3;
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
+  makeExecutorTestHelper()
+      .addConsumer<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -130,8 +130,8 @@ TEST_P(ReturnExecutorTest, handle_hard_limit) {
   ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};
   call.hardLimit = 5;
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
+  makeExecutorTestHelper()
+      .addConsumer<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -146,8 +146,8 @@ TEST_P(ReturnExecutorTest, handle_offset) {
   ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};
   call.offset = 4;
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
+  makeExecutorTestHelper()
+      .addConsumer<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -163,8 +163,8 @@ TEST_P(ReturnExecutorTest, handle_fullcount) {
   AqlCall call{};
   call.hardLimit = 2;
   call.fullCount = true;
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
+  makeExecutorTestHelper()
+      .addConsumer<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -179,8 +179,8 @@ TEST_P(ReturnExecutorTest, handle_other_inputRegister) {
   ReturnExecutorInfos infos(1 /*input register*/, 2 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};
   call.hardLimit = 5;
-  ExecutorTestHelper<2, 1>(*fakedQuery)
-      .setExecBlock<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
+  makeExecutorTestHelper<2, 1>()
+      .addConsumer<ReturnExecutor>(std::move(infos), ExecutionNode::RETURN)
       .setInputValue({{R"("invalid")", 1},
                       {R"("invalid")", 2},
                       {R"("invalid")", 5},

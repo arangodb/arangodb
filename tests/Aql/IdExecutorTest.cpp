@@ -22,8 +22,8 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
@@ -218,8 +218,8 @@ TEST_P(IdExecutorTestCombiner, test_produce_datarange_constFetcher) {
 }
 
 TEST_P(IdExecutorTestCombiner, test_produce_datarange_singleRowFetcher) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<IdExecutor<SingleRowFetcher<::arangodb::aql::BlockPassthrough::Enable>>>(
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<IdExecutor<SingleRowFetcher<::arangodb::aql::BlockPassthrough::Enable>>>(
           makeInfos(), ExecutionNode::SINGLETON)
       .setInputFromRowNum(getInput())
       .setCall(getCall())
@@ -406,8 +406,8 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
 
 TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
   IdExecutorInfos infos{1, {0}, {}, false};
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(infos))
+  makeExecutorTestHelper()
+      .addConsumer<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(infos))
       .setInputValueList(1, 2, 3, 4, 5, 6)
       .setCall(AqlCall{0, AqlCall::Infinity{}, 2, false})
       .expectOutput({0}, {{1}, {2}})

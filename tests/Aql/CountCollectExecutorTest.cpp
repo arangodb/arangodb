@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "ExecutorTestHelper.h"
+#include "AqlExecutorTestCase.h"
 #include "TestLambdaExecutor.h"
 
 #include "Aql/CountCollectExecutor.h"
@@ -128,7 +128,7 @@ INSTANTIATE_TEST_CASE_P(CountCollectExecutor, CountCollectExecutorTest,
                                           splitStep<2>));
 
 TEST_P(CountCollectExecutorTest, empty_input) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
@@ -141,7 +141,7 @@ TEST_P(CountCollectExecutorTest, empty_input) {
 }
 
 TEST_P(CountCollectExecutorTest, count_input) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
@@ -154,7 +154,7 @@ TEST_P(CountCollectExecutorTest, count_input) {
 }
 
 TEST_P(CountCollectExecutorTest, empty_input_skip) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
@@ -167,7 +167,7 @@ TEST_P(CountCollectExecutorTest, empty_input_skip) {
 }
 
 TEST_P(CountCollectExecutorTest, count_input_skip) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
@@ -180,7 +180,7 @@ TEST_P(CountCollectExecutorTest, count_input_skip) {
 }
 
 TEST_P(CountCollectExecutorTest, empty_input_fullCount) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
@@ -193,7 +193,7 @@ TEST_P(CountCollectExecutorTest, empty_input_fullCount) {
 }
 
 TEST_P(CountCollectExecutorTest, count_input_fullCount) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
@@ -206,7 +206,7 @@ TEST_P(CountCollectExecutorTest, count_input_fullCount) {
 }
 
 TEST_P(CountCollectExecutorTest, count_input_softlimit) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
@@ -219,7 +219,7 @@ TEST_P(CountCollectExecutorTest, count_input_softlimit) {
 }
 
 TEST_P(CountCollectExecutorTest, count_in_empty_subquery) {
-  auto helper = ExecutorTestHelper<1, 1>();
+  auto helper = makeExecutorTestHelper<1, 1>();
 
   helper
       .addConsumer<SubqueryStartExecutor>(MakeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
@@ -236,8 +236,8 @@ TEST_P(CountCollectExecutorTest, count_in_empty_subquery) {
       .run();
 }
 TEST_P(CountCollectExecutorTest, count_in_subquery) {
-  //   ExecutorTestHelper<1, 1> helper(*fakedQuery);
-  auto helper = ExecutorTestHelper<1, 1>();
+  //   makeExecutorTestHelper<1, 1> helper();
+  auto helper = makeExecutorTestHelper<1, 1>();
 
   helper
       .addConsumer<SubqueryStartExecutor>(MakeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)

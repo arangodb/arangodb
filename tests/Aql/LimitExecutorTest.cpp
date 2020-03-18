@@ -22,9 +22,9 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlExecutorTestCase.h"
 #include "AqlHelper.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
 #include "Mocks/Servers.h"
 #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
@@ -324,7 +324,7 @@ TEST_P(LimitExecutorTest, testSuite) {
   expectedStats += expectedLimitStats;
 
   // fakedQuery->queryOptions().profile = PROFILE_LEVEL_TRACE_2;
-  ExecutorTestHelper<1, 1>()
+  makeExecutorTestHelper<1, 1>()
       .addConsumer<LimitExecutor>(std::move(infos), ExecutionNode::LIMIT)
       .setInputFromRowNum(numInputRows)
       .setInputSplitType(inputLengths)
