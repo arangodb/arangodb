@@ -81,6 +81,11 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   std::unordered_set<std::string> attributes;
 
   for (auto& n : nodes) {
+    // isDeterministic is false for EnumerateCollectionNodes when the "random" flag is set.
+    bool const isRandomOrder = 
+      (n->getType() == EN::ENUMERATE_COLLECTION && 
+       !ExecutionNode::castTo<EnumerateCollectionNode*>(n)->isDeterministic());
+
     bool stop = false;
     bool optimize = false;
     attributes.clear();
@@ -190,6 +195,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
     // projections are currently limited (arbitrarily to 5 attributes)
     if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
       if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
+          !isRandomOrder &&
           std::find(attributes.begin(), attributes.end(), StaticStrings::IdString) == attributes.end()) { 
         // the node is still an EnumerateCollection... now check if we should turn it into an index scan
         // we must never have a projection on _id, as producing _id is not supported yet
@@ -281,7 +287,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       }
       
       modified = true;
-    } else if (!stop && attributes.empty() && n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+    } else if (!stop && attributes.empty() && n->getType() == ExecutionNode::ENUMERATE_COLLECTION && !isRandomOrder) {
       // replace collection access with primary index access (which can be faster
       // given the fact that keys and values are stored together in RocksDB, but
       // average values are much bigger in the documents column family than in the
