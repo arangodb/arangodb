@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix an endless loop in FollowerInfo::persistInAgency which could trigger
+  a hanger if a collection was dropped at the wrong time.
+
 * Fix cluster representation of the collection figures for RocksDB.
 
 * Changed behavior for creating new collections in OneShard databases
