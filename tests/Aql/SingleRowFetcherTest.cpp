@@ -104,7 +104,7 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
       auto [state, row] = input.nextShadowRow();
 
       if (depth == result.back().first && value == result.back().second) {
-        EXPECT_EQ(state, ExecutorState::DONE);
+        EXPECT_EQ(state, ExecutorState::HASMORE);
       } else {
         EXPECT_EQ(state, ExecutorState::HASMORE);
       }
