@@ -1436,9 +1436,7 @@ Result verifyPropertiesForCollection(rocksdb::DB& db, arangodb::LogicalCollectio
 Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
                                         arangodb::LogicalCollection& collection) {
   Result res;
-
   RocksDBKey key;
-  char ridBuffer[11];
 
   auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
   TRI_ASSERT(rcoll);
@@ -1474,21 +1472,21 @@ Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
     arangodb::velocypack::Slice oldDocument =
         arangodb::RocksDBValue::data(iter->value());
     arangodb::velocypack::Builder builder;
-    TRI_voc_rid_t newRevision = rcoll->newRevisionId();
+    arangodb::velocypack::Slice revSlice = oldDocument.get(StaticStrings::RevString);
+    TRI_ASSERT(revSlice.isString());
+    arangodb::velocypack::ValueLength l;
+    char const* p = revSlice.getString(l);
+    TRI_voc_rid_t revision = TRI_StringToRid(p, l, false);
     {
       arangodb::velocypack::ObjectBuilder guard(&builder);
       for (auto pair : arangodb::velocypack::ObjectIterator(oldDocument)) {
-        if (pair.key.isEqualString(StaticStrings::RevString)) {
-          continue;
-        }
         builder.add(pair.key);
         builder.add(pair.value);
       }
-      builder.add(StaticStrings::RevString, TRI_RidToValuePair(newRevision, ridBuffer));
     }
 
     arangodb::velocypack::Slice newDocument = builder.slice();
-    LocalDocumentId newDocumentId{newRevision};
+    LocalDocumentId newDocumentId{revision};
 
     key.constructDocument(tempObjectId, newDocumentId);
     auto value = rocksdb::Slice(newDocument.startAs<char>(),
