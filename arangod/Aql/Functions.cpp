@@ -75,6 +75,7 @@
 #include "V8Server/v8-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Validators.h"
 
 #include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
@@ -7474,4 +7475,57 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
                                    VPackFunctionParameters const& params) {
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
+}
+
+AqlValue Functions::GetValidation(ExpressionContext* expressionContext,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+
+  static char const* AFN = "GET_VALIDATION"; // GET_VALIDATON("collectionName")
+
+  if(parameters.size() != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
+  }
+
+  std::string const collectionName = ::extractCollectionName(trx, parameters, 0);
+
+  if (collectionName.empty()){
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "could not extract collection name from parameters");
+  }
+
+  auto logicalCollection = expressionContext->vocbase().lookupCollection(collectionName);
+  if(!logicalCollection) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "could not find collection");
+  }
+
+  VPackBuilder builder;
+  logicalCollection->validatorsToVelocyPack(builder);;
+  return AqlValue(builder);
+}
+
+AqlValue Functions::Validate(ExpressionContext* expressionContext,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+
+  static char const* AFN = "VALIDATE"; // VALIDATE(doc, [ validator ] )
+
+  if(parameters.size() != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
+  }
+
+  AqlValue const& docValue = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& schemaValue = extractFunctionParameterValue(parameters, 1);
+
+  if(!schemaValue.isArray()){
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "no array of validation objects");
+  }
+
+  for (auto validationSlice : VPackArrayIterator(schemaValue.slice())) {
+    std::shared_ptr<arangodb::ValidatorBase> validator = std::make_shared<arangodb::ValidatorJsonSchema>(validationSlice);
+    if(!validator->validateOne(docValue.slice(), trx->transactionContext()->getVPackOptions())) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  return AqlValue(AqlValueHintBool(true));
 }

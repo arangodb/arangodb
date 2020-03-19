@@ -258,6 +258,9 @@ void AqlFunctionFeature::addNumericFunctions() {
 
   // special flags:
   add({"RAND", "", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Rand});  // not deterministic and not cacheable
+
+  add({"GET_VALIDATION", ".", flags, &Functions::GetValidation});
+  add({"VALIDATE", ".,.", flags, &Functions::Validate});
 }
 
 void AqlFunctionFeature::addListFunctions() {

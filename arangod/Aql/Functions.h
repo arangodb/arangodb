@@ -153,7 +153,7 @@ struct Functions {
   static AqlValue NgramSimilarity(ExpressionContext*, transaction::Methods*,
                                   VPackFunctionParameters const&);
   static AqlValue NgramPositionalSimilarity(ExpressionContext* ctx,
-                                            transaction::Methods*, 
+                                            transaction::Methods*,
                                             VPackFunctionParameters const&);
   static AqlValue NgramMatch(ExpressionContext*, transaction::Methods*,
                              VPackFunctionParameters const&);
@@ -467,6 +467,11 @@ struct Functions {
   static AqlValue DecodeRev(arangodb::aql::ExpressionContext*,
                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue CurrentUser(arangodb::aql::ExpressionContext*,
+                              transaction::Methods*, VPackFunctionParameters const&);
+
+  static AqlValue GetValidation(arangodb::aql::ExpressionContext*,
+                              transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Validate(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
 
   /// @brief dummy function that will only throw an error when called

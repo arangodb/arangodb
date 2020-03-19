@@ -129,7 +129,7 @@ bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert
   }
 
   if (isInsert) {
-    return this->validateDerived(newDoc, options);
+    return this->validateOne(newDoc, options);
   }
 
   /* update replace case */
@@ -140,13 +140,13 @@ bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert
 
   if (this->_level == ValidationLevel::Strict) {
     // Changed document must be good!
-    return validateDerived(newDoc, options);
+    return validateOne(newDoc, options);
   }
 
   TRI_ASSERT(this->_level == ValidationLevel::Moderate);
   // Changed document must be good IIF the unmodified
   // document passed validation.
-  return (this->validateDerived(newDoc, options) || !this->validateDerived(oldDoc, options));
+  return (this->validateOne(newDoc, options) || !this->validateOne(oldDoc, options));
 }
 
 void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
@@ -163,7 +163,7 @@ void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
 ValidatorBool::ValidatorBool(VPackSlice params) : ValidatorBase(params) {
   _result = params.get(StaticStrings::ValidatorParameterRule).getBool();
 }
-bool ValidatorBool::validateDerived(VPackSlice slice, VPackOptions const* options) const { return _result; }
+bool ValidatorBool::validateOne(VPackSlice slice, VPackOptions const* options) const { return _result; }
 void ValidatorBool::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidatorParameterRule, VPackValue(_result));
 }
@@ -192,7 +192,7 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
   }
 }
-bool ValidatorJsonSchema::validateDerived(VPackSlice slice, VPackOptions const* options) const {
+bool ValidatorJsonSchema::validateOne(VPackSlice slice, VPackOptions const* options) const {
   return validation::validate(*_schema, _special, slice, options);
 }
 void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
