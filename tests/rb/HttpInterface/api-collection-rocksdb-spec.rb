@@ -286,20 +286,14 @@ describe ArangoDB do
           doc.parsed_response['status'].should eq(3)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(0)
-          #doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
-          #doc.parsed_response['figures']['dead']['count'].should eq(0)
-          #doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
-          #doc.parsed_response['figures']['alive']['count'].should eq(0)
-          #doc.parsed_response['figures']['datafiles']['count'].should be_kind_of(Integer)
-          #doc.parsed_response['figures']['datafiles']['fileSize'].should be_kind_of(Integer)
-          #doc.parsed_response['figures']['datafiles']['count'].should eq(0)
-          #doc.parsed_response['figures']['journals']['count'].should be_kind_of(Integer)
-          #doc.parsed_response['figures']['journals']['fileSize'].should be_kind_of(Integer)
-          #doc.parsed_response['figures']['journals']['count'].should eq(0)
-          #doc.parsed_response['figures']['compactors']['count'].should be_kind_of(Integer)
-          #doc.parsed_response['figures']['compactors']['fileSize'].should be_kind_of(Integer)
-          #doc.parsed_response['figures']['compactors']['count'].should eq(0)
-                
+          doc.parsed_response['figures']['cacheSize'].should be_kind_of(Integer)
+          [true, false].should include(doc.parsed_response['figures']['cacheInUse'])
+          doc.parsed_response['figures']['cacheUsage'].should be_kind_of(Integer)
+          doc.parsed_response['figures']['documentsSize'].should be_kind_of(Integer)
+          if doc.parsed_response['figures']['cacheInUse']
+            doc.parsed_response['figures']['cacheLifeTimeHitRate'].should be_kind_of(double)
+            doc.parsed_response['figures']['cacheWindowedHitRate'].should be_kind_of(double)
+          end
           # create a few documents, this should increase counts
           (0...10).each{|i|
             body = "{ \"test\" : " + i.to_s + " }"
@@ -317,6 +311,14 @@ describe ArangoDB do
           doc.parsed_response['code'].should eq(200)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(10)
+          doc.parsed_response['figures']['cacheSize'].should be_kind_of(Integer)
+          [true, false].should include(doc.parsed_response['figures']['cacheInUse'])
+          doc.parsed_response['figures']['cacheUsage'].should be_kind_of(Integer)
+          doc.parsed_response['figures']['documentsSize'].should be_kind_of(Integer)
+          if doc.parsed_response['figures']['cacheInUse']
+            doc.parsed_response['figures']['cacheLifeTimeHitRate'].should be_kind_of(double)
+            doc.parsed_response['figures']['cacheWindowedHitRate'].should be_kind_of(double)
+          end
 
           # create a few different documents, this should increase counts
           (0...10).each{|i|
@@ -335,6 +337,14 @@ describe ArangoDB do
           doc.parsed_response['code'].should eq(200)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(20)
+          doc.parsed_response['figures']['cacheSize'].should be_kind_of(Integer)
+          [true, false].should include(doc.parsed_response['figures']['cacheInUse'])
+          doc.parsed_response['figures']['cacheUsage'].should be_kind_of(Integer)
+          doc.parsed_response['figures']['documentsSize'].should be_kind_of(Integer)
+          if doc.parsed_response['figures']['cacheInUse']
+            doc.parsed_response['figures']['cacheLifeTimeHitRate'].should be_kind_of(double)
+            doc.parsed_response['figures']['cacheWindowedHitRate'].should be_kind_of(double)
+          end
           
           # delete a few documents, this should change counts
           body = "{ \"collection\" : \"" + @cn + "\", \"example\": { \"test\" : 5 } }"
@@ -353,6 +363,14 @@ describe ArangoDB do
           doc.parsed_response['code'].should eq(200)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(18)
+          doc.parsed_response['figures']['cacheSize'].should be_kind_of(Integer)
+          [true, false].should include(doc.parsed_response['figures']['cacheInUse'])
+          doc.parsed_response['figures']['cacheUsage'].should be_kind_of(Integer)
+          doc.parsed_response['figures']['documentsSize'].should be_kind_of(Integer)
+          if doc.parsed_response['figures']['cacheInUse']
+            doc.parsed_response['figures']['cacheLifeTimeHitRate'].should be_kind_of(double)
+            doc.parsed_response['figures']['cacheWindowedHitRate'].should be_kind_of(double)
+          end
         end
       end
       

@@ -26,6 +26,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlItemBlockHelper.h"
+#include "ExecutionBlockPipeline.h"
 #include "MockTypedNode.h"
 #include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
@@ -90,126 +91,13 @@ class asserthelper {
       -> void;
 };
 
-/**
- * @brief Base class for ExecutorTests in Aql.
- *        It will provide a test server, including
- *        an AqlQuery, as well as the ability to generate
- *        Dummy ExecutionNodes.
- *
- * @tparam enableQueryTrace Enable Aql Profile Trace logging
- */
-template <bool enableQueryTrace = false>
-class AqlExecutorTestCase : public ::testing::Test {
- public:
-  // Creating a server instance costs a lot of time, so do it only once.
-  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
-  static void SetUpTestCase() {
-    _server = std::make_unique<mocks::MockAqlServer>();
-  }
-
-  static void TearDownTestCase() { _server.reset(); }
-
- protected:
-  AqlExecutorTestCase();
-  virtual ~AqlExecutorTestCase();
-
-  /**
-   * @brief Creates and manages a ExecutionNode.
-   *        These nodes can be used to create the Executors
-   *        Caller does not need to manage the memory.
-   *
-   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
-   */
-  auto generateNodeDummy() -> ExecutionNode*;
-
-  auto manager() const -> AqlItemBlockManager&;
-
- private:
-  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
-
- protected:
-  // available variables
-  static inline std::unique_ptr<mocks::MockAqlServer> _server;
-  ResourceMonitor monitor{};
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
-};
-
-/**
- * @brief Shortcut handle for parameterized AqlExecutorTestCases with param
- *
- * @tparam T The Test Parameter used for gtest.
- * @tparam enableQueryTrace Enable Aql Profile Trace logging
- */
-template <typename T, bool enableQueryTrace = false>
-class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace>,
-                                     public ::testing::WithParamInterface<T> {};
-
-using ExecBlock = std::unique_ptr<ExecutionBlock>;
-
-struct Pipeline {
-  using PipelineStorage = std::deque<ExecBlock>;
-
-  Pipeline() : _pipeline{} {};
-  Pipeline(ExecBlock&& init) { _pipeline.emplace_back(std::move(init)); }
-  Pipeline(std::deque<ExecBlock>&& init) : _pipeline(std::move(init)){};
-  Pipeline(Pipeline& other) = delete;
-  Pipeline(Pipeline&& other) : _pipeline(std::move(other._pipeline)){};
-
-  Pipeline& operator=(Pipeline&& other) {
-    _pipeline = std::move(other._pipeline);
-    return *this;
-  }
-
-  virtual ~Pipeline() {
-    for (auto&& b : _pipeline) {
-      b.release();
-    }
-  };
-
-  bool empty() const { return _pipeline.empty(); }
-  void reset() { _pipeline.clear(); }
-
-  std::deque<ExecBlock> const& get() const { return _pipeline; };
-  std::deque<ExecBlock>& get() { return _pipeline; };
-
-  Pipeline& addDependency(ExecBlock&& dependency) {
-    if (!empty()) {
-      _pipeline.back()->addDependency(dependency.get());
-    }
-    _pipeline.emplace_back(std::move(dependency));
-    return *this;
-  }
-
-  Pipeline& addConsumer(ExecBlock&& consumer) {
-    if (!empty()) {
-      consumer->addDependency(_pipeline.front().get());
-    }
-    _pipeline.emplace_front(std::move(consumer));
-    return *this;
-  }
-
- private:
-  PipelineStorage _pipeline;
-};
-
-inline auto concatPipelines(Pipeline&& bottom, Pipeline&& top) -> Pipeline {
-  if (!bottom.empty()) {
-    bottom.get().back()->addDependency(top.get().begin()->get());
-  }
-  bottom.get().insert(std::end(bottom.get()), std::make_move_iterator(top.get().begin()),
-                      std::make_move_iterator(top.get().end()));
-
-  return std::move(bottom);
-}
-
 template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
 struct ExecutorTestHelper {
   using SplitType = std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
 
   ExecutorTestHelper(ExecutorTestHelper const&) = delete;
   ExecutorTestHelper(ExecutorTestHelper&&) = delete;
-  explicit ExecutorTestHelper(arangodb::aql::Query& query)
+  explicit ExecutorTestHelper(Query& query, AqlItemBlockManager& itemBlockManager)
       : _expectedSkip{},
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
@@ -217,6 +105,7 @@ struct ExecutorTestHelper {
         _appendEmptyBlock{false},
         _unorderedSkippedRows{0},
         _query(query),
+        _itemBlockManager(itemBlockManager),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
   auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
@@ -332,44 +221,41 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0) -> ExecutorTestHelper& {
+    _unorderedOutput = expected;
+    _unorderedSkippedRows = skippedRows;
+    return *this;
+  }
+
   /**
-   * @brief Set the Execution Block object
+   * @brief Add a dependency, i.e. add an ExecutionBlock to the *end* of the execution pipeline
    *
-   * @tparam E The executor
+   * @tparam E The executor template parameter
    * @param infos to build the executor
    * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
    * @return ExecutorTestHelper&
    */
   template <typename E>
-  auto setExecBlock(typename E::Infos infos,
-                    ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+  auto addDependency(typename E::Infos infos,
+                     ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecutorTestHelper& {
-    auto& testeeNode = _execNodes.emplace_back(std::move(
-        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
-    setPipeline(Pipeline{
-        std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
-                                                std::move(infos))});
+    _pipeline.addDependency(createExecBlock<E>(std::move(infos), nodeType));
     return *this;
   }
 
+  /**
+   * @brief Add a consumer, i.e. add an ExecutionBlock to the *beginning* of the execution pipeline
+   *
+   * @tparam E The executor template parameter
+   * @param infos to build the executor
+   * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
+   * @return ExecutorTestHelper&
+   */
   template <typename E>
-  auto createExecBlock(typename E::Infos infos,
-                       ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
-      -> ExecBlock {
-    auto& testeeNode = _execNodes.emplace_back(std::move(
-        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
-    return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
-                                                   std::move(infos));
-  }
-
-  auto setPipeline(Pipeline pipeline) -> ExecutorTestHelper& {
-    _pipeline = std::move(pipeline);
-    return *this;
-  }
-
-  auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0) -> ExecutorTestHelper& {
-    _unorderedOutput = expected;
-    _unorderedSkippedRows = skippedRows;
+  auto addConsumer(typename E::Infos infos,
+                   ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+      -> ExecutorTestHelper& {
+    _pipeline.addConsumer(createExecBlock<E>(std::move(infos), nodeType));
     return *this;
   }
 
@@ -389,17 +275,17 @@ struct ExecutorTestHelper {
 
   auto run(bool const loop = false) -> void {
     ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
 
-    auto inputBlock = generateInputRanges(itemBlockManager);
+    auto inputBlock = generateInputRanges(_itemBlockManager);
 
     auto skippedTotal = SkipResult{};
     auto finalState = ExecutionState::HASMORE;
 
     TRI_ASSERT(!_pipeline.empty());
-    _pipeline.get().back()->addDependency(inputBlock.get());
 
-    BlockCollector allResults{&itemBlockManager};
+    _pipeline.addDependency(std::move(inputBlock));
+
+    BlockCollector allResults{&_itemBlockManager};
 
     if (!loop) {
       auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
@@ -434,7 +320,7 @@ struct ExecutorTestHelper {
           << "Executor does not yield output, although it is expected";
     } else {
       SharedAqlItemBlockPtr expectedOutputBlock =
-          buildBlock<outputColumns>(itemBlockManager, std::move(_output), _outputShadowRows);
+          buildBlock<outputColumns>(_itemBlockManager, std::move(_output), _outputShadowRows);
       std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
                                            _outputRegisters.end());
       if (_unorderedOutput) {
@@ -452,6 +338,26 @@ struct ExecutorTestHelper {
   };
 
  private:
+  /**
+   * @brief create an ExecutionBlock without tying it into the pipeline.
+   *
+   * @tparam E The executor template parameter
+   * @param infos to build the executor
+   * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
+   * @return ExecBlock
+   *
+   * Now private to prevent us from leaking memory
+   */
+  template <typename E>
+  auto createExecBlock(typename E::Infos infos,
+                       ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+      -> ExecBlock {
+    auto& testeeNode = _execNodes.emplace_back(std::move(
+        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
+    return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
+                                                   std::move(infos));
+  }
+
   auto generateInputRanges(AqlItemBlockManager& itemBlockManager)
       -> std::unique_ptr<ExecutionBlock> {
     using VectorSizeT = std::vector<std::size_t>;
@@ -530,6 +436,7 @@ struct ExecutorTestHelper {
   SplitType _outputSplit = {std::monostate()};
 
   arangodb::aql::Query& _query;
+  arangodb::aql::AqlItemBlockManager& _itemBlockManager;
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;
   Pipeline _pipeline;
   std::vector<std::unique_ptr<MockTypedNode>> _execNodes;

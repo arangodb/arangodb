@@ -2004,7 +2004,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       if (info.state != ClusterCollectionCreationState::INIT) {
         // All leaders have reported either good or bad
         // We might be called by followers if they get in sync fast enough
-        // In this IF we are in the followers case, we can savely ignore
+        // In this IF we are in the followers case, we can safely ignore
         return true;
       }
 
