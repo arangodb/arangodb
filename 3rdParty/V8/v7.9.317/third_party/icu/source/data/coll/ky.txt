@@ -1,0 +1,14 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ky{
+    Version{"2.1.19.14"}
+    collations{
+        standard{
+            Sequence{
+                "[reorder Cyrl]"
+                "&е<ё<<<Ё"
+            }
+            Version{"35.1"}
+        }
+    }
+}

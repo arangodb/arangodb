@@ -56,6 +56,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _forceRequestTimeout(false),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
+      _syncByRevision(false),
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0) {
   setOptional(true);
@@ -72,7 +73,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      "switch to enable or disable the automatic start "
                      "of replication appliers",
                      new BooleanParameter(&_replicationApplierAutoStart),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
@@ -82,7 +83,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
   options->addOption("--replication.automatic-failover",
                      "Please use `--replication.active-failover` instead",
                      new BooleanParameter(&_enableActiveFailover),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   options->addOption("--replication.active-failover",
                      "Enable active-failover during asynchronous replication",
                      new BooleanParameter(&_enableActiveFailover));
@@ -90,7 +91,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
   options->addOption("--replication.max-parallel-tailing-invocations",
                      "Maximum number of concurrently allowed WAL tailing invocations (0 = unlimited)",
                      new UInt64Parameter(&_maxParallelTailingInvocations),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30500);
   
   options->addOption("--replication.connect-timeout",
@@ -101,6 +102,13 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      "Default timeout value for replication requests (in seconds)",
                      new DoubleParameter(&_requestTimeout))
                      .setIntroducedIn(30409).setIntroducedIn(30504);
+
+  options
+      ->addOption(
+          "--replication.sync-by-revision",
+          "Whether to use the newer revision-based replication protocol",
+          new BooleanParameter(&_syncByRevision))
+      .setIntroducedIn(30700);
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -216,6 +224,12 @@ double ReplicationFeature::checkRequestTimeout(double value) const {
   return value;
 }
 
+bool ReplicationFeature::isActiveFailoverEnabled() const {
+  return _enableActiveFailover;
+}
+
+bool ReplicationFeature::syncByRevision() const { return _syncByRevision; }
+
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
@@ -242,6 +256,15 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   }
 }
 
+GlobalReplicationApplier* ReplicationFeature::globalReplicationApplier() const {
+  TRI_ASSERT(_globalReplicationApplier != nullptr);
+  return _globalReplicationApplier.get();
+}
+
+void ReplicationFeature::disableReplicationApplier() {
+  _replicationApplierAutoStart = false;
+}
+
 // stop the replication applier for a single database
 void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
@@ -250,6 +273,12 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
     vocbase->replicationApplier()->stopAndJoin();
   }
 }
+
+/// @brief returns the connect timeout for replication requests
+double ReplicationFeature::connectTimeout() const { return _connectTimeout; }
+
+/// @brief returns the request timeout for replication requests
+double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
 
 // replace tcp:// with http://, and ssl:// with https://
 static std::string FixEndpointProto(std::string const& endpoint) {
@@ -276,7 +305,7 @@ static void writeError(int code, GeneralResponse* response) {
 
   VPackOptions options(VPackOptions::Defaults);
   options.escapeUnicode = true;
-  response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
+  response->setPayload(std::move(buffer), VPackOptions::Defaults);
 }
 
 /// @brief set the x-arango-endpoint header

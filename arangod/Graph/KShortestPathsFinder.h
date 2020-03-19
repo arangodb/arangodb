@@ -33,6 +33,7 @@
 #include <velocypack/StringRef.h>
 
 #include <list>
+#include <memory>
 #include <optional>
 
 namespace arangodb {
@@ -42,7 +43,7 @@ class Slice;
 }
 
 namespace graph {
-
+class EdgeCursor;
 struct ShortestPathOptions;
 
 // Inherit from ShortestPathfinder to get destroyEngines and not copy it
@@ -131,7 +132,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     VertexRef _pred;
     double _weight;
 
-    // If true, we know that the path leading from the centre of the Ball
+    // If true, we know that the path leading from the center of the Ball
     // under consideration to this vertex following the _pred
     // is the shortest/lowest weight amongst all paths leading to this vertex.
     bool _done;
@@ -152,19 +153,20 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // Dijkstra is run using two Balls, one around the start vertex, one around
   // the end vertex
   struct Ball {
-    VertexRef _centre;
+    VertexRef _center;
     Direction _direction;
     Frontier _frontier;
     // The distance of the last node that has been fully expanded
-    // from _centre
+    // from _center
     double _closest;
 
     Ball() {}
-    Ball(VertexRef const& centre, Direction direction)
-        : _centre(centre), _direction(direction), _closest(0) {
-      _frontier.insert(centre, std::make_unique<DijkstraInfo>(centre));
+    Ball(VertexRef const& center, Direction direction)
+        : _center(center), _direction(direction), _closest(0) {
+      _frontier.insert(center, std::make_unique<DijkstraInfo>(center));
     }
     ~Ball() = default;
+    const VertexRef center() const { return _center; };
   };
 
   //
@@ -219,18 +221,19 @@ class KShortestPathsFinder : public ShortestPathFinder {
   }
 
   // initialise k Shortest Paths
-  bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
-                                    arangodb::velocypack::Slice const& end);
+  TEST_VIRTUAL bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
+                                                 arangodb::velocypack::Slice const& end);
 
   // get the next available path as AQL value.
-  bool getNextPathAql(arangodb::velocypack::Builder& builder);
+  TEST_VIRTUAL bool getNextPathAql(arangodb::velocypack::Builder& builder);
   // get the next available path as a ShortestPathResult
   // TODO: this is only here to not break catch-tests and needs a cleaner solution.
   //       probably by making ShortestPathResult versatile enough and using that
   bool getNextPathShortestPathResult(ShortestPathResult& path);
   // get the next available path as a Path
   bool getNextPath(Path& path);
-  bool isPathAvailable() const { return _pathAvailable; }
+  TEST_VIRTUAL bool skipPath();
+  TEST_VIRTUAL bool isDone() const { return _traversalDone; }
 
  private:
   // Compute the first shortest path
@@ -256,7 +259,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
                        VertexRef& join, std::optional<double>& currentBest);
 
  private:
-  bool _pathAvailable;
+  bool _traversalDone{true};
 
   VertexRef _start;
   VertexRef _end;
@@ -266,6 +269,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
   std::vector<Path> _shortestPaths;
 
   std::list<Path> _candidatePaths;
+
+  std::unique_ptr<EdgeCursor> _forwardCursor;
+  std::unique_ptr<EdgeCursor> _backwardCursor;
 };
 
 }  // namespace graph

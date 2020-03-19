@@ -29,8 +29,8 @@
 #include <condition_variable>
 #include <list>
 #include <mutex>
-#include <queue>
 
+#include "RestServer/Metrics.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -45,7 +45,6 @@ class SupervisedScheduler final : public Scheduler {
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
-
 
  private:
   std::atomic<size_t> _numWorkers;
@@ -113,7 +112,7 @@ class SupervisedScheduler final : public Scheduler {
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
 
-  struct alignas(64) WorkerState {
+  struct WorkerState {
     uint64_t _queueRetryTime_us; // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working, _sleeping;
@@ -172,6 +171,10 @@ class SupervisedScheduler final : public Scheduler {
   // Check if we are allowed to pull from a queue with the given index
   // This is used to give priority to "FAST" and "MED" lanes accordingly.
   bool canPullFromQueue(uint64_t queueIdx) const;
+
+  Gauge<uint64_t>& _metricsQueueLength;
+  Gauge<uint64_t>& _metricsAwakeThreads;
+  Gauge<uint64_t>& _metricsNumWorkerThreads;
 };
 
 }  // namespace arangodb

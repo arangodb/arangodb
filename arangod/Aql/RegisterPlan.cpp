@@ -91,108 +91,84 @@ RegisterPlan* RegisterPlan::clone(ExecutionPlan* otherPlan, ExecutionPlan* plan)
   return other.release();
 }
 
+void RegisterPlan::increaseDepth() {
+  depth++;
+  nrRegsHere.emplace_back(0);
+  // create a copy of the last value here
+  // this is required because back returns a reference and emplace/push_back
+  // may invalidate all references
+  RegisterId registerId = nrRegs.back();
+  nrRegs.emplace_back(registerId);
+}
+
+void RegisterPlan::registerVariable(Variable const* v) {
+  nrRegsHere[depth]++;
+  nrRegs[depth]++;
+  varInfo.try_emplace(v->id, VarInfo(depth, totalNrRegs));
+  totalNrRegs++;
+}
+
 void RegisterPlan::after(ExecutionNode* en) {
+  TRI_ASSERT(en != nullptr);
+
   switch (en->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
-      depth++;
-      nrRegsHere.emplace_back(1);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = 1 + nrRegs.back();
-      nrRegs.emplace_back(registerId);
-
+      increaseDepth();
       auto ep = dynamic_cast<DocumentProducingNode const*>(en);
       if (ep == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,
             "unexpected cast result for DocumentProducingNode");
       }
-
-      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
+      registerVariable(ep->outVariable());
       break;
     }
-    case ExecutionNode::INDEX: {
-        auto ep = ExecutionNode::castTo<IndexNode const*>(en);
-        TRI_ASSERT(ep);
 
-        ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
-        break;
+    case ExecutionNode::INDEX: {
+      auto ep = ExecutionNode::castTo<IndexNode const*>(en);
+      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+      break;
     }
 
     case ExecutionNode::ENUMERATE_LIST: {
-      depth++;
-      nrRegsHere.emplace_back(1);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = 1 + nrRegs.back();
-      nrRegs.emplace_back(registerId);
-
+      increaseDepth();
       auto ep = ExecutionNode::castTo<EnumerateListNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
+      registerVariable(ep->outVariable());
       break;
     }
 
     case ExecutionNode::CALCULATION: {
-      nrRegsHere[depth]++;
-      nrRegs[depth]++;
       auto ep = ExecutionNode::castTo<CalculationNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
+      registerVariable(ep->outVariable());
       break;
     }
 
     case ExecutionNode::SUBQUERY: {
-      nrRegsHere[depth]++;
-      nrRegs[depth]++;
       auto ep = ExecutionNode::castTo<SubqueryNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
+      registerVariable(ep->outVariable());
       subQueryNodes.emplace_back(en);
       break;
     }
 
     case ExecutionNode::COLLECT: {
-      depth++;
-      nrRegsHere.emplace_back(0);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = nrRegs.back();
-      nrRegs.emplace_back(registerId);
-
+      increaseDepth();
       auto ep = ExecutionNode::castTo<CollectNode const*>(en);
       for (auto const& p : ep->groupVariables()) {
         // p is std::pair<Variable const*,Variable const*>
         // and the first is the to be assigned output variable
         // for which we need to create a register in the current
         // frame:
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.try_emplace(p.first->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
+        registerVariable(p.first);
       }
       for (auto const& p : ep->aggregateVariables()) {
         // p is std::pair<Variable const*,Variable const*>
         // and the first is the to be assigned output variable
         // for which we need to create a register in the current
         // frame:
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.try_emplace(p.first->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
+        registerVariable(p.first);
       }
       if (ep->hasOutVariable()) {
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
+        registerVariable(ep->outVariable());
       }
       break;
     }
@@ -202,13 +178,7 @@ void RegisterPlan::after(ExecutionNode* en) {
     case ExecutionNode::REPLACE:
     case ExecutionNode::REMOVE:
     case ExecutionNode::UPSERT: {
-      depth++;
-      nrRegsHere.emplace_back(0);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = nrRegs.back();
-      nrRegs.emplace_back(registerId);
+      increaseDepth();
 
       auto ep = dynamic_cast<ModificationNode const*>(en);
       if (ep == nullptr) {
@@ -216,18 +186,11 @@ void RegisterPlan::after(ExecutionNode* en) {
             TRI_ERROR_INTERNAL, "unexpected cast result for ModificationNode");
       }
       if (ep->getOutVariableOld() != nullptr) {
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.try_emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
+        registerVariable(ep->getOutVariableOld());
       }
       if (ep->getOutVariableNew() != nullptr) {
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.try_emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
+        registerVariable(ep->getOutVariableNew());
       }
-
       break;
     }
 
@@ -258,51 +221,30 @@ void RegisterPlan::after(ExecutionNode* en) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::K_SHORTEST_PATHS: {
-      depth++;
+      increaseDepth();
       auto ep = dynamic_cast<GraphNode const*>(en);
       if (ep == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected cast result for GraphNode");
       }
-      TRI_ASSERT(ep != nullptr);
-      auto vars = ep->getVariablesSetHere();
-      nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
-      nrRegs.emplace_back(registerId);
 
-      for (auto& it : vars) {
-        varInfo.try_emplace(it->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
+      for (auto const& it : ep->getVariablesSetHere()) {
+        registerVariable(it);
       }
       break;
     }
 
     case ExecutionNode::REMOTESINGLE: {
-      depth++;
+      increaseDepth();
       auto ep = ExecutionNode::castTo<SingleRemoteOperationNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      auto vars = ep->getVariablesSetHere();
-      nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
-      nrRegs.emplace_back(registerId);
-
-      for (auto& it : vars) {
-        varInfo.try_emplace(it->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
+      for (auto const& it : ep->getVariablesSetHere()) {
+        registerVariable(it);
       }
       break;
     }
 
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto ep = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(en);
-      TRI_ASSERT(ep);
-
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
     }
@@ -312,27 +254,16 @@ void RegisterPlan::after(ExecutionNode* en) {
     }
 
     case ExecutionNode::SUBQUERY_END: {
-      nrRegsHere[depth]++;
-      nrRegs[depth]++;
       auto ep = ExecutionNode::castTo<SubqueryEndNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
+      registerVariable(ep->outVariable());
       subQueryNodes.emplace_back(en);
       break;
     }
+
     case ExecutionNode::MATERIALIZE: {
-      depth++;
-      nrRegsHere.emplace_back(1);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = nrRegs.back() + 1;
-      nrRegs.emplace_back(registerId);
+      increaseDepth();
       auto ep = ExecutionNode::castTo<materialize::MaterializeNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.try_emplace(ep->outVariable().id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
+      registerVariable(&(ep->outVariable()));
       break;
     }
     default: {

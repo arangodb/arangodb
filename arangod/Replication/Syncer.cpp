@@ -490,7 +490,7 @@ Syncer::~Syncer() {
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   Syncer* s = static_cast<Syncer*>(data);
   TRI_ASSERT(s != nullptr);
-  if (location.substr(0, 5) == "/_db/") {
+  if (location.compare(0, 5, "/_db/", 5) == 0) {
     // location already contains /_db/
     return location;
   }

@@ -78,9 +78,10 @@ RocksDBMetadata::RocksDBMetadata()
 /**
  * @brief Place a blocker to allow proper commit/serialize semantics
  *
- * Should be called immediately prior to internal RocksDB commit. If the
- * commit succeeds, any inserts/removals should be buffered, then the blocker
- * removed; otherwise simply remove the blocker.
+ * Should be called immediately prior to beginning an internal trx. If the
+ * trx commit succeeds, any inserts/removals should be buffered, then the
+ * blocker updated (intermediate) or removed (final); otherwise simply remove
+ * the blocker.
  *
  * @param  trxId The identifier for the active transaction
  * @param  seq   The sequence number immediately prior to call
@@ -97,6 +98,42 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
     auto insert = _blockers.try_emplace(trxId, seq);
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!insert.second || !crosslist.second) {
+      return res.reset(TRI_ERROR_INTERNAL);
+    }
+    return res;
+  });
+}
+
+/**
+ * @brief Update a blocker to allow proper commit/serialize semantics
+ *
+ * Should be called after initializing an internal trx.
+ *
+ * @param  trxId The identifier for the active transaction (should match input
+ *               to earlier `placeBlocker` call)
+ * @param  seq   The sequence number from the internal snapshot
+ * @return       May return error if we fail to allocate and place blocker
+ */
+Result RocksDBMetadata::updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
+  return basics::catchToResult([&]() -> Result {
+    Result res;
+    WRITE_LOCKER(locker, _blockerLock);
+
+    auto previous = _blockers.find(trxId);
+    if (_blockers.end() == previous ||
+        _blockersBySeq.end() ==
+            _blockersBySeq.find(std::make_pair(previous->second, trxId))) {
+      res.reset(TRI_ERROR_INTERNAL);
+    }
+
+    auto removed = _blockersBySeq.erase(std::make_pair(previous->second, trxId));
+    if (!removed) {
+      return res.reset(TRI_ERROR_INTERNAL);
+    }
+
+    _blockers[trxId] = seq;
+    auto crosslist = _blockersBySeq.emplace(seq, trxId);
+    if (!crosslist.second) {
       return res.reset(TRI_ERROR_INTERNAL);
     }
     return res;
@@ -192,19 +229,21 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 /// @brief serialize the collection metadata
 Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                       LogicalCollection& coll, bool force,
-                                      VPackBuilder& tmp,
-                                      rocksdb::SequenceNumber& appliedSeq) {
+                                      VPackBuilder& tmp, rocksdb::SequenceNumber& appliedSeq,
+                                      std::string& output) {
   TRI_ASSERT(appliedSeq != UINT64_MAX);
-  
+  TRI_ASSERT(appliedSeq > 0);
+
   Result res;
   if (coll.deleted()) {
     return res;
   }
 
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
-  bool didWork = applyAdjustments(maxCommitSeq);
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
   TRI_ASSERT(maxCommitSeq != UINT64_MAX);
+  TRI_ASSERT(maxCommitSeq > 0);
+  bool didWork = applyAdjustments(maxCommitSeq);
   appliedSeq = maxCommitSeq;
 
   RocksDBKey key;
@@ -248,7 +287,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 3. store the index estimates
-  std::string output;
   auto indexes = coll.getIndexes();
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
@@ -281,6 +319,37 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     } else {
       LOG_TOPIC("ab328", TRACE, Logger::ENGINES)
           << "index '" << idx->objectId() << "' estimator does not need to be persisted";
+    }
+  }
+
+  // Step 4. store the revision tree
+  if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
+    if (coll.syncByRevision()) {
+      output.clear();
+      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
+      appliedSeq = std::min(appliedSeq, seq);
+
+      if (!output.empty()) {
+        rocksutils::uint64ToPersistent(output, seq);
+
+        key.constructRevisionTreeValue(rcoll->objectId());
+        rocksdb::Slice value(output);
+
+        rocksdb::Status s = batch.Put(cf, key.string(), value);
+        if (!s.ok()) {
+          LOG_TOPIC("ff234", WARN, Logger::ENGINES)
+              << "writing revision tree failed";
+          return res.reset(rocksutils::convertStatus(s));
+        }
+      }
+    } else {
+      key.constructRevisionTreeValue(rcoll->objectId());
+      rocksdb::Status s = batch.Delete(cf, key.string());
+      if (!s.ok() && !s.IsNotFound()) {
+        LOG_TOPIC("ff235", WARN, Logger::ENGINES)
+            << "deleting revision tree failed";
+        return res.reset(rocksutils::convertStatus(s));
+      }
     }
   }
 
@@ -373,6 +442,41 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     }
   }
 
+  // Step 4. load the revision tree
+  if (coll.syncByRevision()) {
+    key.constructRevisionTreeValue(rcoll->objectId());
+    s = db->Get(ro, cf, key.string(), &value);
+    if (!s.ok() && !s.IsNotFound()) {
+      return rocksutils::convertStatus(s);
+    } else if (s.IsNotFound()) {
+      LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
+          << "no revision tree found for collection with id '" << coll.id()
+          << "', rebuilding";
+      Result res = rcoll->rebuildRevisionTree();
+      if (res.fail()) {
+        LOG_TOPIC("ecdbd", WARN, Logger::ENGINES)
+            << "failed to rebuild revision tree for collection '" << coll.id() << "'";
+      }
+    } else {
+      auto tree = containers::RevisionTree::fromBuffer(
+          std::string_view(value.data(), value.size() - sizeof(uint64_t)));
+      if (tree) {
+        uint64_t seq = rocksutils::uint64FromPersistent(
+            value.data() + value.size() - sizeof(uint64_t));
+        rcoll->setRevisionTree(std::move(tree), seq);
+      } else {
+        LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
+            << "unsupported revision tree format in collection "
+            << "with id '" << coll.id() << "', rebuilding";
+        Result res = rcoll->rebuildRevisionTree();
+        if (res.fail()) {
+          LOG_TOPIC("ecdbf", WARN, Logger::ENGINES)
+              << "failed to rebuild revision tree for collection '" << coll.id() << "'";
+        }
+      }
+    }
+  }
+
   return Result();
 }
 
@@ -422,6 +526,14 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
   if (!s.ok() && !s.IsNotFound()) {
     LOG_TOPIC("af3dc", ERR, Logger::ENGINES)
         << "could not delete key generator value: " << s.ToString();
+    return rocksutils::convertStatus(s);
+  }
+
+  key.constructRevisionTreeValue(objectId);
+  s = db->Delete(wo, cf, key.string());
+  if (!s.ok() && !s.IsNotFound()) {
+    LOG_TOPIC("af3dd", ERR, Logger::ENGINES)
+        << "could not delete revision tree value: " << s.ToString();
     return rocksutils::convertStatus(s);
   }
 

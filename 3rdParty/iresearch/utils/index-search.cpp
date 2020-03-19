@@ -53,14 +53,16 @@
 #include "index/directory_reader.hpp"
 #include "search/bm25.hpp"
 #include "search/boolean_filter.hpp"
-#include "search/filter.hpp"
+#include "search/levenshtein_filter.hpp"
 #include "search/phrase_filter.hpp"
-#include "search/wildcard_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
+#include "search/wildcard_filter.hpp"
+#include "search/ngram_similarity_filter.hpp"
 #include "store/fs_directory.hpp"
 #include "utils/memory_pool.hpp"
+#include "utils/levenshtein_default_pdp.hpp"
 
 #include "index-search.hpp"
 
@@ -115,8 +117,14 @@ enum class category_t {
   OrHighLow,
   Prefix3,
   Wildcard,
+  Fuzzy1,
+  Fuzzy2,
   Or4High,
   Or6High4Med2Low,
+  MinMatch2High2Med,
+  HighNGram,
+  MedNGram,
+  LowNGram,
   UNKNOWN
 };
 
@@ -135,8 +143,14 @@ category_t parseCategory(const irs::string_ref& value) {
   if (value == "OrHighLow") return category_t::OrHighLow;
   if (value == "Prefix3") return category_t::Prefix3;
   if (value == "Wildcard") return category_t::Wildcard;
+  if (value == "Fuzzy1") return category_t::Fuzzy1;
+  if (value == "Fuzzy2") return category_t::Fuzzy2;
   if (value == "Or4High") return category_t::Or4High;
   if (value == "Or6High4Med2Low") return category_t::Or6High4Med2Low;
+  if (value == "MinMatch2High2Med") return category_t::MinMatch2High2Med;
+  if (value == "HighNGram") return category_t::HighNGram;
+  if (value == "MedNGram") return category_t::MedNGram;
+  if (value == "LowNGram") return category_t::LowNGram;
   return category_t::UNKNOWN;
 }
 
@@ -156,8 +170,14 @@ irs::string_ref stringCategory(category_t category) {
    case category_t::OrHighLow: return "OrHighLow";
    case category_t::Prefix3: return "Prefix3";
    case category_t::Wildcard: return "Wildcard";
+   case category_t::Fuzzy1: return "Fuzzy1";
+   case category_t::Fuzzy2: return "Fuzzy2";
    case category_t::Or4High: return "Or4High";
    case category_t::Or6High4Med2Low: return "Or6High4Med2Low";
+   case category_t::MinMatch2High2Med: return "MinMatch2High2Med";
+   case category_t::HighNGram: return "HighNGram";
+   case category_t::MedNGram: return "MedNGram";
+   case category_t::LowNGram: return "LowNGram";
    default: return "<unknown>";
   }
 }
@@ -238,10 +258,31 @@ irs::filter::prepared::ptr prepareFilter(
     analyzer->reset(terms);
 
     for (auto& term = analyzer->attributes().get<irs::term_attribute>(); analyzer->next();) {
-      query.push_back(term->value());
+      query.push_back(irs::by_phrase::simple_term{term->value()});
     }
 
     return query.prepare(reader, order);
+   }
+   case category_t::HighNGram: // fall through
+   case category_t::MedNGram: // fall through
+   case category_t::LowNGram: {
+     if ((terms = splitFreq(text)).null()) {
+       return nullptr;
+     }
+     irs::by_ngram_similarity query;
+
+     query.field("body");
+     bool reading_threshold = true;
+     // the first 'term' should be threshold in tenth - e.g. if value is 7 this means 0.7
+     for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+       if (reading_threshold) {
+         reading_threshold = false;
+         query.threshold(float_t(std::stoll(tmpBuf))/ 10.f);
+       } else {
+         query.push_back(tmpBuf);
+       }
+     }
+     return query.prepare(reader, order);
    }
    case category_t::AndHighHigh: // fall through
    case category_t::AndHighMed: // fall through
@@ -291,7 +332,45 @@ irs::filter::prepared::ptr prepareFilter(
     terms = irs::string_ref(text, text.size());
     query.field("body").term(terms);
 
+    for (auto& b : const_cast<irs::bstring&>(query.term())) {
+      switch (b) {
+        case '*': b = '%'; break; // '*' => '%'
+        case '?': b = '_'; break; // '?' => '_'
+      }
+    }
+
     return query.prepare(reader, order);
+   }
+   case category_t::Fuzzy1:
+   case category_t::Fuzzy2: {
+     const auto pos = text.find('~');
+     const auto term = irs::string_ref(
+       text.c_str(), 
+       pos == std::string::npos ? text.size() : pos);
+
+     irs::by_edit_distance query;
+     query.scored_terms_limit(scored_terms_limit);
+     query.max_distance(category == category_t::Fuzzy1 ? 1 : 2);
+     query.field("body").term(term);
+
+     return query.prepare(reader, order);
+   }
+   case category_t::MinMatch2High2Med: {
+     if ((terms = splitFreq(text)).null()) {
+       return nullptr;
+     }
+     irs::Or query;
+     // the first 'term' should be number of minimum matched
+     bool reading_min_match = true;
+     for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+       if (reading_min_match) {
+         reading_min_match = false;
+         query.min_match_count(std::stoll(tmpBuf));
+       } else {
+         query.add<irs::by_term>().field("body").term(tmpBuf);
+       }
+     }
+     return query.prepare(reader, order);
    }
    default:
     return nullptr;
@@ -336,6 +415,10 @@ int search(
     const std::string& scorer,
     const std::string& scorer_arg_format,
     const irs::string_ref& scorer_arg) {
+  // build parametric descriptions for distances 1 and 2
+  irs::default_pdp(1, false); irs::default_pdp(1, true);
+  irs::default_pdp(2, false); irs::default_pdp(2, true);
+
   static const std::map<std::string, const irs::text_format::type_id&> text_formats = {
     { "csv", irs::text_format::csv },
     { "json", irs::text_format::json },

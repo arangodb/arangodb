@@ -40,6 +40,7 @@
 #include "Basics/Result.h"
 #include "GeneralServer/GeneralDefinitions.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/Metrics.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace arangodb {
@@ -284,7 +285,7 @@ class AgencyCommManager {
 
 class AgencyPrecondition {
  public:
-  enum class Type { NONE, EMPTY, VALUE };
+  enum class Type { NONE, EMPTY, VALUE, TIN, NOTIN, INTERSECTION_EMPTY};
 
  public:
   AgencyPrecondition();
@@ -739,6 +740,7 @@ class AgencyComm {
 
  private:
   application_features::ApplicationServer& _server;
+  Histogram<log_scale_t<uint64_t>>& _agency_comm_request_time_ms;
 };
 }  // namespace arangodb
 

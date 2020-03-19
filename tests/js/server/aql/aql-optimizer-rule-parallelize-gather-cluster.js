@@ -175,7 +175,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query[0]);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        
+
         result = AQL_EXECUTE(query[0]).json;
         assertEqual(query[1], result.length);
 

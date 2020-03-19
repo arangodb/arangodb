@@ -187,6 +187,9 @@
       var userName = $('#newUser').val();
 
       var sharding = $('#newSharding').val();
+      if (frontendConfig.forceOneShard) {
+        sharding = 'single';
+      }
       var replicationFactor = $('#new-replication-factor').val();
       var writeConcern = $('#new-write-concern').val();
 
@@ -422,7 +425,7 @@
 
       // OneShard
       //if enterprise
-      if (window.App.isCluster && frontendConfig.isEnterprise) {
+      if (window.App.isCluster && frontendConfig.isEnterprise && !frontendConfig.forceOneShard) {
         var sharding = [ { value : "",
                            label : "flexible"
                          },

@@ -28,17 +28,21 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -54,6 +58,24 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
       runTime(runTime),
       state(state),
       stream(stream) {}
+
+void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
+  auto timeString = TRI_StringTimeStamp(started, Logger::getUseLocalTime());
+
+  out.add(VPackValue(VPackValueType::Object));
+  out.add("id", VPackValue(basics::StringUtils::itoa(id)));
+  out.add("query", VPackValue(queryString));
+  if (bindParameters != nullptr) {
+    out.add("bindVars", bindParameters->slice());
+  } else {
+    out.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
+  }
+  out.add("started", VPackValue(timeString));
+  out.add("runTime", VPackValue(runTime));
+  out.add("state", VPackValue(aql::QueryExecutionState::toString(state)));
+  out.add("stream", VPackValue(stream));
+  out.close();
+}
 
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
@@ -126,6 +148,9 @@ void QueryList::remove(Query* query) {
   double const started = query->startTime();
   double const now = TRI_microtime();
 
+  query->vocbase().server().getFeature<arangodb::MetricsFeature>().counter(
+      StaticStrings::AqlQueryRuntimeMs) += static_cast<uint64_t>(1000 * (now - started));
+
   try {
     // check if we need to push the query into the list of slow queries
     if (now - started >= threshold && !query->killed()) {
@@ -172,7 +197,9 @@ void QueryList::remove(Query* query) {
       _slow.emplace_back(query->id(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
                          started, now - started,
-                         query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, isStreaming);
+                         query->killed() ? QueryExecutionState::ValueType::KILLED
+                                         : QueryExecutionState::ValueType::FINISHED,
+                         isStreaming);
 
       if (++_slowCount > _maxSlowQueries) {
         // free first element
@@ -257,9 +284,10 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       double const started = query->startTime();
 
       result.emplace_back(query->id(), extractQueryString(query, maxLength),
-                          _trackBindVars ? query->bindParameters() : nullptr, started,
-                          now - started, 
-                          query->killed() ? QueryExecutionState::ValueType::KILLED : query->state(),
+                          _trackBindVars ? query->bindParameters() : nullptr,
+                          started, now - started,
+                          query->killed() ? QueryExecutionState::ValueType::KILLED
+                                          : query->state(),
                           query->queryOptions().stream);
     }
   }
@@ -294,7 +322,7 @@ void QueryList::clearSlow() {
   _slow.clear();
   _slowCount = 0;
 }
-  
+
 size_t QueryList::count() {
   READ_LOCKER(writeLocker, _lock);
   return _current.size();

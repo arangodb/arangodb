@@ -357,16 +357,6 @@ struct AqlValue final {
   /// @brief returns the size of the dynamic memory allocated for the value
   size_t memoryUsage() const noexcept;
 
-  /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  static AqlValue CreateFromBlocks(transaction::Methods*,
-                                   std::vector<AqlItemBlock*> const&,
-                                   std::vector<std::string> const&);
-
-  /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  static AqlValue CreateFromBlocks(transaction::Methods*,
-                                   std::vector<AqlItemBlock*> const&,
-                                   arangodb::aql::RegisterId);
-
   /// @brief compare function for two values
   static int Compare(velocypack::Options const*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
@@ -394,6 +384,8 @@ class AqlValueGuard {
   AqlValueGuard() = delete;
   AqlValueGuard(AqlValueGuard const&) = delete;
   AqlValueGuard& operator=(AqlValueGuard const&) = delete;
+  AqlValueGuard(AqlValueGuard&&) = delete;
+  AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy);
   ~AqlValueGuard();

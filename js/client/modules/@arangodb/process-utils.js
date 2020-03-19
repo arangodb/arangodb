@@ -437,8 +437,20 @@ function getCleanupDBDirectories () {
 // //////////////////////////////////////////////////////////////////////////////
 
 function makeAuthorizationHeaders (options) {
-  if (options['server.jwt-secret']) {
-    var jwt = crypto.jwtEncode(options['server.jwt-secret'],
+
+  let jwtSecret;
+  if (options['server.jwt-secret-folder']) {
+    let files = fs.list(options['server.jwt-secret-folder']);
+    files.sort();
+    if (files.length > 0) {
+      jwtSecret = fs.read(fs.join(options['server.jwt-secret-folder'], files[0]));
+    }
+  } else {
+    jwtSecret = options['server.jwt-secret'];
+  }
+
+  if (jwtSecret) {
+    let jwt = crypto.jwtEncode(jwtSecret,
                              {'server_id': 'none',
                               'iss': 'arangodb'}, 'HS256');
     if (options.extremeVerbosity) {
@@ -556,17 +568,23 @@ function initProcessStats(instanceInfo) {
 }
 
 function getDeltaProcessStats(instanceInfo) {
-  let deltaStats = {};
-  instanceInfo.arangods.forEach((arangod) => {
-    let newStats = getProcessStats(arangod.pid);
-    let myDeltaStats = {};
-    for (let key in arangod.stats) {
-      myDeltaStats[key] = newStats[key] - arangod.stats[key];
-    }
-    deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
-    arangod.stats = newStats;
-  });
-  return deltaStats;
+  try {
+    let deltaStats = {};
+    instanceInfo.arangods.forEach((arangod) => {
+      let newStats = getProcessStats(arangod.pid);
+      let myDeltaStats = {};
+      for (let key in arangod.stats) {
+        myDeltaStats[key] = newStats[key] - arangod.stats[key];
+      }
+      deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
+      arangod.stats = newStats;
+    });
+    return deltaStats;
+  }
+  catch (x) {
+    print("aborting stats generation");
+    return {};
+  }
 }
 
 function summarizeStats(deltaStats) {
@@ -682,8 +700,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       instanceInfo.exitStatus = res;
     }
   } else {
-    // V8 executeExternalAndWait thinks that timeout is in ms, so *100
-    res = executeExternalAndWait(cmd, args, false, timeout*100, coverageEnvironment());
+    // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
+    res = executeExternalAndWait(cmd, args, false, timeout*1000, coverageEnvironment());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
@@ -696,6 +714,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       instanceInfo.exitStatus.hasOwnProperty('signal') &&
       ((instanceInfo.exitStatus.signal === 11) ||
        (instanceInfo.exitStatus.signal === 6) ||
+       (instanceInfo.exitStatus.signal === 4) || // mac sometimes SIG_ILLs...
        // Windows sometimes has random numbers in signal...
        (platform.substr(0, 3) === 'win')
       )
@@ -747,6 +766,29 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       status: false,
       message: 'irregular termination: ' + instanceInfo.exitStatus.status +
         ' exit signal: ' + instanceInfo.exitStatus.signal + errorMessage,
+      duration: deltaTime
+    };
+  } else if (res.status === 'TIMEOUT') {
+    print('Killing ' + cmd + ' - ' + JSON.stringify(args));
+    let resKill = killExternal(res.pid, abortSignal);
+    if (coreCheck) {
+      print(Date() + " executeAndWait: Marking crashy because of timeout - " + JSON.stringify(instanceInfo));
+      crashUtils.analyzeCrash(cmd,
+                              instanceInfo,
+                              options,
+                              'execution of ' + cmd + ' - kill because of timeout');
+      if (options.coreCheck) {
+        print(instanceInfo.exitStatus.gdbHint);
+      }
+      serverCrashedLocal = true;
+    }
+    instanceInfo.pid = res.pid;
+    instanceInfo.exitStatus = res;
+    return {
+      timeout: true,
+      status: false,
+      message: 'termination by timeout: ' + instanceInfo.exitStatus.status +
+        ' killed by : ' + abortSignal + errorMessage,
       duration: deltaTime
     };
   } else {
@@ -1451,7 +1493,12 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   if (tcpdump !== undefined) {
     print(CYAN + "Stopping tcpdump" + RESET);
     killExternal(tcpdump.pid);
-    statusExternal(tcpdump.pid, true);
+    try {
+      statusExternal(tcpdump.pid, true);
+    } catch (x)
+    {
+      print(Date() + ' wasn\'t able to stop tcpdump: ' + x.message );
+    }
   }
   cleanupDirectories.unshift(instanceInfo.rootDir);
   return shutdownSuccess;
@@ -1501,7 +1548,10 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
   instanceInfo.authOpts = _.clone(options);
   if (addArgs['server.jwt-secret'] && !instanceInfo.authOpts['server.jwt-secret']) {
     instanceInfo.authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
+  } else if (addArgs['server.jwt-secret-folder'] && !instanceInfo.authOpts['server.jwt-secret-folder']) {
+    instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
   }
+
 
   let count = 0;
   while (true) {
@@ -1647,7 +1697,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
-      instanceInfo['vstEndpoint'] = 'vst://127.0.0.1:' + port;
       let coordinatorArgs = _.clone(options.extraArgs);
       coordinatorArgs['server.endpoint'] = endpoint;
       coordinatorArgs['cluster.my-address'] = endpoint;
@@ -1661,7 +1710,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
-      instanceInfo['vstEndpoint'] = 'vst://127.0.0.1:' + port;
       let singleArgs = _.clone(options.extraArgs);
       singleArgs['server.endpoint'] = endpoint;
       singleArgs['cluster.my-address'] = endpoint;
@@ -1746,7 +1794,17 @@ function launchFinalize(options, instanceInfo, startTime) {
       return;
     }
     var port = res[1];
-    ports.push('port ' + port);
+    if (arangod.role === 'agent') {
+      if (options.sniffAgency) {
+        ports.push('port ' + port);
+      }
+    } else if (arangod.role === 'dbserver') {
+      if (options.sniffDBServers) {
+        ports.push('port ' + port);
+      }
+    } else {
+      ports.push('port ' + port);
+    }
     processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
   });
 
@@ -1949,7 +2007,7 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
-  instanceInfo.vstEndpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].url.replace(/.*\/\//, 'vst://');
+  // instanceInfo.vstEndpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].url.replace(/.*\/\//, 'vst://');
 
   return instanceInfo;
 }

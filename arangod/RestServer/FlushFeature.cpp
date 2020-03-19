@@ -73,7 +73,7 @@ void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.flush-interval",
                      "interval (in microseconds) for flushing data",
                      new UInt64Parameter(&_flushInterval),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void FlushFeature::registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription) {

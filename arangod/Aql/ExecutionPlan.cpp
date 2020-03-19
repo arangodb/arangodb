@@ -118,6 +118,26 @@ uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
+void parseGraphCollectionRestriction(std::vector<std::string>& collections, AstNode const* src) {
+  if (src->isStringValue()) {
+    collections.emplace_back(src->getString());
+  } else if (src->type == NODE_TYPE_ARRAY) {
+    size_t const n = src->numMembers();
+    collections.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      AstNode const* c = src->getMemberUnchecked(i);
+      if (!c->isStringValue()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+            "collection restrictions option must be either a string or an array of collection names");
+      }
+      collections.emplace_back(c->getStringValue(), c->getStringLength());
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+        "collection restrictions option must be either a string or an array of collection names");
+  }
+}
+
 std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
@@ -151,7 +171,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
     size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = optionsNode->getMember(i);
+      auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -177,23 +197,27 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_BAD_PARAMETER,
                 "uniqueEdges: 'global' is not supported, "
-                "due to unpredictable results. Use 'path' "
+                "due to otherwise unpredictable results. Use 'path' "
                 "or 'none' instead");
           }
+        } else if (name == "edgeCollections") {
+          parseGraphCollectionRestriction(options->edgeCollections, value);
+        } else if (name == "vertexCollections") {
+          parseGraphCollectionRestriction(options->vertexCollections, value);
         }
       }
     }
   }
+
   if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
       !options->useBreadthFirst) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueVertices: 'global' is only "
                                    "supported, with bfs: true due to "
-                                   "unpredictable results.");
+                                   "otherwise unpredictable results.");
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+
+  return options;
 }
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Query* query,
@@ -204,7 +228,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -221,9 +245,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
       }
     }
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+  
+  return options;
 }
 
 std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
@@ -708,6 +731,7 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node) {
   ModificationOptions options;
 
+
   // parse the modification options we got
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -723,6 +747,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 
         if (name == "waitForSync") {
           options.waitForSync = value->isTrue();
+        } else if (name == StaticStrings::SkipDocumentValidation) {
+          options.validate = ! value->isTrue();
         } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
         } else if (name == "keepNull") {
@@ -733,13 +759,24 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
         } else if (name == "overwrite") {
-          options.overwrite = value->isTrue();
+          if(value->isTrue()) {
+            options.overwrite = true;
+          }
+        } else if (name == "overwriteMode" && value->isStringValue()) {
+          auto ref = value->getStringRef();
+          if(ref == "update") {
+            options.overwrite = true;
+            options.overwriteModeUpdate = true;
+          } else if(ref == "replace") {
+            options.overwrite = true;
+          }
         } else if (name == "ignoreRevs") {
           options.ignoreRevs = value->isTrue();
         }
       }
     }
   }
+
   return options;
 }
 
@@ -2404,6 +2441,29 @@ bool ExecutionPlan::fullCount() const noexcept {
                                  ? nullptr
                                  : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
   return lastLimitNode != nullptr && lastLimitNode->fullCount();
+}
+
+void ExecutionPlan::prepareTraversalOptions() {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  findNodesOfType(nodes,
+      {arangodb::aql::ExecutionNode::TRAVERSAL,
+       arangodb::aql::ExecutionNode::SHORTEST_PATH,
+       arangodb::aql::ExecutionNode::K_SHORTEST_PATHS},
+      true);
+  for (auto& node : nodes) {
+    switch (node->getType()) {
+      case ExecutionNode::TRAVERSAL:
+      case ExecutionNode::SHORTEST_PATH:
+      case ExecutionNode::K_SHORTEST_PATHS: {
+        auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
+        graphNode->prepareOptions();
+      } break;
+      default:
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+    }
+  }
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

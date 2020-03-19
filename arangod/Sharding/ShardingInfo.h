@@ -104,6 +104,8 @@ class ShardingInfo {
                           ShardID& shardID, bool& usesDefaultShardKeys,
                           arangodb::velocypack::StringRef const&);
 
+  static void sortShardNamesNumerically(std::vector<ShardID>& list);
+
  private:
   // @brief the logical collection we are working for
   LogicalCollection* _collection;

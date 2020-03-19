@@ -229,6 +229,22 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
     }
 
+    // check document with first position
+    // { a: 300, b:90, c:9 }
+    {
+      irs::by_same_position q;
+      q.push_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("300")));
+      q.push_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("90")));
+      q.push_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("9")));
+      auto prepared = q.prepare(index);
+      auto docs = prepared->execute(segment);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(1, docs->value());
+    }
+
     // { a: 100, b:30, c:6 }
     {
       irs::by_same_position q;
@@ -624,7 +640,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0")
+    ::testing::Values("1_0", "1_3")
   ),
   tests::to_string
 );

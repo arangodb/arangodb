@@ -27,6 +27,8 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
+class ServerSecurityFeature;
+
 class RestStatusHandler : public arangodb::RestBaseHandler {
  public:
   RestStatusHandler(application_features::ApplicationServer&, GeneralRequest*,
@@ -36,6 +38,10 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   char const* name() const override final { return "RestStatusHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
+
+ private:
+  RestStatus executeStandard(ServerSecurityFeature&);
+  RestStatus executeOverview();
 };
 }  // namespace arangodb
 

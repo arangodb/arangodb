@@ -14,3 +14,5 @@ Prefix3: sec*
 Wildcard: re*f
 Or4High: about ref from cite # freq=91907 freq=541190 freq=359428 freq=265368
 Or6High4Med2Low: about ref from cite http which roman short europe party rapid donald # freq=91907 freq=541190 freq=359428 freq=265368 freq=389790 freq=253402 freq=31137 freq=31137 freq=31053 freq=30836 freq=4972 freq=4940
+MinMatch2High2Med: 2 about ref roman short # freq=91907 freq=541190 freq=31137 freq=31137
+

@@ -62,15 +62,15 @@ class IRESEARCH_API by_same_position : public filter {
   by_same_position& push_back(std::string&& field, const bstring& term);
   by_same_position& push_back(std::string&& field, bstring&& term);
 
-  iterator begin() { return terms_.begin(); }
-  iterator end() { return terms_.end(); }
+  iterator begin() noexcept { return terms_.begin(); }
+  iterator end() noexcept { return terms_.end(); }
 
-  const_iterator begin() const { return terms_.begin(); }
-  const_iterator end() const { return terms_.end(); }
+  const_iterator begin() const noexcept { return terms_.begin(); }
+  const_iterator end() const noexcept { return terms_.end(); }
 
-  bool empty() const { return terms_.empty(); }
-  size_t size() const { return terms_.size(); }
-  void clear() { terms_.clear(); }
+  bool empty() const noexcept { return terms_.empty(); }
+  size_t size() const noexcept { return terms_.size(); }
+  void clear() noexcept { terms_.clear(); }
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept override;

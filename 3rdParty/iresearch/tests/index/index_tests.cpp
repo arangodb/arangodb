@@ -32,7 +32,7 @@
 #include "utils/lz4compression.hpp"
 #include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
-#include "utils/automaton_utils.hpp"
+#include "utils/wildcard_utils.hpp"
 #include "utils/fst_table_matcher.hpp"
 
 NS_BEGIN(tests)
@@ -312,6 +312,22 @@ void payloaded_json_field_factory(
     auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
     field.name(iresearch::string_ref(name));
     field.value(data.as_number<double_t>());
+  }
+}
+
+void normalized_string_json_field_factory(
+  tests::document& doc,
+  const std::string& name,
+  const json_doc_generator::json_value& data) {
+  static irs::flags norm{ irs::norm::type() };
+  if (json_doc_generator::ValueType::STRING == data.vt) {
+    doc.insert(std::make_shared<templates::string_field>(
+      irs::string_ref(name),
+      data.str,
+      norm
+      ));
+  } else {
+    generic_json_field_factory(doc, name, data);
   }
 }
 
@@ -2450,21 +2466,21 @@ TEST_P(index_test_case, europarl_docs_automaton) {
 
   // prefix
   {
-    auto acceptor = irs::from_wildcard<char>("forb%");
+    auto acceptor = irs::from_wildcard("forb%");
     irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
     assert_index(0, &matcher);
   }
 
   // part
   {
-    auto acceptor = irs::from_wildcard<char>("%ende%");
+    auto acceptor = irs::from_wildcard("%ende%");
     irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
     assert_index(0, &matcher);
   }
 
   // suffix
   {
-    auto acceptor = irs::from_wildcard<char>("%ione");
+    auto acceptor = irs::from_wildcard("%ione");
     irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
     assert_index(0, &matcher);
   }
@@ -9174,55 +9190,81 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
-
-    auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_TRUE(reader);
-    ASSERT_EQ(1, reader.size());
-    ASSERT_EQ(2, reader.live_docs_count());
-
-    // assume 0 is merged segment
     {
-      auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
-      ASSERT_NE(nullptr, column);
-      auto values = column->values();
-      ASSERT_EQ(4, segment.docs_count()); // total count of documents
-      ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
-      auto terms = segment.field("same");
-      ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
-      ASSERT_TRUE(termItr->next());
-
-      // with deleted docs
+      auto reader = iresearch::directory_reader::open(dir(), codec());
+      ASSERT_TRUE(reader);
+      ASSERT_EQ(1, reader.size());
+      ASSERT_EQ(2, reader.live_docs_count());
+      // assume 0 is merged segment
       {
-        auto docsItr = termItr->postings(iresearch::flags());
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-        ASSERT_FALSE(docsItr->next());
-      }
+        auto& segment = reader[0];
+        const auto* column = segment.column_reader("name");
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
+        ASSERT_EQ(4, segment.docs_count()); // total count of documents
+        ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
+        auto terms = segment.field("same");
+        ASSERT_NE(nullptr, terms);
+        auto termItr = terms->iterator();
+        ASSERT_TRUE(termItr->next());
 
-      // without deleted docs
-      {
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-        ASSERT_FALSE(docsItr->next());
+        // with deleted docs
+        {
+          auto docsItr = termItr->postings(iresearch::flags());
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+          ASSERT_FALSE(docsItr->next());
+        }
+
+        // without deleted docs
+        {
+          auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+          ASSERT_FALSE(docsItr->next());
+        }
       }
     }
+
+    // check for dangling old segment versions in writers cache 
+    // first create new segment
+    // segment 5
+    ASSERT_TRUE(insert(*writer,
+        doc5->indexed.begin(), doc5->indexed.end(),
+        doc5->stored.begin(), doc5->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+        doc6->indexed.begin(), doc6->indexed.end(),
+        doc6->stored.begin(), doc6->stored.end()
+    ));
+    writer->commit();
+
+    // remove one doc from new and old segment to make conolidation do something
+    auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc5 = iresearch::iql::query_builder().build("name==E", std::locale::classic());
+    writer->documents().remove(*query_doc3.filter);
+    writer->documents().remove(*query_doc5.filter);
+    writer->commit();
+
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    writer->commit();
+
+    // check all old segments are deleted (no old version of segments is left in cache and blocking )
+    ASSERT_EQ(23, irs::directory_cleaner::clean(dir())); 
   }
 
   // consolidate with deletes + inserts
@@ -13205,6 +13247,29 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
     index_test_case_12_values
+  ),
+  tests::to_string
+);
+
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+NS_LOCAL
+#if defined(IRESEARCH_SSE2)
+const auto index_test_case_13_values = ::testing::Values("1_3", "1_3simd");
+#else
+const auto index_test_case_13_values = ::testing::Values("1_3");
+#endif
+NS_END
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_13,
+  index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
+    ),
+    index_test_case_13_values
   ),
   tests::to_string
 );

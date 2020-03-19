@@ -30,9 +30,11 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "StorageEngine/ReplicationIterator.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/voc-types.h"
 
@@ -139,6 +141,16 @@ class PhysicalCollection {
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;
 
+  /// @brief Get an iterator associated with the specified replication batch
+  virtual std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
+                                                                      uint64_t batchId);
+
+  /// @brief Get an iterator associated with the specified transaction
+  virtual std::unique_ptr<ReplicationIterator> getReplicationIterator(
+      ReplicationIterator::Ordering, transaction::Methods&);
+
+  virtual void adjustNumberDocuments(transaction::Methods&, int64_t);
+
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
@@ -158,9 +170,6 @@ class PhysicalCollection {
                                     arangodb::velocypack::Slice const&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result, bool lock) = 0;
-
-  virtual Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
                       ManagedDocumentResult& result, bool lock) = 0;
 
   /// @brief read a documument referenced by token (internal method)
@@ -205,10 +214,26 @@ class PhysicalCollection {
                         bool lock, KeyLockInfo* keyLockInfo,
                         std::function<void()> const& cbDuringLock) = 0;
 
+  virtual Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                        ManagedDocumentResult& previous, OperationOptions& options,
+                        bool lock, KeyLockInfo* keyLockInfo,
+                        std::function<void()> const& cbDuringLock);
+
   /// @brief new object for insert, value must have _key set correctly.
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
                             bool isEdgeCollection, velocypack::Builder& builder,
                             bool isRestore, TRI_voc_rid_t& revisionId) const;
+
+  virtual std::unique_ptr<containers::RevisionTree> revisionTree(
+      transaction::Methods& trx);
+  virtual std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId);
+
+  virtual Result rebuildRevisionTree();
+
+  virtual void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
+  virtual void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
+
+  TRI_voc_rid_t newRevisionId() const;
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
@@ -217,8 +242,6 @@ class PhysicalCollection {
   virtual void figuresSpecific(arangodb::velocypack::Builder&) = 0;
 
   // SECTION: Document pre commit preperation
-
-  TRI_voc_rid_t newRevisionId() const;
 
   bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
 

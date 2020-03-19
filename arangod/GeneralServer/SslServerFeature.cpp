@@ -43,6 +43,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
@@ -109,7 +110,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--ssl.options",
                      "ssl connection options, see OpenSSL documentation",
                      new UInt64Parameter(&_sslOptions),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--ssl.ecdh-curve",
@@ -175,8 +176,12 @@ void SslServerFeature::verifySslOptions() {
     FATAL_ERROR_EXIT();
   }
 
+  // Set up first _sniEntry:
+  _sniEntries.clear();
+  _sniEntries.emplace_back("", _keyfile);
+
   try {
-    createSslContext();
+    createSslContexts();  // just to test if everything works
   } catch (...) {
     LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL)
         << "cannot create SSL context";
@@ -196,12 +201,10 @@ class BIOGuard {
 };
 }  // namespace
 
-
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
-                                unsigned char *outlen, const unsigned char *in,
-                                unsigned int inlen, void *arg) {
-  int rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+static int alpn_select_proto_cb(SSL* ssl, const unsigned char** out,
+                                unsigned char* outlen, const unsigned char* in,
+                                unsigned int inlen, void* arg) {
+  int rv = nghttp2_select_next_protocol((unsigned char**)out, outlen, in, inlen);
 
   if (rv != 1) {
     return SSL_TLSEXT_ERR_NOACK;
@@ -209,12 +212,19 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 
   return SSL_TLSEXT_ERR_OK;
 }
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
-asio_ns::ssl::context SslServerFeature::createSslContext() const {
+asio_ns::ssl::context SslServerFeature::createSslContextInternal(std::string keyfilename,
+                                                                 std::string& content) {
+  // This method creates an SSL context using the keyfile in `keyfilename`
+  // It is used internally if the public method `createSslContext`
+  // is called and if the hello callback happens and a non-default
+  // servername extension is detected, then with a non-empty servername.
+  // If all goes well, the string `content` is set to the content of the keyfile.
   try {
+    std::string keyfileContent = FileUtils::slurp(keyfilename);
     // create context
-    asio_ns::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+    asio_ns::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), keyfilename);
+    content = std::move(keyfileContent);
 
     // and use this native handle
     asio_ns::ssl::context::native_handle_type nativeContext = sslContext.native_handle();
@@ -298,7 +308,9 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
 
       STACK_OF(X509_NAME) * certNames;
 
+      std::string cafileContent = FileUtils::slurp(_cafile);
       certNames = SSL_load_client_CA_file(_cafile.c_str());
+      _cafileContent = cafileContent;
 
       if (certNames == nullptr) {
         LOG_TOPIC("30363", ERR, arangodb::Logger::SSL)
@@ -331,10 +343,8 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
     }
 
     sslContext.set_verify_mode(SSL_VERIFY_NONE);
-    
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+
     SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     return sslContext;
   } catch (std::exception const& ex) {
@@ -345,6 +355,28 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
     LOG_TOPIC("1217f", ERR, arangodb::Logger::SSL)
         << "failed to create SSL context, cannot create HTTPS server";
     throw std::runtime_error("cannot create SSL context");
+  }
+}
+
+SslServerFeature::SslContextList SslServerFeature::createSslContexts() {
+  auto result = std::make_shared<std::vector<asio_ns::ssl::context>>();
+  for (size_t i = 0; i < _sniEntries.size(); ++i) {
+    auto res = createSslContextInternal(_sniEntries[i].keyfileName,
+                                        _sniEntries[i].keyfileContent);
+    result->emplace_back(std::move(res));
+  }
+  return result;
+}
+
+size_t SslServerFeature::chooseSslContext(std::string const& serverName) const {
+  // Note that the map _sniServerIndex is basically immutable after the
+  // startup phase, since the number of SNI entries cannot be changed
+  // at runtime. Therefore, we do not need any protection here.
+  auto it = _sniServerIndex.find(serverName);
+  if (it == _sniServerIndex.end()) {
+    return 0;
+  } else {
+    return it->second;
   }
 }
 
@@ -591,4 +623,100 @@ std::string SslServerFeature::stringifySslOptions(uint64_t opts) const {
 
   // strip initial comma
   return result.substr(2);
+}
+
+static void splitPEM(std::string const& pem, std::vector<std::string>& certs,
+                     std::vector<std::string>& keys) {
+  std::vector<std::string> result;
+  size_t pos = 0;
+  while (pos < pem.size()) {
+    pos = pem.find("-----", pos);
+    if (pos == std::string::npos) {
+      return;
+    }
+    if (pem.compare(pos, 11, "-----BEGIN ") != 0) {
+      return;
+    }
+    size_t posEndHeader = pem.find('\n', pos);
+    if (posEndHeader == std::string::npos) {
+      return;
+    }
+    size_t posStartFooter = pem.find("-----END ", posEndHeader);
+    if (posStartFooter == std::string::npos) {
+      return;
+    }
+    size_t posEndFooter = pem.find("-----", posStartFooter + 9);
+    if (posEndFooter == std::string::npos) {
+      return;
+    }
+    posEndFooter += 5;  // Point to line end, typically or end of file
+    size_t p = posEndHeader;
+    while (p > pos + 11 &&
+           (pem[p] == '\n' || pem[p] == '-' || pem[p] == '\r' || pem[p] == ' ')) {
+      --p;
+    }
+    std::string type(pem.c_str() + pos + 11, (p + 1) - (pos + 11));
+    if (type == "CERTIFICATE") {
+      certs.emplace_back(pem.c_str() + pos, posEndFooter - pos);
+    } else if (type.find("PRIVATE KEY") != std::string::npos) {
+      keys.emplace_back(pem.c_str() + pos, posEndFooter - pos);
+    } else {
+      LOG_TOPIC("54271", INFO, Logger::SSL)
+          << "Found part of type " << type << " in PEM file, ignoring it...";
+    }
+    pos = posEndFooter;
+  }
+}
+
+static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string attrName) {
+  if (pem.empty()) {
+    {
+      VPackObjectBuilder guard(&builder, attrName);
+      return;
+    }
+  }
+  // Compute a SHA256 of the whole file:
+  TRI_SHA256Functor func;
+  func(pem.c_str(), pem.size());
+
+  // Now split into certs and key:
+  std::vector<std::string> certs;
+  std::vector<std::string> keys;
+  splitPEM(pem, certs, keys);
+
+  // Now dump the certs and the hash of the key:
+  {
+    VPackObjectBuilder guard2(&builder, attrName);
+    builder.add("SHA256", VPackValue(func.finalize()));
+    {
+      VPackArrayBuilder guard3(&builder, "certificates");
+      for (auto const& c : certs) {
+        builder.add(VPackValue(c));
+      }
+    }
+    if (!keys.empty()) {
+      TRI_SHA256Functor func2;
+      func2(keys[0].c_str(), keys[0].size());
+      builder.add("privateKeySHA256", VPackValue(func2.finalize()));
+    }
+  }
+}
+
+// Dump all SSL related data into a builder, private keys
+// are hashed.
+Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
+  {
+    VPackObjectBuilder guard(&builder);
+    if (!_sniEntries.empty()) {
+      dumpPEM(_sniEntries[0].keyfileContent, builder, "keyfile");
+      dumpPEM(_cafileContent, builder, "clientCA");
+      if (_sniEntries.size() > 1) {
+        VPackObjectBuilder guard2(&builder, "SNI");
+        for (size_t i = 1; i < _sniEntries.size(); ++i) {
+          dumpPEM(_sniEntries[i].keyfileContent, builder, _sniEntries[i].serverName);
+        }
+      }
+    }
+  }
+  return Result(TRI_ERROR_NO_ERROR);
 }

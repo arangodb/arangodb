@@ -29,6 +29,7 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Meta/static_assert_size.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -51,7 +52,19 @@ bool CompareVariables(Variable const* mine, Variable const* yours) {
 SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable", true)),
-      _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
+      _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
+      _isModificationSubquery(basics::VelocyPackHelper::getBooleanValue(
+          base, "isModificationSubquery", false)) {}
+
+SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
+                                 Variable const* outVariable, bool isModificationSubquery)
+    : ExecutionNode(plan, id),
+      _inVariable(inVariable),
+      _outVariable(outVariable),
+      _isModificationSubquery(isModificationSubquery) {
+  // _inVariable might be nullptr
+  TRI_ASSERT(_outVariable != nullptr);
+}
 
 void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                          std::unordered_set<ExecutionNode const*>& seen) const {
@@ -64,6 +77,8 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.add(VPackValue("inVariable"));
     _inVariable->toVelocyPack(nodes);
   }
+
+  nodes.add("isModificationSubquery", VPackValue(isModificationNode()));
 
   nodes.close();
 }
@@ -90,8 +105,9 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   auto const vpackOptions = trx->transactionContextPtr()->getVPackOptions();
   SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                 getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                 calcRegsToKeep(), vpackOptions, inReg, outReg);
+                                 getRegisterPlan()->nrRegs[getDepth()],
+                                 getRegsToClear(), calcRegsToKeep(), vpackOptions,
+                                 inReg, outReg, isModificationNode());
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
                                                                    std::move(infos));
@@ -108,7 +124,8 @@ ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies
       inVariable = plan->getAst()->variables()->createVariable(inVariable);
     }
   }
-  auto c = std::make_unique<SubqueryEndNode>(plan, _id, inVariable, outVariable);
+  auto c = std::make_unique<SubqueryEndNode>(plan, _id, inVariable, outVariable,
+                                             isModificationNode());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -134,7 +151,8 @@ bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
     SubqueryEndNode const& p = dynamic_cast<SubqueryEndNode const&>(other);
     TRI_ASSERT(p._outVariable != nullptr);
     if (!CompareVariables(_outVariable, p._outVariable) ||
-        !CompareVariables(_inVariable, p._inVariable)) {
+        !CompareVariables(_inVariable, p._inVariable) ||
+        _isModificationSubquery != p._isModificationSubquery) {
       // One of the variables does not match
       return false;
     }
@@ -143,4 +161,8 @@ bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
     TRI_ASSERT(false);
     return false;
   }
+}
+
+bool SubqueryEndNode::isModificationNode() const {
+  return _isModificationSubquery;
 }
