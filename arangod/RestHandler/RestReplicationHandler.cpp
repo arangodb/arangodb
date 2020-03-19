@@ -1189,10 +1189,15 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
-  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+      _vocbase.sharding() == "single") {
+    auto const isSatellite =
+        VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
+                                       velocypack::StringRef{""}) == StaticStrings::Satellite;
+
     // force one shard, and force distributeShardsLike to be "_graphs"
     toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-    if (!_vocbase.IsSystemName(name)) {
+    if (!_vocbase.IsSystemName(name) && !isSatellite) {
       // system-collections will be sharded normally. only user collections will
       // get the forced sharding
       toMerge.add(StaticStrings::DistributeShardsLike,
@@ -1212,14 +1217,6 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
     } else {
       numberOfShards = numberOfShardsSlice.getUInt();
-    }
-
-    if (_vocbase.sharding() == "single" &&
-        parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
-        !_vocbase.IsSystemName(name) && numberOfShards <= 1) {
-      // shard like _graphs
-      toMerge.add(StaticStrings::DistributeShardsLike,
-                  VPackValue(_vocbase.shardingPrototypeName()));
     }
   }
 
