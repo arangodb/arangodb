@@ -153,6 +153,14 @@ void EnvironmentFeature::prepare() {
     // file not found or value not convertible into integer
   }
 
+  // Report memory found:
+  std::string overriddenmsg;
+  if (TRI_PhysicalMemoryOverridden) {
+    overriddenmsg = " (overridden by environment variable)";
+  }
+  LOG_TOPIC("25362", INFO, Logger::MEMORY)
+    << "Available physical memory: " << TRI_PhysicalMemory << overriddenmsg;
+
   // test local ipv6 support
   try {
     if (!basics::FileUtils::exists("/proc/net/if_inet6")) {

@@ -3,6 +3,12 @@ v3.6.3 (XXXX-XX-XX)
 
 * Fixed issue #11275: indexes backward compatibility broken in 3.5+.
 
+* Fix an endless loop in FollowerInfo::persistInAgency which could trigger a
+  hanger if a collection was dropped at the wrong time.
+
+* Allow to override the detected total amount of memory via an environment
+  variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
+
 * Fix cluster representation of the collection figures for RocksDB.
 
 * Fix SORT RAND() LIMIT 1 optimization for RocksDB when only a projection of the
