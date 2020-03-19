@@ -1300,7 +1300,7 @@ v3.5.0-rc.1 (2019-05-14)
 
 * Allowed MoveShard from leader to a follower, thus swapping the two.
 
-* Supervision fix: Satellite collections, various fixes.
+* Supervision fix: SatelliteCollections, various fixes.
 
 * Added coordinator route for agency dump.
 
@@ -2015,7 +2015,7 @@ v3.4.4 (2019-03-12)
 
 * Allow MoveShard from leader to a follower, thus swapping the two
 
-* Supervision fix: Satellite collections, various fixes
+* Supervision fix: SatellitCollections, various fixes
 
 * Add coordinator route for agency dump
 
@@ -2469,7 +2469,7 @@ v3.4.0-rc.3 (2018-10-23)
 * fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
   if it should not.
 
-* fix internal issue #2764: the waitForSync property of a satellite collection
+* fix internal issue #2764: the waitForSync property of a SatelliteCollection
   could not be changed via the Web UI
 
 * dynamically manage libcurl's number of open connections to increase performance
@@ -3354,7 +3354,7 @@ v3.3.19 (2018-10-20)
 * fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
   if it should not.
 
-* fix internal issue #2764: the waitForSync property of a satellite collection
+* fix internal issue #2764: the waitForSync property of a SatelliteCollection
   could not be changed via the Web UI
 
 * improved logging in case of replication errors
@@ -3964,7 +3964,7 @@ v3.3.7 (2018-04-11)
 * fixed internal issue #2237: AQL queries on collections with replicationFactor:
   "satellite" crashed arangod in single server mode
 
-* fixed restore of satellite collections: replicationFactor was set to 1 during
+* fixed restore of SatelliteCollections: replicationFactor was set to 1 during
   restore
 
 * fixed dump and restore of smart graphs:

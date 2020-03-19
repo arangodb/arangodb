@@ -213,7 +213,7 @@ bool FailedServer::start(bool& aborts) {
                     } else {
                       LOG_TOPIC("c6c32", DEBUG, Logger::SUPERVISION)
                           << "Do intentionally nothing for failed follower of "
-                             "satellite collection. job: "
+                             "SatelliteCollection. job: "
                           << _jobId;
                     }
                   }

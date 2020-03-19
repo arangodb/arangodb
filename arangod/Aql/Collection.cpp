@@ -199,7 +199,7 @@ std::shared_ptr<LogicalCollection> Collection::getCollection() const {
 /// @brief check smartness of the underlying collection
 bool Collection::isSmart() const { return getCollection()->isSmart(); }
 
-/// @brief check if collection is a satellite collection
+/// @brief check if collection is a SatelliteCollection
 bool Collection::isSatellite() const { return getCollection()->isSatellite(); }
 
 /// @brief return the name of the smart join attribute (empty string

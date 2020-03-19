@@ -697,7 +697,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     std::shuffle(dbServers.begin(), dbServers.end(), g);
   }
 
-  // mop: distribute satellite collections on all servers
+  // mop: distribute SatelliteCollections on all servers
   if (replicationFactor == 0) {
     replicationFactor = dbServers.size();
   }

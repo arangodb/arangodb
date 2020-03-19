@@ -1229,7 +1229,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     if (!_vocbase.IsSystemName(name) && !isSatellite) {
       // system-collections will be sharded normally. only user collections will
       // get the forced sharding.
-      // satellite collections must not be sharded like a non-satellite
+      // SatelliteCollections must not be sharded like a non-satellite
       // collection.
       toMerge.add(StaticStrings::DistributeShardsLike,
                   VPackValue(_vocbase.shardingPrototypeName()));

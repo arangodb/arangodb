@@ -112,7 +112,7 @@ struct Collection {
   /// @brief check smartness of the underlying collection
   bool isSmart() const;
 
-  /// @brief check if collection is a satellite collection
+  /// @brief check if collection is a SatelliteCollection
   bool isSatellite() const;
 
   /// @brief return the name of the smart join attribute (empty string

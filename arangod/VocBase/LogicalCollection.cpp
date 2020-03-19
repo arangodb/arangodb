@@ -855,7 +855,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "cannot change replicationFactor of a satellite collection");
+                        "cannot change replicationFactor of a SatelliteCollection");
         }
       }
     } else if (replicationFactorSlice.isString()) {
@@ -866,13 +866,13 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE
       if (!isSatellite()) {
-        // but the collection is not a satellite collection!
+        // but the collection is not a SatelliteCollection!
         return Result(TRI_ERROR_FORBIDDEN,
-                      "cannot change satellite collection status");
+                      "cannot change SatelliteCollection status");
       }
 #else
       return Result(TRI_ERROR_FORBIDDEN,
-                    "cannot use satellite collection status");
+                    "cannot use SatelliteCollection status");
 #endif
       // fallthrough here if we set the string "satellite" for a satellite
       // collection
@@ -909,7 +909,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Satellite collection, "
+                        "SatelliteCollection, "
                         "cannot change writeConcern");
         }
       }

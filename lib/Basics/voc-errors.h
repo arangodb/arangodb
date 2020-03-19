@@ -812,7 +812,7 @@ constexpr int TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE                             
 /// 1481: ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC
 /// "collection is out of sync"
 /// Will be raised if a collection needed during query execution is out of
-/// sync. This currently can only happen when using satellite collections
+/// sync. This currently can only happen when using SatelliteCollections
 constexpr int TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC                      = 1481;
 
 /// 1482: ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN

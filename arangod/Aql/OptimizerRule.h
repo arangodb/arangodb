@@ -272,7 +272,7 @@ struct OptimizerRule {
     // move traversal on satellite graph to db server and add scatter / gather / remote
     scatterSatelliteGraphRule,
 
-    // remove any superflous satellite collection joins...
+    // remove any superfluous SatelliteCollection joins...
     // put it after Scatter rule because we would do
     // the work twice otherwise
     removeSatelliteJoinsRule,

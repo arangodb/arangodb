@@ -412,7 +412,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           } else {
             // Intentionally do nothing. RemoveServer will remove the failed follower
             LOG_TOPIC("22ca1", DEBUG, Logger::SUPERVISION) <<
-              "Do nothing for cleanout of follower of the satellite collection " << collection.hasAsString("id").first;
+              "Do nothing for cleanout of follower of the SatelliteCollection " << collection.hasAsString("id").first;
             continue ;
           }
         } else {

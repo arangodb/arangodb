@@ -113,7 +113,7 @@ const setupSmartArangoSearch = function () {
 
 /**
  * @brief Only if enterprise mode:
- *        Creates a satellite collection with 100 documents
+ *        Creates a SatelliteCollection with 100 documents
  */
 function setupSatelliteCollections() {
   if (!isEnterprise) {

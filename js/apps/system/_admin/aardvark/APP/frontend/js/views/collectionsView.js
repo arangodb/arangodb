@@ -646,9 +646,9 @@
               advancedTableContent.push(
                 window.modalView.createSelectEntry(
                   'is-satellite-collection',
-                  'Satellite collection',
+                  'SatelliteCollection',
                   '',
-                  'Create satellite collection? This will disable replication factor.',
+                  'Create SatelliteCollection? This will disable replication factor.',
                   [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
                 )
               );

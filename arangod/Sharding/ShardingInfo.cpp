@@ -112,7 +112,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     bool isError = true;
     if (replicationFactorSlice.isNumber()) {
       _replicationFactor = replicationFactorSlice.getNumber<size_t>();
-      // mop: only allow satellite collections to be created explicitly
+      // mop: only allow SatelliteCollections to be created explicitly
       if (_replicationFactor > 0) {
         isError = false;
 #ifdef USE_ENTERPRISE
@@ -165,7 +165,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
   }
   
-  // replicationFactor == 0 -> satellite collection
+  // replicationFactor == 0 -> SatelliteCollection
   if (shardKeysSlice.isNone() || _replicationFactor == 0) {
     // Use default.
     _shardKeys.emplace_back(StaticStrings::KeyString);
@@ -521,7 +521,7 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
           int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
           if (replicationFactorProbe == 0) {
             // TODO: Which configuration for satellites are valid regarding minRepl and writeConcern
-            // valid for creating a satellite collection
+            // valid for creating a SatelliteCollection
             return Result();
           }
           if (replicationFactorProbe < 0) {
