@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "wildcard_filter.hpp"
+#include "phrase_filter.hpp"
 
 #include "shared.hpp"
 #include "limited_sample_scorer.hpp"
@@ -31,9 +32,9 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_ROOT
+NS_LOCAL
 
-irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
+inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
   out.reserve(in.size());
 
   bool copy = true;
@@ -50,6 +51,56 @@ irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
   return out;
 }
 
+template<typename Invalid, typename Term, typename Prefix, typename WildCard>
+inline void callWildcardType(
+    irs::bstring& buf, irs::bytes_ref& term, Invalid inv, Term t, Prefix p, WildCard w) {
+  switch (wildcard_type(term)) {
+    case irs::WildcardType::INVALID:
+      inv();
+      break;
+    case irs::WildcardType::TERM_ESCAPED:
+      term = unescape(term, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
+    case irs::WildcardType::TERM:
+      t(term);
+      break;
+    case irs::WildcardType::MATCH_ALL:
+      term = irs::bytes_ref::EMPTY;
+      p(term);
+      break;
+    case irs::WildcardType::PREFIX_ESCAPED:
+      term = unescape(term, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
+    case irs::WildcardType::PREFIX: {
+      assert(!term.empty());
+      const auto* begin = term.c_str();
+      const auto* end = begin + term.size();
+
+      // term is already checked to be a valid UTF-8 sequence
+      const auto* pos = irs::utf8_utils::find<false>(begin, end, irs::WildcardMatch::ANY_STRING);
+      assert(pos != end);
+
+      term = irs::bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
+      p(term);
+      break;
+    }
+    case irs::WildcardType::WILDCARD:
+      w(term);
+      break;
+    default:
+      assert(false);
+      inv();
+  }
+}
+
+NS_END
+
+NS_ROOT
+
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
 
@@ -61,50 +112,52 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     bytes_ref term,
     size_t scored_terms_limit) {
   bstring buf;
-  switch (wildcard_type(term)) {
-    case WildcardType::INVALID:
-      return prepared::empty();
-    case WildcardType::TERM_ESCAPED:
-      term = unescape(term, buf);
-#if IRESEARCH_CXX > IRESEARCH_CXX_14
-      [[fallthrough]];
-#endif
-    case WildcardType::TERM:
-      return term_query::make(index, order, boost, field, term);
-    case WildcardType::MATCH_ALL:
-      return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref::EMPTY, // empty prefix == match all
-                                scored_terms_limit);
-    case WildcardType::PREFIX_ESCAPED:
-      term = unescape(term, buf);
-#if IRESEARCH_CXX > IRESEARCH_CXX_14
-      [[fallthrough]];
-#endif
-    case WildcardType::PREFIX: {
-      assert(!term.empty());
-      const auto* begin = term.c_str();
-      const auto* end = begin + term.size();
-
-      // term is already checked to be a valid UTF-8 sequence
-      const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
-      assert(pos != end);
-
-      return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref(begin, size_t(pos - begin)), // remove trailing '%'
-                                scored_terms_limit);
-    }
-
-    case WildcardType::WILDCARD:
-      return prepare_automaton_filter(field, from_wildcard(term),
-                                      scored_terms_limit, index, order, boost);
-  }
-
-  assert(false);
-  return prepared::empty();
+  filter::prepared::ptr res;
+  callWildcardType(
+    buf, term,
+    [&res]() {
+      res = prepared::empty(); },
+    [&res, &index, &order, boost, &field](const bytes_ref& term) {
+      res = term_query::make(index, order, boost, field, term);},
+    [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
+      res = by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);},
+    [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
+      res = prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit, index, order, boost);}
+  );
+  return res;
 }
 
 by_wildcard::by_wildcard() noexcept
   : by_prefix(by_wildcard::type()) {
+}
+
+bool wildcard_phrase_helper(
+    bstring& buf,
+    by_phrase::PhrasePartType& type,
+    bytes_ref& pattern,
+    bool& valid,
+    bool is_ord_empty) {
+  auto res = true;
+  callWildcardType(
+    buf, pattern,
+    [&res, &is_ord_empty, &valid]() {
+      if (is_ord_empty) {
+        res = false;
+        // else we should collect
+        // stats for other terms in phrase
+      } else {
+        valid = false;
+      }
+    },
+    [&type](const bytes_ref& /*term*/) {
+      type = by_phrase::PhrasePartType::TERM;
+    },
+    [&type](const bytes_ref& /*term*/) {
+      type = by_phrase::PhrasePartType::PREFIX;
+    },
+    [](const bytes_ref& /*term*/) {}
+  );
+  return res;
 }
 
 NS_END
