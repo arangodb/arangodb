@@ -224,6 +224,7 @@ class StaticStrings {
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
+  static std::string const SyncByRevision;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Validation;
   static std::string const WriteConcern;
