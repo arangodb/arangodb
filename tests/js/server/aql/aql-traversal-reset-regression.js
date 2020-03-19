@@ -40,6 +40,27 @@ const productCollectionName = "RegressionProduct";
 const customerCollectionName = "RegressionCustomer";
 const ownsEdgeCollectionName = "RegressionOwns";
 
+const expectedResult = [
+  {
+    _key: "396",
+    _id: customerCollectionName + "/396",
+    name: "John",
+    surname: "Smith",
+    age: 52,
+    alive: false,
+    _class: "com.arangodb.springframework.testdata.Customer"
+  },
+  {
+    _key: "397",
+    _id: customerCollectionName + "/397",
+    name: "Matt",
+    surname: "Smith",
+    age: 34,
+    alive: false,
+    _class: "com.arangodb.springframework.testdata.Customer"
+  }
+];
+
 var cleanup = function() {
   db._drop(productCollectionName);
   db._drop(customerCollectionName);
@@ -259,7 +280,8 @@ function traversalResetRegressionSuite() {
                                 (FOR e1 IN 1..1 ANY e._id @@owns
                                    FILTER e1.name == @1
                                    RETURN 1)[0] == 1
-                         RETURN e`;
+                         RETURN UNSET(e, "_rev")`;
+
       const bindVars = {
         "0": "phone",
         "1": "phone",
@@ -268,8 +290,8 @@ function traversalResetRegressionSuite() {
         "@owns": ownsEdgeCollectionName
       };
 
-      //      var plan = db._explain(query, bindVars);
       var actual = db._query(query, bindVars);
+      assertEqual(actual.toArray(), expectedResult);
     }
   };
 }
