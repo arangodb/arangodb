@@ -505,6 +505,8 @@ if(WITH_FOLLY_DISTRIBUTED_MUTEX)
 endif()
 find_package(Threads REQUIRED)
 
+add_subdirectory(third-party/gtest-1.8.1/fused-src/gtest)
+
 # Main library source code
 
 set(SOURCES
@@ -936,8 +938,8 @@ endif()
 # Tests are excluded from Release builds
 CMAKE_DEPENDENT_OPTION(WITH_TESTS "build with tests" ON
   "CMAKE_BUILD_TYPE STREQUAL Debug" OFF)
+
 if(WITH_TESTS)
-  add_subdirectory(third-party/gtest-1.8.1/fused-src/gtest)
   add_library(testharness STATIC
   test_util/testharness.cc)
   target_link_libraries(testharness gtest)
