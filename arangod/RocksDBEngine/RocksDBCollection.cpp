@@ -1260,8 +1260,26 @@ void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t
 }
 
 namespace {
-Result injectTemporaryObjectIdsForCollection(rocksdb::DB& db,
-                                             arangodb::LogicalCollection& collection) {
+using ObjectIdTransformer =
+    std::function<std::pair<std::uint64_t, std::uint64_t>(std::uint64_t, std::uint64_t)>;
+
+std::pair<std::uint64_t, std::uint64_t> injectNewTemporaryObjectId(std::uint64_t objectId,
+                                                                   std::uint64_t tempObjectId) {
+  return {objectId, TRI_NewTickServer()};
+}
+
+std::pair<std::uint64_t, std::uint64_t> swapObjectIds(std::uint64_t objectId,
+                                                      std::uint64_t tempObjectId) {
+  return {tempObjectId, objectId};
+}
+
+std::pair<std::uint64_t, std::uint64_t> clearTemporaryObjectId(std::uint64_t objectId,
+                                                               std::uint64_t tempObjectId) {
+  return {objectId, 0};
+}
+
+Result setObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& collection,
+                                 ::ObjectIdTransformer idFunc) {
   Result res;
   rocksdb::WriteOptions wo;
   rocksdb::WriteBatch batch;
@@ -1280,10 +1298,18 @@ Result injectTemporaryObjectIdsForCollection(rocksdb::DB& db,
   arangodb::velocypack::Slice oldProps = arangodb::RocksDBValue::data(ps);
 
   arangodb::velocypack::Builder builder;
-  std::uint64_t tempId;
-  std::unordered_map<std::shared_ptr<arangodb::Index>, std::uint64_t> indexTempIds;
+  std::pair<std::uint64_t, std::uint64_t> outputPair;
+  std::unordered_map<std::shared_ptr<arangodb::Index>, std::pair<std::uint64_t, std::uint64_t>> indices;
   {
     arangodb::velocypack::ObjectBuilder collectionObjectGuard(&builder);
+    std::uint64_t objectId =
+        basics::VelocyPackHelper::stringUInt64(oldProps, StaticStrings::ObjectId);
+    std::uint64_t tempObjectId =
+        basics::VelocyPackHelper::stringUInt64(oldProps, StaticStrings::TempObjectId);
+    outputPair = idFunc(objectId, tempObjectId);
+    if (!oldProps.isObject()) {
+      LOG_DEVEL << "oldProps";
+    }
     for (auto pair : arangodb::velocypack::ObjectIterator(oldProps)) {
       if (pair.key.isEqualString("indexes")) {  // append new index
         arangodb::velocypack::ArrayBuilder collectionIndicesArrayGuard(&builder, StaticStrings::Indexes);
@@ -1294,23 +1320,41 @@ Result injectTemporaryObjectIdsForCollection(rocksdb::DB& db,
             continue;
           }
           arangodb::velocypack::ObjectBuilder indexObjectGuard(&builder);
-          for (auto pair : arangodb::velocypack::ObjectIterator(idxSlice)) {
-            builder.add(pair.key);
-            builder.add(pair.value);
+          std::uint64_t objectIdIdx =
+              basics::VelocyPackHelper::stringUInt64(idxSlice, StaticStrings::ObjectId);
+          std::uint64_t tempObjectIdIdx =
+              basics::VelocyPackHelper::stringUInt64(idxSlice, StaticStrings::TempObjectId);
+          auto outputPairIdx = idFunc(objectIdIdx, tempObjectIdIdx);
+          if (!idxSlice.isObject()) {
+            LOG_DEVEL << "idxSlice";
           }
-          tempId = TRI_NewTickServer();
+          for (auto idxPair : arangodb::velocypack::ObjectIterator(idxSlice)) {
+            if (idxPair.key.isEqualString(StaticStrings::ObjectId) ||
+                idxPair.key.isEqualString(StaticStrings::TempObjectId)) {
+              continue;
+            }
+            builder.add(idxPair.key);
+            builder.add(idxPair.value);
+          }
+          builder.add(StaticStrings::ObjectId,
+                      arangodb::velocypack::Value(std::to_string(outputPairIdx.first)));
           builder.add(StaticStrings::TempObjectId,
-                      arangodb::velocypack::Value(std::to_string(tempId)));
-          indexTempIds.emplace(idx, tempId);
+                      arangodb::velocypack::Value(std::to_string(outputPairIdx.second)));
+          indices.emplace(idx, outputPairIdx);
         }
+        continue;
+      }
+      if (pair.key.isEqualString(StaticStrings::ObjectId) ||
+          pair.key.isEqualString(StaticStrings::TempObjectId)) {
         continue;
       }
       builder.add(pair.key);
       builder.add(pair.value);
     }
-    tempId = TRI_NewTickServer();
+    builder.add(StaticStrings::ObjectId,
+                arangodb::velocypack::Value(std::to_string(outputPair.first)));
     builder.add(StaticStrings::TempObjectId,
-                arangodb::velocypack::Value(std::to_string(tempId)));
+                arangodb::velocypack::Value(std::to_string(outputPair.second)));
   }
   auto value = RocksDBValue::Collection(builder.slice());
   batch.Put(arangodb::RocksDBColumnFamily::definitions(), key.string(), value.string());
@@ -1328,13 +1372,13 @@ Result injectTemporaryObjectIdsForCollection(rocksdb::DB& db,
 
   auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
   TRI_ASSERT(rcoll);
-  res = rcoll->setObjectIds(rcoll->objectId(), tempId);
+  res = rcoll->setObjectIds(outputPair.first, outputPair.second);
   if (res.fail()) {
     return res;
   }
-  for (auto pair : indexTempIds) {
-    auto ridx = static_cast<arangodb::RocksDBIndex*>(pair.first.get());
-    res = ridx->setObjectIds(ridx->objectId(), pair.second);
+  for (auto& idxPair : indices) {
+    auto ridx = static_cast<arangodb::RocksDBIndex*>(idxPair.first.get());
+    res = ridx->setObjectIds(idxPair.second.first, idxPair.second.second);
     if (res.fail()) {
       return res;
     }
@@ -1345,10 +1389,9 @@ Result injectTemporaryObjectIdsForCollection(rocksdb::DB& db,
   return res;
 }
 
-Result swapObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& collection) {
+Result verifyPropertiesForCollection(rocksdb::DB& db, arangodb::LogicalCollection& collection,
+                                     bool checkOnDisk = true) {
   Result res;
-  rocksdb::WriteOptions wo;
-  rocksdb::WriteBatch batch;
 
   // methods need lock
   arangodb::RocksDBKey key;  // read collection info from database
@@ -1361,83 +1404,17 @@ Result swapObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& 
     res.reset(rocksutils::convertStatus(s));
     return res;
   }
-  arangodb::velocypack::Slice oldProps = arangodb::RocksDBValue::data(ps);
+  arangodb::velocypack::Slice onDisk = arangodb::RocksDBValue::data(ps);
 
-  arangodb::velocypack::Builder builder;
-  std::vector<std::shared_ptr<arangodb::Index>> indices;
-  {
-    arangodb::velocypack::ObjectBuilder collectionObjectGuard(&builder);
-    std::uint64_t objectId =
-        basics::VelocyPackHelper::stringUInt64(oldProps, StaticStrings::ObjectId);
-    std::uint64_t tempObjectId =
-        basics::VelocyPackHelper::stringUInt64(oldProps, StaticStrings::TempObjectId);
-    for (auto pair : arangodb::velocypack::ObjectIterator(oldProps)) {
-      if (pair.key.isEqualString("indexes")) {  // append new index
-        arangodb::velocypack::ArrayBuilder collectionIndicesArrayGuard(&builder, StaticStrings::Indexes);
-        for (auto idxSlice : arangodb::velocypack::ArrayIterator(pair.value)) {
-          auto idx = collection.lookupIndex(idxSlice);
-          if (!idx || idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-            builder.add(idxSlice);
-            continue;
-          }
-          arangodb::velocypack::ObjectBuilder indexObjectGuard(&builder);
-          std::uint64_t idxObjectId =
-              basics::VelocyPackHelper::stringUInt64(pair.value, StaticStrings::ObjectId);
-          std::uint64_t idxTempObjectId =
-              basics::VelocyPackHelper::stringUInt64(pair.value, StaticStrings::TempObjectId);
-          for (auto idxPair : arangodb::velocypack::ObjectIterator(idxSlice)) {
-            builder.add(idxPair.key);
-            if (idxPair.key.isEqualString(StaticStrings::ObjectId)) {
-              builder.add(arangodb::velocypack::Value(std::to_string(idxTempObjectId)));
-            } else if (idxPair.key.isEqualString(StaticStrings::TempObjectId)) {
-              builder.add(arangodb::velocypack::Value(std::to_string(idxObjectId)));
-            } else {
-              builder.add(idxPair.value);
-            }
-          }
-          indices.emplace_back(idx);
-        }
-        continue;
-      }
-      builder.add(pair.key);
-      if (pair.key.isEqualString(StaticStrings::ObjectId)) {
-        builder.add(arangodb::velocypack::Value(std::to_string(tempObjectId)));
-      } else if (pair.key.isEqualString(StaticStrings::TempObjectId)) {
-        builder.add(arangodb::velocypack::Value(std::to_string(objectId)));
-      } else {
-        builder.add(pair.value);
-      }
-    }
-  }
-  auto value = RocksDBValue::Collection(builder.slice());
-  batch.Put(arangodb::RocksDBColumnFamily::definitions(), key.string(), value.string());
-  res = rocksutils::convertStatus(db.Write(wo, &batch));
-  if (res.fail()) {
-    return res;
-  }
-  auto cleanup = arangodb::scopeGuard([oldProps, &db, &key]() -> void {
-    rocksdb::WriteOptions wo;
-    rocksdb::WriteBatch batch;
-    auto value = RocksDBValue::Collection(oldProps);
-    batch.Put(arangodb::RocksDBColumnFamily::definitions(), key.string(), value.string());
-    db.Write(wo, &batch);
-  });
+  auto builder = collection.toVelocyPackIgnore({"path", "statusString"},
+                                               LogicalDataSource::Serialization::PersistenceWithInProgress);
+  arangodb::velocypack::Slice generated = builder.slice();
 
-  auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
-  TRI_ASSERT(rcoll);
-  res = rcoll->setObjectIds(rcoll->tempObjectId(), rcoll->objectId());
-  if (res.fail()) {
-    return res;
+  if (checkOnDisk && !arangodb::basics::VelocyPackHelper::equal(onDisk, generated, false)) {
+    LOG_DEVEL << "ON DISK: '" << onDisk.toJson() << "'";
+    res = {TRI_ERROR_INTERNAL, "properties out of sync"};
   }
-  for (auto idx : indices) {
-    auto ridx = static_cast<arangodb::RocksDBIndex*>(idx.get());
-    res = ridx->setObjectIds(ridx->tempObjectId(), ridx->objectId());
-    if (res.fail()) {
-      return res;
-    }
-  }
-
-  cleanup.cancel();  // no cleanup needed
+  LOG_DEVEL << "GENERATED: '" << generated.toJson() << "'";
 
   return res;
 }
@@ -1453,11 +1430,22 @@ Result RocksDBCollection::upgrade() {
   auto& selector = server.getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
-  res = ::injectTemporaryObjectIdsForCollection(*engine.db(), _logicalCollection);
+  res = ::verifyPropertiesForCollection(*engine.db(), _logicalCollection, false);
+  if (res.fail()) {
+    return res;
+  }
+
+  LOG_DEVEL << "INJECT NEW TEMPORARY IDS";
+  res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                    ::injectNewTemporaryObjectId);
   if (res.fail()) {
     return res;
   }
   // TODO handle cluster?
+  ::verifyPropertiesForCollection(*engine.db(), _logicalCollection);
+  if (res.fail()) {
+    return res;
+  }
 
   {
     // start an exclusive transaction to block access to the collection
@@ -1474,7 +1462,12 @@ Result RocksDBCollection::upgrade() {
 
     // TODO iterate over index entries and copy into new id-space with revisions
 
-    res = ::swapObjectIdsForCollection(*engine.db(), _logicalCollection);
+    LOG_DEVEL << "SWAP OBJECT IDS";
+    res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection, ::swapObjectIds);
+    if (res.fail()) {
+      return res;
+    }
+    ::verifyPropertiesForCollection(*engine.db(), _logicalCollection);
     if (res.fail()) {
       return res;
     }
@@ -1485,6 +1478,16 @@ Result RocksDBCollection::upgrade() {
   // TODO remove data from old id spaces for collection, drop temp id
 
   // TODO remove data from old id spaces for indices, drop temp ids
+
+  res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection, ::clearTemporaryObjectId);
+  if (res.fail()) {
+    return res;
+  }
+  LOG_DEVEL << "CLEAR TEMPORARY IDS";
+  ::verifyPropertiesForCollection(*engine.db(), _logicalCollection);
+  if (res.fail()) {
+    return res;
+  }
 
   // TODO write recovery method to trigger post-recovery cleanup if we failed
 
