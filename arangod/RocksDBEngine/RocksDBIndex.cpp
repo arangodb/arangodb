@@ -338,7 +338,7 @@ Result RocksDBIndex::setObjectIds(std::uint64_t plannedObjectId,
   Result res;
 
   if (plannedObjectId == _objectId && plannedTempObjectId != _tempObjectId) {
-    TRI_ASSERT(_tempObjectId == 0 || plannedObjectId == 0);
+    TRI_ASSERT(_tempObjectId == 0 || plannedTempObjectId == 0);
     // just temp id has changed
     std::uint64_t oldId = _tempObjectId;
     _tempObjectId = plannedTempObjectId;

@@ -1404,17 +1404,104 @@ Result verifyPropertiesForCollection(rocksdb::DB& db, arangodb::LogicalCollectio
     res.reset(rocksutils::convertStatus(s));
     return res;
   }
-  arangodb::velocypack::Slice onDisk = arangodb::RocksDBValue::data(ps);
+  arangodb::velocypack::Slice fromDisk = arangodb::RocksDBValue::data(ps);
+  arangodb::velocypack::Builder diskBuilder;
+  {
+    arangodb::velocypack::ObjectBuilder guard(&diskBuilder);
+    for (auto pair : arangodb::velocypack::ObjectIterator(fromDisk)) {
+      if (pair.key.isEqualString("keyOptions") ||
+          pair.key.isEqualString("status")) {
+        continue;
+      }
+      diskBuilder.add(pair.key);
+      diskBuilder.add(pair.value);
+    }
+  }
+  arangodb::velocypack::Slice onDisk = diskBuilder.slice();
 
-  auto builder = collection.toVelocyPackIgnore({"path", "statusString"},
-                                               LogicalDataSource::Serialization::PersistenceWithInProgress);
-  arangodb::velocypack::Slice generated = builder.slice();
+  auto ramBuilder = collection.toVelocyPackIgnore(
+      {"path", "statusString", "keyOptions", "status"},
+      LogicalDataSource::Serialization::PersistenceWithInProgress);
+  arangodb::velocypack::Slice inRam = ramBuilder.slice();
 
-  if (checkOnDisk && !arangodb::basics::VelocyPackHelper::equal(onDisk, generated, false)) {
-    LOG_DEVEL << "ON DISK: '" << onDisk.toJson() << "'";
+  if (checkOnDisk && !arangodb::basics::VelocyPackHelper::equal(onDisk, inRam, false)) {
+    // LOG_DEVEL << "ON DISK: '" << onDisk.toJson() << "'";
     res = {TRI_ERROR_INTERNAL, "properties out of sync"};
   }
-  LOG_DEVEL << "GENERATED: '" << generated.toJson() << "'";
+  // LOG_DEVEL << "IN RAM: '" << inRam.toJson() << "'";
+
+  return res;
+}
+
+Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
+                                        arangodb::LogicalCollection& collection) {
+  Result res;
+
+  RocksDBKey key;
+  char ridBuffer[11];
+
+  auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
+  TRI_ASSERT(rcoll);
+  std::size_t objectId = rcoll->objectId();
+  std::size_t tempObjectId = rcoll->tempObjectId();
+
+  rocksdb::ReadOptions ro;
+  auto bounds = arangodb::RocksDBKeyBounds::CollectionDocuments(objectId);
+  ro.prefix_same_as_start = true;
+  auto iterateBound = bounds.end();
+  ro.iterate_upper_bound = &iterateBound;
+
+  std::unique_ptr<rocksdb::Iterator> iter{db.NewIterator(ro, bounds.columnFamily())};
+  if (!iter) {
+    res.reset(TRI_ERROR_INTERNAL, "could not acquire iterator");
+    return res;
+  }
+  auto cmp = bounds.columnFamily()->GetComparator();
+
+  rocksdb::WriteOptions wo;
+  rocksdb::WriteBatch batch;
+  auto commit = [&wo, &batch, &db]() -> Result {
+    rocksdb::Status r = db.Write(wo, &batch);
+    Result res = arangodb::rocksutils::convertStatus(r);
+    if (res.ok()) {
+      batch.Clear();
+    }
+    return res;
+  };
+
+  for (iter->Seek(bounds.start());
+       iter->Valid() && cmp->Compare(iter->key(), bounds.end()) <= 0; iter->Next()) {
+    arangodb::velocypack::Slice oldDocument =
+        arangodb::RocksDBValue::data(iter->value());
+    arangodb::velocypack::Builder builder;
+    TRI_voc_rid_t newRevision{0};
+    {
+      arangodb::velocypack::ObjectBuilder guard(&builder);
+      for (auto pair : arangodb::velocypack::ObjectIterator(oldDocument)) {
+        if (pair.key.isEqualString(StaticStrings::RevString)) {
+          continue;
+        }
+        builder.add(pair.key);
+        builder.add(pair.value);
+      }
+      builder.add(StaticStrings::RevString, TRI_RidToValuePair(newRevision, ridBuffer));
+    }
+
+    arangodb::velocypack::Slice newDocument = builder.slice();
+    LocalDocumentId newDocumentId{newRevision};
+
+    key.constructDocument(tempObjectId, newDocumentId);
+    auto value = rocksdb::Slice(newDocument.startAs<char>(),
+                                static_cast<size_t>(newDocument.byteSize()));
+    batch.Put(bounds.columnFamily(), key.string(), value);
+
+    if (batch.Count() >= 5000) {
+      res = commit();
+      if (res.fail()) {
+        return res;
+      }
+    }
+  }
 
   return res;
 }
@@ -1435,7 +1522,6 @@ Result RocksDBCollection::upgrade() {
     return res;
   }
 
-  LOG_DEVEL << "INJECT NEW TEMPORARY IDS";
   res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection,
                                     ::injectNewTemporaryObjectId);
   if (res.fail()) {
@@ -1458,11 +1544,14 @@ Result RocksDBCollection::upgrade() {
     }
     auto trxGuard = scopeGuard([&trx, &res]() -> void { trx.abort(); });
 
+    res = ::copyCollectionToNewObjectIdSpace(*engine.db(), _logicalCollection);
+    if (res.fail()) {
+      return res;
+    }
     // TODO iterate over documents and copy into new id-space with revisions
 
     // TODO iterate over index entries and copy into new id-space with revisions
 
-    LOG_DEVEL << "SWAP OBJECT IDS";
     res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection, ::swapObjectIds);
     if (res.fail()) {
       return res;
@@ -1483,7 +1572,6 @@ Result RocksDBCollection::upgrade() {
   if (res.fail()) {
     return res;
   }
-  LOG_DEVEL << "CLEAR TEMPORARY IDS";
   ::verifyPropertiesForCollection(*engine.db(), _logicalCollection);
   if (res.fail()) {
     return res;
