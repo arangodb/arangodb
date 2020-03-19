@@ -82,7 +82,7 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   EnumeratedPath _enumeratedPath;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Number of HTTP requests made
   //////////////////////////////////////////////////////////////////////////////
@@ -96,7 +96,7 @@ class PathEnumerator {
   PathEnumerator(Traverser* traverser, TraverserOptions* opts);
 
   virtual ~PathEnumerator();
-  
+
   /// @brief set start vertex and reset
   /// note that the caller *must* guarantee that the string data pointed to by
   /// startVertex remains valid even after the call to reset()!!
@@ -113,19 +113,19 @@ class PathEnumerator {
   virtual aql::AqlValue lastVertexToAqlValue() = 0;
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
-  
+
   /// @brief return number of HTTP requests made, and reset it to 0
-  size_t getAndResetHttpRequests() { 
+  size_t getAndResetHttpRequests() {
     size_t value = _httpRequests;
     _httpRequests = 0;
     return value;
   }
-  
+
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
- 
+
  protected:
   graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
-  
+
   /// @brief The vector of EdgeCursors to walk through.
   std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
 };
@@ -144,7 +144,7 @@ class DepthFirstEnumerator final : public PathEnumerator {
   DepthFirstEnumerator(Traverser* traverser, TraverserOptions* opts);
 
   ~DepthFirstEnumerator();
-  
+
   /// @brief set start vertex and reset
   void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
 
@@ -159,7 +159,7 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
  private:
   bool shouldPrune();
-  
+
   velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result);
 };
 }  // namespace traverser
