@@ -218,6 +218,7 @@ auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
   auto skip = size_t{0};
 
   while (call.shouldSkip() && _traverser.hasMore() && _traverser.next()) {
+    TRI_ASSERT(_inputRow.isInitialized());
     skip++;
     call.didSkip(1);
   }
@@ -232,6 +233,7 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItem
 
   while (true) {
     if (_traverser.hasMore()) {
+      TRI_ASSERT(_inputRow.isInitialized());
       doOutput(output);
 
       if (output.isFull()) {
