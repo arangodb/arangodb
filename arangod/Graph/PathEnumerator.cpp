@@ -88,8 +88,6 @@ DepthFirstEnumerator::~DepthFirstEnumerator() = default;
 void DepthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   PathEnumerator::setStartVertex(startVertex);
 
-  _enumeratedPath.edges.clear();
-  _enumeratedPath.vertices.clear();
   _activeCursors = 0;
   _pruneNext = false;
 }
