@@ -52,7 +52,7 @@ The replication factor used for every new collection in the graph.
 Flag if the graph is a SmartGraph (Enterprise Edition only) or not.
 
 @RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
-The name of the sharding attribute in smart graph case (Enterprise Edition only)
+The name of the sharding attribute in SmartGraph case (Enterprise Edition only)
 
 @EXAMPLES
 
