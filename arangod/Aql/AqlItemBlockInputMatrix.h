@@ -43,6 +43,9 @@ class AqlItemBlockInputMatrix {
 
   std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
   ShadowAqlItemRow peekShadowRow() const;
+  auto peekShadowRowAndState() const
+      -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow>;
+
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
 
@@ -62,6 +65,22 @@ class AqlItemBlockInputMatrix {
   // Otherwise will return DONE.
   ExecutorState incrBlockIndex();
   void resetBlockIndex() noexcept;
+
+  /**
+   * @brief Count how many datarows are expected in this range
+   *        Used to estimate amount of produced rows
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countDataRows() const noexcept -> std::size_t;
+
+  /**
+   * @brief Count how many shadowRows are expected in this range
+   *        Used to estimate amount of produced rows
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
+
+  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};

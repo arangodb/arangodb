@@ -24,6 +24,7 @@
 
 #include "ExecutorTestHelper.h"
 
+#include "Aql/AqlItemBlockInputMatrix.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 
@@ -50,10 +51,19 @@ std::string const stateToString(ExecutorState state) {
 
 template <typename Range>
 class InputRangeTest : public AqlExecutorTestCase<> {
+ private:
+  // Used to holdData for InputMatrixTests
+  AqlItemMatrix _matrix{1};
+
  protected:
   auto buildRange(ExecutorState state, SharedAqlItemBlockPtr block) -> Range {
     if constexpr (std::is_same_v<Range, AqlItemBlockInputRange>) {
       return AqlItemBlockInputRange{state, 0, block, 0};
+    }
+    if constexpr (std::is_same_v<Range, AqlItemBlockInputMatrix>) {
+      _matrix.clear();
+      _matrix.addBlock(block);
+      return AqlItemBlockInputMatrix(state, &_matrix);
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -63,6 +73,8 @@ class InputRangeTest : public AqlExecutorTestCase<> {
       while (range.hasDataRow()) {
         std::ignore = range.nextDataRow();
       }
+    } else if constexpr (std::is_same_v<Range, AqlItemBlockInputMatrix>) {
+      std::ignore = range.skipAllRemainingDataRows();
     } else {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
@@ -99,7 +111,14 @@ TYPED_TEST_P(InputRangeTest, test_block_only_datarows) {
     SCOPED_TRACE("Testing state: " + stateToString(finalState));
     auto block = buildBlock<1>(this->manager(), {{1}, {2}, {3}});
     auto testee = this->buildRange(finalState, block);
-    EXPECT_EQ(testee.upstreamState(), ExecutorState::HASMORE);
+
+    if constexpr (std::is_same_v<decltype(testee), AqlItemBlockInputMatrix>) {
+      // Matrix is only done, if it has reached a shadowRow, or the end
+      EXPECT_EQ(testee.upstreamState(), finalState);
+    } else {
+      EXPECT_EQ(testee.upstreamState(), ExecutorState::HASMORE);
+    }
+
     EXPECT_TRUE(testee.hasDataRow());
     EXPECT_FALSE(testee.hasShadowRow());
 
@@ -110,8 +129,12 @@ TYPED_TEST_P(InputRangeTest, test_block_only_datarows) {
 
     {
       auto [state, shadow] = testee.peekShadowRowAndState();
-      EXPECT_EQ(state, ExecutorState::HASMORE);
-      EXPECT_FALSE(shadow.isInitialized());
+      if constexpr (std::is_same_v<decltype(testee), AqlItemBlockInputMatrix>) {
+        // Matrix is done, if all dataRows are there.
+        // So in this case the ShadowRowState should equal this.
+        EXPECT_EQ(state, finalState);
+      } else
+        EXPECT_FALSE(shadow.isInitialized());
     }
   }
 }
@@ -146,7 +169,12 @@ TYPED_TEST_P(InputRangeTest, test_block_mixed_rows) {
     SCOPED_TRACE("Testing state: " + stateToString(finalState));
     auto block = buildBlock<1>(this->manager(), {{1}, {2}, {3}, {4}}, {{1, 0}, {3, 0}});
     auto testee = this->buildRange(finalState, block);
-    EXPECT_EQ(testee.upstreamState(), ExecutorState::HASMORE);
+    if constexpr (std::is_same_v<decltype(testee), AqlItemBlockInputMatrix>) {
+      // Matrix is only done, if it has reached a shadowRow, or the end
+      EXPECT_EQ(testee.upstreamState(), ExecutorState::DONE);
+    } else {
+      EXPECT_EQ(testee.upstreamState(), ExecutorState::HASMORE);
+    }
     EXPECT_TRUE(testee.hasDataRow());
     EXPECT_FALSE(testee.hasShadowRow());
 
@@ -245,7 +273,7 @@ REGISTER_TYPED_TEST_CASE_P(InputRangeTest, test_default_initializer, test_block_
                            test_block_only_shadowrows, test_block_mixed_rows,
                            test_block_continuous_walk_only_relevant_rows);
 
-using RangeTypes = ::testing::Types<AqlItemBlockInputRange>;
+using RangeTypes = ::testing::Types<AqlItemBlockInputRange, AqlItemBlockInputMatrix>;
 INSTANTIATE_TYPED_TEST_CASE_P(InputRangeTestInstance, InputRangeTest, RangeTypes);
 
 }  // namespace arangodb::tests::aql
