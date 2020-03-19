@@ -25,7 +25,7 @@
 
 #include "gtest/gtest.h"
 
-#include "ExecutorTestHelper.h"
+#include "AqlExecutorTestCase.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
@@ -135,28 +135,17 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
 // new framework tests
 using EnumerateListTestHelper = ExecutorTestHelper<1, 1>;
 using EnumerateListSplitType = EnumerateListTestHelper::SplitType;
+using EnumerateListParamType = std::tuple<EnumerateListSplitType>;
 
 class EnumerateListExecutorTestProduce
-    : public ::testing::TestWithParam<std::tuple<EnumerateListSplitType>> {
+    : public AqlExecutorTestCaseWithParam<EnumerateListParamType, false> {
  protected:
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-
-  mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
   EnumerateListExecutorInfos infos;
 
   SharedAqlItemBlockPtr block;
   NoStats stats;
 
-  EnumerateListExecutorTestProduce()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        fakedQuery(server.createFakeQuery()),
-        infos(0, 1, 1, 2, {}, {0}) {
-    auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
-  }
+  EnumerateListExecutorTestProduce() : infos(0, 1, 1, 2, {}, {0}) {}
 
   auto makeInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1,
                  RegisterId nrInputRegister = 1, RegisterId nrOutputRegister = 2,
@@ -173,8 +162,8 @@ class EnumerateListExecutorTestProduce
 TEST_P(EnumerateListExecutorTestProduce, empty_array_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos())
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([])"}}})
       .setInputSplitType(split)
       .expectOutput({}, {})
@@ -188,8 +177,8 @@ TEST_P(EnumerateListExecutorTestProduce, invalid_value_1) {
   auto [split] = GetParam();
 
   try {
-    ExecutorTestHelper<1, 1>(*fakedQuery)
-        .setExecBlock<EnumerateListExecutor>(makeInfos())
+    makeExecutorTestHelper<1, 1>()
+        .addConsumer<EnumerateListExecutor>(makeInfos())
         .setInputValue({{1}})
         .setInputSplitType(split)
         .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -206,8 +195,8 @@ TEST_P(EnumerateListExecutorTestProduce, invalid_value_1) {
 TEST_P(EnumerateListExecutorTestProduce, default_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos())
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 1, 2])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -220,8 +209,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_1) {
 TEST_P(EnumerateListExecutorTestProduce, offset_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos())
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{5, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -234,8 +223,8 @@ TEST_P(EnumerateListExecutorTestProduce, offset_1) {
 TEST_P(EnumerateListExecutorTestProduce, offset_2) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos())
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{3, AqlCall::Infinity{}, 2, false})
@@ -248,8 +237,8 @@ TEST_P(EnumerateListExecutorTestProduce, offset_2) {
 TEST_P(EnumerateListExecutorTestProduce, offset_3) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos())
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{7, AqlCall::Infinity{}, 3, false})
@@ -262,8 +251,8 @@ TEST_P(EnumerateListExecutorTestProduce, offset_3) {
 TEST_P(EnumerateListExecutorTestProduce, offset_4) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos())
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{5, AqlCall::Infinity{}, 2, true})
@@ -276,8 +265,8 @@ TEST_P(EnumerateListExecutorTestProduce, offset_4) {
 TEST_P(EnumerateListExecutorTestProduce, offset_5) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos())
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<EnumerateListExecutor>(makeInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{7, AqlCall::Infinity{}, 3, true})
@@ -290,8 +279,8 @@ TEST_P(EnumerateListExecutorTestProduce, offset_5) {
 TEST_P(EnumerateListExecutorTestProduce, default_multiple_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<4, 5>(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+  makeExecutorTestHelper<4, 5>()
+      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({{1, 2, 3, R"([1, 2, 3])"}})
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -306,8 +295,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_multiple_1) {
 TEST_P(EnumerateListExecutorTestProduce, default_multiple_2) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<4, 5>(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+  makeExecutorTestHelper<4, 5>()
+      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
@@ -326,8 +315,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_multiple_2) {
 TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<4, 5>(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+  makeExecutorTestHelper<4, 5>()
+      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
@@ -343,8 +332,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
 TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<4, 5>(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+  makeExecutorTestHelper<4, 5>()
+      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
@@ -360,8 +349,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard) {
 TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard_fullcount) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<4, 5>(*fakedQuery)
-      .setExecBlock<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+  makeExecutorTestHelper<4, 5>()
+      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
