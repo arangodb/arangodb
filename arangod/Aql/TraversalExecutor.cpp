@@ -176,12 +176,6 @@ std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputAqlItemRow& output) {
-  // TODO: Remove me!
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, TraversalStats{}};
-}
-
 auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
   while (!output.isFull() && _traverser.hasMore() && _traverser.next()) {
     TRI_ASSERT(_inputRow.isInitialized());
