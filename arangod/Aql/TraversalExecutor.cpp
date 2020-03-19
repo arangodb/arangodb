@@ -145,7 +145,14 @@ std::vector<std::pair<Variable const*, RegisterId>> const& TraversalExecutorInfo
 }
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _inputRow{CreateInvalidInputRowHint{}}, _traverser(infos.traverser()) {}
+    : _infos(infos), _inputRow{CreateInvalidInputRowHint{}}, _traverser(infos.traverser()) {
+
+  // reset the traverser, so that no residual state is left in it. This is
+  // important because the TraversalExecutor is sometimes reconstructed (in place)
+  // with the same TraversalExecutorInfos as before. Those infos contain the traverser
+  // which might contain state from a previous run.
+  _traverser.done();
+}
 
 TraversalExecutor::~TraversalExecutor() {
   auto opts = _traverser.options();
@@ -176,7 +183,6 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputA
 }
 
 auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
-  // TODO check whether _traverser.hasMore is obsolete here
   while (!output.isFull() && _traverser.hasMore() && _traverser.next()) {
     TRI_ASSERT(_inputRow.isInitialized());
 
@@ -226,7 +232,6 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItem
 
   while (true) {
     if (_traverser.hasMore()) {
-      TRI_ASSERT(_inputRow.isInitialized());
       doOutput(output);
 
       if (output.isFull()) {
