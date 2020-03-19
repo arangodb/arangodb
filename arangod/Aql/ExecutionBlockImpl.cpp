@@ -1631,8 +1631,13 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack&) -> ExecSta
     // Multiple concatenated Subqueries
     return ExecState::NEXTSUBQUERY;
   } else if (_lastRange.hasShadowRow()) {
-    // We still have shadowRows, we
-    // need to forward them
+    // We still have shadowRows.
+    auto const& lookAheadRow = _lastRange.peekShadowRow();
+    if (lookAheadRow.isRelevant()) {
+      // We are starting the NextSubquery here.
+      return ExecState::NEXTSUBQUERY;
+    }
+    // we need to forward them
     return ExecState::SHADOWROWS;
   } else {
     // End of input, we are done for now
@@ -2175,8 +2180,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::NEXTSUBQUERY: {
-          // We only get Called if the lastRange has no ShadowRow
-          TRI_ASSERT(!_lastRange.hasShadowRow());
           LOG_QUERY("0ca35", DEBUG)
               << printTypeInfo() << " ShadowRows moved, continue with next subquery.";
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
