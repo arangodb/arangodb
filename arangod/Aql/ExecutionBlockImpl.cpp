@@ -1576,12 +1576,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     return ExecState::DONE;
   } else if (_lastRange.hasDataRow()) {
     // Multiple concatenated Subqueries
-    // This case is disallowed for now, as we do not know the
-    // look-ahead call
-    TRI_ASSERT(false);
-    // If we would know we could now go into a continue with next subquery
-    // state.
-    return ExecState::DONE;
+    return ExecState::NEXTSUBQUERY;
   } else if (_lastRange.hasShadowRow()) {
     // We still have shadowRows, we
     // need to forward them

@@ -111,8 +111,7 @@ bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
   auto tmpShadowRow = _shadowRow;
 
-  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow() &&
-      !_aqlItemMatrix->peekShadowRow().isRelevant()) {
+  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
     // next row will be a shadow row
     _shadowRow = _aqlItemMatrix->popShadowRow();
     resetBlockIndex();

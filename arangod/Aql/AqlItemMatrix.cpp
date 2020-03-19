@@ -60,7 +60,7 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
       if (index == 0) {
         startRow = _startIndexInFirstBlock;
       }
-      if (index + 1 == _blocks.size()) {
+      if (index + 1 == _blocks.size() && _stopIndexInLastBlock != InvalidRowIndex) {
         endRow = _stopIndexInLastBlock;
       }
       for (; startRow < endRow; ++startRow) {
