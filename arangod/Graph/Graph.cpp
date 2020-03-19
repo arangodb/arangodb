@@ -151,7 +151,7 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
     _numberOfShards =
         Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
     if (Helper::getStringRef(options.get(StaticStrings::ReplicationFactor),
-                             velocypack::StringRef("")) == StaticStrings::Satellite) {
+                             velocypack::StringRef("")) == StaticStrings::Satellite && arangodb::ServerState::instance()->isRunningInCluster()) {
       _isSatellite = true;
       setReplicationFactor(0);
     } else {
