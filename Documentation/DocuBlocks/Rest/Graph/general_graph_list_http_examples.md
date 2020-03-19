@@ -54,6 +54,9 @@ Flag if the graph is a SmartGraph (Enterprise Edition only) or not.
 @RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
 The name of the sharding attribute in SmartGraph case (Enterprise Edition only)
 
+@RESTSTRUCT{isSatellite,graph_representation,boolean,required,}
+Flag if the graph is a SatelliteGraph (Enterprise Edition only) or not.
+
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialList}
