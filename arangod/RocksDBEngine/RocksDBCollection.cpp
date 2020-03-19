@@ -1474,7 +1474,7 @@ Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
     arangodb::velocypack::Slice oldDocument =
         arangodb::RocksDBValue::data(iter->value());
     arangodb::velocypack::Builder builder;
-    TRI_voc_rid_t newRevision{0};
+    TRI_voc_rid_t newRevision = rcoll->newRevisionId();
     {
       arangodb::velocypack::ObjectBuilder guard(&builder);
       for (auto pair : arangodb::velocypack::ObjectIterator(oldDocument)) {
