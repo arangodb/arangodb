@@ -146,6 +146,10 @@ KShortestPathsExecutor::KShortestPathsExecutor(Fetcher& fetcher, Infos& infos)
   if (!_infos.useRegisterForTargetInput()) {
     _targetBuilder.add(VPackValue(_infos.getTargetInputValue()));
   }
+  // Make sure the finder is in a defined state, because we could
+  // get any old junk here, because infos are not recreated in between
+  // initializeCursor calls.
+  _finder.reset();
 }
 
 // Shutdown query
