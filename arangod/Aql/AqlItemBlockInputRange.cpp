@@ -183,7 +183,11 @@ auto AqlItemBlockInputRange::countDataRows() const noexcept -> std::size_t {
     return 0;
   }
   auto const& block = getBlock();
-  return block->size() - block->getShadowRowIndexes().size();
+  auto total = block->size();
+  if (_rowIndex >= total) {
+    return 0;
+  }
+  return total - _rowIndex - countShadowRows();
 }
 
 auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
@@ -191,7 +195,9 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
     return 0;
   }
   auto const& block = getBlock();
-  return block->getShadowRowIndexes().size();
+  auto const& rows = block->getShadowRowIndexes();
+  return std::count_if(rows.begin(), rows.end(),
+                       [&](auto r) -> bool { return r >= _rowIndex; });
 }
 
 [[nodiscard]] auto AqlItemBlockInputRange::finalState() const noexcept -> ExecutorState {
