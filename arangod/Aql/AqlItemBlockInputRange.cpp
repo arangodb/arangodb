@@ -103,22 +103,15 @@ arangodb::aql::ShadowAqlItemRow AqlItemBlockInputRange::peekShadowRow() const {
   return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
 }
 
-std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRowAndState() const {
+std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow() {
   if (hasShadowRow()) {
-    return std::make_pair(nextState<LookAhead::NEXT, RowType::SHADOW>(),
-                          ShadowAqlItemRow{_block, _rowIndex});
+    ShadowAqlItemRow row{_block, _rowIndex};
+    // Advance the current row.
+    _rowIndex++;
+    return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(), row);
   }
   return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(),
                         ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
-}
-
-std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow() {
-  auto res = peekShadowRowAndState();
-  if (res.second.isInitialized()) {
-    // Advance the current row.
-    _rowIndex++;
-  }
-  return res;
 }
 
 size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {

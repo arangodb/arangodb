@@ -43,8 +43,6 @@ class AqlItemBlockInputMatrix {
 
   std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
   ShadowAqlItemRow peekShadowRow() const;
-  auto peekShadowRowAndState() const
-      -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow>;
 
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;

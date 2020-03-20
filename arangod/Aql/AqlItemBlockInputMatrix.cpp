@@ -133,15 +133,6 @@ ShadowAqlItemRow AqlItemBlockInputMatrix::peekShadowRow() const {
   return _shadowRow;
 }
 
-auto AqlItemBlockInputMatrix::peekShadowRowAndState() const
-    -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
-  if (_aqlItemMatrix != nullptr && _aqlItemMatrix->stoppedOnShadowRow() &&
-      _aqlItemMatrix->hasMoreAfterShadowRow()) {
-    return {ExecutorState::HASMORE, _shadowRow};
-  }
-  return {_finalState, _shadowRow};
-}
-
 bool AqlItemBlockInputMatrix::hasShadowRow() const noexcept {
   return _shadowRow.isInitialized();
 }

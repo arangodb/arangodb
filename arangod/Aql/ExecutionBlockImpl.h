@@ -260,7 +260,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
   std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
-      AqlCallStack& stack, AqlCallType const& aqlCall);
+      AqlCallStack& stack, AqlCallType const& aqlCall, bool wasCalledWithContinueCall);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);
@@ -346,9 +346,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] auto executorNeedsCall(AqlCallType& call) const noexcept -> bool;
 
-  auto memorizeCall(AqlCall const& call) noexcept -> void;
+  auto memorizeCall(AqlCall const& call, bool wasCalledWithContinueCall) noexcept -> void;
 
-  [[nodiscard]] auto createUpstreamCall(AqlCall const& call) -> AqlCallList;
+  [[nodiscard]] auto createUpstreamCall(AqlCall const& call, bool wasCalledWithContinueCall)
+      -> AqlCallList;
 
  private:
   /**

@@ -24,6 +24,7 @@
 #include "Aql/ShadowAqlItemRow.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 #include <numeric>
 
@@ -103,13 +104,19 @@ auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
                      });
 }
 
-// TODO: * It doesn't matter which shadow row we peek, they should all be the same
-//       * assert that all dependencies are on a shadow row?
+// * It doesn't matter which shadow row we peek, they should all be the same
 auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::ShadowAqlItemRow {
-  TRI_ASSERT(!hasDataRow());
-  TRI_ASSERT(!_inputs.empty());
-  // TODO: Correct?
-  return _inputs.at(0).peekShadowRow();
+  if (!hasShadowRow()) {
+    return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+  }
+  // All Ranges are on the same shadow Row.
+  auto row = _inputs.at(0).peekShadowRow();
+  TRI_ASSERT(row.isInitialized());
+  TRI_ASSERT(std::all_of(std::begin(_inputs), std::end(_inputs),
+                         [&row](AqlItemBlockInputRange const& i) -> bool {
+                           return i.peekShadowRow().equates(row, &velocypack::Options::Defaults);
+                         }));
+  return row;
 }
 
 auto MultiAqlItemBlockInputRange::nextShadowRow()
@@ -181,4 +188,32 @@ auto MultiAqlItemBlockInputRange::reset() -> void {
   for (size_t i = 0; i < _inputs.size(); ++i) {
     _inputs[i] = AqlItemBlockInputRange(ExecutorState::HASMORE);
   }
+}
+
+[[nodiscard]] auto MultiAqlItemBlockInputRange::countDataRows() const noexcept
+    -> std::size_t {
+  size_t count = 0;
+  for (auto const& range : _inputs) {
+    count += range.countDataRows();
+  }
+  return count;
+}
+
+[[nodiscard]] auto MultiAqlItemBlockInputRange::countShadowRows() const noexcept
+    -> std::size_t {
+  size_t count = 0;
+  for (auto const& range : _inputs) {
+    count += range.countShadowRows();
+  }
+  return count;
+}
+
+[[nodiscard]] auto MultiAqlItemBlockInputRange::finalState() const noexcept -> ExecutorState {
+  bool hasMore = std::any_of(_inputs.begin(), _inputs.end(), [](auto const& range) {
+    return range.finalState() == ExecutorState::HASMORE;
+  });
+  if (hasMore) {
+    return ExecutorState::HASMORE;
+  }
+  return ExecutorState::DONE;
 }

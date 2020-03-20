@@ -72,8 +72,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     // Test Shadow Rows
     EXPECT_FALSE(testee.hasShadowRow());
     {
-      auto const [state, row] = testee.peekShadowRowAndState();
-      EXPECT_EQ(GetParam(), state);
+      auto const& row = testee.peekShadowRow();
       EXPECT_FALSE(row.isInitialized());
     }
     {
@@ -92,8 +91,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     auto rowIndexBefore = testee.getRowIndex();
     // Validate that shadowRowAPI does not move on
     {
-      auto [state, row] = testee.peekShadowRowAndState();
-      // EXPECT_EQ(state, ExecutorState::HASMORE);
+      auto const& row = testee.peekShadowRow();
       EXPECT_FALSE(row.isInitialized());
       ASSERT_EQ(rowIndexBefore, testee.getRowIndex())
           << "Skipped a non processed row.";
@@ -154,8 +152,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     }
     // Validate ShadowRow API
     {
-      auto [state, row] = testee.peekShadowRowAndState();
-      EXPECT_EQ(state, expectedState);
+      auto const& row = testee.peekShadowRow();
       EXPECT_TRUE(row.isInitialized());
       auto val = row.getValue(0);
       ASSERT_TRUE(val.isNumber());
@@ -209,8 +206,7 @@ TEST_P(InputRangeTest, empty_does_not_have_more_shadow_rows) {
 
 TEST_P(InputRangeTest, empty_peek_shadow_is_empty) {
   auto testee = createEmpty();
-  auto const [state, row] = testee.peekShadowRowAndState();
-  EXPECT_EQ(GetParam(), state);
+  auto const& row = testee.peekShadowRow();
   EXPECT_FALSE(row.isInitialized());
 }
 

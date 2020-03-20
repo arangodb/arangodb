@@ -1275,7 +1275,9 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallType const& aqlCall)
+auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack,
+                                                  AqlCallType const& aqlCall,
+                                                  bool wasCalledWithContinueCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
   if constexpr (isNewStyleExecutor<Executor>) {
     // TODO The logic in the MultiDependencySingleRowFetcher branch should be
@@ -1305,7 +1307,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
       // NOTE: The Executor needs to discard shadowRows, and do the accouting.
       static_assert(std::is_same_v<AqlCall, std::decay_t<decltype(aqlCall)>>);
       auto fetchAllStack = stack.createEquivalentFetchAllShadowRowsStack();
-      fetchAllStack.pushCall(createUpstreamCall(aqlCall));
+      fetchAllStack.pushCall(createUpstreamCall(aqlCall, wasCalledWithContinueCall));
       auto res = _rowFetcher.execute(fetchAllStack);
       // Just make sure we did not Skip anything
       TRI_ASSERT(std::get<SkipResult>(res).nothingSkipped());
@@ -1316,7 +1318,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack, AqlCallTy
       // SubqueryStart and the partnered SubqueryEnd by *not*
       // pushing the upstream request.
       if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
-        stack.pushCall(createUpstreamCall(std::move(aqlCall)));
+        stack.pushCall(createUpstreamCall(std::move(aqlCall), wasCalledWithContinueCall));
       }
 
       auto const result = _rowFetcher.execute(stack);
@@ -2084,7 +2086,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           auto subqueryLevelBefore = stack.subqueryLevel();
 #endif
           std::tie(_upstreamState, skippedLocal, _lastRange) =
-              executeFetcher(stack, _upstreamRequest);
+              executeFetcher(stack, _upstreamRequest, clientCallList.hasMoreCalls());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           TRI_ASSERT(subqueryLevelBefore == stack.subqueryLevel());
 #endif
@@ -2355,13 +2357,15 @@ auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const
 };
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::memorizeCall(AqlCall const& call) noexcept -> void {
+auto ExecutionBlockImpl<Executor>::memorizeCall(AqlCall const& call,
+                                                bool wasCalledWithContinueCall) noexcept
+    -> void {
   if (!_hasMemorizedCall) {
     if constexpr (!isMultiDepExecutor<Executor>) {
       // We can only try to memorize the first call ever send.
       // Otherwise the call might be influenced by state
       // inside the Executor
-      if (call.getOffset() == 0 && !call.needsFullCount()) {
+      if (wasCalledWithContinueCall && call.getOffset() == 0 && !call.needsFullCount()) {
         // First draft, we only memorize non-skipping calls
         _defaultUpstreamRequest = call;
       }
@@ -2371,9 +2375,10 @@ auto ExecutionBlockImpl<Executor>::memorizeCall(AqlCall const& call) noexcept ->
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::createUpstreamCall(AqlCall const& call) -> AqlCallList {
+auto ExecutionBlockImpl<Executor>::createUpstreamCall(AqlCall const& call, bool wasCalledWithContinueCall)
+    -> AqlCallList {
   // We can only memorize the first call
-  memorizeCall(call);
+  memorizeCall(call, wasCalledWithContinueCall);
   TRI_ASSERT(_hasMemorizedCall);
   if constexpr (!isMultiDepExecutor<Executor>) {
     if (_defaultUpstreamRequest.has_value()) {
