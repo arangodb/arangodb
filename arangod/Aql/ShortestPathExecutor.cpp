@@ -156,6 +156,9 @@ ShortestPathExecutor::ShortestPathExecutor(Fetcher&, Infos& infos)
   if (!_infos.useRegisterForTargetInput()) {
     _targetBuilder.add(VPackValue(_infos.getTargetInputValue()));
   }
+  // Make sure the finder does not contain any leftovers in case of
+  // the executor being reconstructed.
+  _finder.clear();
 }
 
 // Shutdown query
@@ -209,6 +212,7 @@ auto ShortestPathExecutor::doSkipPath(AqlCall& call) -> size_t {
 auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
   // We only want to call fetchPath if we don't have a path currently available
   TRI_ASSERT(pathLengthAvailable() == 0);
+  _finder.clear();
   _path->clear();
   _posInPath = 0;
 

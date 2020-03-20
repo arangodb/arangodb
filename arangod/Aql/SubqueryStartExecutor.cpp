@@ -47,8 +47,8 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
     return {ExecutorState::DONE, NoStats{}, AqlCall{}};
   }
   TRI_ASSERT(!_inputRow.isInitialized());
-  TRI_ASSERT(!output.isFull());
   if (input.hasDataRow()) {
+    TRI_ASSERT(!output.isFull());
     std::tie(_upstreamState, _inputRow) = input.peekDataRow();
     output.copyRow(_inputRow);
     output.advanceRow();
@@ -99,4 +99,21 @@ auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
     -> std::pair<ExecutionState, size_t> {
   TRI_ASSERT(false);
   return {ExecutionState::DONE, 0};
+}
+
+[[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  // NOTE:
+  // As soon as we can overfetch data, this needs to be modified to
+  // returnVlaue * countDataRows();
+  if (input.countDataRows() > 0) {
+    // We will write one ShadowRow
+    if (call.getLimit() > 0) {
+      // We will write one DataRow
+      return 2;
+    }
+    return 1;
+  }
+  // Nothing to create here.
+  return 0;
 }

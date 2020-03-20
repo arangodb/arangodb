@@ -133,6 +133,9 @@ class SubqueryExecutor {
   auto initializeSubquery(AqlItemBlockInputRange& input)
       -> std::tuple<ExecutionState, bool>;
 
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
  private:
   Fetcher& _fetcher;
   SubqueryExecutorInfos& _infos;

@@ -200,6 +200,8 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   ~AttributeWeightShortestPathFinder();
 
+  void clear() override;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Find the shortest path between start and target.
   ///        Only edges having the given direction are followed.

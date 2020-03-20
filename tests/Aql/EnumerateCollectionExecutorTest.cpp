@@ -68,7 +68,7 @@ static const std::string GetAllDocs =
 
 using CursorType = arangodb::transaction::Methods::CursorType;
 
-class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<true> {
+class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
  protected:
   ExecutionState state;
   AqlItemBlockManager itemBlockManager;
@@ -381,7 +381,10 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
 TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
   auto [split] = GetParam();
 
+  uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
+  // auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
   makeExecutorTestHelper<1, 1>()
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
@@ -399,7 +402,9 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
 TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default) {
   auto [split] = GetParam();
 
+  uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
+  std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
   makeExecutorTestHelper<1, 1>()
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name":

@@ -168,6 +168,15 @@ class HashedCollectExecutor {
    */
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
+  /**
+   * @brief This Executor does not know how many distinct rows will be fetched
+   * from upstream, it can only report how many it has found by itself, plus
+   * it knows that it can only create as many new rows as pulled from upstream.
+   * So it will overestimate.
+   */
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
  private:
   using AggregateValuesType = std::vector<std::unique_ptr<Aggregator>>;
   using GroupKeyType = std::vector<AqlValue>;
@@ -215,7 +224,7 @@ class HashedCollectExecutor {
 
   /// @brief hashmap of all encountered groups
   GroupMapType _allGroups;
-  GroupMapType::iterator _currentGroup;
+  GroupMapType::const_iterator _currentGroup;
 
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
