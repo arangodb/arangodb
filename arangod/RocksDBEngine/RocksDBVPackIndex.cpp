@@ -751,12 +751,23 @@ namespace {
                        std::vector<arangodb::basics::AttributeName>::const_iterator begin,
                        std::vector<arangodb::basics::AttributeName>::const_iterator end) {
     for (; begin != end; ++begin) {
+      // check if, after fetching the subattribute, we are point to a non-object.
+      // e.g. if the index is on field ["a.b"], the first iteration of this loop
+      // will look for subattribute "a" in the original document. this will always
+      // work. however, when looking for "b", we have to make sure that "a" was
+      // an object. otherwise we must not call Slice::get() on it. In case one of
+      // the subattributes we found so far is not an object, we fall back to the
+      // regular comparison
+      if (!first.isObject() || !second.isObject()) {
+        break;
+      }
+
       // fetch subattribute
       first = first.get(begin->name);
-      second = second.get(begin->name);
       if (first.isExternal()) {
         first = first.resolveExternal();
       }
+      second = second.get(begin->name);
       if (second.isExternal()) {
         second = second.resolveExternal();
       }

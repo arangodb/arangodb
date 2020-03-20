@@ -45,6 +45,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -220,6 +221,7 @@ class IResearchOrderTest
     arangodb::tests::init();
 
     // setup required application features
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(), false);

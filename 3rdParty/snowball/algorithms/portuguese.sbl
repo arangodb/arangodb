@@ -1,0 +1,218 @@
+routines (
+           prelude postlude mark_regions
+           RV R1 R2
+           standard_suffix
+           verb_suffix
+           residual_suffix
+           residual_form
+)
+
+externals ( stem )
+
+integers ( pV p1 p2 )
+
+groupings ( v )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a'   '{U+00E1}'  // a-acute
+stringdef a^   '{U+00E2}'  // a-circumflex e.g. 'bota^nico
+stringdef e'   '{U+00E9}'  // e-acute
+stringdef e^   '{U+00EA}'  // e-circumflex
+stringdef i'   '{U+00ED}'  // i-acute
+stringdef o^   '{U+00F4}'  // o-circumflex
+stringdef o'   '{U+00F3}'  // o-acute
+stringdef u'   '{U+00FA}'  // u-acute
+stringdef c,   '{U+00E7}'  // c-cedilla
+
+stringdef a~   '{U+00E3}'  // a-tilde
+stringdef o~   '{U+00F5}'  // o-tilde
+
+
+define v 'aeiou{a'}{e'}{i'}{o'}{u'}{a^}{e^}{o^}'
+
+define prelude as repeat (
+    [substring] among(
+        '{a~}' (<- 'a~')
+        '{o~}' (<- 'o~')
+        ''     (next)
+    ) //or next
+)
+
+define mark_regions as (
+
+    $pV = limit
+    $p1 = limit
+    $p2 = limit  // defaults
+
+    do (
+        ( v (non-v gopast v) or (v gopast non-v) )
+        or
+        ( non-v (non-v gopast v) or (v next) )
+        setmark pV
+    )
+    do (
+        gopast v gopast non-v setmark p1
+        gopast v gopast non-v setmark p2
+    )
+)
+
+define postlude as repeat (
+    [substring] among(
+        'a~' (<- '{a~}')
+        'o~' (<- '{o~}')
+        ''   (next)
+    ) //or next
+)
+
+backwardmode (
+
+    define RV as $pV <= cursor
+    define R1 as $p1 <= cursor
+    define R2 as $p2 <= cursor
+
+    define standard_suffix as (
+        [substring] among(
+
+            'eza' 'ezas'
+            'ico' 'ica' 'icos' 'icas'
+            'ismo' 'ismos'
+            '{a'}vel'
+            '{i'}vel'
+            'ista' 'istas'
+            'oso' 'osa' 'osos' 'osas'
+            'amento' 'amentos'
+            'imento' 'imentos'
+
+           'adora' 'ador' 'a{c,}a~o'
+           'adoras' 'adores' 'a{c,}o~es'  // no -ic test
+           'ante' 'antes' '{a^}ncia' // Note 1
+            (
+                R2 delete
+            )
+            'logia'
+            'logias'
+            (
+                R2 <- 'log'
+            )
+            'u{c,}a~o' 'u{c,}o~es'
+            (
+                R2 <- 'u'
+            )
+            '{e^}ncia' '{e^}ncias'
+            (
+                R2 <- 'ente'
+            )
+            'amente'
+            (
+                R1 delete
+                try (
+                    [substring] R2 delete among(
+                        'iv' (['at'] R2 delete)
+                        'os'
+                        'ic'
+                        'ad'
+                    )
+                )
+            )
+            'mente'
+            (
+                R2 delete
+                try (
+                    [substring] among(
+                        'ante' // Note 1
+                        'avel'
+                        '{i'}vel' (R2 delete)
+                    )
+                )
+            )
+            'idade'
+            'idades'
+            (
+                R2 delete
+                try (
+                    [substring] among(
+                        'abil'
+                        'ic'
+                        'iv'   (R2 delete)
+                    )
+                )
+            )
+            'iva' 'ivo'
+            'ivas' 'ivos'
+            (
+                R2 delete
+                try (
+                    ['at'] R2 delete // but not a further   ['ic'] R2 delete
+                )
+            )
+            'ira' 'iras'
+            (
+                RV 'e'  // -eira -eiras usually non-verbal
+                <- 'ir'
+            )
+        )
+    )
+
+    define verb_suffix as setlimit tomark pV for (
+        [substring] among(
+            'ada' 'ida' 'ia' 'aria' 'eria' 'iria' 'ar{a'}' 'ara' 'er{a'}'
+            'era' 'ir{a'}' 'ava' 'asse' 'esse' 'isse' 'aste' 'este' 'iste'
+            'ei' 'arei' 'erei' 'irei' 'am' 'iam' 'ariam' 'eriam' 'iriam'
+            'aram' 'eram' 'iram' 'avam' 'em' 'arem' 'erem' 'irem' 'assem'
+            'essem' 'issem' 'ado' 'ido' 'ando' 'endo' 'indo' 'ara~o'
+            'era~o' 'ira~o' 'ar' 'er' 'ir' 'as' 'adas' 'idas' 'ias'
+            'arias' 'erias' 'irias' 'ar{a'}s' 'aras' 'er{a'}s' 'eras'
+            'ir{a'}s' 'avas' 'es' 'ardes' 'erdes' 'irdes' 'ares' 'eres'
+            'ires' 'asses' 'esses' 'isses' 'astes' 'estes' 'istes' 'is'
+            'ais' 'eis' '{i'}eis' 'ar{i'}eis' 'er{i'}eis' 'ir{i'}eis'
+            '{a'}reis' 'areis' '{e'}reis' 'ereis' '{i'}reis' 'ireis'
+            '{a'}sseis' '{e'}sseis' '{i'}sseis' '{a'}veis' 'ados' 'idos'
+            '{a'}mos' 'amos' '{i'}amos' 'ar{i'}amos' 'er{i'}amos'
+            'ir{i'}amos' '{a'}ramos' '{e'}ramos' '{i'}ramos' '{a'}vamos'
+            'emos' 'aremos' 'eremos' 'iremos' '{a'}ssemos' '{e^}ssemos'
+            '{i'}ssemos' 'imos' 'armos' 'ermos' 'irmos' 'eu' 'iu' 'ou'
+
+            'ira' 'iras'
+                (delete)
+        )
+    )
+
+    define residual_suffix as (
+        [substring] among(
+            'os'
+            'a' 'i' 'o' '{a'}' '{i'}' '{o'}'
+                ( RV delete )
+        )
+    )
+
+    define residual_form as (
+        [substring] among(
+            'e' '{e'}' '{e^}'
+                ( RV delete [('u'] test 'g') or
+                             ('i'] test 'c') RV delete )
+            '{c,}' (<-'c')
+        )
+    )
+)
+
+define stem as (
+    do prelude
+    do mark_regions
+    backwards (
+        do (
+            ( ( standard_suffix or verb_suffix )
+              and do ( ['i'] test 'c' RV delete )
+            )
+            or residual_suffix
+        )
+        do residual_form
+    )
+    do postlude
+)
+
+/*
+    Note 1: additions of 15 Jun 2005
+*/

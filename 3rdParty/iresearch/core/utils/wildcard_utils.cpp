@@ -32,6 +32,7 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
   }
 
   bool escaped = false;
+  bool seen_escaped = false;
   size_t num_match_any_string = 0;
   size_t num_adjacent_match_any_string = 0;
 
@@ -50,17 +51,20 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
       case WildcardMatch::ANY_STRING:
         num_adjacent_match_any_string += size_t(!escaped);
         num_match_any_string += size_t(!escaped);
+        seen_escaped |= escaped;
         escaped = false;
         break;
       case WildcardMatch::ANY_CHAR:
         if (!escaped) {
           return WildcardType::WILDCARD;
         }
+        seen_escaped = true;
         num_adjacent_match_any_string = 0;
         escaped = false;
         break;
       case WildcardMatch::ESCAPE:
         num_adjacent_match_any_string = 0;
+        seen_escaped |= escaped;
         escaped = !escaped;
         break;
       default:
@@ -73,7 +77,8 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
   }
 
   if (0 == num_match_any_string) {
-    return WildcardType::TERM;
+    return seen_escaped ? WildcardType::TERM_ESCAPED
+                        : WildcardType::TERM;
   }
 
   if (expr.size() == num_match_any_string) {
@@ -81,7 +86,8 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
   }
 
   if (num_match_any_string == num_adjacent_match_any_string) {
-    return WildcardType::PREFIX;
+    return seen_escaped ? WildcardType::PREFIX_ESCAPED
+                        : WildcardType::PREFIX;
   }
 
   return WildcardType::WILDCARD;

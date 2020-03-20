@@ -26,6 +26,7 @@
 
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/SkipResult.h"
 #include "Basics/Result.h"
 
 #include <cstdint>
@@ -39,6 +40,7 @@ class Methods;
 }
 
 namespace aql {
+class AqlCallStack;
 class InputAqlItemRow;
 class ExecutionEngine;
 class ExecutionNode;
@@ -72,7 +74,9 @@ class ExecutionBlock {
   /// This is used as an argument for skipSome(), e.g. when counting everything.
   /// Setting this to any other value >0 does not (and must not) affect the
   /// results. It's only to reduce the number of necessary skipSome calls.
-  [[nodiscard]] static constexpr inline size_t SkipAllSize() { return 1000000000; }
+  [[nodiscard]] static constexpr inline size_t SkipAllSize() {
+    return 1000000000;
+  }
 
   /// @brief Methods for execution
   /// Lifecycle is:
@@ -112,7 +116,8 @@ class ExecutionBlock {
 
   [[nodiscard]] std::pair<ExecutionState, size_t> traceSkipSomeEnd(std::pair<ExecutionState, size_t> res);
 
-  [[nodiscard]] std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
+  [[nodiscard]] std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state,
+                                                                   size_t skipped);
 
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
@@ -131,7 +136,33 @@ class ExecutionBlock {
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep);
 
+  /// @brief main function to produce data in this ExecutionBlock.
+  ///        It gets the AqlCallStack defining the operations required in every
+  ///        subquery level. It will then perform the requested amount of offset, data and fullcount.
+  ///        The AqlCallStack is copied on purpose, so this block can modify it.
+  ///        Will return
+  ///        1. state:
+  ///          * WAITING: We have async operation going on, nothing happend, please call again
+  ///          * HASMORE: Here is some data in the request range, there is still more, if required call again
+  ///          * DONE: Here is some data, and there will be no further data available.
+  ///        2. SkipResult: Amount of documents skipped.
+  ///        3. SharedAqlItemBlockPtr: The next data block.
+  virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) = 0;
+
   [[nodiscard]] bool isInSplicedSubquery() const noexcept;
+
+ protected:
+  // Trace the start of a execute call
+  void traceExecuteBegin(AqlCallStack const& stack,
+                         std::string const& clientId = "");
+
+  // Trace the end of a execute call, potentially with result
+  auto traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
+                       std::string const& clientId = "")
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
+  [[nodiscard]] auto printBlockInfo() const -> std::string const;
+  [[nodiscard]] auto printTypeInfo() const -> std::string const;
 
  protected:
   /// @brief the execution engine

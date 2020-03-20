@@ -33,9 +33,10 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator_base
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API doc_iterator_base : public doc_iterator {
+template<typename T>
+class IRESEARCH_API doc_iterator_base : public T {
  public:
-  virtual const attribute_view& attributes() const noexcept final {
+  virtual const attribute_view& attributes() const noexcept {
     return attrs_;
   }
 

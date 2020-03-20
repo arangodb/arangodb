@@ -33,6 +33,8 @@
 #include <cstddef>
 #include <memory>
 
+#include "Aql/AqlItemBlockInputMatrix.h"
+
 namespace arangodb {
 namespace aql {
 
@@ -42,6 +44,7 @@ enum class ExecutionState;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
@@ -87,14 +90,29 @@ class AllRowsFetcher {
 
  public:
   explicit AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
-
   TEST_VIRTUAL ~AllRowsFetcher() = default;
+
+  using DataRange = AqlItemBlockInputMatrix;
 
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   AllRowsFetcher() = default;
 
  public:
+  /**
+   * @brief Execute the given call stack
+   *
+   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
+   * @return std::tuple<ExecutionState, size_t, DataRange>
+   *   ExecutionState => DONE, all queries are done, there will be no more
+   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
+   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
+   *
+   *   size_t => Amount of documents skipped
+   *   DataRange => Resulting data
+   */
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
+
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the pointer returned is valid only
@@ -167,8 +185,10 @@ class AllRowsFetcher {
   ExecutionState upstreamState();
 
   // NOLINTNEXTLINE google-default-arguments
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize);
+  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
+
+  //@deprecated
+  auto useStack(AqlCallStack const& stack) -> void;
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;

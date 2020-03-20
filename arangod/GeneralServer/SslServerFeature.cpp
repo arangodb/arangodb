@@ -41,9 +41,9 @@
 #include "SslServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
@@ -186,7 +186,7 @@ void SslServerFeature::verifySslOptions() {
   _sniEntries.emplace_back("", _keyfile);
 
   try {
-    createSslContexts();   // just to test if everything works
+    createSslContexts();  // just to test if everything works
   } catch (...) {
     LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL)
         << "cannot create SSL context";
@@ -222,9 +222,9 @@ static inline bool searchForProtocol(const unsigned char** out, unsigned char* o
   return false;
 }
 
-static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
-                                unsigned char *outlen, const unsigned char *in,
-                                unsigned int inlen, void *arg) {
+static int alpn_select_proto_cb(SSL* ssl, const unsigned char** out,
+                                unsigned char* outlen, const unsigned char* in,
+                                unsigned int inlen, void* arg) {
   int rv = 0;
   bool const* preferHttp11InAlpn = (bool*) arg;
   if (*preferHttp11InAlpn) {
@@ -244,8 +244,8 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
   return SSL_TLSEXT_ERR_OK;
 }
 
-asio_ns::ssl::context SslServerFeature::createSslContextInternal(
-    std::string keyfilename, std::string& content) {
+asio_ns::ssl::context SslServerFeature::createSslContextInternal(std::string keyfilename,
+                                                                 std::string& content) {
   // This method creates an SSL context using the keyfile in `keyfilename`
   // It is used internally if the public method `createSslContext`
   // is called and if the hello callback happens and a non-default
@@ -392,7 +392,8 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
 SslServerFeature::SslContextList SslServerFeature::createSslContexts() {
   auto result = std::make_shared<std::vector<asio_ns::ssl::context>>();
   for (size_t i = 0; i < _sniEntries.size(); ++i) {
-    auto res = createSslContextInternal(_sniEntries[i].keyfileName, _sniEntries[i].keyfileContent);
+    auto res = createSslContextInternal(_sniEntries[i].keyfileName,
+                                        _sniEntries[i].keyfileContent);
     result->emplace_back(std::move(res));
   }
   return result;
@@ -655,8 +656,8 @@ std::string SslServerFeature::stringifySslOptions(uint64_t opts) const {
   return result.substr(2);
 }
 
-
-static void splitPEM(std::string const& pem, std::vector<std::string>& certs, std::vector<std::string>& keys) {
+static void splitPEM(std::string const& pem, std::vector<std::string>& certs,
+                     std::vector<std::string>& keys) {
   std::vector<std::string> result;
   size_t pos = 0;
   while (pos < pem.size()) {
@@ -700,7 +701,8 @@ static void splitPEM(std::string const& pem, std::vector<std::string>& certs, st
 
 static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string attrName) {
   if (pem.empty()) {
-    { VPackObjectBuilder guard(&builder, attrName);
+    {
+      VPackObjectBuilder guard(&builder, attrName);
       return;
     }
   }
@@ -734,7 +736,8 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string a
 // Dump all SSL related data into a builder, private keys
 // are hashed.
 Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
-  { VPackObjectBuilder guard(&builder);
+  {
+    VPackObjectBuilder guard(&builder);
     if (!_sniEntries.empty()) {
       dumpPEM(_sniEntries[0].keyfileContent, builder, "keyfile");
       dumpPEM(_cafileContent, builder, "clientCA");
@@ -748,4 +751,3 @@ Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
   }
   return Result(TRI_ERROR_NO_ERROR);
 }
-

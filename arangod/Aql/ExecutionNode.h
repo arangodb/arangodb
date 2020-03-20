@@ -68,6 +68,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/TypeTraits.h"
 #include "Containers/HashSet.h"
 
 namespace arangodb {
@@ -162,6 +163,14 @@ class ExecutionNode {
   ExecutionNode() = delete;
   ExecutionNode(ExecutionNode const&) = delete;
   ExecutionNode& operator=(ExecutionNode const&) = delete;
+ protected:
+  /// @brief Clone constructor, used for constructors of derived classes.
+  /// Does not clone recursively, does not clone properties (`other.plan()` is
+  /// expected to be the same as `plan)`, and does not register this node in the
+  /// plan.
+  ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other);
+
+ public:
 
   /// @brief constructor using an id
   ExecutionNode(ExecutionPlan* plan, size_t id);
@@ -170,7 +179,7 @@ class ExecutionNode {
   ExecutionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
 
   /// @brief destructor, free dependencies
-  virtual ~ExecutionNode();
+  virtual ~ExecutionNode() = default;
 
  public:
   /// @brief factory from JSON
@@ -195,7 +204,13 @@ class ExecutionNode {
     TRI_ASSERT(result != nullptr);
     return result;
 #else
-    return static_cast<T>(node);
+    // At least GraphNode is virtually inherited by its subclasses. We have to
+    // use dynamic_cast for these types.
+    if constexpr (can_static_cast_v<FromType, T>) {
+      return static_cast<T>(node);
+    } else {
+      return dynamic_cast<T>(node);
+    }
 #endif
   }
 
@@ -302,6 +317,9 @@ class ExecutionNode {
   /// @return pointer to a registered node owned by a plan
   ExecutionNode* cloneHelper(std::unique_ptr<ExecutionNode> Other,
                              bool withDependencies, bool withProperties) const;
+
+  void cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan, ExecutionNode& other,
+                                      bool withProperties) const;
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone, bool withProperties) const;

@@ -806,7 +806,8 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
     }
   } 
 
-  // LOG_DEVEL << "year: " << result.year 
+  // LOG_TOPIC("51643", TRACE, Logger::FIXME)
+  //           << "year: " << result.year 
   //           << ", month: " << result.month 
   //           << ", day: " << result.day 
   //           << ", hour: " << result.hour 

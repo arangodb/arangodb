@@ -90,6 +90,13 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
+  // term query
+  {
+    auto lhs = irs::by_term().field("foo").term("foo%").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("foo\\%").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
+
   // prefix query
   {
     auto lhs = irs::by_prefix().field("foo").term("bar").prepare(irs::sub_reader::empty());
@@ -254,9 +261,34 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
   }
 
   // match nothing
+  check_query(irs::by_wildcard().field("prefix").term("ab\\%"), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_wildcard().field("same").term("x\\_z"), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_wildcard().field("same").term("x\\%z"), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_wildcard().field("same").term("_"), docs_t{}, costs_t{0}, rdr);
+
+  // escaped prefix
+  {
+    docs_t result{10, 11};
+    costs_t costs{ result.size() };
+
+    check_query(irs::by_wildcard().field("prefix").term("ab\\\\%"), result, costs, rdr);
+  }
+
+  // escaped term
+  {
+    docs_t result{10};
+    costs_t costs{ result.size() };
+
+    check_query(irs::by_wildcard().field("prefix").term("ab\\\\\\%"), result, costs, rdr);
+  }
+
+  // escaped term
+  {
+    docs_t result{11};
+    costs_t costs{ result.size() };
+
+    check_query(irs::by_wildcard().field("prefix").term("ab\\\\\\\\%"), result, costs, rdr);
+  }
 
   // valid prefix
   {

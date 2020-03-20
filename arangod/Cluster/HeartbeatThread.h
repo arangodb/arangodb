@@ -32,6 +32,7 @@
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
+#include "RestServer/MetricsFeature.h"
 
 #include <velocypack/Slice.h>
 #include <chrono>
@@ -307,7 +308,7 @@ class HeartbeatThread : public CriticalThread,
   /// @brief number of subsequent failed version updates
   //////////////////////////////////////////////////////////////////////////////
   uint64_t _failedVersionUpdates;
-  
+
   // The following are only used in the coordinator case. This
   // is the coordinator's way to learn of new Plan and Current
   // Versions. The heartbeat thread schedules a closure which calls
@@ -333,6 +334,9 @@ class HeartbeatThread : public CriticalThread,
 
   /// @brief Sync job
   DBServerAgencySync _agencySync;
+
+  Histogram<log_scale_t<uint64_t>>& _heartbeat_send_time_ms;
+  Counter& _heartbeat_failure_counter;
 };
 }  // namespace arangodb
 

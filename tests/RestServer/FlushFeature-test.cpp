@@ -34,6 +34,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -57,7 +58,6 @@ class FlushFeatureTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL> {
  protected:
-
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
@@ -65,6 +65,7 @@ class FlushFeatureTest
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
@@ -112,9 +113,7 @@ class FlushFeatureTest
 
 TEST_F(FlushFeatureTest, test_subscription_retention) {
   struct TestFlushSubscripion : arangodb::FlushSubscription {
-    TRI_voc_tick_t tick() const noexcept {
-      return _tick;
-    }
+    TRI_voc_tick_t tick() const noexcept { return _tick; }
 
     TRI_voc_tick_t _tick{};
   };
@@ -141,8 +140,8 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
       size_t removed = 42;
       TRI_voc_tick_t releasedTick = 42;
       feature.releaseUnusedTicks(removed, releasedTick);
-      ASSERT_EQ(0, removed); // reference is being held
-      ASSERT_EQ(subscription->_tick, releasedTick); // min tick released
+      ASSERT_EQ(0, removed);                         // reference is being held
+      ASSERT_EQ(subscription->_tick, releasedTick);  // min tick released
     }
 
     auto const newSubscriptionTick = currentTick;
@@ -155,14 +154,14 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
       size_t removed = 42;
       TRI_voc_tick_t releasedTick = 42;
       feature.releaseUnusedTicks(removed, releasedTick);
-      ASSERT_EQ(0, removed); // reference is being held
-      ASSERT_EQ(subscription->_tick, releasedTick); // min tick released
+      ASSERT_EQ(0, removed);                         // reference is being held
+      ASSERT_EQ(subscription->_tick, releasedTick);  // min tick released
     }
   }
 
   size_t removed = 42;
   TRI_voc_tick_t releasedTick = 42;
   feature.releaseUnusedTicks(removed, releasedTick);
-  ASSERT_EQ(1, removed); // stale subscription was removed
-  ASSERT_EQ(engine.currentTick(), releasedTick); // min tick released
+  ASSERT_EQ(1, removed);  // stale subscription was removed
+  ASSERT_EQ(engine.currentTick(), releasedTick);  // min tick released
 }

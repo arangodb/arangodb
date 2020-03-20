@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_BLOCK_FETCHER_H
 #define ARANGOD_AQL_BLOCK_FETCHER_H
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -36,6 +37,7 @@
 namespace arangodb::aql {
 class ExecutionBlock;
 class AqlItemBlockManager;
+class SkipResult;
 
 /**
  * @brief Thin interface to access the methods of ExecutionBlock that are
@@ -68,10 +70,15 @@ class DependencyProxy {
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   AqlItemBlockManager& itemBlockManager,
                   std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-                  RegisterId nrInputRegisters,
-                  velocypack::Options const*);
+                  RegisterId nrInputRegisters, velocypack::Options const*);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
+
+  // TODO Implement and document properly!
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack& stack);
+
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeForDependency(
+      size_t dependency, AqlCallStack& stack);
 
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
@@ -112,6 +119,9 @@ class DependencyProxy {
 
   [[nodiscard]] velocypack::Options const* velocypackOptions() const noexcept;
 
+  //@deprecated
+  auto useStack(AqlCallStack stack) -> void { _injectedStack = stack; }
+
  protected:
   [[nodiscard]] AqlItemBlockManager& itemBlockManager();
   [[nodiscard]] AqlItemBlockManager const& itemBlockManager() const;
@@ -138,6 +148,9 @@ class DependencyProxy {
   size_t _currentDependency;
   size_t _skipped;
   velocypack::Options const* const _vpackOptions;
+
+  // @deprecated
+  AqlCallStack _injectedStack;
 };
 
 }  // namespace arangodb::aql

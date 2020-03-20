@@ -913,7 +913,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);
               }
-            
+
               if (V8PlatformFeature::isOutOfMemory(isolate)) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
               }
@@ -1017,19 +1017,21 @@ ExecutionState Query::finalize(QueryResult& result) {
     if (_queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
       if (ServerState::instance()->isCoordinator()) {
         std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
-          arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-          arangodb::aql::ExecutionNode::INDEX,
-          arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
-          arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
-          arangodb::aql::ExecutionNode::UPSERT};
+            arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+            arangodb::aql::ExecutionNode::INDEX,
+            arangodb::aql::ExecutionNode::REMOVE,
+            arangodb::aql::ExecutionNode::INSERT,
+            arangodb::aql::ExecutionNode::UPDATE,
+            arangodb::aql::ExecutionNode::REPLACE,
+            arangodb::aql::ExecutionNode::UPSERT};
 
         ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
         ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
         _plan->findNodesOfType(nodes, collectionNodeTypes, true);
 
         for (auto& n : nodes) {
-          // clear shards so we get back the full collection name when serializing
-          // the plan
+          // clear shards so we get back the full collection name when
+          // serializing the plan
           auto cn = dynamic_cast<CollectionAccessingNode*>(n);
           if (cn) {
             cn->setUsedShard("");
@@ -1158,6 +1160,8 @@ QueryResult Query::explain() {
 
           plan->findVarUsage();
           plan->planRegisters();
+          plan->prepareTraversalOptions();
+
           plan->toVelocyPack(*result.data.get(), parser.ast(), _queryOptions.verbosePlans);
         }
       }
@@ -1170,6 +1174,7 @@ QueryResult Query::explain() {
 
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
+      bestPlan->prepareTraversalOptions();
 
       result.data = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
 
@@ -1213,6 +1218,11 @@ QueryResult Query::explain() {
 void Query::setEngine(ExecutionEngine* engine) {
   TRI_ASSERT(engine != nullptr);
   _engine.reset(engine);
+}
+
+void Query::setEngine(std::unique_ptr<ExecutionEngine>&& engine) {
+  TRI_ASSERT(engine != nullptr);
+  _engine = std::move(engine);
 }
 
 /// @brief prepare a V8 context for execution for this expression
@@ -1523,7 +1533,6 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
     return it->second.get();
   }
   graph::GraphManager graphManager{_vocbase, _contextOwnedByExterior};
-
   auto g = graphManager.lookupGraphByName(name);
 
   if (g.fail()) {

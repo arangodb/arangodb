@@ -102,12 +102,9 @@ class ShadowAqlItemRow {
   ///        NOTE: Innermost query will have depth 0. Outermost query wil have highest depth.
   [[nodiscard]] uint64_t getDepth() const;
 
-  // Note that == and != here check whether the rows are *identical*, that is,
+  // Check whether the rows are *identical*, that is,
   // the same row in the same block.
-  // TODO Make this a named method
-  [[nodiscard]] bool operator==(ShadowAqlItemRow const& other) const noexcept;
-
-  [[nodiscard]] bool operator!=(ShadowAqlItemRow const& other) const noexcept;
+  [[nodiscard]] bool isSameBlockAndIndex(ShadowAqlItemRow const& other) const noexcept;
 
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal,

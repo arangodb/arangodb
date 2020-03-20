@@ -17,10 +17,10 @@ The response is a JSON object with the following attributes:
 
 - *id*: the id of the batch
 
-**Note**: on a coordinator, this request must have the query parameter
-*DBserver* which must be an ID of a DBserver.
-The very same request is forwarded synchronously to that DBserver.
-It is an error if this attribute is not bound in the coordinator case.
+**Note**: on a Coordinator, this request must have the query parameter
+*DBserver* which must be an ID of a DB-Server.
+The very same request is forwarded synchronously to that DB-Server.
+It is an error if this attribute is not bound in the Coordinator case.
 
 @RESTRETURNCODES
 
@@ -29,7 +29,7 @@ is returned if the batch was created successfully.
 
 @RESTRETURNCODE{400}
 is returned if the ttl value is invalid or if *DBserver* attribute
-is not specified or illegal on a coordinator.
+is not specified or illegal on a Coordinator.
 
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.

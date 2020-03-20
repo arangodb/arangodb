@@ -323,7 +323,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         << "Failed to get job status: "
         << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
 
-    return ResultT<bool>::error(std::move(jobStatus.result()));
+    return ResultT<bool>::error(std::move(jobStatus).result());
   }
 
   return ResultT<bool>::success(false);
