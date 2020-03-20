@@ -1050,7 +1050,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
     return createOutputRow(newBlock, std::move(call));
   } else {
     if constexpr (isMultiDepExecutor<Executor>) {
-      // MultiDepExecutor wpuld require dependency handling.
+      // MultiDepExecutor would require dependency handling.
       // We do not have it here.
       if (!inputRange.hasShadowRow() && !inputRange.hasDataRow()) {
         // On empty input do not yet create output.
