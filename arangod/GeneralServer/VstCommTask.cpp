@@ -28,9 +28,7 @@
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
-#ifdef USE_DTRACE
-#include "Basics/sdt.h"
-#endif
+#include "Basics/dtrace-wrapper.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -199,6 +197,8 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
 static void __attribute__ ((noinline)) DTraceVstCommTaskProcessMessage(size_t th) {
   DTRACE_PROBE1(arangod, VstCommTaskProcessMessage, th);
 }
+#else
+static void DTraceVstCommTaskProcessMessage(size_t) {}
 #endif
 
 /// process a VST message
@@ -207,9 +207,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
                                     uint64_t messageId) {
   using namespace fuerte;
 
-#ifdef USE_DTRACE
   DTraceVstCommTaskProcessMessage((size_t) this);
-#endif
 
   auto ptr = buffer.data();
   auto len = buffer.byteSize();
@@ -291,15 +289,15 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
 static void __attribute__ ((noinline)) DTraceVstCommTaskSendResponse(size_t th) {
   DTRACE_PROBE1(arangod, VstCommTaskSendResponse, th);
 }
+#else
+static void DTraceVstCommTaskSendResponse(size_t) {}
 #endif
 
 template<SocketType T>
 void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, RequestStatistics* stat) {
   using namespace fuerte;
 
-#ifdef USE_DTRACE
   DTraceVstCommTaskSendResponse((size_t) this);
-#endif
 
   if (this->_stopped.load(std::memory_order_acquire)) {
     return;
@@ -370,6 +368,9 @@ static void __attribute__ ((noinline)) DTraceVstCommTaskBeforeAsyncWrite(size_t 
 static void __attribute__ ((noinline)) DTraceVstCommTaskAfterAsyncWrite(size_t th) {
   DTRACE_PROBE1(arangod, VstCommTaskAfterAsyncWrite, th);
 }
+#else
+static void DTraceVstCommTaskBeforeAsyncWrite(size_t) {}
+static void DTraceVstCommTaskAfterAsyncWrite(size_t) {}
 #endif
 
 template<SocketType T>
@@ -397,20 +398,16 @@ void VstCommTask<T>::doWrite() {
   TRI_ASSERT(tmp != nullptr);
   std::unique_ptr<ResponseItem> item(tmp);
 
-#ifdef USE_DTRACE
   DTraceVstCommTaskBeforeAsyncWrite((size_t) this);
-#endif
 
   auto& buffers = item->buffers;
   asio_ns::async_write(this->_protocol->socket, buffers,
                        [self(CommTask::shared_from_this()), rsp(std::move(item))]
                        (asio_ns::error_code const& ec, size_t) {
 
-#ifdef USE_DTRACE
     DTraceVstCommTaskAfterAsyncWrite((size_t) self.get());
-#endif
 
-                         auto* me = static_cast<VstCommTask<T>*>(self.get());
+    auto* me = static_cast<VstCommTask<T>*>(self.get());
     RequestStatistics::SET_WRITE_END(rsp->stat);
     RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
     if (ec) {

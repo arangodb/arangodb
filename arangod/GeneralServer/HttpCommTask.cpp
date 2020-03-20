@@ -25,9 +25,7 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
-#ifdef USE_DTRACE
-#include "Basics/sdt.h"
-#endif
+#include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -344,14 +342,14 @@ void HttpCommTask<T>::checkVSTPrefix() {
 static void __attribute__ ((noinline)) DTraceHttpCommTaskProcessRequest(size_t th) {
   DTRACE_PROBE1(arangod, HttpCommTaskProcessRequest, th);
 }
+#else
+static void DTraceHttpCommTaskProcessRequest(size_t) {}
 #endif
 
 template <SocketType T>
 void HttpCommTask<T>::processRequest() {
 
-#ifdef USE_DTRACE
   DTraceHttpCommTaskProcessRequest((size_t) this);
-#endif
 
   TRI_ASSERT(_request);
   this->_protocol->timer.cancel();
@@ -434,15 +432,15 @@ void HttpCommTask<T>::processRequest() {
 static void __attribute__ ((noinline)) DTraceHttpCommTaskSendResponse(size_t th) {
   DTRACE_PROBE1(arangod, HttpCommTaskSendResponse, th);
 }
+#else
+static void DTraceHttpCommTaskSendResponse(size_t) {}
 #endif
 
 template <SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
                                    RequestStatistics* stat) {
 
-#ifdef USE_DTRACE
   DTraceHttpCommTaskSendResponse((size_t) this);
-#endif
 
   if (this->_stopped.load(std::memory_order_acquire)) {
     return;
@@ -569,15 +567,16 @@ static void __attribute__ ((noinline)) DTraceHttpCommTaskWriteResponse(size_t th
 static void __attribute__ ((noinline)) DTraceHttpCommTaskResponseWritten(size_t th) {
   DTRACE_PROBE1(arangod, HttpCommTaskResponseWritten, th);
 }
+#else
+static void DTraceHttpCommTaskWriteResponse(size_t) {}
+static void DTraceHttpCommTaskResponseWritten(size_t) {}
 #endif
 
 // called on IO context thread
 template <SocketType T>
 void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
 
-#ifdef USE_DTRACE
   DTraceHttpCommTaskWriteResponse((size_t) this);
-#endif
 
   TRI_ASSERT(!_header.empty());
 
@@ -594,9 +593,7 @@ void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
                        [self = this->shared_from_this(),
                         stat](asio_ns::error_code ec, size_t nwrite) {
 
-#ifdef USE_DTRACE
                          DTraceHttpCommTaskResponseWritten((size_t) self.get());
-#endif
 
                          auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
                          RequestStatistics::SET_WRITE_END(stat);

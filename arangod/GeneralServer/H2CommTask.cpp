@@ -25,9 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
-#ifdef USE_DTRACE
-#include "Basics/sdt.h"
-#endif
+#include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -397,14 +395,14 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
 static void __attribute__ ((noinline)) DTraceH2CommTaskProcessStream(size_t th) {
   DTRACE_PROBE1(arangod, H2CommTaskProcessStream, th);
 }
+#else
+static void DTraceH2CommTaskProcessStream(size_t) {}
 #endif
 
 template <SocketType T>
 void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
 
-#ifdef USE_DTRACE
   DTraceH2CommTaskProcessStream((size_t) this);
-#endif
 
   TRI_ASSERT(stream);
 
@@ -483,15 +481,15 @@ bool expectResponseBody(int status_code) {
 static void __attribute__ ((noinline)) DTraceH2CommTaskSendResponse(size_t th) {
   DTRACE_PROBE1(arangod, H2CommTaskSendResponse, th);
 }
+#else
+static void DTraceH2CommTaskSendResponse(size_t) {}
 #endif
 
 template <SocketType T>
 void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
                                  RequestStatistics* stat) {
 
-#ifdef USE_DTRACE
   DTraceH2CommTaskSendResponse((size_t) this);
-#endif
 
   // TODO the statistics are total bogus here
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
@@ -664,6 +662,9 @@ static void __attribute__ ((noinline)) DTraceH2CommTaskBeforeAsyncWrite(size_t t
 static void __attribute__ ((noinline)) DTraceH2CommTaskAfterAsyncWrite(size_t th) {
   DTRACE_PROBE1(arangod, H2CommTaskAfterAsyncWrite, th);
 }
+#else 
+static void DTraceH2CommTaskBeforeAsyncWrite(size_t) {}
+static void DTraceH2CommTaskAfterAsyncWrite(size_t) {}
 #endif
 
 // called on IO context thread
@@ -721,9 +722,7 @@ void H2CommTask<T>::doWrite() {
     return;
   }
 
-#ifdef USE_DTRACE
   DTraceH2CommTaskBeforeAsyncWrite((size_t) this);
-#endif
 
   asio_ns::async_write(this->_protocol->socket, outBuffers,
                        [self = this->shared_from_this()](const asio_ns::error_code& ec,
@@ -735,9 +734,7 @@ void H2CommTask<T>::doWrite() {
                            return;
                          }
 
-#ifdef USE_DTRACE
                          DTraceH2CommTaskAfterAsyncWrite((size_t) self.get());
-#endif
 
                          me.doWrite();
                        });
