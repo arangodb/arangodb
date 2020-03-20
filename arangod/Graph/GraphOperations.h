@@ -213,7 +213,7 @@ class GraphOperations {
   bool collectionExists(std::string const& collection) const;
 
 #ifdef USE_ENTERPRISE
-  OperationResult ensureEnterpriseCollectionInitialCheck(std::string const& collectionName) const;
+  OperationResult ensureEnterpriseCollectionInitialCheck(std::string const& collectionName, bool dropCollection) const;
 #endif
 };
 }  // namespace graph

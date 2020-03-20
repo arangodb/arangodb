@@ -361,7 +361,8 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync,
                                                        bool dropCollection) {
 #ifdef USE_ENTERPRISE
   {
-    OperationResult initRes = ensureEnterpriseCollectionInitialCheck(collectionName);
+    OperationResult initRes =
+        ensureEnterpriseCollectionInitialCheck(collectionName, dropCollection);
     if (initRes.fail()) {
       return initRes;
     }
