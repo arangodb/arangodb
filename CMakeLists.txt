@@ -280,6 +280,12 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
+# enable dtrace
+option(USE_DTRACE "enable dtrace probes" OFF)
+if (USE_DTRACE)
+  add_definitions("-DUSE_DTRACE=1")
+endif ()
+
 # enable enterprise features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
