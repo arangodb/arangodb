@@ -68,6 +68,9 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
 #endif
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "ClusterEngine/Common.h"
+#include "ClusterEngine/ClusterEngine.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
@@ -119,7 +122,7 @@ T addFigures(VPackSlice const& v1, VPackSlice const& v2,
   return value;
 }
 
-void recursiveAdd(VPackSlice const& value, VPackBuilder& builder) {
+void recursiveAddMMFiles(VPackSlice const& value, VPackBuilder& builder) {
   TRI_ASSERT(value.isObject());
   TRI_ASSERT(builder.slice().isObject());
   TRI_ASSERT(builder.isClosed());
@@ -178,6 +181,41 @@ void recursiveAdd(VPackSlice const& value, VPackBuilder& builder) {
   updated.add("documentReferences",
               VPackValue(addFigures<size_t>(value, builder.slice(), {"documentReferences"})));
 
+  updated.close();
+
+  TRI_ASSERT(updated.slice().isObject());
+  TRI_ASSERT(updated.isClosed());
+
+  builder = VPackCollection::merge(builder.slice(), updated.slice(), true, false);
+  TRI_ASSERT(builder.slice().isObject());
+  TRI_ASSERT(builder.isClosed());
+}
+
+void recursiveAddRocksDB(VPackSlice const& value, VPackBuilder& builder) {
+  TRI_ASSERT(value.isObject());
+  TRI_ASSERT(builder.slice().isObject());
+  TRI_ASSERT(builder.isClosed());
+
+  VPackBuilder updated;
+
+  updated.openObject();
+
+  bool cacheInUse = Helper::getBooleanValue(value, "cacheInUse", false);
+  bool totalCacheInUse = cacheInUse || Helper::getBooleanValue(builder.slice(), "cacheInUse", false);
+  updated.add("cacheInUse", VPackValue(totalCacheInUse));
+
+  if (cacheInUse) {
+    updated.add("cacheLifeTimeHitRate", VPackValue(addFigures<double>(value, builder.slice(),
+                                                                      {"cacheLifeTimeHitRate"})));
+    updated.add("cacheWindowedHitRate", VPackValue(addFigures<double>(value, builder.slice(),
+                                                                      {"cacheWindowedHitRate"})));
+  }
+  updated.add("cacheSize", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                               {"cacheSize"})));
+  updated.add("cacheUsage", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                               {"cacheUsage"})));
+  updated.add("documentsSize", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                               {"documentsSize"})));
   updated.close();
 
   TRI_ASSERT(updated.slice().isObject());
@@ -1010,6 +1048,9 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(300.0);
+  bool isRocksDB = static_cast<ClusterEngine*>
+    (EngineSelectorFeature::ENGINE)->engineType() ==
+    ClusterEngineType::RocksDBEngine;
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
@@ -1027,14 +1068,18 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
-    auto handler = [](Result& result, VPackBuilder& builder, ShardID&,
+  auto cb = [isRocksDB](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+    auto handler = [isRocksDB](Result& result, VPackBuilder& builder, ShardID&,
                       VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
+        // add to the total
         if (figures.isObject()) {
-          // add to the total
-          recursiveAdd(figures, builder);
+          if (isRocksDB) {
+            recursiveAddRocksDB(figures, builder);
+          } else {
+            recursiveAddMMFiles(figures, builder);
+          }
         }
       } else {
         // didn't get the expected response

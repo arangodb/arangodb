@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "ExecutorTestHelper.h"
+#include "AqlExecutorTestCase.h"
 
 #include "Aql/AqlItemBlockInputMatrix.h"
 #include "Aql/AqlItemBlockInputRange.h"

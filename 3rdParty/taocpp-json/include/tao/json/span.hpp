@@ -102,25 +102,23 @@ namespace tao
 
       using element_type = ElementType;
       using value_type = std::remove_cv_t< ElementType >;
-      using index_type = std::size_t;
+      using size_type = std::size_t;
       using difference_type = std::ptrdiff_t;
       using pointer = element_type*;
       using const_pointer = const element_type*;
       using reference = element_type&;
       using const_reference = const element_type&;
       using iterator = pointer;
-      using const_iterator = const_pointer;
       using reverse_iterator = std::reverse_iterator< iterator >;
-      using const_reverse_iterator = std::reverse_iterator< const_iterator >;
 
-      static constexpr index_type extent = Extent;
+      static constexpr size_type extent = Extent;
 
       template< typename T = void, typename = std::enable_if_t< Extent == 0, T > >
       constexpr span() noexcept
          : m_data( nullptr )
       {}
 
-      constexpr span( pointer ptr, index_type count ) noexcept
+      constexpr span( pointer ptr, size_type count ) noexcept
          : m_data( ptr )
       {
          assert( count == Extent );
@@ -157,12 +155,12 @@ namespace tao
 
       constexpr span& operator=( const span& ) = default;
 
-      constexpr index_type size() const noexcept
+      constexpr size_type size() const noexcept
       {
          return Extent;
       }
 
-      constexpr index_type size_bytes() const noexcept
+      constexpr size_type size_bytes() const noexcept
       {
          return Extent * sizeof( element_type );
       }
@@ -172,7 +170,7 @@ namespace tao
          return Extent == 0;
       }
 
-      constexpr reference operator[]( index_type idx ) const noexcept
+      constexpr reference operator[]( size_type idx ) const noexcept
       {
          assert( idx < Extent );
          return *( data() + idx );
@@ -200,17 +198,7 @@ namespace tao
          return data();
       }
 
-      constexpr const_iterator cbegin() const noexcept
-      {
-         return data();
-      }
-
       constexpr iterator end() const noexcept
-      {
-         return data() + Extent;
-      }
-
-      constexpr const_iterator cend() const noexcept
       {
          return data() + Extent;
       }
@@ -223,16 +211,6 @@ namespace tao
       constexpr reverse_iterator rend() const noexcept
       {
          return reverse_iterator( begin() );
-      }
-
-      constexpr const_reverse_iterator crbegin() const noexcept
-      {
-         return const_reverse_iterator( cend() );
-      }
-
-      constexpr const_reverse_iterator crend() const noexcept
-      {
-         return const_reverse_iterator( cbegin() );
       }
 
       friend constexpr iterator begin( span s ) noexcept
@@ -268,19 +246,19 @@ namespace tao
          return { data() + Offset, ( Count != dynamic_extent ) ? Count : ( Extent - Offset ) };
       }
 
-      constexpr span< element_type, dynamic_extent > first( index_type count ) const
+      constexpr span< element_type, dynamic_extent > first( size_type count ) const
       {
          assert( count <= Extent );
          return { data(), count };
       }
 
-      constexpr span< element_type, dynamic_extent > last( index_type count ) const
+      constexpr span< element_type, dynamic_extent > last( size_type count ) const
       {
          assert( count <= Extent );
          return { data() + Extent - count, count };
       }
 
-      constexpr span< element_type, dynamic_extent > subspan( index_type offset, index_type count = dynamic_extent ) const
+      constexpr span< element_type, dynamic_extent > subspan( size_type offset, size_type count = dynamic_extent ) const
       {
          assert( offset <= Extent );
          assert( ( count == dynamic_extent ) || ( count <= ( Extent - offset ) ) );
@@ -299,24 +277,22 @@ namespace tao
 
       using element_type = ElementType;
       using value_type = std::remove_cv_t< ElementType >;
-      using index_type = std::size_t;
+      using size_type = std::size_t;
       using difference_type = std::ptrdiff_t;
       using pointer = element_type*;
       using const_pointer = const element_type*;
       using reference = element_type&;
       using const_reference = const element_type&;
       using iterator = pointer;
-      using const_iterator = const_pointer;
       using reverse_iterator = std::reverse_iterator< iterator >;
-      using const_reverse_iterator = std::reverse_iterator< const_iterator >;
 
-      static constexpr index_type extent = dynamic_extent;
+      static constexpr size_type extent = dynamic_extent;
 
       constexpr span() noexcept
          : m_data( nullptr ), m_size( 0 )
       {}
 
-      constexpr span( pointer ptr, index_type count ) noexcept
+      constexpr span( pointer ptr, size_type count ) noexcept
          : m_data( ptr ), m_size( count )
       {}
 
@@ -360,12 +336,12 @@ namespace tao
 
       constexpr span& operator=( const span& ) = default;
 
-      constexpr index_type size() const noexcept
+      constexpr size_type size() const noexcept
       {
          return m_size;
       }
 
-      constexpr index_type size_bytes() const noexcept
+      constexpr size_type size_bytes() const noexcept
       {
          return size() * sizeof( element_type );
       }
@@ -375,7 +351,7 @@ namespace tao
          return size() == 0;
       }
 
-      constexpr reference operator[]( index_type idx ) const noexcept
+      constexpr reference operator[]( size_type idx ) const noexcept
       {
          assert( idx < size() );
          return *( data() + idx );
@@ -403,17 +379,7 @@ namespace tao
          return data();
       }
 
-      constexpr const_iterator cbegin() const noexcept
-      {
-         return data();
-      }
-
       constexpr iterator end() const noexcept
-      {
-         return data() + size();
-      }
-
-      constexpr const_iterator cend() const noexcept
       {
          return data() + size();
       }
@@ -426,16 +392,6 @@ namespace tao
       constexpr reverse_iterator rend() const noexcept
       {
          return reverse_iterator( begin() );
-      }
-
-      constexpr const_reverse_iterator crbegin() const noexcept
-      {
-         return const_reverse_iterator( cend() );
-      }
-
-      constexpr const_reverse_iterator crend() const noexcept
-      {
-         return const_reverse_iterator( cbegin() );
       }
 
       friend constexpr iterator begin( span s ) noexcept
@@ -471,19 +427,19 @@ namespace tao
          return { data() + Offset, ( Count != dynamic_extent ) ? Count : ( size() - Offset ) };
       }
 
-      constexpr span< element_type, dynamic_extent > first( index_type count ) const
+      constexpr span< element_type, dynamic_extent > first( size_type count ) const
       {
          assert( count <= size() );
          return { data(), count };
       }
 
-      constexpr span< element_type, dynamic_extent > last( index_type count ) const
+      constexpr span< element_type, dynamic_extent > last( size_type count ) const
       {
          assert( count <= size() );
          return { data() + size() - count, count };
       }
 
-      constexpr span< element_type, dynamic_extent > subspan( index_type offset, index_type count = dynamic_extent ) const
+      constexpr span< element_type, dynamic_extent > subspan( size_type offset, size_type count = dynamic_extent ) const
       {
          assert( offset <= size() );
          assert( ( count == dynamic_extent ) || ( count <= ( size() - offset ) ) );
@@ -492,7 +448,7 @@ namespace tao
 
    private:
       pointer m_data;
-      index_type m_size;
+      size_type m_size;
    };
 
    template< typename ElementType, std::size_t Extent >

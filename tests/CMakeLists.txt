@@ -26,6 +26,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/SupervisionTest.cpp
   Aql/AllRowsFetcherTest.cpp
   Aql/AqlCallListTest.cpp
+  Aql/AqlExecutorTestCase.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
@@ -76,7 +77,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortLimit-test.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
-  Aql/SubqueryExecutorTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp

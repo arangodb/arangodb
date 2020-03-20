@@ -46,7 +46,8 @@
           var buttons = [];
           // analyze figures in cluster
           if (frontendConfig.isCluster && figures && figures.figures) {
-            if (figures.figures.alive.size === 0 &&
+            if (figures.figures.alive &&
+              figures.figures.alive.size === 0 &&
               figures.figures.alive.count === 0 &&
               figures.figures.datafiles.count === 0 &&
               figures.figures.datafiles.fileSize === 0 &&
