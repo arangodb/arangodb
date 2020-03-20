@@ -32,6 +32,7 @@
 #include "Cluster/Action.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/MetricsFeature.h"
 
 #include <queue>
 
@@ -73,7 +74,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   // Pause maintenance for
   void pause(std::chrono::seconds const& s = std::chrono::seconds(10));
 
-   // Proceed doing maintenance
+  // Proceed doing maintenance
   void proceed();
 
   // preparation phase for feature in the preparation phase, the features must
@@ -330,6 +331,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   void waitForLargerCurrentCounter(uint64_t old);
 
+ protected:
+  void initializeMetrics();
+
  private:
   /// @brief common code used by multiple constructors
   void init();
@@ -450,6 +454,43 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief  counter for load_current requests.
   uint64_t _currentCounter;
+
+ public:
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase2_runtime_msec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _agency_sync_total_runtime_msec;
+
+  std::optional<std::reference_wrapper<Counter>> _phase1_accum_runtime_msec;
+  std::optional<std::reference_wrapper<Counter>> _phase2_accum_runtime_msec;
+  std::optional<std::reference_wrapper<Counter>> _agency_sync_total_accum_runtime_msec;
+
+  std::optional<std::reference_wrapper<Counter>> _action_duplicated_counter;
+  std::optional<std::reference_wrapper<Counter>> _action_registered_counter;
+  std::optional<std::reference_wrapper<Counter>> _action_done_counter;
+
+  struct ActionMetrics {
+    Histogram<log_scale_t<uint64_t>>& _runtime_histogram;
+    Histogram<log_scale_t<uint64_t>>& _queue_time_histogram;
+    Counter& _accum_runtime;
+    Counter& _accum_queue_time;
+    Counter& _failure_counter;
+
+    ActionMetrics(Histogram<log_scale_t<uint64_t>>& a,
+                  Histogram<log_scale_t<uint64_t>>& b, Counter& c, Counter& d, Counter& e)
+        : _runtime_histogram(a),
+          _queue_time_histogram(b),
+          _accum_runtime(c),
+          _accum_queue_time(d),
+          _failure_counter(e) {}
+  };
+
+  std::unordered_map<std::string, ActionMetrics> _maintenance_job_metrics_map;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _maintenance_action_runtime_msec;
+
+  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_out_of_sync;
+  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_total_count;
+  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_leader_count;
+  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_not_replicated_count;
 };
 
 }  // namespace arangodb

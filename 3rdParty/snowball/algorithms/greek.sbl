@@ -1,0 +1,706 @@
+// A stemmer for Modern Greek language, based on:
+//
+// Ntais, Georgios. Development of a Stemmer for the Greek
+// Language. Diss. Royal Institute of Technology, 2006.
+// https://sais.se/mthprize/2007/ntais2007.pdf
+//
+// Saroukos, Spyridon. Enhancing a Greek language stemmer.
+// University of Tampere, 2008.
+// https://tampub.uta.fi/bitstream/handle/10024/80480/gradu03463.pdf
+
+stringescapes {}
+
+stringdef a    '{U+03B1}' // alpha
+stringdef v    '{U+03B2}' // beta
+stringdef g    '{U+03B3}' // gamma
+stringdef d    '{U+03B4}' // delta
+stringdef e    '{U+03B5}' // epsilon
+stringdef z    '{U+03B6}' // zeta
+stringdef i    '{U+03B7}' // eta
+stringdef th   '{U+03B8}' // theta
+stringdef y    '{U+03B9}' // iota
+stringdef k    '{U+03BA}' // kappa
+stringdef l    '{U+03BB}' // lamda
+stringdef m    '{U+03BC}' // mu
+stringdef n    '{U+03BD}' // nu
+stringdef x    '{U+03BE}' // xi
+stringdef o    '{U+03BF}' // omicron
+stringdef p    '{U+03C0}' // pi
+stringdef r    '{U+03C1}' // rho
+stringdef ss   '{U+03C2}' // sigma final
+stringdef s    '{U+03C3}' // sigma
+stringdef t    '{U+03C4}' // tau
+stringdef u    '{U+03C5}' // upsilon
+stringdef f    '{U+03C6}' // phi
+stringdef ch   '{U+03C7}' // chi
+stringdef ps   '{U+03C8}' // psi
+stringdef oo   '{U+03C9}' // omega
+
+stringdef A    '{U+0391}' // Alpha
+stringdef V    '{U+0392}' // Beta
+stringdef G    '{U+0393}' // Gamma
+stringdef D    '{U+0394}' // Delta
+stringdef E    '{U+0395}' // Epsilon
+stringdef Z    '{U+0396}' // Zeta
+stringdef I    '{U+0397}' // Eta
+stringdef Th   '{U+0398}' // Theta
+stringdef Y    '{U+0399}' // Iota
+stringdef K    '{U+039A}' // Kappa
+stringdef L    '{U+039B}' // Lamda
+stringdef M    '{U+039C}' // Mu
+stringdef N    '{U+039D}' // Nu
+stringdef X    '{U+039E}' // Xi
+stringdef O    '{U+039F}' // Omicron
+stringdef P    '{U+03A0}' // Pi
+stringdef R    '{U+03A1}' // Rho
+stringdef S    '{U+03A3}' // Sigma
+stringdef T    '{U+03A4}' // Tau
+stringdef U    '{U+03A5}' // Upsilon
+stringdef F    '{U+03A6}' // Phi
+stringdef Ch   '{U+03A7}' // Chi
+stringdef Ps   '{U+03A8}' // Psi
+stringdef Oo   '{U+03A9}' // Omega
+
+stringdef Y:   '{U+03AA}' // Iota with dialytika
+stringdef U:   '{U+03AB}' // Upsilon with dialytika
+
+stringdef a'   '{U+03AC}' // alpha with tonos
+stringdef e'   '{U+03AD}' // epsilon with tonos
+stringdef i'   '{U+03AE}' // eta with tonos
+stringdef y'   '{U+03AF}' // iota with tonos
+stringdef o'   '{U+03CC}' // omicron with tonos
+stringdef u'   '{U+03CD}' // upsilon with tonos
+stringdef oo'  '{U+03CE}' // omega with tonos
+
+stringdef i:'  '{U+0390}' // iota with dialytika and tonos
+stringdef u:'  '{U+03B0}' // upsilon with dialytika and tonos
+
+stringdef i:   '{U+03CA}' // iota with dialytika
+stringdef u:   '{U+03CB}' // upsilon with dialytika
+
+stringdef A'   '{U+0386}' // Alpha with tonos
+stringdef E'   '{U+0388}' // Epsilon with tonos
+stringdef I'   '{U+0389}' // Eta with tonos
+stringdef Y'   '{U+038A}' // Iota with tonos
+stringdef O'   '{U+038C}' // Omicron with tonos
+stringdef U'   '{U+038E}' // Upsilon with tonos
+stringdef OO'  '{U+038F}' // Omega with tonos
+
+externals ( stem )
+
+booleans ( test1 )
+
+groupings ( v v2 )
+
+routines ( tolower has_min_length
+           steps1 steps2 steps3 steps4 steps5 steps6 steps7
+           steps8 steps9 steps10
+           step1 step2a step2b step2c step2d step3 step4
+           step5a step5b step5c step5d step5e step5f
+           step5g step5h step5i
+           step5j step5k step5l step5m
+           step6 step7 )
+
+define v '{a}{e}{i}{y}{o}{u}{oo}'
+define v2 '{a}{e}{i}{y}{o}{oo}'
+
+backwardmode (
+  define has_min_length as (
+    $(len >= 3)
+  )
+
+  define tolower as (
+    repeat (
+      [substring] among (
+        '{A}' (<- '{a}')
+        '{V}' (<- '{v}')
+        '{G}' (<- '{g}')
+        '{D}' (<- '{d}')
+        '{E}' (<- '{e}')
+        '{Z}' (<- '{z}')
+        '{I}' (<- '{i}')
+        '{Th}' (<- '{th}')
+        '{Y}' (<- '{y}')
+        '{K}' (<- '{k}')
+        '{L}' (<- '{l}')
+        '{M}' (<- '{m}')
+        '{N}' (<- '{n}')
+        '{X}' (<- '{x}')
+        '{O}' (<- '{o}')
+        '{P}' (<- '{p}')
+        '{R}' (<- '{r}')
+        '{S}' (<- '{s}')
+        '{T}' (<- '{t}')
+        '{U}' (<- '{u}')
+        '{F}' (<- '{f}')
+        '{Ch}' (<- '{ch}')
+        '{Ps}' (<- '{ps}')
+        '{Oo}' (<- '{oo}')
+        '{Y:}' (<- '{y}')
+        '{U:}' (<- '{u}')
+        '{a'}' (<- '{a}')
+        '{e'}' (<- '{e}')
+        '{i'}' (<- '{i}')
+        '{y'}' (<- '{y}')
+        '{o'}' (<- '{o}')
+        '{u'}' (<- '{u}')
+        '{oo'}' (<- '{oo}')
+        '{i:'}' (<- '{i}')
+        '{u:'}' (<- '{u}')
+        '{i:}' (<- '{i}')
+        '{u:}' (<- '{u}')
+        '{A'}' (<- '{a}')
+        '{E'}' (<- '{e}')
+        '{I'}' (<- '{i}')
+        '{Y'}' (<- '{y}')
+        '{O'}' (<- '{o}')
+        '{U'}' (<- '{u}')
+        '{OO'}' (<- '{oo}')
+        '{ss}' (<- '{s}')
+         '' (next)
+      )
+    )
+  )
+
+  define step1 as (
+    [substring] among (
+      '{f}{a}{g}{y}{a}' '{f}{a}{g}{y}{o}{u}' '{f}{a}{g}{y}{oo}{n}' (<- '{f}{a}')
+      '{s}{k}{a}{g}{y}{a}' '{s}{k}{a}{g}{y}{o}{u}' '{s}{k}{a}{g}{y}{oo}{n}' (<- '{s}{k}{a}')
+      '{o}{l}{o}{g}{y}{o}{u}' '{o}{l}{o}{g}{y}{a}' '{o}{l}{o}{g}{y}{oo}{n}' (<- '{o}{l}{o}')
+      '{s}{o}{g}{y}{o}{u}' '{s}{o}{g}{y}{a}' '{s}{o}{g}{y}{oo}{n}' (<- '{s}{o}')
+      '{t}{a}{t}{o}{g}{y}{a}' '{t}{a}{t}{o}{g}{y}{o}{u}' '{t}{a}{t}{o}{g}{y}{oo}{n}' (<- '{t}{a}{t}{o}')
+      '{k}{r}{e}{a}{s}' '{k}{r}{e}{a}{t}{o}{s}' '{k}{r}{e}{a}{t}{a}' '{k}{r}{e}{a}{t}{oo}{n}' (<- '{k}{r}{e}')
+      '{p}{e}{r}{a}{s}' '{p}{e}{r}{a}{t}{o}{s}' '{p}{e}{r}{a}{t}{i}' '{p}{e}{r}{a}{t}{a}' '{p}{e}{r}{a}{t}{oo}{n}' (<- '{p}{e}{r}')
+      '{t}{e}{r}{a}{s}' '{t}{e}{r}{a}{t}{o}{s}' '{t}{e}{r}{a}{t}{a}' '{t}{e}{r}{a}{t}{oo}{n}' (<- '{t}{e}{r}')
+      '{f}{oo}{s}' '{f}{oo}{t}{o}{s}' '{f}{oo}{t}{a}' '{f}{oo}{t}{oo}{n}' (<- '{f}{oo}')
+      '{k}{a}{th}{e}{s}{t}{oo}{s}' '{k}{a}{th}{e}{s}{t}{oo}{t}{o}{s}' '{k}{a}{th}{e}{s}{t}{oo}{t}{a}' '{k}{a}{th}{e}{s}{t}{oo}{t}{oo}{n}' (<- '{k}{a}{th}{e}{s}{t}')
+      '{g}{e}{g}{o}{n}{o}{s}' '{g}{e}{g}{o}{n}{o}{t}{o}{s}' '{g}{e}{g}{o}{n}{o}{t}{a}' '{g}{e}{g}{o}{n}{o}{t}{oo}{n}' (<- '{g}{e}{g}{o}{n}')
+    )
+    unset test1
+  )
+
+  define steps1 as (
+    [substring] among (
+      '{y}{z}{a}' '{y}{z}{e}{s}' '{y}{z}{e}' '{y}{z}{a}{m}{e}' '{y}{z}{a}{t}{e}' '{y}{z}{a}{n}' '{y}{z}{a}{n}{e}' '{y}{z}{oo}' '{y}{z}{e}{y}{s}' '{y}{z}{e}{y}'
+      '{y}{z}{o}{u}{m}{e}' '{y}{z}{e}{t}{e}' '{y}{z}{o}{u}{n}' '{y}{z}{o}{u}{n}{e}' (
+        delete
+        unset test1
+        ([] substring atlimit among (
+          '{a}{n}{a}{m}{p}{a}' '{e}{m}{p}{a}' '{e}{p}{a}' '{x}{a}{n}{a}{p}{a}' '{p}{a}' '{p}{e}{r}{y}{p}{a}' '{a}{th}{r}{o}' '{s}{u}{n}{a}{th}{r}{o}' '{d}{a}{n}{e}'
+          (<- '{y}')
+        )) or
+        ([] substring atlimit among (
+          '{m}{a}{r}{k}' '{k}{o}{r}{n}' '{a}{m}{p}{a}{r}' '{a}{r}{r}' '{v}{a}{th}{u}{r}{y}' '{v}{a}{r}{k}' '{v}' '{v}{o}{l}{v}{o}{r}' '{g}{k}{r}'
+          '{g}{l}{u}{k}{o}{r}' '{g}{l}{u}{k}{u}{r}' '{y}{m}{p}' '{l}' '{l}{o}{u}' '{m}{a}{r}' '{m}' '{p}{r}' '{m}{p}{r}' '{p}{o}{l}{u}{r}' '{p}'
+          '{r}' '{p}{y}{p}{e}{r}{o}{r}'
+          (<- '{y}{z}')
+        ))
+      )
+    )
+  )
+
+  define steps2 as (
+    [substring] among (
+      '{oo}{th}{i}{k}{a}' '{oo}{th}{i}{k}{e}{s}' '{oo}{th}{i}{k}{e}' '{oo}{th}{i}{k}{a}{m}{e}' '{oo}{th}{i}{k}{a}{t}{e}' '{oo}{th}{i}{k}{a}{n}' '{oo}{th}{i}{k}{a}{n}{e}' (
+        delete
+        unset test1
+        [] substring atlimit among (
+          '{a}{l}' '{v}{y}' '{e}{n}' '{u}{ps}' '{l}{y}' '{z}{oo}' '{s}' '{ch}' (<- '{oo}{n}')
+        )
+      )
+    )
+  )
+
+  define steps3 as (
+    [substring] among (
+      '{y}{s}{a}' '{y}{s}{e}{s}' '{y}{s}{e}' '{y}{s}{a}{m}{e}' '{y}{s}{a}{t}{e}' '{y}{s}{a}{n}' '{y}{s}{a}{n}{e}' (
+        delete
+        unset test1
+        ('{y}{s}{a}' atlimit <- '{y}{s}') or
+        ([] substring atlimit among (
+          '{a}{n}{a}{m}{p}{a}' '{a}{th}{r}{o}' '{e}{m}{p}{a}' '{e}{s}{e}' '{e}{s}{oo}{k}{l}{e}' '{e}{p}{a}' '{x}{a}{n}{a}{p}{a}' '{e}{p}{e}' '{p}{e}{r}{y}{p}{a}'
+          '{s}{u}{n}{a}{th}{r}{o}' '{d}{a}{n}{e}' '{k}{l}{e}' '{ch}{a}{r}{t}{o}{p}{a}' '{e}{x}{a}{r}{ch}{a}' '{m}{e}{t}{e}{p}{e}' '{a}{p}{o}{k}{l}{e}'
+          '{a}{p}{e}{k}{l}{e}' '{e}{k}{l}{e}' '{p}{e}'
+          (<- '{y}')
+        )) or
+        ([] substring atlimit among (
+          '{a}{n}' '{a}{f}' '{g}{e}' '{g}{y}{g}{a}{n}{t}{o}{a}{f}' '{g}{k}{e}' '{d}{i}{m}{o}{k}{r}{a}{t}' '{k}{o}{m}' '{g}{k}' '{m}' '{p}'
+          '{p}{o}{u}{k}{a}{m}' '{o}{l}{o}' '{l}{a}{r}'
+          (<- '{y}{s}')
+        ))
+      )
+    )
+  )
+
+  define steps4 as (
+    [substring] among (
+      '{y}{s}{oo}' '{y}{s}{e}{y}{s}' '{y}{s}{e}{y}' '{y}{s}{o}{u}{m}{e}' '{y}{s}{e}{t}{e}' '{y}{s}{o}{u}{n}' '{y}{s}{o}{u}{n}{e}' (
+        delete
+        unset test1
+        [] substring atlimit among (
+          '{a}{n}{a}{m}{p}{a}' '{e}{m}{p}{a}' '{e}{s}{e}' '{e}{s}{oo}{k}{l}{e}' '{e}{p}{a}' '{x}{a}{n}{a}{p}{a}' '{e}{p}{e}' '{p}{e}{r}{y}{p}{a}' '{a}{th}{r}{o}'
+          '{s}{u}{n}{a}{th}{r}{o}' '{d}{a}{n}{e}' '{k}{l}{e}' '{ch}{a}{r}{t}{o}{p}{a}' '{e}{x}{a}{r}{ch}{a}' '{m}{e}{t}{e}{p}{e}' '{a}{p}{o}{k}{l}{e}' '{a}{p}{e}{k}{l}{e}'
+          '{e}{k}{l}{e}' '{p}{e}'
+          (<- '{y}')
+        )
+      )
+    )
+  )
+
+  define steps5 as (
+    [substring] among (
+      '{y}{s}{t}{o}{s}' '{y}{s}{t}{o}{u}' '{y}{s}{t}{o}' '{y}{s}{t}{e}' '{y}{s}{t}{o}{y}' '{y}{s}{t}{oo}{n}' '{y}{s}{t}{o}{u}{s}' '{y}{s}{t}{i}' '{y}{s}{t}{i}{s}'
+      '{y}{s}{t}{a}' '{y}{s}{t}{e}{s}' (
+        delete
+        unset test1
+        ([] substring atlimit among (
+          '{d}{a}{n}{e}' '{s}{u}{n}{a}{th}{r}{o}' '{k}{l}{e}' '{s}{e}' '{e}{s}{oo}{k}{l}{e}' '{a}{s}{e}' '{p}{l}{e}'
+          (<- '{y}')
+        )) or
+        ([] substring atlimit among (
+          '{m}' '{p}' '{a}{p}' '{a}{r}' '{i}{d}' '{k}{t}' '{s}{k}' '{s}{ch}' '{u}{ps}' '{f}{a}' '{ch}{r}' '{ch}{t}' '{a}{k}{t}'
+          '{a}{o}{r}' '{a}{s}{ch}' '{a}{t}{a}' '{a}{ch}{n}' '{a}{ch}{t}' '{g}{e}{m}' '{g}{u}{r}' '{e}{m}{p}' '{e}{u}{p}' '{e}{ch}{th}' '{i}{f}{a}'
+          '{k}{a}{th}' '{k}{a}{k}' '{k}{u}{l}' '{l}{u}{g}' '{m}{a}{k}' '{m}{e}{g}' '{t}{a}{ch}' '{f}{y}{l}' '{ch}{oo}{r}'
+          (<- '{y}{s}{t}')
+        ))
+      )
+    )
+  )
+
+  define steps6 as (
+    [substring] among (
+      '{y}{s}{m}{o}' '{y}{s}{m}{o}{y}' '{y}{s}{m}{o}{s}' '{y}{s}{m}{o}{u}' '{y}{s}{m}{o}{u}{s}' '{y}{s}{m}{oo}{n}' (
+        delete
+        unset test1
+        ([] substring atlimit among (
+          '{s}{e}' '{m}{e}{t}{a}{s}{e}' '{m}{y}{k}{r}{o}{s}{e}' '{e}{g}{k}{l}{e}' '{a}{p}{o}{k}{l}{e}'
+          (<- '{y}{s}{m}')
+        )) or
+        ([] substring atlimit among (
+          '{d}{a}{n}{e}' '{a}{n}{t}{y}{d}{a}{n}{e}'
+          (<- '{y}')
+        )) or
+        ([substring] among (
+          '{a}{g}{n}{oo}{s}{t}{y}{k}' (<- '{a}{g}{n}{oo}{s}{t}')
+          '{a}{t}{o}{m}{y}{k}' (<- '{a}{t}{o}{m}')
+          '{g}{n}{oo}{s}{t}{y}{k}' (<- '{g}{n}{oo}{s}{t}')
+          '{e}{th}{n}{y}{k}' (<- '{e}{th}{n}')
+          '{e}{k}{l}{e}{k}{t}{y}{k}' (<- '{e}{k}{l}{e}{k}{t}')
+          '{s}{k}{e}{p}{t}{y}{k}' (<- '{s}{k}{e}{p}{t}')
+          '{t}{o}{p}{y}{k}' (<- '{t}{o}{p}')
+          '{a}{l}{e}{x}{a}{n}{d}{r}{y}{n}' (<- '{a}{l}{e}{x}{a}{n}{d}{r}')
+          '{v}{u}{z}{a}{n}{t}{y}{n}' (<- '{v}{u}{z}{a}{n}{t}')
+          '{th}{e}{a}{t}{r}{y}{n}' (<- '{th}{e}{a}{t}{r}')
+        ))
+      )
+    )
+  )
+
+  define steps7 as (
+    [substring] among (
+      '{a}{r}{a}{k}{y}' '{a}{r}{a}{k}{y}{a}' '{o}{u}{d}{a}{k}{y}' '{o}{u}{d}{a}{k}{y}{a}' (
+        delete
+        unset test1
+        [] substring atlimit among (
+         '{s}' '{ch}'
+         (<- '{a}{r}{a}{k}')
+        )
+      )
+    )
+  )
+
+  define steps8 as (
+    [substring] among (
+      '{a}{k}{y}' '{a}{k}{y}{a}' '{y}{t}{s}{a}' '{y}{t}{s}{a}{s}' '{y}{t}{s}{e}{s}' '{y}{t}{s}{oo}{n}' '{a}{r}{a}{k}{y}' '{a}{r}{a}{k}{y}{a}' (
+        delete
+        unset test1
+        ([] substring atlimit among (
+          '{v}{a}{m}{v}' '{v}{r}' '{k}{a}{y}{m}' '{k}{o}{n}' '{k}{o}{r}' '{l}{a}{v}{r}' '{l}{o}{u}{l}' '{m}{e}{r}' '{m}{o}{u}{s}{t}'
+          '{n}{a}{g}{k}{a}{s}' '{p}{l}' '{r}' '{r}{u}' '{s}' '{s}{k}' '{s}{o}{k}' '{s}{p}{a}{n}' '{t}{z}' '{f}{a}{r}{m}' '{ch}' '{k}{a}{p}{a}{k}'
+          '{a}{l}{y}{s}{f}' '{a}{m}{v}{r}' '{a}{n}{th}{r}' '{k}' '{f}{u}{l}' '{k}{a}{t}{r}{a}{p}' '{k}{l}{y}{m}' '{m}{a}{l}' '{s}{l}{o}{v}' '{f}'
+          '{s}{f}' '{t}{s}{e}{ch}{o}{s}{l}{o}{v}'
+           (<- '{a}{k}')
+        )) or
+        ([] substring atlimit among (
+          '{v}' '{v}{a}{l}' '{g}{y}{a}{n}' '{g}{l}' '{z}' '{i}{g}{o}{u}{m}{e}{n}' '{k}{a}{r}{d}' '{k}{o}{n}' '{m}{a}{k}{r}{u}{n}' '{n}{u}{f}'
+          '{p}{a}{t}{e}{r}' '{p}' '{s}{k}' '{t}{o}{s}' '{t}{r}{y}{p}{o}{l}'
+          (<- '{y}{t}{s}')
+        )) or
+        ([] '{k}{o}{r}' <- '{y}{t}{s}')
+      )
+    )
+  )
+
+  define steps9 as (
+    [substring] among (
+      '{y}{d}{y}{o}' '{y}{d}{y}{a}' '{y}{d}{y}{oo}{n}' (
+        delete
+        unset test1
+        ([] substring atlimit among (
+          '{a}{y}{f}{n}' '{y}{r}' '{o}{l}{o}' '{ps}{a}{l}' (<- '{y}{d}')
+        )) or
+        ([] substring among (
+          '{e}' '{p}{a}{y}{ch}{n}' (<- '{y}{d}')
+        ))
+      )
+    )
+  )
+
+  define steps10 as (
+    [substring] among (
+      '{y}{s}{k}{o}{s}' '{y}{s}{k}{o}{u}' '{y}{s}{k}{o}' '{y}{s}{k}{e}' (
+        delete
+        unset test1
+        [] substring atlimit among (
+         '{d}' '{y}{v}' '{m}{i}{n}' '{r}' '{f}{r}{a}{g}{k}' '{l}{u}{k}' '{o}{v}{e}{l}'
+         (<- '{y}{s}{k}')
+        )
+      )
+    )
+  )
+
+  define step2a as (
+    [substring] among (
+      '{a}{d}{e}{s}' '{a}{d}{oo}{n}' (delete)
+    )
+    not ([substring] among (
+      '{o}{k}' '{m}{a}{m}' '{m}{a}{n}' '{m}{p}{a}{m}{p}' '{p}{a}{t}{e}{r}' '{g}{y}{a}{g}{y}' '{n}{t}{a}{n}{t}' '{k}{u}{r}' '{th}{e}{y}' '{p}{e}{th}{e}{r}'
+    ))
+    insert '{a}{d}'
+  )
+
+  define step2b as (
+    [substring] among (
+      '{e}{d}{e}{s}' '{e}{d}{oo}{n}' (delete)
+    )
+    [] substring among (
+      '{o}{p}' '{y}{p}' '{e}{m}{p}' '{u}{p}' '{g}{i}{p}' '{d}{a}{p}' '{k}{r}{a}{s}{p}' '{m}{y}{l}' (<- '{e}{d}')
+    )
+  )
+
+  define step2c as (
+    [substring] among (
+      '{o}{u}{d}{e}{s}' '{o}{u}{d}{oo}{n}' (delete)
+    )
+    [] substring among (
+      '{a}{r}{k}' '{k}{a}{l}{y}{a}{k}' '{p}{e}{t}{a}{l}' '{l}{y}{ch}' '{p}{l}{e}{x}' '{s}{k}' '{s}' '{f}{l}' '{f}{r}' '{v}{e}{l}' '{l}{o}{u}{l}' '{ch}{n}'
+      '{s}{p}' '{t}{r}{a}{g}' '{f}{e}' (<- '{o}{u}{d}')
+    )
+  )
+
+  define step2d as (
+    [substring] among (
+      '{e}{oo}{s}' '{e}{oo}{n}' (delete unset test1)
+    )
+    [] substring atlimit among (
+      '{th}' '{d}' '{e}{l}' '{g}{a}{l}' '{n}' '{p}' '{y}{d}' '{p}{a}{r}' (<- '{e}')
+    )
+  )
+
+  define step3 as (
+    [substring] among (
+      '{y}{a}' '{y}{o}{u}' '{y}{oo}{n}' (delete unset test1)
+    )
+    ([] v <- '{y}')
+  )
+
+  define step4 as (
+    [substring] among (
+       '{y}{k}{a}' '{y}{k}{o}' '{y}{k}{o}{u}' '{y}{k}{oo}{n}' (delete unset test1)
+    )
+    ([] v <- '{y}{k}') or
+    [] substring atlimit among (
+      '{a}{l}' '{a}{d}' '{e}{n}{d}' '{a}{m}{a}{n}' '{a}{m}{m}{o}{ch}{a}{l}' '{i}{th}' '{a}{n}{i}{th}' '{a}{n}{t}{y}{d}' '{f}{u}{s}' '{v}{r}{oo}{m}' '{g}{e}{r}'
+      '{e}{x}{oo}{d}' '{k}{a}{l}{p}' '{k}{a}{l}{l}{y}{n}' '{k}{a}{t}{a}{d}' '{m}{o}{u}{l}' '{m}{p}{a}{n}' '{m}{p}{a}{g}{y}{a}{t}' '{m}{p}{o}{l}' '{m}{p}{o}{s}'
+      '{n}{y}{t}' '{x}{y}{k}' '{s}{u}{n}{o}{m}{i}{l}' '{p}{e}{t}{s}' '{p}{y}{t}{s}' '{p}{y}{k}{a}{n}{t}' '{p}{l}{y}{a}{t}{s}' '{p}{o}{s}{t}{e}{l}{n}' '{p}{r}{oo}{t}{o}{d}'
+      '{s}{e}{r}{t}' '{s}{u}{n}{a}{d}' '{t}{s}{a}{m}' '{u}{p}{o}{d}' '{f}{y}{l}{o}{n}' '{f}{u}{l}{o}{d}' '{ch}{a}{s}'
+      (<- '{y}{k}')
+    )
+  )
+
+  define step5a as (
+    do ('{a}{g}{a}{m}{e}' atlimit <- '{a}{g}{a}{m}')
+    do (
+      [substring] among (
+        '{a}{g}{a}{m}{e}' '{i}{s}{a}{m}{e}' '{o}{u}{s}{a}{m}{e}' '{i}{k}{a}{m}{e}' '{i}{th}{i}{k}{a}{m}{e}' (delete unset test1)
+      )
+    )
+    ['{a}{m}{e}']
+    delete
+    unset test1
+    [] substring atlimit among (
+      '{a}{n}{a}{p}' '{a}{p}{o}{th}' '{a}{p}{o}{k}' '{a}{p}{o}{s}{t}' '{v}{o}{u}{v}' '{x}{e}{th}' '{o}{u}{l}' '{p}{e}{th}' '{p}{y}{k}{r}' '{p}{o}{t}' '{s}{y}{ch}' '{ch}'
+      (<- '{a}{m}')
+    )
+  )
+
+  define step5b as (
+    do (
+      [substring] among (
+        '{a}{g}{a}{n}{e}' '{i}{s}{a}{n}{e}' '{o}{u}{s}{a}{n}{e}' '{y}{o}{n}{t}{a}{n}{e}' '{y}{o}{t}{a}{n}{e}' '{y}{o}{u}{n}{t}{a}{n}{e}' '{o}{n}{t}{a}{n}{e}' '{o}{t}{a}{n}{e}'
+        '{o}{u}{n}{t}{a}{n}{e}' '{i}{k}{a}{n}{e}' '{i}{th}{i}{k}{a}{n}{e}' (
+          delete
+          unset test1
+          [] substring atlimit among (
+            '{t}{r}' '{t}{s}' (<- '{a}{g}{a}{n}')
+          )
+        )
+      )
+    )
+    ['{a}{n}{e}']
+    delete
+    unset test1
+    ([] v2 <- '{a}{n}') or
+    [] substring atlimit among (
+      '{v}{e}{t}{e}{r}' '{v}{o}{u}{l}{k}' '{v}{r}{a}{ch}{m}' '{g}' '{d}{r}{a}{d}{o}{u}{m}'
+      '{th}' '{k}{a}{l}{p}{o}{u}{z}' '{k}{a}{s}{t}{e}{l}' '{k}{o}{r}{m}{o}{r}' '{l}{a}{o}{p}{l}' '{m}{oo}{a}{m}{e}{th}'
+      '{m}' '{m}{o}{u}{s}{o}{u}{l}{m}' '{n}' '{o}{u}{l}' '{p}' '{p}{e}{l}{e}{k}' '{p}{l}' '{p}{o}{l}{y}{s}'
+      '{p}{o}{r}{t}{o}{l}' '{s}{a}{r}{a}{k}{a}{t}{s}' '{s}{o}{u}{l}{t}' '{t}{s}{a}{r}{l}{a}{t}' '{o}{r}{f}'
+      '{t}{s}{y}{g}{g}' '{t}{s}{o}{p}' '{f}{oo}{t}{o}{s}{t}{e}{f}' '{ch}' '{ps}{u}{ch}{o}{p}{l}' '{a}{g}'
+      '{g}{a}{l}' '{g}{e}{r}' '{d}{e}{k}' '{d}{y}{p}{l}' '{a}{m}{e}{r}{y}{k}{a}{n}' '{o}{u}{r}' '{p}{y}{th}'
+      '{p}{o}{u}{r}{y}{t}' '{s}' '{z}{oo}{n}{t}' '{y}{k}' '{k}{a}{s}{t}' '{k}{o}{p}' '{l}{y}{ch}'
+      '{l}{o}{u}{th}{i}{r}' '{m}{a}{y}{n}{t}' '{m}{e}{l}' '{s}{y}{g}' '{s}{p}' '{s}{t}{e}{g}' '{t}{r}{a}{g}'
+      '{t}{s}{a}{g}' '{f}' '{e}{r}' '{a}{d}{a}{p}' '{a}{th}{y}{g}{g}' '{a}{m}{i}{ch}' '{a}{n}{y}{k}'
+      '{a}{n}{o}{r}{g}' '{a}{p}{i}{g}' '{a}{p}{y}{th}' '{a}{t}{s}{y}{g}{g}' '{v}{a}{s}' '{v}{a}{s}{k}'
+      '{v}{a}{th}{u}{g}{a}{l}' '{v}{y}{o}{m}{i}{ch}' '{v}{r}{a}{ch}{u}{k}' '{d}{y}{a}{t}' '{d}{y}{a}{f}' '{e}{n}{o}{r}{g}'
+      '{th}{u}{s}' '{k}{a}{p}{n}{o}{v}{y}{o}{m}{i}{ch}' '{k}{a}{t}{a}{g}{a}{l}' '{k}{l}{y}{v}' '{k}{o}{y}{l}{a}{r}{f}'
+      '{l}{y}{v}' '{m}{e}{g}{l}{o}{v}{y}{o}{m}{i}{ch}' '{m}{y}{k}{r}{o}{v}{y}{o}{m}{i}{ch}' '{n}{t}{a}{v}'
+      '{x}{i}{r}{o}{k}{l}{y}{v}' '{o}{l}{y}{g}{o}{d}{a}{m}' '{o}{l}{o}{g}{a}{l}' '{p}{e}{n}{t}{a}{r}{f}' '{p}{e}{r}{i}{f}'
+      '{p}{e}{r}{y}{t}{r}' '{p}{l}{a}{t}' '{p}{o}{l}{u}{d}{a}{p}' '{p}{o}{l}{u}{m}{i}{ch}' '{s}{t}{e}{f}' '{t}{a}{v}'
+      '{t}{e}{t}' '{u}{p}{e}{r}{i}{f}' '{u}{p}{o}{k}{o}{p}' '{ch}{a}{m}{i}{l}{o}{d}{a}{p}' '{ps}{i}{l}{o}{t}{a}{v}'
+      (<- '{a}{n}')
+    )
+  )
+
+  define step5c as (
+    do (
+      [substring] among (
+        '{i}{s}{e}{t}{e}' (delete unset test1)
+      )
+    )
+    ['{e}{t}{e}']
+    delete
+    unset test1
+    ([] v2 <- '{e}{t}') or
+    ([] substring among (
+      '{o}{d}' '{a}{y}{r}' '{f}{o}{r}' '{t}{a}{th}' '{d}{y}{a}{th}' '{s}{ch}' '{e}{n}{d}' '{e}{u}{r}' '{t}{y}{th}' '{u}{p}{e}{r}{th}'
+      '{r}{a}{th}' '{e}{n}{th}' '{r}{o}{th}' '{s}{th}' '{p}{u}{r}' '{a}{y}{n}' '{s}{u}{n}{d}' '{s}{u}{n}' '{s}{u}{n}{th}' '{ch}{oo}{r}'
+      '{p}{o}{n}' '{v}{r}' '{k}{a}{th}' '{e}{u}{th}' '{e}{k}{th}' '{n}{e}{t}' '{r}{o}{n}' '{a}{r}{k}' '{v}{a}{r}' '{v}{o}{l}' '{oo}{f}{e}{l}'
+      (<- '{e}{t}')
+    )) or
+    [] substring atlimit among (
+      '{a}{v}{a}{r}' '{v}{e}{n}' '{e}{n}{a}{r}' '{a}{v}{r}' '{a}{d}' '{a}{th}' '{a}{n}' '{a}{p}{l}' '{v}{a}{r}{o}{n}' '{n}{t}{r}' '{s}{k}' '{k}{o}{p}'
+      '{m}{p}{o}{r}' '{n}{y}{f}' '{p}{a}{g}' '{p}{a}{r}{a}{k}{a}{l}' '{s}{e}{r}{p}' '{s}{k}{e}{l}' '{s}{u}{r}{f}' '{t}{o}{k}' '{u}' '{d}' '{e}{m}'
+      '{th}{a}{r}{r}' '{th}'
+      (<- '{e}{t}')
+    )
+  )
+
+  define step5d as (
+    [substring] among (
+      '{o}{n}{t}{a}{s}' '{oo}{n}{t}{a}{s}' (
+        delete
+        unset test1
+        ([] '{a}{r}{ch}' atlimit <- '{o}{n}{t}') or
+        ([] '{k}{r}{e}' <- '{oo}{n}{t}')
+      )
+    )
+  )
+
+  define step5e as (
+    [substring] among (
+      '{o}{m}{a}{s}{t}{e}' '{y}{o}{m}{a}{s}{t}{e}' (
+        delete
+        unset test1
+        ([] '{o}{n}' atlimit <- '{o}{m}{a}{s}{t}')
+      )
+    )
+  )
+
+  define step5f as (
+    do (
+      ['{y}{e}{s}{t}{e}']
+      delete
+      unset test1
+      [] substring atlimit among (
+        '{p}' '{a}{p}' '{s}{u}{m}{p}' '{a}{s}{u}{m}{p}' '{a}{k}{a}{t}{a}{p}' '{a}{m}{e}{t}{a}{m}{f}' (<- '{y}{e}{s}{t}')
+      )
+    )
+    ['{e}{s}{t}{e}']
+    delete
+    unset test1
+    [] substring atlimit among (
+      '{a}{l}' '{a}{r}' '{e}{k}{t}{e}{l}' '{z}' '{m}' '{x}' '{p}{a}{r}{a}{k}{a}{l}' '{p}{r}{o}' '{n}{y}{s}'
+      (<- '{y}{e}{s}{t}')
+    )
+  )
+
+  define step5g as (
+    do (
+      [substring] among (
+        '{i}{th}{i}{k}{a}' '{i}{th}{i}{k}{e}{s}' '{i}{th}{i}{k}{e}' (delete unset test1)
+      )
+    )
+    [substring] among (
+      '{i}{k}{a}' '{i}{k}{e}{s}' '{i}{k}{e}' (
+        delete
+        unset test1
+        ([] substring among (
+           '{s}{k}{oo}{l}' '{s}{k}{o}{u}{l}' '{n}{a}{r}{th}' '{s}{f}' '{o}{th}' '{p}{y}{th}' (<- '{i}{k}')
+        )) or
+        ([] substring atlimit among (
+           '{d}{y}{a}{th}' '{th}' '{p}{a}{r}{a}{k}{a}{t}{a}{th}' '{p}{r}{o}{s}{th}' '{s}{u}{n}{th}' (<- '{i}{k}')
+        ))
+      )
+    )
+  )
+
+  define step5h as (
+    [substring] among (
+      '{o}{u}{s}{a}' '{o}{u}{s}{e}{s}' '{o}{u}{s}{e}' (
+        delete
+        unset test1
+        ([] substring among (
+          '{p}{o}{d}{a}{r}' '{v}{l}{e}{p}' '{p}{a}{n}{t}{a}{ch}' '{f}{r}{u}{d}' '{m}{a}{n}{t}{y}{l}' '{m}{a}{l}{l}' '{k}{u}{m}{a}{t}' '{l}{a}{ch}' '{l}{i}{g}'
+          '{f}{a}{g}' '{o}{m}' '{p}{r}{oo}{t}' (<- '{o}{u}{s}')
+
+        )) or
+        ([] substring atlimit among (
+          '{f}{a}{r}{m}{a}{k}' '{ch}{a}{d}' '{a}{g}{k}' '{a}{n}{a}{r}{r}' '{v}{r}{o}{m}' '{e}{k}{l}{y}{p}' '{l}{a}{m}{p}{y}{d}' '{l}{e}{ch}' '{m}' '{p}{a}{t}'
+          '{r}' '{l}' '{m}{e}{d}' '{m}{e}{s}{a}{z}' '{u}{p}{o}{t}{e}{y}{n}' '{a}{m}' '{a}{y}{th}' '{a}{n}{i}{k}' '{d}{e}{s}{p}{o}{z}'
+          '{e}{n}{d}{y}{a}{f}{e}{r}' '{d}{e}' '{d}{e}{u}{t}{e}{r}{e}{u}' '{k}{a}{th}{a}{r}{e}{u}' '{p}{l}{e}' '{t}{s}{a}'
+          (<- '{o}{u}{s}')
+        ))
+      )
+    )
+  )
+
+  define step5i as (
+    [substring] among (
+      '{a}{g}{a}' '{a}{g}{e}{s}' '{a}{g}{e}' (
+        delete
+        unset test1
+        ([] '{k}{o}{l}{l}' <- '{a}{g}') or (
+          not ([substring] among ('{ps}{o}{f}' '{n}{a}{u}{l}{o}{ch}'))
+          ([] substring among (
+            '{o}{f}' '{p}{e}{l}' '{ch}{o}{r}{t}' '{l}{l}' '{s}{f}' '{r}{p}' '{f}{r}' '{p}{r}' '{l}{o}{ch}' '{s}{m}{i}{n}'
+            (<- '{a}{g}')
+          )) or
+          ([] substring atlimit among (
+            '{a}{v}{a}{s}{t}' '{p}{o}{l}{u}{f}' '{a}{d}{i}{f}' '{p}{a}{m}{f}' '{r}' '{a}{s}{p}' '{a}{f}' '{a}{m}{a}{l}' '{a}{m}{a}{l}{l}{y}'
+            '{a}{n}{u}{s}{t}' '{a}{p}{e}{r}' '{a}{s}{p}{a}{r}' '{a}{ch}{a}{r}' '{d}{e}{r}{v}{e}{n}' '{d}{r}{o}{s}{o}{p}' '{x}{e}{f}' '{n}{e}{o}{p}'
+            '{n}{o}{m}{o}{t}' '{o}{l}{o}{p}' '{o}{m}{o}{t}' '{p}{r}{o}{s}{t}' '{p}{r}{o}{s}{oo}{p}{o}{p}' '{s}{u}{m}{p}' '{s}{u}{n}{t}' '{t}' '{u}{p}{o}{t}'
+            '{ch}{a}{r}' '{a}{e}{y}{p}' '{a}{y}{m}{o}{s}{t}' '{a}{n}{u}{p}' '{a}{p}{o}{t}' '{a}{r}{t}{y}{p}' '{d}{y}{a}{t}' '{e}{n}' '{e}{p}{y}{t}'
+            '{k}{r}{o}{k}{a}{l}{o}{p}' '{s}{y}{d}{i}{r}{o}{p}' '{l}' '{n}{a}{u}' '{o}{u}{l}{a}{m}' '{o}{u}{r}' '{p}' '{t}{r}' '{m}'
+            (<- '{a}{g}')
+          ))
+        )
+      )
+    )
+  )
+
+  define step5j as (
+    [substring] among (
+      '{i}{s}{e}' '{i}{s}{o}{u}' '{i}{s}{a}' (delete unset test1)
+    )
+    [] substring atlimit among (
+      '{n}' '{ch}{e}{r}{s}{o}{n}' '{d}{oo}{d}{e}{k}{a}{n}' '{e}{r}{i}{m}{o}{n}' '{m}{e}{g}{a}{l}{o}{n}' '{e}{p}{t}{a}{n}' (<- '{i}{s}')
+    )
+  )
+
+  define step5k as (
+    [substring] among (
+      '{i}{s}{t}{e}' (delete unset test1)
+    )
+    [] substring atlimit among (
+      '{a}{s}{v}' '{s}{v}' '{a}{ch}{r}' '{ch}{r}' '{a}{p}{l}' '{a}{e}{y}{m}{n}' '{d}{u}{s}{ch}{r}' '{e}{u}{ch}{r}' '{k}{o}{y}{n}{o}{ch}{r}' '{p}{a}{l}{y}{m}{ps}'
+      (<- '{i}{s}{t}')
+    )
+  )
+
+  define step5l as (
+    [substring] among (
+      '{o}{u}{n}{e}' '{i}{s}{o}{u}{n}{e}' '{i}{th}{o}{u}{n}{e}' (delete unset test1)
+    )
+    [] substring atlimit among (
+      '{n}' '{r}' '{s}{p}{y}' '{s}{t}{r}{a}{v}{o}{m}{o}{u}{t}{s}' '{k}{a}{k}{o}{m}{o}{u}{t}{s}' '{e}{x}{oo}{n}' (<- '{o}{u}{n}')
+    )
+  )
+
+  define step5m as (
+    [substring] among (
+      '{o}{u}{m}{e}' '{i}{s}{o}{u}{m}{e}' '{i}{th}{o}{u}{m}{e}' (delete unset test1)
+    )
+    [] substring atlimit among (
+      '{p}{a}{r}{a}{s}{o}{u}{s}' '{f}' '{ch}' '{oo}{r}{y}{o}{p}{l}' '{a}{z}' '{a}{l}{l}{o}{s}{o}{u}{s}' '{a}{s}{o}{u}{s}'
+      (<- '{o}{u}{m}')
+    )
+  )
+
+  define step6 as (
+    do (
+      [substring] among (
+        '{m}{a}{t}{a}' '{m}{a}{t}{oo}{n}' '{m}{a}{t}{o}{s}' (<- '{m}{a}')
+      )
+    )
+    test1
+    [substring] among (
+      '{a}' '{a}{g}{a}{t}{e}' '{a}{g}{a}{n}' '{a}{e}{y}' '{a}{m}{a}{y}' '{a}{n}' '{a}{s}' '{a}{s}{a}{y}' '{a}{t}{a}{y}' '{a}{oo}' '{e}' '{e}{y}'
+      '{e}{y}{s}' '{e}{y}{t}{e}' '{e}{s}{a}{y}' '{e}{s}' '{e}{t}{a}{y}' '{y}' '{y}{e}{m}{a}{y}' '{y}{e}{m}{a}{s}{t}{e}' '{y}{e}{t}{a}{y}' '{y}{e}{s}{a}{y}'
+      '{y}{e}{s}{a}{s}{t}{e}' '{y}{o}{m}{a}{s}{t}{a}{n}' '{y}{o}{m}{o}{u}{n}' '{y}{o}{m}{o}{u}{n}{a}' '{y}{o}{n}{t}{a}{n}' '{y}{o}{n}{t}{o}{u}{s}{a}{n}' '{y}{o}{s}{a}{s}{t}{a}{n}'
+      '{y}{o}{s}{a}{s}{t}{e}' '{y}{o}{s}{o}{u}{n}' '{y}{o}{s}{o}{u}{n}{a}' '{y}{o}{t}{a}{n}' '{y}{o}{u}{m}{a}' '{y}{o}{u}{m}{a}{s}{t}{e}' '{y}{o}{u}{n}{t}{a}{y}'
+      '{y}{o}{u}{n}{t}{a}{n}' '{i}' '{i}{d}{e}{s}' '{i}{d}{oo}{n}' '{i}{th}{e}{y}' '{i}{th}{e}{y}{s}' '{i}{th}{e}{y}{t}{e}' '{i}{th}{i}{k}{a}{t}{e}' '{i}{th}{i}{k}{a}{n}'
+      '{i}{th}{o}{u}{n}' '{i}{th}{oo}' '{i}{k}{a}{t}{e}' '{i}{k}{a}{n}' '{i}{s}' '{i}{s}{a}{n}' '{i}{s}{a}{t}{e}' '{i}{s}{e}{y}' '{i}{s}{e}{s}' '{i}{s}{o}{u}{n}'
+      '{i}{s}{oo}' '{o}' '{o}{y}' '{o}{m}{a}{y}' '{o}{m}{a}{s}{t}{a}{n}' '{o}{m}{o}{u}{n}' '{o}{m}{o}{u}{n}{a}' '{o}{n}{t}{a}{y}' '{o}{n}{t}{a}{n}'
+      '{o}{n}{t}{o}{u}{s}{a}{n}' '{o}{s}' '{o}{s}{a}{s}{t}{a}{n}' '{o}{s}{a}{s}{t}{e}' '{o}{s}{o}{u}{n}' '{o}{s}{o}{u}{n}{a}' '{o}{t}{a}{n}' '{o}{u}' '{o}{u}{m}{a}{y}'
+      '{o}{u}{m}{a}{s}{t}{e}' '{o}{u}{n}' '{o}{u}{n}{t}{a}{y}' '{o}{u}{n}{t}{a}{n}' '{o}{u}{s}' '{o}{u}{s}{a}{n}' '{o}{u}{s}{a}{t}{e}' '{u}' '{u}{s}' '{oo}'
+      '{oo}{n}' (delete)
+    )
+  )
+
+  define step7 as (
+    [substring] among (
+      '{e}{s}{t}{e}{r}' '{e}{s}{t}{a}{t}' '{o}{t}{e}{r}' '{o}{t}{a}{t}' '{u}{t}{e}{r}' '{u}{t}{a}{t}' '{oo}{t}{e}{r}' '{oo}{t}{a}{t}' (delete)
+    )
+  )
+)
+
+define stem as (
+    backwards (
+      do tolower
+      has_min_length
+      set test1
+      do step1
+      do steps1
+      do steps2
+      do steps3
+      do steps4
+      do steps5
+      do steps6
+      do steps7
+      do steps8
+      do steps9
+      do steps10
+      do step2a
+      do step2b
+      do step2c
+      do step2d
+      do step3
+      do step4
+      do step5a
+      do step5b
+      do step5c
+      do step5d
+      do step5e
+      do step5f
+      do step5g
+      do step5h
+      do step5j
+      do step5i
+      do step5k
+      do step5l
+      do step5m
+      do step6
+      do step7
+    )
+)

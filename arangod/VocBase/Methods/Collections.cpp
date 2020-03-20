@@ -172,14 +172,14 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
         return Result();
       } else {
-        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection not found");
       }
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      return Result(TRI_ERROR_INTERNAL);
+      return Result(TRI_ERROR_INTERNAL,"internal error during collection lookup");
     }
 
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -200,7 +200,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      return Result(TRI_ERROR_INTERNAL);
+      return Result(TRI_ERROR_INTERNAL,"internal error during collection lookup - canUseCollection");
     }
 
     return Result();
@@ -259,14 +259,15 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                              vocbase.server().hasFeature<ShardingFeature>();
   bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
   bool useRevs =
-      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB();
+      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB() &&
+      LogicalCollection::currentVersion() >= LogicalCollection::Version::v37;
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
 
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
-  
+
     if (ServerState::instance()->isCoordinator()) {
       Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties, vocbase.server(), enforceReplicationFactor);
       if (res.fail()) {
@@ -312,10 +313,10 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       }
 
       if (!vocbase.IsSystemName(info.name)) {
-        uint64_t numberOfShards = Helper::getNumericValue<uint64_t>(info.properties, StaticStrings::NumberOfShards, 0);
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
-        if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+        if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+            vocbase.sharding() == "single") {
           auto const isSatellite =
               Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
                                    velocypack::StringRef{""}) == StaticStrings::Satellite;
@@ -327,14 +328,6 @@ Result Collections::create(TRI_vocbase_t& vocbase,
             helper.add(StaticStrings::DistributeShardsLike,
                        VPackValue(vocbase.shardingPrototypeName()));
           }
-        } else if (vocbase.sharding() == "single" && numberOfShards <= 1) {
-          auto distributeSlice = info.properties.get(StaticStrings::DistributeShardsLike);
-          if (distributeSlice.isNone()) {
-            helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
-          } else if (distributeSlice.isNull() ||
-                     (distributeSlice.isString() && distributeSlice.compareString("") == 0)) {
-            helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
-          }
         }
       }
 
@@ -342,7 +335,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       if (writeConcernSlice.isNone()) { // "minReplicationFactor" deprecated in 3.6
         writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
       }
-      
+
       if (writeConcernSlice.isNone()) {
         helper.add(StaticStrings::MinReplicationFactor, VPackValue(vocbase.writeConcern()));
         helper.add(StaticStrings::WriteConcern, VPackValue(vocbase.writeConcern()));
@@ -377,7 +370,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
   TRI_ASSERT(builder.isOpenArray());
   builder.close();
-    
+
 
   VPackSlice const infoSlice = builder.slice();
 
@@ -627,10 +620,10 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 Result Collections::updateProperties(LogicalCollection& collection,
                                      velocypack::Slice const& props) {
   const bool partialUpdate = false; // always a full update for collections
-  
+
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
-  
+
   if (!canModify || !exec.canUseDatabase(auth::Level::RW)) {
     return TRI_ERROR_FORBIDDEN;
   }
@@ -640,7 +633,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
         collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto info = ci.getCollection(collection.vocbase().name(),
                                  std::to_string(collection.id()));
-    
+
     // replication checks
     int64_t replFactor = Helper::getNumericValue<int64_t>(props, StaticStrings::ReplicationFactor, 0);
     if (replFactor > 0) {
@@ -648,7 +641,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
         return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
       }
     }
-    
+
     // not an error: for historical reasons the write concern is read from the
     // variable "minReplicationFactor" if it exists
     uint64_t writeConcern = Helper::getNumericValue(props, StaticStrings::MinReplicationFactor, 0);
@@ -836,7 +829,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   } else {
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
-  
+
   LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail())
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
@@ -952,8 +945,8 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     // We directly read the entire cursor. so batchsize == limit
     OperationCursor opCursor(trx.indexScan(cname, transaction::Methods::CursorType::ALL));
 
-    opCursor.allDocuments([&](LocalDocumentId const&, VPackSlice doc) { 
-      cb(doc.resolveExternal()); 
+    opCursor.allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
+      cb(doc.resolveExternal());
       return true;
     }, 1000);
 
@@ -967,7 +960,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   if (ServerState::instance()->isCoordinator()) {
     return Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
-  
+
   auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
   Result res = trx.begin();
@@ -975,7 +968,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   if (res.fail()) {
     return res;
   }
-  
+
   revId = collection.revision(&trx);
   checksum = 0;
 

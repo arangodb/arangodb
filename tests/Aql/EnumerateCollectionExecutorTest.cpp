@@ -26,8 +26,8 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AqlCall.h"
+#include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
 #include "IResearch/common.h"
 #include "Mocks/Servers.h"
 #include "QueryHelper.h"
@@ -353,7 +353,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
                 ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked
 
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -373,7 +373,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
                               {R"(null)"},
                               {R"(null)"}})*/
       .expectedState(ExecutionState::DONE)
-      .setExecBlock<EnumerateCollectionExecutor>(std::move(makeInfos()))
+      .addConsumer<EnumerateCollectionExecutor>(std::move(makeInfos()))
       .run();
 }
 
@@ -386,7 +386,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
   // auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
   std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
       // .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)
@@ -394,7 +394,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
       .expectSkipped(0)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::HASMORE)
-      .setExecBlock<EnumerateCollectionExecutor>(std::move(makeInfos()))
+      .addConsumer<EnumerateCollectionExecutor>(std::move(makeInfos()))
       .run();
 }
 
@@ -406,7 +406,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default
   std::vector<std::string> queryResults;
   std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
 
-  ExecutorTestHelper<1, 1>(*fakedQuery)
+  makeExecutorTestHelper<1, 1>()
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name":
 "UnitTestCollection" })"}}})
       .setInputSplitType(split)
@@ -414,7 +414,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default
       .expectSkipped(5)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::DONE)
-      .setExecBlock<EnumerateCollectionExecutor>(std::move(makeInfos()))
+      .addConsumer<EnumerateCollectionExecutor>(std::move(makeInfos()))
       .run();
 }
 

@@ -44,6 +44,11 @@ Returns an object containing all collection properties.
   Changes (see below) are applied when the collection is loaded the next
   time.
 
+* *validation* (optional, default is *null*, **rocksdb-only**): 
+  Object that specifies the collection level document validation for documents.
+  The attribute keys `rule`, `level` and `message` must follow the rules
+  documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+
 In a cluster setup, the result will also contain the following attributes:
 
 * *numberOfShards*: the number of shards of the collection.
@@ -52,10 +57,10 @@ In a cluster setup, the result will also contain the following attributes:
   determine the target shard for documents.
 
 * *replicationFactor*: determines how many copies of each shard are kept 
-  on different DBServers. Has to be in the range of 1-10. _(cluster only)_
+  on different DB-Servers. Has to be in the range of 1-10. _(cluster only)_
 
 * *writeConcern*: determines how many copies of each shard are required to be
-  in sync on the different DBServers. If there are less then these many copies
+  in sync on the different DB-Servers. If there are less then these many copies
   in the cluster a shard will refuse to write. Writes to shards with enough
   up-to-date copies will succeed at the same time however. The value of
   *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
@@ -80,11 +85,11 @@ one or more of the following attribute(s):
   This option is meaningful for the MMFiles storage engine only.
 
 * *replicationFactor*: Change the number of shard copies kept on 
-  different DBServers, valid values are  integer numbers
+  different DB-Servers, valid values are  integer numbers
   in the range of 1-10. _(cluster only)_
 
 * *writeConcern*: change how many copies of each shard are required to be
-  in sync on the different DBServers. If there are less then these many copies
+  in sync on the different DB-Servers. If there are less then these many copies
   in the cluster a shard will refuse to write. Writes to shards with enough
   up-to-date copies will succeed at the same time however. The value of
   *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_

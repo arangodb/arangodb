@@ -73,7 +73,8 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
       _sslProtocol(TLS_GENERIC),
       _sslOptions(asio_ns::ssl::context::default_workarounds |
                   asio_ns::ssl::context::single_dh_use),
-      _ecdhCurve("prime256v1") {
+      _ecdhCurve("prime256v1"),
+      _preferHttp11InAlpn(false) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 }
@@ -116,6 +117,10 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--ssl.ecdh-curve",
       "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"",
       new StringParameter(&_ecdhCurve));
+
+  options->addOption("--ssl.prefer-http1-in-alpn",
+                     "Allows to let the server prefer HTTP/1.1 over HTTP/2 in ALPN protocol negotiations",
+                     new BooleanParameter(&_preferHttp11InAlpn));
 }
 
 void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -201,12 +206,38 @@ class BIOGuard {
 };
 }  // namespace
 
+static inline bool searchForProtocol(const unsigned char** out, unsigned char* outlen,
+                                     const unsigned char* in, unsigned int inlen,
+                                     const char* proto) {
+  size_t len = strlen(proto);
+  size_t i = 0;
+  while (i + len <= inlen) {
+    if (memcmp(in + i, proto, len) == 0) {
+      *out = (const unsigned char *)(in + i + 1);
+      *outlen = proto[0];
+      return true;
+    }
+    i += in[i] + 1;
+  }
+  return false;
+}
+
 static int alpn_select_proto_cb(SSL* ssl, const unsigned char** out,
                                 unsigned char* outlen, const unsigned char* in,
                                 unsigned int inlen, void* arg) {
-  int rv = nghttp2_select_next_protocol((unsigned char**)out, outlen, in, inlen);
+  int rv = 0;
+  bool const* preferHttp11InAlpn = (bool*) arg;
+  if (*preferHttp11InAlpn) {
+    if (!searchForProtocol(out, outlen, in, inlen, "\x8http/1.1")) {
+      if (!searchForProtocol(out, outlen, in, inlen, "\x2h2")) {
+        rv = -1;
+      }
+    }
+  } else {
+    rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+  }
 
-  if (rv != 1) {
+  if (rv < 0) {
     return SSL_TLSEXT_ERR_NOACK;
   }
 
@@ -344,7 +375,7 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(std::string key
 
     sslContext.set_verify_mode(SSL_VERIFY_NONE);
 
-    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
+    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, (void*) (&_preferHttp11InAlpn));
 
     return sslContext;
   } catch (std::exception const& ex) {
