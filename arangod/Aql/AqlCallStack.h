@@ -88,17 +88,19 @@ class AqlCallStack {
 
   /**
    * @brief Check if we are in a subquery that is in-fact required to
-   *        be skipped. This is relevant for executors that have created
+   *        be counted, either as skipped or as produced.
+   *        This is relevant for executors that have created
    *        an equivalentFetchAllShadowRows stack, in order to decide if
    *        the need to produce output or if they are skipped.
    *
    * @return true
    * @return false
    */
-  auto needToSkipSubquery() const noexcept -> bool;
+  auto needToCountSubquery() const noexcept -> bool;
 
+  auto needToSkipSubquery() const noexcept -> bool;
   /**
-   * @brief This is only valid if needToSkipSubquery is true.
+   * @brief This is only valid if needToCountSubquery is true.
    *        It will resolve to the heighest subquery level
    *        (outermost) that needs to be skipped.
    *

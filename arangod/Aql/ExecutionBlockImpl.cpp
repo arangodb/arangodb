@@ -1517,10 +1517,11 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
                                                                  SkipResult& skipResult)
     -> ExecState {
   TRI_ASSERT(executorHasSideEffects<Executor>);
-  if (!stack.needToSkipSubquery()) {
+  if (!stack.needToCountSubquery()) {
     // We need to really produce things here
     // fall back to original version as any other executor.
-    return shadowRowForwarding(stack);
+    auto res = shadowRowForwarding(stack);
+    return res;
   }
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
@@ -1554,6 +1555,13 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     if (shadowCall.needSkipMore()) {
       shadowCall.didSkip(1);
       skipResult.didSkipSubquery(1, shadowDepth);
+    } else if (shadowCall.getLimit() > 0) {
+      TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
+      _outputItemRow->copyRow(shadowRow);
+      shadowCall.didProduce(1);
+      TRI_ASSERT(_outputItemRow->produced());
+      _outputItemRow->advanceRow();
+      didWriteRow = true;
     } else {
       TRI_ASSERT(shadowCall.hardLimit == 0);
       // Simply drop this shadowRow!

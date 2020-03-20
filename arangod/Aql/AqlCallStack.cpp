@@ -165,6 +165,12 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
   return res;
 }
 
+auto AqlCallStack::needToCountSubquery() const noexcept -> bool {
+  return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
+    return call.peekNextCall().needSkipMore() || call.peekNextCall().hasLimit();
+  });
+}
+
 auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
   return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
     return call.peekNextCall().needSkipMore() || call.peekNextCall().hardLimit == 0;
@@ -172,10 +178,10 @@ auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
 }
 
 auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
-  TRI_ASSERT(needToSkipSubquery());
+  TRI_ASSERT(needToCountSubquery());
   for (size_t i = 0; i < _operations.size(); ++i) {
     auto& call = _operations.at(i);
-    if (call.peekNextCall().needSkipMore() || call.peekNextCall().hardLimit == 0) {
+    if (call.peekNextCall().needSkipMore() || call.peekNextCall().hasLimit()) {
       return _operations.size() - i - 1;
     }
   }
