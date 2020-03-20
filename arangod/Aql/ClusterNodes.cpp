@@ -171,8 +171,10 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
 
-  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
-      &engine, this, std::move(infos), server(), getDistributeId(), queryId(), api());
+  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(&engine, this,
+                                                              std::move(infos), server(),
+                                                              getDistributeId(),
+                                                              queryId(), api());
 }
 
 /// @brief toVelocyPack, for RemoteNode
@@ -205,9 +207,7 @@ CostEstimate RemoteNode::estimateCost() const {
   return estimate;
 }
 
-auto RemoteNode::api() const noexcept -> Api {
-  return _apiToUse;
-}
+auto RemoteNode::api() const noexcept -> Api { return _apiToUse; }
 
 auto RemoteNode::apiToVpack(Api const api) -> velocypack::Value {
   return VPackValue(static_cast<std::underlying_type_t<Api>>(api));
@@ -589,14 +589,27 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER || node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE ||
-        node->getType() == ExecutionNode::TRAVERSAL ||
-        node->getType() == ExecutionNode::SHORTEST_PATH ||
-        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+    LOG_DEVEL << "ParallelizableFinder::before " << node->id();
+    auto nodeType = node->getType();
+
+    if (nodeType == ExecutionNode::SCATTER || nodeType == ExecutionNode::GATHER ||
+        nodeType == ExecutionNode::DISTRIBUTE) {
+      LOG_DEVEL << "not parallelizable (1)";
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
+
+    if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
+        nodeType == ExecutionNode::K_SHORTEST_PATHS) {
+      LOG_DEVEL << "traversal node";
+      GraphNode* gn = ExecutionNode::castTo<GraphNode*>(node);
+      if (!gn->isUsedAsSatellite()) {
+        LOG_DEVEL << "graph node not used as satellite";
+        _isParallelizable = false;
+        return true;  // true to abort the whole walking process
+      }
+    }
+
     // write operations of type REMOVE, REPLACE and UPDATE
     // can be parallelized, provided the rest of the plan
     // does not prohibit this
@@ -604,6 +617,7 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
         (!_parallelizeWrites || (node->getType() != ExecutionNode::REMOVE &&
                                  node->getType() != ExecutionNode::REPLACE &&
                                  node->getType() != ExecutionNode::UPDATE))) {
+      LOG_DEVEL << "not parallelizable ()";
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
@@ -620,8 +634,11 @@ bool GatherNode::isParallelizable() const {
     return false;
   }
 
+  LOG_DEVEL << "checking is all dependencies of gather are parallelizable";
+
   ParallelizableFinder finder(*_vocbase);
   for (ExecutionNode* e : _dependencies) {
+    LOG_DEVEL << "walking node " << e->id();
     e->walk(finder);
     if (!finder._isParallelizable) {
       return false;
@@ -637,8 +654,7 @@ void GatherNode::setParallelism(GatherNode::Parallelism value) {
 
 GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
                                                   size_t shardsRequiredForHeapMerge) noexcept {
-  return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap
-                                                      : SortMode::MinElement;
+  return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap : SortMode::MinElement;
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
