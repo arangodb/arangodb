@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
+#include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -389,8 +390,20 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   return true;  //  continue read lopp
 }
 
+#ifdef USE_DTRACE
+// Moved out to avoid duplication by templates.
+static void __attribute__ ((noinline)) DTraceH2CommTaskProcessStream(size_t th) {
+  DTRACE_PROBE1(arangod, H2CommTaskProcessStream, th);
+}
+#else
+static void DTraceH2CommTaskProcessStream(size_t) {}
+#endif
+
 template <SocketType T>
 void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
+
+  DTraceH2CommTaskProcessStream((size_t) this);
+
   TRI_ASSERT(stream);
 
   std::unique_ptr<HttpRequest> req = std::move(stream->request);
@@ -463,10 +476,21 @@ bool expectResponseBody(int status_code) {
 }
 }  // namespace
 
+#ifdef USE_DTRACE
+// Moved out to avoid duplication by templates.
+static void __attribute__ ((noinline)) DTraceH2CommTaskSendResponse(size_t th) {
+  DTRACE_PROBE1(arangod, H2CommTaskSendResponse, th);
+}
+#else
+static void DTraceH2CommTaskSendResponse(size_t) {}
+#endif
+
 template <SocketType T>
 void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
                                  RequestStatistics* stat) {
-  
+
+  DTraceH2CommTaskSendResponse((size_t) this);
+
   // TODO the statistics are total bogus here
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
   if (stat) {
@@ -630,6 +654,19 @@ void H2CommTask<T>::queueHttp2Responses() {
   }
 }
 
+#ifdef USE_DTRACE
+// Moved out to avoid duplication by templates.
+static void __attribute__ ((noinline)) DTraceH2CommTaskBeforeAsyncWrite(size_t th) {
+  DTRACE_PROBE1(arangod, H2CommTaskBeforeAsyncWrite, th);
+}
+static void __attribute__ ((noinline)) DTraceH2CommTaskAfterAsyncWrite(size_t th) {
+  DTRACE_PROBE1(arangod, H2CommTaskAfterAsyncWrite, th);
+}
+#else 
+static void DTraceH2CommTaskBeforeAsyncWrite(size_t) {}
+static void DTraceH2CommTaskAfterAsyncWrite(size_t) {}
+#endif
+
 // called on IO context thread
 template <SocketType T>
 void H2CommTask<T>::doWrite() {
@@ -685,6 +722,8 @@ void H2CommTask<T>::doWrite() {
     return;
   }
 
+  DTraceH2CommTaskBeforeAsyncWrite((size_t) this);
+
   asio_ns::async_write(this->_protocol->socket, outBuffers,
                        [self = this->shared_from_this()](const asio_ns::error_code& ec,
                                                          std::size_t nwrite) {
@@ -694,6 +733,8 @@ void H2CommTask<T>::doWrite() {
                            me.close(ec);
                            return;
                          }
+
+                         DTraceH2CommTaskAfterAsyncWrite((size_t) self.get());
 
                          me.doWrite();
                        });

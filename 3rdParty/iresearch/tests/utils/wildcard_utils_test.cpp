@@ -252,6 +252,22 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foo\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
   }
 
+  // prefix
+  {
+    auto a = irs::from_wildcard("foo\\%");
+    assert_properties(a);
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foo"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foo%"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foa"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foabar"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foo\xE2\x9E\x96\xE2\x9E\x96"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foo\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foo\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
+  }
+
   // mixed
   {
     auto a = irs::from_wildcard("a%foo");
@@ -626,9 +642,11 @@ TEST_F(wildcard_utils_test, wildcard_type) {
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo"))));
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xE2"))));
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\\foo"))));
-  ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\\%foo"))));
+  ASSERT_EQ(irs::WildcardType::TERM_ESCAPED, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\\%foo"))));
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\foo"))));
   ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX_ESCAPED, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\\\\\\\\\\\\%"))));
+  ASSERT_EQ(irs::WildcardType::TERM_ESCAPED, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\\\\\\\\\\%"))));
   ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%%"))));
   ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xE2\x25"))));
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\x25"))));
@@ -638,11 +656,11 @@ TEST_F(wildcard_utils_test, wildcard_type) {
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%\\"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("fo%o\\%"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo_%"))));
-  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\_%"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX_ESCAPED, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\_%"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo__"))));
-  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\%%"))));
-  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\%%%"))));
-  ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\%\\%"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX_ESCAPED, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\%%"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX_ESCAPED, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\%%%"))));
+  ASSERT_EQ(irs::WildcardType::TERM_ESCAPED, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\%\\%"))));
   ASSERT_EQ(irs::WildcardType::MATCH_ALL, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("%"))));
   ASSERT_EQ(irs::WildcardType::MATCH_ALL, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("%%"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("%c%"))));

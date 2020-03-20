@@ -93,6 +93,10 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
   auto skipped = size_t{0};
 
+   if (done()) {
+    return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
+  }
+
   if (call.getOffset() > 0) {
     skipped = input.skipForDependency(currentDependency(), call.getOffset());
   } else {
@@ -108,15 +112,14 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   // Here we are either done, or currentDependency() still could produce more
   if (done()) {
     return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
-  } else {
-    // If we're not done skipping, we can just request the current clientcall
-    // from upstream
-    auto callSet = AqlCallSet{};
-    if (call.needSkipMore()) {
-      callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
-    }
-    return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
+  } 
+  // If we're not done skipping, we can just request the current clientcall
+  // from upstream
+  auto callSet = AqlCallSet{};
+  if (call.needSkipMore()) {
+    callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
   }
+  return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
 }
 
 auto UnsortedGatherExecutor::numDependencies() const

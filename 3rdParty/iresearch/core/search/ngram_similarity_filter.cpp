@@ -52,7 +52,7 @@ NS_ROOT
 ///@brief adapter for min_match_disjunction with honor of terms orderings
 //////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
+class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, score_ctx {
  public:
   struct position_t {
     position_t(position* p, document* d, score* s)

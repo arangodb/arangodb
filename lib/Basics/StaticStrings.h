@@ -226,6 +226,7 @@ class StaticStrings {
   static std::string const Sharding;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
+  static std::string const SyncByRevision;
   static std::string const TempObjectId;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Validation;
@@ -318,10 +319,19 @@ class StaticStrings {
   static std::string const ValidatorParameterLevel;
   static std::string const ValidatorParameterType;
   static std::string const ValidatorParameterRule;
+  static std::string const ValidatorParameterSpecialProperties;
 
   static std::string const ValidatorTypeJsonSchema;
   static std::string const ValidatorTypeAQL;
   static std::string const ValidatorTypeBool;
+
+  static std::string const ValidatorPropertyAll;
+  static std::string const ValidatorPropertyNone;
+  static std::string const ValidatorPropertyKey;
+  static std::string const ValidatorPropertyId;
+  static std::string const ValidatorPropertyRev;
+  static std::string const ValidatorPropertyFrom;
+  static std::string const ValidatorPropertyTo;
 
   // metrics prometheus labels
   static std::string const HeartbeatSendTimeMs;
@@ -367,7 +377,6 @@ class StaticStrings {
   static std::string const SupervisionAccumRuntimeMs;
   static std::string const SupervisionAccumRuntimeWaitForSyncMs;
   static std::string const SupervisionFailedServerCount;
-
 };
 }  // namespace arangodb
 

@@ -31,7 +31,7 @@
 
 NS_LOCAL
 
-class column_existence_iterator final : public irs::doc_iterator_base {
+class column_existence_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
  public:
   explicit column_existence_iterator(
       const irs::sub_reader& reader,

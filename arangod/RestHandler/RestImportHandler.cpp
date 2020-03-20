@@ -288,6 +288,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   bool const overwrite = _request->parsedValue("overwrite", false);
   OperationOptions opOptions;
   opOptions.waitForSync = _request->parsedValue("waitForSync", false);
+  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
 
   // extract the collection name
   bool found;
@@ -370,7 +371,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   VPackBuilder tmpBuilder;
 
-  if (linewise) {    
+  if (linewise) {
     // each line is a separate JSON document
     VPackStringRef body = _request->rawPayload();
     char const* ptr = body.data();
@@ -658,7 +659,7 @@ bool RestImportHandler::createFromKeyValueList() {
                                         lineNumValue.data() + lineNumValue.size());
   }
 
-  // json required here  
+  // json required here
   // each line is a separate JSON document
   VPackStringRef body = _request->rawPayload();
   char const* current = body.data();

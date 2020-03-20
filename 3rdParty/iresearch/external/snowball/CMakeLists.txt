@@ -2,7 +2,7 @@ PROJECT(snowball C)
 
 cmake_minimum_required(VERSION 2.8)
 
-SET(SNOWBALL_VERSION_MAJOR 1)
+SET(SNOWBALL_VERSION_MAJOR 2)
 SET(SNOWBALL_VERSION_MINOR 0)
 SET(SNOWBALL_VERSION_PATCH 0)
 
@@ -42,7 +42,7 @@ IF(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
 		ENDIF(ENABLE_OPTIMIZATION MATCHES "ON")
 	ELSE()
 		set(SUN_BUILD32 "-m32")
-		set(SUN_BUILD64 "-m64")		
+		set(SUN_BUILD64 "-m64")
 	ENDIF()
  	IF (BUILD_CPU_MODE STREQUAL "32")
 		message (STATUS "Building 32-bit mode on Solaris")
@@ -141,19 +141,24 @@ ENDIF(ENABLE_STATIC MATCHES "ON")
 
 # End of configuration
 SET(LIBSTEM_ALGORITHMS
-  arabic
-  danish dutch english finnish french german hungarian
-  irish italian
-  norwegian porter portuguese romanian
-  russian spanish swedish tamil turkish
+  arabic basque catalan danish dutch english
+  finnish french german hungarian indonesian
+  irish italian norwegian porter portuguese
+  romanian russian spanish swedish tamil turkish
 )
 SET(KOI8_ALGORITHMS russian)
 SET(ISO_8859_1_ALGORITHMS
-  danish dutch english finnish french german irish
-  italian norwegian porter portuguese spanish swedish
+  basque catalan danish dutch english finnish
+  french german indonesian irish italian
+  norwegian porter portuguese spanish swedish
 )
-SET(ISO_8859_2_ALGORITHMS hungarian romanian)
-SET(OTHER_ALGORITHMS german2 kraaij_pohlmann lovins)
+SET(ISO_8859_2_ALGORITHMS
+  hungarian romanian
+)
+SET(OTHER_ALGORITHMS
+  german2 greek hindi kraaij_pohlmann
+  lithuanian lovins nepali serbian
+)
 SET(ALL_ALGORITHMS ${LIBSTEM_ALGORITHMS} ${OTHER_ALGORITHMS})
 
 SET(COMPILER_SOURCES
@@ -162,9 +167,11 @@ SET(COMPILER_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/analyser.c
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator.c
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/driver.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_csharp.c
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_go.c
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_java.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_jsx.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_js.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_pascal.c
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_python.c
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_rust.c
 )
@@ -175,11 +182,6 @@ SET(SNOWBALL_RUNTIME
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime/api.c
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime/utilities.c
 )
-SET(LIBSTEMMER_SOURCES libstemmer/libstemmer.c)
-SET(LIBSTEMMER_UTF8_SOURCES libstemmer/libstemmer_utf8.c)
-#LIBSTEMMER_UTF8_SOURCES = libstemmer/libstemmer_utf8.c
-#LIBSTEMMER_HEADERS = include/libstemmer.h libstemmer/modules.h libstemmer/modules_utf8.h
-#LIBSTEMMER_EXTRA = libstemmer/modules.txt libstemmer/modules_utf8.txt libstemmer/libstemmer_c.in
 
 SET(STEMWORDS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/examples/stemwords.c)
 SET(MODULES_H "modules.h")
@@ -188,38 +190,22 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/libstemmer_c.in ${CMAKE_CU
 MACRO(gen_stem IN ENCODING)
 	FOREACH(_it ${IN})
 		SET(_base "${CMAKE_CURRENT_BINARY_DIR}/libstemmer/stem_${ENCODING}_${_it}")
-		SET(_header "${_base}.h")
 		SET(_source "${_base}.c")
-		STRING(REPLACE "UTF_8" "Unicode" _in_enc "${ENCODING}")
-		SET(_input "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_${_in_enc}.sbl")
-		IF(${_in_enc} STREQUAL "Unicode" AND NOT EXISTS ${_input})
-			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				COMMAND $<TARGET_FILE:snowball>  "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_ISO_8859_1.sbl" -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
-				DEPENDS snowball)
-			LIST(APPEND STEMMER_SOURCES ${_source})
-
-		ELSE()
-		IF(EXISTS "${_input}")
-			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				COMMAND $<TARGET_FILE:snowball> ${_input} -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
-				DEPENDS snowball)
-			LIST(APPEND STEMMER_SOURCES ${_source})
-		ENDIF()
-		ENDIF()
+		SET(_input "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}.sbl")
+		ADD_CUSTOM_COMMAND(OUTPUT ${_source}
+			COMMAND $<TARGET_FILE:snowball> ${_input} -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+			DEPENDS snowball)
+		LIST(APPEND STEMMER_SOURCES ${_source})
 	ENDFOREACH()
 ENDMACRO()
 
 INCLUDE_DIRECTORIES("include")
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}/libstemmer")
 
+# NOTE: modules.h gets overwritten by static file from iresearch.build folder
 ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/libstemmer
   COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/mkmodules.pl ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h "libstemmer" ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/modules.txt ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/mkinc.mak
-)
-
-ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules_utf8.h
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/libstemmer
-  COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/mkmodules.pl ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h "libstemmer" ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/modules_utf8.txt ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/mkinc_utf8.mak utf8
 )
 
 ADD_CUSTOM_TARGET(modules DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h")
@@ -233,6 +219,7 @@ gen_stem("${LIBSTEM_ALGORITHMS}" "UTF_8")
 gen_stem("${KOI8_ALGORITHMS}" "KOI8_R")
 gen_stem("${ISO_8859_1_ALGORITHMS}" "ISO_8859_1")
 gen_stem("${ISO_8859_2_ALGORITHMS}" "ISO_8859_2")
+gen_stem("${OTHER_ALGORITHMS}" "UTF_8")
 
 INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer

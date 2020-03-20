@@ -39,8 +39,7 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 ShortestPathFinder::ShortestPathFinder(ShortestPathOptions& options)
-    : _options(options),
-      _httpRequests(0) {}
+    : _options(options), _httpRequests(0) {}
 
 void ShortestPathFinder::destroyEngines() {
   if (!ServerState::instance()->isCoordinator()) {
@@ -54,22 +53,22 @@ void ShortestPathFinder::destroyEngines() {
     return;
   }
   // nullptr only happens on controlled server shutdown
-  
+
   auto ch = reinterpret_cast<ClusterTraverserCache*>(_options.cache());
-  
+
   network::RequestOptions options;
   options.database = _options.trx()->vocbase().name();
   options.timeout = network::Timeout(30.0);
-  options.skipScheduler = true; // hack to speed up future.get()
+  options.skipScheduler = true;  // hack to speed up future.get()
 
   for (auto const& it : *ch->engines()) {
     incHttpRequests(1);
 
-    auto res =
-        network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
-                             "/_internal/traverser/" + arangodb::basics::StringUtils::itoa(it.second),
-                             VPackBuffer<uint8_t>(), options)
-            .get();
+    auto res = network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+                                    "/_internal/traverser/" +
+                                        arangodb::basics::StringUtils::itoa(it.second),
+                                    VPackBuffer<uint8_t>(), options)
+                   .get();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have

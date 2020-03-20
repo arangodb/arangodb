@@ -27,7 +27,7 @@
 
 NS_ROOT
 
-class all_iterator final : public irs::doc_iterator_base {
+class all_iterator final : public irs::doc_iterator_base<doc_iterator> {
  public:
   all_iterator(
     const irs::sub_reader& reader,

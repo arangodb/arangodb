@@ -341,6 +341,16 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
   _skipped = 0;
   return {translatedReturnType(), NoStats{}, call.getSkipCount(), getUpstreamCall()};
 }
+template <bool isModificationSubquery>
+[[nodiscard]] auto SubqueryExecutor<isModificationSubquery>::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if constexpr (isModificationSubquery) {
+    // This executor might skip data.
+    // It could overfetch it before.
+    return std::min(call.getLimit(), input.countDataRows());
+  }
+  return input.countDataRows();
+}
 
 template class ::arangodb::aql::SubqueryExecutor<true>;
 template class ::arangodb::aql::SubqueryExecutor<false>;

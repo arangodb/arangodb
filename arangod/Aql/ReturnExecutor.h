@@ -115,6 +115,9 @@ class ReturnExecutor {
   [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const
       -> std::pair<ExecutionState, size_t>;
 
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
  private:
   ReturnExecutorInfos& _infos;
   Fetcher& _fetcher;
