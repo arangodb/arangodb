@@ -50,7 +50,7 @@ option(VERBOSE "be verbose about flags used" OFF)
 option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
 
 # use strictly required OpenSSL version (from ./VERSIONS file)
-option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" ON)
+option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" OFF)
 
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
