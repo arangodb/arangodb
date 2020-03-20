@@ -111,9 +111,11 @@ class RocksDBIndex : public Index {
 
   rocksdb::Comparator const* comparator() const;
 
-  RocksDBKeyBounds getBounds() const {
-    return RocksDBIndex::getBounds(type(), _objectId, _unique);
+  RocksDBKeyBounds getBounds(std::uint64_t objectId) const {
+    return RocksDBIndex::getBounds(type(), objectId, _unique);
   }
+
+  RocksDBKeyBounds getBounds() const { return getBounds(_objectId); }
 
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 

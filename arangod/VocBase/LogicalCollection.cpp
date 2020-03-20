@@ -87,7 +87,8 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   }
 
   auto version = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-      info, "version", static_cast<uint32_t>(LogicalCollection::currentVersion()));
+      info, StaticStrings::Version,
+      static_cast<uint32_t>(LogicalCollection::currentVersion()));
 
   // predictable UUID for legacy collections
   if (static_cast<LogicalCollection::Version>(version) < LogicalCollection::Version::v33 && info.isObject()) {
@@ -143,7 +144,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
-          info, "version", static_cast<uint32_t>(currentVersion())))),
+          info, StaticStrings::Version, static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
                                                          TRI_COL_TYPE_UNKNOWN)),
@@ -633,9 +634,14 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   result.openObject();
   result.add(VPackValue("parameters"));
 
-  std::unordered_set<std::string> ignoreKeys{
-      "allowUserKeys",        "cid",      "count",  "statusString", "version",
-      "distributeShardsLike", "objectId", "indexes"};
+  std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
+                                             "cid",
+                                             "count",
+                                             "statusString",
+                                             StaticStrings::Version,
+                                             "distributeShardsLike",
+                                             StaticStrings::ObjectId,
+                                             StaticStrings::Indexes};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, Serialization::List);
   {
     VPackObjectBuilder guard(&result);
@@ -687,7 +693,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
   result.add("statusString", VPackValue(::translateStatus(_status)));
-  result.add("version", VPackValue(static_cast<uint32_t>(_version)));
+  result.add(StaticStrings::Version, VPackValue(static_cast<uint32_t>(_version)));
 
   // Collection Flags
   result.add("waitForSync", VPackValue(_waitForSync));
@@ -933,6 +939,11 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern, replicationFactor);
+  _usesRevisionsAsDocumentIds =
+      Helper::getBooleanValue(slice, StaticStrings::UsesRevisionsAsDocumentIds,
+                              _usesRevisionsAsDocumentIds);
+  _syncByRevision =
+      Helper::getBooleanValue(slice, StaticStrings::SyncByRevision, _syncByRevision);
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well

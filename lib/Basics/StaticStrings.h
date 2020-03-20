@@ -230,6 +230,7 @@ class StaticStrings {
   static std::string const TempObjectId;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Validation;
+  static std::string const Version;
   static std::string const WriteConcern;
 
   // graph attribute names

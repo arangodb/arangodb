@@ -387,7 +387,7 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isSmartChild;
 #endif
 
-  bool const _usesRevisionsAsDocumentIds;
+  bool _usesRevisionsAsDocumentIds;
 
   TRI_voc_rid_t const _minRevision;
 

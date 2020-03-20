@@ -534,10 +534,10 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check that properties include usesRevisionsAsDocumentIds
+/// @brief check that properties include syncByRevision
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUsesRevisionsAsDocumentIds: function () {
+    testSyncByRevision: function () {
       var cn = "example";
 
       db._drop(cn);
@@ -551,8 +551,8 @@ function CollectionSuite () {
 
       var p = c1.properties();
 
-      assertEqual(true, p.hasOwnProperty("usesRevisionsAsDocumentIds"));
-      assertEqual(false, p.usesRevisionsAsDocumentIds);
+      assertEqual(true, p.hasOwnProperty("syncByRevision"));
+      assertEqual(false, p.syncByRevision);
 
       db._drop(cn);
     },

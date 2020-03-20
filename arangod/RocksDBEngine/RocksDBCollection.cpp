@@ -1279,7 +1279,7 @@ std::pair<std::uint64_t, std::uint64_t> clearTemporaryObjectId(std::uint64_t obj
 }
 
 Result setObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& collection,
-                                 ::ObjectIdTransformer idFunc) {
+                                 ::ObjectIdTransformer idFunc, bool setVersion) {
   Result res;
   rocksdb::WriteOptions wo;
   rocksdb::WriteBatch batch;
@@ -1307,11 +1307,8 @@ Result setObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& c
     std::uint64_t tempObjectId =
         basics::VelocyPackHelper::stringUInt64(oldProps, StaticStrings::TempObjectId);
     outputPair = idFunc(objectId, tempObjectId);
-    if (!oldProps.isObject()) {
-      LOG_DEVEL << "oldProps";
-    }
     for (auto pair : arangodb::velocypack::ObjectIterator(oldProps)) {
-      if (pair.key.isEqualString("indexes")) {  // append new index
+      if (pair.key.isEqualString("indexes")) {
         arangodb::velocypack::ArrayBuilder collectionIndicesArrayGuard(&builder, StaticStrings::Indexes);
         for (auto idxSlice : arangodb::velocypack::ArrayIterator(pair.value)) {
           auto idx = collection.lookupIndex(idxSlice);
@@ -1325,9 +1322,6 @@ Result setObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& c
           std::uint64_t tempObjectIdIdx =
               basics::VelocyPackHelper::stringUInt64(idxSlice, StaticStrings::TempObjectId);
           auto outputPairIdx = idFunc(objectIdIdx, tempObjectIdIdx);
-          if (!idxSlice.isObject()) {
-            LOG_DEVEL << "idxSlice";
-          }
           for (auto idxPair : arangodb::velocypack::ObjectIterator(idxSlice)) {
             if (idxPair.key.isEqualString(StaticStrings::ObjectId) ||
                 idxPair.key.isEqualString(StaticStrings::TempObjectId)) {
@@ -1346,6 +1340,12 @@ Result setObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& c
       }
       if (pair.key.isEqualString(StaticStrings::ObjectId) ||
           pair.key.isEqualString(StaticStrings::TempObjectId)) {
+        continue;
+      }
+      if (setVersion && pair.key.isEqualString(StaticStrings::Version)) {
+        builder.add(StaticStrings::Version,
+                    arangodb::velocypack::Value(
+                        static_cast<std::uint32_t>(LogicalCollection::Version::v37)));
         continue;
       }
       builder.add(pair.key);
@@ -1645,6 +1645,66 @@ Result copyIndexToNewObjectIdSpace(rocksdb::DB& db, arangodb::LogicalCollection&
 
   return res;
 }
+
+Result updateCollectionPropertiesForSyncing(arangodb::transaction::Methods& trx,
+                                            arangodb::LogicalCollection& collection) {
+  Result res;
+  arangodb::velocypack::Builder oldBuilder;
+  {
+    arangodb::velocypack::ObjectBuilder guard(&oldBuilder);
+    arangodb::methods::Collections::Context ctx(collection.vocbase(), collection, &trx);
+    res = arangodb::methods::Collections::properties(ctx, oldBuilder);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  arangodb::velocypack::Builder newBuilder;
+  {
+    arangodb::velocypack::ObjectBuilder guard(&newBuilder);
+    for (auto pair : arangodb::velocypack::ObjectIterator(oldBuilder.slice())) {
+      if (pair.key.isEqualString(StaticStrings::SyncByRevision)) {
+        newBuilder.add(StaticStrings::SyncByRevision, arangodb::velocypack::Value(true));
+      } else if (pair.key.isEqualString(StaticStrings::UsesRevisionsAsDocumentIds)) {
+        newBuilder.add(StaticStrings::UsesRevisionsAsDocumentIds,
+                       arangodb::velocypack::Value(true));
+      } else {
+        newBuilder.add(pair.key);
+        newBuilder.add(pair.value);
+      }
+    }
+  }
+
+  res = collection.properties(newBuilder.slice(), false);
+
+  return res;
+}
+
+Result cleanupOldIdSpaces(rocksdb::DB& db, arangodb::RocksDBMetaCollection& rcoll) {
+  Result res;
+
+  if (rcoll.tempObjectId() != 0) {
+    auto bounds = arangodb::RocksDBKeyBounds::CollectionDocuments(rcoll.tempObjectId());
+    res = arangodb::rocksutils::removeLargeRange(&db, bounds, true, true);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  std::vector<std::shared_ptr<arangodb::Index>> indices = rcoll.getIndexes();
+  for (auto& idx : indices) {
+    auto& ridx = static_cast<arangodb::RocksDBIndex&>(*idx);
+    if (ridx.tempObjectId() != 0) {
+      auto bounds = ridx.getBounds(ridx.tempObjectId());
+      res = arangodb::rocksutils::removeLargeRange(&db, bounds, true, true);
+      if (res.fail()) {
+        return res;
+      }
+    }
+  }
+
+  return res;
+}
 }  // namespace
 
 Result RocksDBCollection::upgrade() {
@@ -1653,16 +1713,20 @@ Result RocksDBCollection::upgrade() {
     return res;
   }
 
+  if (_logicalCollection.system()) {
+    res.reset(TRI_ERROR_BAD_PARAMETER, "no upgrading system collections");
+    return res;
+  }
+
   auto& server = _logicalCollection.vocbase().server();
   auto& selector = server.getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
   res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                    ::injectNewTemporaryObjectId);
+                                    ::injectNewTemporaryObjectId, false);
   if (res.fail()) {
     return res;
   }
-  // TODO handle cluster?
 
   {
     // start an exclusive transaction to block access to the collection
@@ -1688,19 +1752,26 @@ Result RocksDBCollection::upgrade() {
       }
     }
 
-    res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection, ::swapObjectIds);
+    res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                      ::swapObjectIds, true);
     if (res.fail()) {
       return res;
     }
 
-    // TODO make sure collection props are set right for revisions and replication
+    res = ::updateCollectionPropertiesForSyncing(trx, _logicalCollection);
+    if (res.fail()) {
+      return res;
+    }
+    // TODO handle cluster; probably need agency lock on collection
   }
 
-  // TODO remove data from old id spaces for collection, drop temp id
+  res = ::cleanupOldIdSpaces(*engine.db(), *this);
+  if (res.fail()) {
+    return res;
+  }
 
-  // TODO remove data from old id spaces for indices, drop temp ids
-
-  res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection, ::clearTemporaryObjectId);
+  res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                    ::clearTemporaryObjectId, false);
   if (res.fail()) {
     return res;
   }

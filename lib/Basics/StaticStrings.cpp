@@ -249,6 +249,7 @@ std::string const StaticStrings::TempObjectId("tempObjectId");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Validation("validation");
+std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
 
 // graph attribute names
