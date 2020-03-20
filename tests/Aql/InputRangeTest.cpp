@@ -74,6 +74,9 @@ class InputRangeTest : public AqlExecutorTestCase<> {
       size_t depNr = 0;
       std::unordered_map<size_t, std::vector<size_t>> chosenRows;
       chosenRows.reserve(_numberDependencies);
+      for (size_t i = 0; i < _numberDependencies; ++i) {
+        chosenRows.emplace(i, std::vector<size_t>{});
+      }
 
       for (size_t i = 0; i < block->size(); ++i) {
         if (block->isShadowRow(i)) {
