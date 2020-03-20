@@ -31,6 +31,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
 #include "Containers/HashSet.h"
+#include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
@@ -174,15 +175,17 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query)
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _tmpVar(nullptr) {}
 
-BaseOptions::BaseOptions(BaseOptions const& other)
+BaseOptions::BaseOptions(BaseOptions const& other, bool const allowAlreadyBuiltCopy)
     : _query(other._query),
       _ctx(_query),
       _trx(other._trx),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _tmpVar(nullptr) {
-  TRI_ASSERT(other._baseLookupInfos.empty());
-  TRI_ASSERT(other._tmpVar == nullptr);
+  if (!allowAlreadyBuiltCopy) {
+    TRI_ASSERT(other._baseLookupInfos.empty());
+    TRI_ASSERT(other._tmpVar == nullptr);
+  }
 }
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
@@ -339,10 +342,6 @@ arangodb::transaction::Methods* BaseOptions::trx() const { return _trx; }
 
 arangodb::aql::Query* BaseOptions::query() const { return _query; }
 
-arangodb::graph::TraverserCache* BaseOptions::cache() const {
-  return _cache.get();
-}
-
 void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add(VPackValue("baseLookupInfos"));
@@ -397,40 +396,16 @@ double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> c
   return cost;
 }
 
-EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
-                                         std::vector<LookupInfo> const& list) {
-  auto allCursor = std::make_unique<SingleServerEdgeCursor>(this, list.size());
-  auto& opCursors = allCursor->getCursors();
-  for (auto& info : list) {
-    auto& node = info.indexCondition;
-    TRI_ASSERT(node->numMembers() > 0);
-    if (info.conditionNeedUpdate) {
-      // We have to inject _from/_to iff the condition needs it
-      auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
-      TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-      TRI_ASSERT(dirCmp->numMembers() == 2);
-
-      auto idNode = dirCmp->getMemberUnchecked(1);
-      TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-      TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-      // must edit node in place; TODO replace node?
-      TEMPORARILY_UNLOCK_NODE(idNode);
-      idNode->setStringValue(vid.data(), vid.length());
-    }
-    std::vector<OperationCursor*> csrs;
-    csrs.reserve(info.idxHandles.size());
-    IndexIteratorOptions opts;
-    for (auto const& it : info.idxHandles) {
-      // the emplace_back cannot throw here, as we reserved enough space before
-      csrs.emplace_back(
-          new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
-    }
-    opCursors.emplace_back(std::move(csrs));
-  }
-  return allCursor.release();
+arangodb::graph::TraverserCache* BaseOptions::cache() const {
+  return _cache.get();
 }
 
 TraverserCache* BaseOptions::cache() {
+  ensureCache();
+  return _cache.get();
+}
+
+void BaseOptions::ensureCache() {
   if (_cache == nullptr) {
     // If the Coordinator does NOT activate the Cache
     // the datalake is not created and cluster data cannot
@@ -441,14 +416,13 @@ TraverserCache* BaseOptions::cache() {
     activateCache(false, nullptr);
   }
   TRI_ASSERT(_cache != nullptr);
-  return _cache.get();
 }
 
 void BaseOptions::activateCache(bool enableDocumentCache,
                                 std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
+  _cache.reset(CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
 }
 
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {

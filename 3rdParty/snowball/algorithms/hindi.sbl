@@ -1,0 +1,323 @@
+// An implementation of "A Lightweight Stemmer for Hindi":
+// http://www.kbcs.in/downloads/papers/StmmerHindi.pdf
+
+externals ( stem )
+
+stringescapes {}
+
+// The transliteration scheme used for our stringdefs matches that used in the
+// paper, as documented in the appendix.  It appears to match the WX notation
+// (https://en.wikipedia.org/wiki/WX_notation) except that WX apparently
+// uses 'z' for Anunasika whereas the paper uses Mh.
+//
+// We discriminate dependent vowels by adding a leading "_" to their stringdef
+// names (mnemonic: the _ signifies removing the implicit a from the preceding
+// character).
+
+// Vowels and sonorants:
+stringdef a  '{U+0905}'
+stringdef A  '{U+0906}'
+stringdef i  '{U+0907}'
+stringdef I  '{U+0908}'
+stringdef u  '{U+0909}'
+stringdef U  '{U+090A}'
+stringdef q  '{U+090B}'
+stringdef e  '{U+090F}'
+stringdef E  '{U+0910}'
+stringdef o  '{U+0913}'
+stringdef O  '{U+0914}'
+
+// Vowel signs:
+stringdef _A '{U+093E}'
+stringdef _i '{U+093F}'
+stringdef _I '{U+0940}'
+stringdef _u '{U+0941}'
+stringdef _U '{U+0942}'
+stringdef _q '{U+0943}'
+stringdef _e '{U+0947}'
+stringdef _E '{U+0948}'
+stringdef _o '{U+094B}'
+stringdef _O '{U+094C}'
+
+// Diacritics:
+stringdef M  '{U+0902}'
+stringdef H  '{U+0903}'
+stringdef Mh '{U+0901}'
+stringdef Z  '{U+093C}' // Nukta
+stringdef virama '{U+094D}'
+
+// Velar consonants:
+stringdef k  '{U+0915}'
+stringdef K  '{U+0916}'
+stringdef g  '{U+0917}'
+stringdef G  '{U+0918}'
+stringdef f  '{U+0919}'
+
+// Palatal consonants:
+stringdef c  '{U+091A}'
+stringdef C  '{U+091B}'
+stringdef j  '{U+091C}'
+stringdef J  '{U+091D}'
+stringdef F  '{U+091E}'
+
+// Retroflex consonants:
+stringdef t  '{U+091F}'
+stringdef T  '{U+0920}'
+stringdef d  '{U+0921}'
+stringdef D  '{U+0922}'
+stringdef N  '{U+0923}'
+
+// Dental consonants:
+stringdef w  '{U+0924}'
+stringdef W  '{U+0925}'
+stringdef x  '{U+0926}'
+stringdef X  '{U+0927}'
+stringdef n  '{U+0928}'
+
+// Labial consonants:
+stringdef p  '{U+092A}'
+stringdef P  '{U+092B}'
+stringdef b  '{U+092C}'
+stringdef B  '{U+092D}'
+stringdef m  '{U+092E}'
+
+// Semi-vowels:
+stringdef y  '{U+092F}'
+stringdef r  '{U+0930}'
+stringdef l  '{U+0932}'
+stringdef v  '{U+0935}'
+
+// Fricatives:
+stringdef S  '{U+0936}'
+stringdef R  '{U+0937}'
+stringdef s  '{U+0938}'
+stringdef h  '{U+0939}'
+
+stringdef lY '{U+0933}'
+
+// Precomposed characters - letters + nukta:
+stringdef nZ '{U+0929}' // ≡ {n}{Z}
+stringdef rZ '{U+0931}' // ≡ {r}{Z}
+stringdef lYZ '{U+0934}' // ≡ {lY}{Z}
+stringdef kZ '{U+0958}' // ≡ {k}{Z}
+stringdef KZ '{U+0959}' // ≡ {K}{Z}
+stringdef gZ '{U+095A}' // ≡ {g}{Z}
+stringdef jZ '{U+095B}' // ≡ {j}{Z}
+stringdef dZ '{U+095C}' // ≡ {d}{Z}
+stringdef DZ '{U+095D}' // ≡ {D}{Z}
+stringdef PZ '{U+095E}' // ≡ {P}{Z}
+stringdef yZ '{U+095F}' // ≡ {y}{Z}
+
+integers ( p )
+
+groupings ( consonant )
+
+routines ( CONSONANT )
+
+define consonant '{k}{K}{g}{G}{f}' +
+                 '{c}{C}{j}{J}{F}' +
+                 '{t}{T}{d}{D}{N}' +
+                 '{w}{W}{x}{X}{n}' +
+                 '{p}{P}{b}{B}{m}' +
+                 '{y}{r}{l}{v}' +
+                 '{S}{R}{s}{h}' +
+                 '{lY}' +
+                 '{Z}' + // Nukta
+                 // Precomposed characters - letter and nukta:
+                 '{nZ}{rZ}{lYZ}{kZ}{KZ}{gZ}{jZ}{dZ}{DZ}{PZ}{yZ}'
+
+backwardmode ( define CONSONANT as ( consonant ) )
+
+define stem as (
+    test ( next setmark p )
+    backwards (
+        // We assume in this implementation that the whole word doesn't count
+        // as a valid suffix to remove, so we remove the longest suffix from
+        // the list which leaves at least one character.  This change affects
+        // 47 words out of the 65,140 in the sample vocabulary from Hindi
+        // wikipedia.
+        setlimit tomark p for ([substring])
+        among (
+            // The list below is derived from figure 3 in the paper.
+            //
+            // We perform the stemming on the Devanagari characters rather than
+            // transliterating to Latin, so we have adapted the list below to
+            // reflect this by converting suffixes back to Devanagari as
+            // follows:
+            //
+            // * within the suffixes, "a" after a consonant is dropped since
+            //   consonants have an implicit "a".
+            //
+            // * within the suffixes, a vowel other than "a" after a consonant
+            //   is a dependent vowel (vowel sign); a vowel (including "a")
+            //   after a non-consonant is an independent vowel.
+            //
+            // * to allow the vowel at the start of each suffix being dependent
+            //   or independent, we include each suffix twice.  For the
+            //   dependent version, a leading "a" is dropped and we check that
+            //   the suffix is preceded by a consonant (which will have an
+            //   implicit "a").
+            //
+            // * we add '{a}', which is needed for the example given right at
+            //   the end of section 5 to work (conflating BarawIya and
+            //   BarawIyawA), and which 3.1 a.v strongly suggests should be in
+            //   the list:
+            //
+            //     Thus, the following suffix deletions (longest possible
+            //     match) are required to reduce inflected forms of masculine
+            //     nouns to a common stem:
+            //     a A i [...]
+            //
+            //   Adding '{a}' only affect 2 words out of the 65,140 in the
+            //   sample vocabulary.
+            //
+            // * The transliterations of our stems would end with "a" when our
+            //   stems end in a consonant, so we also include {virama} in the
+            //   list of suffixes to remove (this affects 222 words from the
+            //   sample vocabulary).
+            //
+            // We've also assumed that Mh in the suffix list always means {Mh}
+            // and never {M}{h}{virama}.  Only one of the 65,140 words in the
+            // sample vocabulary stems differently due to this (and that word
+            // seems to be a typo).
+
+            '{virama}'
+
+            '{a}'
+            '{A}'
+            '{i}'
+            '{I}'
+            '{u}'
+            '{U}'
+            '{e}'
+            '{o}'
+            '{e}{M}'
+            '{o}{M}'
+            '{A}{M}'
+            '{u}{A}{M}'
+            '{u}{e}{M}'
+            '{u}{o}{M}'
+            '{A}{e}{M}'
+            '{A}{o}{M}'
+            '{i}{y}{_A}{M}'
+            '{i}{y}{_o}{M}'
+            '{A}{i}{y}{_A}{M}'
+            '{A}{i}{y}{_o}{M}'
+            '{A}{Mh}'
+            '{i}{y}{_A}{Mh}'
+            '{A}{i}{y}{_A}{Mh}'
+            '{a}{w}{_A}{e}{M}'
+            '{a}{w}{_A}{o}{M}'
+            '{a}{n}{_A}{e}{M}'
+            '{a}{n}{_A}{o}{M}'
+            '{a}{w}{_A}'
+            '{a}{w}{_I}'
+            '{I}{M}'
+            '{a}{w}{_I}{M}'
+            '{a}{w}{_e}'
+            '{A}{w}{_A}'
+            '{A}{w}{_I}'
+            '{A}{w}{_I}{M}'
+            '{A}{w}{_e}'
+            '{a}{n}{_A}'
+            '{a}{n}{_I}'
+            '{a}{n}{_e}'
+            '{A}{n}{_A}'
+            '{A}{n}{_e}'
+            '{U}{M}{g}{_A}'
+            '{U}{M}{g}{_I}'
+            '{A}{U}{M}{g}{_A}'
+            '{A}{U}{M}{g}{_I}'
+            '{e}{M}{g}{_e}'
+            '{e}{M}{g}{_I}'
+            '{A}{e}{M}{g}{_e}'
+            '{A}{e}{M}{g}{_I}'
+            '{o}{g}{_e}'
+            '{o}{g}{_I}'
+            '{A}{o}{g}{_e}'
+            '{A}{o}{g}{_I}'
+            '{e}{g}{_A}'
+            '{e}{g}{_I}'
+            '{A}{e}{g}{_A}'
+            '{A}{e}{g}{_I}'
+            '{A}{y}{_A}'
+            '{A}{e}'
+            '{A}{I}'
+            '{A}{I}{M}'
+            '{i}{e}'
+            '{A}{o}'
+            '{A}{i}{e}'
+            '{a}{k}{r}'
+            '{A}{k}{r}'
+
+            '{_A}'
+            '{_i}'
+            '{_I}'
+            '{_u}'
+            '{_U}'
+            '{_e}'
+            '{_o}'
+            '{_e}{M}'
+            '{_o}{M}'
+            '{_A}{M}'
+            '{_u}{A}{M}'
+            '{_u}{e}{M}'
+            '{_u}{o}{M}'
+            '{_A}{e}{M}'
+            '{_A}{o}{M}'
+            '{_i}{y}{_A}{M}'
+            '{_i}{y}{_o}{M}'
+            '{_A}{i}{y}{_A}{M}'
+            '{_A}{i}{y}{_o}{M}'
+            '{_A}{Mh}'
+            '{_i}{y}{_A}{Mh}'
+            '{_A}{i}{y}{_A}{Mh}'
+            '{_I}{M}'
+            '{_A}{w}{_A}'
+            '{_A}{w}{_I}'
+            '{_A}{w}{_I}{M}'
+            '{_A}{w}{_e}'
+            '{_A}{n}{_A}'
+            '{_A}{n}{_e}'
+            '{_U}{M}{g}{_A}'
+            '{_U}{M}{g}{_I}'
+            '{_A}{U}{M}{g}{_A}'
+            '{_A}{U}{M}{g}{_I}'
+            '{_e}{M}{g}{_e}'
+            '{_e}{M}{g}{_I}'
+            '{_A}{e}{M}{g}{_e}'
+            '{_A}{e}{M}{g}{_I}'
+            '{_o}{g}{_e}'
+            '{_o}{g}{_I}'
+            '{_A}{o}{g}{_e}'
+            '{_A}{o}{g}{_I}'
+            '{_e}{g}{_A}'
+            '{_e}{g}{_I}'
+            '{_A}{e}{g}{_A}'
+            '{_A}{e}{g}{_I}'
+            '{_A}{y}{_A}'
+            '{_A}{e}'
+            '{_A}{I}'
+            '{_A}{I}{M}'
+            '{_i}{e}'
+            '{_A}{o}'
+            '{_A}{i}{e}'
+            '{_A}{k}{r}'
+
+            /* Suffixes with a leading implicit a: */
+            '{w}{_A}{e}{M}' CONSONANT
+            '{w}{_A}{o}{M}' CONSONANT
+            '{n}{_A}{e}{M}' CONSONANT
+            '{n}{_A}{o}{M}' CONSONANT
+            '{w}{_A}' CONSONANT
+            '{w}{_I}' CONSONANT
+            '{w}{_I}{M}' CONSONANT
+            '{w}{_e}' CONSONANT
+            '{n}{_A}' CONSONANT
+            '{n}{_I}' CONSONANT
+            '{n}{_e}' CONSONANT
+            '{k}{r}' CONSONANT
+        )
+        delete
+    )
+)

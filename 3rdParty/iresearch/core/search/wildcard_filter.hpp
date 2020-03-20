@@ -29,15 +29,6 @@
 
 NS_ROOT
 
-enum class WildcardType {
-  TERM      = 0,  // foo
-  MATCH_ALL,      // *
-  PREFIX,         // foo*
-  WILDCARD        // f_o*
-};
-
-IRESEARCH_API WildcardType wildcard_type(const bytes_ref& pattern) noexcept;
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter
@@ -46,6 +37,14 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
+
+  static prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost,
+    const string_ref& field,
+    bytes_ref term,
+    size_t scored_terms_limit);
 
   explicit by_wildcard() noexcept;
 
@@ -59,11 +58,26 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+      const index_reader& index,
+      const order::prepared& order,
+      boost_t boost,
+      const attribute_view& /*ctx*/) const override {
+    return prepare(index, order, this->boost()*boost,
+                   field(), term(), scored_terms_limit());
+  }
+
+
+  using by_prefix::scored_terms_limit;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the maximum number of most frequent terms to consider for scoring
+  //////////////////////////////////////////////////////////////////////////////
+  by_wildcard& scored_terms_limit(size_t limit) noexcept {
+    by_prefix::scored_terms_limit(limit);
+    return *this;
+  }
+
+  
 }; // by_wildcard
 
 #endif // IRESEARCH_WILDCARD_FILTER_H

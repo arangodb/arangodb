@@ -224,6 +224,33 @@ void RocksDBTransactionState::createTransaction() {
   }
 }
 
+void RocksDBTransactionState::prepareCollections() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    coll->prepareTransaction(id(), preSeq);
+  }
+}
+
+void RocksDBTransactionState::commitCollections(rocksdb::SequenceNumber lastWritten) {
+  TRI_ASSERT(lastWritten > 0);
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    // we need this in case of an intermediate commit. The number of
+    // initial documents is adjusted and numInserts / removes is set to 0
+    // index estimator updates are buffered
+    coll->commitCounts(id(), lastWritten);
+  }
+}
+
+void RocksDBTransactionState::cleanupCollections() {
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    coll->abortCommit(id());
+  }
+}
+
 void RocksDBTransactionState::cleanupTransaction() noexcept {
   delete _rocksTransaction;
   _rocksTransaction = nullptr;
@@ -251,10 +278,10 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     // this is most likely the fill index case
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto& trxColl : _collections) {
-      TRI_IF_FAILURE("RocksDBCommitCounts") { continue; }
       auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
       TRI_ASSERT(!rcoll->hasOperations());
       TRI_ASSERT(rcoll->stealTrackedOperations().empty());
+      TRI_ASSERT(rcoll->stealTrackedIndexOperations().empty());
     }
     // don't write anything if the transaction is empty
 #endif
@@ -270,19 +297,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     }
   }
 
-  auto commitCounts = [this]() {
-    TRI_ASSERT(_lastWrittenOperationTick > 0);
-    for (auto& trxColl : _collections) {
-      auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-      // we need this in case of an intermediate commit. The number of
-      // initial documents is adjusted and numInserts / removes is set to 0
-      // index estimator updates are buffered
-      TRI_IF_FAILURE("RocksDBCommitCounts") {
-        continue;
-      }
-      coll->commitCounts(id(), _lastWrittenOperationTick);
-    }
-  };
+  auto commitCounts = [this]() { commitCollections(_lastWrittenOperationTick); };
 
   // we are actually going to attempt a commit
   if (!isSingleOperation()) {
@@ -314,21 +329,10 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   TRI_ASSERT(x > 0);
 #endif
 
-  // prepare for commit on each collection, e.g. place blockers for estimators
-  rocksdb::SequenceNumber preCommitSeq =
-      rocksutils::globalRocksDB()->GetLatestSequenceNumber();
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    coll->prepareCommit(id(), preCommitSeq);
-  }
+  prepareCollections();
 
   // if we fail during commit, make sure we remove blockers, etc.
-  auto cleanupCollTrx = scopeGuard([this]() {
-    for (auto& trxColl : _collections) {
-      auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-      coll->abortCommit(id());
-    }
-  });
+  auto cleanupCollTrx = scopeGuard([this]() { cleanupCollections(); });
 
 #ifdef _WIN32
   // set wait for sync flag if required
@@ -641,6 +645,30 @@ Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& 
   return TRI_ERROR_NO_ERROR;
 }
 
+RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::trackedOperations(TRI_voc_cid_t cid) {
+  auto col = findCollection(cid);
+  TRI_ASSERT(col != nullptr);
+  return static_cast<RocksDBTransactionCollection*>(col)->trackedOperations();
+}
+
+void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+  auto col = findCollection(cid);
+  if (col != nullptr) {
+    static_cast<RocksDBTransactionCollection*>(col)->trackInsert(rid);
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
+void RocksDBTransactionState::trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+  auto col = findCollection(cid);
+  if (col != nullptr) {
+    static_cast<RocksDBTransactionCollection*>(col)->trackRemove(rid);
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
 void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid,
                                                TRI_idx_iid_t idxId, uint64_t hash) {
   auto col = findCollection(cid);
@@ -671,6 +699,16 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const {
     }
   }
   return true;
+}
+
+rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
+  if (_rocksTransaction) {
+    return _rocksTransaction->GetSnapshot()->GetSequenceNumber();
+  } else if (_readSnapshot) {
+    return _readSnapshot->GetSequenceNumber();
+  }
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  return db->GetLatestSequenceNumber();
 }
 
 /// @brief constructor, leases a builder

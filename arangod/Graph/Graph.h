@@ -133,10 +133,15 @@ class Graph {
   Graph(std::string&& graphName, velocypack::Slice const& info,
         velocypack::Slice const& options);
 
+  /**
+  * @brief virtual copy constructor
+  */
+  virtual auto clone() const -> std::unique_ptr<Graph>;
+
  public:
   virtual ~Graph() = default;
 
-  static Result validateOrphanCollection(const velocypack::Slice& orphanDefinition);
+  [[nodiscard]] static Result validateOrphanCollection(velocypack::Slice const& orphanDefinition);
 
   virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
 
@@ -165,6 +170,7 @@ class Graph {
   std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(std::string const& collectionName) const;
 
   virtual bool isSmart() const;
+  virtual bool isSatellite() const;
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
@@ -294,6 +300,9 @@ class Graph {
 
   /// @brief revision of this graph
   std::string _rev;
+
+  /// @brief whether this graph is a satellite graph
+  bool _isSatellite = false;
 };
 
 // helper functions

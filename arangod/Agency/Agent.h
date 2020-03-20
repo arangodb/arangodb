@@ -162,7 +162,12 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void advanceCommitIndex();
 
  public:
-  /// @brief Invoked by leader to replicate log entries ($5.3);
+
+  /// @brief Get last confirmed index of an agent. Default my own.
+  ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
+  index_t confirmed(std::string const& serverId = std::string()) const;
+  
+  /// @brief Invoked by leader to replicate log entries ($5.3);w
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
   ///        the term alive.
@@ -205,6 +210,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief Convencience size of agency
   size_t size() const;
+
+  Supervision& supervision() { return _supervision; }
+  Supervision const& supervision() const { return _supervision; }
 
   /// @brief Rebuild DBs by applying state log to empty DB
   void rebuildDBs();
@@ -259,6 +267,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief All there is in the state machine
   query_t allLogs() const;
+
+  /// @brief Get copy of log entries starting with begin ending on end
+  std::vector<log_t> logs(index_t begin = 0, index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
   void lastAckedAgo(Builder&) const;
@@ -330,6 +341,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief patch some configuration values, this is for manual interaction with
   /// the agency leader.
   void updateSomeConfigValues(VPackSlice);
+
+  Histogram<log_scale_t<float>>& commitHist() const;
 
  private:
 
@@ -499,7 +512,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Counter& _write_no_leader;
   Counter& _read_ok;
   Counter& _read_no_leader;
-  Histogram<double>& _write_hist_msec;
+  Histogram<log_scale_t<float>>& _write_hist_msec;
+  Histogram<log_scale_t<float>>& _commit_hist_msec;
 
 };
 }  // namespace consensus

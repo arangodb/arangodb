@@ -26,6 +26,8 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/files.h"
@@ -61,6 +63,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Servers.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -218,6 +221,7 @@ class TemplateSpecializer {
 
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false, false);
+  server.addFeature<arangodb::MetricsFeature>(false);
   // We do not need any features from this phase
 }
 
@@ -321,7 +325,8 @@ void MockServer::startFeatures() {
   if (_server.hasFeature<arangodb::SchedulerFeature>()) {
     auto& sched = _server.getFeature<arangodb::SchedulerFeature>();
     // Needed to set nrMaximalThreads
-    sched.validateOptions(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr));
+    sched.validateOptions(
+        std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr));
   }
 
   for (ApplicationFeature& f : orderedFeatures) {
@@ -445,19 +450,28 @@ std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransac
                                                           noCollections, opts);
 }
 
-std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
+std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activateTracing,
+                                                                     std::string queryString) const {
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
   bindParams->close();
   auto queryOptions = std::make_shared<VPackBuilder>();
   queryOptions->openObject();
+  if (activateTracing) {
+    queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
+  }
   queryOptions->close();
-  aql::QueryString fakeQueryString("");
+  aql::QueryString fakeQueryString(queryString);
   auto query =
       std::make_unique<arangodb::aql::Query>(false, getSystemDatabase(),
                                              fakeQueryString, bindParams, queryOptions,
                                              arangodb::aql::QueryPart::PART_DEPENDENT);
   query->injectTransaction(createFakeTransaction());
+
+  auto engine =
+      std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
+  query->setEngine(std::move(engine));
+
   return query;
 }
 
@@ -551,8 +565,8 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
 
 MockDBServer::MockDBServer(bool start) : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
-  addFeature<arangodb::FlushFeature>(false);       // do not start the thread
-  addFeature<arangodb::MaintenanceFeature>(false); // do not start the thread
+  addFeature<arangodb::FlushFeature>(false);        // do not start the thread
+  addFeature<arangodb::MaintenanceFeature>(false);  // do not start the thread
   if (start) {
     startFeatures();
     createDatabase("_system");
@@ -573,10 +587,10 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
     maintenance::ActionDescription ad(
         {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
          {std::string(maintenance::DATABASE), std::string(name)}},
-         maintenance::HIGHER_PRIORITY);
+        maintenance::HIGHER_PRIORITY);
     auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
     maintenance::CreateDatabase cd(mf, ad);
-    cd.first();   // Does the job
+    cd.first();  // Does the job
   }
 
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
@@ -598,10 +612,10 @@ void MockDBServer::dropDatabase(std::string const& name) {
   maintenance::ActionDescription ad(
       {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
        {std::string(maintenance::DATABASE), std::string(name)}},
-       maintenance::HIGHER_PRIORITY);
+      maintenance::HIGHER_PRIORITY);
   auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
   maintenance::DropDatabase dd(mf, ad);
-  dd.first();   // Does the job
+  dd.first();  // Does the job
 }
 
 MockCoordinator::MockCoordinator(bool start) : MockClusterServer() {

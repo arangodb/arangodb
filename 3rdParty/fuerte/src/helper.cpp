@@ -153,7 +153,7 @@ char const* const BASE64_CHARS =
     "abcdefghijklmnopqrstuvwxyz"
     "0123456789+/";
 
-std::string encodeBase64(std::string const& in) {
+std::string encodeBase64(std::string const& in, bool pad) {
   unsigned char charArray3[3];
   unsigned char charArray4[4];
 
@@ -201,16 +201,18 @@ std::string encodeBase64(std::string const& in) {
       ret += BASE64_CHARS[charArray4[j]];
     }
 
-    while ((i++ < 3)) {
-      ret += '=';
+    if (pad) {
+      while ((i++ < 3)) {
+        ret += '=';
+      }
     }
   }
 
   return ret;
 }
 
-std::string encodeBase64U(std::string const& in) {
-  std::string encoded = encodeBase64(in);
+std::string encodeBase64U(std::string const& in, bool pad) {
+  std::string encoded = encodeBase64(in, pad);
   // replace '+', '/' with '-' and '_'
   std::replace(encoded.begin(), encoded.end(), '+', '-');
   std::replace(encoded.begin(), encoded.end(), '/', '_');

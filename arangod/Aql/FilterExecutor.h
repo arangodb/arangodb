@@ -34,6 +34,8 @@
 
 namespace arangodb::aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class ExecutorInfos;
@@ -88,7 +90,26 @@ class FilterExecutor {
    */
   [[nodiscard]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief produce the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& input, OutputAqlItemRow& output);
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
+
   [[nodiscard]] std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   Infos& _infos;

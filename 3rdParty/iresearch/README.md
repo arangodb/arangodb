@@ -16,6 +16,7 @@
 - [Overview](#overview)
 - [High level architecture and main concepts](#high-level-architecture-and-main-concepts)
 - [Build](#build)
+- [Pyresearch](#pyresearch)
 - [Included 3rd party dependencies](#included-3rd-party-dependencies)
 - [External 3rd party dependencies](#external-3rd-party-dependencies)
 - [Query filter building blocks](#query-filter-building-blocks)
@@ -385,6 +386,20 @@ code coverage:
 cmake --build . --target iresearch-coverage
 ```
 
+## Pyresearch
+There is Python wrapper for IResearch. Wrapper gives access to directory reader object.
+For usage example see <src-path>/python/scripts
+### Build
+To build Pyresearch SWIG generator should be available.
+Add -DUSE_PYRESEARCH=ON to cmake command-line to generate Pyresearch targets
+### Install
+Run target pyresearch-install
+#### win32 install notes:
+Some version of ICU installers seems to fail to make available all icu dlls through 
+PATH enviroment variable, manual adjustment may be needed.
+#### (*nix) install notes:
+Shared version of libiresearch is used. Install IResearch before running Pyresearch.
+
 ## Included 3rd party dependencies
 Code for all included 3rd party dependencies is located in the "external" directory.
 #### [MurMurHash](https://sites.google.com/site/murmurhash)
@@ -435,12 +450,15 @@ the first whitespace is ignored), in the directory corresponding to its language
 ## Query filter building blocks
 | Filter    |       Description    |          
 |-----------|----------------------|
+|iresearch::by_edit_distance|for filtering of values based on Levenshtein distance
 |iresearch::by_granular_range|for faster filtering of numeric values within a given range, with the possibility of specifying open/closed ranges
+|iresearch::by_ngram_similarity|for filtering of values based on NGram model
 |iresearch::by_phrase|for word-position-sensitive filtering of values, with the possibility of skipping selected positions
 |iresearch::by_prefix|for filtering of exact value prefixes
 |iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
 |iresearch::by_same_position|for term-insertion-order sensitive filtering of exact values
 |iresearch::by_term|for filtering of exact values
+|iresearch::by_wildcard|for filtering of values based on matching pattern
 |iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
 |iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
 |iresearch::Not|boolean negation of multiple filters
@@ -560,7 +578,7 @@ The following grammar is currently defined via Bison (the root is <query>):
 - Apple Clang: 9
 
 ## License
-Copyright (c) 2017-2019 ArangoDB GmbH
+Copyright (c) 2017-2020 ArangoDB GmbH
 
 Copyright (c) 2016-2017 EMC Corporation
 

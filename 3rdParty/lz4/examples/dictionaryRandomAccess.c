@@ -1,6 +1,6 @@
 // LZ4 API example : Dictionary Random Access
 
-#ifdef _MSC_VER    /* Visual Studio */
+#if defined(_MSC_VER) && (_MSC_VER <= 1800)  /* Visual Studio <= 2013 */
 #  define _CRT_SECURE_NO_WARNINGS
 #  define snprintf sprintf_s
 #endif
@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MIN(x, y) (x) < (y) ? (x) : (y)
+#define MIN(x, y)  ((x) < (y) ? (x) : (y))
 
 enum {
     BLOCK_BYTES = 1024,  /* 1 KiB of uncompressed data in a block */
@@ -63,7 +63,7 @@ void test_compress(FILE* outFp, FILE* inpFp, void *dict, int dictSize)
     int *offsetsEnd = offsets;
 
 
-    LZ4_resetStream(lz4Stream);
+    LZ4_initStream(lz4Stream, sizeof(*lz4Stream));
 
     /* Write header magic */
     write_bin(outFp, kTestMagic, sizeof(kTestMagic));

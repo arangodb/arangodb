@@ -31,6 +31,8 @@
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Transaction/Methods.h"
 
+#include <memory>
+
 namespace arangodb {
 
 namespace aql {
@@ -49,10 +51,11 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
+class SingleServerEdgeCursor;
 class TraverserCache;
 
 struct BaseOptions {
- protected:
+  public:
   struct LookupInfo {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
@@ -88,7 +91,10 @@ struct BaseOptions {
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  explicit BaseOptions(BaseOptions const&);
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
+  ///        the planning phase; however, the options have to be prepared again
+  ///        (see GraphNode::prepareOptions() and its overrides)
+  BaseOptions(BaseOptions const&, bool allowAlreadyBuiltCopy = false);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
   BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
@@ -120,8 +126,6 @@ struct BaseOptions {
 
   aql::Query* query() const;
 
-  TraverserCache* cache() const;
-
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
 
@@ -132,7 +136,13 @@ struct BaseOptions {
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
 
+  /// @brief whether or not an edge collection shall be excluded
+  /// this can be overridden in TraverserOptions
+  virtual bool shouldExcludeEdgeCollection(std::string const& name) const { return false; }
+
   TraverserCache* cache();
+  TraverserCache* cache() const;
+  void ensureCache();
 
   void activateCache(bool enableDocumentCache,
                      std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
@@ -154,10 +164,7 @@ struct BaseOptions {
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
                               std::string const& collectionName,
                               std::string const& attributeName, aql::AstNode* condition);
-
-  EdgeCursor* nextCursorLocal(arangodb::velocypack::StringRef vid,
-                              std::vector<LookupInfo> const&);
-
+  
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:

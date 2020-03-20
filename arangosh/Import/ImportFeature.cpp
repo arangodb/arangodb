@@ -68,6 +68,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
       _onDuplicateAction("error"),
       _rowsToSkip(0),
       _result(result),
+      _skipValidation(false),
       _latencyStats(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
@@ -180,6 +181,10 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption(
       "--latency", "show 10 second latency statistics (values in microseconds)",
       new BooleanParameter(&_latencyStats));
+
+  options->addOption(
+      "--skip-validation", "skips document validation during import",
+      new BooleanParameter(&_skipValidation)).setIntroducedIn(30700);
 }
 
 void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -348,7 +353,7 @@ void ImportFeature::start() {
     client.setDatabaseName(dbName);
     err = TRI_ERROR_NO_ERROR;
     versionString = _httpClient->getServerVersion(&err);
-  
+
     if (err != TRI_ERROR_NO_ERROR) {
       // disconnecting here will abort arangoimport a few lines below
       _httpClient->disconnect();
@@ -364,7 +369,7 @@ void ImportFeature::start() {
   }
 
   TRI_ASSERT(client.databaseName() == dbName);
-    
+
   // successfully connected
   // print out connection info
   successfulConnection();
@@ -389,6 +394,7 @@ void ImportFeature::start() {
   ih.setOverwrite(_overwrite);
   ih.useBackslash(_useBackslash);
   ih.ignoreMissing(_ignoreMissing);
+  ih.setSkipValidation(_skipValidation);
 
   std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {

@@ -115,64 +115,55 @@ bool BreadthFirstEnumerator::next() {
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const nextVertex = _schreier[nextIdx].vertex;
 
-    std::unique_ptr<EdgeCursor> cursor(
-        _opts->nextCursor(nextVertex, _currentDepth));
-    if (cursor != nullptr) {
-      incHttpRequests(cursor->httpRequests());
-      bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
-      bool didInsert = false;
+    EdgeCursor* cursor = getCursor(nextVertex, _currentDepth);
+    bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
+    bool didInsert = false;
 
-      auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice e,
-                          size_t cursorIdx) -> void {
-        if (_opts->hasEdgeFilter(_currentDepth, cursorIdx)) {
-          VPackSlice edge = e;
-          if (edge.isString()) {
-            edge = _opts->cache()->lookupToken(eid);
-          }
-          if (!_traverser->edgeMatchesConditions(edge, nextVertex, _currentDepth, cursorIdx)) {
+    cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e,
+                         size_t cursorIdx) -> void {
+      if (!keepEdge(eid, e, nextVertex, _currentDepth, cursorIdx)) {
+        return;
+      }
+
+      if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+        if (pathContainsEdge(nextIdx, eid)) {
+          // This edge is on the path.
+          return;
+        }
+      }
+
+      arangodb::velocypack::StringRef vId;
+
+      if (_traverser->getSingleVertex(e, nextVertex, _currentDepth + 1, vId)) {
+        if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
+          if (pathContainsVertex(nextIdx, vId)) {
+            // This vertex is on the path.
             return;
           }
         }
-        if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
-          if (pathContainsEdge(nextIdx, eid)) {
-            // This edge is on the path.
-            return;
+
+        _schreier.emplace_back(nextIdx, std::move(eid), vId);
+        if (_currentDepth < _opts->maxDepth - 1) {
+          // Prune here
+          if (!shouldPrune()) {
+            _nextDepth.emplace_back(_schreierIndex);
           }
         }
-
-        arangodb::velocypack::StringRef vId;
-
-        if (_traverser->getSingleVertex(e, nextVertex, _currentDepth + 1, vId)) {
-          if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
-            if (pathContainsVertex(nextIdx, vId)) {
-              // This vertex is on the path.
-              return;
-            }
-          }
-
-          _schreier.emplace_back(nextIdx, std::move(eid), vId);
-          if (_currentDepth < _opts->maxDepth - 1) {
-            // Prune here
-            if (!shouldPrune()) {
-              _nextDepth.emplace_back(NextStep(_schreierIndex));
-            }
-          }
-          _schreierIndex++;
-          didInsert = true;
-        }
-      };
-
-      cursor->readAll(callback);
-
-      if (!shouldReturnPath) {
-        _lastReturned = _schreierIndex;
-        didInsert = false;
+        _schreierIndex++;
+        didInsert = true;
       }
-      if (didInsert) {
-        // We exit the loop here.
-        // _schreierIndex is moved forward
-        break;
-      }
+    });
+    
+    incHttpRequests(cursor->httpRequests());
+
+    if (!shouldReturnPath) {
+      _lastReturned = _schreierIndex;
+      didInsert = false;
+    }
+    if (didInsert) {
+      // We exit the loop here.
+      // _schreierIndex is moved forward
+      break;
     }
     // Nothing found for this vertex.
     // _toSearchPos is increased so
@@ -211,27 +202,25 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
 }
 
 VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index) {
-  std::vector<size_t> fullPath;
+  _tempPathHelper.clear();
   while (index != 0) {
     // Walk backwards through the path and push everything found on the local
     // stack
-    fullPath.emplace_back(index);
+    _tempPathHelper.emplace_back(index);
     index = _schreier[index].sourceIdx;
   }
 
   result.clear();
   result.openObject();
-  result.add(VPackValue("edges"));
-  result.openArray();
-  for (auto it = fullPath.rbegin(); it != fullPath.rend(); ++it) {
+  result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
+  for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
     _opts->cache()->insertEdgeIntoResult(_schreier[*it].edge, result);
   }
   result.close();  // edges
-  result.add(VPackValue("vertices"));
-  result.openArray();
+  result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
   // Always add the start vertex
   _traverser->addVertexToVelocyPack(_schreier[0].vertex, result);
-  for (auto it = fullPath.rbegin(); it != fullPath.rend(); ++it) {
+  for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
     _traverser->addVertexToVelocyPack(_schreier[*it].vertex, result);
   }
   result.close();  // vertices
@@ -260,7 +249,6 @@ bool BreadthFirstEnumerator::pathContainsVertex(size_t index,
     }
     index = step.sourceIdx;
   }
-  return false;
 }
 
 bool BreadthFirstEnumerator::pathContainsEdge(size_t index,
@@ -269,11 +257,12 @@ bool BreadthFirstEnumerator::pathContainsEdge(size_t index,
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
     if (step.edge.equals(edge)) {
-      // We have the given vertex on this path
+      // We have the given edge on this path
       return true;
     }
     index = step.sourceIdx;
   }
+  // We have checked the complete path
   return false;
 }
 
@@ -298,34 +287,36 @@ bool BreadthFirstEnumerator::prepareSearchOnNextDepth() {
 }
 
 bool BreadthFirstEnumerator::shouldPrune() {
-  if (_opts->usesPrune()) {
-    // evaluator->evaluate() might access these, so they have to live long enough.
-    // To make that perfectly clear, I added a scope.
-    transaction::BuilderLeaser pathBuilder(_opts->trx());
-    aql::AqlValue vertex, edge;
-    aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
-    {
-      auto* evaluator = _opts->getPruneEvaluator();
-      if (evaluator->needsVertex()) {
-        // Note: vertexToAqlValue() copies the original vertex into the AqlValue.
-        // This could be avoided with a function that just returns the slice,
-        // as it will stay valid long enough.
-        vertex = vertexToAqlValue(_schreierIndex);
-        evaluator->injectVertex(vertex.slice());
-      }
-      if (evaluator->needsEdge()) {
-        // Note: edgeToAqlValue() copies the original edge into the AqlValue.
-        // This could be avoided with a function that just returns the slice,
-        // as it will stay valid long enough.
-        edge = edgeToAqlValue(_schreierIndex);
-        evaluator->injectEdge(edge.slice());
-      }
-      if (evaluator->needsPath()) {
-        VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex);
-        evaluator->injectPath(path);
-      }
-      return evaluator->evaluate();
-    }
+  if (!_opts->usesPrune()) {
+    return false;
   }
-  return false;
+  
+  transaction::BuilderLeaser pathBuilder(_opts->trx());
+
+  // evaluator->evaluate() might access these, so they have to live long enough.
+  aql::AqlValue vertex, edge;
+  aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+  
+  auto* evaluator = _opts->getPruneEvaluator();
+  TRI_ASSERT(evaluator != nullptr);
+
+  if (evaluator->needsVertex()) {
+    // Note: vertexToAqlValue() copies the original vertex into the AqlValue.
+    // This could be avoided with a function that just returns the slice,
+    // as it will stay valid long enough.
+    vertex = vertexToAqlValue(_schreierIndex);
+    evaluator->injectVertex(vertex.slice());
+  }
+  if (evaluator->needsEdge()) {
+    // Note: edgeToAqlValue() copies the original edge into the AqlValue.
+    // This could be avoided with a function that just returns the slice,
+    // as it will stay valid long enough.
+    edge = edgeToAqlValue(_schreierIndex);
+    evaluator->injectEdge(edge.slice());
+  }
+  if (evaluator->needsPath()) {
+    VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex);
+    evaluator->injectPath(path);
+  }
+  return evaluator->evaluate();
 }

@@ -107,9 +107,9 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
 }
 
 BindParameters::BindParameters()
-    : _builder(nullptr), _parameters(), _processed(false) {}
+    : _parameters(), _processed(false) {}
 
-BindParameters::BindParameters(std::shared_ptr<arangodb::velocypack::Builder>  builder)
+BindParameters::BindParameters(std::shared_ptr<arangodb::velocypack::Builder> builder)
     : _builder(std::move(builder)), _parameters(), _processed(false) {}
 
 BindParametersType& BindParameters::get() {

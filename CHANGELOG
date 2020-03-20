@@ -1,3 +1,235 @@
+v3.7.0-alpha.2 (2020-03-20)
+---------------------------
+
+* Add DTRACE points to track a request through the infrastructure.
+
+* Fixed issue #11275: indexes backward compatibility broken in 3.5+.
+
+* Updated snowball dependency to the latest version.
+  More stemmers are available. Built-in analyzer list is unchanged.
+
+* Reactive REST API endpoint at `/_admin/auth/reload`, as it is called by DC2DC.
+ 
+* Fix an endless loop in FollowerInfo::persistInAgency which could trigger a
+  hanger if a collection was dropped at the wrong time.
+
+* Updated LZ4 dependency to version 1.9.2.
+
+* Fix cluster representation of the collection figures for RocksDB.
+
+* Changed behavior for creating new collections in OneShard databases (i.e.
+  databases with "sharding" attribute set to "single"):
+
+  Previously it was allowed to override "distributeShardsLike" and
+  "numberOfShards" for each new collection. The default values were "_graphs"
+  and 1 and were not modified if the user did not alter them, but it was still
+  possible to alter them.
+  This is now (silenly) ignored. Any attempt to set any value for
+  "distributeShardsLike" or "numberOfShards" for new collections in a OneShard
+  database will silently be ignored. The collection will automatically be
+  sharded like the sharding prototype and will have a single shard.
+
+  The behavior has been adjusted to match the behavior when creating collections
+  in a cluster started with `--cluster.force-one-shard true` option. Here any
+  user-supplied values for "distributeShardsLike" or "numberOfShards" were
+  always ignored.
+
+  Now the behavior is identical for OneShard databases and databases in cluster
+  started with `--cluster.force-one-shard true`.
+
+  The web interface now also hides the "Distribute shards like" settings in this
+  case, and makes the "Number of shards" input box read-only.
+
+* Fix premature access to temporary path before a user-specified path was read
+  from the config options.
+
+* Rebuild UI and update swagger.
+
+* Added ability to store values in ArangoSearch views.
+
+* Added LIKE operator/function support to SEARCH clause.
+
+* Added NGRAM_SIMILARITY and NGRAM_POSITIONAL_SIMILARITY functions for
+  calculating Ngram similarity.
+
+* Added ngram fuzzy search. Supported by NGRAM_MATCH filter function for SEARCH
+  clause.
+
+* Allow to override the detected total amount of memory via an environment
+  variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
+ 
+* `splice-subqueries` optimization is not limited by any type of operation
+  within the subquery any more. It can now be applied on every subquery and will
+  be by default.
+  However they may be a performance impact on some queries where
+  splice-subqueries are not as performant as non-spliced subqueries. This is due
+  to internal memory management right now and will be addressed in future
+  versions. Spliced subqueries can be less performant if the query around the
+  subquery is complex and requires lots of variables, or variables with large
+  content, but the subquery itself does not require a lot of variables and
+  produces many intermediate results s.t. good batching within the query does
+  not pay off against memory overhead.
+
+* Supervision to clean up zombie servers after 24h, if no responsibility for
+  shards.
+
+* Fix SORT RAND() LIMIT 1 optimization for RocksDB when only a projection of the
+  attributes was used. When a projection was used and that projection was
+  covered by an index (e.g. `_key` via the primary index), then the access
+  pattern was transformed from random order collection seek to an index access,
+  which always resulted in the same index entry to be returned and not a random
+  one.
+
+* Mark server startup options `--foxx.*`, `--frontend.*` and `--javascript.*` as
+  single server and Coordinator only for documentation (`--dump-options`).
+
+* Supervision hot backup and supervision maintenance modes ttl fix.
+
+* Fix a bug that leads to graph traversals yielding empty output when none of
+  the output variables (vertex, edge, path) are used. This is relevant when a
+  query is only interested in a COUNT of the outputs, for example.
+
+* MoveShard to check, if target is in sync follower before promotion to leader.
+
+* Agency ttl bug fix.
+
+* Added the SNI feature for TLS. This means that one can configure multiple
+  server keys and certificate chains and the system dynamically uses the right
+  one depending on the value of the TLS servername extension.
+  This allows to use different TLS setups for the same server which is reachable
+  behind different DNS names, for example (Enterprise only).
+
+* Do not create a reboot tracker for empty serverId ubin sync repl.
+
+* Fix the usage of the AQL functions `CALL` and `APPLY` for calling user-defined
+  AQL functions when invoking an AQL query from the arangosh or a client
+  application. Previously, invoking an AQL query and using the `CALL` or `APPLY`
+  AQL functions to call user-defined AQL function caused undefined behavior.
+
+* Improved graph traversal performance via some internal code refactoring:
+
+  - Traversal cursors are reused instead of recreated from scratch, if possible.
+    This can save lots of calls to the memory management subsystem.
+  - Unnecessary checks have been removed from the cursors, by ensuring some
+    invariants.
+  - Each vertex lookup needs to perform slightly less work.
+
+  The traversal speedups observed by these changes alone were around 8 to 10%
+  for single-server traversals and traversals in OneShard setups. Cluster
+  traversals will also benefit from these changes, but to a lesser extent. This
+  is because the network roundtrips have a higher share of the total query
+  execution times there.
+
+* Traversal performance can also be improved by not fetching the visited
+  vertices from the storage engine in case the traversal query does not refer to
+  them.
+  For example, in the query
+
+      FOR v, e, p IN 1..3 OUTBOUND 'collection/startVertex' edges
+        RETURN e
+
+  the vertex variable (`v`) is never accessed, making it unnecessary to fetch
+  the vertices from storage. If this optimization is applied, the traversal node
+  will be marked with `/* vertex optimized away */` in the query's execution
+  plan output.
+
+* The existing optimizer rule "move-calculations-down" is now able to also move
+  unrelated subqueries beyond SORT and LIMIT instructions, which can help avoid
+  the execution of subqueries for which the results are later discarded.
+  For example, in the query
+
+    FOR doc IN collection1
+      LET sub1 = FIRST(FOR sub IN coll2 FILTER sub.ref == doc._key RETURN sub)
+      LET sub2 = FIRST(FOR sub IN coll3 FILTER sub.ref == doc._key RETURN sub)
+      SORT sub1
+      LIMIT 10
+      RETURN { doc, sub1, sub2 }
+
+  the execution of the `sub2` subquery can be delayed to after the SORT and
+  LIMIT, turning it into
+
+    FOR doc IN collection1
+      LET sub1 = FIRST(FOR sub IN coll2 FILTER sub.ref == doc._key RETURN sub)
+      SORT sub1
+      LIMIT 10
+      LET sub2 = FIRST(FOR sub IN coll3 FILTER sub.ref == doc._key RETURN sub)
+      RETURN { doc, sub1, sub2 }
+
+* Added JSON-Schema (draft-4) document validation. The validation can be
+  specified by providing the new `validation` collection property when creating
+  a new collection or when updating the properties of an existing collection.
+
+  db.mycollection.properties({
+    validation: {
+      rule : { a : { type : "array", items : { type : "number", maximum : 6 }}},
+      message : "Json-Schema validation failed"
+    }
+  });
+
+* Fix supervision mode detection when unlocking agency in hot backup.
+
+* Foxx Response#throw will no longer generate incomplete error objects when
+  passed invalid arguments.
+
+* Foxx will now always generate a numeric HTTP status code even if the response
+  status code has been set to a non-numeric value.
+
+* Make arangobench return a proper error message when its initial attempt to
+  create the test collection fails.
+
+* Added traversal options `vertexCollections` and `edgeCollections` to restrict
+  traversal to certain vertex or edge collections.
+
+  The use case for `vertexCollections` is to not follow any edges that will
+  point to other than the specified vertex collections, e.g.
+
+      FOR v, e, p IN 1..3 OUTBOUND 'products/123' components
+        OPTIONS { vertexCollections: [ "bolts", "screws" ] }
+
+  The traversal's start vertex is always considered valid, regardless of whether
+  it is present in the `vertexCollections` option.
+
+  The use case for `edgeCollections` is to not take into consideration any edges
+  from edge collections other than the specified ones, e.g.
+
+      FOR v, e, p IN 1..3 OUTBOUND 'products/123' GRAPH 'components'
+        OPTIONS { edgeCollections: [ "productsToBotls", "productsToScrews" ] }
+
+  This is mostly useful in the context of named graphs, when the named graph
+  contains many edge collections. Not restricting the edge collections for the
+  traversal will make the traversal search for edges in all edge collections of
+  the graph, which can be expensive. In case it is known that only certain edges
+  from the named graph are needed, the `edgeCollections` option can be a handy
+  performance optimization.
+
+* Make arangobench return a proper error message when its initial attempt to
+  create the test collection fails.
+
+* In some cases with a COLLECT LIMIT situation on a small limit the collect does
+  more calls to upstream than without a limit to provide the same result. We
+  improved this situation and made sure that LIMIT does not cause the COLLECT to
+  fetch too few input rows. There is a chance that queries with a very small
+  amount of data might suffer from this modification, most queries will benefit
+  however.
+
+* Use OpenSSL's EVP interface for SHA256 instead of the deprecated low-level
+  message digest APIs.
+
+* Prevent startup error "specifiy either '--server.jwt-secret-keyfile' or
+  '--server.jwt-secret-folder' but not both." from occurring when specifying the
+  JWT secret keyfile option.
+
+* Honor `cacheEnabled` attribute when updating the properties of a collection
+  in case of the cluster. Previously, this attribute was ignored in the cluster,
+  but it shouldn't have been.
+
+* Fixed issue #11137: http-proxy can't pass delete method req.body to foxx.
+
+* Disable "collect-in-cluster" AQL optimizer rule in case a LIMIT node is
+  between the COLLECT and the source data. In this case it is not safe to apply
+  the distributed collect, as it may alter the results.
+
+
 v3.7.0-alpha.1 (2020-02-19)
 ---------------------------
 

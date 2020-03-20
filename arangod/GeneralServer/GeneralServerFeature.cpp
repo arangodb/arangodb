@@ -181,12 +181,21 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addSection("frontend", "Frontend options");
 
   options->addOption("--frontend.proxy-request-check",
-                     "enable proxy request checking", new BooleanParameter(&_proxyCheck));
+                     "enable proxy request checking",
+                     new BooleanParameter(&_proxyCheck),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle));
 
   options->addOption("--frontend.trusted-proxy",
                      "list of proxies to trust (may be IP or network). Make "
                      "sure --frontend.proxy-request-check is enabled",
-                     new VectorParameter<StringParameter>(&_trustedProxies));
+                     new VectorParameter<StringParameter>(&_trustedProxies),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle));
 }
 
 void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -463,10 +472,11 @@ void GeneralServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+    
+  _handlerFactory->addHandler("/_admin/auth/reload",
+                              RestHandlerCreator<RestAuthReloadHandler>::createNoData);
 
   if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
-    _handlerFactory->addHandler("/_admin/auth/reload",
-                                RestHandlerCreator<RestAuthReloadHandler>::createNoData);
     _handlerFactory->addHandler("/_admin/execute",
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }

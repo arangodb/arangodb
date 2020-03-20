@@ -155,7 +155,7 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
   if (this->_config._authenticationType == AuthenticationType::Basic) {
     _authHeader.append("Authorization: Basic ");
     _authHeader.append(
-        fu::encodeBase64(this->_config._user + ":" + this->_config._password));
+        fu::encodeBase64(this->_config._user + ":" + this->_config._password, true));
     _authHeader.append("\r\n");
   } else if (this->_config._authenticationType == AuthenticationType::Jwt) {
     if (this->_config._jwtToken.empty()) {
@@ -188,14 +188,16 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->request = std::move(req);
 
   // Prepare a new request
+  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   if (!_queue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(q > 0);
     item->invokeOnError(Error::QueueCapacityExceeded);
     return;
   }
   item.release();  // queue owns this now
 
-  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
 
   // _state.load() after queuing request, to prevent race with connect

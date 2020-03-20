@@ -156,8 +156,8 @@ std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollectio
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
   if (isRocksDB()) {
     // deliberately not add objectId
-    if (!info.hasKey("cacheEnabled") || !info.get("cacheEnabled").isBool()) {
-      builder.add("cacheEnabled", VPackValue(false));
+    if (!info.get(StaticStrings::CacheEnabled).isBool()) {
+      builder.add(StaticStrings::CacheEnabled, VPackValue(false));
     }
   }
 }

@@ -372,6 +372,15 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   return slice.get(StaticStrings::RevString);
 }
 
+velocypack::StringRef transaction::helpers::extractCollectionFromId(velocypack::StringRef id) {
+  std::size_t index = id.find('/');
+  if (index == std::string::npos) {
+    // can't find the '/' to split, bail out with only logical response
+    return id;
+  }
+  return velocypack::StringRef(id.data(), index);
+}
+
 OperationResult transaction::helpers::buildCountResult(
     std::vector<std::pair<std::string, uint64_t>> const& count,
     transaction::CountType type, uint64_t& total) {

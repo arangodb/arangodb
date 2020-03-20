@@ -47,10 +47,18 @@ ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(arangodb::velocypack:
     : _pred(pred), _path(std::move(path)) {}
 
 ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options) {}
+    : ShortestPathFinder(options) {
+  _forwardCursor = _options.buildCursor(false);
+  _backwardCursor = _options.buildCursor(true);
+}
 
 ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
   clearVisited();
+}
+
+void ConstantWeightShortestPathFinder::clear() {
+  clearVisited();
+  options().cache()->clear();
 }
 
 bool ConstantWeightShortestPathFinder::shortestPath(
@@ -99,10 +107,9 @@ bool ConstantWeightShortestPathFinder::shortestPath(
   return false;
 }
 
-bool ConstantWeightShortestPathFinder::expandClosure(Closure& sourceClosure,
-                                                     Snippets& sourceSnippets,
-                                                     Snippets& targetSnippets,
-                                                     bool isBackward, arangodb::velocypack::StringRef& result) {
+bool ConstantWeightShortestPathFinder::expandClosure(
+    Closure& sourceClosure, Snippets& sourceSnippets, Snippets& targetSnippets,
+    bool isBackward, arangodb::velocypack::StringRef& result) {
   _nextClosure.clear();
   for (auto& v : sourceClosure) {
     _edges.clear();
@@ -115,12 +122,10 @@ bool ConstantWeightShortestPathFinder::expandClosure(Closure& sourceClosure,
       auto const& n = _neighbors[i];
 
       bool emplaced = false;
-      std::tie(std::ignore, emplaced) = sourceSnippets.try_emplace(
-        _neighbors[i],
-        arangodb::lazyConstruct([&]{
-          return new PathSnippet(v, std::move(_edges[i]));
-        })
-      );
+      std::tie(std::ignore, emplaced) =
+          sourceSnippets.try_emplace(_neighbors[i], arangodb::lazyConstruct([&] {
+                                       return new PathSnippet(v, std::move(_edges[i]));
+                                     }));
 
       if (emplaced) {
         // NOTE: _edges[i] stays intact after move
@@ -171,25 +176,25 @@ void ConstantWeightShortestPathFinder::fillResult(arangodb::velocypack::StringRe
   clearVisited();
 }
 
-void ConstantWeightShortestPathFinder::expandVertex(bool backward, arangodb::velocypack::StringRef vertex) {
-  std::unique_ptr<EdgeCursor> edgeCursor;
-  if (backward) {
-    edgeCursor.reset(_options.nextReverseCursor(vertex));
-  } else {
-    edgeCursor.reset(_options.nextCursor(vertex));
-  }
+void ConstantWeightShortestPathFinder::expandVertex(bool backward,
+                                                    arangodb::velocypack::StringRef vertex) {
+  EdgeCursor* cursor = backward ? _backwardCursor.get() : _forwardCursor.get();
+  cursor->rearm(vertex, 0);
 
-  auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+  cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
     if (edge.isString()) {
       if (edge.compareString(vertex.data(), vertex.length()) != 0) {
-        arangodb::velocypack::StringRef id = _options.cache()->persistString(arangodb::velocypack::StringRef(edge));
+        arangodb::velocypack::StringRef id =
+            _options.cache()->persistString(arangodb::velocypack::StringRef(edge));
         _edges.emplace_back(std::move(eid));
         _neighbors.emplace_back(id);
       }
     } else {
-      arangodb::velocypack::StringRef other(transaction::helpers::extractFromFromDocument(edge));
+      arangodb::velocypack::StringRef other(
+          transaction::helpers::extractFromFromDocument(edge));
       if (other == vertex) {
-        other = arangodb::velocypack::StringRef(transaction::helpers::extractToFromDocument(edge));
+        other = arangodb::velocypack::StringRef(
+            transaction::helpers::extractToFromDocument(edge));
       }
       if (other != vertex) {
         arangodb::velocypack::StringRef id = _options.cache()->persistString(other);
@@ -197,8 +202,7 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward, arangodb::vel
         _neighbors.emplace_back(id);
       }
     }
-  };
-  edgeCursor->readAll(callback);
+  });
 }
 
 void ConstantWeightShortestPathFinder::clearVisited() {

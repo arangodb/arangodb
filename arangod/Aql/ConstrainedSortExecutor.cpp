@@ -81,7 +81,7 @@ class arangodb::aql::ConstrainedLessThan {
   std::vector<arangodb::aql::SortRegister> const& _sortRegisters;
 };  // ConstrainedLessThan
 
-arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
+arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
   using arangodb::aql::AqlItemBlock;
   using arangodb::aql::AqlValue;
   using arangodb::aql::RegisterId;
@@ -114,12 +114,14 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
   return TRI_ERROR_NO_ERROR;
 }
 
-bool ConstrainedSortExecutor::compareInput(size_t const& rowPos, InputAqlItemRow& row) const {
+bool ConstrainedSortExecutor::compareInput(size_t const& rowPos,
+                                           InputAqlItemRow const& row) const {
   for (auto const& reg : _infos.sortRegisters()) {
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);
 
-    int const cmp = arangodb::aql::AqlValue::Compare(_infos.vpackOptions(), lhs, rhs, true);
+    int const cmp =
+        arangodb::aql::AqlValue::Compare(_infos.vpackOptions(), lhs, rhs, true);
 
     if (cmp < 0) {
       return reg.asc;
@@ -155,87 +157,118 @@ ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
 bool ConstrainedSortExecutor::doneProducing() const noexcept {
   // must not get strictly larger
   TRI_ASSERT(_returnNext <= _rows.size());
-  return _state == ExecutionState::DONE && _returnNext >= _rows.size();
+  return _returnNext >= _rows.size();
 }
 
 bool ConstrainedSortExecutor::doneSkipping() const noexcept {
   // must not get strictly larger
   TRI_ASSERT(_returnNext + _skippedAfter <= _rowsRead);
-  return _state == ExecutionState::DONE && _returnNext + _skippedAfter >= _rowsRead;
+  return _returnNext + _skippedAfter >= _rowsRead;
 }
 
-ExecutionState ConstrainedSortExecutor::consumeInput() {
-  while (_state != ExecutionState::DONE) {
+ExecutorState ConstrainedSortExecutor::consumeInput(AqlItemBlockInputRange& inputRange) {
+  while (inputRange.hasDataRow()) {
     TRI_IF_FAILURE("SortBlock::doSorting") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    // We need to pull rows from above, and insert them into the heap
-    InputAqlItemRow input(CreateInvalidInputRowHint{});
 
-    std::tie(_state, input) = _fetcher.fetchRow();
-    if (_state == ExecutionState::WAITING) {
-      return _state;
-    }
-    if (!input.isInitialized()) {
-      TRI_ASSERT(_state == ExecutionState::DONE);
-    } else {
-      ++_rowsRead;
-      if (_rowsPushed < _infos.limit() || !compareInput(_rows.front(), input)) {
-        // Push this row into the heap
-        pushRow(input);
-      }
+    auto const& [state, input] = inputRange.nextDataRow();
+    // Otherwise we would have left the loop
+    TRI_ASSERT(input.isInitialized());
+    ++_rowsRead;
+    if (_rowsPushed < _infos.limit() || !compareInput(_rows.front(), input)) {
+      // Push this row into the heap
+      pushRow(input);
     }
   }
-
-  TRI_ASSERT(_state == ExecutionState::DONE);
-
-  return _state;
+  if (inputRange.upstreamState() == ExecutorState::DONE) {
+    if (_returnNext == 0) {
+      // Only once sort the rows again, s.t. the
+      // contained list of elements is in the right ordering.
+      std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
+    }
+  }
+  return inputRange.upstreamState();
 }
 
-std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRows(OutputAqlItemRow& output) {
-  {
-    ExecutionState state = consumeInput();
-    TRI_ASSERT(state == _state);
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, NoStats{}};
-    }
-    TRI_ASSERT(state == ExecutionState::DONE);
-  }
+auto ConstrainedSortExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  if (consumeInput(input) == ExecutorState::HASMORE) {
+    // Input could not be fully consumed, executor is more hungry!
+    // Get more.
+    AqlCall upstreamCall{};
+    // We need to fetch everything form upstream.
+    // Unlimited, no offset call.
+    return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
+  };
 
+  while (!output.isFull() && !doneProducing()) {
+    // Now our heap is full and sorted, we just need to return it line by line
+    TRI_ASSERT(_returnNext < _rows.size());
+    auto const heapRowPosition = _rows[_returnNext];
+    ++_returnNext;
+    InputAqlItemRow heapRow(_heapBuffer, heapRowPosition);
+    TRI_ASSERT(heapRow.isInitialized());
+    TRI_ASSERT(heapRowPosition < _rowsPushed);
+    output.copyRow(heapRow);
+    output.advanceRow();
+  }
   if (doneProducing()) {
-    if (doneSkipping()) {
-      // No we're really done
-      return {ExecutionState::DONE, NoStats{}};
+    return {ExecutorState::DONE, NoStats{}, AqlCall{}};
+  }
+  return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
+}
+
+auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  if (consumeInput(inputRange) == ExecutorState::HASMORE) {
+    // Input could not be fully consumed, executor is more hungry!
+    // Get more.
+    AqlCall upstreamCall{};
+    // We need to fetch everything form upstream.
+    // Unlimited, no offset call.
+    return {ExecutorState::HASMORE, NoStats{}, 0, upstreamCall};
+  };
+
+  while (!doneProducing()) {
+    if (call.getOffset() > 0) {
+      size_t available = _rows.size() - _returnNext;
+      size_t toSkip = std::min(available, call.getOffset());
+      _returnNext += toSkip;
+      call.didSkip(toSkip);
+    } else if (call.needSkipMore()) {
+      // We are in fullcount case, simply skip all!
+      // I think this is actually invalid, as it would case LIMIT
+      // to underfetch.
+      // However will work like this.
+      size_t available = _rows.size() - _returnNext;
+      call.didSkip(available);
+      _returnNext = _rows.size();
+    } else {
+      // We still have something, but cannot continue to skip.
+      return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall{}};
     }
-    // We should never get here, as the following LIMIT block should never fetch
-    // more than our limit. It may only skip after that.
-    // But note that this means that this block breaks with usual AQL behaviour!
-    // From this point on (i.e. doneProducing()), this block may only skip, not produce.
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL_AQL,
-        "Overfetch during constrained heap sort. Please report this error! Try "
-        "turning off the sort-limit optimizer rule to get your query working.");
   }
 
-  if (_returnNext == 0) {
-    // Only once sort the rows again, s.t. the
-    // contained list of elements is in the right ordering.
-    std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
+  while (call.needSkipMore() && !doneSkipping()) {
+    // unlikely, but for backwardscompatibility.
+    if (call.getOffset() > 0) {
+      auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
+      auto const skipNum = (std::min)(call.getOffset(), rowsLeftToSkip);
+      call.didSkip(skipNum);
+      _skippedAfter += skipNum;
+    } else {
+      // Fullcount
+      auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
+      call.didSkip(rowsLeftToSkip);
+      _skippedAfter += rowsLeftToSkip;
+      TRI_ASSERT(doneSkipping());
+    }
   }
 
-  // Now our heap is full and sorted, we just need to return it line by line
-  TRI_ASSERT(_returnNext < _rows.size());
-  auto const heapRowPosition = _rows[_returnNext];
-  ++_returnNext;
-  InputAqlItemRow heapRow(_heapBuffer, heapRowPosition);
-  TRI_ASSERT(heapRow.isInitialized());
-  TRI_ASSERT(heapRowPosition < _rowsPushed);
-  output.copyRow(heapRow);
+  auto const state = doneSkipping() ? ExecutorState::DONE : ExecutorState::HASMORE;
 
-  // Lie, we may have a possible LIMIT block with fullCount to work.
-  // We emitted at least one row at this point, so this is fine.
-  return {ExecutionState::HASMORE, NoStats{}};
+  return {state, NoStats{}, call.getSkipCount(), AqlCall{}};
 }
 
 std::pair<ExecutionState, size_t> ConstrainedSortExecutor::expectedNumberOfRows(size_t) const {
@@ -267,46 +300,4 @@ std::pair<ExecutionState, size_t> ConstrainedSortExecutor::expectedNumberOfRows(
   }
 
   return {ExecutionState::HASMORE, rowsLeft};
-}
-
-std::tuple<ExecutionState, NoStats, size_t> ConstrainedSortExecutor::skipRows(size_t toSkipRequested) {
-  {
-    ExecutionState state = consumeInput();
-    TRI_ASSERT(state == _state);
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, NoStats{}, 0};
-    }
-    TRI_ASSERT(state == ExecutionState::DONE);
-  }
-
-  if (_returnNext == 0) {
-    // Only once sort the rows again, s.t. the
-    // contained list of elements is in the right ordering.
-    std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
-  }
-
-  size_t skipped = 0;
-
-  // Skip rows in the heap
-  if (!doneProducing()) {
-    TRI_ASSERT(_rows.size() >= _returnNext);
-    auto const rowsLeftInHeap = _rows.size() - _returnNext;
-    auto const skipNum = (std::min)(toSkipRequested, rowsLeftInHeap);
-    _returnNext += skipNum;
-    skipped += skipNum;
-  }
-
-  // Skip rows we've dropped
-  if (skipped < toSkipRequested && !doneSkipping()) {
-    TRI_ASSERT(doneProducing());
-    auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
-    auto const skipNum = (std::min)(toSkipRequested, rowsLeftToSkip);
-    _skippedAfter += skipNum;
-    skipped += skipNum;
-  }
-
-  TRI_ASSERT(skipped <= toSkipRequested);
-  auto const state = doneSkipping() ? ExecutionState::DONE : ExecutionState::HASMORE;
-
-  return {state, NoStats{}, skipped};
 }

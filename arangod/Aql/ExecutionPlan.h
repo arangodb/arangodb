@@ -196,6 +196,8 @@ class ExecutionPlan {
   /// @brief static analysis
   void planRegisters() { _root->planRegisters(); }
 
+  void prepareTraversalOptions();
+
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
   void unlinkNodes(std::unordered_set<ExecutionNode*> const& toUnlink);

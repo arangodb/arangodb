@@ -209,6 +209,8 @@ RestStatus RestAgencyHandler::handleStore() {
 }
 
 RestStatus RestAgencyHandler::handleWrite() {
+
+  using namespace std::chrono;
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
   }
@@ -237,6 +239,9 @@ RestStatus RestAgencyHandler::handleWrite() {
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
+
+  // Start timing
+  auto const start = high_resolution_clock::now();
 
   // Do write
   write_ret_t ret;
@@ -295,6 +300,8 @@ RestStatus RestAgencyHandler::handleWrite() {
 
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
+          _agent->commitHist().count(
+            duration<float,std::milli>(high_resolution_clock::now()-start).count());
         }
       }
     }
