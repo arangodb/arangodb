@@ -50,7 +50,7 @@ KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
 
 KShortestPathsFinder::~KShortestPathsFinder() = default;
 
-void KShortestPathsFinder::reset() {
+void KShortestPathsFinder::clear() {
   _shortestPaths.clear();
   _candidatePaths.clear();
   _vertexCache.clear();
