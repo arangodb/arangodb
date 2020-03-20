@@ -1470,6 +1470,12 @@ constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      
 /// collection, it cannot be used here.
 constexpr int TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT                       = 1944;
 
+/// 1945: ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT
+/// "initial collection is not allowed to be removed manually"
+/// the collection is used as the initial collection of this graph
+/// and is not allowed to be removed manually.
+constexpr int TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL                             = 1945;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.

@@ -118,7 +118,8 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(Graph& graph,
   return trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 }
 
-OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::string const& edgeDefinitionName,
+OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync,
+                                                     std::string const& edgeDefinitionName,
                                                      bool dropCollection) {
   // check if edgeCollection is available
   OperationResult result = checkEdgeCollectionAvailability(edgeDefinitionName);
@@ -160,7 +161,6 @@ OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::stri
     // add the edge collection itself for removal
     gmngr.pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(), collectionsToBeRemoved);
     for (auto const& cname : collectionsToBeRemoved) {
-
       std::shared_ptr<LogicalCollection> coll;
       res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
@@ -356,8 +356,18 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   return result;
 }
 
-OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::string const& collectionName,
+OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync,
+                                                       std::string const& collectionName,
                                                        bool dropCollection) {
+#ifdef USE_ENTERPRISE
+  {
+    OperationResult initRes = ensureEnterpriseCollectionInitialCheck(collectionName);
+    if (initRes.fail()) {
+      return initRes;
+    }
+  }
+#endif
+
   // check if collection exists within the orphan collections
   bool found = false;
   for (auto const& oName : _graph.orphanCollections()) {
@@ -411,7 +421,6 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::st
     gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
 
     for (auto const& cname : collectionsToBeRemoved) {
-      
       std::shared_ptr<LogicalCollection> coll;
       Result res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
@@ -506,8 +515,8 @@ OperationResult GraphOperations::getDocument(std::string const& collectionName,
   return result;
 }
 
-GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(std::string const& key, 
-                                                                 std::optional<TRI_voc_rid_t>& rev) const {
+GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
+    std::string const& key, std::optional<TRI_voc_rid_t>& rev) const {
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
