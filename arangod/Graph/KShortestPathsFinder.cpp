@@ -44,7 +44,9 @@ using namespace arangodb::graph;
 
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options) {
+  // cppcheck-suppress *
   _forwardCursor = options.buildCursor(false);
+  // cppcheck-suppress *
   _backwardCursor = options.buildCursor(true);
 }
 

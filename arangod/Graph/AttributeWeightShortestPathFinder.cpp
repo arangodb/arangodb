@@ -160,7 +160,9 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPat
       _resultCode(TRI_ERROR_NO_ERROR),
       _intermediateSet(false),
       _intermediate() {
+  // cppcheck-suppress *
   _forwardCursor = _options.buildCursor(false);
+  // cppcheck-suppress *
   _backwardCursor = _options.buildCursor(true);
 }
 
