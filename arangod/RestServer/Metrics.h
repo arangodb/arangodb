@@ -127,7 +127,7 @@ public:
   virtual void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n";
-    result += name() + "{" + labels() + "} " + std::to_string(load());
+    result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
   };
 private:
   std::atomic<T> _g;
