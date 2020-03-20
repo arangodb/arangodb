@@ -129,7 +129,7 @@ class RocksDBValue {
       : _type(other._type), _buffer(std::move(other._buffer)) {}
 
   RocksDBValue& operator=(RocksDBValue&& other) noexcept {
-    TRI_ASSERT(_type == other._type);
+    _type = other._type;
     _buffer = std::move(other._buffer);
     return *this;
   }
@@ -150,7 +150,7 @@ class RocksDBValue {
   static uint64_t keyValue(char const* data, size_t size);
 
  private:
-  RocksDBEntryType const _type;
+  RocksDBEntryType _type;
   std::string _buffer;
 };
 

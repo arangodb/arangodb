@@ -1389,50 +1389,6 @@ Result setObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& c
   return res;
 }
 
-Result verifyPropertiesForCollection(rocksdb::DB& db, arangodb::LogicalCollection& collection,
-                                     bool checkOnDisk = true) {
-  Result res;
-
-  // methods need lock
-  arangodb::RocksDBKey key;  // read collection info from database
-  key.constructCollection(collection.vocbase().id(), collection.id());
-  rocksdb::PinnableSlice ps;
-  rocksdb::Status s =
-      db.Get(rocksdb::ReadOptions(),
-             arangodb::RocksDBColumnFamily::definitions(), key.string(), &ps);
-  if (!s.ok()) {
-    res.reset(rocksutils::convertStatus(s));
-    return res;
-  }
-  arangodb::velocypack::Slice fromDisk = arangodb::RocksDBValue::data(ps);
-  arangodb::velocypack::Builder diskBuilder;
-  {
-    arangodb::velocypack::ObjectBuilder guard(&diskBuilder);
-    for (auto pair : arangodb::velocypack::ObjectIterator(fromDisk)) {
-      if (pair.key.isEqualString("keyOptions") ||
-          pair.key.isEqualString("status")) {
-        continue;
-      }
-      diskBuilder.add(pair.key);
-      diskBuilder.add(pair.value);
-    }
-  }
-  arangodb::velocypack::Slice onDisk = diskBuilder.slice();
-
-  auto ramBuilder = collection.toVelocyPackIgnore(
-      {"path", "statusString", "keyOptions", "status"},
-      LogicalDataSource::Serialization::PersistenceWithInProgress);
-  arangodb::velocypack::Slice inRam = ramBuilder.slice();
-
-  if (checkOnDisk && !arangodb::basics::VelocyPackHelper::equal(onDisk, inRam, false)) {
-    // LOG_DEVEL << "ON DISK: '" << onDisk.toJson() << "'";
-    res = {TRI_ERROR_INTERNAL, "properties out of sync"};
-  }
-  // LOG_DEVEL << "IN RAM: '" << inRam.toJson() << "'";
-
-  return res;
-}
-
 Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
                                         arangodb::LogicalCollection& collection) {
   Result res;
@@ -1501,6 +1457,192 @@ Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
     }
   }
 
+  res = commit();
+  if (res.fail()) {
+    return res;
+  }
+
+  return res;
+}
+
+LocalDocumentId extractDocumentIdFromIndexEntry(arangodb::RocksDBIndex& ridx,
+                                                rocksdb::Slice key, rocksdb::Slice value) {
+  LocalDocumentId id = LocalDocumentId::none();
+
+  switch (ridx.type()) {
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
+      id = RocksDBValue::documentId(value);
+      break;
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
+      id = RocksDBKey::edgeDocumentId(value);
+      break;
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_TTL_INDEX:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
+      if (ridx.unique()) {
+        id = RocksDBValue::documentId(value);
+        break;
+      }
+      id = RocksDBKey::indexDocumentId(key);
+      break;
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_GEO_INDEX:
+      id = RocksDBKey::indexDocumentId(key);
+      break;
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
+    default:
+      break;
+  }
+
+  return id;
+}
+
+TRI_voc_rid_t getRevisionFromOldDocumentId(rocksdb::DB& db,
+                                           arangodb::RocksDBMetaCollection& rcoll,
+                                           LocalDocumentId oldId) {
+  RocksDBKey key;
+  key.constructDocument(rcoll.objectId(), oldId);
+  rocksdb::PinnableSlice ps;
+  rocksdb::Status s =
+      db.Get(rocksdb::ReadOptions(), arangodb::RocksDBColumnFamily::documents(),
+             key.string(), &ps);
+  if (!s.ok()) {
+    return TRI_voc_rid_t{0};
+  }
+
+  arangodb::velocypack::Slice doc = arangodb::RocksDBValue::data(ps);
+  return arangodb::transaction::helpers::extractRevFromDocument(doc);
+}
+
+Result rewriteIndexEntry(rocksdb::WriteBatch& batch,
+                         arangodb::RocksDBIndex& ridx, rocksdb::Slice oldKey,
+                         rocksdb::Slice oldValue, LocalDocumentId newId) {
+  arangodb::Result res;
+  arangodb::RocksDBKey key;
+  arangodb::RocksDBValue buffer =
+      arangodb::RocksDBValue::Empty(arangodb::RocksDBEntryType::Placeholder);
+  rocksdb::Slice value = oldValue;
+
+  switch (ridx.type()) {
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX: {
+      arangodb::velocypack::StringRef docKey = arangodb::RocksDBKey::primaryKey(oldKey);
+      TRI_voc_rid_t revision = arangodb::RocksDBValue::revisionId(oldValue);
+      key.constructPrimaryIndexValue(ridx.tempObjectId(), docKey);
+      buffer = arangodb::RocksDBValue::PrimaryIndexValue(newId, revision);
+      value = {buffer.string().data(), buffer.string().size()};
+      break;
+    }
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX: {
+      arangodb::velocypack::StringRef vertexId = arangodb::RocksDBKey::vertexId(oldKey);
+      key.constructEdgeIndexValue(ridx.tempObjectId(), vertexId, newId);
+      break;
+    }
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_TTL_INDEX:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX: {
+      arangodb::velocypack::Slice indexedValues =
+          arangodb::RocksDBKey::indexedVPack(oldKey);
+      if (ridx.unique()) {
+        key.constructUniqueVPackIndexValue(ridx.tempObjectId(), indexedValues);
+        buffer = arangodb::RocksDBValue::UniqueVPackIndexValue(newId);
+        value = {buffer.string().data(), buffer.string().size()};
+        break;
+      }
+      key.constructVPackIndexValue(ridx.tempObjectId(), indexedValues, newId);
+      break;
+    }
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX: {
+      arangodb::velocypack::Slice indexedValues =
+          arangodb::RocksDBKey::indexedVPack(oldKey);
+      key.constructVPackIndexValue(ridx.tempObjectId(), indexedValues, newId);
+      break;
+    }
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_GEO_INDEX: {
+      uint64_t geoValue = arangodb::RocksDBKey::geoValue(oldKey);
+      key.constructGeoIndexValue(ridx.tempObjectId(), geoValue, newId);
+      break;
+    }
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:  // deprecated
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:  // deprecated
+    case arangodb::RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
+    default:
+      res.reset(TRI_ERROR_INTERNAL, "encountered unexpected index type");
+      break;
+  }
+
+  batch.Put(ridx.columnFamily(), key.string(), value);
+  return res;
+}
+
+Result copyIndexToNewObjectIdSpace(rocksdb::DB& db, arangodb::LogicalCollection& collection,
+                                   arangodb::Index& index) {
+  Result res;
+  RocksDBKey key;
+
+  auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
+  TRI_ASSERT(rcoll);
+  auto& ridx = static_cast<arangodb::RocksDBIndex&>(index);
+
+  rocksdb::ReadOptions ro;
+  auto bounds = ridx.getBounds();
+  ro.prefix_same_as_start = true;
+  auto iterateBound = bounds.end();
+  ro.iterate_upper_bound = &iterateBound;
+
+  std::unique_ptr<rocksdb::Iterator> iter{db.NewIterator(ro, bounds.columnFamily())};
+  if (!iter) {
+    res.reset(TRI_ERROR_INTERNAL, "could not acquire iterator");
+    return res;
+  }
+  auto cmp = bounds.columnFamily()->GetComparator();
+
+  rocksdb::WriteOptions wo;
+  rocksdb::WriteBatch batch;
+  auto commit = [&wo, &batch, &db]() -> Result {
+    rocksdb::Status r = db.Write(wo, &batch);
+    Result res = arangodb::rocksutils::convertStatus(r);
+    if (res.ok()) {
+      batch.Clear();
+    }
+    return res;
+  };
+
+  for (iter->Seek(bounds.start());
+       iter->Valid() && cmp->Compare(iter->key(), bounds.end()) <= 0; iter->Next()) {
+    LocalDocumentId oldId =
+        ::extractDocumentIdFromIndexEntry(ridx, iter->key(), iter->value());
+    TRI_voc_rid_t revision = ::getRevisionFromOldDocumentId(db, *rcoll, oldId);
+    LocalDocumentId newId = LocalDocumentId::create(revision);
+    if (!newId.isSet()) {
+      res.reset(TRI_ERROR_INTERNAL, "could not get revision for document " +
+                                        std::to_string(oldId.id()));
+      return res;
+    }
+
+    res = ::rewriteIndexEntry(batch, ridx, iter->key(), iter->value(), newId);
+    if (res.fail()) {
+      return res;
+    }
+
+    if (batch.Count() >= 5000) {
+      res = commit();
+      if (res.fail()) {
+        return res;
+      }
+    }
+  }
+
+  res = commit();
+  if (res.fail()) {
+    return res;
+  }
+
   return res;
 }
 }  // namespace
@@ -1515,21 +1657,12 @@ Result RocksDBCollection::upgrade() {
   auto& selector = server.getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
-  res = ::verifyPropertiesForCollection(*engine.db(), _logicalCollection, false);
-  if (res.fail()) {
-    return res;
-  }
-
   res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection,
                                     ::injectNewTemporaryObjectId);
   if (res.fail()) {
     return res;
   }
   // TODO handle cluster?
-  ::verifyPropertiesForCollection(*engine.db(), _logicalCollection);
-  if (res.fail()) {
-    return res;
-  }
 
   {
     // start an exclusive transaction to block access to the collection
@@ -1546,15 +1679,16 @@ Result RocksDBCollection::upgrade() {
     if (res.fail()) {
       return res;
     }
-    // TODO iterate over documents and copy into new id-space with revisions
 
-    // TODO iterate over index entries and copy into new id-space with revisions
+    std::vector<std::shared_ptr<Index>> indices = getIndexes();
+    for (auto& index : indices) {
+      res = ::copyIndexToNewObjectIdSpace(*engine.db(), _logicalCollection, *index);
+      if (res.fail()) {
+        return res;
+      }
+    }
 
     res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection, ::swapObjectIds);
-    if (res.fail()) {
-      return res;
-    }
-    ::verifyPropertiesForCollection(*engine.db(), _logicalCollection);
     if (res.fail()) {
       return res;
     }
@@ -1567,10 +1701,6 @@ Result RocksDBCollection::upgrade() {
   // TODO remove data from old id spaces for indices, drop temp ids
 
   res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection, ::clearTemporaryObjectId);
-  if (res.fail()) {
-    return res;
-  }
-  ::verifyPropertiesForCollection(*engine.db(), _logicalCollection);
   if (res.fail()) {
     return res;
   }
