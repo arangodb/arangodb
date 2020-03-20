@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -398,6 +399,7 @@ bool RestHandler::wakeupHandler() {
 }
 
 void RestHandler::executeEngine(bool isContinue) {
+  DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
 
