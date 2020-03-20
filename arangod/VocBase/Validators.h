@@ -54,11 +54,11 @@ struct ValidatorBase {
   virtual ~ValidatorBase() = default;
 
   // Validation function as it should be used in the logical collection or storage engine.
-  bool validate(VPackSlice new_, VPackSlice old_, bool isInsert, VPackOptions const*) const;
+  Result validate(VPackSlice new_, VPackSlice old_, bool isInsert, VPackOptions const*) const;
 
   // Validate a single document in the specialized class ignoring the the level.
   // This version is used in the implementations of AQL Functions.
-  virtual bool validateOne(VPackSlice slice, VPackOptions const*) const = 0;
+  virtual Result validateOne(VPackSlice slice, VPackOptions const*) const = 0;
 
   void toVelocyPack(VPackBuilder&) const;
   virtual std::string const& type() const = 0;
@@ -75,7 +75,7 @@ struct ValidatorBase {
 
 struct ValidatorJsonSchema : public ValidatorBase {
   explicit ValidatorJsonSchema(VPackSlice params);
-  bool validateOne(VPackSlice slice, VPackOptions const*) const override;
+  Result validateOne(VPackSlice slice, VPackOptions const*) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
   std::string const& type() const override;
 private:
@@ -85,7 +85,7 @@ private:
 
 struct ValidatorBool : public ValidatorBase {
   explicit ValidatorBool(VPackSlice params);
-  bool validateOne(VPackSlice slice, VPackOptions const*) const override;
+  Result validateOne(VPackSlice slice, VPackOptions const*) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
   std::string const& type() const override;
 

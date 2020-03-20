@@ -7499,7 +7499,7 @@ AqlValue Functions::GetValidation(ExpressionContext* expressionContext,
   }
 
   VPackBuilder builder;
-  logicalCollection->validatorsToVelocyPack(builder);;
+  logicalCollection->validatorsToVelocyPack(builder); // returns object but should return Array
   return AqlValue(builder);
 }
 
@@ -7516,16 +7516,21 @@ AqlValue Functions::Validate(ExpressionContext* expressionContext,
   AqlValue const& docValue = extractFunctionParameterValue(parameters, 0);
   AqlValue const& schemaValue = extractFunctionParameterValue(parameters, 1);
 
-  if(!schemaValue.isArray()){
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "no array of validation objects");
+  if(!schemaValue.isObject()){
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "no object given validation objects");
   }
 
-  for (auto validationSlice : VPackArrayIterator(schemaValue.slice())) {
-    std::shared_ptr<arangodb::ValidatorBase> validator = std::make_shared<arangodb::ValidatorJsonSchema>(validationSlice);
-    if(!validator->validateOne(docValue.slice(), trx->transactionContext()->getVPackOptions())) {
-      return AqlValue(AqlValueHintBool(false));
+  arangodb::ValidatorJsonSchema validator(schemaValue.slice());
+  auto res = validator.validateOne(docValue.slice(), trx->transactionContext()->getVPackOptions());
+
+  transaction::BuilderLeaser resultBuilder(trx);
+  {
+    VPackObjectBuilder guard(resultBuilder.builder());
+    resultBuilder->add("valid", VPackValue(res.ok()));
+    if(res.fail()) {
+      resultBuilder->add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
     }
   }
 
-  return AqlValue(AqlValueHintBool(true));
+  return AqlValue(resultBuilder->slice());
 }
