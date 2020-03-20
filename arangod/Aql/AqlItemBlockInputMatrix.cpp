@@ -159,7 +159,10 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
       _shadowRow = _aqlItemMatrix->popShadowRow();
       TRI_ASSERT(_shadowRow.isRelevant());
     } else {
-      TRI_ASSERT(_finalState == ExecutorState::DONE);
+      // This can happen if we are either DONE.
+      // or if the executor above produced
+      // exactly one full block and was done
+      // but there was no place for the ShadowRow.
       _aqlItemMatrix->clear();
     }
     resetBlockIndex();
