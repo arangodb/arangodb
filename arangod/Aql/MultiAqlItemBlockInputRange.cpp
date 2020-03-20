@@ -203,7 +203,7 @@ auto MultiAqlItemBlockInputRange::reset() -> void {
     -> std::size_t {
   size_t count = 0;
   for (auto const& range : _inputs) {
-    count += range.countShadowRows();
+    count = std::max(count, range.countShadowRows());
   }
   return count;
 }
