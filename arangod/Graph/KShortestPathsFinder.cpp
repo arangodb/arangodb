@@ -52,6 +52,13 @@ KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
 
 KShortestPathsFinder::~KShortestPathsFinder() = default;
 
+void KShortestPathsFinder::clear() {
+  _shortestPaths.clear();
+  _candidatePaths.clear();
+  _vertexCache.clear();
+  _traversalDone = true;
+}
+
 // Sets up k-shortest-paths traversal from start to end
 bool KShortestPathsFinder::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& start, arangodb::velocypack::Slice const& end) {
@@ -60,10 +67,11 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
 
-  _traversalDone = false;
-
+  _vertexCache.clear();
   _shortestPaths.clear();
   _candidatePaths.clear();
+
+  _traversalDone = false;
 
   TRI_IF_FAILURE("Travefalse") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 

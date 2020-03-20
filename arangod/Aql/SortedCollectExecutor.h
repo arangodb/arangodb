@@ -209,6 +209,9 @@ class SortedCollectExecutor {
   [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const
       -> std::pair<ExecutionState, size_t>;
 
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
  private:
   Infos const& infos() const noexcept { return _infos; };
 

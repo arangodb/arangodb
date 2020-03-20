@@ -130,6 +130,8 @@ class FakePathFinder : public ShortestPathFinder {
 
   ~FakePathFinder() = default;
 
+  void clear() override{};
+
   void addPath(std::vector<std::string>&& path) {
     _paths.emplace_back(std::move(path));
   }

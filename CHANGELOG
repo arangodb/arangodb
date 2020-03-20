@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add DTRACE points to track a request through the infrastructure.
+
 * Fixed issue #11275: indexes backward compatibility broken in 3.5+.
 
 * Updated snowball dependency to the latest version.
