@@ -968,6 +968,10 @@ class MultiDependencySingleRowFetcherShadowRowTest
   auto blockAlternatingDataAndShadowRows(std::vector<int> const& values)
       -> std::unique_ptr<ExecutionBlock> {
     std::deque<SharedAqlItemBlockPtr> blockDeque;
+    std::set<size_t> splits{};
+    if (cutAt() != 0) {
+      splits.emplace(cutAt());
+    }
     {
       // Build the result
       MatrixBuilder<1> matrixBuilder;
@@ -980,17 +984,36 @@ class MultiDependencySingleRowFetcherShadowRowTest
       for (size_t row = 0; row < block->size(); ++row) {
         if (row % 2 == 1) {
           block->setShadowRowDepth(row, AqlValue{AqlValueHintUInt{0}});
+          size_t splitAt = row + 1;
+          if (splits.find(splitAt) == splits.end()) {
+            splits.emplace(splitAt);
+          }
         }
       }
+      size_t lastSplit = 0;
 
-      if (cutAt() != 0 && cutAt() < block->size()) {
-        SharedAqlItemBlockPtr block1 = block->slice(0, cutAt());
-        SharedAqlItemBlockPtr block2 = block->slice(cutAt(), block->size());
-        blockDeque.emplace_back(block1);
-        blockDeque.emplace_back(block2);
-      } else {
-        blockDeque.emplace_back(block);
+      for (auto const s : splits) {
+        LOG_DEVEL << "Split at: " << s;
+        if (s >= block->size()) {
+          SharedAqlItemBlockPtr block1 = block->slice(lastSplit, block->size());
+          blockDeque.emplace_back(block1);
+          break;
+        } else {
+          SharedAqlItemBlockPtr block1 = block->slice(lastSplit, s);
+          lastSplit = s;
+          blockDeque.emplace_back(block1);
+        }
       }
+      /*
+            if (cutAt() != 0 && cutAt() < block->size()) {
+              SharedAqlItemBlockPtr block1 = block->slice(0, cutAt());
+              SharedAqlItemBlockPtr block2 = block->slice(cutAt(),
+         block->size()); blockDeque.emplace_back(block1);
+              blockDeque.emplace_back(block2);
+            } else {
+              blockDeque.emplace_back(block);
+            }
+            */
     }
 
     auto execBlock = std::make_unique<WaitingExecutionBlockMock>(
@@ -1073,13 +1096,13 @@ INSTANTIATE_TEST_CASE_P(MultiDependencySingleRowFetcherShadowRowTestInstance,
                         testing::Range(static_cast<uint64_t>(0), static_cast<uint64_t>(4)));
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_fetch_shadow_row_test) {
-  constexpr size_t numDeps = 1;
-  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  auto waitingBlock = blockAlternatingDataAndShadowRows({0, 1, 2, 3});
+  auto inputRegs = make_shared_unordered_set({0});
+  std::vector<ExecutionBlock*> deps{waitingBlock.get()};
+  DependencyProxy<BlockPassthrough::Disable> dependencyProxy{deps, itemBlockManager,
+                                                             inputRegs, 1, nullptr};
 
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(
-      alternatingDataAndShadowRows({0, 1, 2, 3}));
-
-  MultiDependencySingleRowFetcher testee{dependencyProxyMock};
+  MultiDependencySingleRowFetcher testee{dependencyProxy};
   testee.initDependencies();
 
   auto ioPairs = std::vector<FetcherIOPair>{};
@@ -1120,15 +1143,14 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_fetch_shadow_row_tes
 }
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, fetch_shadow_rows_2_deps) {
-  constexpr size_t numDeps = 2;
-  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  auto waitingBlockFirst = blockAlternatingDataAndShadowRows({0, 1, 2, 3});
+  auto waitingBlockSecond = blockAlternatingDataAndShadowRows({4, 1, 6, 3});
+  auto inputRegs = make_shared_unordered_set({0});
+  std::vector<ExecutionBlock*> deps{waitingBlockFirst.get(), waitingBlockSecond.get()};
+  DependencyProxy<BlockPassthrough::Disable> dependencyProxy{deps, itemBlockManager,
+                                                             inputRegs, 1, nullptr};
 
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(
-      alternatingDataAndShadowRows({0, 1, 2, 3}));
-  dependencyProxyMock.getDependencyMock(1).shouldReturn(
-      alternatingDataAndShadowRows({4, 1, 6, 3}));
-
-  MultiDependencySingleRowFetcher testee{dependencyProxyMock};
+  MultiDependencySingleRowFetcher testee{dependencyProxy};
   testee.initDependencies();
 
   auto ioPairs = std::vector<FetcherIOPair>{};
@@ -1218,15 +1240,14 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, fetch_shadow_rows_2_deps) {
 }
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, fetch_shadow_rows_2_deps_reverse_pull) {
-  constexpr size_t numDeps = 2;
-  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  auto waitingBlockFirst = blockAlternatingDataAndShadowRows({0, 1, 2, 3});
+  auto waitingBlockSecond = blockAlternatingDataAndShadowRows({4, 1, 6, 3});
+  auto inputRegs = make_shared_unordered_set({0});
+  std::vector<ExecutionBlock*> deps{waitingBlockFirst.get(), waitingBlockSecond.get()};
+  DependencyProxy<BlockPassthrough::Disable> dependencyProxy{deps, itemBlockManager,
+                                                             inputRegs, 1, nullptr};
 
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(
-      alternatingDataAndShadowRows({0, 1, 2, 3}));
-  dependencyProxyMock.getDependencyMock(1).shouldReturn(
-      alternatingDataAndShadowRows({4, 1, 6, 3}));
-
-  MultiDependencySingleRowFetcher testee{dependencyProxyMock};
+  MultiDependencySingleRowFetcher testee{dependencyProxy};
   testee.initDependencies();
 
   auto ioPairs = std::vector<FetcherIOPair>{};
@@ -1356,15 +1377,14 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_skip_shadow_row_test
 }
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, skip_shadow_rows_2_deps) {
-  constexpr size_t numDeps = 2;
-  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  auto waitingBlockFirst = blockAlternatingDataAndShadowRows({0, 1, 2, 3});
+  auto waitingBlockSecond = blockAlternatingDataAndShadowRows({4, 1, 6, 3});
+  auto inputRegs = make_shared_unordered_set({0});
+  std::vector<ExecutionBlock*> deps{waitingBlockFirst.get(), waitingBlockSecond.get()};
+  DependencyProxy<BlockPassthrough::Disable> dependencyProxy{deps, itemBlockManager,
+                                                             inputRegs, 1, nullptr};
 
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(
-      alternatingDataAndShadowRows({0, 1, 2, 3}));
-  dependencyProxyMock.getDependencyMock(1).shouldReturn(
-      alternatingDataAndShadowRows({4, 1, 6, 3}));
-
-  MultiDependencySingleRowFetcher testee{dependencyProxyMock};
+  MultiDependencySingleRowFetcher testee{dependencyProxy};
   testee.initDependencies();
 
   auto ioPairs = std::vector<FetcherIOPair>{};
@@ -1447,15 +1467,14 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, skip_shadow_rows_2_deps) {
 }
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, skip_shadow_rows_2_deps_reverse_pull) {
-  constexpr size_t numDeps = 2;
-  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
+  auto waitingBlockFirst = blockAlternatingDataAndShadowRows({0, 1, 2, 3});
+  auto waitingBlockSecond = blockAlternatingDataAndShadowRows({4, 1, 6, 3});
+  auto inputRegs = make_shared_unordered_set({0});
+  std::vector<ExecutionBlock*> deps{waitingBlockFirst.get(), waitingBlockSecond.get()};
+  DependencyProxy<BlockPassthrough::Disable> dependencyProxy{deps, itemBlockManager,
+                                                             inputRegs, 1, nullptr};
 
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(
-      alternatingDataAndShadowRows({0, 1, 2, 3}));
-  dependencyProxyMock.getDependencyMock(1).shouldReturn(
-      alternatingDataAndShadowRows({4, 1, 6, 3}));
-
-  MultiDependencySingleRowFetcher testee{dependencyProxyMock};
+  MultiDependencySingleRowFetcher testee{dependencyProxy};
   testee.initDependencies();
 
   auto ioPairs = std::vector<FetcherIOPair>{};
