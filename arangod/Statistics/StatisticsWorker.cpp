@@ -820,7 +820,7 @@ void StatisticsWorker::avgPercentDistributon(VPackBuilder& builder, VPackSlice c
   builder.close();
 }
 
-std::string const TYPE_("\n\n#TYPE ");
+std::string const TYPE_("\n#TYPE ");
 std::string const HELP_("\n#HELP ");
 
 // local_name: {"prometheus_name", "type", "help"}
@@ -1032,7 +1032,7 @@ void StatisticsWorker::appendMetric(
   result +=
     TYPE_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[1] +
     HELP_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[2] +
-    statStrings.at(label).at(0) + " " + val;
+    statStrings.at(label).at(0) + " " + val + "\n";
 
 }
 
@@ -1055,7 +1055,7 @@ void StatisticsWorker::appendHistogram(
   for (auto const& le : les) {
     result +=
       statStrings.at(label).at(0) + "{le=\"" + le + "\"}"  + " " +
-      std::to_string(counts.at(i++).getNumber<uint64_t>());
+      std::to_string(counts.at(i++).getNumber<uint64_t>()) + "\n";
   }
 
 }

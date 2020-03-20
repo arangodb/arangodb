@@ -414,7 +414,7 @@ public:
       }
       result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
     }
-    result += name() + "_count{" + labels() + "} " + std::to_string(sum);
+    result += name() + "_count{" + labels() + "} " + std::to_string(sum) + "\n";
   }
 
   std::ostream& print(std::ostream& o) const {
