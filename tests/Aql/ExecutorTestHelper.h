@@ -352,8 +352,8 @@ struct ExecutorTestHelper {
   auto createExecBlock(typename E::Infos infos,
                        ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecBlock {
-    auto& testeeNode = _execNodes.emplace_back(std::move(
-        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType)));
+    auto& testeeNode = _execNodes.emplace_back(
+        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType));
     return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
                                                    std::move(infos));
   }
