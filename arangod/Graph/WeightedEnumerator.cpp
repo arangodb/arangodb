@@ -68,8 +68,12 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
                            toVertex, nextEdge.accumWeight);
     LOG_DEVEL << "found vertex " << toVertex << " depth = " << nextEdge.depth
               << " weight = " << nextEdge.accumWeight;
-    // expand all edges on this vertex
-    expandVertex(_schreierIndex++, nextEdge.depth);
+
+    if (!shouldPrune()) {
+      // expand all edges on this vertex
+      expandVertex(_schreierIndex, nextEdge.depth);
+    }
+    _schreierIndex++;
     return true;
   } else {
     LOG_DEVEL << "vertex " << toVertex << " does not match conditions";
@@ -110,12 +114,12 @@ bool WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
     VPackStringRef toVertex = _opts->cache()->persistString(getToVertex(e, vertex));
 
     if (depth < _opts->maxDepth - 1) {
-      // Prune here
-      if (!shouldPrune()) {
+      // Dont Prune here
+      //if (!shouldPrune()) {
         LOG_DEVEL << "new edge: "
                   << " weight = " << forwardWeight;
         _queue.emplace(vertexIndex, forwardWeight, depth + 1, std::move(eid), toVertex);
-      }
+      //}
     }
   });
 
