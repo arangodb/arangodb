@@ -5843,18 +5843,18 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       traversal->setPathOutput(nullptr);
       modified = true;
     }
-  
+
     // check if we can make use of the optimized neighbors enumerator
     if (!ServerState::instance()->isCoordinator()) {
       if (traversal->vertexOutVariable() != nullptr &&
           traversal->edgeOutVariable() == nullptr &&
           traversal->pathOutVariable() == nullptr &&
-          options->useBreadthFirst &&
+          options->isUseBreadthFirst() &&
           options->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL &&
           !options->usesPrune() &&
           !options->hasDepthLookupInfo()) {
         // this is possible in case *only* vertices are produced (no edges, no path),
-        // the traversal is breadth-first, the vertex uniqueness level is set to "global", 
+        // the traversal is breadth-first, the vertex uniqueness level is set to "global",
         // there is no pruning and there are no depth-specific filters
         options->useNeighbors = true;
         modified = true;

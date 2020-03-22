@@ -63,6 +63,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
  public:
   enum UniquenessLevel { NONE, PATH, GLOBAL };
+  enum class Mode { DFS, BFS, WEIGHTED };
 
  protected:
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
@@ -82,22 +83,26 @@ struct TraverserOptions : public graph::BaseOptions {
 
   uint64_t maxDepth;
 
-  bool useBreadthFirst;
-
   bool useNeighbors;
 
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
 
+  Mode mode;
+
+  std::string weightAttribute;
+
+  double defaultWeight;
+
   std::vector<std::string> vertexCollections;
-  
+
   std::vector<std::string> edgeCollections;
 
   explicit TraverserOptions(aql::Query* query);
 
   TraverserOptions(aql::Query* query, arangodb::velocypack::Slice const& definition);
-  
+
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);
 
@@ -120,7 +125,7 @@ struct TraverserOptions : public graph::BaseOptions {
   /// @brief Build a velocypack containing all relevant information
   ///        for DBServer traverser engines.
   void buildEngineInfo(arangodb::velocypack::Builder&) const override;
-  
+
   /// @brief Whether or not the edge collection shall be excluded
   bool shouldExcludeEdgeCollection(std::string const& name) const override;
 
@@ -128,12 +133,14 @@ struct TraverserOptions : public graph::BaseOptions {
   void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth);
-  
+
   bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 
   bool vertexHasFilter(uint64_t) const;
 
   bool hasEdgeFilter(int64_t, size_t) const;
+
+  bool hasWeightAttribute() const;
 
   bool hasVertexCollectionRestrictions() const;
 
@@ -146,7 +153,7 @@ struct TraverserOptions : public graph::BaseOptions {
   bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
-  
+
   std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
   double estimateCost(size_t& nrItems) const override;
@@ -156,6 +163,12 @@ struct TraverserOptions : public graph::BaseOptions {
                      size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
 
   bool usesPrune() const { return _pruneExpression != nullptr; }
+
+  bool isUseBreadthFirst() const { return mode == Mode::BFS; }
+
+  bool isUniqueGlobalVerticesAllowed() const { return mode == Mode::BFS || mode == Mode::WEIGHTED; }
+
+  double weightEdge(VPackSlice edge) const;
 
   aql::PruneExpressionEvaluator* getPruneEvaluator() {
     TRI_ASSERT(usesPrune());

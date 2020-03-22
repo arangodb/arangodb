@@ -69,6 +69,9 @@ class SingleServerTraverser final : public Traverser {
                        arangodb::velocypack::StringRef const sourceVertexId, uint64_t depth,
                        arangodb::velocypack::StringRef& targetVertexId) override;
 
+
+  bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
