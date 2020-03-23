@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -29,131 +29,179 @@
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "IResearch/common.h"
+#include "Mocks/Servers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <set>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::containers;
 
-namespace {
-
-AqlValue evaluate(AqlValue const& lhs,
-                  AqlValue const& rhs,
-                  AqlValue const& distance,
-                  AqlValue const* transpositions = nullptr) {
-  fakeit::Mock<ExpressionContext> expressionContextMock;
-  ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](int, char const*){ });
-
-  fakeit::Mock<transaction::Context> trxCtxMock;
-  fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([](){
-    static VPackOptions options;
-    return &options;
-  });
-  transaction::Context& trxCtx = trxCtxMock.get();
-
-  fakeit::Mock<transaction::Methods> trxMock;
-  fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysDo([&trxCtx](){ return &trxCtx; });
-  transaction::Methods& trx = trxMock.get();
-
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{arena};
-  params.emplace_back(lhs);
-  params.emplace_back(rhs);
-  params.emplace_back(distance);
-  if (transpositions) {
-    params.emplace_back(*transpositions);
-    params.emplace_back(VPackSlice::nullSlice()); // redundant argument
+class InRangeFunctionTest : public ::testing::Test {
+ public:
+  InRangeFunctionTest() {
+    arangodb::tests::init();
   }
 
-  return Functions::LevenshteinMatch(&expressionContext, &trx, params);
-}
+ protected:
+  AqlValue evaluate(AqlValue const* attribute,
+    AqlValue const* lower,
+    AqlValue const* upper,
+    AqlValue const* includeLower,
+    AqlValue const* includeUpper,
+    std::set<int>* warnings = nullptr) {
+    fakeit::Mock<ExpressionContext> expressionContextMock;
+    ExpressionContext& expressionContext = expressionContextMock.get();
+    fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([warnings](int c, char const*) {
+      if (warnings) {
+        warnings->insert(c);
+      }});
+    fakeit::Mock<transaction::Context> trxCtxMock;
+    fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([]() {
+      static VPackOptions options;
+      return &options;
+      });
+    TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    auto trx = server.createFakeTransaction();
+    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    SmallVector<AqlValue> params{ arena };
+    if (attribute) {
+      params.emplace_back(*attribute);
+    }
+    if (lower) {
+      params.emplace_back(*lower);
+    }
+    if (upper) {
+      params.emplace_back(*upper);
+    }
+    if (includeLower) {
+      params.emplace_back(*includeLower);
+    }
+    if (includeUpper) {
+      params.emplace_back(*includeUpper);
+    }
+    return Functions::InRange(&expressionContext, trx.get(), params);
+  }
 
-void assertLevenshteinMatchFail(AqlValue const& lhs,
-                                AqlValue const& rhs,
-                                AqlValue const& distance,
-                                AqlValue const* transpositions = nullptr) {
-  ASSERT_TRUE(evaluate(lhs, rhs, distance, transpositions).isNull(false));
-  ASSERT_TRUE(evaluate(rhs, lhs, distance, transpositions).isNull(false));
-}
+  void assertInRangeFail(size_t line,
+    std::set<int> const& expected_warnings,
+    AqlValue const* attribute,
+    AqlValue const* lower,
+    AqlValue const* upper,
+    AqlValue const* includeLower,
+    AqlValue const* includeUpper) {
+    SCOPED_TRACE(testing::Message("assertInRangeFail failed on line:") << line);
+    std::set<int> warnings;
+    ASSERT_TRUE(evaluate(attribute, lower, upper, includeLower, includeUpper, &warnings).isNull(false));
+    ASSERT_EQ(expected_warnings, warnings);
+  }
 
-void assertLevenshteinMatch(bool expectedValue,
-                            AqlValue const& lhs,
-                            AqlValue const& rhs,
-                            AqlValue const& distance,
-                            AqlValue const* transpositions = nullptr) {
-  auto assertLevenshteinMatchValue = [](
-      bool expectedValue,
-      AqlValue const& lhs,
-      AqlValue const& rhs,
-      AqlValue const& distance,
-      AqlValue const* transpositions = nullptr) {
-    auto const value = evaluate(lhs, rhs, distance, transpositions);
+  void assertInRange(size_t line,
+    bool expectedValue,
+    AqlValue const* attribute,
+    AqlValue const* lower,
+    AqlValue const* upper,
+    bool includeLower,
+    bool includeUpper) {
+    SCOPED_TRACE(testing::Message("assertInRange failed on line:") << line);
+    std::set<int> warnings;
+    auto value = evaluate(attribute, lower, upper,
+      &AqlValue(AqlValueHintBool(includeLower)),
+      &AqlValue(AqlValueHintBool(includeUpper)), &warnings);
+    ASSERT_TRUE(warnings.empty());
     ASSERT_TRUE(value.isBoolean());
     ASSERT_EQ(expectedValue, value.toBoolean());
-  };
+  }
 
-  assertLevenshteinMatchValue(expectedValue, lhs, rhs, distance, transpositions);
-  assertLevenshteinMatchValue(expectedValue, rhs, lhs, distance, transpositions);
+ private:
+  arangodb::tests::mocks::MockAqlServer server;
+};
+
+TEST_F(InRangeFunctionTest, testValidArgs) {
+  // strings
+  {
+    AqlValue foo("foo");
+    AqlValue boo("boo");
+    AqlValue poo("poo");
+    assertInRange(__LINE__, true, &foo, &boo, &poo, true, true);
+    assertInRange(__LINE__, false, &foo, &poo, &boo, true, true);
+    assertInRange(__LINE__, true, &foo, &foo, &poo, true, true);
+    assertInRange(__LINE__, true, &foo, &foo, &poo, true, false);
+    assertInRange(__LINE__, false, &foo, &foo, &poo, false, true);
+    assertInRange(__LINE__, true, &foo, &boo, &foo, true, true);
+    assertInRange(__LINE__, true, &foo, &boo, &foo, false, true);
+    assertInRange(__LINE__, false, &foo, &boo, &foo, true, false);
+  }
+  // non ASCII
+  {
+    AqlValue foo("ПУИ");
+    AqlValue boo("ПУЗ");
+    AqlValue poo("ПУЙ");
+    assertInRange(__LINE__, true, &foo, &boo, &poo, true, true);
+    assertInRange(__LINE__, false, &foo, &poo, &boo, true, true);
+    assertInRange(__LINE__, true, &foo, &foo, &poo, true, true);
+    assertInRange(__LINE__, true, &foo, &foo, &poo, true, false);
+    assertInRange(__LINE__, false, &foo, &foo, &poo, false, true);
+    assertInRange(__LINE__, true, &foo, &boo, &foo, true, true);
+    assertInRange(__LINE__, true, &foo, &boo, &foo, false, true);
+    assertInRange(__LINE__, false, &foo, &boo, &foo, true, false);
+  }
+  // numbers
+  {
+    AqlValue foo{ AqlValueHintInt(5) };
+    AqlValue boo{ AqlValueHintDouble(4.9999) };
+    AqlValue poo{ AqlValueHintDouble(5.0001) };
+    assertInRange(__LINE__, true, &foo, &boo, &poo, true, true);
+    assertInRange(__LINE__, false, &foo, &poo, &boo, true, true);
+    assertInRange(__LINE__, true, &foo, &foo, &poo, true, true);
+    assertInRange(__LINE__, true, &foo, &foo, &poo, true, false);
+    assertInRange(__LINE__, false, &foo, &foo, &poo, false, true);
+    assertInRange(__LINE__, true, &foo, &boo, &foo, true, true);
+    assertInRange(__LINE__, true, &foo, &boo, &foo, false, true);
+    assertInRange(__LINE__, false, &foo, &boo, &foo, true, false);
+  }
+  // type mix
+  {
+    AqlValue const Int5{ AqlValueHintInt(5) };
+    AqlValue const NullVal{ AqlValueHintNull{} };
+    AqlValue const ArrayVal{ AqlValueHintEmptyArray{} };
+    AqlValue const ObjectVal{ AqlValueHintEmptyObject{} };
+    AqlValue const StringVal("foo");
+    assertInRange(__LINE__, true, &StringVal, &NullVal, &ObjectVal, true, true);
+    assertInRange(__LINE__, true, &StringVal, &NullVal, &ArrayVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &NullVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &ArrayVal, &NullVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &ArrayVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &ArrayVal, &ObjectVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &NullVal, &Int5, true, true);
+    assertInRange(__LINE__, true, &StringVal, &NullVal, &StringVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &StringVal, &NullVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &StringVal, &Int5, true, true);
+    assertInRange(__LINE__, true, &Int5, &NullVal, &StringVal, true, true);
+    assertInRange(__LINE__, false, &Int5, &ArrayVal, &StringVal, true, true);
+    assertInRange(__LINE__, true, &Int5, &NullVal, &ArrayVal, true, true);
+    assertInRange(__LINE__, true, &Int5, &NullVal, &ObjectVal, true, true);
+    assertInRange(__LINE__, false, &ArrayVal, &NullVal, &StringVal, true, true);
+    assertInRange(__LINE__, true, &ArrayVal, &NullVal, &ObjectVal, true, true);
+    assertInRange(__LINE__, true, &ArrayVal, &StringVal, &ObjectVal, true, true);
+    assertInRange(__LINE__, true, &ArrayVal, &Int5, &ObjectVal, true, true);
+    assertInRange(__LINE__, true, &ObjectVal, &Int5, &ObjectVal, true, true);
+    assertInRange(__LINE__, false, &ObjectVal, &Int5, &ObjectVal, true, false);
+  }
 }
 
-}
-
-TEST(LevenshteinMatchFunctionTest, test) {
-  AqlValue const Damerau{AqlValueHintBool{true}};
-  AqlValue const Levenshtein{AqlValueHintBool{false}};
-  AqlValue const InvalidNull{AqlValueHintNull{}};
-  AqlValue const InvalidInt{AqlValueHintInt{1}};
-  AqlValue const InvalidArray{AqlValueHintEmptyArray{}};
-  AqlValue const InvalidObject{AqlValueHintEmptyObject{}};
-
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{0}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{0}));
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{0}), &Damerau);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{1}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{1}));
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{1}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{2}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintDouble{2}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintDouble{2.5}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{3}), &Levenshtein);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{3}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{3}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Levenshtein);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintNull{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue(AqlValueHintEmptyArray{}), AqlValue("aa"), AqlValue(AqlValueHintInt{1}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintInt{1}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintDouble{1.}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintBool{false}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue(AqlValueHintNull{}), AqlValue("aa"), AqlValue(AqlValueHintInt{1}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyArray{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintInt{1}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintDouble{1.}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintBool{false}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{1}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintDouble{1.}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintNull{}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintEmptyArray{}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintEmptyObject{}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintBool{false}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidNull);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidInt);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidArray);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidObject);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}));
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Damerau);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Damerau);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Damerau);
+TEST_F(InRangeFunctionTest, testInvalidArgs) {
+  const std::set<int> typeMismatchWarning{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH };
+  const std::set<int> invalidArgsCount{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH };
+  AqlValue const ValidString{ "ValidString" };
+  AqlValue const ValidBool{ AqlValueHintBool{true} };
+  assertInRangeFail(__LINE__, invalidArgsCount, &ValidString, &ValidString, &ValidString, &ValidBool, nullptr);
+  assertInRangeFail(__LINE__, typeMismatchWarning, &ValidString, &ValidString, &ValidString, &ValidBool, &ValidString);
+  assertInRangeFail(__LINE__, typeMismatchWarning, &ValidString, &ValidString, &ValidString, &ValidString, &ValidBool);
 }

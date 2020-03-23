@@ -35,6 +35,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/InRangeFunctionTest.cpp
   Aql/JaccardFunctionTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
