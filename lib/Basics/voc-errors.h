@@ -1670,19 +1670,19 @@ constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           
 constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
 
 /// 4006: ERROR_INVALID_SMART_JOIN_ATTRIBUTE
-/// "invalid smart join attribute declaration"
+/// "invalid SmartJoin attribute declaration"
 /// Will be raised when the smartJoinAttribute declaration is invalid.
 constexpr int TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE                            = 4006;
 
 /// 4007: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE
-/// "shard key value must be prefixed with the value of the smart join attribute"
+/// "shard key value must be prefixed with the value of the SmartJoin attribute"
 /// when using smartJoinAttribute for a collection, the shard key value must be
-/// prefixed with the value of the smart join attribute.
+/// prefixed with the value of the SmartJoin attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE          = 4007;
 
 /// 4008: ERROR_NO_SMART_JOIN_ATTRIBUTE
-/// "smart join attribute not given or invalid"
-/// The given document does not have the required smart join attribute set or
+/// "SmartJoin attribute not given or invalid"
+/// The given document does not have the required SmartJoin attribute set or
 /// it has an invalid value.
 constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 = 4008;
 

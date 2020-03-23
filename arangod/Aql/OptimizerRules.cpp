@@ -1542,7 +1542,7 @@ class PropagateConstantAttributesHelper {
 
     if (constantValue != nullptr) {
       // first check if we would optimize away a join condition that uses a smartJoinAttribute...
-      // we must not do that, because that would otherwise disable smart join functionality
+      // we must not do that, because that would otherwise disable SmartJoin functionality
       if (arangodb::ServerState::instance()->isCoordinator() &&
           parentNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         AstNode const* current = parentNode->getMember(accessIndex == 0 ? 1 : 0);
@@ -1559,7 +1559,7 @@ class PropagateConstantAttributesHelper {
                 auto logical = collection->getCollection();
                 if (logical->hasSmartJoinAttribute() &&
                     logical->smartJoinAttribute() == nameAttribute->getString()) {
-                  // don't remove a smart join attribute access!
+                  // don't remove a SmartJoin attribute access!
                   return;
                 } else {
                   std::vector<std::string> shardKeys = collection->shardKeys(true);
@@ -4729,7 +4729,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
   std::map<Collection const*, std::unordered_set<std::string>> modificationRestrictions;
 
   // forward a shard key restriction from one collection to the other if the two collections
-  // are used in a smart join (and use distributeShardsLike on each other)
+  // are used in a SmartJoin (and use distributeShardsLike on each other)
   auto forwardRestrictionToPrototype = [&plan](ExecutionNode const* current,
                                                std::string const& shardId) {
     auto collectionNode = dynamic_cast<CollectionAccessingNode const*>(current);

@@ -655,9 +655,9 @@
               advancedTableContent.push(
                 window.modalView.createTextEntry(
                   'smart-join-attribute',
-                  'Smart join attribute',
+                  'SmartJoin attribute',
                   '',
-                  'String attribute name. Can be left empty if smart joins are not used.',
+                  'String attribute name. Can be left empty if SmartJoins are not used.',
                   '',
                   false,
                   [

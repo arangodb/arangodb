@@ -324,7 +324,7 @@ struct OptimizerRule {
   static_assert(clusterOneShardRule < smartJoinsRule);
   static_assert(clusterOneShardRule < scatterInClusterRule);
 
-  // smart joins must come before we move filters around, so the smart-join
+  // SmartJoins must come before we move filters around, so the smart-join
   // detection code does not need to take the special filters into account
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif

@@ -929,7 +929,7 @@ v3.5.0-rc.5 (2019-07-22)
   minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
   Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
 
-* Fixed a query abort error with smart joins if both collections were restricted to a
+* Fixed a query abort error with SmartJoins if both collections were restricted to a
   single shard using the "restrict-to-single-shard" optimizer rule.
 
 * Fixed a performance regression of COLLECT WITH COUNT INTO.
@@ -1046,7 +1046,7 @@ v3.5.0-rc.3 (2019-05-31)
 v3.5.0-rc.2 (2019-05-23)
 ------------------------
 
-* Fixed "collection not found" exception during setup of 3-way smart join queries in the
+* Fixed "collection not found" exception during setup of 3-way SmartJoin queries in the
   cluster.
 
 * Fixed an edge case of handling `null` values in the AQL function `MIN` for input
@@ -1181,7 +1181,7 @@ v3.5.0-rc.1 (2019-05-14)
   `--log.use-localtime`, because the functionality provided by these options
   is covered by `--log.time-format` too.
 
-* Added "smart joins" to the ArangoDB Enterprise Edition that allows running cluster
+* Added "SmartJoins" to the ArangoDB Enterprise Edition that allows running cluster
   joins between two certain sharded collections with performance close to that of a
   local join operation.
 
@@ -1689,7 +1689,7 @@ v3.4.7 (2019-07-02)
   case in 3.3 and before. If no VERSION files are created, this may cause problems on upgrade
   to 3.5. The 3.5 branch was also modified to handle this problem gracefully.
 
-* fixed "collection not found" exception during setup of 3-way smart join queries in the
+* fixed "collection not found" exception during setup of 3-way SmartJoin queries in the
   cluster
 
 * fixed an edge case of handling `null` values in the AQL function `MIN` for input

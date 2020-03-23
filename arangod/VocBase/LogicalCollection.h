@@ -156,8 +156,8 @@ class LogicalCollection : public LogicalDataSource {
 
   bool hasClusterWideUniqueRevs() const;
 
-  /// @brief return the name of the smart join attribute (empty string
-  /// if no smart join attribute is present)
+  /// @brief return the name of the SmartJoin attribute (empty string
+  /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const { return _smartJoinAttribute; }
 
   // SECTION: sharding
