@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added startup option `--ssl.prefer-http1-in-alpn` to optionally let the 
+  server prefer HTTP/1.1 over HTTP/2 in ALPN protocol negotiations.
+
 * Compilation issues with wrong cv-qualifiers and unnecessary
   temporary copying.
 
