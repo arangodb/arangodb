@@ -1834,6 +1834,80 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
   return AqlValue(AqlValueHintBool(dist <= unsignedMaxDistanceValue));
 }
 
+/// @brief function IN_RANGE
+AqlValue Functions::InRange(ExpressionContext* ctx, transaction::Methods* trx,
+  VPackFunctionParameters const& args) {
+  static char const* AFN = "IN_RANGE";
+
+  auto const argc = args.size();
+
+  if (argc != 5) { // for const evaluation we need analyzer to be set explicitly (we can`t access filter context)
+                  // but we can`t set analyzer as mandatory in function AQL signature - this will break SEARCH
+    registerWarning(
+      ctx, AFN,
+      arangodb::Result{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                        "4 arguments are expected." });
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto const& attributeVal = extractFunctionParameterValue(args, 0);
+  auto const& lowerVal = extractFunctionParameterValue(args, 1);
+  auto const& upperVal = extractFunctionParameterValue(args, 2);
+  auto const& includeLowerVal = extractFunctionParameterValue(args, 3);
+  auto const& includeUpperVal = extractFunctionParameterValue(args, 4);
+
+  //bool const isNumber = attributeVal.isNumber() &&
+  //                      lowerVal.isNumber() &&
+  //                      upperVal.isNumber();
+
+  //bool const isString = !isNumber &&
+  //                      attributeVal.isString() &&
+  //                      lowerVal.isString() &&
+  //                      upperVal.isString();
+
+  //if (ADB_UNLIKELY(!isNumber && !isString)) {
+  //  arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+  //  return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  //}
+
+  if (ADB_UNLIKELY(!includeLowerVal.isBoolean())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+
+  if (ADB_UNLIKELY(!includeUpperVal.isBoolean())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+
+  auto const includeLower = includeLowerVal.toBoolean();
+  auto const includeUpper = includeUpperVal.toBoolean();
+  auto const compareLowerResult = AqlValue::Compare(trx, lowerVal, attributeVal, true);
+  if ((!includeLower && compareLowerResult >= 0) || (includeLower && compareLowerResult > 0)) {
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  auto const compareUpperResult = AqlValue::Compare(trx, attributeVal, upperVal, true);
+  return AqlValue(AqlValueHintBool((includeUpper && compareUpperResult <= 0) ||
+                                  (!includeUpper && compareUpperResult < 0)));
+  //!!!!!! NULL Bool !!
+  //if (isNumber) {
+  //  auto const attribute = attributeVal.toDouble();
+  //  auto const lower = lowerVal.toDouble();
+  //  auto const upper = upperVal.toDouble();
+  //  return AqlValue(AqlValueHintBool(
+  //      (includeLower ? attribute >= lower : attribute > lower) &&
+  //      (includeUpper ? attribute <= upper : attribute < upper)
+  //    ));
+  //} else {
+  //  TRI_ASSERT(isString);
+  //  auto const attribute = iresearch::getStringRef(attributeVal.slice());
+  //  auto const lower = iresearch::getStringRef(lowerVal.slice());
+  //  auto const upper = iresearch::getStringRef(upperVal.slice());
+  //  return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  //}
+}
+
 /// @brief function TO_BOOL
 AqlValue Functions::ToBool(ExpressionContext*, transaction::Methods* /*trx*/,
                            VPackFunctionParameters const& parameters) {
