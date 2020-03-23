@@ -373,7 +373,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
                               {R"(null)"},
                               {R"(null)"}})*/
       .expectedState(ExecutionState::DONE)
-      .addConsumer<EnumerateCollectionExecutor>(std::move(makeInfos()))
+      .addConsumer<EnumerateCollectionExecutor>(makeInfos())
       .run();
 }
 
@@ -394,7 +394,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
       .expectSkipped(0)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::HASMORE)
-      .addConsumer<EnumerateCollectionExecutor>(std::move(makeInfos()))
+      .addConsumer<EnumerateCollectionExecutor>(makeInfos())
       .run();
 }
 
@@ -414,7 +414,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default
       .expectSkipped(5)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::DONE)
-      .addConsumer<EnumerateCollectionExecutor>(std::move(makeInfos()))
+      .addConsumer<EnumerateCollectionExecutor>(makeInfos())
       .run();
 }
 

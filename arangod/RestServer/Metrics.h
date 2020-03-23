@@ -125,7 +125,7 @@ public:
     return _g.load();
   };
   virtual void toPrometheus(std::string& result) const override {
-    result += "#TYPE " + name() + " gauge\n";
+    result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n";
     result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
   };
@@ -396,7 +396,7 @@ public:
   size_t size() const { return _c.size(); }
 
   virtual void toPrometheus(std::string& result) const override {
-    result += "#TYPE " + name() + " histogram\n";
+    result += "\n#TYPE " + name() + " histogram\n";
     result += "#HELP " + name() + " " + help() + "\n";
     std::string lbs = labels();
     auto const haveLabels = !lbs.empty();
