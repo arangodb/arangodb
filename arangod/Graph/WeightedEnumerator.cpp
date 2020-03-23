@@ -46,10 +46,6 @@ void WeightedEnumerator::setStartVertex(arangodb::velocypack::StringRef startVer
 }
 
 bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
-
-  LOG_DEVEL << "expanding edge "
-            << " forward weight = " << nextEdge.accumWeight;
-
   VPackStringRef const toVertex = nextEdge.forwardVertexId;
 
   // we already have the toVertex, so we don't need to load the edge again
@@ -60,14 +56,10 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
       if (pathContainsVertex(nextEdge.fromIndex, toVertex)) {
         // This vertex is on the path.
         return false;
-      } else {
-        LOG_DEVEL << "vertex " << toVertex << " is contained in path";
       }
     }
     _schreier.emplace_back(nextEdge.fromIndex, std::move(nextEdge.forwardEdgeToken),
                            toVertex, nextEdge.accumWeight);
-    LOG_DEVEL << "found vertex " << toVertex << " depth = " << nextEdge.depth
-              << " weight = " << nextEdge.accumWeight;
 
     if (!shouldPrune()) {
       // expand all edges on this vertex
@@ -75,8 +67,6 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
     }
     _schreierIndex++;
     return true;
-  } else {
-    LOG_DEVEL << "vertex " << toVertex << " does not match conditions";
   }
 
   return false;
@@ -87,8 +77,6 @@ bool WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
   VPackStringRef vertex = currentStep.currentVertexId;
   EdgeCursor* cursor = getCursor(vertex, depth);
   bool didInsert = false;
-
-  LOG_DEVEL << "expanding vertex " << vertex << " weight = " << currentStep.accumWeight;
 
   cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e, size_t cursorIdx) -> void {
     // transform edge if required
@@ -114,12 +102,7 @@ bool WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
     VPackStringRef toVertex = _opts->cache()->persistString(getToVertex(e, vertex));
 
     if (depth < _opts->maxDepth - 1) {
-      // Dont Prune here
-      //if (!shouldPrune()) {
-        LOG_DEVEL << "new edge: "
-                  << " weight = " << forwardWeight;
-        _queue.emplace(vertexIndex, forwardWeight, depth + 1, std::move(eid), toVertex);
-      //}
+      _queue.emplace(vertexIndex, forwardWeight, depth + 1, std::move(eid), toVertex);
     }
   });
 
@@ -130,9 +113,7 @@ bool WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
 
 bool WeightedEnumerator::expand() {
   while (true) {
-    LOG_DEVEL << "Entering loop";
     if (_queue.empty()) {
-      LOG_DEVEL << "Queue is empty, done";
       // That's it. we are done.
       return false;
     }
@@ -142,21 +123,12 @@ bool WeightedEnumerator::expand() {
     TRI_ASSERT(!_queue.empty());
     NextEdge nextEdge = _queue.popTop();
 
-    auto const nextIdx = nextEdge.fromIndex;
-    auto const nextVertex = _schreier[nextIdx].currentVertexId;
-
-    LOG_DEVEL << "Queue top: weight = " << nextEdge.accumWeight
-              << ", depth = " << nextEdge.depth << " vertex = " << nextVertex;
-
-    bool shouldReturnPath = nextEdge.depth + 1 >= _opts->minDepth;
-
-    bool didInsert = expandEdge(std::move(nextEdge));
+    bool const shouldReturnPath = nextEdge.depth + 1 >= _opts->minDepth;
+    bool const didInsert = expandEdge(std::move(nextEdge));
 
     if (!shouldReturnPath) {
       _lastReturned = _schreierIndex;
-      didInsert = false;
-    }
-    if (didInsert) {
+    } else if (didInsert) {
       // We exit the loop here.
       // _schreierIndex is moved forward
       return true;

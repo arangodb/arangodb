@@ -74,9 +74,7 @@ TraverserOptions::TraverserOptions(aql::Query* query)
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
       mode(Mode::DFS),
-      defaultWeight(1.0) {
-  LOG_DEVEL << "TraverserOptions::TraverserOptions(aql::Query* query)";
-}
+      defaultWeight(1.0) {}
 
 TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
     : BaseOptions(query),
@@ -89,8 +87,6 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
       uniqueEdges(UniquenessLevel::PATH),
       mode(Mode::DFS),
       defaultWeight(1.0) {
-  LOG_DEVEL << "TraverserOptions::TraverserOptions(aql::Query* query, "
-               "VPackSlice const& obj)";
   TRI_ASSERT(obj.isObject());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -104,7 +100,6 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
   TRI_ASSERT(minDepth <= maxDepth);
 
   std::string tmp = VPackHelper::getStringValue(obj, "mode", "");
-  LOG_DEVEL << "mode = " << tmp << " obj = " << obj.toJson();
   if (!tmp.empty()) {
     if (tmp == "bfs") {
       mode = Mode::BFS;
@@ -210,8 +205,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::Query* query, VPackSlice info,
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
       mode(Mode::DFS) {
-  LOG_DEVEL << "TraverserOptions::TraverserOptions(arangodb::aql::Query* "
-               "query, VPackSlice info, VPackSlice collections)";
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
@@ -235,7 +228,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::Query* query, VPackSlice info,
   maxDepth = read.getNumber<uint64_t>();
 
   read = info.get("mode");
-  LOG_DEVEL << "mode = " << read << " obj = " << info.toJson();
   if (!read.isInteger()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The options require a mode");
@@ -432,8 +424,6 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other, bool const all
       defaultWeight(1.0),
       vertexCollections(other.vertexCollections),
       edgeCollections(other.edgeCollections) {
-  LOG_DEVEL << "TraverserOptions::TraverserOptions(TraverserOptions const& "
-               "other, bool const allowAlreadyBuiltCopy)";
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
     TRI_ASSERT(other._depthLookupInfo.empty());
@@ -836,8 +826,6 @@ void TraverserOptions::activatePrune(std::vector<aql::Variable const*> const&& v
 
 double TraverserOptions::weightEdge(VPackSlice edge) const {
   TRI_ASSERT(mode == Mode::WEIGHTED);
-  LOG_DEVEL << "TraverserOptions::weightEdge attr = " << weightAttribute
-            << " edge = " << edge.toJson();
   return arangodb::basics::VelocyPackHelper::getNumericValue<double>(edge, weightAttribute,
                                                                      defaultWeight);
 }
