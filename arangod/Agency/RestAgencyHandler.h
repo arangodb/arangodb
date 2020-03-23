@@ -51,7 +51,7 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
 
   using fvoid = futures::Future<futures::Unit>;
 
-  fvoid pollIndex();
+  RestStatus pollIndex(consensus::index_t index);
 
  private:
   RestStatus reportErrorEmptyRequest();
@@ -64,7 +64,6 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
   RestStatus handleWrite();
   RestStatus handleTransact();
   RestStatus handleConfig();
-  RestStatus handlePoll();
   RestStatus reportMethodNotAllowed();
   RestStatus handleState();
   RestStatus handleTransient();

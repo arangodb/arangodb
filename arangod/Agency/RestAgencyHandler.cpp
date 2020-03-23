@@ -151,68 +151,86 @@ RestStatus RestAgencyHandler::handleTransient() {
 }
 
 
-fvoid RestAgencyHandler::pollIndex(std::unique_ptr<RemoveServerContext>&& ctx>) {
-  _agent->pollFor(index);
-  return futures::makeFuture();
+RestStatus RestAgencyHandler::pollIndex(index_t index) {
+  return waitForFuture(
+    _agent->poll(index)
+    .thenValue([this](std::shared_ptr<VPackBuilder> res) {
+      if (res->hasKey("accepted")) {
+        TRI_ASSERT(res->hasKey("result"));
+        VPackBuffer<uint8_t> payload;
+        {
+          VPackBuilder builder(payload);
+          VPackObjectBuilder ob(&builder);
+          builder.add(StaticStrings::Error, VPackValue(false));
+          builder.add("code", VPackValue(int(ResponseCode::OK)));
+          builder.add("result", res->slice().get("result"));
+        }
+        resetResponse(rest::ResponseCode::ACCEPTED);
+        response()->setPayload(std::move(payload));
+      } else {
+        generateError(
+          rest::ResponseCode::SERVICE_UNAVAILABLE,
+          TRI_ERROR_HTTP_SERVER_ERROR, "No leader");
+      }
+    })
+    .thenError<VPackException>([this](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    })
+    .thenError<std::exception>([this](std::exception const& e) {
+      generateError(
+        rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
+
 }
 
 
 RestStatus RestAgencyHandler::handlePoll() {
 
   // GET only
-  if (!_request->requestType() == rest::RequestType::GET) {
+  if (_request->requestType() != rest::RequestType::GET) {
     return reportMethodNotAllowed();
   }
 
+  // WARNING ////////////////////////////////////////////////////
   // Leader only
   if (!_agent->leading()) {  // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
       return reportMessage(
         rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
-    } else {
-      TRI_ASSERT(ret.redirect != _agent->id());
-      redirectRequest(ret.redirect);
-    }
+    } // WARNING REDIRECTS NEEDS BE DOING
   }
 
-  query_t query;
+  // Get queryString index
+  index_t index = 0;
+  bool found = true;
+  std::string const& val_str = _request->value("index", found);
+  if (!found) { // Give it all
+    LOG_TOPIC("0f843", DEBUG, Logger::AGENCY)
+      << "missing query string index assuming 0";
+  }
+
+  if (index == 0) { // Give it all
+    VPackBuilder body;
+    index = _agent->readDB(body);
+    LOG_TOPIC("0f843", DEBUG, Logger::AGENCY)
+      << "providing readDB up to index " << index;
+    // WARNING BODY!
+  }
+  
   try {
-    query = _request->toVelocyPackBuilderPtr();
-  } catch (std::exception const& e) {
-    return reportMessage(rest::ResponseCode::BAD, e.what());
+    index = std::stoul(val_str);
+  } catch (std::invalid_argument const& e) {
+    return reportMessage(
+      rest::ResponseCode::BAD, "index query string must be a positive integer");
   }
 
-
-  if (!_agent->)
-
-    auto ctx = std::make_unique<RemoveServerContext>(server);
-    _agent->pollFor(query);
-
-    return RestStatus::DONE;
-  }
-
-  // if (reqyestType == GET)
-  //   if (leading)
-  //     if (request.index != 0)
-  //       _agent->pollFor(request.index, request.timeout) // analogous to waitFor
-  //       return
-  //         if (time < timeout)
-  //           {code:200, error:false, result:{logs:[...]}}
-  //         else
-  //           {code:408, error:true, result:[]}
-  //     else
-  //       _agent->readDB()
-  //       return {code:200, error:false, result:{readdb:{...}, commitIndex:i}}
-  //   else
-  //       return {code:503, error:true, result:{}} or {code:307, error:true, result:{}} redirect header
-  //
-    return reportMethodNotAllowed();
-
+  return pollIndex(index);
 
 }
 
 
 RestStatus RestAgencyHandler::handleStores() {
+
   if (_request->requestType() == rest::RequestType::GET) {
     Builder body;
     {

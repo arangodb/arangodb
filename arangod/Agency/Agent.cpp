@@ -593,7 +593,7 @@ void Agent::sendAppendEntriesRPC() {
           needSnapshot = false;
         }
       }
-      
+
       index_t prevLogIndex = unconfirmed.front().index;
       index_t prevLogTerm = unconfirmed.front().term;
       if (needSnapshot) {
@@ -630,13 +630,14 @@ void Agent::sendAppendEntriesRPC() {
           // with the same index than the snapshot along to retain the
           // invariant of our data structure that the _log in _state is
           // non-empty.
-          builder.add(VPackValue(VPackValueType::Object));
-          builder.add("index", VPackValue(entry.index));
-          builder.add("term", VPackValue(entry.term));
-          builder.add("query", VPackSlice(entry.entry->data()));
-          builder.add("clientId", VPackValue(entry.clientId));
-          builder.add("timestamp", VPackValue(entry.timestamp.count()));
-          builder.close();
+          {
+            VPackObjectBuilder o(&builder);
+            builder.add("index", VPackValue(entry.index));
+            builder.add("term", VPackValue(entry.term));
+            builder.add("query", VPackSlice(entry.entry->data()));
+            builder.add("clientId", VPackValue(entry.clientId));
+            builder.add("timestamp", VPackValue(entry.timestamp.count()));
+          }
           highest = entry.index;
           ++toLog;
         }
@@ -717,7 +718,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
     READ_LOCKER(oLocker, _outputLock);
     commitIndex = _commitIndex;
   }
-  
+
   // Just check once more:
   if (!leading()) {
     LOG_TOPIC("99dc2", DEBUG, Logger::AGENCY)
@@ -797,14 +798,65 @@ void Agent::advanceCommitIndex() {
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
           << index << " to read db, done";
-      // Wake up rest handlers:
+      // Wake up write rest handlers:
       _waitForCV.broadcast();
+
+      // Wake up poll rest handlers:
+      // Get everything from _lowestPromise
+      // Create one builder pass shared pointer to all rest handlers
+      // Every resthandler takes, what it needs.
+      // Delete all promises.
+      // Reset _lowestPromise.
+      {
+        std::lock_guard lck(_promLock);
+        auto builder = std::make_shared<VPackBuilder>();
+        {
+          VPackObjectBuilder e(builder.get());
+          auto const logs = _state.get(_lowestPromise);
+
+          TRI_ASSERT(!logs.empty());
+          if (!logs.empty()) {
+            builder->add(VPackValue("result"));
+            VPackArrayBuilder ls(builder.get());
+            builder->add("commitIndex", VPackValue(logs.back().index));
+            builder->add(VPackValue("logs"));
+            for (auto const& i : logs) {
+              VPackObjectBuilder l(builder.get());
+              builder->add("index", VPackValue(i.index));
+              builder->add("query", VPackSlice(i.entry->data()));
+            }
+          }
+        }
+        auto it = _promises.begin();
+        while (it != _promises.end()) {
+          it->second.setValue(builder);
+          it = _promises.erase(it);
+        }
+        _lowestPromise = std::numeric_limits<index_t>::max();
+      }
 
       if (_commitIndex >= _state.nextCompactionAfter()) {
         _compactor.wakeUp();
       }
+
     }
   }
+
+}
+
+futures::Future<query_t> Agent::poll(index_t index) {
+  using namespace std::chrono;
+  std::lock_guard guard(_promLock);
+  auto res = _promises.try_emplace(
+    steady_clock::now() + seconds(60), futures::Promise<query_t>());
+  if (!res.second) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "Failed to add promise for polling");
+  }
+  if (_lowestPromise > index) {
+    _lowestPromise = index;
+  }
+  return res.first->second.getFuture();
 }
 
 // Check if I am member of active agency
@@ -1298,6 +1350,21 @@ read_ret_t Agent::read(query_t const& query) {
   return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 
+/// Clear expired polls
+void Agent::clearExpiredPolls() {
+  using namespace std::chrono;
+  auto const tp = steady_clock::now();
+  std::lock_guard lock(_promLock);
+  auto it = _promises.begin();
+  while (it != _promises.end()) {
+    if (it->first < tp) {
+      it = _promises.erase(it);
+    } else {
+      break;
+    }
+  }
+}
+
 /// Send out append entries to followers regularly or on event
 void Agent::run() {
   // Only run in case we are in multi-host mode
@@ -1353,6 +1420,9 @@ void Agent::run() {
 
       // Check whether we can advance _commitIndex
       advanceCommitIndex();
+
+      // Clear expired long polls
+      clearExpiredPolls();
 
       // Empty store callback trash bin
       emptyCbTrashBin();
@@ -2163,4 +2233,3 @@ std::vector<log_t> Agent::logs(index_t begin, index_t end) const {
 
 }  // namespace consensus
 }  // namespace arangodb
-
