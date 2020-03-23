@@ -26,6 +26,7 @@
 #include <map>
 
 #include "filter.hpp"
+#include "filter_visitor.hpp"
 #include "levenshtein_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 #include "utils/string.hpp"
@@ -159,6 +160,70 @@ class IRESEARCH_API by_phrase : public filter {
 
     bool operator==(const phrase_part& other) const noexcept;
 
+    template<typename Collectors>
+    class phrase_term_visitor : public filter_visitor {
+     public:
+      phrase_term_visitor(
+        const sub_reader& segment,
+        const term_reader& reader,
+        const Collectors& collectors
+      ) : segment_(segment), reader_(reader), collectors_(collectors) {}
+
+      phrase_term_visitor(
+        const sub_reader& segment,
+        const term_reader& reader,
+        const Collectors& collectors,
+        phrase_state<order::prepared::FixedContainer>::terms_states_t& phrase_terms
+      ) : phrase_term_visitor(segment, reader, collectors) {
+        phrase_terms_ = &phrase_terms;
+      }
+
+      virtual void prepare(const seek_term_iterator::ptr& terms) noexcept override {
+        terms_ = &terms;
+        found_ = true;
+      }
+
+      virtual void visit() override {
+        assert(terms_);
+        collectors_.collect(segment_, reader_, term_offset_, (*terms_)->attributes()); // collect statistics
+
+        // estimate phrase & term
+        assert(phrase_terms_);
+        phrase_terms_->emplace_back((*terms_)->cookie());
+      }
+
+      void reset() noexcept {
+        found_ = false;
+        terms_ = nullptr;
+      }
+
+      void reset(size_t term_offset) noexcept {
+        reset();
+        term_offset_ = term_offset;
+      }
+
+      void reset(phrase_state<order::prepared::FixedContainer>::terms_states_t& phrase_terms, size_t term_offset) noexcept {
+        reset(term_offset);
+        phrase_terms_ = &phrase_terms;
+      }
+
+      bool found() const noexcept { return found_; }
+
+     private:
+      bool found_ = false;
+      size_t term_offset_ = 0;
+      const sub_reader& segment_;
+      const term_reader& reader_;
+      const Collectors& collectors_;
+      phrase_state<order::prepared::FixedContainer>::terms_states_t* phrase_terms_ = nullptr;
+      const seek_term_iterator::ptr* terms_ = nullptr;
+    };
+
+    static bool variadic_type_collect(
+      const term_reader& reader,
+      const phrase_part& phr_part,
+      phrase_term_visitor<order::prepared::variadic_terms_collectors>& ptv);
+
    private:
     void allocate(phrase_part&& other) noexcept;
     void destroy() noexcept;
@@ -236,67 +301,16 @@ class IRESEARCH_API by_phrase : public filter {
   }
 
   filter::prepared::ptr fixed_prepare_collect(
-      const index_reader& rdr,
-      const order::prepared& ord,
-      boost_t boost,
-      order::prepared::fixed_terms_collectors collectors) const;
-
-  static bool variadic_optimize(
-      const phrase_part& phr_part, bstring& buf, PhrasePartType& type,
-      bytes_ref& pattern, bool& valid, bool is_ord_empty);
-
-  static bool variadic_term_collect(
-      const sub_reader& sr, const term_reader* tr,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-      const seek_term_iterator::ptr& term,
-      const bytes_ref& pattern, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
-
-  static bool variadic_prefix_collect(
-      const sub_reader& sr, const term_reader* tr,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-      const seek_term_iterator::ptr& term,
-      const bytes_ref& pattern, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
-
-  static bool variadic_wildcard_collect(
-      const sub_reader& sr, const term_reader* tr,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-      const bytes_ref& pattern, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
-
-  static bool variadic_levenshtein_collect(
-      const sub_reader& sr, const term_reader* tr,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-      const phrase_part& phr_part, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
-
-  static bool variadic_set_collect(
-      const sub_reader& sr, const term_reader* tr,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-      const seek_term_iterator::ptr& term,
-      const phrase_part& phr_part, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
-
-  static bool variadic_type_collect(
-      const sub_reader& sr, const term_reader* tr,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t& phrase_terms,
-      const seek_term_iterator::ptr& term,
-      const phrase_part& phr_part, PhrasePartType type,
-      const bytes_ref& pattern, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    order::prepared::fixed_terms_collectors collectors) const;
 
   filter::prepared::ptr variadic_prepare_collect(
-      const index_reader& rdr,
-      const order::prepared& ord,
-      boost_t boost,
-      order::prepared::variadic_terms_collectors collectors) const;
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    order::prepared::variadic_terms_collectors collectors) const;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string fld_;

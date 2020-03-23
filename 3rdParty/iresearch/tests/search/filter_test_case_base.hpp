@@ -157,13 +157,26 @@ struct custom_sort: public irs::sort {
 
     prepared(const custom_sort& sort)
       : sort_(sort) {
-      merge_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst, const irs::byte_type** src_start, const size_t size) {
+      aggregate_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
+                           const irs::byte_type** src_start, const size_t size) {
         const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
         const auto offset = ctx->score_offset;
-        traits_t::score_cast(dst + offset) = irs::type_limits<irs::type_t::doc_id_t>::invalid();;
+        traits_t::score_cast(dst + offset) = irs::doc_limits::invalid();;
         for (size_t i = 0; i < size; ++i) {
           if (impl->sort_.scorer_add) {
             impl->sort_.scorer_add(traits_t::score_cast(dst + offset), traits_t::score_cast(src_start[i]  + offset));
+          }
+        }
+      };
+
+      max_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
+                           const irs::byte_type** src_start, const size_t size) {
+        const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
+        const auto offset = ctx->score_offset;
+        traits_t::score_cast(dst + offset) = irs::doc_limits::eof();;
+        for (size_t i = 0; i < size; ++i) {
+          if (impl->sort_.scorer_max) {
+            impl->sort_.scorer_max(traits_t::score_cast(dst + offset), traits_t::score_cast(src_start[i]  + offset));
           }
         }
       };
@@ -248,6 +261,7 @@ struct custom_sort: public irs::sort {
   std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
+  std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_max;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
 
@@ -286,8 +300,8 @@ struct frequency_sort: public irs::sort {
       return const_cast<score_type&>(score_cast(const_cast<const irs::byte_type*>(buf)));
     }
 
-    static void merge(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
-                      const irs::byte_type** src_start, const size_t size) {
+    static void aggregate(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+                          const irs::byte_type** src_start, const size_t size) {
       const auto offset = ctx->score_offset;
       auto& score = score_cast(dst_buf + offset);
       score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
@@ -299,11 +313,32 @@ struct frequency_sort: public irs::sort {
         ASSERT_TRUE(src.prepared);
         ASSERT_TRUE(dst.prepared);
 
-        if (std::numeric_limits<double>::infinity() == dst.value) {
+        if (std::isinf(dst.value)) {
           dst.id = src.id;
           dst.value = 0;
         }
+
         dst.value += src.value;
+      }
+    }
+
+    static void max(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+                    const irs::byte_type** src_start, const size_t size) {
+      const auto offset = ctx->score_offset;
+      auto& score = score_cast(dst_buf + offset);
+      score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      score.value = std::numeric_limits<double>::min();
+      score.prepared = true;
+      for (size_t i = 0; i < size; ++i) {
+        auto& dst = score_cast(dst_buf + offset);
+        auto& src = score_cast(src_start[i]  + offset);
+        ASSERT_TRUE(src.prepared);
+        ASSERT_TRUE(dst.prepared);
+
+        if (std::isless(dst.value, src.value)) {
+          dst.id = src.id;
+          dst.value = src.value;
+        }
       }
     }
   };

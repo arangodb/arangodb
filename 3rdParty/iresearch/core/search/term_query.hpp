@@ -30,6 +30,7 @@
 NS_ROOT
 
 struct term_reader;
+struct filter_visitor;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_state
@@ -57,6 +58,11 @@ class term_query : public filter::prepared {
   typedef states_cache<reader_term_state> states_t;
 
   DECLARE_SHARED_PTR(term_query);
+
+  static void visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    filter_visitor& fv);
 
   static ptr make(
     const index_reader& rdr,

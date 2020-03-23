@@ -25,12 +25,43 @@
 #include <boost/functional/hash.hpp>
 
 #include "shared.hpp"
+#include "filter_visitor.hpp"
 #include "multiterm_query.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
 
 NS_ROOT
+
+/*static*/ void by_prefix::visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& fv) {
+  // find term
+  auto terms = reader.iterator();
+
+  // seek to prefix
+  if (IRS_UNLIKELY(!terms) || SeekResult::END == terms->seek_ge(prefix)) {
+    return;
+  }
+
+  const auto& value = terms->value();
+  if (starts_with(value, prefix)) {
+    terms->read();
+
+    fv.prepare(terms);
+
+    do {
+      fv.visit();
+
+      if (!terms->next()) {
+        break;
+      }
+
+      terms->read();
+    } while (starts_with(value, prefix));
+  }
+}
 
 DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)
@@ -48,50 +79,15 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
   // iterate over the segments
   for (const auto& segment: index) {
     // get term dictionary for field
-    const term_reader* reader = segment.field(field);
+    const auto* reader = segment.field(field);
 
     if (!reader) {
       continue;
     }
 
-    seek_term_iterator::ptr terms = reader->iterator();
+    multiterm_visitor mtv(segment, *reader, scorer, states);
 
-    // seek to prefix
-    if (SeekResult::END == terms->seek_ge(prefix)) {
-      continue;
-    }
-
-    auto& value = terms->value();
-
-    // get term metadata
-    auto& meta = terms->attributes().get<term_meta>();
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-
-    // NOTE: we can't use reference to 'docs_count' here, like
-    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
-    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
-    // probably due to broken optimization
-    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
-
-    if (starts_with(value, prefix)) {
-      terms->read();
-
-      // get state for current segment
-      auto& state = states.insert(segment);
-      state.reader = reader;
-
-      do {
-        // fill scoring candidates
-        scorer.collect(*docs_count, state.count++, state, segment, *terms);
-        state.estimation += *docs_count; // collect cost
-
-        if (!terms->next()) {
-          break;
-        }
-
-        terms->read();
-      } while (starts_with(value, prefix));
-    }
+    visit(*reader, prefix, mtv);
   }
 
   std::vector<bstring> stats;

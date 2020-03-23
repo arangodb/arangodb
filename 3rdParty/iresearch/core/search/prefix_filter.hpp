@@ -27,10 +27,17 @@
 
 NS_ROOT
 
+struct filter_visitor;
+
 class IRESEARCH_API by_prefix : public by_term {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
+
+  static void visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& fv);
 
   static prepared::ptr prepare(
     const index_reader& index,

@@ -39,6 +39,7 @@
 #include "search/ngram_similarity_filter.hpp"
 
 #include "IResearch/ExpressionContextMock.h"
+#include "IResearch/IResearchPDP.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -3704,7 +3705,7 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       "analyzer(phrase(d.obj.properties.id.name, ['quick', offset+1, "
       "CONCAT(input, 'wn'), 'fox', 'jumps']), 'test_analyzer') "
       "RETURN d",
-      expected, &ctx); 
+      expected, &ctx);
 
     // explicit zero offsets on top level
     assertFilterSuccess(
@@ -3729,6 +3730,47 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       "analyzer(phrase(d.obj.properties.id.name, ['quick', 3, "
       "'123', 'wn', 0, 'f', 'o', 'x', 0, [['j']], 'u', 'mps']), 'test_analyzer') "
       "RETURN d", &ctx);
+  }
+
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
+    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))});
+    irs::by_phrase::prefix_term pt{128, irs::ref_cast<irs::byte_type>(irs::string_ref("c"))};
+    phrase.push_back(std::move(pt))
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
+    irs::by_phrase::wildcard_term wt{128, irs::ref_cast<irs::byte_type>(irs::string_ref("b"))};
+    phrase.push_back(std::move(wt), 3)
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
+    irs::by_phrase::levenshtein_term lt{true, 1, 128, &arangodb::iresearch::getParametricDescription,
+          irs::ref_cast<irs::byte_type>(irs::string_ref("p"))};
+    phrase.push_back(std::move(lt))
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x"))});
+    irs::by_phrase::set_term ct;
+    ct.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("g")), irs::ref_cast<irs::byte_type>(irs::string_ref("j"))};
+    phrase.push_back(std::move(ct))
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("m"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("p"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("s"))});
+
+    ExpressionContextMock ctx;
+
+    // TERM, STARTS_WITH, WILDCARD, LEVENSHTEIN_MATCH, TERMS
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER "
+      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
+      "{wildcard: 'b'}, 'rown', {levenshtein_match: ['p', 1, true]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+      "RETURN d",
+      expected, &ctx);
   }
 
   // multiple offsets, complex name, custom analyzer, invalid expressions
@@ -5662,7 +5704,7 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
       expected);
   }
 
-  // NGRAM_MATCH with default analyzer default threshold value by var 
+  // NGRAM_MATCH with default analyzer default threshold value by var
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("strVal", arangodb::aql::AqlValue("foo"));
@@ -6025,5 +6067,5 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   assertFilterFail(
     vocbase(),
     "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, RAND() ? 'identity' : 'test_analyzer') RETURN d");
-  
+
 }

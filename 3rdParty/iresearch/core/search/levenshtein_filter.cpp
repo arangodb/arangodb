@@ -38,6 +38,30 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_edit_distance)
 DEFINE_FACTORY_DEFAULT(by_edit_distance)
 
+NS_LOCAL
+
+template<typename Invalid, typename Term, typename Levenshtein>
+inline void executeLevenshtein(byte_type max_distance,
+                               by_edit_distance::pdp_f provider, bool with_transpositions,
+                               Invalid inv, Term t, Levenshtein lev) {
+  if (0 == max_distance) {
+    t();
+    return;
+  }
+
+  assert(provider);
+  const auto& d = (*provider)(max_distance, with_transpositions);
+
+  if (!d) {
+    inv();
+    return;
+  }
+
+  lev(d);
+}
+
+NS_END
+
 /*static*/ filter::prepared::ptr by_edit_distance::prepare(
     const index_reader& index,
     const order::prepared& order,
@@ -48,19 +72,18 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     byte_type max_distance,
     pdp_f provider,
     bool with_transpositions) {
-  if (0 == max_distance) {
-    return term_query::make(index, order, boost, field, term);
-  }
-
-  assert(provider);
-  const auto& d = (*provider)(max_distance, with_transpositions);
-
-  if (!d) {
-    return prepared::empty();
-  }
-
-  return prepare_automaton_filter(field, make_levenshtein_automaton(d, term),
-                                  scored_terms_limit, index, order, boost);
+  filter::prepared::ptr res;
+  executeLevenshtein(
+    max_distance, provider, with_transpositions,
+    [&res]() {
+      res = prepared::empty();},
+    [&res, &index, &order, boost, &field, &term]() {
+      res = term_query::make(index, order, boost, field, term);},
+    [&res, &field, &term, scored_terms_limit, &index, &order, boost](const parametric_description& d) {
+      res = prepare_automaton_filter(field, make_levenshtein_automaton(d, term),
+                                     scored_terms_limit, index, order, boost);}
+  );
+  return res;
 }
 
 by_edit_distance::by_edit_distance() noexcept
@@ -91,6 +114,25 @@ bool by_edit_distance::equals(const filter& rhs) const noexcept {
   return by_prefix::equals(rhs) &&
     max_distance_ == impl.max_distance_ &&
     with_transpositions_ == impl.with_transpositions_;
+}
+
+/*static*/ void by_edit_distance::phrase_helper(
+    const term_reader& reader,
+    const bytes_ref& term,
+    byte_type max_distance,
+    by_edit_distance::pdp_f provider,
+    bool with_transpositions,
+    filter_visitor& fv) {
+  executeLevenshtein(
+    max_distance, provider, with_transpositions,
+    []() {},
+    [&reader, &term, &fv]() {
+      term_query::visit(reader, term, fv);
+    },
+    [&reader, &term, &fv](const parametric_description& d) {
+      automaton_visit(reader, make_levenshtein_automaton(d, term), fv);
+    }
+  );
 }
 
 NS_END

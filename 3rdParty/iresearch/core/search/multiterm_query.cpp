@@ -93,7 +93,10 @@ doc_iterator::ptr multiterm_query::execute(
     }
   }
 
-  return make_disjunction<disjunction_t>(std::move(itrs), ord, state->estimation);
+  return make_disjunction<disjunction_t>(
+      std::move(itrs), ord,
+      sort::MergeType::AGGREGATE,
+      state->estimation);
 }
 
 NS_END // ROOT
