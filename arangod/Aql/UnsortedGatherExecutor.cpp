@@ -118,7 +118,8 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   // from upstream
   auto callSet = AqlCallSet{};
   if (call.needSkipMore()) {
-    callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
+    callSet.calls.emplace_back(
+        AqlCallSet::DepCallPair{currentDependency(), AqlCallList{call}});
   }
   return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
 }
