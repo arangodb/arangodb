@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded bundled RocksDB library to version 6.8.0.
+
 * Compilation issues with wrong cv-qualifiers and unnecessary
   temporary copying.
 
