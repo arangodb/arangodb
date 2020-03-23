@@ -7372,7 +7372,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
       plan->findNodesOfType(nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::K_SHORTEST_PATHS}, true);
       bool const allSatellite = std::all_of(nodes.begin(), nodes.end(), [](auto n) {
         GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
-        return graphNode->isUsedAsSatellite();
+        return graphNode->isSatelliteNode();
       });
 
       if (allSatellite) {
