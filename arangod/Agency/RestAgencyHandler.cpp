@@ -150,6 +150,68 @@ RestStatus RestAgencyHandler::handleTransient() {
   return RestStatus::DONE;
 }
 
+
+fvoid RestAgencyHandler::pollIndex(std::unique_ptr<RemoveServerContext>&& ctx>) {
+  _agent->pollFor(index);
+  return futures::makeFuture();
+}
+
+
+RestStatus RestAgencyHandler::handlePoll() {
+
+  // GET only
+  if (!_request->requestType() == rest::RequestType::GET) {
+    return reportMethodNotAllowed();
+  }
+
+  // Leader only
+  if (!_agent->leading()) {  // Redirect to leader
+    if (_agent->leaderID() == NO_LEADER) {
+      return reportMessage(
+        rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+    } else {
+      TRI_ASSERT(ret.redirect != _agent->id());
+      redirectRequest(ret.redirect);
+    }
+  }
+
+  query_t query;
+  try {
+    query = _request->toVelocyPackBuilderPtr();
+  } catch (std::exception const& e) {
+    return reportMessage(rest::ResponseCode::BAD, e.what());
+  }
+
+
+  if (!_agent->)
+
+    auto ctx = std::make_unique<RemoveServerContext>(server);
+    _agent->pollFor(query);
+
+    return RestStatus::DONE;
+  }
+
+  // if (reqyestType == GET)
+  //   if (leading)
+  //     if (request.index != 0)
+  //       _agent->pollFor(request.index, request.timeout) // analogous to waitFor
+  //       return
+  //         if (time < timeout)
+  //           {code:200, error:false, result:{logs:[...]}}
+  //         else
+  //           {code:408, error:true, result:[]}
+  //     else
+  //       _agent->readDB()
+  //       return {code:200, error:false, result:{readdb:{...}, commitIndex:i}}
+  //   else
+  //       return {code:503, error:true, result:{}} or {code:307, error:true, result:{}} redirect header
+  //
+    return reportMethodNotAllowed();
+
+
+}
+
+
 RestStatus RestAgencyHandler::handleStores() {
   if (_request->requestType() == rest::RequestType::GET) {
     Builder body;
