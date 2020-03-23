@@ -325,7 +325,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // perform a physical deletion of the view
   // After this call data of this view is corrupted, only perform if
   // assured that no one is using the view anymore
-  // 'noexcept' becuase it may be used in destructor
+  // 'noexcept' because it may be used in destructor
   virtual void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept = 0;
 
   // Returns the StorageEngine-specific implementation
