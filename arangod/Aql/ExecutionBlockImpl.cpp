@@ -1277,7 +1277,7 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack,
                                                   AqlCallType const& aqlCall,
-                                                  bool wasCalledWithContinueCall)
+                                                  ADB_IGNORE_UNUSED bool wasCalledWithContinueCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
   if constexpr (isNewStyleExecutor<Executor>) {
     // TODO The logic in the MultiDependencySingleRowFetcher branch should be
