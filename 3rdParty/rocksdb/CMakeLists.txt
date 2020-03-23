@@ -7,6 +7,10 @@ set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 set(ARANGO_ROCKSDB_VERSION "6.8")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
+# we want the following definitions to be in effect for both rocksdb and arangodb
+add_definitions("-DNROCKSDB_THREAD_STATUS")
+add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
+
 # jemalloc settings
 if (USE_JEMALLOC)
   if (WIN32)
