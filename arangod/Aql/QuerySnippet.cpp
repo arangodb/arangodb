@@ -346,8 +346,8 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       TRI_ASSERT(graphNode->isUsedAsSatellite() == exp.isSatellite);
 
       if (!exp.isSatellite) {
-        // This is either one shard or a single satellite graph which is not used
-        // as satellite graph.
+        // This is either one shard or a single SatelliteGraph which is not used
+        // as SatelliteGraph.
         uint64_t numShards = 0;
         for (auto* aqlCollection : graphNode->collections()) {
           auto const& shards = aqlCollection->shardIds();

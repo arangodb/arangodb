@@ -196,7 +196,7 @@
           // hide tab entries
           // no smart graphs in single server mode
           $('#tab-smartGraph').parent().remove();
-          // no satellite graphs in single server mode
+          // no SatelliteGraphs in single server mode
           $('#tab-satelliteGraph').parent().remove();
         }
       }
@@ -303,7 +303,7 @@
     forgetCachedCollectionsState: function () {
       // Note: re-enable cached collections for general graph
       // General graph collections are allowed to use existing collections
-      // Satellite Graphs and Smart Graphs are not allowed to use them, so we need to "forget" them here
+      // SatelliteGraphs and Smart Graphs are not allowed to use them, so we need to "forget" them here
       var collList = [];
       var self = this;
       var collections = this.options.collectionCollection.models;
@@ -833,9 +833,9 @@
       // edit graph section
       if (graph) {
         if (isSmart) {
-          title = 'Edit Smart Graph';
+          title = 'Edit SmartGraph';
         } else if (isSatellite) {
-          title = 'Edit Satellite Graph';
+          title = 'Edit SatelliteGraph';
         } else {
           title = 'Edit Graph';
         }

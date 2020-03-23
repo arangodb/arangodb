@@ -301,7 +301,7 @@ class Graph {
   /// @brief revision of this graph
   std::string _rev;
 
-  /// @brief whether this graph is a satellite graph
+  /// @brief whether this graph is a SatelliteGraph
   bool _isSatellite = false;
 };
 

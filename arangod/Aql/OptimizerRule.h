@@ -269,7 +269,7 @@ struct OptimizerRule {
     removeUnnecessaryRemoteScatterRule,
 
 #ifdef USE_ENTERPRISE
-    // move traversal on satellite graph to db server and add scatter / gather / remote
+    // move traversal on SatelliteGraph to db server and add scatter / gather / remote
     scatterSatelliteGraphRule,
 
     // remove any superfluous SatelliteCollection joins...
