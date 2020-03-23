@@ -147,9 +147,9 @@ constexpr int TRI_ERROR_DEADLOCK                                                
 constexpr int TRI_ERROR_SHUTTING_DOWN                                           = 30;
 
 /// 31: ERROR_ONLY_ENTERPRISE
-/// "only enterprise version"
-/// Will be raised when an enterprise-feature is requested from the community
-/// edition.
+/// "only Enterprise Edition"
+/// Will be raised when an Enterprise Edition feature is requested from the
+/// Community Edition.
 constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         = 31;
 
 /// 32: ERROR_RESOURCE_LIMIT

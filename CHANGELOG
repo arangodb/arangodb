@@ -94,7 +94,7 @@ devel
   server keys and certificate chains and the system dynamically uses
   the right one depending on the value of the TLS servername extension.
   This allows to use different TLS setups for the same server which is
-  reachable behind different DNS names, for example (enterprise only).
+  reachable behind different DNS names, for example (Enterprise Edition only).
 
 * Do not create a reboot tracker for empty serverId ubin sync repl.
 
@@ -352,7 +352,7 @@ devel
 
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
 
-* Added JWT secret rotation (Enterprise only).
+* Added JWT secret rotation (Enterprise Edition only).
 
 * The `--dump-options` command for arangod now also provides the "components"
   attribute that shows for which components (agent, coordinator, db server,
@@ -1828,7 +1828,7 @@ v3.4.5 (2019-03-27)
   double resync was made
 
 * don't check for the presence of ArangoDB upgrades available when firing up an
-  arangosh enterprise edition build
+  arangosh Enterprise Edition build
 
 * added startup option `--rocksdb.allow-fallocate`
 
@@ -2256,7 +2256,7 @@ v3.4.1 (2018-12-19)
 v3.4.0 (2018-12-06)
 -------------------
 
-* Add license key checking to enterprise version in Docker containers.
+* Add license key checking to Enterprise Edition in Docker containers.
 
 
 v3.4.0-rc.5 (2018-11-29)
@@ -3921,7 +3921,7 @@ v3.3.8 (2018-04-24)
 * added arangod startup option `--dump-options` to print all configuration parameters
   as a JSON object
 
-* fixed: (Enterprise only) If you restore a SmartGraph where the collections
+* fixed: (Enterprise Edition only) If you restore a SmartGraph where the collections
   are still existing and are supposed to be dropped on restore we ended up in
   duplicate name error. This is now gone and the SmartGraph is correctly restored.
 
@@ -4425,7 +4425,7 @@ v3.3.rc1 (2017-11-17)
 * performance improvements for full collection scans and a few other operations
   in MMFiles engine
 
-* added `--rocksdb.encryption-key-generator` for enterprise
+* added `--rocksdb.encryption-key-generator` to Enterprise Edition
 
 * removed `--compat28` parameter from arangodump and replication API
 
@@ -4995,7 +4995,7 @@ v3.2.4 (2017-09-26)
   from the early ArangoDB days and did not provide any value in the current
   implementation.
 
-* (Enterprise only) added `skipInaccessibleCollections` option for AQL queries:
+* (Enterprise Edition only) added `skipInaccessibleCollections` option for AQL queries:
   if set, AQL queries (especially graph traversals) will treat collections to
   which a user has no access rights to as if these collections were empty.
 
@@ -5460,7 +5460,7 @@ v3.2.beta1 (2017-06-12)
 * `--server.maximal-queue-size` is now an absolute maximum. If the queue is
   full, then 503 is returned. Setting it to 0 means "no limit".
 
-* (Enterprise only) added authentication against an LDAP server
+* (Enterprise Edition only) added authentication against an LDAP server
 
 * fixed issue #2083: Foxx services aren't distributed to all coordinators
 
@@ -5831,7 +5831,7 @@ v3.1.18 (2017-04-18)
   rare cases if the computation on one DBServer could be completed much earlier
   than the other server. It could also be restricted to SmartGraphs only.
 
-* (Enterprise only) Fixed a bug in SmartGraph DepthFirstSearch. In some
+* (Enterprise Edition only) Fixed a bug in SmartGraph DepthFirstSearch. In some
   more complicated queries, the maxDepth limit of 1 was not considered strictly
   enough, causing the traverser to do unlimited depth searches.
 
@@ -5845,7 +5845,7 @@ v3.1.18 (2017-04-18)
 v3.1.17 (2017-04-04)
 --------------------
 
-* (Enterprise only) fixed a bug where replicationFactor was not correctly
+* (Enterprise Edition only) fixed a bug where replicationFactor was not correctly
   forwarded in SmartGraph creation.
 
 * fixed issue #2404
@@ -6232,7 +6232,7 @@ v3.1.2 (2016-11-24)
 
 * added support for descriptions field in Foxx dependencies
 
-* (Enterprise only) fixed a bug in the statistic report for SmartGraph traversals.
+* (Enterprise Edition only) fixed a bug in the statistic report for SmartGraph traversals.
 Now they state correctly how many documents were fetched from the index and how many
 have been filtered.
 

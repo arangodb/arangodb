@@ -3062,7 +3062,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     using arangodb::methods::Version;
     using arangodb::methods::VersionResult;
 #ifdef USE_ENTERPRISE
-    // Will never be called in community
+    // Will never be called in Community Edition
     bool autoUpgradeNeeded;   // not actually used
     if (!RocksDBHotBackup::versionTestRestore(meta._version, autoUpgradeNeeded)) {
       events::RestoreHotbackup(backupId, TRI_ERROR_HOT_RESTORE_INTERNAL);

@@ -97,7 +97,7 @@ class GraphNode : public ExecutionNode {
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 
-  /// @brief flag, if smart traversal (enterprise edition only!) is done
+  /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
 
   /// @brief return the database
@@ -221,7 +221,7 @@ class GraphNode : public ExecutionNode {
   /// @brief The list of traverser engines grouped by server.
   std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
 
-  /// @brief flag, if graph is smart (enterprise edition only!)
+  /// @brief flag, if graph is smart (Enterprise Edition only!)
   bool _isSmart;
 
   /// @brief list of shards involved, required for one-shard-databases

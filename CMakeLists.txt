@@ -280,7 +280,7 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
-# enable enterprise features
+# enable Enterprise Edition features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 

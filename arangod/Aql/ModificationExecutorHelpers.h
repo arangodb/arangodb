@@ -73,7 +73,7 @@ void buildKeyAndRevDocument(VPackBuilder& builder, std::string const& key,
                             std::string const& rev);
 
 // Establishes whether a write is necessary. This is only relevant for
-// SmartGraphs in the enterprise edition. Refer to skipForAqlWrite in
+// SmartGraphs in the Enterprise Edition. Refer to skipForAqlWrite in
 // Enterprise Edition
 bool writeRequired(ModificationExecutorInfos const& infos,
                    VPackSlice const& doc, std::string const& key);

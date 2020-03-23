@@ -546,7 +546,7 @@ exports.checkAvailableVersions = function() {
       );
     }
   } else if (internal.isEnterprise()) {
-    // don't check for version updates in the enterprise version
+    // don't check for version updates in the Enterprise Edition
     return;
   }
   

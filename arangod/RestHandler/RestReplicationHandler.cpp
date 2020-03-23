@@ -1303,13 +1303,13 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 #ifndef USE_ENTERPRISE
   std::vector<std::string> changes;
 
-  // when in the community version, we need to turn off specific attributes
-  // because they are only supported in enterprise mode
+  // when in the Community Edition, we need to turn off specific attributes
+  // because they are only supported in Enterprise Edition
 
-  // watch out for "isSmart" -> we need to set this to false in the community version
+  // watch out for "isSmart" -> we need to set this to false in the Community Edition
   VPackSlice s = parameters.get(StaticStrings::GraphIsSmart);
   if (s.isBoolean() && s.getBoolean()) {
-    // isSmart needs to be turned off in the community version
+    // isSmart needs to be turned off in the Community Edition
     toMerge.add(StaticStrings::GraphIsSmart, VPackValue(false));
     changes.push_back("changed 'isSmart' attribute value to false");
   }
@@ -1330,7 +1330,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     changes.push_back("removed 'smartJoinAttribute' attribute value");
   }
 
-  // finally rewrite all enterprise sharding strategies to a simple hash-based strategy
+  // finally rewrite all Enterprise Edition sharding strategies to a simple hash-based strategy
   s = parameters.get("shardingStrategy");
   if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
     // downgrade sharding strategy to just hash
@@ -1353,7 +1353,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   if (!changes.empty()) {
     LOG_TOPIC("fc359", INFO, Logger::CLUSTER)
         << "rewrote info for collection '"
-        << name << "' on restore for usage with the community version. the following changes were applied: "
+        << name << "' on restore for usage with the Community Edition. the following changes were applied: "
         << basics::StringUtils::join(changes, ". ");
   }
 #endif

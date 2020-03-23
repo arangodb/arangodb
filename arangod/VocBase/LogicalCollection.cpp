@@ -246,8 +246,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     }
   }
 #else
-  // whatever we got passed in, in a non-enterprise build, we just ignore
-  // any specification for the smartJoinAttribute
+  // whatever we got passed in, in a non-Enterprise Edition build, we just
+  // ignore any specification for the smartJoinAttribute
   _smartJoinAttribute.clear();
 #endif
 
@@ -784,7 +784,7 @@ VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::strin
 }
 
 void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
-  // We ain't no enterprise
+  // We ain't no Enterprise Edition
 }
 
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
@@ -1127,7 +1127,7 @@ bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
 }
 
 /// @brief a method to skip certain documents in AQL write operations,
-/// this is only used in the enterprise edition for smart graphs
+/// this is only used in the Enterprise Edition for smart graphs
 #ifndef USE_ENTERPRISE
 bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document,
                                         std::string const& key) const {

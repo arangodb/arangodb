@@ -109,8 +109,8 @@ class LogicalCollection : public LogicalDataSource {
   std::string globallyUniqueId() const;
 
   // For normal collections the realNames is just a vector of length 1
-  // with its name. For smart edge collections (enterprise only) this is
-  // different.
+  // with its name. For smart edge collections (Enterprise Edition only)
+  // this is different.
   virtual std::vector<std::string> realNames() const {
     return std::vector<std::string>{name()};
   }
@@ -214,7 +214,7 @@ class LogicalCollection : public LogicalDataSource {
                        std::function<bool(arangodb::Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
-  /// this is only used in the enterprise edition for smart graphs
+  /// this is only used in the Enterprise Edition for smart graphs
   virtual bool skipForAqlWrite(velocypack::Slice document, std::string const& key) const;
 
   bool allowUserKeys() const;
@@ -381,9 +381,9 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isAStub;
 
 #ifdef USE_ENTERPRISE
-  // @brief Flag if this collection is a smart one. (Enterprise only)
+  // @brief Flag if this collection is a smart one. (Enterprise Edition only)
   bool const _isSmart;
-  // @brief Flag if this collection is a child of a smart collection (Enterprise only)
+  // @brief Flag if this collection is a child of a smart collection (Enterprise Edition only)
   bool const _isSmartChild;
 #endif
 
