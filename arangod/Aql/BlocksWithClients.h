@@ -122,8 +122,6 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   /// @brief shutdown
   std::pair<ExecutionState, Result> shutdown(int) override;
 
-  std::pair<ExecutionState, bool> getBlock(size_t atMost);
-
   /// @brief execute: shouldn't be used, use executeForClient
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 

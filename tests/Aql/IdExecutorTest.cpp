@@ -22,8 +22,8 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
@@ -50,8 +50,7 @@ namespace arangodb::tests::aql {
 using TestParam = std::tuple<size_t,         // The input data 0 -> number
                              ExecutorState,  // The upstream state
                              AqlCall,        // The client Call,
-                             bool,  // flag to decide if we need to do couting
-                             OutputAqlItemRow::CopyRowBehavior  // How the data is handled within outputRow
+                             bool  // flag to decide if we need to do couting
                              >;
 
 class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
@@ -72,7 +71,7 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
   }
 
   auto doCount() -> bool {
-    auto const& [a, b, c, doCount, d] = GetParam();
+    auto const& [a, b, c, doCount] = GetParam();
     return doCount;
   }
 
@@ -81,17 +80,17 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
   }
 
   auto getInput() -> size_t {
-    auto const& [input, a, b, c, d] = GetParam();
+    auto const& [input, a, b, c] = GetParam();
     return input;
   }
 
   auto getCall() -> AqlCall {
-    auto const& [a, b, call, c, d] = GetParam();
+    auto const& [a, b, call, c] = GetParam();
     return call;
   }
 
   auto getUpstreamState() -> ExecutorState {
-    auto const& [a, state, b, c, d] = GetParam();
+    auto const& [a, state, b, c] = GetParam();
     return state;
   }
 
@@ -153,23 +152,11 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
     auto toWrite = make_shared_unordered_set({});
     auto toKeep = make_shared_unordered_set({0});
     auto toClear = make_shared_unordered_set();
-    auto const& [unused, upstreamState, clientCall, unused2, copyBehaviour] = GetParam();
+    auto const& [unused, upstreamState, clientCall, unused2] = GetParam();
     AqlCall callCopy = clientCall;
-    if (copyBehaviour == OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows) {
-      // For passthrough we reuse the block
-      return OutputAqlItemRow(input, toWrite, toKeep, toClear,
-                              std::move(callCopy), copyBehaviour);
-    }
-    // Otherwise we need to create a fresh block (or forward nullptr)
-    if (input == nullptr) {
-      SharedAqlItemBlockPtr outBlock{nullptr};
-      return OutputAqlItemRow(outBlock, toWrite, toKeep, toClear,
-                              std::move(callCopy), copyBehaviour);
-    }
-    SharedAqlItemBlockPtr outBlock{
-        new AqlItemBlock(manager(), input->size(), input->getNrRegs())};
-    return OutputAqlItemRow(outBlock, toWrite, toKeep, toClear,
-                            std::move(callCopy), copyBehaviour);
+    // For passthrough we reuse the block
+    return OutputAqlItemRow(input, toWrite, toKeep, toClear, std::move(callCopy),
+                            OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
   }
 };
 
@@ -218,8 +205,8 @@ TEST_P(IdExecutorTestCombiner, test_produce_datarange_constFetcher) {
 }
 
 TEST_P(IdExecutorTestCombiner, test_produce_datarange_singleRowFetcher) {
-  ExecutorTestHelper<1, 1>(*fakedQuery)
-      .setExecBlock<IdExecutor<SingleRowFetcher<::arangodb::aql::BlockPassthrough::Enable>>>(
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<IdExecutor<SingleRowFetcher<::arangodb::aql::BlockPassthrough::Enable>>>(
           makeInfos(), ExecutionNode::SINGLETON)
       .setInputFromRowNum(getInput())
       .setCall(getCall())
@@ -270,13 +257,9 @@ auto clientCalls = testing::Values(AqlCall{},  // unlimited call
                                    AqlCall{0, AqlCall::Infinity{}, 7, true}  // hardlimit call (note this is larger than length of input data), with fullcount
 );
 
-auto copyBehaviours = testing::Values(OutputAqlItemRow::CopyRowBehavior::CopyInputRows,  // Create a new row and write the data
-                                      OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows  // Just passthrough (production)
-);
-
 INSTANTIATE_TEST_CASE_P(IdExecutorTest, IdExecutorTestCombiner,
                         ::testing::Combine(inputs, upstreamStates, clientCalls,
-                                           ::testing::Bool(), copyBehaviours));
+                                           ::testing::Bool()));
 
 class IdExecutionBlockTest : public AqlExecutorTestCase<> {};
 
@@ -406,8 +389,8 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
 
 TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
   IdExecutorInfos infos{1, {0}, {}, false};
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(infos))
+  makeExecutorTestHelper()
+      .addConsumer<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(infos))
       .setInputValueList(1, 2, 3, 4, 5, 6)
       .setCall(AqlCall{0, AqlCall::Infinity{}, 2, false})
       .expectOutput({0}, {{1}, {2}})

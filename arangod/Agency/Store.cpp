@@ -115,6 +115,15 @@ Store& Store::operator=(Store&& rhs) {
 /// Default dtor
 Store::~Store() = default;
 
+index_t Store::applyTransactions(std::vector<log_t> const& queries) {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+
+  for (auto const& query : queries) {
+    applies(Slice(query.entry->data()));
+  }
+  return queries.empty() ? 0 : queries.back().index;
+}
+
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
 std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
@@ -1039,4 +1048,12 @@ std::vector<std::string> Store::split(std::string const& str) {
   }
 
   return result;
+}
+
+/**
+ * @brief Unguarded pointer to a node path in this store.
+ *        Caller must enforce locking.
+ */
+Node const* Store::nodePtr(std::string const& path) const {
+  return &_node(path);
 }

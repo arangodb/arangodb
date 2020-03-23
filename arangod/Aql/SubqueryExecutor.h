@@ -103,7 +103,8 @@ class SubqueryExecutor {
   auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
 
-  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+  auto fetchBlockForPassthrough(size_t atMost)
+      -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>;
 
  private:
   /**
@@ -130,6 +131,9 @@ class SubqueryExecutor {
    */
   auto initializeSubquery(AqlItemBlockInputRange& input)
       -> std::tuple<ExecutionState, bool>;
+
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   Fetcher& _fetcher;

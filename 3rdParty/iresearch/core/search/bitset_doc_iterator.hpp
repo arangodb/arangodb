@@ -30,7 +30,7 @@
 
 NS_ROOT
 
-class bitset_doc_iterator final: public doc_iterator_base, util::noncopyable {
+class bitset_doc_iterator final: public doc_iterator_base<doc_iterator>, util::noncopyable {
  public:
   explicit bitset_doc_iterator(const bitset& set);
 

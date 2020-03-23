@@ -25,14 +25,14 @@
 #ifndef ARANGOD_AQL_REGISTER_PLAN_H
 #define ARANGOD_AQL_REGISTER_PLAN_H 1
 
+#include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class ExecutionNode;
 class ExecutionPlan;
@@ -108,7 +108,6 @@ struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
   static constexpr RegisterId MaxRegisterId = 1000;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif

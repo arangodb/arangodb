@@ -55,6 +55,9 @@ namespace aql {
 using LambdaExePassThrough = TestLambdaExecutor;
 using LambdaExe = TestLambdaSkipExecutor;
 
+// This test is supposed to only test getSome return values,
+// it is not supposed to test the fetch logic!
+
 /**
  * @brief Shared Test case initializer to test the execute API
  *        of the ExecutionBlockImpl implementation.
@@ -202,7 +205,7 @@ class SharedExecutionBlockImplTest {
    * @return ProduceCall The call ready to hand over to the LambdaExecutorInfos
    */
   static auto generateProduceCall(size_t& nrCalls, AqlCall expectedCall,
-                                  size_t numRowsLeftNoInput = ExecutionBlock::DefaultBatchSize,
+                                  size_t numRowsLeftNoInput = 0,
                                   size_t numRowsLeftWithInput = ExecutionBlock::DefaultBatchSize)
       -> ProduceCall {
     return [&nrCalls, numRowsLeftNoInput, numRowsLeftWithInput,
@@ -446,7 +449,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
   // in the executor.
   // Non passthrough the available lines (visible to executor) are only the given soft limit.
   ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
-                                    : generateProduceCall(nrCalls, fullCall, 20, 20);
+                                    : generateProduceCall(nrCalls, fullCall, 0, 20);
   SkipCall skipCall = generateNeverSkipCall();
   auto [state, skipped, block] = runTest(execImpl, skipCall, fullCall);
 
@@ -468,7 +471,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
   // in the executor.
   // Non passthrough the available lines (visible to executor) are only the given soft limit.
   ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
-                                    : generateProduceCall(nrCalls, fullCall, 20, 20);
+                                    : generateProduceCall(nrCalls, fullCall, 0, 20);
   SkipCall skipCall = generateNeverSkipCall();
   auto [state, skipped, block] = runTest(execImpl, skipCall, fullCall);
 
@@ -2341,7 +2344,6 @@ INSTANTIATE_TEST_CASE_P(
                                          skipAndHardLimit(), skipAndHardLimitAndFullCount(),
                                          onlyFullCount(), onlySkipAndCount()),
                        ::testing::Bool()));
-
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

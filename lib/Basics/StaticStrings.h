@@ -224,6 +224,7 @@ class StaticStrings {
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
+  static std::string const SyncByRevision;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Validation;
   static std::string const WriteConcern;
@@ -231,6 +232,7 @@ class StaticStrings {
   // graph attribute names
   static std::string const GraphCollection;
   static std::string const GraphIsSmart;
+  static std::string const GraphIsSatellite;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
@@ -259,6 +261,7 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
+  static std::string const RevisionTreeBranchingFactor;
   static std::string const RevisionTreeCount;
   static std::string const RevisionTreeHash;
   static std::string const RevisionTreeMaxDepth;
@@ -313,10 +316,64 @@ class StaticStrings {
   static std::string const ValidatorParameterLevel;
   static std::string const ValidatorParameterType;
   static std::string const ValidatorParameterRule;
+  static std::string const ValidatorParameterSpecialProperties;
 
   static std::string const ValidatorTypeJsonSchema;
   static std::string const ValidatorTypeAQL;
   static std::string const ValidatorTypeBool;
+
+  static std::string const ValidatorPropertyAll;
+  static std::string const ValidatorPropertyNone;
+  static std::string const ValidatorPropertyKey;
+  static std::string const ValidatorPropertyId;
+  static std::string const ValidatorPropertyRev;
+  static std::string const ValidatorPropertyFrom;
+  static std::string const ValidatorPropertyTo;
+
+  // metrics prometheus labels
+  static std::string const HeartbeatSendTimeMs;
+  static std::string const HeartbeatFailureCounter;
+
+  static std::string const MaintenancePhaseOneRuntimeMs;
+  static std::string const MaintenancePhaseTwoRuntimeMs;
+  static std::string const MaintenanceAgencySyncRuntimeMs;
+
+
+  static std::string const MaintenanceActionRuntimeMs;
+  static std::string const MaintenanceActionAccumRuntimeMs;
+  static std::string const MaintenanceActionFailureCounter;
+  static std::string const MaintenanceActionQueueTimeMs;
+  static std::string const MaintenanceActionAccumQueueTimeMs;
+
+  static std::string const MaintenancePhaseOneAccumRuntimeMs;
+  static std::string const MaintenancePhaseTwoAccumRuntimeMs;
+  static std::string const MaintenanceAgencySyncAccumRuntimeMs;
+
+
+  static std::string const ActionDuplicateCounter;
+  static std::string const ActionRegisteredCounter;
+  static std::string const ActionDoneCounter;
+
+  static std::string const ShardsOutOfSync;
+  static std::string const ShardsTotalCount;
+  static std::string const ShardsLeaderCount;
+  static std::string const ShardsNotReplicated;
+
+  static std::string const AgencyCommRequestTimeMs;
+
+  static std::string const AqlQueryRuntimeMs;
+
+  static std::string const SchedulerQueueLength;
+  static std::string const SchedulerAwakeWorkers;
+  static std::string const SchedulerNumWorker;
+
+  static std::string const DroppedFollowerCount;
+
+  static std::string const SupervisionRuntimeMs;
+  static std::string const SupervisionRuntimeWaitForSyncMs;
+  static std::string const SupervisionAccumRuntimeMs;
+  static std::string const SupervisionAccumRuntimeWaitForSyncMs;
+  static std::string const SupervisionFailedServerCount;
 };
 }  // namespace arangodb
 

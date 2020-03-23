@@ -147,8 +147,6 @@ class SortingGatherExecutor {
   [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
-
  private:
   [[nodiscard]] auto constrainedSort() const noexcept -> bool;
 

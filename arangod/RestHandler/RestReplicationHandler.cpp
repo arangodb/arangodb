@@ -1218,12 +1218,19 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
-  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+      _vocbase.sharding() == "single") {
+    auto const isSatellite =
+        VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
+                                       velocypack::StringRef{""}) == StaticStrings::Satellite;
+
     // force one shard, and force distributeShardsLike to be "_graphs"
     toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-    if (!_vocbase.IsSystemName(name)) {
+    if (!_vocbase.IsSystemName(name) && !isSatellite) {
       // system-collections will be sharded normally. only user collections will
-      // get the forced sharding
+      // get the forced sharding.
+      // satellite collections must not be sharded like a non-satellite
+      // collection.
       toMerge.add(StaticStrings::DistributeShardsLike,
                   VPackValue(_vocbase.shardingPrototypeName()));
     }
@@ -1241,14 +1248,6 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
     } else {
       numberOfShards = numberOfShardsSlice.getUInt();
-    }
-
-    if (_vocbase.sharding() == "single" &&
-        parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
-        !_vocbase.IsSystemName(name) && numberOfShards <= 1) {
-      // shard like _graphs
-      toMerge.add(StaticStrings::DistributeShardsLike,
-                  VPackValue(_vocbase.shardingPrototypeName()));
     }
   }
 
@@ -3001,13 +3000,6 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
     return false;
   }
 
-  // determine end tick for dump
-  ctx.tickEnd = std::numeric_limits<TRI_voc_tick_t>::max();
-  std::string const& value2 = _request->value("to", found);
-  if (found) {
-    ctx.tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
-  }
-
   ctx.iter =
       ctx.collection->getPhysical()->getReplicationIterator(ReplicationIterator::Ordering::Revision,
                                                             ctx.batchId);
@@ -3048,12 +3040,6 @@ void RestReplicationHandler::handleCommandRevisionTree() {
 void RestReplicationHandler::handleCommandRebuildRevisionTree() {
   RevisionOperationContext ctx;
   if (!prepareRevisionOperation(ctx)) {
-    return;
-  }
-
-  if (!ctx.collection->syncByRevision()) {
-    generateError(Result(TRI_ERROR_BAD_PARAMETER,
-                         "collection does not support revision tree commands"));
     return;
   }
 

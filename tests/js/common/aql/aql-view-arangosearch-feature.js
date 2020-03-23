@@ -1189,6 +1189,19 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual([ "q", "qu", "qui", "quic", "quick", "b", "br", "bro", "brow", "brown", "f", "fo", "fox", "foxi" ], result[0]);
         analyzers.remove(analyzerName, true);
       }
+      // Greek stemming - test for snowball 2.0
+      {
+        analyzers.save(analyzerName, "text", {  "locale" : "el_GR.UTF8", "case": "none", "stemming":true, "stopwords": [] });
+        let result = db._query(
+          "RETURN TOKENS('Αθλητές', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "αθλητ" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
 
       // no properties
       {

@@ -23,6 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
 #include "AqlItemRowPrinter.h"
 #include "DependencyProxyMock.h"

@@ -108,6 +108,9 @@ class FilterExecutor {
 
   [[nodiscard]] std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
  private:
   Infos& _infos;
   Fetcher& _fetcher;

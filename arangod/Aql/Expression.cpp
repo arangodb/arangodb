@@ -889,7 +889,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
     _ast->query()->prepareV8Context();
 
     std::string jsName;
-    size_t const n = static_cast<int>(member->numMembers());
+    size_t const n = member->numMembers();
     size_t callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
     auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 

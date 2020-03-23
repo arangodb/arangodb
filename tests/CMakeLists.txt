@@ -25,6 +25,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
   Aql/AllRowsFetcherTest.cpp
+  Aql/AqlExecutorTestCase.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
@@ -55,6 +56,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/MockTypedNode.cpp
   Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
+  Aql/NgramMatchFunctionTest.cpp
+  Aql/NgramSimilarityFunctionTest.cpp
+  Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/QueryHelper.cpp
   Aql/RemoteExecutorTest.cpp
@@ -71,7 +75,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortLimit-test.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
-  Aql/SubqueryExecutorTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
@@ -212,6 +215,7 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceTest.cpp
   ${RCFILE}
   Metrics/MetricsTest.cpp
+  Metrics/MetricsFeatureTest.cpp
   Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp

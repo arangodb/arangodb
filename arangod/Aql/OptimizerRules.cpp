@@ -2034,7 +2034,15 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   template <typename T>
   void replaceStartTargetVariables(ExecutionNode* en) {
-    auto node = static_cast<T*>(en);
+    auto node = std::invoke(
+        [en](auto) {
+          if constexpr (std::is_base_of_v<GraphNode, T>) {
+            return dynamic_cast<T*>(en);
+          } else {
+            return static_cast<T*>(en);
+          }
+        },
+        0);
     if (node->_inStartVariable != nullptr) {
       node->_inStartVariable = Variable::replace(node->_inStartVariable, _replacements);
     }
@@ -3633,6 +3641,74 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, false);
 }
 
+void arangodb::aql::createScatterGatherSnippet(
+    ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
+    bool const isRootNode, std::vector<ExecutionNode*> const& nodeDependencies,
+    std::vector<ExecutionNode*> const& nodeParents,
+    SortElementVector const& elements, size_t const numberOfShards,
+    std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
+    Collection const* collection) {
+  // insert a scatter node
+  auto* scatterNode =
+      new ScatterNode(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
+  plan.registerNode(scatterNode);
+  TRI_ASSERT(node->getDependencies().empty());
+  TRI_ASSERT(!nodeDependencies.empty());
+  scatterNode->addDependency(nodeDependencies[0]);
+
+  // insert a remote node
+  ExecutionNode* remoteNode =
+      new RemoteNode(&plan, plan.nextId(), vocbase, "", "", "");
+  plan.registerNode(remoteNode);
+  TRI_ASSERT(scatterNode);
+  remoteNode->addDependency(scatterNode);
+
+  // re-link with the remote node
+  node->addDependency(remoteNode);
+
+  // insert another remote node
+  remoteNode = new RemoteNode(&plan, plan.nextId(), vocbase, "", "", "");
+  plan.registerNode(remoteNode);
+  TRI_ASSERT(node);
+  remoteNode->addDependency(node);
+
+  // insert a gather node
+  auto const sortMode = GatherNode::evaluateSortMode(numberOfShards);
+  // single-sharded collections don't require any parallelism. collections with more than
+  // one shard are eligible for later parallelization (the Undefined allows this)
+  auto const parallelism =
+      (((collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) ||
+        (collection->numberOfShards() <= 1 && !collection->isSatellite()))
+           ? GatherNode::Parallelism::Serial
+           : GatherNode::Parallelism::Undefined);
+  auto* gatherNode = new GatherNode(&plan, plan.nextId(), sortMode, parallelism);
+  plan.registerNode(gatherNode);
+  TRI_ASSERT(remoteNode);
+  gatherNode->addDependency(remoteNode);
+  // On SmartEdge collections we have 0 shards and we need the elements
+  // to be injected here as well. So do not replace it with > 1
+  if (!elements.empty() && numberOfShards != 1) {
+    gatherNode->elements(elements);
+  }
+
+  // and now link the gather node with the rest of the plan
+  if (nodeParents.size() == 1) {
+    nodeParents[0]->replaceDependency(nodeDependencies[0], gatherNode);
+  }
+
+  // check if the node that we modified was at the end of a subquery
+  auto it = subqueries.find(node);
+
+  if (it != subqueries.end()) {
+    ExecutionNode::castTo<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
+  }
+
+  if (isRootNode) {
+    // if we replaced the root node, set a new root node
+    plan.root(gatherNode);
+  }
+}
+
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on sharded
 /// collections actually work
@@ -3667,9 +3743,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
   for (auto& node : nodes) {
     // found a node we need to replace in the plan
 
-    auto const& parents = node->getParents();
-    // intentional copy of the dependencies, as we will be modifying
-    // dependencies later on
+    // intentional copy of the parents and dependencies, as we will be modifying
+    // them later on
+    auto const parents = node->getParents();
     auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
@@ -3683,7 +3759,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       continue;
     }
 
-    bool const isRootNode = plan->isRoot(node);
+    auto const isRootNode = plan->isRoot(node);
     plan->unlinkNode(node, true);
 
     auto const nodeType = node->getType();
@@ -3740,62 +3816,10 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
     TRI_ASSERT(collection != nullptr);
 
-    // insert a scatter node
-    auto* scatterNode =
-        new ScatterNode(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD);
-    plan->registerNode(scatterNode);
-    TRI_ASSERT(!deps.empty());
-    scatterNode->addDependency(deps[0]);
+    size_t numberOfShards = collection->numberOfShards();
+    createScatterGatherSnippet(*plan, vocbase, node, isRootNode, deps, parents,
+                               elements, numberOfShards, subqueries, collection);
 
-    // insert a remote node
-    ExecutionNode* remoteNode =
-        new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
-    plan->registerNode(remoteNode);
-    TRI_ASSERT(scatterNode);
-    remoteNode->addDependency(scatterNode);
-
-    // re-link with the remote node
-    node->addDependency(remoteNode);
-
-    // insert another remote node
-    remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
-    plan->registerNode(remoteNode);
-    TRI_ASSERT(node);
-    remoteNode->addDependency(node);
-
-    // insert a gather node
-    auto const sortMode = GatherNode::evaluateSortMode(collection->numberOfShards());
-    auto const parallelism =
-        (((collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) ||
-          (collection->numberOfShards() <= 1 && !collection->isSatellite()))
-             ? GatherNode::Parallelism::Serial
-             : GatherNode::Parallelism::Undefined);
-    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode, parallelism);
-    plan->registerNode(gatherNode);
-    TRI_ASSERT(remoteNode);
-    gatherNode->addDependency(remoteNode);
-    // On SmartEdge collections we have 0 shards and we need the elements
-    // to be injected here as well. So do not replace it with > 1
-    if (!elements.empty() && collection->numberOfShards() != 1) {
-      gatherNode->elements(elements);
-    }
-
-    // and now link the gather node with the rest of the plan
-    if (parents.size() == 1) {
-      parents[0]->replaceDependency(deps[0], gatherNode);
-    }
-
-    // check if the node that we modified was at the end of a subquery
-    auto it = subqueries.find(node);
-
-    if (it != subqueries.end()) {
-      ExecutionNode::castTo<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
-    }
-
-    if (isRootNode) {
-      // if we replaced the root node, set a new root node
-      plan->root(gatherNode);
-    }
     wasModified = true;
   }
 
@@ -5779,7 +5803,8 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   // variables from them
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
-    auto* options = static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
+    auto* options =
+        static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
 
     std::vector<Variable const*> pruneVars;
     traversal->getPruneVariables(pruneVars);
@@ -5821,18 +5846,15 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       traversal->setPathOutput(nullptr);
       modified = true;
     }
-  
+
     // check if we can make use of the optimized neighbors enumerator
     if (!ServerState::instance()->isCoordinator()) {
-      if (traversal->vertexOutVariable() != nullptr &&
-          traversal->edgeOutVariable() == nullptr &&
-          traversal->pathOutVariable() == nullptr &&
-          options->useBreadthFirst &&
+      if (traversal->vertexOutVariable() != nullptr && traversal->edgeOutVariable() == nullptr &&
+          traversal->pathOutVariable() == nullptr && options->useBreadthFirst &&
           options->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL &&
-          !options->usesPrune() &&
-          !options->hasDepthLookupInfo()) {
+          !options->usesPrune() && !options->hasDepthLookupInfo()) {
         // this is possible in case *only* vertices are produced (no edges, no path),
-        // the traversal is breadth-first, the vertex uniqueness level is set to "global", 
+        // the traversal is breadth-first, the vertex uniqueness level is set to "global",
         // there is no pruning and there are no depth-specific filters
         options->useNeighbors = true;
         modified = true;
@@ -5990,42 +6012,6 @@ void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
     }
   }
   opt->addPlan(std::move(plan), rule, modified);
-}
-
-/// @brief prepares traversals for execution (hidden rule)
-void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
-                                          std::unique_ptr<ExecutionPlan> plan,
-                                          OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> tNodes{a};
-  plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
-  plan->findNodesOfType(tNodes, EN::K_SHORTEST_PATHS, true);
-  plan->findNodesOfType(tNodes, EN::SHORTEST_PATH, true);
-
-  if (tNodes.empty()) {
-    // no traversals present
-    opt->addPlan(std::move(plan), rule, false);
-    return;
-  }
-
-  // first make a pass over all traversal nodes and remove unused
-  // variables from them
-  for (auto const& n : tNodes) {
-    if (n->getType() == EN::TRAVERSAL) {
-      TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
-      traversal->prepareOptions();
-    } else if (n->getType() == EN::K_SHORTEST_PATHS) {
-      TRI_ASSERT(n->getType() == EN::K_SHORTEST_PATHS);
-      KShortestPathsNode* spn = ExecutionNode::castTo<KShortestPathsNode*>(n);
-      spn->prepareOptions();
-    } else {
-      TRI_ASSERT(n->getType() == EN::SHORTEST_PATH);
-      ShortestPathNode* spn = ExecutionNode::castTo<ShortestPathNode*>(n);
-      spn->prepareOptions();
-    }
-  }
-
-  opt->addPlan(std::move(plan), rule, true);
 }
 
 /// @brief pulls out simple subqueries and merges them with the level above

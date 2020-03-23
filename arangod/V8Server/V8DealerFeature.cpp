@@ -60,6 +60,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-deadline.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
