@@ -1845,7 +1845,7 @@ AqlValue Functions::InRange(ExpressionContext* ctx, transaction::Methods* trx,
     registerWarning(
       ctx, AFN,
       arangodb::Result{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                        "4 arguments are expected." });
+                        "5 arguments are expected." });
     return AqlValue(AqlValueHintNull());
   }
 

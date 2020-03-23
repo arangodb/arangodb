@@ -4179,6 +4179,21 @@ function ahuacatlFunctionsTestSuite () {
         assertEqual(1, res.length);  
         assertTrue(res[0]);
       }
+      {
+        let res = getQueryResults("RETURN IN_RANGE(123, null, 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE({a:1}, null, 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertFalse(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE('foo', 'boo', 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

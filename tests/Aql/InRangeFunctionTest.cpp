@@ -111,9 +111,11 @@ class InRangeFunctionTest : public ::testing::Test {
     bool includeUpper) {
     SCOPED_TRACE(testing::Message("assertInRange failed on line:") << line);
     std::set<int> warnings;
+    AqlValue includeLowerAql{ AqlValueHintBool(includeLower) };
+    AqlValue includeUpperAql{ AqlValueHintBool(includeUpper) };
     auto value = evaluate(attribute, lower, upper,
-      &AqlValue(AqlValueHintBool(includeLower)),
-      &AqlValue(AqlValueHintBool(includeUpper)), &warnings);
+      &includeLowerAql,
+      &includeUpperAql, &warnings);
     ASSERT_TRUE(warnings.empty());
     ASSERT_TRUE(value.isBoolean());
     ASSERT_EQ(expectedValue, value.toBoolean());
