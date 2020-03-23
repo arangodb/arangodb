@@ -125,9 +125,9 @@ and the hash value is used to determine the target shard.
 
 @RESTBODYPARAM{replicationFactor,integer,optional,int64}
 (The default is *1*): in a cluster, this attribute determines how many copies
-of each shard are kept on different DBServers. The value 1 means that only one
+of each shard are kept on different DB-Servers. The value 1 means that only one
 copy (no synchronous replication) is kept. A value of k means that k-1 replicas
-are kept. Any two copies reside on different DBServers. Replication between them is
+are kept. Any two copies reside on different DB-Servers. Replication between them is
 synchronous, that is, every write operation to the "leader" copy will be replicated
 to all "follower" replicas, before the write operation is reported successful.
 
@@ -137,7 +137,7 @@ copies take over, usually without an error being reported.
 @RESTBODYPARAM{writeConcern,integer,optional,int64}
 Write concern for this collection (default: 1).
 It determines how many copies of each shard are required to be
-in sync on the different DBServers. If there are less then these many copies
+in sync on the different DB-Servers. If there are less then these many copies
 in the cluster a shard will refuse to write. Writes to shards with enough
 up-to-date copies will succeed at the same time however. The value of
 *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
@@ -182,7 +182,7 @@ benefit, but it may later in case other sharding strategies are added.
 @RESTBODYPARAM{smartJoinAttribute,string,optional,string}
 In an *Enterprise Edition* cluster, this attribute determines an attribute
 of the collection that must contain the shard key value of the referred-to
-smart join collection. Additionally, the shard key for a document in this
+SmartJoin collection. Additionally, the shard key for a document in this
 collection must contain the value of this attribute, followed by a colon,
 followed by the actual primary key of the document.
 

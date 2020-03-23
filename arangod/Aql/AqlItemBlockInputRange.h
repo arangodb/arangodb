@@ -72,6 +72,22 @@ class AqlItemBlockInputRange {
 
   [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;
 
+  /**
+   * @brief Count how many datarows are expected in this range
+   *        Used to estimate amount of produced rows
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countDataRows() const noexcept -> std::size_t;
+
+  /**
+   * @brief Count how many shadowRows are expected in this range
+   *        Used to estimate amount of produced rows
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
+
+  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+
  private:
   bool isIndexValid(std::size_t index) const noexcept;
 
