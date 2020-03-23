@@ -53,7 +53,7 @@ namespace aql {
 //        * graph info parsing
 //        * traverser-engine creation
 //        * option preparation
-//        * Smart Graph Handling
+//        * SmartGraph Handling
 
 class GraphNode : public ExecutionNode {
  protected:

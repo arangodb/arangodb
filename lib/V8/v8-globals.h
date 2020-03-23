@@ -490,9 +490,9 @@ struct TRI_v8_global_t {
   v8::Persistent<v8::ObjectTemplate> GeneralGraphTempl;
 
 #ifdef USE_ENTERPRISE
-  /// @brief smart graph class template
+  /// @brief SmartGraph class template
   v8::Persistent<v8::ObjectTemplate> SmartGraphTempl;
-  // there is no smart graph module becuase they are
+  // there is no SmartGraph module because they are
   // identical, just return different graph instances.
 #endif
 

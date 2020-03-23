@@ -1641,8 +1641,8 @@ constexpr int TRI_ERROR_MODULE_FAILURE                                          
 constexpr int TRI_ERROR_NO_SMART_COLLECTION                                     = 4000;
 
 /// 4001: ERROR_NO_SMART_GRAPH_ATTRIBUTE
-/// "smart graph attribute not given"
-/// The given document does not have the smart graph attribute set.
+/// "SmartGraph attribute not given"
+/// The given document does not have the SmartGraph attribute set.
 constexpr int TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE                                = 4001;
 
 /// 4002: ERROR_CANNOT_DROP_SMART_COLLECTION
@@ -1652,20 +1652,20 @@ constexpr int TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            
 
 /// 4003: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE
 /// "in smart vertex collections _key must be prefixed with the value of the
-/// "smart graph attribute"
+/// "SmartGraph attribute"
 /// In a smart vertex collection _key must be prefixed with the value of the
-/// smart graph attribute.
+/// SmartGraph attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         = 4003;
 
 /// 4004: ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE
-/// "attribute cannot be used as smart graph attribute"
+/// "attribute cannot be used as SmartGraph attribute"
 /// The given smartGraph attribute is illegal and connot be used for sharding.
 /// All system attributes are forbidden.
 constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           = 4004;
 
 /// 4005: ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH
-/// "smart graph attribute mismatch"
-/// The smart graph attribute of the given collection does not match the smart
+/// "SmartGraph attribute mismatch"
+/// The SmartGraph attribute of the given collection does not match the smart
 /// graph attribute of the graph.
 constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
 

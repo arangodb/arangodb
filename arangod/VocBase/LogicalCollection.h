@@ -214,7 +214,7 @@ class LogicalCollection : public LogicalDataSource {
                        std::function<bool(arangodb::Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
-  /// this is only used in the Enterprise Edition for smart graphs
+  /// this is only used in the Enterprise Edition for SmartGraphs
   virtual bool skipForAqlWrite(velocypack::Slice document, std::string const& key) const;
 
   bool allowUserKeys() const;

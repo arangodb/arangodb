@@ -1127,7 +1127,7 @@ bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
 }
 
 /// @brief a method to skip certain documents in AQL write operations,
-/// this is only used in the Enterprise Edition for smart graphs
+/// this is only used in the Enterprise Edition for SmartGraphs
 #ifndef USE_ENTERPRISE
 bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document,
                                         std::string const& key) const {

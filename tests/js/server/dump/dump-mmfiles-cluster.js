@@ -651,7 +651,7 @@ function dumpTestEnterpriseSuite () {
        * 10 -> 11 -> 12
        */
 
-      //Validate that everything is wired to a smart graph correctly
+      //Validate that everything is wired to a SmartGraph correctly
       const res = db._query(q).toArray();
       assertEqual(4, res.length);
       assertEqual("8", res[0].value);
@@ -689,7 +689,7 @@ function dumpTestEnterpriseSuite () {
        * 10 <- 11 <- 12
        */
 
-      //Validate that everything is wired to a smart graph correctly
+      //Validate that everything is wired to a SmartGraph correctly
       const res = db._query(q).toArray();
       assertEqual('8 8 8 8 9 9 11 11 12 12 12 12'.split(' '), res);
     },
