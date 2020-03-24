@@ -46,9 +46,9 @@ ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db
 ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
             std::string const& database, auth::Level systemLevel, auth::Level dbLevel,
             bool isAdminUser)
-      : _type(type),
-        _user(user),
+      : _user(user),
         _database(database),
+        _type(type),
         _isAdminUser(isAdminUser),
         _canceled(false),
         _systemDbAuthLevel(systemLevel),
@@ -89,6 +89,7 @@ std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::s
       isAdminUser = um->databaseAuthLevel(user, StaticStrings::SystemDatabase, true) == auth::Level::RW;
     }
   }
+  // we cannot use std::make_unique here, as ExecContext has a protected constructor
   auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl, isAdminUser);
   return std::unique_ptr<ExecContext>(ptr);
 }
@@ -127,16 +128,21 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   if (!af->isActive()) {
     return auth::Level::RW;
   }
-  // handle fixed permissions here outside auth module.
-  // TODO: move this block above, such that it takes effect
-  //       when authentication is disabled
-  if (dbname == StaticStrings::SystemDatabase && coll == TRI_COL_NAME_USERS) {
-    return auth::Level::NONE;
-  } else if (coll == "_queues") {
-    return auth::Level::RO;
-  } else if (coll == "_frontend") {
-    return auth::Level::RW;
-  }  // intentional fall through
+  
+  if (coll.size() >= 5 && coll[0] == '_') {
+    // _users, _queues, _frontend
+
+    // handle fixed permissions here outside auth module.
+    // TODO: move this block above, such that it takes effect
+    //       when authentication is disabled
+    if (dbname == StaticStrings::SystemDatabase && coll == TRI_COL_NAME_USERS) {
+      return auth::Level::NONE;
+    } else if (coll == "_queues") {
+      return auth::Level::RO;
+    } else if (coll == "_frontend") {
+      return auth::Level::RW;
+    }  // intentional fall through
+  }
 
   auth::UserManager* um = af->userManager();
   TRI_ASSERT(um != nullptr);

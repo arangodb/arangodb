@@ -128,11 +128,12 @@ class ExecContext : public RequestContext {
   }
 
  protected:
-  Type _type;
   /// current user, may be empty for internal users
   std::string const _user;
   /// current database to use
   std::string const _database;
+  
+  Type _type;
   /// Flag if admin user access (not regarding cluster RO mode)
   bool _isAdminUser;
   /// should be used to indicate a canceled request / thread
