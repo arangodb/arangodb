@@ -1,4 +1,4 @@
-/*global describe, it, ArangoAgency, after, afterEach, instanceInfo */
+/*global describe, it, ArangoAgency, after, afterEach, instanceInfo, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster collection creation tests
@@ -48,6 +48,21 @@ let endpoint = instanceInfo.url;
 
 const waitForHeartbeat = function () {
   internal.wait(3 * heartbeatInterval, false); 
+};
+
+const setReadOnlyAndGetDBServer = function() {
+  let servers = Object.keys(JSON.parse(download(endpoint + '/_admin/cluster/health').body).Health).filter(function(s) {
+    return s.match(/^PRMR/);
+  });
+
+
+  let resp = download(endpoint + '/_admin/server/mode', JSON.stringify({'mode': 'readonly'}), {
+    method: 'put',
+  });
+  expect(resp.code).to.equal(200);
+  waitForHeartbeat();
+
+  return servers[0];
 };
 
 // this only tests the http api...there is a separate readonly test
@@ -125,5 +140,73 @@ describe('Readonly mode api', function() {
         expect(body).to.have.property('mode', 'readonly');
       }
     });
+  });
+  
+  it('can still access cluster/health API when readonly', function() {
+    if (!isCluster) {
+      return;
+    }
+
+    let resp = download(endpoint + '/_admin/cluster/health');
+    expect(resp.code).to.equal(200);
+    let body = JSON.parse(resp.body);
+    expect(body).to.have.property('ClusterId');
+    expect(body).to.have.property('Health');
+  });
+  
+  it('can still access cluster/nodeVersion API when readonly', function() {
+    if (!isCluster) {
+      return;
+    }
+
+    let server = setReadOnlyAndGetDBServer();
+    let resp = download(endpoint + '/_admin/clusterNodeVersion?ServerID=' + server);
+    expect(resp.code).to.equal(308);
+    
+    resp = download(endpoint + '/_admin/cluster/nodeVersion?ServerID=' + server);
+    expect(resp.code).to.equal(200);
+  });
+  
+  it('can still access cluster/nodeEngine API when readonly', function() {
+    if (!isCluster) {
+      return;
+    }
+    
+    let server = setReadOnlyAndGetDBServer();
+    let resp = download(endpoint + '/_admin/clusterNodeEngine?ServerID=' + server);
+    expect(resp.code).to.equal(308);
+    
+    resp = download(endpoint + '/_admin/cluster/nodeEngine?ServerID=' + server);
+    expect(resp.code).to.equal(200);
+  });
+  
+  it('can still access cluster/nodeStats API when readonly', function() {
+    if (!isCluster) {
+      return;
+    }
+    
+    let server = setReadOnlyAndGetDBServer();
+    let resp = download(endpoint + '/_admin/clusterNodeStats?ServerID=' + server);
+    expect(resp.code).to.equal(308);
+    
+    resp = download(endpoint + '/_admin/cluster/nodeStatistics?ServerID=' + server);
+    expect(resp.code).to.equal(200);
+  });
+  
+  it('cannot create a database when readonly', function() {
+    let resp = download(endpoint + '/_admin/server/mode', JSON.stringify({'mode': 'readonly'}), {
+      method: 'put',
+    });
+    expect(resp.code).to.equal(200);
+    waitForHeartbeat();
+    
+    let body = JSON.parse(resp.body);
+    expect(body).to.have.property('mode', 'readonly');
+    try {
+      db._createDatabase('UnitTestsDatabaseReadOnly');
+      fail();
+    } catch (err) {
+      expect(err.errorNum).to.equal(internal.errors.ERROR_FORBIDDEN.code);
+    }
   });
 });
