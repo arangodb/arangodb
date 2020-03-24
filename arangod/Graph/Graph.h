@@ -212,7 +212,7 @@ class Graph {
    *
    * @return TRUE if we are safe to use it.
    */
-  virtual Result validateCollection(LogicalCollection& col) const;
+  virtual Result validateCollection(LogicalCollection& col, const TRI_vocbase_t& vocbase, bool isOrphan = false);
 
   void edgesToVpack(VPackBuilder& builder) const;
   void verticesToVpack(VPackBuilder& builder) const;
