@@ -700,6 +700,10 @@ void Agent::resign(term_t otherTerm) {
   LOG_TOPIC("494a7", DEBUG, Logger::AGENCY) << "Resigning in term " << _constituent.term()
                                    << " because of peer's term " << otherTerm;
   _constituent.follow(otherTerm, NO_LEADER);
+
+  // Wake up all polls with resignation letter
+  triggerPolls();
+
   endPrepareLeadership();
 }
 
@@ -812,12 +816,13 @@ void Agent::advanceCommitIndex() {
         auto builder = std::make_shared<VPackBuilder>();
         {
           VPackObjectBuilder e(builder.get());
-          auto const logs = _state.get(_lowestPromise);
+          auto const logs = _state.get(_lowestPromise, _commitIndex);
 
           TRI_ASSERT(!logs.empty());
           if (!logs.empty()) {
             builder->add(VPackValue("result"));
             VPackArrayBuilder ls(builder.get());
+            builder->add("firstIndex", VPackValue(logs.front().index));
             builder->add("commitIndex", VPackValue(logs.back().index));
             builder->add(VPackValue("logs"));
             for (auto const& i : logs) {
@@ -1350,14 +1355,36 @@ read_ret_t Agent::read(query_t const& query) {
   return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 
-/// Clear expired polls
+
+// trigger all polls, who have timed out with empty result
 void Agent::clearExpiredPolls() {
-  using namespace std::chrono;
-  auto const tp = steady_clock::now();
+  auto empty = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder obj(empty.get());
+    empty->add("accepted", VPackValue(true));
+    empty->add(VPackValue("result"));
+    VPackArrayBuilder arr(empty.get());
+  }
+  triggerPolls(empty, std::chrono::steady_clock::now());
+}
+
+
+/// Clear expired polls
+/// Wake up everybody with quertand delete with empty
+/// If qu is nullptr, we're resigning.
+void Agent::triggerPolls(query_t qu, SteadyTimePoint const& tp) {
+  if (qu == nullptr) { // We have resigned
+    qu = std::make_shared<VPackBuilder>();
+    VPackObjectBuilder qb(qu.get());
+    qu->add("accepted", VPackValue(false));
+    qu->add(VPackValue("result"));
+    VPackArrayBuilder arr(qu.get());
+  }
   std::lock_guard lock(_promLock);
   auto it = _promises.begin();
   while (it != _promises.end()) {
     if (it->first < tp) {
+      it->second.setValue(qu);
       it = _promises.erase(it);
     } else {
       break;

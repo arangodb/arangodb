@@ -124,7 +124,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief Long pool for higher index than given
   futures::Future<query_t> poll(index_t index);
-  
+
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);
 
@@ -155,6 +155,12 @@ class Agent final : public arangodb::Thread, public AgentInterface {
  private:
 
   /// @brief clear expired polls registered by Agent::poll
+  ///        if qu is nullptr, we're resigning
+  void triggerPolls(
+    query_t qu = nullptr,
+    SteadyTimePoint const& tp = std::chrono::steady_clock::now() + std::chrono::seconds(3600));
+
+  /// @brief trigger all expire polls
   void clearExpiredPolls();
 
   /// @brief empty callback trash bin
@@ -173,7 +179,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Get last confirmed index of an agent. Default my own.
   ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
   index_t confirmed(std::string const& serverId = std::string()) const;
-  
+
   /// @brief Invoked by leader to replicate log entries ($5.3);w
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
