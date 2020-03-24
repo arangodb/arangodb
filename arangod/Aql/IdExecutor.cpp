@@ -124,7 +124,7 @@ auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   }
   call.didSkip(skipped);
   // TODO: Do we need to do counting here?
-  return {inputRange.upstreamState(), stats, skipped, call};
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
 template <class UsedFetcher>
