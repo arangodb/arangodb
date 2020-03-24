@@ -2357,32 +2357,32 @@ auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const
 };
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::memorizeCall(AqlCall const& call,
-                                                bool wasCalledWithContinueCall) noexcept
+auto ExecutionBlockImpl<Executor>::memoizeCall(AqlCall const& call,
+                                               bool wasCalledWithContinueCall) noexcept
     -> void {
-  if (!_hasMemorizedCall) {
+  if (!_hasMemoizedCall) {
     if constexpr (!isMultiDepExecutor<Executor>) {
-      // We can only try to memorize the first call ever send.
+      // We can only try to memoize the first call ever send.
       // Otherwise the call might be influenced by state
       // inside the Executor
       if (wasCalledWithContinueCall && call.getOffset() == 0 && !call.needsFullCount()) {
-        // First draft, we only memorize non-skipping calls
+        // First draft, we only memoize non-skipping calls
         _defaultUpstreamRequest = call;
       }
     }
-    _hasMemorizedCall = true;
+    _hasMemoizedCall = true;
   }
 }
 
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::createUpstreamCall(AqlCall const& call, bool wasCalledWithContinueCall)
     -> AqlCallList {
-  // We can only memorize the first call
-  memorizeCall(call, wasCalledWithContinueCall);
-  TRI_ASSERT(_hasMemorizedCall);
+  // We can only memoize the first call
+  memoizeCall(call, wasCalledWithContinueCall);
+  TRI_ASSERT(_hasMemoizedCall);
   if constexpr (!isMultiDepExecutor<Executor>) {
     if (_defaultUpstreamRequest.has_value()) {
-      // We have memorized a default call.
+      // We have memoized a default call.
       // So we can use it.
       return AqlCallList{call, _defaultUpstreamRequest.value()};
     }

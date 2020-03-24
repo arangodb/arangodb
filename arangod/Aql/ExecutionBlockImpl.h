@@ -346,7 +346,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] auto executorNeedsCall(AqlCallType& call) const noexcept -> bool;
 
-  auto memorizeCall(AqlCall const& call, bool wasCalledWithContinueCall) noexcept -> void;
+  auto memoizeCall(AqlCall const& call, bool wasCalledWithContinueCall) noexcept -> void;
 
   [[nodiscard]] auto createUpstreamCall(AqlCall const& call, bool wasCalledWithContinueCall)
       -> AqlCallList;
@@ -389,7 +389,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   std::optional<AqlCallType> _defaultUpstreamRequest{std::nullopt};
 
-  bool _hasMemorizedCall{false};
+  bool _hasMemoizedCall{false};
 
   AqlCall _clientRequest;
 
