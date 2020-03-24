@@ -32,6 +32,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -1759,7 +1760,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     double timeout                            // request timeout
 ) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  if (name == TRI_VOC_SYSTEM_DATABASE) {
+  if (name == StaticStrings::SystemDatabase) {
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
