@@ -663,7 +663,7 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
   if (!link->get()) {
     return arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
-      std::string("failed to aquire link while emplacing collection into arangosearch View '") + name() + "'"
+      std::string("failed to acquire link while emplacing collection into arangosearch View '") + name() + "'"
     );
   }
 

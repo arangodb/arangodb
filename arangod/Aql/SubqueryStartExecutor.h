@@ -73,7 +73,9 @@ class SubqueryStartExecutor {
 
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
- private:
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
  private:
   // Upstream state, used to determine if we are done with all subqueries
   ExecutorState _upstreamState{ExecutorState::HASMORE};

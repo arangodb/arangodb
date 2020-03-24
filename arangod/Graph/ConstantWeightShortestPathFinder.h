@@ -63,15 +63,18 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
                     arangodb::velocypack::Slice const& end,
                     arangodb::graph::ShortestPathResult& result) override;
 
+  void clear() override;
+
  private:
   void expandVertex(bool backward, arangodb::velocypack::StringRef vertex);
 
   void clearVisited();
 
-  bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets,
-                     Snippets& targetSnippets, bool direction, arangodb::velocypack::StringRef& result);
+  bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets, Snippets& targetSnippets,
+                     bool direction, arangodb::velocypack::StringRef& result);
 
-  void fillResult(arangodb::velocypack::StringRef& n, arangodb::graph::ShortestPathResult& result);
+  void fillResult(arangodb::velocypack::StringRef& n,
+                  arangodb::graph::ShortestPathResult& result);
 
  private:
   Snippets _leftFound;

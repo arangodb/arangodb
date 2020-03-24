@@ -472,10 +472,11 @@ void GeneralServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+    
+  _handlerFactory->addHandler("/_admin/auth/reload",
+                              RestHandlerCreator<RestAuthReloadHandler>::createNoData);
 
   if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
-    _handlerFactory->addHandler("/_admin/auth/reload",
-                                RestHandlerCreator<RestAuthReloadHandler>::createNoData);
     _handlerFactory->addHandler("/_admin/execute",
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }

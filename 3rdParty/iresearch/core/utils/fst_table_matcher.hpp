@@ -73,7 +73,6 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
       arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
       rho_(rho), fst_(&fst),
       error_(fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES) {
-    assert(!error_);
     const size_t numLabels = start_labels_.size();
 
     // initialize transition table

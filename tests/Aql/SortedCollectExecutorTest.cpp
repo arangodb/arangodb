@@ -26,7 +26,7 @@
 
 #include "gtest/gtest.h"
 
-#include "ExecutorTestHelper.h"
+#include "AqlExecutorTestCase.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
@@ -963,8 +963,8 @@ class SortedCollectExecutorTestSplit
 TEST_P(SortedCollectExecutorTestSplit, split_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortedCollectExecutor>(std::move(infos))
+  makeExecutorTestHelper()
+      .addConsumer<SortedCollectExecutor>(std::move(infos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
@@ -977,8 +977,8 @@ TEST_P(SortedCollectExecutorTestSplit, split_1) {
 TEST_P(SortedCollectExecutorTestSplit, split_2) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortedCollectExecutor>(std::move(infos))
+  makeExecutorTestHelper()
+      .addConsumer<SortedCollectExecutor>(std::move(infos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, 2, AqlCall::Infinity{}, false})
@@ -991,8 +991,8 @@ TEST_P(SortedCollectExecutorTestSplit, split_2) {
 TEST_P(SortedCollectExecutorTestSplit, split_3) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortedCollectExecutor>(std::move(infos))
+  makeExecutorTestHelper()
+      .addConsumer<SortedCollectExecutor>(std::move(infos))
       .setInputValueList(1, 2, 3, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{1, AqlCall::Infinity{}, 10, true})

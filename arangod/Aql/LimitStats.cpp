@@ -59,6 +59,7 @@ auto aql::operator+=(ExecutionStats& executionStats, LimitStats const& limitStat
 }
 
 auto aql::operator==(LimitStats const& left, LimitStats const& right) noexcept -> bool {
+  // cppcheck-suppress *
   static_assert(
       sizeof(LimitStats) == sizeof(left.getFullCount()),
       "When adding members to LimitStats, remember to update operator==!");

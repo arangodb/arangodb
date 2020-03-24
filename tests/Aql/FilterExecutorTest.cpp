@@ -25,8 +25,8 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
@@ -93,8 +93,8 @@ TEST_P(FilterExecutorTest, empty_input) {
   auto infos = buildInfos();
   AqlCall call{};
   ExecutionStats{};
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<FilterExecutor>(std::move(infos))
+  makeExecutorTestHelper()
+      .addConsumer<FilterExecutor>(std::move(infos))
       .setInputValue({})
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -109,8 +109,8 @@ TEST_P(FilterExecutorTest, values) {
   auto infos = buildInfos();
   AqlCall call{};
   ExecutionStats{};
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<FilterExecutor>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<FilterExecutor>(std::move(infos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
                                       RowBuilder<2>{0, 2}, RowBuilder<2>{0, 3},
                                       RowBuilder<2>{0, 4}, RowBuilder<2>{0, 5},
@@ -128,8 +128,8 @@ TEST_P(FilterExecutorTest, odd_values) {
   auto infos = buildInfos();
   AqlCall call{};
   ExecutionStats{};
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<FilterExecutor>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<FilterExecutor>(std::move(infos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
                                       RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
                                       RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
@@ -148,8 +148,8 @@ TEST_P(FilterExecutorTest, skip_and_odd_values) {
   auto infos = buildInfos();
   AqlCall call{3};
   ExecutionStats{};
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<FilterExecutor>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<FilterExecutor>(std::move(infos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
                                       RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
                                       RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
@@ -169,8 +169,8 @@ TEST_P(FilterExecutorTest, hard_limit) {
   call.hardLimit = 0;
   call.fullCount = true;
   ExecutionStats{};
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<FilterExecutor>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<FilterExecutor>(std::move(infos))
       .setInputValue(MatrixBuilder<2>{})
       .setInputSplitType(getSplit())
       .setCall(call)

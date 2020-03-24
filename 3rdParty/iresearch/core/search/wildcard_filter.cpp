@@ -31,9 +31,9 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_LOCAL
+NS_ROOT
 
-inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
+irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
   out.reserve(in.size());
 
   bool copy = true;
@@ -49,10 +49,6 @@ inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
 
   return out;
 }
-
-NS_END
-
-NS_ROOT
 
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
@@ -70,7 +66,9 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
       return prepared::empty();
     case WildcardType::TERM_ESCAPED:
       term = unescape(term, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
       [[fallthrough]];
+#endif
     case WildcardType::TERM:
       return term_query::make(index, order, boost, field, term);
     case WildcardType::MATCH_ALL:
@@ -79,7 +77,9 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
                                 scored_terms_limit);
     case WildcardType::PREFIX_ESCAPED:
       term = unescape(term, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
       [[fallthrough]];
+#endif
     case WildcardType::PREFIX: {
       assert(!term.empty());
       const auto* begin = term.c_str();
