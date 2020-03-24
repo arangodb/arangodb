@@ -425,7 +425,7 @@ public:
   rocksdb::TransactionDB* _db;
   /// default read options
   rocksdb::Options _options;
-  /// arangodb comparator - requried because of vpack in keys
+  /// arangodb comparator - required because of vpack in keys
   std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
   /// path used by rocksdb (inside _basePath)
   std::string _path;

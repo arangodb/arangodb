@@ -56,9 +56,6 @@
 #ifndef _WIN32
 namespace {
 
-/// @brief filename that we will use to write a backtrace into
-std::string crashFilename;
-
 /// @brief helper struct that is used to create an alternative stack for the
 /// signal handler on construction and to tear it down on destruction
 struct CrashHandlerStackInitializer {
@@ -108,6 +105,9 @@ CrashHandlerStackInitializer stackInitializer;
 /// @brief an atomic that makes sure there are no races inside the signal
 /// handler callback
 std::atomic<bool> crashHandlerInvoked(false);
+
+/// @brief filename that we will use to write a backtrace into
+std::string crashFilename;
 
 /// @brief appends null-terminated string src to dst,
 /// advances dst pointer by length of src
@@ -341,14 +341,6 @@ namespace arangodb {
 
 void CrashHandler::installCrashHandler() {
 #ifndef _WIN32
-  // create a temporary file. This will automatically be deleted at shutdown
-  long int unusedError;
-  std::string unusedMessage;
-  int res = TRI_GetTempName(nullptr, ::crashFilename, false, unusedError, unusedMessage);
-  if (res != TRI_ERROR_NO_ERROR) {
-    ::crashFilename.clear();
-  }
-
   // install signal handlers for the following signals
   struct sigaction act;
   sigemptyset(&act.sa_mask);
@@ -359,6 +351,23 @@ void CrashHandler::installCrashHandler() {
   sigaction(SIGILL, &act, nullptr);
   sigaction(SIGFPE, &act, nullptr);
   sigaction(SIGABRT, &act,nullptr);
+#endif
+}
+
+void CrashHandler::setTempFilename() {
+#ifndef _WIN32
+  if (!::crashHandlerInvoked.exchange(true)) {
+    // create a temporary filename. This filename is used later when writing
+    // crash reports. we build the filename now to not have to call malloc and
+    // such from within the signal handler.
+    long int unusedError;
+    std::string unusedMessage;
+    int res = TRI_GetTempName(nullptr, ::crashFilename, false, unusedError, unusedMessage);
+    if (res != TRI_ERROR_NO_ERROR) {
+      ::crashFilename.clear();
+    }
+    ::crashHandlerInvoked.store(false);
+  }
 #endif
 }
 

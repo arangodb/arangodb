@@ -66,7 +66,6 @@ class NgramPosSimilarityFunctionTest : public ::testing::Test {
       static VPackOptions options;
       return &options;
       });
-    transaction::Context& trxCtx = trxCtxMock.get();
     TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
     SmallVector<AqlValue>::allocator_type::arena_type arena;

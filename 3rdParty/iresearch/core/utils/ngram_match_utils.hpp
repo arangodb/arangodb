@@ -93,8 +93,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
 
   // here could be constructed source string with start characters affixing
 
-  size_t t_ngram_idx = 1;
-  for (; t_ngram_start != t_ngram_start_end; ++t_ngram_start, ++t_ngram_idx) {
+  for (; t_ngram_start != t_ngram_start_end; ++t_ngram_start) {
     const T* t_ngram_end = t_ngram_start + ngram_size;
     const T* s_ngram_start = src;
     size_t s_ngram_idx = 1;

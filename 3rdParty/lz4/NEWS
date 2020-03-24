@@ -1,7 +1,55 @@
+v1.9.1
+fix : decompression functions were reading a few bytes beyond input size (introduced in v1.9.0, reported by @ppodolsky and @danlark1)
+api : fix : lz4frame initializers compatibility with c++, reported by @degski
+cli : added command --list, based on a patch by @gabrielstedman
+build: improved Windows build, by @JPeterMugaas
+build: AIX, by Norman Green
+
+v1.9.0
+perf: large decompression speed improvement on x86/x64 (up to +20%) by @djwatson
+api : changed : _destSize() compression variants are promoted to stable API
+api : new : LZ4_initStream(HC), replacing LZ4_resetStream(HC)
+api : changed : LZ4_resetStream(HC) as recommended reset function, for better performance on small data
+cli : support custom block sizes, by @blezsan
+build: source code can be amalgamated, by Bing Xu
+build: added meson build, by @lzutao
+build: new build macros : LZ4_DISTANCE_MAX, LZ4_FAST_DEC_LOOP
+install: MidnightBSD, by @laffer1
+install: msys2 on Windows 10, by @vtorri
+
+v1.8.3
+perf: minor decompression speed improvement (~+2%) with gcc
+fix : corruption in v1.8.2 at level 9 for files > 64KB under rare conditions (#560)
+cli : new command --fast, by @jennifermliu
+cli : fixed elapsed time, and added cpu load indicator (on -vv) (#555)
+api : LZ4_decompress_safe_partial() now decodes exactly the nb of bytes requested (feature request #566)
+build : added Haiku target, by @fbrosson, and MidnightBSD, by @laffer1
+doc : updated documentation regarding dictionary compression
+
+v1.8.2
+perf: *much* faster dictionary compression on small files, by @felixhandte
+perf: improved decompression speed and binary size, by Alexey Tourbin (@svpv)
+perf: slightly faster HC compression and decompression speed
+perf: very small compression ratio improvement
+fix : compression compatible with low memory addresses (< 0xFFFF)
+fix : decompression segfault when provided with NULL input, by @terrelln
+cli : new command --favor-decSpeed
+cli : benchmark mode more accurate for small inputs
+fullbench : can bench _destSize() variants, by @felixhandte
+doc : clarified block format parsing restrictions, by Alexey Tourbin (@svpv)
+
 v1.8.1
+perf : faster and stronger ultra modes (levels 10+)
+perf : slightly faster compression and decompression speed
+perf : fix bad degenerative case, reported by @c-morgenstern
 fix : decompression failed when using a combination of extDict + low memory address (#397), reported and fixed by Julian Scheid (@jscheid)
-install: fix : correct man page directory (#387), reported by Stuart Cardall (@itoffshore)
+cli : support for dictionary compression (`-D`), by Felix Handte @felixhandte
+cli : fix : `lz4 -d --rm` preserves timestamp (#441)
+cli : fix : do not modify /dev/null permission as root, by @aliceatlas
+api : `_destSize()` variant supported for all compression levels
 build  : `make` and `make test` compatible with `-jX`, reported by @mwgamera
+build  : can control LZ4LIB_VISIBILITY macro, by @mikir
+install: fix man page directory (#387), reported by Stuart Cardall (@itoffshore)
 
 v1.8.0
 cli : fix : do not modify /dev/null permissions, reported by @Maokaman1
