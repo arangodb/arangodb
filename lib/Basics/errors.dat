@@ -394,13 +394,6 @@ ERROR_SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be ra
 ERROR_WAS_ERLAUBE,2019,"was erlaube?!","Will be raised if was erlaube?!"
 
 ################################################################################
-## Communicator errors
-################################################################################
-
-ERROR_COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
-ERROR_COMMUNICATOR_DISABLED,2101,"Communication was disabled","Communication was disabled."
-
-################################################################################
 ## internal AQL errors
 ################################################################################
 

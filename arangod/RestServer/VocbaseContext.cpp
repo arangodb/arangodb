@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
@@ -80,7 +81,9 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
     return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
                               /*sysLevel*/ auth::Level::NONE,
                               /*dbLevel*/ auth::Level::NONE, false);
-  } else if (req.user().empty()) {
+  } 
+  
+  if (req.user().empty()) {
     std::string msg = "only jwt can be used to authenticate as superuser";
     LOG_TOPIC("2d0f6", WARN, Logger::AUTHENTICATION) << msg;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
@@ -93,14 +96,15 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
     return nullptr;
   }
 
-  auth::Level dbLvl = um->databaseAuthLevel(req.user(), req.databaseName());
+  auth::Level dbLvl = um->databaseAuthLevel(req.user(), req.databaseName(), false);
   auth::Level sysLvl = dbLvl;
-  if (req.databaseName() != TRI_VOC_SYSTEM_DATABASE) {
-    sysLvl = um->databaseAuthLevel(req.user(), TRI_VOC_SYSTEM_DATABASE);
+  if (req.databaseName() != StaticStrings::SystemDatabase) {
+    sysLvl = um->databaseAuthLevel(req.user(), StaticStrings::SystemDatabase, false);
   }
   bool isAdminUser = (sysLvl == auth::Level::RW);
-  if (ServerState::readOnly()) {
-    isAdminUser = um->databaseAuthLevel(req.user(), TRI_VOC_SYSTEM_DATABASE, true) ==
+  if (!isAdminUser && ServerState::readOnly()) {
+    // in case we are in read-only mode, we need to re-check the original permissions
+    isAdminUser = um->databaseAuthLevel(req.user(), StaticStrings::SystemDatabase, true) ==
                   auth::Level::RW;
   }
 
@@ -111,13 +115,13 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
 
 void VocbaseContext::forceSuperuser() {
   TRI_ASSERT(_type != ExecContext::Type::Internal || _user.empty());
-  _type = ExecContext::Type::Internal;
   if (ServerState::readOnly()) {
-    _systemDbAuthLevel = auth::Level::RO;
-    _databaseAuthLevel = auth::Level::RO;
+    forceReadOnly();
   } else {
+    _type = ExecContext::Type::Internal;
     _systemDbAuthLevel = auth::Level::RW;
     _databaseAuthLevel = auth::Level::RW;
+    _isAdminUser = true;
   }
 }
 
