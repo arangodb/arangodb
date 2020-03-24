@@ -325,7 +325,8 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
     if (def->type() != TRI_COL_TYPE_DOCUMENT) {
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
     }
-    res = _graph.validateCollection(*(def.get()));
+
+    res = _graph.validateCollection(*(def.get()), _vocbase, true);
     if (res.fail()) {
       return OperationResult{std::move(res)};
     }
