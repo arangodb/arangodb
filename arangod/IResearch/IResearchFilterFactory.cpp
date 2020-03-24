@@ -2070,6 +2070,7 @@ arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
                                            irs::by_phrase* filter,
                                            QueryContext const& ctx,
                                            arangodb::aql::AstNode const& elem,
+                                           ScopedAqlValue& termValue,
                                            irs::string_ref& term) {
   if (!elem.isDeterministic()) {
     auto res = error::nondeterministicArgs(subFuncName);
@@ -2087,7 +2088,6 @@ arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
     };
   }
 
-  ScopedAqlValue termValue;
   auto res = evaluateArg(term, termValue, subFuncName, elem, 0, filter != nullptr, ctx);
 
   if (res.fail()) {
@@ -2107,8 +2107,10 @@ arangodb::Result fromFuncPhraseTerm(char const* funcName,
                                     QueryContext const& ctx,
                                     arangodb::aql::AstNode const& elem,
                                     size_t firstOffset) {
+  ScopedAqlValue termValue;
   irs::string_ref term;
-  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName, filter, ctx, elem, term);
+  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName,
+                                       filter, ctx, elem, termValue, term);
   if (res.fail()) {
     return res;
   }
@@ -2126,8 +2128,10 @@ arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
                                           QueryContext const& ctx,
                                           arangodb::aql::AstNode const& elem,
                                           size_t firstOffset) {
+  ScopedAqlValue termValue;
   irs::string_ref term;
-  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName, filter, ctx, elem, term);
+  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName,
+                                       filter, ctx, elem, termValue, term);
   if (res.fail()) {
     return res;
   }
@@ -2146,8 +2150,10 @@ arangodb::Result fromFuncPhraseLike(char const* funcName,
                                     QueryContext const& ctx,
                                     arangodb::aql::AstNode const& elem,
                                     size_t firstOffset) {
+  ScopedAqlValue termValue;
   irs::string_ref term;
-  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName, filter, ctx, elem, term);
+  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName,
+                                       filter, ctx, elem, termValue, term);
   if (res.fail()) {
     return res;
   }

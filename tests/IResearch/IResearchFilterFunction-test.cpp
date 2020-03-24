@@ -3762,6 +3762,12 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("s"))});
 
     ExpressionContextMock ctx;
+    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace("input_st", arangodb::aql::AqlValue("q"));
+    ctx.vars.emplace("input_pt", arangodb::aql::AqlValue("c"));
+    ctx.vars.emplace("input_wt", arangodb::aql::AqlValue("b"));
+    ctx.vars.emplace("input_lt", arangodb::aql::AqlValue("p"));
+    ctx.vars.emplace("input_ct", arangodb::aql::AqlValue("g"));
 
     // TERM, STARTS_WITH, WILDCARD, LEVENSHTEIN_MATCH, TERMS
     assertFilterSuccess(
@@ -3769,6 +3775,15 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       "FOR d IN myView FILTER "
       "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
       "{wildcard: 'b'}, 'rown', {levenshtein_match: ['p', 1, true]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+      "RETURN d",
+      expected, &ctx);
+
+    // TERM, STARTS_WITH, WILDCARD, LEVENSHTEIN_MATCH, TERMS with variables
+    assertFilterSuccess(
+      vocbase(),
+      "LET offset=2 LET input_st='q' LET input_pt='c' LET input_wt='b' LET input_lt='p' LET input_ct='g' FOR d IN myView FILTER "
+      "analyzer(phrase(d.obj.properties.id.name, [{term: input_st}, 'ui', {starts_with: input_pt}, 'k', offset+1, "
+      "{'wildcard': input_wt}, 'rown', {levenshtein_match: [input_lt, 1, true]}, 'ox', {terms: [input_ct, 'j']}, 'umps']), 'test_analyzer') "
       "RETURN d",
       expected, &ctx);
   }
