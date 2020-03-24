@@ -96,7 +96,7 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
                                         arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter functions EXISTS, IN_RANGE, PHRASE "
+      "ArangoSearch filter functions EXISTS, PHRASE "
       " are designed to be used only within a corresponding SEARCH statement "
       "of ArangoSearch view."
       " Please ensure function signature is correct.");
@@ -403,7 +403,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "EXISTS", ".|.,.", flags, &dummyFilterFunc });  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
   addFunction(functions, { "STARTS_WITH", ".,.|.", flags, &startsWithFunc });  // (attribute, prefix, scoring-limit)
   addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
-  addFunction(functions, { "IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc });  // (attribute, lower, upper, include lower, include upper)
   addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &minMatchFunc });  // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, { "BOOST", ".,.", flags, &contextFunc });  // (filter expression, boost)
   addFunction(functions, { "ANALYZER", ".,.", flags, &contextFunc });  // (filter expression, analyzer)
@@ -584,7 +583,8 @@ bool isFilter(arangodb::aql::Function const& func) noexcept {
          func.implementation == &startsWithFunc ||
          func.implementation == &aql::Functions::LevenshteinMatch ||
          func.implementation == &aql::Functions::Like ||
-         func.implementation == &aql::Functions::NgramMatch;
+         func.implementation == &aql::Functions::NgramMatch ||
+         func.implementation == &aql::Functions::InRange;
 }
 
 bool isScorer(arangodb::aql::Function const& func) noexcept {

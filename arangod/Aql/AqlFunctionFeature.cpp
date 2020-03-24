@@ -223,6 +223,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"NGRAM_MATCH", ".,.|.,.", flags, &Functions::NgramMatch}); // (attribute, target, [threshold, analyzer]) OR (attribute, target, [analyzer])
   add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity}); // (attribute, target, ngram size)
   add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags, &Functions::NgramPositionalSimilarity}); // (attribute, target, ngram size)
+  add({"IN_RANGE", ".,.,.,.,.", flags, &Functions::InRange }); // (attribute, lower, upper, include lower, include upper)
   // special flags:
   add({"RANDOM_TOKEN", ".", Function::makeFlags(FF::CanRunOnDBServer),
        &Functions::RandomToken});  // not deterministic and not cacheable
