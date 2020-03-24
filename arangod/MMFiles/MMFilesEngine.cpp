@@ -29,6 +29,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/MutexUnlocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -264,7 +265,7 @@ void MMFilesEngine::start() {
   if (names.empty()) {
     // no databases found, i.e. there is no system database!
     // create a database for the system database
-    int res = createDatabaseDirectory(TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE);
+    int res = createDatabaseDirectory(TRI_NewTickServer(), StaticStrings::SystemDatabase);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("982c7", ERR, arangodb::Logger::ENGINES)

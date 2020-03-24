@@ -1,15 +1,23 @@
 devel
 -----
 
+* Added AQL function `IN_RANGE`.
+
+* Added startup option `--ssl.prefer-http1-in-alpn` to optionally let the 
+  server prefer HTTP/1.1 over HTTP/2 in ALPN protocol negotiations.
+
+* Compilation issues with wrong cv-qualifiers and unnecessary
+  temporary copying.
+
 * Add DTRACE points to track a request through the infrastructure.
 
 * Fixed issue #11275: indexes backward compatibility broken in 3.5+.
 
 * Updated snowball dependency to the latest version.
-  More stemmers are available. Built-in analyzer list is unchanged.  
+  More stemmers are available. Built-in analyzer list is unchanged.
 
 * Reactive REST API endpoint at `/_admin/auth/reload`, as it is called by DC2DC.
- 
+
 * Fix an endless loop in FollowerInfo::persistInAgency which could trigger
   a hanger if a collection was dropped at the wrong time.
 
@@ -57,7 +65,7 @@ devel
 
 * Allow to override the detected total amount of memory via an environment
   variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
- 
+
 * `splice-subqueries` optimization is not limited by any type of operation within the
   subquery any more. It can now be applied on every subquery and will be by default.
   However they may be a performance impact on some queries where splice-subqueries
