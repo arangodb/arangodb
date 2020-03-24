@@ -286,6 +286,8 @@ describe ArangoDB do
           doc.parsed_response['status'].should eq(3)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(0)
+          doc.parsed_response['figures']['indexes']['count'].should be_kind_of(Integer)
+          doc.parsed_response['figures']['indexes']['size'].should be_kind_of(Integer)
           doc.parsed_response['figures']['cacheSize'].should be_kind_of(Integer)
           [true, false].should include(doc.parsed_response['figures']['cacheInUse'])
           doc.parsed_response['figures']['cacheUsage'].should be_kind_of(Integer)
