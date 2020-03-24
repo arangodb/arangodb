@@ -62,7 +62,7 @@ class term_query : public filter::prepared {
   static void visit(
     const term_reader& reader,
     const bytes_ref& term,
-    filter_visitor& fv);
+    filter_visitor& visitor);
 
   static ptr make(
     const index_reader& rdr,

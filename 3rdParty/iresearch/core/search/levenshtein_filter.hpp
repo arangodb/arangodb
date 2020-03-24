@@ -57,7 +57,7 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
     pdp_f provider,
     bool with_transpositions);
 
-  static void phrase_helper(
+  static void visit(
     const term_reader& reader,
     const bytes_ref& term,
     byte_type max_distance,

@@ -48,7 +48,7 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
     bytes_ref term,
     size_t scored_terms_limit);
 
-  static void phrase_helper(
+  static void visit(
     const term_reader& reader,
     bytes_ref term,
     filter_visitor& fv);

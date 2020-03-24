@@ -33,10 +33,13 @@
 
 NS_ROOT
 
-/*static*/ void by_prefix::visit(
+NS_LOCAL
+
+template<typename Visitor>
+void visit(
     const term_reader& reader,
     const bytes_ref& prefix,
-    filter_visitor& fv) {
+    Visitor& visitor) {
   // find term
   auto terms = reader.iterator();
 
@@ -49,10 +52,10 @@ NS_ROOT
   if (starts_with(value, prefix)) {
     terms->read();
 
-    fv.prepare(terms);
+    visitor.prepare(terms);
 
     do {
-      fv.visit();
+      visitor.visit();
 
       if (!terms->next()) {
         break;
@@ -61,6 +64,15 @@ NS_ROOT
       terms->read();
     } while (starts_with(value, prefix));
   }
+}
+
+NS_END
+
+/*static*/ void by_prefix::visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor) {
+  irs::visit(reader, prefix, visitor);
 }
 
 DEFINE_FILTER_TYPE(by_prefix)
@@ -87,7 +99,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
 
     multiterm_visitor mtv(segment, *reader, scorer, states);
 
-    visit(*reader, prefix, mtv);
+    irs::visit(*reader, prefix, mtv);
   }
 
   std::vector<bstring> stats;

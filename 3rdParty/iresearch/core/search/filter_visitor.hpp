@@ -28,13 +28,23 @@
 
 NS_ROOT
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class filter_visitor
+/// @brief base filter visitor interface
+///        prepare makes preparations for a visitor
+///        visit applies actions to a current term iterator
+//////////////////////////////////////////////////////////////////////////////
 struct filter_visitor {
   virtual void prepare(const seek_term_iterator::ptr& terms) = 0;
   virtual void visit() = 0;
-  virtual ~filter_visitor() {}
+  virtual ~filter_visitor() = default;
 };
 
-class multiterm_visitor : public filter_visitor {
+//////////////////////////////////////////////////////////////////////////////
+/// @class multiterm_visitor
+/// @brief filter visitor for multiterm queries
+//////////////////////////////////////////////////////////////////////////////
+class multiterm_visitor final : public filter_visitor {
  public:
   multiterm_visitor(
     const sub_reader& segment,

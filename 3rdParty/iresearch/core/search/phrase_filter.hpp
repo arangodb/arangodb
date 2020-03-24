@@ -25,11 +25,9 @@
 
 #include <map>
 
-#include "filter.hpp"
 #include "filter_visitor.hpp"
 #include "levenshtein_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
-#include "utils/string.hpp"
 
 NS_ROOT
 
@@ -144,24 +142,34 @@ class IRESEARCH_API by_phrase : public filter {
     phrase_part();
     phrase_part(const phrase_part& other);
     phrase_part(phrase_part&& other) noexcept;
-    phrase_part(const simple_term& st);
-    phrase_part(simple_term&& st) noexcept;
-    phrase_part(const prefix_term& pt);
-    phrase_part(prefix_term&& pt) noexcept;
-    phrase_part(const wildcard_term& wt);
-    phrase_part(wildcard_term&& wt) noexcept;
-    phrase_part(const levenshtein_term& lt);
-    phrase_part(levenshtein_term&& lt) noexcept;
-    phrase_part(const set_term& lt);
-    phrase_part(set_term&& lt) noexcept;
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wplacement-new="
+#endif
+
+    template<typename PhrasePart>
+    phrase_part(PhrasePart&& other) noexcept(std::is_rvalue_reference<PhrasePart>::value) {
+      type = std::remove_reference<PhrasePart>::type::type;
+      new (reinterpret_cast<typename std::remove_reference<PhrasePart>::type*>(&st))
+        typename std::remove_reference<PhrasePart>::type(std::forward<PhrasePart>(other));
+    }
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
     phrase_part& operator=(const phrase_part& other) noexcept;
     phrase_part& operator=(phrase_part&& other) noexcept;
 
     bool operator==(const phrase_part& other) const noexcept;
 
+    //////////////////////////////////////////////////////////////////////////////
+    /// @class phrase_term_visitor
+    /// @brief filter visitor for phrase queries
+    //////////////////////////////////////////////////////////////////////////////
     template<typename Collectors>
-    class phrase_term_visitor : public filter_visitor {
+    class phrase_term_visitor final : public filter_visitor {
      public:
       phrase_term_visitor(
         const sub_reader& segment,
@@ -225,8 +233,10 @@ class IRESEARCH_API by_phrase : public filter {
       phrase_term_visitor<order::prepared::variadic_terms_collectors>& ptv);
 
    private:
+    void allocate(const phrase_part& other);
     void allocate(phrase_part&& other) noexcept;
     void destroy() noexcept;
+    void recreate(const phrase_part& other);
     void recreate(phrase_part&& other) noexcept;
   };
 

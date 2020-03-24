@@ -116,7 +116,7 @@ bool by_edit_distance::equals(const filter& rhs) const noexcept {
     with_transpositions_ == impl.with_transpositions_;
 }
 
-/*static*/ void by_edit_distance::phrase_helper(
+/*static*/ void by_edit_distance::visit(
     const term_reader& reader,
     const bytes_ref& term,
     byte_type max_distance,

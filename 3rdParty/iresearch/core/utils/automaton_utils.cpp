@@ -304,10 +304,13 @@ automaton_table_matcher get_automaton_matcher(const automaton& acceptor, bool& e
   return matcher;
 }
 
+NS_LOCAL
+
+template<typename Visitor>
 void automaton_visit_with_matcher(
     const term_reader& reader,
     automaton_table_matcher& matcher,
-    filter_visitor& fv) {
+    Visitor& visitor) {
   auto terms = reader.iterator(matcher);
 
   if (IRS_UNLIKELY(!terms)) {
@@ -315,15 +318,17 @@ void automaton_visit_with_matcher(
   }
 
   if (terms->next()) {
-    fv.prepare(terms);
+    visitor.prepare(terms);
 
     do {
       terms->read(); // read term attributes
 
-      fv.visit();
+      visitor.visit();
     } while (terms->next());
   }
 }
+
+NS_END
 
 void automaton_visit(
     const term_reader& reader,

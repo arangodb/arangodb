@@ -34,7 +34,11 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 NS_LOCAL
 
-class term_visitor : public filter_visitor {
+//////////////////////////////////////////////////////////////////////////////
+/// @class term_visitor
+/// @brief filter visitor for term queries
+//////////////////////////////////////////////////////////////////////////////
+class term_visitor final : public filter_visitor {
  public:
   term_visitor(
     const sub_reader& segment,
@@ -72,12 +76,11 @@ class term_visitor : public filter_visitor {
   const seek_term_iterator::ptr* terms_ = nullptr;
 };
 
-NS_END
-
-/*static*/ void term_query::visit(
+template<typename Visitor>
+void visit(
     const term_reader& reader,
     const bytes_ref& term,
-    filter_visitor& fv) {
+    Visitor& visitor) {
   // find term
   auto terms = reader.iterator();
 
@@ -85,12 +88,21 @@ NS_END
     return;
   }
 
-  fv.prepare(terms);
+  visitor.prepare(terms);
 
   // read term attributes
   terms->read();
 
-  fv.visit();
+  visitor.visit();
+}
+
+NS_END
+
+/*static*/ void term_query::visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    filter_visitor& visitor) {
+  irs::visit(reader, term, visitor);
 }
 
 /*static*/ term_query::ptr term_query::make(
@@ -116,7 +128,7 @@ NS_END
     // term_offset = 0 because only 1 term
     term_visitor tv(segment, *reader, collectors, states, 0);
 
-    visit(*reader, term, tv);
+    irs::visit(*reader, term, tv);
   }
 
   bstring stats(ord.stats_size(), 0);
