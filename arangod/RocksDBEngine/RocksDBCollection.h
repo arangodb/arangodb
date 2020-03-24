@@ -137,6 +137,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;
 
   Result upgrade() override;
+  bool didPartialUpgrade() override;
+  Result cleanupAfterUpgrade() override;
 
  protected:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,

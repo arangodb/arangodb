@@ -1278,8 +1278,8 @@ std::pair<std::uint64_t, std::uint64_t> clearTemporaryObjectId(std::uint64_t obj
   return {objectId, 0};
 }
 
-Result setObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& collection,
-                                 ::ObjectIdTransformer idFunc, bool setVersion) {
+Result updateObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& collection,
+                                    ::ObjectIdTransformer idFunc, bool setUpgradedProperties) {
   Result res;
   rocksdb::WriteOptions wo;
   rocksdb::WriteBatch batch;
@@ -1342,14 +1342,21 @@ Result setObjectIdsForCollection(rocksdb::DB& db, arangodb::LogicalCollection& c
           pair.key.isEqualString(StaticStrings::TempObjectId)) {
         continue;
       }
-      if (setVersion && pair.key.isEqualString(StaticStrings::Version)) {
+      if (setUpgradedProperties && pair.key.isEqualString(StaticStrings::Version)) {
         builder.add(StaticStrings::Version,
                     arangodb::velocypack::Value(
                         static_cast<std::uint32_t>(LogicalCollection::Version::v37)));
-        continue;
+      } else if (setUpgradedProperties &&
+                 pair.key.isEqualString(StaticStrings::SyncByRevision)) {
+        builder.add(StaticStrings::SyncByRevision, arangodb::velocypack::Value(true));
+      } else if (setUpgradedProperties &&
+                 pair.key.isEqualString(StaticStrings::UsesRevisionsAsDocumentIds)) {
+        builder.add(StaticStrings::UsesRevisionsAsDocumentIds,
+                    arangodb::velocypack::Value(true));
+      } else {
+        builder.add(pair.key);
+        builder.add(pair.value);
       }
-      builder.add(pair.key);
-      builder.add(pair.value);
     }
     builder.add(StaticStrings::ObjectId,
                 arangodb::velocypack::Value(std::to_string(outputPair.first)));
@@ -1457,12 +1464,7 @@ Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
     }
   }
 
-  res = commit();
-  if (res.fail()) {
-    return res;
-  }
-
-  return res;
+  return commit();
 }
 
 LocalDocumentId extractDocumentIdFromIndexEntry(arangodb::RocksDBIndex& ridx,
@@ -1638,46 +1640,7 @@ Result copyIndexToNewObjectIdSpace(rocksdb::DB& db, arangodb::LogicalCollection&
     }
   }
 
-  res = commit();
-  if (res.fail()) {
-    return res;
-  }
-
-  return res;
-}
-
-Result updateCollectionPropertiesForSyncing(arangodb::transaction::Methods& trx,
-                                            arangodb::LogicalCollection& collection) {
-  Result res;
-  arangodb::velocypack::Builder oldBuilder;
-  {
-    arangodb::velocypack::ObjectBuilder guard(&oldBuilder);
-    arangodb::methods::Collections::Context ctx(collection.vocbase(), collection, &trx);
-    res = arangodb::methods::Collections::properties(ctx, oldBuilder);
-    if (res.fail()) {
-      return res;
-    }
-  }
-
-  arangodb::velocypack::Builder newBuilder;
-  {
-    arangodb::velocypack::ObjectBuilder guard(&newBuilder);
-    for (auto pair : arangodb::velocypack::ObjectIterator(oldBuilder.slice())) {
-      if (pair.key.isEqualString(StaticStrings::SyncByRevision)) {
-        newBuilder.add(StaticStrings::SyncByRevision, arangodb::velocypack::Value(true));
-      } else if (pair.key.isEqualString(StaticStrings::UsesRevisionsAsDocumentIds)) {
-        newBuilder.add(StaticStrings::UsesRevisionsAsDocumentIds,
-                       arangodb::velocypack::Value(true));
-      } else {
-        newBuilder.add(pair.key);
-        newBuilder.add(pair.value);
-      }
-    }
-  }
-
-  res = collection.properties(newBuilder.slice(), false);
-
-  return res;
+  return commit();
 }
 
 Result cleanupOldIdSpaces(rocksdb::DB& db, arangodb::RocksDBMetaCollection& rcoll) {
@@ -1722,8 +1685,11 @@ Result RocksDBCollection::upgrade() {
   auto& selector = server.getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
-  res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                    ::injectNewTemporaryObjectId, false);
+  auto cleanupGuard = arangodb::scopeGuard(
+      [this]() -> void { [[maybe_unused]] Result res = cleanupAfterUpgrade(); });
+
+  res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                       ::injectNewTemporaryObjectId, false);
   if (res.fail()) {
     return res;
   }
@@ -1752,28 +1718,12 @@ Result RocksDBCollection::upgrade() {
       }
     }
 
-    res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                      ::swapObjectIds, true);
-    if (res.fail()) {
-      return res;
-    }
-
-    res = ::updateCollectionPropertiesForSyncing(trx, _logicalCollection);
+    res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                         ::swapObjectIds, true);
     if (res.fail()) {
       return res;
     }
     // TODO handle cluster; probably need agency lock on collection
-  }
-
-  res = ::cleanupOldIdSpaces(*engine.db(), *this);
-  if (res.fail()) {
-    return res;
-  }
-
-  res = ::setObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                    ::clearTemporaryObjectId, false);
-  if (res.fail()) {
-    return res;
   }
 
   // TODO write recovery method to trigger post-recovery cleanup if we failed
@@ -1782,7 +1732,38 @@ Result RocksDBCollection::upgrade() {
 
   // TODO handle rollback in case of failure
 
-  return res;
+  cleanupGuard.cancel();
+  return cleanupAfterUpgrade();
+}
+
+bool RocksDBCollection::didPartialUpgrade() {
+  if (tempObjectId() != 0) {
+    return true;
+  }
+
+  for (auto& idx : getIndexes()) {
+    if (static_cast<RocksDBIndex&>(*idx).tempObjectId() != 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+Result RocksDBCollection::cleanupAfterUpgrade() {
+  auto& server = _logicalCollection.vocbase().server();
+  auto& selector = server.getFeature<EngineSelectorFeature>();
+  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+
+  auto& rcoll =
+      static_cast<arangodb::RocksDBMetaCollection&>(*_logicalCollection.getPhysical());
+  Result res = ::cleanupOldIdSpaces(*engine.db(), rcoll);
+  if (res.fail()) {
+    return res;
+  }
+
+  return ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                        ::clearTemporaryObjectId, false);
 }
 
 /// @brief return engine-specific figures
