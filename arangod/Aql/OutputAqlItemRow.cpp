@@ -166,6 +166,30 @@ void OutputAqlItemRow::copyRow(ItemRowType const& sourceRow, bool ignoreMissing)
   doCopyRow(sourceRow, ignoreMissing);
 }
 
+auto OutputAqlItemRow::fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows)
+    -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(sourceRow.internalBlockIs(_block));
+#endif
+  TRI_ASSERT(_doNotCopyInputRow);
+  TRI_ASSERT(_call.getLimit() >= rows);
+  TRI_ASSERT(rows > 0);
+  // We have the guarantee that we have all data in our block.
+  // We only need to adjust internal indexes.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Safely assert that the API is not missused.
+  TRI_ASSERT(_baseIndex + rows <= _block->size());
+  for (size_t i = _baseIndex; i < _baseIndex + rows; ++i) {
+    TRI_ASSERT(!_block->isShadowRow(i));
+  }
+#endif
+  _baseIndex += rows;
+  TRI_ASSERT(_baseIndex > 0);
+  _lastBaseIndex = _baseIndex - 1;
+  _lastSourceRow = InputAqlItemRow{_block, _lastBaseIndex};
+  _call.didProduce(rows);
+}
+
 void OutputAqlItemRow::copyBlockInternalRegister(InputAqlItemRow const& sourceRow,
                                                  RegisterId input, RegisterId output) {
   // This method is only allowed if the block of the input row is the same as

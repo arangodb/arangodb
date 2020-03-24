@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNotEqual */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNull, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the hash index
@@ -604,7 +604,25 @@ function HashIndexSuite() {
         }
         i *= 2;
       }
-    }
+    },
+
+    testUniqueIndexNullSubattribute : function () {
+      let idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a.b"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a.b"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      // as "a" is null here, "a.b" should also be null, at least it should not fail when accessing it via the index
+      collection.insert({ _key: "test", a : null });
+      collection.update("test", { something: "test2" });
+
+      let doc = collection.document("test");
+      assertNull(doc.a);
+      assertEqual("test2", doc.something);
+    },
+
   };
 }
 

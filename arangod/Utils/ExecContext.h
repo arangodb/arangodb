@@ -96,14 +96,14 @@ class ExecContext : public RequestContext {
   /// @brief authentication level on _system. Always RW for superuser
   auth::Level systemAuthLevel() const {
     return _systemDbAuthLevel;
-  };
+  }
 
   /// @brief Authentication level on database selected in the current
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP / VST
   auth::Level databaseAuthLevel() const {
     return _databaseAuthLevel;
-  };
+  }
 
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(auth::Level requested) const {
@@ -126,11 +126,12 @@ class ExecContext : public RequestContext {
   }
 
  protected:
-  Type _type;
   /// current user, may be empty for internal users
   std::string const _user;
   /// current database to use
   std::string const _database;
+  
+  Type _type;
   /// should be used to indicate a canceled request / thread
   bool _canceled;
   /// level of system database

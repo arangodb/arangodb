@@ -216,6 +216,14 @@ void recursiveAddRocksDB(VPackSlice const& value, VPackBuilder& builder) {
                                                                {"cacheUsage"})));
   updated.add("documentsSize", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                                {"documentsSize"})));
+  
+  updated.add("indexes", VPackValue(VPackValueType::Object));
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                     {"indexes", "count"})));
+  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                    {"indexes", "size"})));
+  updated.close();
+  
   updated.close();
 
   TRI_ASSERT(updated.slice().isObject());
@@ -2294,7 +2302,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     VPackBuffer<uint8_t> buffer;
     buffer.append(slice.begin(), slice.byteSize());
 
-    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
