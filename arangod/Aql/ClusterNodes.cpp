@@ -589,22 +589,18 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* node) override final {
-    LOG_DEVEL << "ParallelizableFinder::before " << node->id();
     auto nodeType = node->getType();
 
     if (nodeType == ExecutionNode::SCATTER || nodeType == ExecutionNode::GATHER ||
         nodeType == ExecutionNode::DISTRIBUTE) {
-      LOG_DEVEL << "not parallelizable (1)";
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
 
     if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
         nodeType == ExecutionNode::K_SHORTEST_PATHS) {
-      LOG_DEVEL << "traversal node";
-      GraphNode* gn = ExecutionNode::castTo<GraphNode*>(node);
-      if (!gn->isUsedAsSatellite()) {
-        LOG_DEVEL << "graph node not used as satellite";
+      auto* gn = ExecutionNode::castTo<GraphNode*>(node);
+      if (!gn->isSatelliteNode()) {
         _isParallelizable = false;
         return true;  // true to abort the whole walking process
       }
@@ -617,7 +613,6 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
         (!_parallelizeWrites || (node->getType() != ExecutionNode::REMOVE &&
                                  node->getType() != ExecutionNode::REPLACE &&
                                  node->getType() != ExecutionNode::UPDATE))) {
-      LOG_DEVEL << "not parallelizable ()";
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
@@ -634,11 +629,8 @@ bool GatherNode::isParallelizable() const {
     return false;
   }
 
-  LOG_DEVEL << "checking is all dependencies of gather are parallelizable";
-
   ParallelizableFinder finder(*_vocbase);
   for (ExecutionNode* e : _dependencies) {
-    LOG_DEVEL << "walking node " << e->id();
     e->walk(finder);
     if (!finder._isParallelizable) {
       return false;

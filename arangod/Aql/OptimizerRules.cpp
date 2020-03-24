@@ -7364,7 +7364,6 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 
   if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
     GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
-    LOG_DEVEL << "Plan could be parallelized";
 
     if (!gn->isInSubquery() && gn->isParallelizable()) {
       // find all graph nodes and make sure that they all are using satellite
