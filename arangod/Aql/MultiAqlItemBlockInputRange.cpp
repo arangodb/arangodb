@@ -205,6 +205,11 @@ auto MultiAqlItemBlockInputRange::reset() -> void {
     -> std::size_t {
   size_t count = 0;
   for (auto const& range : _inputs) {
+    // Every range will convey the same shadowRows.
+    // They can only be taken in a synchronous way on all ranges
+    // at the same time.
+    // So the amount of ShadowRows that we can produce here is
+    // upperbounded by the maximum of shadowRows in each range.
     count = std::max(count, range.countShadowRows());
   }
   return count;
