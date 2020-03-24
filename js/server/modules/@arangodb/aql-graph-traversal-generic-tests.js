@@ -288,42 +288,8 @@ const checkResIsValidKShortestPathListWeightFunc  = (getCost, getPath) => {
 }
 
 const checkResIsValidKShortestPathListNoWeights = checkResIsValidKShortestPathListWeightFunc((path) => path.length, _.identity);
-
-
-/*(allowedPaths, actualPaths, expectedResults) => {
-  // check that we've only got as many paths as requested
-  if (actualPaths.length > expectedResults) {
-    print("Unexpected amount of found paths!");
-    print("Allowed paths are:");
-    print(allowedPaths);
-    print("Actual returned paths are: ");
-    print(actualPaths);
-  }
-  // we're allowed to find less or equal the amount of the set limit
-  assertTrue(actualPaths.length <= expectedResults);
-
-  const stringifiedPathsSet = new Set(actualPaths.map(JSON.stringify));
-  assertEqual(stringifiedPathsSet.size, actualPaths.length);
-
-  assertTrue(_.isEqual(_.sort(allowedPaths, (path) => path.length), allowedPaths));
-
-  _.each(actualPaths,  (path, index) => {
-    if (allowedPaths[index].length !== path.length) {
-      print ("Path length not as expected: ");
-      print(allowedPaths[index].length , " !== ", path.length);
-      if (allowedPaths[index].length < path.length) {
-        print ("Traversal missed a shorter path");
-      }
-    }
-    assertTrue(allowedPaths[index].length === path.length);
-    assertResIsContainedInPathList(allowedPaths, path);
-  });
-};*/
-
 const checkResIsValidKShortestPathListWeights = checkResIsValidKShortestPathListWeightFunc((path) => path.weight, (path) => path.vertices);
-    /*(allowedPaths, actualPaths, expectedResultCount) => {
-  assertTrue(true);
-};*/
+
 
 /**
  * @brief Tests the function checkResIsValidDfsOf(), which is used in the tests and
