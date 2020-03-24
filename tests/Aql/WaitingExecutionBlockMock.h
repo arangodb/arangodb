@@ -26,6 +26,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/ScatterExecutor.h"
 
 #include <velocypack/Builder.h>
 
@@ -94,10 +95,14 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
 
  private:
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
-  arangodb::aql::ResourceMonitor _resourceMonitor;
   size_t _inflight;
   bool _hasWaited;
   WaitingBehaviour _variant;
+
+  bool _doesContainShadowRows{false};
+  bool _shouldLieOnLastRow{false};
+  arangodb::aql::ExecutorInfos _infos;
+  typename arangodb::aql::ScatterExecutor::ClientBlockData _blockData;
 };
 }  // namespace aql
 

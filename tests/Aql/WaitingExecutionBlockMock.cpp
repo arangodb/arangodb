@@ -38,16 +38,58 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
+namespace {
+static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> ExecutorInfos {
+  auto readInput = make_shared_unordered_set();
+  auto writeOutput = make_shared_unordered_set();
+  std::unordered_set<RegisterId> toClear{};
+  std::unordered_set<RegisterId> toKeep{};
+  RegisterId regs = 1;
+  for (auto const& b : blocks) {
+    if (b != nullptr) {
+      // Find the first non-nullptr block
+      regs = b->getNrRegs();
+
+      break;
+    }
+  }
+  // if non found Sorry blind guess here.
+  // Consider adding data first if the test fails
+
+  for (RegisterId r = 0; r < regs; ++r) {
+    toKeep.emplace(r);
+  }
+  return {readInput, writeOutput, regs, regs, toClear, toKeep};
+}
+}  // namespace
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
                                                      std::deque<SharedAqlItemBlockPtr>&& data,
                                                      WaitingBehaviour variant)
     : ExecutionBlock(engine, node),
       _data(std::move(data)),
-      _resourceMonitor(),
       _inflight(0),
       _hasWaited(false),
-      _variant{variant} {}
+      _variant{variant},
+      _infos{::blocksToInfos(_data)},
+      _blockData{*engine, node, _infos} {
+  SkipResult s;
+  for (auto const& b : _data) {
+    if (b != nullptr) {
+      TRI_ASSERT(s.nothingSkipped());
+      _blockData.addBlock(b, s);
+      if (b->hasShadowRows()) {
+        _doesContainShadowRows = true;
+      }
+    }
+  }
+
+  if (!_data.empty() && _data.back() == nullptr) {
+    // If the last block in _data is explicitly a nullptr
+    // we will lie on the last row
+    _shouldLieOnLastRow = true;
+  }
+}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
@@ -73,6 +115,90 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
   return res;
 }
 
+#if true
+
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
+    AqlCallStack stack) {
+  while (!stack.isRelevant()) {
+    stack.pop();
+  }
+  auto myCall = stack.peek();
+  TRI_ASSERT(!(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0}));
+  TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.fullCount));
+  TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.hasHardLimit()));
+  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
+    // If we ordered waiting check on _hasWaited and wait if not
+    _hasWaited = true;
+    return {ExecutionState::WAITING, SkipResult{}, nullptr};
+  }
+  if (_variant == WaitingBehaviour::ALWAYS) {
+    // If we always wait, reset.
+    _hasWaited = false;
+  }
+  if (!_blockData.hasDataFor(myCall)) {
+    return {ExecutionState::DONE, {}, nullptr};
+  }
+  SkipResult localSkipped;
+  while (true) {
+    auto [state, skipped, result] = _blockData.execute(stack, ExecutionState::DONE);
+    // We loop here if we only skip
+    localSkipped.merge(skipped, false);
+    bool shouldReturn = state == ExecutionState::DONE || result != nullptr;
+
+    if (result != nullptr && !result->hasShadowRows()) {
+      // Count produced rows
+      auto modCall = stack.popCall();
+      modCall.didProduce(result->size());
+      stack.pushCall(std::move(modCall));
+    }
+
+    if (!skipped.nothingSkipped()) {
+      auto modCall = stack.popCall();
+      modCall.didSkip(skipped.getSkipCount());
+      // Reset the internal counter.
+      // We reuse the call to upstream
+      // this inturn uses this counter to report nrRowsSkipped
+      modCall.skippedRows = 0;
+      if (!modCall.needSkipMore() && modCall.getLimit() == 0) {
+        // We do not have anything to do for this call
+        shouldReturn = true;
+      }
+      stack.pushCall(std::move(modCall));
+    }
+    if (shouldReturn) {
+      if (!_doesContainShadowRows && state == ExecutionState::HASMORE) {
+        // FullCount phase, let us loop until we are done
+        // We do not have anything to do for this call
+        // But let us only do this on top-level queries
+
+        auto call = stack.peek();
+        if (call.hasHardLimit() && call.getLimit() == 0) {
+          // We are in fullCount/fastForward phase now.
+          while (state == ExecutionState::HASMORE) {
+            auto [nextState, nextSkipped, nextResult] =
+                _blockData.execute(stack, ExecutionState::DONE);
+            state = nextState;
+            // We are disallowed to have any result here.
+            TRI_ASSERT(nextResult == nullptr);
+            localSkipped.merge(nextSkipped, false);
+          }
+        }
+      }
+      // We want to "lie" on upstream if we have hit a softLimit exactly on the last row
+      if (state == ExecutionState::DONE && _shouldLieOnLastRow) {
+        auto const& call = stack.peek();
+        if (call.hasSoftLimit() && call.getLimit() == 0 && call.getOffset() == 0) {
+          state = ExecutionState::HASMORE;
+        }
+      }
+
+      // We have a valid result.
+      return {state, localSkipped, result};
+    }
+  }
+}
+
+#else
 // NOTE: Does not care for shadowrows!
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
     AqlCallStack stack) {
@@ -184,6 +310,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
   skipRes.didSkip(skipped);
   return {ExecutionState::DONE, skipRes, result};
 }
+#endif
 
 void WaitingExecutionBlockMock::dropBlock() {
   TRI_ASSERT(!_data.empty());
