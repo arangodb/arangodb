@@ -102,12 +102,7 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
       EXPECT_FALSE(input.hasDataRow());
 
       auto [state, row] = input.nextShadowRow();
-
-      if (depth == result.back().first && value == result.back().second) {
-        EXPECT_EQ(state, ExecutorState::HASMORE);
-      } else {
-        EXPECT_EQ(state, ExecutorState::HASMORE);
-      }
+      EXPECT_EQ(state, ExecutorState::HASMORE);
       ASSERT_TRUE(row.isInitialized());
       auto const& inputVal = row.getValue(0);
 
