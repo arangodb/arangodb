@@ -252,10 +252,18 @@ const assertResIsContainedInPathList = (allowedPaths, actualPath) => {
   assertTrue(pathFound);
 };
 
-const checkResIsValidKShortestPathListWeightFunc  = (getCost, getPath) => {
-  return function (allowedPaths, actualPaths, expectedResults) {
+/**
+ * Generates a test function that checks if the result is a valid shortest path result.
+ * - getCost has one parameter (path) and should return is cost
+ *
+ * The returned test function only works for graphs without parallel edges.
+ * allowedPaths must be a set of allowed paths and actualPaths is the result of a kShortestPath query
+ * where limit is set to the limit as in the query.
+ */
+const checkResIsValidKShortestPathListWeightFunc  = (getCost) => {
+  return (allowedPaths, actualPaths, limit) => {
     // check that we've only got as many paths as requested
-    if (actualPaths.length > expectedResults) {
+    if (actualPaths.length > limit) {
       print("Unexpected amount of found paths!");
       print("Allowed paths are:");
       print(allowedPaths);
@@ -263,12 +271,13 @@ const checkResIsValidKShortestPathListWeightFunc  = (getCost, getPath) => {
       print(actualPaths);
     }
     // we're allowed to find less or equal the amount of the set limit
-    assertTrue(actualPaths.length <= expectedResults);
+    assertTrue(actualPaths.length <= limit);
 
+    // assert that there are no duplicate paths (only if there are no parallel edges)
     const stringifiedPathsSet = new Set(actualPaths.map(JSON.stringify));
     assertEqual(stringifiedPathsSet.size, actualPaths.length);
 
-    assertTrue(_.isEqual(_.sortBy(allowedPaths, (path) => getCost(path)), allowedPaths));
+    assertTrue(_.isEqual(_.sortBy(allowedPaths, getCost), allowedPaths));
     assertTrue(allowedPaths.length >= actualPaths.length);
 
     _.each(actualPaths,  (path, index) => {
@@ -282,13 +291,13 @@ const checkResIsValidKShortestPathListWeightFunc  = (getCost, getPath) => {
         }
       }
       assertTrue(allowedCost === cost);
-      assertResIsContainedInPathList(_.map(allowedPaths, getPath), getPath(path));
+      assertResIsContainedInPathList(allowedPaths, path);
     });
   };
-}
+};
 
-const checkResIsValidKShortestPathListNoWeights = checkResIsValidKShortestPathListWeightFunc((path) => path.length, _.identity);
-const checkResIsValidKShortestPathListWeights = checkResIsValidKShortestPathListWeightFunc((path) => path.weight, (path) => path.vertices);
+const checkResIsValidKShortestPathListNoWeights = checkResIsValidKShortestPathListWeightFunc((path) => path.length);
+const checkResIsValidKShortestPathListWeights = checkResIsValidKShortestPathListWeightFunc((path) => path.weight);
 
 
 /**
@@ -1385,8 +1394,6 @@ function testOpenDiamondKShortestPathEnabledWeightCheckLimit1(testGraph) {
 
     const res = db._query(query);
     const actualPath = res.toArray();
-
-    print(actualPath);
 
     checkResIsValidKShortestPathListWeights(allowedPaths, actualPath, limit);
   });
@@ -2997,9 +3004,9 @@ function testCompleteGraphKShortestPathEnabledWeightCheckMultiLimit(testGraph) {
       `;
 
     const allowedPaths = [
-      {vertices: ["A", "C"], weight: 4},
       {vertices: ["A", "B", "C"], weight: 4},
-      {vertices: ["A", "E", "D", "C"], weight: 5}
+      {vertices: ["A", "E", "D", "C"], weight: 4},
+      { "vertices" : [ "A", "C" ], "weight" : 5 }
     ];
 
     const res = db._query(query);
