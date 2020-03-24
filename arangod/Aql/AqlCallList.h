@@ -35,6 +35,16 @@ class Slice;
 
 namespace arangodb::aql {
 
+/**
+ * @brief This is a list of AqlCalls that should be used on a single Executor.
+ *        On the current Subquery run the first call in this list counts.
+ *        As soon as the current Subquery is done (by finding the ShadowRow)
+ *        The first call counts as completed and the executor can request the
+ * next call. This new call is what counts for the subquery that is about to
+ * start. There may be situations where a next call is not available. in this
+ * case the executor cannot start with the next subquery run, but needs to
+ * return and wait for more information given by the client.
+ */
 class AqlCallList {
  public:
   friend bool operator==(AqlCallList const& left, AqlCallList const& right);
@@ -42,18 +52,66 @@ class AqlCallList {
   friend auto operator<<(std::ostream& out, const arangodb::aql::AqlCallList& list)
       -> std::ostream&;
 
+  /**
+   * @brief Construct a new Aql Call List object
+   *        This constructor will only allow a single call.
+   *        As soon as this call is completed, there will be no next call.
+   *        Hance the executor needs to return.
+   * @param call The call relevant for this subquery run.
+   */
   explicit AqlCallList(AqlCall const& call);
 
+  /**
+   * @brief Construct a new Aql Call List object
+   *        This constructor will allow for a specific call, which is used for the ongoing subquery run.
+   *        And a default call, which should be used for every following subquery.
+   *        Simply speaking this constructor creates an endless list of
+   *        [specificCall, defaultCall, defaultCall, defaultCall, defaultCall,...]
+   *        calls. Whenever a subquery run is done the executor will have a new
+   *        call and can continue with the next run
+   * @param specificCall The call of the current subquery run. This call can be different from a defaultCall,
+   *                     but it must be producable by the defaultCall using only didSkip() and didProduce().
+   *                     Simply put: the specificCall is a defaultCall that has already applied some productions
+   *                     of aql rows.
+   * @param defaultCall The call to be used whenever a new SubqueryRun is started.
+   */
   AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall);
 
+  /**
+   * @brief Take the next call from the call list and take ownership
+   *        of it. THe lsit will be modified.
+   *        This can only be called if hasMoreCalls() == true
+   *
+   * @return AqlCall The next call
+   */
   [[nodiscard]] auto popNextCall() -> AqlCall;
+
+  /**
+   * @brief Peek the next call from the call list.
+   *        Neither the list nor the call will not be modified.
+   *        This can only be called if hasMoreCalls() == true
+   *
+   * @return AqlCall The next call
+   */
   [[nodiscard]] auto peekNextCall() const -> AqlCall const&;
+
+  /**
+   * @brief Test if there are more calls available in the list.
+   *        After construction this is true.
+   *        After a call to popNextCall() this might turn into false.
+   *
+   * @return true
+   * @return false
+   */
   [[nodiscard]] auto hasMoreCalls() const noexcept -> bool;
 
   /**
    * @brief Get a reference to the next call.
    *        This is modifiable, but caller will not take
-   *        responsibility.
+   *        responsibility. This modifies the list.
+   *        NOTE: In case of the defaultCall variant, the default
+   *        will not be altered, only the call that you will get
+   *        with pop|peekNextCall().
    *
    * @return AqlCall& reference to the call, can be modified.
    */
@@ -64,6 +122,12 @@ class AqlCallList {
   auto toString() const -> std::string;
 
  private:
+  /**
+   * @brief A list of specicif calls for subqueries.
+   *        Right now we have only implemented variants where there is
+   *        at most one call in this list. But the code is actually ready for
+   *        any number of calls here.
+   */
   std::vector<AqlCall> _specificCalls{};
   std::optional<AqlCall> _defaultCall{std::nullopt};
 };
