@@ -1703,7 +1703,7 @@ Result RocksDBCollection::upgrade() {
     if (res.fail()) {
       return res;
     }
-    auto trxGuard = scopeGuard([&trx, &res]() -> void { trx.abort(); });
+    auto trxGuard = scopeGuard([&trx]() -> void { trx.abort(); });
 
     res = ::copyCollectionToNewObjectIdSpace(*engine.db(), _logicalCollection);
     if (res.fail()) {
