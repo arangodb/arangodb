@@ -85,7 +85,7 @@ AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall
   TRI_ASSERT(hasMoreCalls());
   if (_specificCalls.empty()) {
     TRI_ASSERT(_defaultCall.has_value());
-    // We need to emplace a new defaultCall into the specific calls
+    // We need to emplace a copy of  defaultCall into the specific calls
     // This can then be modified and eventually be consumed
     _specificCalls.emplace_back(_defaultCall.value());
   }

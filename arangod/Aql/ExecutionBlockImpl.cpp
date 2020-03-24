@@ -1779,7 +1779,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     AqlCall clientCall;
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
       // In subqeryEndExecutor we actually manage two calls.
-      // The clientClient is defined of what will go into the Executor.
+      // The clientCall defines what will go into the Executor.
       // on SubqueryEnd this call is generated based on the call from downstream
 
       if (_outputItemRow != nullptr && _outputItemRow->isInitialized()) {
