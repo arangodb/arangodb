@@ -45,7 +45,7 @@ class VocbaseContext : public arangodb::ExecContext {
   /// @brief upgrade to internal superuser
   void forceSuperuser();
 
-  /// @brief upgrade to internal read-only useg
+  /// @brief upgrade to internal read-only user
   void forceReadOnly();
 
  private:
