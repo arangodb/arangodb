@@ -46,7 +46,8 @@ class ExecContext : public RequestContext {
   enum class Type { Default, Internal };
 
   ExecContext(ExecContext::Type type, std::string const& user,
-              std::string const& database, auth::Level systemLevel, auth::Level dbLevel);
+              std::string const& database, auth::Level systemLevel, auth::Level dbLevel,
+              bool isAdminUser);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -82,7 +83,7 @@ class ExecContext : public RequestContext {
   }
 
   /// @brief is allowed to manage users, create databases, ...
-  bool isAdminUser() const { return _systemDbAuthLevel == auth::Level::RW; }
+  bool isAdminUser() const { return _isAdminUser; }
 
   /// @brief should immediately cance this operation
   bool isCanceled() const { return _canceled; }
@@ -137,7 +138,8 @@ class ExecContext : public RequestContext {
   auth::Level _systemDbAuthLevel;
   /// level of current database
   auth::Level _databaseAuthLevel;
-  
+  /// Flag if admin user access (not regarding cluster RO mode
+  bool _isAdminUser;
  private:
 
   static ExecContext Superuser;

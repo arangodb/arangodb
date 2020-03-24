@@ -31,7 +31,7 @@ using namespace arangodb;
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
 ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db*/"",
-                                   auth::Level::RW, auth::Level::RW);
+                                   auth::Level::RW, auth::Level::RW, true);
 
 /// Should always contain a reference to current user context
 /*static*/ ExecContext const& ExecContext::current() {
@@ -42,13 +42,15 @@ ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db
 }
 
 ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
-            std::string const& database, auth::Level systemLevel, auth::Level dbLevel)
+            std::string const& database, auth::Level systemLevel, auth::Level dbLevel,
+            bool isAdminUser)
 : _type(type),
   _user(user),
   _database(database),
   _canceled(false),
   _systemDbAuthLevel(systemLevel),
-  _databaseAuthLevel(dbLevel) {
+  _databaseAuthLevel(dbLevel),
+  _isAdminUser(isAdminUser) {
     TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
     TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
   }
@@ -69,6 +71,7 @@ std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::s
   TRI_ASSERT(af != nullptr);
   auth::Level dbLvl = auth::Level::RW;
   auth::Level sysLvl = auth::Level::RW;
+  bool isAdminUser = true;
   if (af->isActive()) {
     auth::UserManager* um = af->userManager();
     TRI_ASSERT(um != nullptr);
@@ -80,8 +83,12 @@ std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::s
     if (dbname != TRI_VOC_SYSTEM_DATABASE) {
       sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }
+    isAdminUser = (sysLvl == auth::Level::RW);
+    if (ServerState::readOnly()) {
+      isAdminUser = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE, true) == auth::Level::RW;
+    }
   }
-  auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl);
+  auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl, isAdminUser);
   return std::unique_ptr<ExecContext>(ptr);
 }
 

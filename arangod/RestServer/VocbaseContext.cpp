@@ -35,8 +35,8 @@ namespace arangodb {
 
 VocbaseContext::VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
                                ExecContext::Type type, auth::Level systemLevel,
-                               auth::Level dbLevel)
-    : ExecContext(type, req.user(), req.databaseName(), systemLevel, dbLevel),
+                               auth::Level dbLevel, bool isAdminUser)
+    : ExecContext(type, req.user(), req.databaseName(), systemLevel, dbLevel, isAdminUser),
       _vocbase(vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!_vocbase.isDangling());
@@ -58,7 +58,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   if (isSuperUser) {
     return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
                               /*sysLevel*/ auth::Level::RW,
-                              /*dbLevel*/ auth::Level::RW);
+                              /*dbLevel*/ auth::Level::RW, true);
   }
 
   AuthenticationFeature* auth = AuthenticationFeature::instance();
@@ -68,18 +68,18 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
       // special read-only case
       return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
                                 /*sysLevel*/ auth::Level::RO,
-                                /*dbLevel*/ auth::Level::RO);
+                                /*dbLevel*/ auth::Level::RO, true);
     }
     return new VocbaseContext(req, vocbase, req.user().empty() ?
                               ExecContext::Type::Internal : ExecContext::Type::Default,
                               /*sysLevel*/ auth::Level::RW,
-                              /*dbLevel*/ auth::Level::RW);
+                              /*dbLevel*/ auth::Level::RW, true);
   }
 
   if (!req.authenticated()) {
     return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
                               /*sysLevel*/ auth::Level::NONE,
-                              /*dbLevel*/ auth::Level::NONE);
+                              /*dbLevel*/ auth::Level::NONE, false);
   } else if (req.user().empty()) {
     std::string msg = "only jwt can be used to authenticate as superuser";
     LOG_TOPIC("2d0f6", WARN, Logger::AUTHENTICATION) << msg;
@@ -98,10 +98,15 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   if (req.databaseName() != TRI_VOC_SYSTEM_DATABASE) {
     sysLvl = um->databaseAuthLevel(req.user(), TRI_VOC_SYSTEM_DATABASE);
   }
+  bool isAdminUser = (sysLvl == auth::Level::RW);
+  if (ServerState::readOnly()) {
+    isAdminUser = um->databaseAuthLevel(req.user(), TRI_VOC_SYSTEM_DATABASE, true) ==
+                  auth::Level::RW;
+  }
 
   return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
                             /*sysLevel*/ sysLvl,
-                            /*dbLevel*/ dbLvl);
+                            /*dbLevel*/ dbLvl, isAdminUser);
 }
 
 void VocbaseContext::forceSuperuser() {
