@@ -378,7 +378,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(std::string cons
   return {Graph::fromPersistence(result.slice(), _vocbase)};
 }
 
-OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync) const {
+OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync) {
   VPackSlice graphNameSlice = document.get("name");
   if (!graphNameSlice.isString()) {
     return OperationResult{TRI_ERROR_GRAPH_CREATE_MISSING_NAME};
@@ -500,7 +500,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
   return res;
 }
 
-Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) const {
+Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) {
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
@@ -520,7 +520,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
                        "Collection: '" + col->name() +
                            "' is not an EdgeCollection");
       } else {
-        res = graph->validateCollection(*col);
+        res = graph->validateCollection(*col, _vocbase);
         if (res.fail()) {
           return res;
         }
@@ -545,7 +545,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
     Result res = methods::Collections::lookup(vocbase, vertexColl, col);
     if (res.ok()) {
       TRI_ASSERT(col);
-      res = graph->validateCollection(*col);
+      res = graph->validateCollection(*col, _vocbase);
       if (res.fail()) {
         return res;
       }
