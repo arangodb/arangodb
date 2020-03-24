@@ -2111,14 +2111,14 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     AssertValueEquals(block, row, outReg, 4);
     if (skip) {
       // wo do not have empty input, we can skip
-      EXPECT_EQ(skipAsserter.getNumberCalls(), 1);
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 2);
       // we need to call getSome never
       EXPECT_EQ(getAsserter.getNumberCalls(), 0);
     } else {
       // we do not skip
       EXPECT_EQ(skipAsserter.getNumberCalls(), 0);
       // wo do not have empty input, we can produce
-      EXPECT_EQ(getAsserter.getNumberCalls(), 1);
+      EXPECT_EQ(getAsserter.getNumberCalls(), 2);
     }
     getAsserter.reset();
     skipAsserter.reset();
@@ -2139,15 +2139,15 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     AssertIsShadowRowOfDepth(block, row, 1);
     AssertValueEquals(block, row, outReg, 6);
     if (skip) {
-      // wo do not have empty input, we can skip
-      EXPECT_EQ(skipAsserter.getNumberCalls(), 1);
+      // wo do have empty input, we can skip
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 2);
       // we need to call getSome never
       EXPECT_EQ(getAsserter.getNumberCalls(), 0);
     } else {
       // we do not skip
       EXPECT_EQ(skipAsserter.getNumberCalls(), 0);
-      // wo do not have empty input, we can produce
-      EXPECT_EQ(getAsserter.getNumberCalls(), 1);
+      // wo do have empty input, we can produce
+      EXPECT_EQ(getAsserter.getNumberCalls(), 2);
     }
 
     getAsserter.reset();
