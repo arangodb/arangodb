@@ -1049,7 +1049,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     return Result();
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() || !ServerState::readOnly());
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() && !ServerState::readOnly());
 
   auto* col = _vocbase.lookupCollection(name).get();
 
