@@ -33,6 +33,7 @@
 #include <string>
 
 #include <tao/json/forward.hpp>
+#include <validation/types.hpp>
 
 namespace tao::json {
    template< template< typename... > class Traits >
@@ -54,8 +55,9 @@ struct ValidatorBase {
 
   bool validate(VPackSlice new_, VPackSlice old_, bool isInsert, VPackOptions const*) const;
   void toVelocyPack(VPackBuilder&) const;
-  virtual std::string const type() const = 0;
-  std::string const message() const { return this->_message; }
+  virtual std::string const& type() const = 0;
+  std::string const& message() const { return this->_message; }
+  std::string const& specialProperties() const;
 
  protected:
   virtual bool validateDerived(VPackSlice slice, VPackOptions const*) const = 0;
@@ -63,13 +65,14 @@ struct ValidatorBase {
 
   std::string _message;
   ValidationLevel _level;
+  validation::SpecialProperties _special;
 };
 
 struct ValidatorJsonSchema : public ValidatorBase {
   explicit ValidatorJsonSchema(VPackSlice params);
   bool validateDerived(VPackSlice slice, VPackOptions const*) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
-  std::string const type() const override;
+  std::string const& type() const override;
 private:
   std::shared_ptr<tao::json::basic_schema<tao::json::traits>> _schema;
   VPackBuilder _builder;
@@ -79,7 +82,7 @@ struct ValidatorBool : public ValidatorBase {
   explicit ValidatorBool(VPackSlice params);
   bool validateDerived(VPackSlice slice, VPackOptions const*) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
-  std::string const type() const override;
+  std::string const& type() const override;
 
  private:
   bool _result;

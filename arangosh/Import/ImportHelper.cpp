@@ -53,6 +53,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
+using namespace std::literals::string_literals;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine if a field value is an integer
@@ -177,6 +178,7 @@ ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpo
       _progress(false),
       _firstChunk(true),
       _ignoreMissing(false),
+      _skipValidation(false),
       _numberLines(0),
       _stats(client.server()),
       _rowsRead(0),
@@ -847,6 +849,9 @@ void ImportHelper::sendCsvBuffer() {
   if (!_toCollectionPrefix.empty()) {
     url += "&toPrefix=" + StringUtils::urlEncode(_toCollectionPrefix);
   }
+  if (_skipValidation) {
+    url += "&"s + StaticStrings::SkipDocumentValidation + "=true";
+  }
   if (_firstChunk && _overwrite) {
     // url += "&overwrite=true";
     truncateCollection();
@@ -888,6 +893,10 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
     // url += "&overwrite=true";
     truncateCollection();
   }
+  if (_skipValidation) {
+    url += "&"s + StaticStrings::SkipDocumentValidation + "=true";
+  }
+
   _firstChunk = false;
 
   SenderThread* t = findIdleSender();

@@ -42,7 +42,7 @@ NS_ROOT
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class min_match_disjunction : public doc_iterator_base, score_ctx {
+class min_match_disjunction : public doc_iterator_base<doc_iterator>, score_ctx {
  public:
   struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
@@ -76,7 +76,7 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
       lead_(itrs_.size()), doc_(doc_limits::invalid()),
-      ord_(&ord) {
+      merger_(ord.prepare_merger()) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
@@ -416,7 +416,6 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     ++lead_;
   }
 
-
   inline void score_impl(byte_type* lhs) {
     assert(!heap_.empty());
 
@@ -425,12 +424,12 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     // score lead iterators
     const irs::byte_type** pVal = scores_vals_.data();
     std::for_each(
-        lead(), heap_.end(),
-        [this, &pVal](size_t it) {
-          assert(it < itrs_.size());
-          detail::evaluate_score_iter(pVal, itrs_[it]);
-        });
-    ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
+      lead(), heap_.end(),
+      [this, lhs, &pVal](size_t it) {
+        assert(it < itrs_.size());
+        detail::evaluate_score_iter(pVal, itrs_[it]);
+    });
+    merger_(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
   doc_iterators_t itrs_; // sub iterators
@@ -439,7 +438,7 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
   document doc_; // current doc
-  const order::prepared* ord_;
+  order::prepared::merger merger_;
 }; // min_match_disjunction
 
 NS_END // ROOT
