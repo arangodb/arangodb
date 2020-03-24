@@ -1,6 +1,15 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
+* AQL Bugfix for the OneShard database optimizer rule when working with
+  both one-shard collections and satellite collections. Previously, queries
+  could not be instantiated unless the leader of the satellite collection was,
+  by chance, on the same server.
+
+  Now the OneShard feature does allow reading from satellite collections, while
+  queries writing to a satellite collection will no longer trigger the OneShard
+  optimization.
+
 * Changed behavior for creating new collections in OneShard databases (i.e.
   databases with "sharding" attribute set to "single"):
 
