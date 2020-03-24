@@ -126,4 +126,23 @@ describe('Readonly mode api', function() {
       }
     });
   });
+  
+  it('can still access cluster/health API when readonly', function() {
+    if (!isCluster) {
+      return;
+    }
+    let resp = download(endpoint + '/_admin/server/mode', JSON.stringify({'mode': 'readonly'}), {
+      method: 'put',
+    });
+    expect(resp.code).to.equal(200);
+    waitForHeartbeat();
+    let body = JSON.parse(resp.body);
+    expect(body).to.have.property('mode', 'readonly');
+
+    resp = download(endpoint + '/_admin/cluster/health');
+    expect(resp.code).to.equal(200);
+    body = JSON.parse(resp.body);
+    expect(body).to.have.property('ClusterId');
+    expect(body).to.have.property('Health');
+  });
 });
