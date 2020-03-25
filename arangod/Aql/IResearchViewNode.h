@@ -40,6 +40,7 @@ namespace aql {
 struct Collection;
 class ExecutionBlock;
 class ExecutionEngine;
+class RegisterPlan;
 struct VarInfo;
 }  // namespace aql
 
@@ -173,10 +174,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ///       sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
-                         std::vector<aql::RegisterId>& nrRegs,
-                         std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
-                         unsigned int& totalNrRegs, unsigned int depth) const;
+  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
