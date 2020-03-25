@@ -56,7 +56,8 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
 HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
                          std::unordered_map<std::string, std::string> const& headers)
     : GeneralRequest(ConnectionInfo(), 1),
-      _allowMethodOverride(false) {
+      _allowMethodOverride(false),
+      _validatedPayload(false) {
   _contentType = contentType;
   _contentTypeResponse = contentType;
   _payload.append(body, contentLength);
@@ -420,19 +421,19 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       }
     }
   }
-  
+
   const char* start = tmp.data();
   const char* end = start + tmp.size();
   // look for database name in URL
   if (end - start >= 5) {
     char const* q = start;
-    
+
     // check if the prefix is "_db"
     if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
       // request contains database name
       q += 5;
       start = q;
-      
+
       // read until end of database name
       while (q < end) {
         if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' || *q == '\r') {
@@ -440,32 +441,32 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
         }
         ++q;
       }
-      
+
       TRI_ASSERT(q >= start);
       _databaseName = std::string(start, q - start);
       _fullUrl.assign(q, end - q);
-      
+
       start = q;
     } else {
-      _fullUrl.assign(start, end - start); 
+      _fullUrl.assign(start, end - start);
     }
   } else {
     _fullUrl.assign(start, end - start);
   }
   TRI_ASSERT(!_fullUrl.empty());
-  
+
   char const* q = start;
   while (q != end && *q != '?') {
     ++q;
   }
-  
+
   if (q == end || *q == '?') {
     _requestPath.assign(start, q - start);
   }
   if (q == end) {
     return;
   }
-  
+
   bool keyPhase = true;
   const char* keyBegin = ++q;
   const char* keyEnd = keyBegin;
@@ -481,10 +482,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       ++q;
       continue;
     }
-      
+
     if (q + 1 == end || *(q + 1) == '&') {
       ++q; // skip ahead
-      
+
       std::string val = ::url_decode(valueBegin, q);
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' && *(keyEnd - 1) == ']') {
         // found parameter xxx[]
@@ -503,7 +504,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
 
 void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
   StringUtils::tolowerInPlace(key); // always lowercase key
-  
+
   if (key == StaticStrings::ContentLength) {
     size_t len = NumberUtils::atoi_zero<uint64_t>(value.c_str(), value.c_str() + value.size());
     if (_payload.capacity() < len) {
@@ -514,7 +515,7 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     // do not store this header
     return;
   }
-  
+
   if (key == StaticStrings::Accept) {
     _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
     return;
@@ -536,15 +537,15 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
       _acceptEncoding = EncodingType::DEFLATE;
     }
   }
-  
+
   if (key == "cookie") {
     parseCookies(value.c_str(), value.size());
     return;
   }
-  
+
   if (_allowMethodOverride && key.size() >= 13 && key[0] == 'x' && key[1] == '-') {
     // handle x-... headers
-    
+
     // override HTTP method?
     if (key == "x-http-method" ||
         key == "x-method-override" ||
@@ -555,7 +556,7 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
       return;
     }
   }
-  
+
   _headers[std::move(key)] = std::move(value);
 }
 
@@ -880,7 +881,9 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
   if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {
     if (!_payload.empty()) {
       if (!_vpackBuilder) {
-        VPackParser parser(options);
+        VPackOptions validationOptions = *options;  // intentional copy
+        validationOptions.validateUtf8Strings = true;
+        VPackParser parser(&validationOptions); // adding the validatin here has no effect
         parser.parse(_payload.data(),
                      _payload.size());
         _vpackBuilder = parser.steal();
@@ -895,7 +898,9 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     validationOptions.disallowExternals = true;
     validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
-    validator.validate(_payload.data(), _payload.length()); // throws on error
+    if(!_validatedPayload) {
+      _validatedPayload = validator.validate(_payload.data(), _payload.length()); // throws on error
+    }
     return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
   }
   return VPackSlice::noneSlice();

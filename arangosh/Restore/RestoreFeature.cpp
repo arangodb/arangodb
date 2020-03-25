@@ -285,7 +285,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   // get client feature for configuration info
   arangodb::ClientFeature& client =
       server.getFeature<arangodb::HttpEndpointProvider, arangodb::ClientFeature>();
-         
+
   client.setDatabaseName(arangodb::StaticStrings::SystemDatabase);
 
   // get httpclient by hand rather than using manager, to bypass any built-in
@@ -343,7 +343,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   }
 
   std::string const body = builder.slice().toJson();
-      
+
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(RequestType::POST, "/_api/database", body.c_str(), body.size()));
   if (response == nullptr || !response->isComplete()) {
@@ -529,6 +529,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
     arangodb::velocypack::Options opts = arangodb::velocypack::Options::Defaults;
     // do *not* check duplicate attributes here (because that would throw)
     opts.checkAttributeUniqueness = false;
+    opts.validateUtf8Strings = true;
     arangodb::velocypack::Builder builder(&opts);
 
     // instead, we need to manually check for duplicate attributes...
@@ -593,7 +594,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
                   arangodb::StaticStrings::MimeTypeDump);
-  
+
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize, headers));
   return ::checkHttpResponse(httpClient, response, "restoring data", "");

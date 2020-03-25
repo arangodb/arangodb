@@ -1463,6 +1463,7 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
                                           std::unordered_map<std::string, VPackValueLength>& latest,
                                           VPackBuilder& allMarkers) {
   VPackOptions options = VPackOptions::Defaults;
+  options.validateUtf8Strings = true;
   options.checkAttributeUniqueness = true;
   VPackBuilder builder(&options);
 
@@ -1474,11 +1475,11 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
       _request->contentType() != ContentType::DUMP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
-  
+
   VPackStringRef bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
-  
+
   VPackValueLength currentPos = 0;
 
   // First parse and collect all markers, we assemble everything in one
@@ -1508,6 +1509,12 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         Result res =
             restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
         if (res.fail()) {
+          if(res.errorNumber() == TRI_ERROR_HTTP_CORRUPTED_JSON) {
+            using namespace std::literals::string_literals;
+            auto data = std::string(ptr, pos);
+            LOG_TOPIC("f86f3", ERR, Logger::RESTORE) << "invalid json in: " + data;
+            res.appendErrorMessage(" in message '"s + data + "'");
+          }
           return res;
         }
 
