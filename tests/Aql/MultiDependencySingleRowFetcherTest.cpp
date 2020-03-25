@@ -48,67 +48,124 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-class MultiDependencySingleRowFetcherTest : public ::testing::Test {
+class MultiDependencySingleRowFetcherTest
+    : public AqlExecutorTestCaseWithParam<std::tuple<bool, size_t>> {
+ protected:
+  auto doesWait() -> bool {
+    auto const [wait, deps] = GetParam();
+    return wait;
+  }
+
+  auto numberDependencies() -> size_t {
+    auto const [wait, deps] = GetParam();
+    return deps;
+  }
+
+  // This will create inputData.size() many dependecies.
+  // Each will be initialized with the given deque of blocks
+  // Note: Caller needs to make sure that ShadowRows are present in correct
+  // order and correct amount in all deques
+  auto buildFetcher(std::vector<std::deque<SharedAqlItemBlockPtr>> inputData)
+      -> MultiDependencySingleRowFetcher {
+    // We need at least 1 dependency!
+    TRI_ASSERT(!inputData.empty());
+    WaitingExecutionBlockMock::WaitingBehaviour waiting =
+        doesWait() ? WaitingExecutionBlockMock::WaitingBehaviour::ONCE
+                   : WaitingExecutionBlockMock::WaitingBehaviour::NEVER;
+    for (auto blockDeque : inputData) {
+      auto dep = std::make_unique<WaitingExecutionBlockMock>(fakedQuery->engine(),
+                                                             generateNodeDummy(),
+                                                             std::move(blockDeque), waiting);
+      _dependencies.emplace_back(dep.get());
+      _blocks.emplace_back(std::move(dep));
+    }
+
+    MultiDependencySingleRowFetcher testee{_proxy};
+    testee.init();
+    return testee;
+  }
+
+  auto makeStack() -> AqlCallStack {
+    // We need a stack for the API, an empty one will do.
+    // We are not testing subqueries here
+    AqlCallStack stack{AqlCall{}};
+    stack.popCall();
+    return stack;
+  }
+
+  auto makeSameCallToAllDependencies(AqlCall call) -> AqlCallSet {
+    AqlCallSet set{};
+    for (size_t i = 0; i < _dependencies.size(); ++i) {
+      set.calls.emplace_back(AqlCallSet::DepCallPair{i, call});
+    }
+    return set;
+  }
+
+  auto testWaiting(MultiDependencySingleRowFetcher& testee, AqlCallSet const& set) {
+    if (doesWait()) {
+      auto stack = makeStack();
+      auto [state, skipped, ranges] = testee.execute(stack, set);
+      EXPECT_EQ(state, ExecutionState::WAITING);
+      EXPECT_TRUE(skipped.nothingSkipped());
+      EXPECT_EQ(ranges.size(), set.size());
+      for (auto const& [dep, range] : ranges) {
+        EXPECT_FALSE(range.hasDataRow());
+        EXPECT_FALSE(range.hasShadowRow());
+        EXPECT_EQ(range.upstreamState(), ExecutorState::HASMORE);
+      }
+    }
+  }
+
+ private:
+  // This is memory responsibility for the blocks only
+  std::vector<std::unique_ptr<ExecutionBlock>> _blocks;
+  // The dependencies, they are referenced by _proxy, modifing this will modify the proxy
+  std::vector<ExecutionBlock*> _dependencies{};
+  DependencyProxy<BlockPassthrough::Disable> _proxy{_dependencies, itemBlockManager,
+                                                    make_shared_unordered_set({0}),
+                                                    1, nullptr};
+};
+
+INSTANTIATE_TEST_CASE_P(MultiDependencySingleRowFetcherTest, MultiDependencySingleRowFetcherTest,
+                        ::testing::Combine(::testing::Bool(),
+                                           ::testing::Range(static_cast<size_t>(1),
+                                                            static_cast<size_t>(3))));
+
+TEST_P(MultiDependencySingleRowFetcherTest, no_blocks_upstream) {
+  std::vector<std::deque<SharedAqlItemBlockPtr>> data;
+  for (size_t i = 0; i < numberDependencies(); ++i) {
+    data.emplace_back(std::deque<SharedAqlItemBlockPtr>{});
+  }
+
+  auto testee = buildFetcher(data);
+
+  auto set = makeSameCallToAllDependencies(AqlCall{});
+  testWaiting(testee, set);
+
+  auto stack = makeStack();
+  auto [state, skipped, ranges] = testee.execute(stack, set);
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_TRUE(skipped.nothingSkipped());
+  EXPECT_EQ(ranges.size(), set.size());
+  for (auto const& [dep, range] : ranges) {
+    // All Ranges are empty
+    EXPECT_FALSE(range.hasDataRow());
+    EXPECT_FALSE(range.hasShadowRow());
+    EXPECT_EQ(range.upstreamState(), ExecutorState::DONE);
+  }
+}
+
+class MultiDependencySingleRowFetcherTestOld : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   ExecutionState state;
 
-  MultiDependencySingleRowFetcherTest()
+  MultiDependencySingleRowFetcherTestOld()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
 };
 
-TEST_F(MultiDependencySingleRowFetcherTest,
-       no_blocks_upstream_single_dependency_the_producer_doesnt_wait) {
-  VPackBuilder input;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 0, 1};
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE, nullptr);
-
-  {
-    MultiDependencySingleRowFetcher testee(dependencyProxyMock);
-
-    testee.initDependencies();
-
-    std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_FALSE(row);
-  }  // testee is destroyed here
-  // testee must be destroyed before verify, because it may call returnBlock
-  // in the destructor
-  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
-}
-
-TEST_F(MultiDependencySingleRowFetcherTest,
-       no_blocks_upstream_single_dependency_the_producer_waits) {
-  VPackBuilder input;
-  MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 0, 1};
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  dependencyProxyMock.getDependencyMock(0)
-      .shouldReturn(ExecutionState::WAITING, nullptr)
-      .andThenReturn(ExecutionState::DONE, nullptr);
-
-  {
-    MultiDependencySingleRowFetcher testee(dependencyProxyMock);
-
-    testee.initDependencies();
-
-    std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_EQ(state, ExecutionState::WAITING);
-    ASSERT_FALSE(row);
-
-    std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_FALSE(row);
-  }  // testee is destroyed here
-  // testee must be destroyed before verify, because it may call returnBlock
-  // in the destructor
-  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
-}
-
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        single_upstream_block_with_a_single_row_single_dependency_the_producer_returns_done_immediately) {
   VPackBuilder input;
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, 1};
@@ -134,7 +191,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        single_upstream_block_with_a_single_row_single_dependency_the_producer_returns_hasmore_then_done_with_a_nullptr) {
   VPackBuilder input;
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, 1};
@@ -165,7 +222,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        single_upstream_block_with_a_single_row_single_dependency_the_producer_waits_then_returns_done) {
   VPackBuilder input;
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, 1};
@@ -196,7 +253,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        single_upstream_block_with_a_single_row_single_dependency_the_producer_waits_returns_hasmore_then_done) {
   VPackBuilder input;
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, 1};
@@ -235,7 +292,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 // TODO the following tests should be simplified, a simple output
 // specification should be compared with the actual output.
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        multiple_blocks_upstream_single_dependency_the_producer_doesnt_wait) {
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
@@ -274,7 +331,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 3);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        multiple_blocks_upstream_single_dependency_the_producer_waits) {
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
@@ -327,7 +384,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 6);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        multiple_blocks_upstream_single_dependency_the_producer_the_producer_waits_and_doesnt_return_done_asap) {
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
@@ -376,7 +433,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
  *  Multi Dependencies
  *********************/
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        no_blocks_upstream_multiple_dependencies_the_producers_dont_wait) {
   VPackBuilder input;
   size_t numDeps = 3;
@@ -404,7 +461,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), numDeps);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        no_blocks_upstream_multiple_dependencies_the_producers_wait) {
   VPackBuilder input;
   size_t numDeps = 3;
@@ -440,7 +497,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2 * numDeps);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        single_upstream_block_with_a_single_row_multi_dependency_the_producer_returns_done_immediately) {
   VPackBuilder input;
   size_t numDeps = 3;
@@ -482,7 +539,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), numDeps);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        single_upstream_block_with_a_single_row_multi_dependency_the_producer_returns_hasmore_then_done_with_a_nullptr) {
   VPackBuilder input;
   size_t numDeps = 3;
@@ -533,7 +590,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2 * numDeps);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        single_upstream_block_with_a_single_row_multi_dependency_the_producer_waits_then_returns_done) {
   VPackBuilder input;
   size_t numDeps = 3;
@@ -584,7 +641,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2 * numDeps);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        single_upstream_block_with_a_single_row_multi_dependency_the_producer_waits_returns_more_then_done) {
   VPackBuilder input;
   size_t numDeps = 3;
@@ -647,7 +704,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 // TODO the following tests should be simplified, a simple output
 // specification should be compared with the actual output.
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        multiple_blocks_upstream_multiple_dependencies_the_producer_does_not_wait) {
   size_t numDeps = 3;
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
@@ -727,7 +784,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 3 + 2 + 1);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        multiple_blocks_upstream_multiple_dependencies_the_producer_waits) {
   size_t numDeps = 3;
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
@@ -836,7 +893,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 12);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest,
+TEST_F(MultiDependencySingleRowFetcherTestOld,
        multiple_blocks_upstream_multiple_dependencies_the_producer_waits_and_doesnt_return_done_asap) {
   size_t numDeps = 3;
   MultiDependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
@@ -960,11 +1017,11 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 using CutAt = uint64_t;
 
 class MultiDependencySingleRowFetcherShadowRowTest
-    : public AqlExecutorTestCaseWithParam<CutAt> {
+    : public AqlExecutorTestCaseWithParam<CutAt, true> {
  protected:
   MultiDependencySingleRowFetcherShadowRowTest() {}
 
-  uint64_t cutAt() const { return GetParam(); }
+  uint64_t cutAt() const { return GetParam(); }  // namespace aql
 
   auto blockAlternatingDataAndShadowRows(std::vector<int> const& values)
       -> std::unique_ptr<ExecutionBlock> {
@@ -994,7 +1051,6 @@ class MultiDependencySingleRowFetcherShadowRowTest
       size_t lastSplit = 0;
 
       for (auto const s : splits) {
-        LOG_DEVEL << "Split at: " << s;
         if (s >= block->size()) {
           SharedAqlItemBlockPtr block1 = block->slice(lastSplit, block->size());
           blockDeque.emplace_back(block1);
@@ -1005,16 +1061,6 @@ class MultiDependencySingleRowFetcherShadowRowTest
           blockDeque.emplace_back(block1);
         }
       }
-      /*
-            if (cutAt() != 0 && cutAt() < block->size()) {
-              SharedAqlItemBlockPtr block1 = block->slice(0, cutAt());
-              SharedAqlItemBlockPtr block2 = block->slice(cutAt(),
-         block->size()); blockDeque.emplace_back(block1);
-              blockDeque.emplace_back(block2);
-            } else {
-              blockDeque.emplace_back(block);
-            }
-            */
     }
 
     auto execBlock = std::make_unique<WaitingExecutionBlockMock>(
@@ -1090,7 +1136,7 @@ class MultiDependencySingleRowFetcherShadowRowTest
   ShadowAqlItemRow invalidShadowRow() const {
     return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
   }
-};
+};  // namespace tests
 
 INSTANTIATE_TEST_CASE_P(MultiDependencySingleRowFetcherShadowRowTestInstance,
                         MultiDependencySingleRowFetcherShadowRowTest,
@@ -1353,9 +1399,9 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_skip_shadow_row_test
   };
 
   add(SkipRowsForDependency{0, 1000},
-      SkipRowsForDependency::Result{ExecutionState::DONE, 1});
+      SkipRowsForDependency::Result{ExecutionState::HASMORE, 1});
   add(SkipRowsForDependency{0, 1000},
-      SkipRowsForDependency::Result{ExecutionState::DONE, 0});
+      SkipRowsForDependency::Result{ExecutionState::HASMORE, 0});
   add(FetchShadowRow{1000}, FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow(1)});
   if (cutAt() == 3) {
     add(SkipRowsForDependency{0, 1000},
