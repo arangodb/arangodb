@@ -79,7 +79,7 @@ class AqlCallList {
 
   /**
    * @brief Take the next call from the call list and take ownership
-   *        of it. THe lsit will be modified.
+   *        of it. The list will be modified.
    *        This can only be called if hasMoreCalls() == true
    *
    * @return AqlCall The next call
@@ -123,7 +123,7 @@ class AqlCallList {
 
  private:
   /**
-   * @brief A list of specicif calls for subqueries.
+   * @brief A list of specific calls for subqueries.
    *        Right now we have only implemented variants where there is
    *        at most one call in this list. But the code is actually ready for
    *        any number of calls here.

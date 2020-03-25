@@ -105,8 +105,8 @@ auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
   // The DataRow is consumed after a shadowRow is produced.
   // So if there is no datarow in the input we will not create a data or a
-  // shadowRow We might be off by one, if we get asked this and have written the
-  // last dataRow. However we only overallocate as single then, this is not too bad.
+  // shadowRow, we might be off by one, if we get asked this and have written the
+  // last dataRow. However, as we only overallocate a single row then, this is not too bad.
   if (input.countDataRows() > 0) {
     // We will write one ShadowRow
     if (call.getLimit() > 0) {
