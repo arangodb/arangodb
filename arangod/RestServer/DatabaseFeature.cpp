@@ -33,6 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -377,7 +378,7 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (!lookupDatabase(TRI_VOC_SYSTEM_DATABASE)) {
+  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
     LOG_TOPIC("97e7c", FATAL, arangodb::Logger::FIXME)
         << "No _system database found in database directory. Cannot start!";
     FATAL_ERROR_EXIT();
@@ -740,7 +741,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
 /// @brief drop database
 int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
                                   bool removeAppsDirectory) {
-  if (name == TRI_VOC_SYSTEM_DATABASE) {
+  if (name == StaticStrings::SystemDatabase) {
     // prevent deletion of system database
     events::DropDatabase(name, TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;
@@ -892,7 +893,7 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(bool includeSystem) 
       if (vocbase->isDropped()) {
         continue;
       }
-      if (includeSystem || vocbase->name() != TRI_VOC_SYSTEM_DATABASE) {
+      if (includeSystem || vocbase->name() != StaticStrings::SystemDatabase) {
         ids.emplace_back(vocbase->id());
       }
     }
@@ -1095,7 +1096,7 @@ void DatabaseFeature::updateContexts() {
     return;
   }
 
-  auto* vocbase = useDatabase(TRI_VOC_SYSTEM_DATABASE);
+  auto* vocbase = useDatabase(StaticStrings::SystemDatabase);
   TRI_ASSERT(vocbase);
 
   auto queryRegistry = QueryRegistryFeature::registry();
