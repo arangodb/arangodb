@@ -702,7 +702,10 @@ void Agent::resign(term_t otherTerm) {
   _constituent.follow(otherTerm, NO_LEADER);
 
   // Wake up all polls with resignation letter
-  triggerPolls();
+  {
+    std::lock_guard lck(_promLock);
+    triggerPollsNoLock();
+  }
 
   endPrepareLeadership();
 }
@@ -820,11 +823,13 @@ void Agent::advanceCommitIndex() {
 
           TRI_ASSERT(!logs.empty());
           if (!logs.empty()) {
+            builder->add("accepted", VPackValue(true));
             builder->add(VPackValue("result"));
-            VPackArrayBuilder ls(builder.get());
+            VPackObjectBuilder e(builder.get());
             builder->add("firstIndex", VPackValue(logs.front().index));
             builder->add("commitIndex", VPackValue(logs.back().index));
-            builder->add(VPackValue("logs"));
+            builder->add(VPackValue("log"));
+            VPackArrayBuilder ls(builder.get());
             for (auto const& i : logs) {
               VPackObjectBuilder l(builder.get());
               builder->add("index", VPackValue(i.index));
@@ -832,11 +837,7 @@ void Agent::advanceCommitIndex() {
             }
           }
         }
-        auto it = _promises.begin();
-        while (it != _promises.end()) {
-          it->second.setValue(builder);
-          it = _promises.erase(it);
-        }
+        triggerPollsNoLock(builder);
         _lowestPromise = std::numeric_limits<index_t>::max();
       }
 
@@ -851,7 +852,38 @@ void Agent::advanceCommitIndex() {
 
 futures::Future<query_t> Agent::poll(index_t index) {
   using namespace std::chrono;
+
+  // Get current commitIndex and return a fulfilled promise
+  index_t commitIndex;
+  {
+    READ_LOCKER(oLocker, _outputLock);
+    commitIndex = _commitIndex;
+  }
+
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder e(builder.get());
+    auto const logs = _state.get(index, commitIndex);
+    TRI_ASSERT(!logs.empty());
+    if (!logs.empty()) {
+      builder->add("accepted", VPackValue(true));
+      builder->add(VPackValue("result"));
+      VPackObjectBuilder e(builder.get());
+      builder->add("firstIndex", VPackValue(logs.front().index));
+      builder->add("commitIndex", VPackValue(logs.back().index));
+      builder->add(VPackValue("log"));
+      VPackArrayBuilder ls(builder.get());
+      for (auto const& i : logs) {
+        VPackObjectBuilder l(builder.get());
+        builder->add("index", VPackValue(i.index));
+        builder->add("query", VPackSlice(i.entry->data()));
+      }
+    }
+  }
+  return futures::makeFuture(std::move(builder));
+  
   std::lock_guard guard(_promLock);
+
   auto res = _promises.try_emplace(
     steady_clock::now() + seconds(60), futures::Promise<query_t>());
   if (!res.second) {
@@ -1365,14 +1397,15 @@ void Agent::clearExpiredPolls() {
     empty->add(VPackValue("result"));
     VPackArrayBuilder arr(empty.get());
   }
-  triggerPolls(empty, std::chrono::steady_clock::now());
+  std::lock_guard lck(_promLock);
+  triggerPollsNoLock(empty, std::chrono::steady_clock::now());
 }
 
 
 /// Clear expired polls
 /// Wake up everybody with quertand delete with empty
 /// If qu is nullptr, we're resigning.
-void Agent::triggerPolls(query_t qu, SteadyTimePoint const& tp) {
+void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   if (qu == nullptr) { // We have resigned
     qu = std::make_shared<VPackBuilder>();
     VPackObjectBuilder qb(qu.get());
@@ -1380,7 +1413,6 @@ void Agent::triggerPolls(query_t qu, SteadyTimePoint const& tp) {
     qu->add(VPackValue("result"));
     VPackArrayBuilder arr(qu.get());
   }
-  std::lock_guard lock(_promLock);
   auto it = _promises.begin();
   while (it != _promises.end()) {
     if (it->first < tp) {

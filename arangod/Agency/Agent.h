@@ -155,8 +155,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
  private:
 
   /// @brief clear expired polls registered by Agent::poll
-  ///        if qu is nullptr, we're resigning
-  void triggerPolls(
+  ///        if qu is nullptr, we're resigning.
+  ///        Caller must have _promLock!
+  void triggerPollsNoLock(
     query_t qu = nullptr,
     SteadyTimePoint const& tp = std::chrono::steady_clock::now() + std::chrono::seconds(3600));
 

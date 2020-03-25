@@ -159,9 +159,10 @@ RestStatus RestAgencyHandler::handleTransient() {
 RestStatus RestAgencyHandler::pollIndex(index_t start) {
   return waitForFuture(
     _agent->poll(start)
-    .thenValue([this, start](std::shared_ptr<VPackBuilder> res) {
-      if (res->hasKey("accepted")) {
-        TRI_ASSERT(res->hasKey("result"));
+    .thenValue([this, start](std::shared_ptr<VPackBuilder> rb) {
+      VPackSlice res = rb->slice();
+      if (res.hasKey("accepted")) {
+        TRI_ASSERT(res.hasKey("result"));
         VPackBuffer<uint8_t> payload;
         {
           VPackBuilder builder(payload);
@@ -170,15 +171,13 @@ RestStatus RestAgencyHandler::pollIndex(index_t start) {
           builder.add("code", VPackValue(int(ResponseCode::OK)));
           builder.add(VPackValue("result"));
           VPackObjectBuilder r(&builder);
-
-          // WARNING exceptions
-          VPackSlice slice = res->slice().get("result");
-          VPackSlice logs = slice.get("logs");
+          VPackSlice slice = res.get("result");
+          VPackSlice logs = slice.get("log");
           index_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>();
           index_t commitIndex = slice.get("commitIndex").getNumber<uint64_t>();
           size_t first = start - firstIndex;
           builder.add("commitIndex", VPackValue(commitIndex));
-          builder.add(VPackValue("logs"));
+          builder.add(VPackValue("log"));
           VPackArrayBuilder a(&builder);
           for (size_t i = first; i < logs.length(); ++i) {
             builder.add(logs[i]);
@@ -221,27 +220,21 @@ RestStatus RestAgencyHandler::handlePoll() {
 
   // Get queryString index
   index_t index = 0;
-  bool found = true;
-  std::string const& val_str = _request->value("index", found);
-  if (!found) { // Give it all
-    LOG_TOPIC("0f843", DEBUG, Logger::AGENCY)
-      << "missing query string index assuming 0";
-  }
-
-  if (!found || index == 0) { // Give it all
+  if (!readValue("index", index)) { // Give it all
     VPackBuilder body;
-    index = _agent->readDB(body);
+    {
+      VPackObjectBuilder o(&body);
+      body.add("error", VPackValue(false));
+      body.add("code", VPackValue(int(ResponseCode::OK)));
+      body.add(VPackValue("result"));
+      VPackObjectBuilder r(&body);
+      index = _agent->readDB(body);
+    }
     LOG_TOPIC("0f843", DEBUG, Logger::AGENCY)
       << "providing readDB up to index " << index;
     auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
     generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptionsForDump());
-  }
-
-  try {
-    index = std::stoul(val_str);
-  } catch (std::invalid_argument const& e) {
-    return reportMessage(
-      rest::ResponseCode::BAD, "index query string must be a positive integer");
+    return RestStatus::DONE;
   }
 
   return pollIndex(index);
@@ -712,6 +705,8 @@ RestStatus RestAgencyHandler::execute() {
         return handleWrite();
       } else if (suffixes[0] == "read") {
         return handleRead();
+      } else if (suffixes[0] == "poll") {
+        return handlePoll();
       } else if (suffixes[0] == "inquire") {
         return handleInquire();
       } else if (suffixes[0] == "transient") {
