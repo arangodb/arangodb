@@ -35,7 +35,7 @@ LambdaExecutorInfos::LambdaExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda, ResetCall reset)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+    : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
       _produceLambda(lambda),
       _resetLambda(reset) {}
@@ -53,7 +53,7 @@ LambdaSkipExecutorInfos::LambdaSkipExecutorInfos(
     std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
     SkipCall skipLambda, ResetCall reset)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+    : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
       _produceLambda(lambda),
       _skipLambda(skipLambda),

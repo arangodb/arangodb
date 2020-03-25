@@ -66,9 +66,6 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
   RegisterId getOutputRegister() const noexcept;
 
  private:
-  // These two are exactly the values in the parent members
-  // ExecutorInfo::_inRegs and ExecutorInfo::_outRegs, respectively
-  // getInputRegisters() and getOutputRegisters().
   RegisterId _inputRegister;
   RegisterId _outputRegister;
 };

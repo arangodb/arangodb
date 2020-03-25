@@ -978,8 +978,7 @@ ExecutorInfos ExecutionNode::createRegisterInfos(
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
-  return ExecutorInfos{std::move(readableInputRegisters),
-                       std::move(writableOutputRegisters),
+  return ExecutorInfos{std::move(writableOutputRegisters),
                        nrInRegs,
                        nrOutRegs,
                        std::move(regsToClear),
@@ -2178,7 +2177,6 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                      arangodb::aql::make_shared_unordered_set(),
                       getRegisterPlan()->nrRegs[previousNode->getDepth()],
                       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                       calcRegsToKeep());

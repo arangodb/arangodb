@@ -78,7 +78,7 @@ class SplicedSubqueryIntegrationTest
 
     auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
 
-    return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet,
+    return SubqueryStartExecutor::Infos(outputRegisterSet,
                                         inputRegisterSet->size(),
                                         inputRegisterSet->size() +
                                             outputRegisterSet->size(),

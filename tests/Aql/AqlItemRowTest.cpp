@@ -81,7 +81,7 @@ class AqlItemRowsTest : public ::testing::Test {
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_narrow) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
-  ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
+  ExecutorInfos executorInfos{{}, 3, 3, {}, {0, 1, 2}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
 
@@ -118,7 +118,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_narrow) {
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
-  ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
+  ExecutorInfos executorInfos{{}, 3, 3, {}, {0, 1, 2}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
 
@@ -164,7 +164,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_but_multiplying_rows) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 9, 3)};
-  ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
+  ExecutorInfos executorInfos{{}, 3, 3, {}, {0, 1, 2}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
 
@@ -209,7 +209,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_but_multiplying_rows)
 
 TEST_F(AqlItemRowsTest, dropping_a_register_from_source_while_writing_to_target) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
-  ExecutorInfos executorInfos{{}, {}, 3, 3, {1}, {0, 2}};
+  ExecutorInfos executorInfos{{}, 3, 3, {1}, {0, 2}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
 
@@ -269,7 +269,7 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
   nrOutputRegisters = 5;
 
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 5)};
-  ExecutorInfos executorInfos{inputRegisters,    outputRegisters,
+  ExecutorInfos executorInfos{outputRegisters,
                               nrInputRegisters,  nrOutputRegisters,
                               *registersToClear, *registersToKeep};
   std::unordered_set<RegisterId>& regsToKeep = *registersToKeep;

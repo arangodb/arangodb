@@ -1404,7 +1404,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
     aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                             arangodb::aql::make_shared_unordered_set(),
                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
                              getRegisterPlan()->nrRegs[getDepth()],
                              getRegsToClear(), calcRegsToKeep());
@@ -1463,7 +1462,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
     aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                             arangodb::aql::make_shared_unordered_set(),
                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
                              getRegisterPlan()->nrRegs[getDepth()],
                              getRegsToClear(), calcRegsToKeep());

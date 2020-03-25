@@ -70,7 +70,7 @@ KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep,
     std::unique_ptr<graph::KShortestPathsFinder>&& finder, InputVertex&& source,
     InputVertex&& target)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
+    : ExecutorInfos(std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _finder(std::move(finder)),

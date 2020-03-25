@@ -37,7 +37,7 @@ ScatterExecutorInfos::ScatterExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep, std::vector<std::string> clientIds)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+    : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
       ClientsExecutorInfos(std::move(clientIds)) {}
 

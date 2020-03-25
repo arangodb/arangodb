@@ -61,8 +61,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     Expression* filter, std::vector<std::string> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool useRawDocumentPointers, bool random)
-    : ExecutorInfos(make_shared_unordered_set(),
-                    make_shared_unordered_set({outputRegister}),
+    : ExecutorInfos(make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _engine(engine),

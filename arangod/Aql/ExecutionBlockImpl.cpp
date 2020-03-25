@@ -201,7 +201,6 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  typename Executor::Infos infos)
     : ExecutionBlock(engine, node),
       _dependencyProxy(_dependencies, engine->itemBlockManager(),
-                       infos.getInputRegisters(),
                        infos.numberOfInputRegisters(), trxVpackOptions()),
       _rowFetcher(_dependencyProxy),
       _infos(std::move(infos)),

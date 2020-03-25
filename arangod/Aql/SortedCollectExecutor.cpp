@@ -135,8 +135,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     std::vector<std::pair<std::string, RegisterId>>&& variables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     transaction::Methods* trxPtr, bool count)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _aggregateTypes(aggregateTypes),

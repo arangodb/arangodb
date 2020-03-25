@@ -168,7 +168,7 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   // i.e. before sending it over the network.
   TRI_ASSERT(regsToClear.empty());
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+  ExecutorInfos infos({}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
 
   return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(

@@ -44,7 +44,6 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
                                        std::unordered_set<RegisterId> registersToKeep,
                                        size_t offset, size_t limit, bool fullCount)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
-                    std::make_shared<std::unordered_set<RegisterId>>(),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _offset(offset),

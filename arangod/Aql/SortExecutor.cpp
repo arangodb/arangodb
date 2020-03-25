@@ -71,22 +71,13 @@ class OurLessThan {
 
 }  // namespace
 
-static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
-    std::vector<SortRegister> const& sortRegisters) {
-  auto set = make_shared_unordered_set();
-  std::transform(sortRegisters.begin(), sortRegisters.end(),
-                 std::inserter(*set, set->begin()),
-                 [](SortRegister const& sortReg) { return sortReg.reg; });
-  return set;
-}
-
 SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
                                      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                      std::unordered_set<RegisterId> registersToClear,
                                      std::unordered_set<RegisterId> registersToKeep,
                                      velocypack::Options const* options, bool stable)
-    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
+    : ExecutorInfos(nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _limit(limit),

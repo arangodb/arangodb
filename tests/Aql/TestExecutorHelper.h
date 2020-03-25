@@ -57,8 +57,6 @@ class TestExecutorHelperInfos : public ExecutorInfos {
   RegisterId getInputRegister() const noexcept { return _inputRegister; };
 
  private:
-  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
-  // respectively getInputRegisters().
   RegisterId _inputRegister;
 };
 

@@ -168,7 +168,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options, IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
-    : ExecutorInfos(make_shared_unordered_set(), writableOutputRegisters,
+    : ExecutorInfos(writableOutputRegisters,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _indexes(std::move(indexes)),

@@ -58,8 +58,6 @@ class FilterExecutorInfos : public ExecutorInfos {
   [[nodiscard]] RegisterId getInputRegister() const noexcept;
 
  private:
-  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
-  // respectively getInputRegisters().
   RegisterId _inputRegister;
 };
 

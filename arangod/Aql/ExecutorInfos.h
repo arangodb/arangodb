@@ -55,7 +55,6 @@ class ExecutorInfos {
   /**
    * @brief Input for Executors. Derived classes exist where additional
    *        input is needed.
-   * @param readableInputRegisters Registers the Executor may use as input
    * @param writeableOutputRegisters Registers the Executor writes into
    * @param nrInputRegisters Width of input AqlItemBlocks
    * @param nrOutputRegisters Width of output AqlItemBlocks
@@ -71,8 +70,7 @@ class ExecutorInfos {
    *   RegisterId register = it->second.registerId;
    */
 
-  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                 std::unordered_set<RegisterId> registersToClear,
                 std::unordered_set<RegisterId> registersToKeep);
@@ -80,16 +78,6 @@ class ExecutorInfos {
   ExecutorInfos(ExecutorInfos&&) = default;
   ExecutorInfos(ExecutorInfos const&) = delete;
   ~ExecutorInfos() = default;
-
-  /**
-   * @brief Get the input registers the Executor is allowed to read. This has
-   *        little to do with numberOfInputRegisters(), except that each input
-   *        register index returned here is smaller than
-   *        numberOfInputRegisters().
-   *
-   * @return The indices of the input registers.
-   */
-  std::shared_ptr<std::unordered_set<RegisterId> const> getInputRegisters() const;
 
   /**
    * @brief Get the output registers the Executor is allowed to write. This has
@@ -122,8 +110,6 @@ class ExecutorInfos {
   std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToClear() const;
 
  protected:
-  std::shared_ptr<std::unordered_set<RegisterId> const> _inRegs;
-
   std::shared_ptr<std::unordered_set<RegisterId> const> _outRegs;
 
   RegisterId _numInRegs;

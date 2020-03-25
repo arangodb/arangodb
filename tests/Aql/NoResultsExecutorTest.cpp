@@ -56,8 +56,7 @@ class NoResultsExecutorTest : public AqlExecutorTestCaseWithParam<NoResultsInput
   }
 
   auto makeInfos() -> ExecutorInfos {
-    return ExecutorInfos{make_shared_unordered_set({0}),
-                         make_shared_unordered_set(),
+    return ExecutorInfos{make_shared_unordered_set(),
                          1,
                          1,
                          {},

@@ -70,11 +70,8 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-
   // The const_cast has been taken from previous implementation.
-  ExecutorInfos infos(inputRegisters, outputRegisters,
+  ExecutorInfos infos(std::make_shared<std::unordered_set<RegisterId>>(),
                       getRegisterPlan()->nrRegs[previousNode->getDepth()],
                       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                       calcRegsToKeep());

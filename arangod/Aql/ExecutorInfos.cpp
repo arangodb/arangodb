@@ -28,16 +28,13 @@ using namespace arangodb::aql;
 
 ExecutorInfos::ExecutorInfos(
     // cppcheck-suppress passedByValue
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    // cppcheck-suppress passedByValue
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep)
-    : _inRegs(std::move(readableInputRegisters)),
-      _outRegs(std::move(writeableOutputRegisters)),
+    : _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToKeep(std::make_shared<std::unordered_set<RegisterId>>(
@@ -46,9 +43,6 @@ ExecutorInfos::ExecutorInfos(
           std::move(registersToClear))) {
   // We allow these to be passed as nullptr for ease of use, but do NOT allow
   // the members to be null for simplicity and safety.
-  if (_inRegs == nullptr) {
-    _inRegs = std::make_shared<decltype(_inRegs)::element_type>();
-  }
   if (_outRegs == nullptr) {
     _outRegs = std::make_shared<decltype(_outRegs)::element_type>();
   }
@@ -59,9 +53,6 @@ ExecutorInfos::ExecutorInfos(
               _registersToClear->empty()));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  for (RegisterId const inReg : *_inRegs) {
-    TRI_ASSERT(inReg < nrInputRegisters);
-  }
   for (RegisterId const outReg : *_outRegs) {
     TRI_ASSERT(outReg < nrOutputRegisters);
   }
@@ -75,10 +66,6 @@ ExecutorInfos::ExecutorInfos(
     TRI_ASSERT(_registersToClear->find(regToKeep) == _registersToClear->end());
   }
 #endif
-}
-
-std::shared_ptr<std::unordered_set<RegisterId> const> ExecutorInfos::getInputRegisters() const {
-  return _inRegs;
 }
 
 std::shared_ptr<std::unordered_set<RegisterId> const> ExecutorInfos::getOutputRegisters() const {

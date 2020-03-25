@@ -50,7 +50,7 @@ DistributeExecutorInfos::DistributeExecutorInfos(
     std::vector<std::string> clientIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys, ScatterNode::ScatterType type)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+    : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
       ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),

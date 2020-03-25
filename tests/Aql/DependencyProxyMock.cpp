@@ -44,7 +44,6 @@ template <BlockPassthrough passBlocksThrough>
 DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
                                                             ::arangodb::aql::RegisterId nrRegisters)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
-                                         std::shared_ptr<std::unordered_set<RegisterId>>(),
                                          nrRegisters, &velocypack::Options::Defaults),
       _itemsToReturn(),
       _numFetchBlockCalls(0),
@@ -187,7 +186,6 @@ MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
     arangodb::aql::ResourceMonitor& monitor,
     ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
-                                         std::shared_ptr<std::unordered_set<RegisterId>>(),
                                          nrRegisters, &velocypack::Options::Defaults),
       _itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {
   _dependencyMocks.reserve(nrDeps);

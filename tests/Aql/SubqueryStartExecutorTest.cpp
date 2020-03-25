@@ -51,7 +51,7 @@ ExecutorInfos MakeBaseInfos(RegisterId numRegs) {
   for (RegisterId r = 0; r < numRegs; ++r) {
     toKeep.emplace(r);
   }
-  return ExecutorInfos(emptyRegisterList, emptyRegisterList, numRegs, numRegs, {}, toKeep);
+  return ExecutorInfos(emptyRegisterList, numRegs, numRegs, {}, toKeep);
 }
 }  // namespace
 

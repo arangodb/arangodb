@@ -365,11 +365,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> DependencyProxy<blockPassthroug
 template <BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
-    std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
     RegisterId nrInputRegisters, velocypack::Options const* const options)
     : _dependencies(dependencies),
       _itemBlockManager(itemBlockManager),
-      _inputRegisters(std::move(inputRegisters)),
       _nrInputRegisters(nrInputRegisters),
       _distributeId(),
       _blockQueue(),
