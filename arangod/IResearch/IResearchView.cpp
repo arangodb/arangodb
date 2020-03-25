@@ -388,8 +388,11 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     arangodb::velocypack::Builder sanitizedBuilder;
 
     sanitizedBuilder.openObject();
-
-    if (!_meta.json(sanitizedBuilder) ||
+    IResearchViewMeta::Mask mask(true);
+    if (context == Serialization::Properties) {
+      mask._storedValues = false;
+    }
+    if (!_meta.json(sanitizedBuilder, nullptr, &mask) ||
         !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
       return arangodb::Result(
           TRI_ERROR_INTERNAL,

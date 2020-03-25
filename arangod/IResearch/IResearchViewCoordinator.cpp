@@ -255,8 +255,11 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 
   VPackBuilder sanitizedBuilder;
   sanitizedBuilder.openObject();
-
-  if (!_meta.json(sanitizedBuilder) ||
+  IResearchViewMeta::Mask mask(true);
+  if (context == Serialization::Properties) {
+    mask._storedValues = false;
+  }
+  if (!_meta.json(sanitizedBuilder, nullptr, &mask) ||
       !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
     return { TRI_ERROR_INTERNAL,
              std::string("failure to generate definition while generating "
