@@ -608,8 +608,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   TRI_ASSERT(vc != nullptr);
   // deny access to database with NONE
   if (result == Flow::Continue &&
-      vc->databaseAuthLevel() == auth::Level::NONE && 
-      !StringUtils::isPrefix(path, ApiUser)) {
+      vc->databaseAuthLevel() == auth::Level::NONE) {
     result = Flow::Abort;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
   }
@@ -661,6 +660,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
+      } else if (userAuthenticated && StringUtils::isPrefix(path, ApiUser)) {
+        result = Flow::Continue;
       }
     }
   }
