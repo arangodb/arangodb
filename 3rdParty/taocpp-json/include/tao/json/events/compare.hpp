@@ -169,12 +169,12 @@ namespace tao::json
             m_object_keys.emplace_back();
          }
 
-         void key( const std::string& v )
+         void key( const std::string_view sv )
          {
             if( !m_match ) {
                m_current.push_back( nullptr );
             }
-            else if( const auto* p = current().find( v ) ) {
+            else if( const auto* p = current().find( sv ) ) {
                if( !m_object_keys.back().insert( p ).second ) {
                   m_match = false;  // duplicate key found! -> fail
                   m_current.push_back( nullptr );
@@ -187,16 +187,6 @@ namespace tao::json
                m_match = false;
                m_current.push_back( nullptr );
             }
-         }
-
-         void key( const std::string_view v )
-         {
-            key( std::string( v ) );
-         }
-
-         void key( const char* v )
-         {
-            key( std::string( v ) );
          }
 
          void member() noexcept

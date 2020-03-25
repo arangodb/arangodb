@@ -64,10 +64,9 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
   // expected FST properties
   static constexpr auto FST_PROPERTIES =
-      (MATCH_TYPE == MATCH_INPUT ? kNoIEpsilons : kNoOEpsilons)
-      | (MATCH_TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted)
-      | (MATCH_TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
-      | kAcceptor;
+    (MATCH_TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted)
+    | (MATCH_TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
+    | kAcceptor;
 
   explicit TableMatcher(const FST& fst, Label rho)
     : start_labels_(fst::getStartLabels<F, MatchInput>(fst)),

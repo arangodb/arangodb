@@ -39,7 +39,9 @@ template <BlockPassthrough>
 class SingleRowFetcher;
 class ExecutorInfos;
 class NoStats;
+struct AqlCall;
 class OutputAqlItemRow;
+class AqlItemBlockInputRange;
 
 class NoResultsExecutor {
  public:
@@ -51,21 +53,32 @@ class NoResultsExecutor {
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ExecutorInfos;
   using Stats = NoStats;
-  NoResultsExecutor(Fetcher& fetcher, ExecutorInfos&);
+  NoResultsExecutor(Fetcher&, ExecutorInfos&);
   ~NoResultsExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief DO NOT PRODUCE ROWS
    *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
+   * @return DONE, NoStats, HardLimit = 0 Call
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output) const
+      noexcept -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  /**
+   * @brief DO NOT SKIP ROWS
+   *
+   ** @return DONE, NoStats, 0, HardLimit = 0 Call
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const
+      noexcept -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
     // Well nevermind the input, but we will always return 0 rows here.
     return {ExecutionState::DONE, 0};
   }
+
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 };
 }  // namespace aql
 }  // namespace arangodb

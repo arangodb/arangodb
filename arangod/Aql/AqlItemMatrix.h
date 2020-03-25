@@ -74,6 +74,8 @@ class AqlItemMatrix {
    */
   bool empty() const noexcept;
 
+  void clear();
+
   std::vector<RowIndex> produceRowIndexes() const;
 
   /**
@@ -95,14 +97,20 @@ class AqlItemMatrix {
 
   ShadowAqlItemRow peekShadowRow() const;
 
+  [[nodiscard]] auto hasMoreAfterShadowRow() const noexcept -> bool;
+
+  [[nodiscard]] auto countDataRows() const noexcept -> std::size_t;
+
+  [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
+
  private:
   std::vector<SharedAqlItemBlockPtr> _blocks;
 
   uint64_t _size;
 
   RegisterId _nrRegs;
-
-  size_t _lastShadowRow;
+  size_t _startIndexInFirstBlock{0};
+  size_t _stopIndexInLastBlock;
 };
 
 }  // namespace aql

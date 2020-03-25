@@ -50,7 +50,7 @@ option(VERBOSE "be verbose about flags used" OFF)
 option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
 
 # use strictly required OpenSSL version (from ./VERSIONS file)
-option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" ON)
+option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" OFF)
 
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
@@ -279,6 +279,12 @@ if (STATIC_EXECUTABLES)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
   endif ()
 endif()
+
+# enable dtrace
+option(USE_DTRACE "enable dtrace probes" OFF)
+if (USE_DTRACE)
+  add_definitions("-DUSE_DTRACE=1")
+endif ()
 
 # enable enterprise features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
@@ -520,8 +526,8 @@ endif ()
 
 if (WINDOWS)
   set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
-  set(BASE_C_FLAGS   ""                         	 CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc"                	 CACHE STRING "base C++flags")
+  set(BASE_C_FLAGS   ""                                  CACHE STRING "base C flags")
+  set(BASE_CXX_FLAGS "/GR /EHsc /Zc:__cplusplus"         CACHE STRING "base C++flags")
 else ()
   set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
   set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")

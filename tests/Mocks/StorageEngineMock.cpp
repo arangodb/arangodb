@@ -1076,6 +1076,11 @@ std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(
   return std::make_unique<AllIteratorMock>(_documents, this->_logicalCollection, trx);
 }
 
+std::unique_ptr<arangodb::ReplicationIterator> PhysicalCollectionMock::getReplicationIterator(
+    arangodb::ReplicationIterator::Ordering, uint64_t) {
+  return nullptr;
+}
+
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {
   before();
 }
@@ -1621,7 +1626,7 @@ void StorageEngineMock::getDatabases(arangodb::velocypack::Builder& result) {
   arangodb::velocypack::Builder system;
 
   system.openObject();
-  system.add("name", arangodb::velocypack::Value(TRI_VOC_SYSTEM_DATABASE));
+  system.add("name", arangodb::velocypack::Value(arangodb::StaticStrings::SystemDatabase));
   system.close();
 
   // array expected

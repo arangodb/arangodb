@@ -246,6 +246,15 @@ void EnvironmentFeature::prepare() {
     // file not found or value not convertible into integer
   }
 
+  // Report memory found:
+  uint64_t ram = PhysicalMemory::getValue();
+  std::string overriddenmsg;
+  if (PhysicalMemory::overridden()) {
+    overriddenmsg = " (overridden by environment variable)";
+  }
+  LOG_TOPIC("25362", INFO, Logger::MEMORY)
+  << "Available physical memory: " << ram << overriddenmsg;
+
   // test local ipv6 support
   try {
     if (!basics::FileUtils::exists("/proc/net/if_inet6")) {

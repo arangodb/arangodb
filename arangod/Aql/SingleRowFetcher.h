@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_SINGLE_ROW_FETCHER_H
 #define ARANGOD_AQL_SINGLE_ROW_FETCHER_H
 
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -39,6 +40,7 @@ namespace arangodb::aql {
 class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -54,11 +56,27 @@ class SingleRowFetcher {
   explicit SingleRowFetcher(DependencyProxy<blockPassthrough>& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
+  using DataRange = AqlItemBlockInputRange;
+
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   SingleRowFetcher();
 
  public:
+  /**
+   * @brief Execute the given call stack
+   *
+   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
+   * @return std::tuple<ExecutionState, size_t, DataRange>
+   *   ExecutionState => DONE, all queries are done, there will be no more
+   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
+   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
+   *
+   *   size_t => Amount of documents skipped
+   *   DataRange => Resulting data
+   */
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
+
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *
@@ -94,8 +112,7 @@ class SingleRowFetcher {
   // Like fetchRow(), but returns both the subquery-local state (like fetchRow())
   // and the global state (like fetchShadowRow()).
   // Currently necessary only in the SubqueryStartExecutor.
-  [[nodiscard]] RowWithStates fetchRowWithGlobalState(
-      size_t atMost = ExecutionBlock::DefaultBatchSize);
+  [[nodiscard]] RowWithStates fetchRowWithGlobalState(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
@@ -108,10 +125,10 @@ class SingleRowFetcher {
   template <BlockPassthrough allowPass = blockPassthrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
   [[nodiscard]]
 #else
-  [[nodiscard]]
-  TEST_VIRTUAL
+  [[nodiscard]] TEST_VIRTUAL
 #endif
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr>
+  fetchBlockForPassthrough(size_t atMost);
 
   [[nodiscard]] std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
 
@@ -121,6 +138,9 @@ class SingleRowFetcher {
   [[nodiscard]] bool hasRowsLeftInBlock() const;
   [[nodiscard]] bool isAtShadowRow() const;
 #endif
+
+  //@deprecated
+  auto useStack(AqlCallStack const& stack) -> void;
 
  private:
   DependencyProxy<blockPassthrough>* _dependencyProxy;
@@ -179,6 +199,6 @@ class SingleRowFetcher {
 
   [[nodiscard]] ExecutionState returnState(bool isShadowRow) const;
 };
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

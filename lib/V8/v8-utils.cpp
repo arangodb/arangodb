@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+
 #include "v8-utils.h"
 
 #include "Basics/Common.h"
@@ -44,7 +45,6 @@
 #include <unicode/unistr.h>
 #include <unicode/unorm2.h>
 #include <unicode/utypes.h>
-#include <chrono>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -108,6 +108,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
+#include "V8/v8-deadline.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -201,6 +202,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
     // C++ bindings that are called by V8. if it does, the program will crash
   }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads/execute a file into/in the current context
@@ -764,6 +766,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
@@ -908,6 +913,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                                               options, "timeout"));
       }
     }
+    timeout = correctTimeoutToExecutionDeadlineS(timeout);
 
     // return body as a buffer?
     if (TRI_HasProperty(context, isolate, options, "returnBodyAsBuffer")) {
@@ -2101,7 +2107,6 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_LOG_THROW_EXCEPTION(tryCatch);
       } else {
         tryCatch.ReThrow();
-        TRI_GET_GLOBALS();
         v8g->_canceled = true;
         TRI_V8_RETURN_UNDEFINED();
       }
@@ -3892,13 +3897,16 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // extract arguments
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("sleep(<seconds>)");
   }
 
-  double n = TRI_ObjectToDouble(isolate, args[0]);
+  double n = correctTimeoutToExecutionDeadlineS(TRI_ObjectToDouble(isolate, args[0]));
   double until = TRI_microtime() + n;
 
   while (true) {
@@ -3946,13 +3954,16 @@ static void JS_Time(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // extract arguments
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("wait(<seconds>, <gc>)");
   }
 
-  double n = TRI_ObjectToDouble(isolate, args[0]);
+  double n = correctTimeoutToExecutionDeadlineS(TRI_ObjectToDouble(isolate, args[0]));
 
   bool gc = true;  // default is to trigger the gc
   if (args.Length() > 1) {
@@ -5517,8 +5528,10 @@ static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& 
 
 extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
-void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                     std::string const& startupPath, std::string const& modules) {
+void TRI_InitV8Utils(v8::Isolate* isolate,
+                     v8::Handle<v8::Context> context,
+                     std::string const& startupPath,
+                     std::string const& modules) {
   v8::HandleScope scope(isolate);
 
   // check the isolate

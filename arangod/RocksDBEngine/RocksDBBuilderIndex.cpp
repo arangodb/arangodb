@@ -102,7 +102,7 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
                                    arangodb::velocypack::Slice const& slice,
-                                   OperationMode mode) {
+                                   OperationOptions& options) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else
@@ -202,7 +202,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     }
     batch.Clear();
 
-    auto ops = trxColl->stealTrackedOperations();
+    auto ops = trxColl->stealTrackedIndexOperations();
     if (!ops.empty()) {
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();
@@ -224,6 +224,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     }
   };
 
+  OperationOptions options;
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     if (ridx.collection().vocbase().server().isStopping()) {
@@ -232,7 +233,8 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     }
 
     res = ridx.insert(trx, &batched, RocksDBKey::documentId(it->key()),
-                      VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())), Index::OperationMode::normal);
+                      VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())),
+                      options);
     if (res.fail()) {
       break;
     }
@@ -330,8 +332,8 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::TrackedDocumentInsert:
         if (_lastObjectID == _objectId) {
           auto pair = RocksDBLogValue::trackedDocument(blob);
-          tmpRes = _index.insert(_trx, _methods, pair.first, pair.second,
-                                 Index::OperationMode::normal);
+          OperationOptions options;
+          tmpRes = _index.insert(_trx, _methods, pair.first, pair.second, options);
           numInserted++;
         }
         break;
@@ -463,7 +465,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     }
     wb.Clear();
 
-    auto ops = trxColl->stealTrackedOperations();
+    auto ops = trxColl->stealTrackedIndexOperations();
     if (!ops.empty()) {
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();

@@ -48,7 +48,7 @@ inline irs::filter::prepared::ptr compileQuery(
   irs::bstring stats(order.stats_size(), 0);
 
   // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_collectors().finish(&stats[0], index);
+  order.fixed_prepare_collectors().finish(&stats[0], index);
 
   return irs::filter::prepared::make<type_t>(ctx, std::move(stats), boost);
 }
@@ -56,7 +56,7 @@ inline irs::filter::prepared::ptr compileQuery(
 ///////////////////////////////////////////////////////////////////////////////
 /// @class NondeterministicExpressionIterator
 ///////////////////////////////////////////////////////////////////////////////
-class NondeterministicExpressionIterator final : public irs::doc_iterator_base {
+class NondeterministicExpressionIterator final : public irs::doc_iterator_base<irs::doc_iterator> {
  public:
   NondeterministicExpressionIterator(
       irs::sub_reader const& reader,

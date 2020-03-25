@@ -52,7 +52,7 @@ NS_ROOT
 ///@brief adapter for min_match_disjunction with honor of terms orderings
 //////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
+class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, score_ctx {
  public:
   struct position_t {
     position_t(position* p, document* d, score* s)
@@ -249,7 +249,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     if (longest_sequence_len >= min_match_count_  && !empty_order_) {
       uint32_t freq = 0;
       size_t count_longest{ 0 };
-      search_state* longest_ptr{ nullptr };
       // try to optimize case with one longest candidate
       // performance profiling shows it is majority of cases
       for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end; ++i) {
@@ -258,7 +257,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
           if (count_longest > 1) {
             break;
           }
-          longest_ptr = i->second.get();
         }
       }
 
@@ -312,8 +310,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
           ++i;
         }
       } else {
-        assert(longest_ptr != nullptr);
-        assert(longest_ptr->len == longest_sequence_len);
         freq = 1;
       }
       seq_freq_.value = freq;
@@ -494,7 +490,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   term_states.terms.reserve(ngrams_.size());
 
   // prepare ngrams stats
-  auto collectors = ord.prepare_collectors(ngrams_.size());
+  auto collectors = ord.fixed_prepare_collectors(ngrams_.size());
 
   for (const auto& segment : rdr) {
     // get term dictionary for field

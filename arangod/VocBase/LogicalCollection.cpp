@@ -35,6 +35,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -134,32 +135,40 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     : LogicalDataSource(
           LogicalCollection::category(),
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
-          vocbase, Helper::extractIdValue(info),
-          ::readGloballyUniqueId(info),
+          vocbase, Helper::extractIdValue(info), ::readGloballyUniqueId(info),
           Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId)),
           ::readStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
           TRI_vocbase_t::IsSystemName(
               ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
-      _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(info, "version",
-                                                    static_cast<uint32_t>(currentVersion())))),
+      _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
+          info, "version", static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
-                                                          TRI_COL_TYPE_UNKNOWN)),
+                                                         TRI_COL_TYPE_UNKNOWN)),
       _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
       _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
+      _isSmartChild(Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
+      _usesRevisionsAsDocumentIds(
+          Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
+      _minRevision(isSmartChild()
+                       ? 0
+                       : Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision,
+                                                                0)),
       _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
+      _syncByRevision(determineSyncByRevision()),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
+
   TRI_ASSERT(info.isObject());
 
   if (!TRI_vocbase_t::IsAllowedName(info)) {
@@ -405,6 +414,10 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
   return documents;
 }
 
+bool LogicalCollection::hasClusterWideUniqueRevs() const {
+  return usesRevisionsAsDocumentIds() && isSmartChild();
+}
+
 uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
 
 TRI_col_type_e LogicalCollection::type() const { return _type; }
@@ -453,8 +466,31 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   return _physical->revision(trx);
 }
 
+bool LogicalCollection::usesRevisionsAsDocumentIds() const {
+  return _usesRevisionsAsDocumentIds;
+}
+
+TRI_voc_rid_t LogicalCollection::minRevision() const {
+  return _minRevision;
+}
+
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
+}
+
+bool LogicalCollection::syncByRevision() const { return _syncByRevision; }
+
+bool LogicalCollection::determineSyncByRevision() const {
+  if (!system() && version() >= LogicalCollection::Version::v37) {
+    auto& server = vocbase().server();
+    if (server.hasFeature<EngineSelectorFeature>() &&
+        server.hasFeature<ReplicationFeature>()) {
+      auto& engine = server.getFeature<EngineSelectorFeature>();
+      auto& replication = server.getFeature<ReplicationFeature>();
+      return engine.isRocksDB() && replication.syncByRevision();
+    }
+  }
+  return false;
 }
 
 IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid) {
@@ -702,6 +738,11 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
+  result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
+  result.add(StaticStrings::UsesRevisionsAsDocumentIds,
+             VPackValue(usesRevisionsAsDocumentIds()));
+  result.add(StaticStrings::MinRevision, VPackValue(minRevision()));
+  result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
 
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
@@ -984,11 +1025,16 @@ void LogicalCollection::persistPhysicalCollection() {
   getPhysical()->setPath(path);
 }
 
+basics::ReadWriteLock& LogicalCollection::statusLock() {
+  return _statusLock;
+}
+
 /// @brief Defer a callback to be executed when the collection
 ///        can be dropped. The callback is supposed to drop
 ///        the collection and it is guaranteed that no one is using
 ///        it at that moment.
 void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) {
+  _syncByRevision = false;  // safety to make sure we can do physical cleanup
   _physical->deferDropCollection(callback);
 }
 

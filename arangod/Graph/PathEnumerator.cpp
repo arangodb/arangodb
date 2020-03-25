@@ -38,27 +38,24 @@ using Traverser = arangodb::traverser::Traverser;
 using TraverserOptions = arangodb::traverser::TraverserOptions;
 
 PathEnumerator::PathEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : _traverser(traverser), 
-      _isFirst(true), 
-      _opts(opts),
-      _httpRequests(0) {}
+    : _traverser(traverser), _isFirst(true), _opts(opts), _httpRequests(0) {}
 
 PathEnumerator::~PathEnumerator() = default;
 
 void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   _enumeratedPath.edges.clear();
   _enumeratedPath.vertices.clear();
-  _isFirst = true; 
+  _isFirst = true;
   _httpRequests = 0;
-  
+
   _enumeratedPath.vertices.push_back(startVertex);
   TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
 }
 
 bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
                               arangodb::velocypack::Slice edge,
-                              arangodb::velocypack::StringRef sourceVertex, size_t depth,
-                              size_t cursorId) {
+                              arangodb::velocypack::StringRef sourceVertex,
+                              size_t depth, size_t cursorId) {
   if (_opts->hasEdgeFilter(depth, cursorId)) {
     VPackSlice e = edge;
     if (edge.isString()) {
@@ -73,7 +70,8 @@ bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
   return _opts->destinationCollectionAllowed(edge, sourceVertex);
 }
 
-graph::EdgeCursor* PathEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
+graph::EdgeCursor* PathEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex,
+                                             uint64_t currentDepth) {
   if (currentDepth >= _cursors.size()) {
     _cursors.emplace_back(_opts->buildCursor(currentDepth));
   }
@@ -83,15 +81,14 @@ graph::EdgeCursor* PathEnumerator::getCursor(arangodb::velocypack::StringRef nex
 }
 
 DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : PathEnumerator(traverser, opts), 
-      _activeCursors(0),
-      _pruneNext(false) {}
+    : PathEnumerator(traverser, opts), _activeCursors(0), _pruneNext(false) {}
 
 DepthFirstEnumerator::~DepthFirstEnumerator() = default;
 
 void DepthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   PathEnumerator::setStartVertex(startVertex);
 
+  _activeCursors = 0;
   _pruneNext = false;
 }
 
@@ -114,7 +111,9 @@ bool DepthFirstEnumerator::next() {
     if (_enumeratedPath.edges.size() < _opts->maxDepth && !_pruneNext) {
       // We are not done with this path, so
       // we reserve the cursor for next depth
-      graph::EdgeCursor* cursor = getCursor(arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()), _enumeratedPath.edges.size());
+      graph::EdgeCursor* cursor =
+          getCursor(arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()),
+                    _enumeratedPath.edges.size());
       incHttpRequests(cursor->httpRequests());
       ++_activeCursors;
     } else {
@@ -131,7 +130,7 @@ bool DepthFirstEnumerator::next() {
     auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice const& edge, size_t cursorId) {
       if (!keepEdge(eid, edge,
                     arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()),
-          _enumeratedPath.edges.size(), cursorId)) {
+                    _enumeratedPath.edges.size(), cursorId)) {
         return;
       }
 
@@ -257,13 +256,13 @@ bool DepthFirstEnumerator::shouldPrune() {
   if (!_opts->usesPrune()) {
     return false;
   }
-  
+
   transaction::BuilderLeaser pathBuilder(_opts->trx());
   // evaluator->evaluate() might access these, so they have to live long
   // enough
   aql::AqlValue vertex, edge;
   aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
-  
+
   aql::PruneExpressionEvaluator* evaluator = _opts->getPruneEvaluator();
   TRI_ASSERT(evaluator != nullptr);
 
@@ -281,4 +280,3 @@ bool DepthFirstEnumerator::shouldPrune() {
   }
   return evaluator->evaluate();
 }
-

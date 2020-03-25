@@ -364,8 +364,9 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
   _produceVertices = VPackHelper::getBooleanValue(info, "produceVertices", true);
 }
 
-arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& other)
-    : BaseOptions(static_cast<BaseOptions const&>(other)),
+arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& other,
+                                                        bool const allowAlreadyBuiltCopy)
+    : BaseOptions(static_cast<BaseOptions const&>(other), allowAlreadyBuiltCopy),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
       minDepth(other.minDepth),
@@ -376,11 +377,13 @@ arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& 
       uniqueEdges(other.uniqueEdges),
       vertexCollections(other.vertexCollections),
       edgeCollections(other.edgeCollections) {
-  TRI_ASSERT(other._baseLookupInfos.empty());
-  TRI_ASSERT(other._depthLookupInfo.empty());
-  TRI_ASSERT(other._vertexExpressions.empty());
-  TRI_ASSERT(other._tmpVar == nullptr);
-  TRI_ASSERT(other._baseVertexExpression == nullptr);
+  if (!allowAlreadyBuiltCopy) {
+    TRI_ASSERT(other._baseLookupInfos.empty());
+    TRI_ASSERT(other._depthLookupInfo.empty());
+    TRI_ASSERT(other._vertexExpressions.empty());
+    TRI_ASSERT(other._tmpVar == nullptr);
+    TRI_ASSERT(other._baseVertexExpression == nullptr);
+  }
 
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);

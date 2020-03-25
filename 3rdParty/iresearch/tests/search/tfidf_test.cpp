@@ -245,8 +245,8 @@ TEST_P(tfidf_test, test_phrase) {
   {
     irs::by_phrase filter;
     filter.field("phrase_anl")
-          .push_back("jumps")
-          .push_back("high");
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"))})
+        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("high"))});
 
     std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
 
@@ -837,7 +837,7 @@ TEST_P(tfidf_test, test_query) {
   {
     irs::by_phrase filter;
 
-    filter.field("field").push_back("7");
+    filter.field("field").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("7"))});
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<std::pair<float_t, uint64_t>> expected = {

@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_TRAVERSAL_EXECUTOR_H
 #define ARANGOD_AQL_TRAVERSAL_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -131,27 +133,21 @@ class TraversalExecutor {
    */
   std::pair<ExecutionState, Result> shutdown(int errorCode);
 
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  private:
-  /**
-   * @brief compute the return state
-   * @return DONE if traverser and remote are both done, HASMORE otherwise
-   */
-  ExecutionState computeState() const;
+  auto doOutput(OutputAqlItemRow& output) -> void;
+  [[nodiscard]] auto doSkip(AqlCall& call) -> size_t;
 
-  bool resetTraverser();
+  [[nodiscard]] bool initTraverser(AqlItemBlockInputRange& input);
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
-  InputAqlItemRow _input;
-  ExecutionState _rowState;
+  InputAqlItemRow _inputRow;
+
   traverser::Traverser& _traverser;
 };
 
