@@ -1685,6 +1685,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
       ++it;
     }
     for (size_t i = 0; i < limit && it.valid(); ++i) {
+      // We need to reset the skippedRows counter.
+      call.skippedRows = 0;
       AqlCallStack stack{call};
       auto [state, skipped, block] = testee->execute(stack);
       if (doesWaiting()) {
