@@ -837,6 +837,7 @@ Result IResearchLink::init(
   auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
   bool const sorted = !meta._sort.empty();
+  auto const& storedValuesColumns = meta._storedValues.columns();
 
   if (ServerState::instance()->isCoordinator()) { // coordinator link
     if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
@@ -894,7 +895,7 @@ Result IResearchLink::init(
     if (!clusterWideLink) {
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
-      auto const res = initDataStore(initCallback, sorted);
+      auto const res = initDataStore(initCallback, sorted, storedValuesColumns);
 
       if (!res.ok()) {
         return res;
@@ -964,7 +965,7 @@ Result IResearchLink::init(
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, sorted);
+    auto const res = initDataStore(initCallback, sorted, storedValuesColumns);
 
     if (!res.ok()) {
       return res;
@@ -1013,7 +1014,9 @@ Result IResearchLink::init(
   return {};
 }
 
-Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorted) {
+Result IResearchLink::initDataStore(
+    InitCallback const& initCallback, bool sorted,
+    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
@@ -1139,7 +1142,6 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
 
-  auto const& storedColumns = _meta._storedValues.columns();
   bool nonDefaultCompression = false;
   for (auto c : storedColumns) {
     if (c.compression != IResearchViewStoredValues::ColumnCompression::LZ4) {
@@ -1147,7 +1149,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
       break;
     }
   }
-  std::map<irs::string_ref,
+  std::map<std::string,
     IResearchViewStoredValues::ColumnCompression> compressionMap;
   if (nonDefaultCompression) {
     for (auto c : storedColumns) {

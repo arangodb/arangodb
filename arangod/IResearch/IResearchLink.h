@@ -314,7 +314,9 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  Result initDataStore(InitCallback const& initCallback, bool sorted);
+  Result initDataStore(
+    InitCallback const& initCallback, bool sorted,
+    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set up asynchronous maintenance tasks
