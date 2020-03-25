@@ -45,8 +45,8 @@ DistributeExecutorInfos::DistributeExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
+    std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep,
     std::vector<std::string> clientIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys, ScatterNode::ScatterType type)
@@ -131,8 +131,8 @@ DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
     : _blockManager(engine.itemBlockManager()), _infos(scatterInfos) {
   // We only get shared ptrs to const data. so we need to copy here...
   IdExecutorInfos infos{scatterInfos.numberOfInputRegisters(),
-                        *scatterInfos.registersToKeep(),
-                        *scatterInfos.registersToClear(),
+                        scatterInfos.registersToKeep(),
+                        scatterInfos.registersToClear(),
                         false,
                         0,
                         "",

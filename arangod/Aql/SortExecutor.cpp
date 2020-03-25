@@ -74,8 +74,8 @@ class OurLessThan {
 SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
                                      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                     std::unordered_set<RegisterId> registersToClear,
-                                     std::unordered_set<RegisterId> registersToKeep,
+                                     std::vector<RegisterId> registersToClear,
+                                     std::vector<RegisterId> registersToKeep,
                                      velocypack::Options const* options, bool stable)
     : ExecutorInfos(nullptr,
                     nrInputRegisters, nrOutputRegisters,

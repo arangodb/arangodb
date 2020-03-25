@@ -50,8 +50,8 @@ using namespace arangodb::aql;
 OutputAqlItemRow::OutputAqlItemRow(
     SharedAqlItemBlockPtr block,
     std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
-    std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+    std::vector<RegisterId> registersToKeep,
+    std::vector<RegisterId> registersToClear,
     AqlCall clientCall, CopyRowBehavior copyRowBehavior)
     : _block(std::move(block)),
       _baseIndex(0),
@@ -73,10 +73,10 @@ OutputAqlItemRow::OutputAqlItemRow(
     for (auto const& reg : *_outputRegisters) {
       TRI_ASSERT(reg < _block->getNrRegs());
     }
-    for (auto const& reg : *_registersToKeep) {
+    for (auto const& reg : _registersToKeep) {
       TRI_ASSERT(reg < _block->getNrRegs());
     }
-    for (auto const& reg : *_registersToClear) {
+    for (auto const& reg : _registersToClear) {
       TRI_ASSERT(reg < _block->getNrRegs());
     }
   }

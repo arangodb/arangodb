@@ -414,7 +414,7 @@ class ExecutionNode {
   int getDepth() const;
 
   /// @brief get registers to clear
-  std::unordered_set<RegisterId> const& getRegsToClear() const;
+  std::vector<RegisterId> const& getRegsToClear() const;
 
   /// @brief check if a variable will be used later
   bool isVarUsedLater(Variable const* variable) const;
@@ -447,9 +447,9 @@ class ExecutionNode {
                                  std::unordered_set<ExecutionNode const*>& seen) const;
 
   /// @brief set regs to be deleted
-  void setRegsToClear(std::unordered_set<RegisterId>&& toClear);
+  void setRegsToClear(std::vector<RegisterId> toClear);
 
-  std::unordered_set<RegisterId> calcRegsToKeep() const;
+  std::vector<RegisterId> calcRegsToKeep() const;
 
   RegisterId variableToRegisterId(Variable const*) const;
 
@@ -504,7 +504,7 @@ class ExecutionNode {
   /// @brief the following contains the registers which should be cleared
   /// just before this node hands on results. This is computed during
   /// the static analysis for each node using the variable usage in the plan.
-  std::unordered_set<RegisterId> _regsToClear;
+  std::vector<RegisterId> _regsToClear;
 
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes

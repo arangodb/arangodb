@@ -47,8 +47,8 @@ class OutputAqlItemRow;
 class ParallelUnsortedGatherExecutorInfos : public ExecutorInfos {
  public:
   ParallelUnsortedGatherExecutorInfos(RegisterId nrInOutRegisters,
-                                      std::unordered_set<RegisterId> registersToKeep,
-                                      std::unordered_set<RegisterId> registersToClear);
+                                      std::vector<RegisterId> registersToKeep,
+                                      std::vector<RegisterId> registersToClear);
   ParallelUnsortedGatherExecutorInfos() = delete;
   ParallelUnsortedGatherExecutorInfos(ParallelUnsortedGatherExecutorInfos&&) = default;
   ParallelUnsortedGatherExecutorInfos(ParallelUnsortedGatherExecutorInfos const&) = delete;

@@ -50,7 +50,7 @@ class AqlItemRowsTest : public ::testing::Test {
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 
   void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
-                          std::unordered_set<RegisterId> const& regsToKeep,
+                          std::vector<RegisterId> const& regsToKeep,
                           bool assertNotInline = false) {
     ASSERT_TRUE(result.isArray());
     ASSERT_EQ(in->size(), result.length());
@@ -60,7 +60,7 @@ class AqlItemRowsTest : public ::testing::Test {
       ASSERT_EQ(in->getNrRegs(), row.length());
       for (RegisterId regId = 0; regId < in->getNrRegs(); ++regId) {
         AqlValue v = in->getValueReference(rowIdx, regId);
-        if (regsToKeep.find(regId) == regsToKeep.end()) {
+        if (std::find(regsToKeep.begin(), regsToKeep.end(), regId) == regsToKeep.end()) {
           // If this should not be kept it has to be set to NONE!
           ASSERT_TRUE(v.slice().isNone());
         } else {
@@ -113,7 +113,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_narrow) {
   auto expected =
       VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
   outputBlock = testee.stealBlock();
-  AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
+  AssertResultMatrix(outputBlock.get(), expected->slice(), registersToKeep);
 }
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
@@ -159,7 +159,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
       "\"iiiiiiiiiiiiiiiiiiii\"]"
       "]");
   outputBlock = testee.stealBlock();
-  AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep, true);
+  AssertResultMatrix(outputBlock.get(), expected->slice(), registersToKeep, true);
 }
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_but_multiplying_rows) {
@@ -204,7 +204,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_but_multiplying_rows)
       "[\"a\",\"b\",\"c\"]"
       "]");
   outputBlock = testee.stealBlock();
-  AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
+  AssertResultMatrix(outputBlock.get(), expected->slice(), registersToKeep);
 }
 
 TEST_F(AqlItemRowsTest, dropping_a_register_from_source_while_writing_to_target) {
@@ -241,38 +241,37 @@ TEST_F(AqlItemRowsTest, dropping_a_register_from_source_while_writing_to_target)
       "[\"a\",\"b\",\"c\"]"
       "]");
   outputBlock = testee.stealBlock();
-  AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
+  AssertResultMatrix(outputBlock.get(), expected->slice(), registersToKeep);
 }
 
 TEST_F(AqlItemRowsTest, writing_rows_to_target) {
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  std::shared_ptr<std::unordered_set<RegisterId>> registersToClear =
-      make_shared_unordered_set();
-  std::shared_ptr<std::unordered_set<RegisterId>> registersToKeep =
-      make_shared_unordered_set();
+  std::vector<RegisterId> registersToClear;
+  std::vector<RegisterId> registersToKeep;
+  
   RegisterId nrInputRegisters = 0;
   RegisterId nrOutputRegisters = 0;
 
   *inputRegisters = {};
   *outputRegisters = {3, 4};
-  *registersToClear = {};
-  *registersToKeep = {0, 1, 2};
+  registersToClear.clear();
+  registersToKeep = {0, 1, 2};
   nrInputRegisters = 3;
   nrOutputRegisters = 5;
 
   *inputRegisters = {};
   *outputRegisters = {3, 4};
-  *registersToClear = {1, 2};
-  *registersToKeep = {0};
+  registersToClear = {1, 2};
+  registersToKeep = {0};
   nrInputRegisters = 3;
   nrOutputRegisters = 5;
 
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 5)};
   ExecutorInfos executorInfos{outputRegisters,
                               nrInputRegisters,  nrOutputRegisters,
-                              *registersToClear, *registersToKeep};
-  std::unordered_set<RegisterId>& regsToKeep = *registersToKeep;
+                              registersToClear, registersToKeep};
+  std::vector<RegisterId>& regsToKeep = registersToKeep;
 
   OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                           registersToKeep, executorInfos.registersToClear());
@@ -308,8 +307,8 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
       "[\"a\",\"b\",\"c\",8,9]"
       "]");
   // add these two here as they are needed for output validation but not for copy in ItemRows
-  regsToKeep.emplace(3);
-  regsToKeep.emplace(4);
+  regsToKeep.emplace_back(3);
+  regsToKeep.emplace_back(4);
   outputBlock = testee.stealBlock();
   AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
 }

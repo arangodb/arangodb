@@ -176,8 +176,8 @@ SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow, 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
+    RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep,
     std::vector<SortRegister>&& sortRegister, arangodb::transaction::Methods* trx,
     GatherNode::SortMode sortMode, size_t limit, GatherNode::Parallelism p)
     : ExecutorInfos(std::move(outputRegisters),

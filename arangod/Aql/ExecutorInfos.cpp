@@ -21,8 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutorInfos.h"
-
 #include "Basics/debugging.h"
+
+#include <algorithm>
 
 using namespace arangodb::aql;
 
@@ -31,16 +32,27 @@ ExecutorInfos::ExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep)
+    std::vector<RegisterId> registersToKeep)
     : _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
-      _registersToKeep(std::make_shared<std::unordered_set<RegisterId>>(
-          std::move(registersToKeep))),
-      _registersToClear(std::make_shared<std::unordered_set<RegisterId>>(
-          std::move(registersToClear))) {
+      _registersToKeep(std::move(registersToKeep)),
+      _registersToClear(std::move(registersToClear)) {
+
+  // we assume that the input of these vectors is sorted and unique.
+  // we are using it in the same way as we would be using an unordered_set, but
+  // without paying the memory allocation price for it and also being able
+  // to iterate over the registers in order (so we can benefit from cache line
+  // effects when peeking at the registers' values in the AqlItemBlock later).
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(std::is_sorted(_registersToKeep.begin(), _registersToKeep.end()));
+  TRI_ASSERT(std::is_sorted(_registersToClear.begin(), _registersToClear.end()));
+  TRI_ASSERT(std::unique(_registersToKeep.begin(), _registersToKeep.end()) == _registersToKeep.end());
+  TRI_ASSERT(std::unique(_registersToClear.begin(), _registersToClear.end()) == _registersToClear.end());
+#endif
+
   // We allow these to be passed as nullptr for ease of use, but do NOT allow
   // the members to be null for simplicity and safety.
   if (_outRegs == nullptr) {
@@ -49,21 +61,21 @@ ExecutorInfos::ExecutorInfos(
   // The second assert part is from ReturnExecutor special case, we shrink all
   // results into a single Register column.
   TRI_ASSERT((nrInputRegisters <= nrOutputRegisters) ||
-             (nrOutputRegisters == 1 && _registersToKeep->empty() &&
-              _registersToClear->empty()));
+             (nrOutputRegisters == 1 && _registersToKeep.empty() &&
+              _registersToClear.empty()));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (RegisterId const outReg : *_outRegs) {
     TRI_ASSERT(outReg < nrOutputRegisters);
   }
-  for (RegisterId const regToClear : *_registersToClear) {
+  for (auto const& regToClear : _registersToClear) {
     // sic: It's possible that a current output register is immediately cleared!
     TRI_ASSERT(regToClear < nrOutputRegisters);
-    TRI_ASSERT(_registersToKeep->find(regToClear) == _registersToKeep->end());
+    TRI_ASSERT(std::find(_registersToKeep.begin(), _registersToKeep.end(), regToClear) == _registersToKeep.end());
   }
-  for (RegisterId const regToKeep : *_registersToKeep) {
+  for (auto const& regToKeep : _registersToKeep) {
     TRI_ASSERT(regToKeep < nrInputRegisters);
-    TRI_ASSERT(_registersToClear->find(regToKeep) == _registersToClear->end());
+    TRI_ASSERT(std::find(_registersToClear.begin(), _registersToClear.end(), regToKeep) == _registersToClear.end());
   }
 #endif
 }
@@ -78,12 +90,21 @@ RegisterId ExecutorInfos::numberOfOutputRegisters() const {
   return _numOutRegs;
 }
 
-std::shared_ptr<std::unordered_set<RegisterId> const> const& ExecutorInfos::registersToKeep() const {
+std::vector<RegisterId> const& ExecutorInfos::registersToKeep() const {
   return _registersToKeep;
 }
 
-std::shared_ptr<std::unordered_set<RegisterId> const> const& ExecutorInfos::registersToClear() const {
+std::vector<RegisterId> const& ExecutorInfos::registersToClear() const {
   return _registersToClear;
+}
+
+std::vector<RegisterId> ExecutorInfos::makeRegisterVector(RegisterId size) {
+  std::vector<RegisterId> result;
+  result.reserve(size);
+  for (RegisterId i = 0; i < size; i++) {
+    result.push_back(i);
+  }
+  return result;
 }
 
 std::shared_ptr<std::unordered_set<RegisterId>> arangodb::aql::make_shared_unordered_set(

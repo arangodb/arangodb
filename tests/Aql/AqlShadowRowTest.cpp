@@ -69,13 +69,11 @@ class AqlShadowItemRowTest : public ::testing::Test {
     // We do not add or remove anything, just move
     auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
         std::initializer_list<RegisterId>{});
-    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+    std::vector<RegisterId> registersToKeep;
     for (RegisterId r = 0; r < numRegisters; ++r) {
-      registersToKeep->emplace(r);
+      registersToKeep.emplace_back(r);
     }
-    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+    std::vector<RegisterId> registersToClear;
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 
@@ -114,13 +112,11 @@ class AqlShadowItemRowTest : public ::testing::Test {
     // We do not add or remove anything, just move
     auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
         std::initializer_list<RegisterId>{numRegisters});
-    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+    std::vector<RegisterId> registersToKeep;
     for (RegisterId r = 0; r < numRegisters; ++r) {
-      registersToKeep->emplace(r);
+      registersToKeep.emplace_back(r);
     }
-    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+    std::vector<RegisterId> registersToClear;
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 

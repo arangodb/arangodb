@@ -73,6 +73,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -368,8 +370,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   _regsToClear.reserve(regsToClearList.length());
   for (VPackSlice it : VPackArrayIterator(regsToClearList)) {
-    _regsToClear.insert(it.getNumericValue<RegisterId>());
+    _regsToClear.emplace_back(it.getNumericValue<RegisterId>());
   }
+  std::sort(_regsToClear.begin(), _regsToClear.end());
 
   auto allVars = plan->getAst()->variables();
 
@@ -938,23 +941,27 @@ void ExecutionNode::removeDependencies() {
   _dependencies.clear();
 }
 
-std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
+std::vector<RegisterId> ExecutionNode::calcRegsToKeep() const {
   ExecutionNode const* const previousNode = getFirstDependency();
   // Only the Singleton has no previousNode, and it does not call this method.
   TRI_ASSERT(previousNode != nullptr);
 
-  bool inserted = false;
+  auto const& varsUsedLater = getVarsUsedLater();
   RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
-  std::unordered_set<RegisterId> regsToKeep{};
-  regsToKeep.reserve(getVarsUsedLater().size());
+  std::vector<RegisterId> regsToKeep;
+  regsToKeep.reserve(varsUsedLater.size());
 
-  for (auto const var : getVarsUsedLater()) {
+  for (auto const& var : varsUsedLater) {
     auto reg = variableToRegisterId(var);
     if (reg < nrInRegs) {
-      std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
-      TRI_ASSERT(inserted);
+      regsToKeep.emplace_back(reg);
     }
   }
+
+  std::sort(regsToKeep.begin(), regsToKeep.end());
+  // we assume that the result is both sorted and unique
+  TRI_ASSERT(std::is_sorted(regsToKeep.begin(), regsToKeep.end()));
+  TRI_ASSERT(std::unique(regsToKeep.begin(), regsToKeep.end()) == regsToKeep.end());
 
   return regsToKeep;
 }
@@ -974,14 +981,11 @@ ExecutorInfos ExecutionNode::createRegisterInfos(
   RegisterId const nrOutRegs = getNrOutputRegisters();
   RegisterId const nrInRegs = getNrInputRegisters();
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
-
   return ExecutorInfos{std::move(writableOutputRegisters),
                        nrInRegs,
                        nrOutRegs,
-                       std::move(regsToClear),
-                       std::move(regsToKeep)};
+                       getRegsToClear(),
+                       calcRegsToKeep()};
 }
 
 RegisterId ExecutionNode::getNrInputRegisters() const {
@@ -1170,7 +1174,7 @@ std::shared_ptr<RegisterPlan> ExecutionNode::getRegisterPlan() const {
 
 int ExecutionNode::getDepth() const { return _depth; }
 
-std::unordered_set<RegisterId> const& ExecutionNode::getRegsToClear() const {
+std::vector<RegisterId> const& ExecutionNode::getRegsToClear() const {
   return _regsToClear;
 }
 
@@ -1182,8 +1186,13 @@ bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }
 
 void ExecutionNode::setId(size_t id) { _id = id; }
 
-void ExecutionNode::setRegsToClear(std::unordered_set<RegisterId>&& toClear) {
+void ExecutionNode::setRegsToClear(std::vector<RegisterId> toClear) {
   _regsToClear = std::move(toClear);
+  std::sort(_regsToClear.begin(), _regsToClear.end());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(std::is_sorted(_regsToClear.begin(), _regsToClear.end()));
+  TRI_ASSERT(std::unique(_regsToClear.begin(), _regsToClear.end()) == _regsToClear.end());
+#endif
 }
 
 RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) const {
@@ -1201,15 +1210,18 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
   // That is why we do not use `calcRegsToKeep()`
   RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
 
-  std::unordered_set<RegisterId> toKeep;
+  std::vector<RegisterId> toKeep;
   if (isInSubquery()) {
-    for (auto const& var : this->getVarsUsedLater()) {
+    auto const& varsUsedLater = getVarsUsedLater();
+    toKeep.reserve(varsUsedLater.size());
+
+    for (auto const& var : varsUsedLater) {
       auto val = variableToRegisterId(var);
       if (val < nrRegs) {
-        auto rv = toKeep.insert(val);
-        TRI_ASSERT(rv.second);
+        toKeep.emplace_back(val);
       }
     }
+    std::sort(toKeep.begin(), toKeep.end());
   }
 
   IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear(), false);
@@ -2022,9 +2034,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = std::make_unique<FilterNode>(plan, _id, inVariable);
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::make_unique<FilterNode>(plan, _id, inVariable), withDependencies, withProperties);
 }
 
 /// @brief estimateCost

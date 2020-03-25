@@ -150,12 +150,11 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
 
   auto prepareOutputRow(SharedAqlItemBlockPtr input) -> OutputAqlItemRow {
     auto toWrite = make_shared_unordered_set({});
-    auto toKeep = make_shared_unordered_set({0});
-    auto toClear = make_shared_unordered_set();
+    std::vector<RegisterId> toKeep{0};
     auto const& [unused, upstreamState, clientCall, unused2] = GetParam();
     AqlCall callCopy = clientCall;
     // For passthrough we reuse the block
-    return OutputAqlItemRow(input, toWrite, toKeep, toClear, std::move(callCopy),
+    return OutputAqlItemRow(input, toWrite, toKeep, {}, std::move(callCopy),
                             OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
   }
 };

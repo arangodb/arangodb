@@ -41,8 +41,8 @@ using namespace arangodb::aql;
 
 CalculationExecutorInfos::CalculationExecutorInfos(
     RegisterId outputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, Query& query, Expression& expression,
+    RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep, Query& query, Expression& expression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs)
     : ExecutorInfos(make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,

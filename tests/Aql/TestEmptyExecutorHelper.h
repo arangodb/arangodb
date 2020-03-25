@@ -45,8 +45,8 @@ class TestEmptyExecutorHelperInfos : public ExecutorInfos {
  public:
   TestEmptyExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                                RegisterId nrOutputRegisters,
-                               std::unordered_set<RegisterId> registersToClear,
-                               std::unordered_set<RegisterId> registersToKeep);
+                               std::vector<RegisterId> registersToClear,
+                               std::vector<RegisterId> registersToKeep);
 
   TestEmptyExecutorHelperInfos() = delete;
   TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos&&) = default;

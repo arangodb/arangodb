@@ -35,8 +35,8 @@ ScatterExecutorInfos::ScatterExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, std::vector<std::string> clientIds)
+    std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep, std::vector<std::string> clientIds)
     : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
       ClientsExecutorInfos(std::move(clientIds)) {}
@@ -47,8 +47,8 @@ ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
     : _queue{}, _executor(nullptr), _executorHasMore{false} {
   // We only get shared ptrs to const data. so we need to copy here...
   IdExecutorInfos infos{scatterInfos.numberOfInputRegisters(),
-                        *scatterInfos.registersToKeep(),
-                        *scatterInfos.registersToClear(),
+                        scatterInfos.registersToKeep(),
+                        scatterInfos.registersToClear(),
                         false,
                         0,
                         "",

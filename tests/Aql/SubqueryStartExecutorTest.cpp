@@ -47,9 +47,9 @@ namespace {
 ExecutorInfos MakeBaseInfos(RegisterId numRegs) {
   auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
       std::initializer_list<RegisterId>{});
-  std::unordered_set<RegisterId> toKeep;
+  std::vector<RegisterId> toKeep;
   for (RegisterId r = 0; r < numRegs; ++r) {
-    toKeep.emplace(r);
+    toKeep.emplace_back(r);
   }
   return ExecutorInfos(emptyRegisterList, numRegs, numRegs, {}, toKeep);
 }

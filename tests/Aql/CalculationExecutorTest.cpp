@@ -101,8 +101,8 @@ class CalculationExecutorTest
         outRegID(1),
         inRegID(0),
         infos(outRegID /*out reg*/, RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
-              std::unordered_set<RegisterId>{} /*to clear*/,
-              std::unordered_set<RegisterId>{} /*to keep*/,
+              std::vector<RegisterId>{} /*to clear*/,
+              std::vector<RegisterId>{} /*to keep*/,
               *fakedQuery.get() /*query*/, expr /*expression*/,
               std::vector<Variable const*>{&var} /*expression input variables*/,
               std::vector<RegisterId>{inRegID} /*expression input registers*/) {}

@@ -61,9 +61,6 @@ class DistinctCollectExecutorTest
   ResourceMonitor monitor;
   arangodb::transaction::Methods* trx;
 
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
-
   std::unordered_set<RegisterId> readableInputRegisters = {0};
   std::unordered_set<RegisterId> writeableOutputRegisters = {1};
 
@@ -75,7 +72,7 @@ class DistinctCollectExecutorTest
 
   DistinctCollectExecutorTest()
       : trx(fakedQuery->trx()),
-        infos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
+        infos(1 /*nrIn*/, 2 /*nrOut*/, {}, {},
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::make_pair<RegisterId, RegisterId>(1, 0), trx) {}
 };

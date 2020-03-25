@@ -61,8 +61,6 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
   arangodb::transaction::Methods* trx;
 
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   std::vector<std::string> aggregateTypes;
@@ -96,7 +94,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         count(false),
         readableInputRegisters{0},
         writeableOutputRegisters{1},
-        infos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
+        infos(1 /*nrIn*/, 2 /*nrOut*/, {}, {},
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
@@ -150,8 +148,6 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
   arangodb::transaction::Methods* trx;
 
-  std::unordered_set<RegisterId> regToClear;
-  std::unordered_set<RegisterId> regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   std::unordered_set<RegisterId> readableInputRegisters;
@@ -188,7 +184,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        infos(1, nrOutputRegister, regToClear, regToKeep,
+        infos(1, nrOutputRegister, {}, {},
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
@@ -397,8 +393,6 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
   arangodb::transaction::Methods* trx = fakedQuery->trx();
 
-  std::unordered_set<RegisterId> regToClear = {};
-  std::unordered_set<RegisterId> regToKeep = {};
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters = {{1, 0}};
 
   std::unordered_set<RegisterId> readableInputRegisters = {0};
@@ -415,8 +409,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
 
-  SortedCollectExecutorInfos infos(1, nrOutputRegister, std::move(regToClear),
-                                   std::move(regToKeep), std::move(readableInputRegisters),
+  SortedCollectExecutorInfos infos(1, nrOutputRegister, {}, {},
+                                   std::move(readableInputRegisters),
                                    std::move(writeableOutputRegisters),
                                    std::move(groupRegisters), collectRegister,
                                    expressionRegister, expressionVariable,
@@ -483,8 +477,6 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
   arangodb::transaction::Methods* trx = fakedQuery->trx();
 
-  std::unordered_set<RegisterId> regToClear;
-  std::unordered_set<RegisterId> regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
   groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
 
@@ -508,7 +500,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   std::vector<std::pair<std::string, RegisterId>> variables;
   writeableOutputRegisters.insert(2);
 
-  SortedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
+  SortedCollectExecutorInfos infos(1, nrOutputRegister, {}, {},
                                    std::move(readableInputRegisters),
                                    std::move(writeableOutputRegisters),
                                    std::move(groupRegisters), collectRegister,
@@ -595,8 +587,6 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
   arangodb::transaction::Methods* trx;
 
-  std::unordered_set<RegisterId> regToClear;
-  std::unordered_set<RegisterId> regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   std::unordered_set<RegisterId> readableInputRegisters;
@@ -633,7 +623,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        infos(1, nrOutputRegister, regToClear, regToKeep,
+        infos(1, nrOutputRegister, {}, {},
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
@@ -920,8 +910,6 @@ class SortedCollectExecutorTestSplit
  protected:
   arangodb::transaction::Methods* trx;
 
-  std::unordered_set<RegisterId> regToClear;
-  std::unordered_set<RegisterId> regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   std::unordered_set<RegisterId> readableInputRegisters;
@@ -953,7 +941,7 @@ class SortedCollectExecutorTestSplit
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        infos(1, nrOutputRegister, regToClear, regToKeep,
+        infos(1, nrOutputRegister, {}, {},
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),

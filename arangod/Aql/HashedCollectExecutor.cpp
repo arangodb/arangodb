@@ -44,8 +44,8 @@ static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
+    std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep,
     std::unordered_set<RegisterId>&& readableInputRegisters,
     std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,

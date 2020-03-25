@@ -54,8 +54,8 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
   // cppcheck-suppress passedByValue
   EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
                              RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep);
+                             std::vector<RegisterId> registersToClear,
+                             std::vector<RegisterId> registersToKeep);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;

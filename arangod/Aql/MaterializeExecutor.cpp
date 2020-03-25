@@ -77,9 +77,9 @@ template <typename T>
 arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, T const collectionSource,
+    std::vector<RegisterId> registersToKeep, T const collectionSource,
     RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
     : ExecutorInfos(make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
                     nrInputRegisters, nrOutputRegisters,

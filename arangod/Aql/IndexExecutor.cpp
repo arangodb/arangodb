@@ -157,9 +157,9 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId outputRegister, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+    std::vector<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,

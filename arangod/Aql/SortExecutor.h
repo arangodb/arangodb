@@ -55,8 +55,8 @@ class SortExecutorInfos : public ExecutorInfos {
  public:
   SortExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager, RegisterId nrInputRegisters,
-                    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-                    std::unordered_set<RegisterId> registersToKeep,
+                    RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
+                    std::vector<RegisterId> registersToKeep,
                     velocypack::Options const*, bool stable);
 
   SortExecutorInfos() = delete;

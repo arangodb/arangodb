@@ -60,13 +60,13 @@ class CountCollectExecutorTest
     auto inputRegisterSet = make_shared_unordered_set({0});
     auto outputRegisterSet = make_shared_unordered_set({});
 
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+    auto registersToKeep = std::vector<RegisterId>{0};
 
     return SubqueryStartExecutor::Infos(outputRegisterSet,
                                         inputRegisterSet->size(),
                                         inputRegisterSet->size() +
                                             outputRegisterSet->size(),
-                                        {}, toKeepRegisterSet);
+                                        {}, registersToKeep);
   }
 
   auto MakeSubqueryEndInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
@@ -76,13 +76,12 @@ class CountCollectExecutorTest
       inputRegisterSet->emplace(r);
     }
     auto outputRegisterSet = make_shared_unordered_set({outputRegister});
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{};
 
     return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet,
                                       inputRegisterSet->size(),
                                       inputRegisterSet->size() +
                                           outputRegisterSet->size(),
-                                      {}, toKeepRegisterSet, nullptr,
+                                      {}, {}, nullptr,
                                       inputRegister, outputRegister, false);
   }
 
@@ -92,10 +91,10 @@ class CountCollectExecutorTest
     auto inRegisterList = make_shared_unordered_set({});
     auto outRegisterList = make_shared_unordered_set({});
 
-    std::unordered_set<RegisterId> toKeep;
+    std::vector<RegisterId> toKeep;
 
     for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
+      toKeep.emplace_back(r);
     }
 
     ProduceCall prod = [](AqlItemBlockInputRange& input, OutputAqlItemRow& output)

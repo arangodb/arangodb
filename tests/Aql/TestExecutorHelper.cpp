@@ -76,8 +76,8 @@ std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRows(OutputAql
 TestExecutorHelperInfos::TestExecutorHelperInfos(RegisterId inputRegister,
                                                  RegisterId nrInputRegisters,
                                                  RegisterId nrOutputRegisters,
-                                                 std::unordered_set<RegisterId> registersToClear,
-                                                 std::unordered_set<RegisterId> registersToKeep)
+                                                 std::vector<RegisterId> registersToClear,
+                                                 std::vector<RegisterId> registersToKeep)
     : ExecutorInfos(nullptr, nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister) {}

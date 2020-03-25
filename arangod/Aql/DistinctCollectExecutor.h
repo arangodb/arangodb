@@ -53,8 +53,8 @@ class SingleRowFetcher;
 class DistinctCollectExecutorInfos : public ExecutorInfos {
  public:
   DistinctCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                               std::unordered_set<RegisterId> registersToClear,
-                               std::unordered_set<RegisterId> registersToKeep,
+                               std::vector<RegisterId> registersToClear,
+                               std::vector<RegisterId> registersToKeep,
                                std::unordered_set<RegisterId>&& readableInputRegisters,
                                std::unordered_set<RegisterId>&& writeableInputRegisters,
                                std::pair<RegisterId, RegisterId> groupRegister,

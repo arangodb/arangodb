@@ -61,8 +61,8 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
  public:
   EnumerateCollectionExecutorInfos(
       RegisterId outputRegister, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+      RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
+      std::vector<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
       Expression* filter, std::vector<std::string> const& projections,
       std::vector<size_t> const& coveringIndexAttributePositions,

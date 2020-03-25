@@ -30,6 +30,7 @@
 
 #include <memory>
 #include <unordered_set>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
@@ -72,8 +73,8 @@ class ExecutorInfos {
 
   ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                std::unordered_set<RegisterId> registersToClear,
-                std::unordered_set<RegisterId> registersToKeep);
+                std::vector<RegisterId> registersToClear,
+                std::vector<RegisterId> registersToKeep);
 
   ExecutorInfos(ExecutorInfos&&) = default;
   ExecutorInfos(ExecutorInfos const&) = delete;
@@ -105,9 +106,11 @@ class ExecutorInfos {
    */
   RegisterId numberOfOutputRegisters() const;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToKeep() const;
+  std::vector<RegisterId> const& registersToKeep() const;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToClear() const;
+  std::vector<RegisterId> const& registersToClear() const;
+
+  static std::vector<RegisterId> makeRegisterVector(RegisterId size);
 
  protected:
   std::shared_ptr<std::unordered_set<RegisterId> const> _outRegs;
@@ -116,9 +119,9 @@ class ExecutorInfos {
 
   RegisterId _numOutRegs;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
+  std::vector<RegisterId> _registersToKeep;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> const _registersToClear;
+  std::vector<RegisterId> _registersToClear;
 };
 
 }  // namespace aql

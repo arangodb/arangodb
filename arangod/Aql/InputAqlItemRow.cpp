@@ -34,6 +34,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
 #include <utility>
 
 using namespace arangodb;
@@ -46,7 +47,7 @@ bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const 
 #endif
 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
-                                                    std::unordered_set<RegisterId> const& registers,
+                                                    std::vector<RegisterId> const& registers,
                                                     size_t newNrRegs) const {
   SharedAqlItemBlockPtr block =
       manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
@@ -55,7 +56,8 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
     TRI_ASSERT(getNrRegisters() <= newNrRegs);
     // Should we transform this to output row and reuse copy row?
     for (RegisterId col = 0; col < getNrRegisters(); col++) {
-      if (registers.find(col) == registers.end()) {
+      // TODO: improve on this
+      if (std::find(registers.begin(), registers.end(), col) == registers.end()) {
         continue;
       }
 

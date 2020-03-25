@@ -76,13 +76,13 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = make_shared_unordered_set({0});
     auto outputRegisterSet = make_shared_unordered_set({});
 
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+    std::vector<RegisterId> toKeepRegisters{0};
 
     return SubqueryStartExecutor::Infos(outputRegisterSet,
                                         inputRegisterSet->size(),
                                         inputRegisterSet->size() +
                                             outputRegisterSet->size(),
-                                        {}, toKeepRegisterSet);
+                                        {}, toKeepRegisters);
   }
 
   auto makeSubqueryEndInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
@@ -92,13 +92,13 @@ class SplicedSubqueryIntegrationTest
       inputRegisterSet->emplace(r);
     }
     auto outputRegisterSet = make_shared_unordered_set({outputRegister});
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+    std::vector<RegisterId> toKeepRegisters{0};
 
     return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet,
                                       inputRegisterSet->size(),
                                       inputRegisterSet->size() +
                                           outputRegisterSet->size(),
-                                      {}, toKeepRegisterSet, nullptr,
+                                      {}, toKeepRegisters, nullptr,
                                       inputRegister, outputRegister, false);
   }
 
@@ -112,10 +112,10 @@ class SplicedSubqueryIntegrationTest
     auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
         std::initializer_list<RegisterId>{1});
 
-    std::unordered_set<RegisterId> toKeep;
+    std::vector<RegisterId> toKeep;
 
     for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
+      toKeep.emplace_back(r);
     }
 
     return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
@@ -132,10 +132,10 @@ class SplicedSubqueryIntegrationTest
     auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
         std::initializer_list<RegisterId>{1});
 
-    std::unordered_set<RegisterId> toKeep;
+    std::vector<RegisterId> toKeep;
 
     for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
+      toKeep.emplace_back(r);
     }
 
     return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
@@ -152,10 +152,10 @@ class SplicedSubqueryIntegrationTest
     auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
         std::initializer_list<RegisterId>{1});
 
-    std::unordered_set<RegisterId> toKeep;
+    std::vector<RegisterId> toKeep;
 
     for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
+      toKeep.emplace_back(r);
     }
 
     return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,

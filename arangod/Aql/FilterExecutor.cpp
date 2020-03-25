@@ -42,9 +42,9 @@ using namespace arangodb::aql;
 FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                                          RegisterId nrOutputRegisters,
                                          // cppcheck-suppress passedByValue
-                                         std::unordered_set<RegisterId> registersToClear,
+                                         std::vector<RegisterId> registersToClear,
                                          // cppcheck-suppress passedByValue
-                                         std::unordered_set<RegisterId> registersToKeep)
+                                         std::vector<RegisterId> registersToKeep)
     : ExecutorInfos(nullptr, nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister) {}

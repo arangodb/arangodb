@@ -144,32 +144,30 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = nrOutRegs;
 
-  std::unordered_set<RegisterId> regsToKeep{};
+  auto const& varsUsedLater = getVarsUsedLater();
+  std::vector<RegisterId> regsToKeep;
+  regsToKeep.reserve(varsUsedLater.size());
   {  // This block sets regsToKeep.
     // It's essentially a copy of ExecutionNode::calcRegsToKeep(), but it
     // doesn't use the previous node, which we do not have here.
-    regsToKeep.reserve(getVarsUsedLater().size());
     std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
-    for (auto const var : getVarsUsedLater()) {
+    for (auto const& var : varsUsedLater) {
       auto const it = varInfo.find(var->id);
       TRI_ASSERT(it != varInfo.end());
       RegisterId const reg = it->second.registerId;
       if (reg < nrInRegs) {
-        bool inserted;
-        std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
-        TRI_ASSERT(inserted);
+        regsToKeep.push_back(reg);
       }
     }
   }
 
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+  std::sort(regsToKeep.begin(), regsToKeep.end());
 
   // Everything that is cleared here could and should have been cleared before,
   // i.e. before sending it over the network.
-  TRI_ASSERT(regsToClear.empty());
+  TRI_ASSERT(getRegsToClear().empty());
 
-  ExecutorInfos infos({}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                      std::move(regsToKeep));
+  ExecutorInfos infos({}, nrInRegs, nrOutRegs, getRegsToClear(), std::move(regsToKeep));
 
   return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
       &engine, this, std::move(infos), server(), getDistributeId(), queryId(), api());
@@ -236,11 +234,8 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
-
-  ScatterExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                             std::move(regsToKeep), _clients);
+  ScatterExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, getRegsToClear(),
+                             calcRegsToKeep(), _clients);
   return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this,
                                                                std::move(infos));
 }
@@ -334,9 +329,6 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
-
   RegisterId regId;
   RegisterId alternativeRegId = RegisterPlan::MaxRegisterId;
 
@@ -368,7 +360,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     inAndOutRegs->emplace(alternativeRegId);
   }
   DistributeExecutorInfos infos(inAndOutRegs, inAndOutRegs, nrInRegs, nrOutRegs,
-                                std::move(regsToClear), std::move(regsToKeep),
+                                getRegsToClear(), calcRegsToKeep(),
                                 clients(), collection(), regId, alternativeRegId,
                                 _allowSpecifiedKeys, _allowKeyConversionToObject,
                                 _createKeys, getScatterType());

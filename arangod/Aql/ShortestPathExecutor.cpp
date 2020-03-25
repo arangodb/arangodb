@@ -54,8 +54,8 @@ static bool isValidId(VPackSlice id) {
 ShortestPathExecutorInfos::ShortestPathExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
+    RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep,
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
     std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)

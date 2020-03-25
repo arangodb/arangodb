@@ -66,8 +66,8 @@ static RegisterId selectOutputRegister(
 KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
+    RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep,
     std::unique_ptr<graph::KShortestPathsFinder>&& finder, InputVertex&& source,
     InputVertex&& target)
     : ExecutorInfos(std::move(outputRegisters),

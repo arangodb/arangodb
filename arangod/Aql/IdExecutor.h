@@ -30,6 +30,7 @@
 
 #include <tuple>
 #include <utility>
+#include <vector>
 
 // There are currently three variants of IdExecutor in use:
 //
@@ -60,8 +61,8 @@ class OutputAqlItemRow;
 
 class IdExecutorInfos : public ExecutorInfos {
  public:
-  IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-                  std::unordered_set<RegisterId> registersToClear, bool doCount,
+  IdExecutorInfos(RegisterId nrInOutRegisters, std::vector<RegisterId> registersToKeep,
+                  std::vector<RegisterId> registersToClear, bool doCount,
                   RegisterId outputRegister = 0, std::string distributeId = {""},
                   bool isResponsibleForInitializeCursor = true);
 

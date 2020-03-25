@@ -40,8 +40,8 @@ class ScatterExecutorInfos : public ExecutorInfos, public ClientsExecutorInfos {
   ScatterExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
                        std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                        RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                       std::unordered_set<RegisterId> registersToClear,
-                       std::unordered_set<RegisterId> registersToKeep,
+                       std::vector<RegisterId> registersToClear,
+                       std::vector<RegisterId> registersToKeep,
                        std::vector<std::string> clientIds);
 };
 

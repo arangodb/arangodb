@@ -53,8 +53,8 @@ class OutputAqlItemRow {
 
   explicit OutputAqlItemRow(SharedAqlItemBlockPtr block,
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
-                            std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
-                            std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+                            std::vector<RegisterId> registersToKeep,
+                            std::vector<RegisterId> registersToClear,
                             AqlCall clientCall = AqlCall{},
                             CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
@@ -216,14 +216,12 @@ class OutputAqlItemRow {
   void didSkip(size_t n);
 
  private:
-  [[nodiscard]] std::unordered_set<RegisterId> const& registersToKeep() const {
-    TRI_ASSERT(_registersToKeep != nullptr);
-    return *_registersToKeep;
+  [[nodiscard]] std::vector<RegisterId> const& registersToKeep() const {
+    return _registersToKeep;
   }
 
-  [[nodiscard]] std::unordered_set<RegisterId> const& registersToClear() const {
-    TRI_ASSERT(_registersToClear != nullptr);
-    return *_registersToClear;
+  [[nodiscard]] std::vector<RegisterId> const& registersToClear() const {
+    return _registersToClear;
   }
 
   [[nodiscard]] bool isOutputRegister(RegisterId registerId) const {
@@ -274,8 +272,8 @@ class OutputAqlItemRow {
   bool const _doNotCopyInputRow;
 
   std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
-  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
+  std::vector<RegisterId> _registersToKeep;
+  std::vector<RegisterId> _registersToClear;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _setBaseIndexNotUsed;

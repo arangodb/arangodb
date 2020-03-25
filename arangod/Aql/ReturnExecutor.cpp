@@ -34,8 +34,8 @@ using namespace arangodb::aql;
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                                          RegisterId nrOutputRegisters, bool doCount)
     : ExecutorInfos(make_shared_unordered_set({0}), nrInputRegisters, nrOutputRegisters,
-                    std::unordered_set<RegisterId>{} /*to clear*/,
-                    std::unordered_set<RegisterId>{} /*to keep*/
+                    std::vector<RegisterId>{} /*to clear*/,
+                    std::vector<RegisterId>{} /*to keep*/
                     ),
       _inputRegisterId(inputRegister),
       _doCount(doCount) {

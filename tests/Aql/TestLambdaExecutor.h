@@ -68,8 +68,8 @@ class LambdaExecutorInfos : public ExecutorInfos {
       std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
       std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
+      std::vector<RegisterId> registersToClear,
+      std::vector<RegisterId> registersToKeep, ProduceCall lambda,
       ResetCall reset = []() -> void {});
 
   LambdaExecutorInfos() = delete;
@@ -97,8 +97,8 @@ class LambdaSkipExecutorInfos : public ExecutorInfos {
       std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
       std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
+      std::vector<RegisterId> registersToClear,
+      std::vector<RegisterId> registersToKeep, ProduceCall lambda,
       SkipCall skipLambda, ResetCall reset = []() -> void {});
 
   LambdaSkipExecutorInfos() = delete;

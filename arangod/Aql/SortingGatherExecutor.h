@@ -52,8 +52,8 @@ class SortingGatherExecutorInfos : public ExecutorInfos {
   SortingGatherExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                              std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                              RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep,
+                             std::vector<RegisterId> registersToClear,
+                             std::vector<RegisterId> registersToKeep,
                              std::vector<SortRegister>&& sortRegister,
                              arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode,
                              size_t limit, GatherNode::Parallelism p);

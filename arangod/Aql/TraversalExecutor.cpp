@@ -40,8 +40,8 @@ using namespace arangodb::traverser;
 TraversalExecutorInfos::TraversalExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, std::unique_ptr<Traverser>&& traverser,
+    RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep, std::unique_ptr<Traverser>&& traverser,
     std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
     std::string fixedSource, RegisterId inputRegister,
     std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables)

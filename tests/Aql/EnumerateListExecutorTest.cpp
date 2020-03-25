@@ -149,8 +149,8 @@ class EnumerateListExecutorTestProduce
 
   auto makeInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1,
                  RegisterId nrInputRegister = 1, RegisterId nrOutputRegister = 2,
-                 std::unordered_set<RegisterId> regToClear = {},
-                 std::unordered_set<RegisterId> regToKeep = {0}) -> EnumerateListExecutorInfos {
+                 std::vector<RegisterId> regToClear = {},
+                 std::vector<RegisterId> regToKeep = {0}) -> EnumerateListExecutorInfos {
     EnumerateListExecutorInfos infos{inputRegister,   outputRegister,
                                      nrInputRegister, nrOutputRegister,
                                      regToClear,      regToKeep};

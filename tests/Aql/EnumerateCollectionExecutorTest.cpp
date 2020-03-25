@@ -80,8 +80,6 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 
   Variable outVariable;
   bool varUsedLater;
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
   ExecutionEngine* engine;
   Collection aqlCollection;
   std::vector<std::string> const projections;
@@ -107,7 +105,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         useRawPointers(false),
         random(false),
-        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep, engine,
+        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, {}, {}, engine,
               &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
               coveringIndexAttributePositions, useRawPointers, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
@@ -290,16 +288,12 @@ class EnumerateCollectionExecutorTestProduce
               projections, coveringIndexAttributePositions, useRawPointers, random) {}
 
   auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                 RegisterId nrOutputRegister = 1,
-                 std::unordered_set<RegisterId> regToClear = {},
-                 std::unordered_set<RegisterId> regToKeep = {})
+                 RegisterId nrOutputRegister = 1)
       -> EnumerateCollectionExecutorInfos {
     EnumerateCollectionExecutorInfos infos{
-        outputRegister, nrInputRegister, nrOutputRegister,
-        regToClear,     regToKeep,       engine,
-        &aqlCollection, &outVariable,    varUsedLater,
-        nullptr,        projections,     coveringIndexAttributePositions,
-        useRawPointers, random};
+        outputRegister, nrInputRegister, nrOutputRegister, {}, {}, engine,
+        &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
+        coveringIndexAttributePositions, useRawPointers, random};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }

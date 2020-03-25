@@ -38,8 +38,8 @@ SubqueryExecutorInfos::SubqueryExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> const& registersToClear,
-    std::unordered_set<RegisterId>&& registersToKeep, ExecutionBlock& subQuery,
+    std::vector<RegisterId> const& registersToClear,
+    std::vector<RegisterId>&& registersToKeep, ExecutionBlock& subQuery,
     RegisterId outReg, bool subqueryIsConst)
     : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),

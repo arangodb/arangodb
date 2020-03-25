@@ -42,9 +42,9 @@ using namespace arangodb::aql;
 
 IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                                  // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> registersToKeep,
+                                 std::vector<RegisterId> registersToKeep,
                                  // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> registersToClear,
+                                 std::vector<RegisterId> registersToClear,
                                  bool doCount, RegisterId outputRegister,
                                  std::string distributeId, bool isResponsibleForInitializeCursor)
     : ExecutorInfos(make_shared_unordered_set(),

@@ -51,8 +51,8 @@ template <typename T>
 class MaterializerExecutorInfos : public ExecutorInfos {
  public:
   MaterializerExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear,
-                            std::unordered_set<RegisterId> registersToKeep,
+                            std::vector<RegisterId> registersToClear,
+                            std::vector<RegisterId> registersToKeep,
                             T collectionSource, RegisterId inNmDocId,
                             RegisterId outDocRegId, transaction::Methods* trx);
 

@@ -52,8 +52,8 @@ struct Variable;
 struct CalculationExecutorInfos : public ExecutorInfos {
   CalculationExecutorInfos(RegisterId outputRegister, RegisterId nrInputRegisters,
                            RegisterId nrOutputRegisters,
-                           std::unordered_set<RegisterId> registersToClear,
-                           std::unordered_set<RegisterId> registersToKeep, Query& query,
+                           std::vector<RegisterId> registersToClear,
+                           std::vector<RegisterId> registersToKeep, Query& query,
                            Expression& expression, std::vector<Variable const*>&& expInVars,
                            std::vector<RegisterId>&& expInRegs);
 

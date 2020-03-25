@@ -368,7 +368,7 @@ void RegisterPlan::after(ExecutionNode* en) {
 
     // We need to delete those variables that have been used here but are not
     // used any more later:
-    std::unordered_set<RegisterId> regsToClear;
+    std::vector<RegisterId> regsToClear;
 
     for (auto const& v : varsUsedHere) {
       auto it = varsUsedLater.find(v);
@@ -388,9 +388,10 @@ void RegisterPlan::after(ExecutionNode* en) {
 
         TRI_ASSERT(it2 != varInfo.end());
         RegisterId r = it2->second.registerId;
-        regsToClear.insert(r);
+        regsToClear.emplace_back(r);
       }
     }
+
     en->setRegsToClear(std::move(regsToClear));
   }
 }

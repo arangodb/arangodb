@@ -463,11 +463,11 @@ class SharedExecutionBlockImplTest {
 
     auto readAble = make_shared_unordered_set();
     auto writeAble = make_shared_unordered_set();
-    auto registersToKeep = std::unordered_set<RegisterId>{};
+    std::vector<RegisterId> registersToKeep;
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= inputRegisters; ++i) {
         readAble->emplace(i);
-        registersToKeep.emplace(i);
+        registersToKeep.emplace_back(i);
       }
       for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
         writeAble->emplace(i);
@@ -511,11 +511,11 @@ class SharedExecutionBlockImplTest {
 
     auto readAble = make_shared_unordered_set();
     auto writeAble = make_shared_unordered_set();
-    auto registersToKeep = std::unordered_set<RegisterId>{};
+    std::vector<RegisterId> registersToKeep;
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= inputRegisters; ++i) {
         readAble->emplace(i);
-        registersToKeep.emplace(i);
+        registersToKeep.emplace_back(i);
       }
       for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
         writeAble->emplace(i);

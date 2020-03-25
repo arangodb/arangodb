@@ -33,8 +33,8 @@ LambdaExecutorInfos::LambdaExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda, ResetCall reset)
+    std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep, ProduceCall lambda, ResetCall reset)
     : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
       _produceLambda(lambda),
@@ -50,8 +50,8 @@ LambdaSkipExecutorInfos::LambdaSkipExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
+    std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep, ProduceCall lambda,
     SkipCall skipLambda, ResetCall reset)
     : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
