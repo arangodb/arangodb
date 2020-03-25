@@ -87,18 +87,13 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
       arangodb::aql::AqlCallStack stack) override;
 
  private:
-  void dropBlock();
-
   // Implementation of execute
   std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr>
   executeWithoutTrace(arangodb::aql::AqlCallStack stack);
 
  private:
-  std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
-  size_t _inflight;
   bool _hasWaited;
   WaitingBehaviour _variant;
-
   bool _doesContainShadowRows{false};
   bool _shouldLieOnLastRow{false};
   arangodb::aql::ExecutorInfos _infos;
