@@ -305,6 +305,8 @@ class StaticStrings {
   static std::string const AqlRemoteState;
   static std::string const AqlRemoteStateDone;
   static std::string const AqlRemoteStateHasmore;
+  static std::string const AqlCallListSpecific;
+  static std::string const AqlCallListDefault;
 
   // validation
   static std::string const ValidatorLevelNone;
