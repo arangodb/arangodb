@@ -758,7 +758,7 @@ auto getEndpoint(v8::Isolate* isolate, std::vector<std::string> const& endpoints
     return {"", "", std::move(msg)};
   }
   return {std::move(endpoint), std::move(relative), ""};
-};
+}
 }  // namespace
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
