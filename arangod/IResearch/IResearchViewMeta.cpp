@@ -593,7 +593,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
-    mask->_storedValues = field.isArray();
+    mask->_storedValues = !field.isNone();
 
     if (!mask->_storedValues) {
       _storedValues = defaults._storedValues;

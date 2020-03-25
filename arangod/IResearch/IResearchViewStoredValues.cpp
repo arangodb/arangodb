@@ -86,8 +86,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
     velocypack::Slice const& columnSlice,
     std::unordered_set<std::string>& uniqueColumns,
     std::vector<irs::string_ref>& fieldNames,
-    ColumnCompression compression,
-    std::string& errorField) {
+    ColumnCompression compression) {
   if (columnSlice.isArray()) {
     // skip empty column
     if (columnSlice.length() == 0) {
@@ -113,7 +112,6 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
         basics::TRI_ParseAttributeString(fieldName, field, false);
       }
       catch (...) {
-        errorField = fieldName;
         clear();
         return false;
       }
@@ -173,8 +171,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
     sc.name = std::move(columnName);
     sc.compression = compression;
     _storedColumns.emplace_back(std::move(sc));
-  }
-  else if (columnSlice.isString()) {
+  } else if (columnSlice.isString()) {
     auto fieldName = getStringRef(columnSlice);
     // skip empty field
     if (fieldName.empty()) {
@@ -186,7 +183,6 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
       basics::TRI_ParseAttributeString(fieldName, field, false);
     }
     catch (...) {
-      errorField = fieldName;
       clear();
       return false;
     }
@@ -215,8 +211,10 @@ bool IResearchViewStoredValues::fromVelocyPack(
     _storedColumns.reserve(slice.length());
     std::unordered_set<std::string> uniqueColumns;
     std::vector<irs::string_ref> fieldNames;
+    int idx = -1;
     for (auto columnSlice : VPackArrayIterator(slice)) {
-      if (ADB_LIKELY(columnSlice.isObject())) {
+      ++idx;
+      if (columnSlice.isObject()) {
         if (ADB_LIKELY(columnSlice.hasKey(FIELD_COLUMN_PARAM))) {
           ColumnCompression compression{ColumnCompression::LZ4};
           if (columnSlice.hasKey(COMPRESSION_COLUMN_PARAM)) {
@@ -227,24 +225,27 @@ bool IResearchViewStoredValues::fromVelocyPack(
               if (ADB_LIKELY(decodedCompression != COMPRESSION_CONVERT_MAP.end())) {
                 compression = decodedCompression->second;
               } else {
+                errorField = "[" + std::to_string(idx) + "].compression";
                 return false;
               }
             } else {
+              errorField = "[" + std::to_string(idx) + "].compression";
               return false;
             }
           }
           if (!buildStoredColumnFromSlice(columnSlice.get(FIELD_COLUMN_PARAM),
-            uniqueColumns, fieldNames, compression,
-            errorField)) {
+            uniqueColumns, fieldNames, compression)) {
+            errorField = "[" + std::to_string(idx) + "].field";
             return false;
           }
         } else {
+          errorField = "[" + std::to_string(idx) + "]";
           return false;
         }
       } else {
         if (!buildStoredColumnFromSlice(columnSlice, uniqueColumns, 
-                                        fieldNames, ColumnCompression::LZ4,
-                                        errorField)) {
+                                        fieldNames, ColumnCompression::LZ4)) {
+          errorField = "[" + std::to_string(idx) + "].field";
           return false;
         }
       }

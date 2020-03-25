@@ -87,8 +87,7 @@ class IResearchViewStoredValues {
       velocypack::Slice const& columnSlice,
       std::unordered_set<std::string>& uniqueColumns,
       std::vector<irs::string_ref>& fieldNames,
-      ColumnCompression compression,
-      std::string& errorField);
+      ColumnCompression compression);
 
   void clear() noexcept {
     _storedColumns.clear();
