@@ -57,6 +57,10 @@ class SharedScatterExecutionBlockTest {
     fakedQuery->setEngine(engine.release());
   }
 
+  auto buildStack(AqlCall call) -> AqlCallStack {
+    return AqlCallStack{AqlCallList{call}};
+  }
+
   /**
    * @brief Creates and manages a ExecutionNode.
    *        These nodes can be used to create the Executors
@@ -156,7 +160,7 @@ TEST_P(RandomOrderTest, all_clients_should_get_the_block) {
   for (auto const& client : getCallOrder()) {
     SCOPED_TRACE("Testing client " + client);
     AqlCall call{};  // DefaultCall
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -176,7 +180,7 @@ TEST_P(RandomOrderTest, all_clients_can_skip_the_block) {
     SCOPED_TRACE("Testing client " + client);
     AqlCall call{};
     call.offset = 10;
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 3);
@@ -198,7 +202,7 @@ TEST_P(RandomOrderTest, all_clients_can_fullcount_the_block) {
     AqlCall call{};
     call.hardLimit = 1;
     call.fullCount = true;
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 2);
@@ -220,7 +224,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
     if (client == "a") {
       // Just produce all
       AqlCall call{};
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
       EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -229,7 +233,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
       AqlCall call{};
       call.offset = 2;
       call.hardLimit = 2;
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
       EXPECT_EQ(skipped.getSkipCount(), 2);
@@ -239,7 +243,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
       {
         AqlCall call{};
         call.softLimit = 2;
-        AqlCallStack stack{call};
+        auto stack = buildStack(call);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
         EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -251,7 +255,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
         AqlCall call{};
         call.offset = 1;
         call.softLimit = 2;
-        AqlCallStack stack{call};
+        auto stack = buildStack(call);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
         EXPECT_EQ(skipped.getSkipCount(), 1);
@@ -280,7 +284,7 @@ TEST_P(RandomOrderTest, get_does_not_jump_over_shadowrows) {
     SCOPED_TRACE("Testing client " + client + " first call");
     // Produce all until shadow row
     AqlCall call{};
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -292,7 +296,7 @@ TEST_P(RandomOrderTest, get_does_not_jump_over_shadowrows) {
     SCOPED_TRACE("Testing client " + client + " second call");
     // Produce all until shadow row
     AqlCall call{};
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -318,7 +322,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_produce) {
     SCOPED_TRACE("Testing client " + client + " first call");
     // Produce all until shadow row
     AqlCall call{};
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -330,7 +334,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_produce) {
     SCOPED_TRACE("Testing client " + client + " second call");
     // Produce all until shadow row
     AqlCall call{};
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -357,7 +361,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_skip) {
     // Produce all until shadow row
     AqlCall call{};
     call.offset = 10;
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped.getSkipCount(), 2);
@@ -369,7 +373,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_skip) {
     SCOPED_TRACE("Testing client " + client + " second call");
     // Produce all until shadow row
     AqlCall call{};
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -395,7 +399,7 @@ TEST_P(RandomOrderTest, handling_of_consecutive_shadow_rows) {
     {
       // Produce all until second relevant shadow row
       AqlCall call{};
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::HASMORE);
       EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -406,7 +410,7 @@ TEST_P(RandomOrderTest, handling_of_consecutive_shadow_rows) {
     {
       // Produce the last shadow rows
       AqlCall call{};
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
       EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -431,7 +435,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
     if (client == "a") {
       // Just produce all
       AqlCall call{};
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::HASMORE);
       EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -442,7 +446,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       AqlCall call{};
       call.offset = 2;
       call.hardLimit = 2;
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::HASMORE);
       EXPECT_EQ(skipped.getSkipCount(), 2);
@@ -452,7 +456,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       {
         AqlCall call{};
         call.softLimit = 2;
-        AqlCallStack stack{call};
+        auto stack = buildStack(call);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
         EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -464,7 +468,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
         AqlCall call{};
         call.offset = 1;
         call.softLimit = 2;
-        AqlCallStack stack{call};
+        auto stack = buildStack(call);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
         EXPECT_EQ(skipped.getSkipCount(), 1);
@@ -481,7 +485,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       // Just produce all
       AqlCall call{};
       call.hardLimit = 1;
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
       EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -490,7 +494,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
     } else if (client == "b") {
       AqlCall call{};
       call.softLimit = 1;
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
       EXPECT_EQ(skipped.getSkipCount(), 0);
@@ -500,7 +504,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       {
         AqlCall call{};
         call.offset = 10;
-        AqlCallStack stack{call};
+        auto stack = buildStack(call);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::DONE);
         EXPECT_EQ(skipped.getSkipCount(), 1);
@@ -572,7 +576,7 @@ TEST_F(ScatterExecutionBlockTest, any_ordering_of_calls_is_fine) {
       auto& [callNr, blocks] = expected[client];
       SCOPED_TRACE("Testing client " + client + " call number " + std::to_string(callNr));
       AqlCall call{};
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       if (callNr == 2) {
         EXPECT_EQ(state, ExecutionState::DONE);

@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added AQL function `IN_RANGE`.
+
 * Added startup option `--ssl.prefer-http1-in-alpn` to optionally let the 
   server prefer HTTP/1.1 over HTTP/2 in ALPN protocol negotiations.
 

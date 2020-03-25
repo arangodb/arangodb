@@ -217,6 +217,7 @@ bool MoveShard::start(bool&) {
   }
 
   // Check that the toServer is not locked:
+  // cppcheck-suppress *
   if (auto const& [jobId, has] = _snapshot.hasAsString(blockedServersPrefix + _to); has) {
     LOG_TOPIC("de054", DEBUG, Logger::SUPERVISION)
         << "server " << _to << " is currently locked by " << jobId

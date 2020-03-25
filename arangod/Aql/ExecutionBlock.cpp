@@ -306,7 +306,6 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string co
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto const node = getPlanNode();
       auto const queryId = this->_engine->getQuery()->id();
-      // TODO make sure this works also if stack is non relevant, e.g. passed through by outer subquery.
       auto const& call = stack.peek();
       LOG_TOPIC("1e717", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
