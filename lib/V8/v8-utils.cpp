@@ -663,103 +663,103 @@ static std::string GetEndpointFromUrl(std::string const& url) {
 ////////////////////////////////////////////////////////////////////////////////
 namespace {
 
-auto getEndpoint(v8::Isolate* isolate, std::vector<std::string>const& endpoints
-                ,std::string& url, std::string& lastEndpoint) -> std::tuple<std::string, std::string, std::string> {
+auto getEndpoint(v8::Isolate* isolate, std::vector<std::string> const& endpoints,
+                 std::string& url, std::string& lastEndpoint)
+    -> std::tuple<std::string, std::string, std::string> {
+  // returns endpoint, relative, error
+  std::string relative;
+  std::string endpoint;
+  if (url.substr(0, 7) == "http://") {
+    endpoint = GetEndpointFromUrl(url).substr(7);
+    relative = url.substr(7 + endpoint.length());
 
-    // returns endpoint, relative, error
-    std::string relative;
-    std::string endpoint;
-    if (url.substr(0, 7) == "http://") {
-      endpoint = GetEndpointFromUrl(url).substr(7);
-      relative = url.substr(7 + endpoint.length());
-
-      if (relative.empty() || relative[0] != '/') {
-        relative = "/" + relative;
-      }
-      if (endpoint.find(':') == std::string::npos) {
-        endpoint.append(":80");
-      }
-      endpoint = "tcp://" + endpoint;
-    } else if (url.substr(0, 8) == "https://") {
-      endpoint = GetEndpointFromUrl(url).substr(8);
-      relative = url.substr(8 + endpoint.length());
-
-      if (relative.empty() || relative[0] != '/') {
-        relative = "/" + relative;
-      }
-      if (endpoint.find(':') == std::string::npos) {
-        endpoint.append(":443");
-      }
-      endpoint = "ssl://" + endpoint;
-    } else if (url.substr(0, 5) == "h2://") {
-      endpoint = GetEndpointFromUrl(url).substr(5);
-      relative = url.substr(5 + endpoint.length());
-
-      if (relative.empty() || relative[0] != '/') {
-        relative = "/" + relative;
-      }
-      if (endpoint.find(':') == std::string::npos) {
-        endpoint.append(":80");
-      }
-      endpoint = "tcp://" + endpoint;
-    }  else if (url.substr(0, 6) == "h2s://") {
-         endpoint = GetEndpointFromUrl(url).substr(6);
-         relative = url.substr(6 + endpoint.length());
-
-         if (relative.empty() || relative[0] != '/') {
-           relative = "/" + relative;
-         }
-         if (endpoint.find(':') == std::string::npos) {
-           endpoint.append(":80");
-         }
-         endpoint = "tcp://" + endpoint;
-       } else if (url.substr(0, 6) == "srv://") {
-      size_t found = url.find('/', 6);
-
-      relative = "/";
-      if (found != std::string::npos) {
-        relative.append(url.substr(found + 1));
-        endpoint = url.substr(6, found - 6);
-      } else {
-        endpoint = url.substr(6);
-      }
-      endpoint = "srv://" + endpoint;
-    } else if (url.substr(0, 7) == "unix://") {
-      // Can only have arrived here if endpoints is non empty
-      if (endpoints.empty()) {
-        return {"","", std::move("unsupported URL specified")};
-      }
-      endpoint = endpoints.front();
-      relative = url.substr(endpoint.size());
-    } else if (!url.empty() && url[0] == '/') {
-      size_t found;
-      // relative URL. prefix it with last endpoint
-      relative = url;
-      url = lastEndpoint + url;
-      endpoint = lastEndpoint;
-      if (endpoint.substr(0, 5) == "http:") {
-        endpoint = endpoint.substr(5);
-        found = endpoint.find(":");
-        if (found == std::string::npos) {
-          endpoint = endpoint + ":80";
-        }
-        endpoint = "tcp:" + endpoint;
-      } else if (endpoint.substr(0, 6) == "https:") {
-        endpoint = endpoint.substr(6);
-        found = endpoint.find(":");
-        if (found == std::string::npos) {
-          endpoint = endpoint + ":443";
-        }
-        endpoint = "ssl:" + endpoint;
-      }
-    } else {
-      std::string msg("unsupported URL specified: '");
-      msg.append(url).append("'");
-      return {"","", std::move(msg)};
+    if (relative.empty() || relative[0] != '/') {
+      relative = "/" + relative;
     }
-    return {std::move(endpoint), std::move(relative), ""};
-  };
-} //namespace
+    if (endpoint.find(':') == std::string::npos) {
+      endpoint.append(":80");
+    }
+    endpoint = "tcp://" + endpoint;
+  } else if (url.substr(0, 8) == "https://") {
+    endpoint = GetEndpointFromUrl(url).substr(8);
+    relative = url.substr(8 + endpoint.length());
+
+    if (relative.empty() || relative[0] != '/') {
+      relative = "/" + relative;
+    }
+    if (endpoint.find(':') == std::string::npos) {
+      endpoint.append(":443");
+    }
+    endpoint = "ssl://" + endpoint;
+  } else if (url.substr(0, 5) == "h2://") {
+    endpoint = GetEndpointFromUrl(url).substr(5);
+    relative = url.substr(5 + endpoint.length());
+
+    if (relative.empty() || relative[0] != '/') {
+      relative = "/" + relative;
+    }
+    if (endpoint.find(':') == std::string::npos) {
+      endpoint.append(":80");
+    }
+    endpoint = "tcp://" + endpoint;
+  } else if (url.substr(0, 6) == "h2s://") {
+    endpoint = GetEndpointFromUrl(url).substr(6);
+    relative = url.substr(6 + endpoint.length());
+
+    if (relative.empty() || relative[0] != '/') {
+      relative = "/" + relative;
+    }
+    if (endpoint.find(':') == std::string::npos) {
+      endpoint.append(":80");
+    }
+    endpoint = "tcp://" + endpoint;
+  } else if (url.substr(0, 6) == "srv://") {
+    size_t found = url.find('/', 6);
+
+    relative = "/";
+    if (found != std::string::npos) {
+      relative.append(url.substr(found + 1));
+      endpoint = url.substr(6, found - 6);
+    } else {
+      endpoint = url.substr(6);
+    }
+    endpoint = "srv://" + endpoint;
+  } else if (url.substr(0, 7) == "unix://") {
+    // Can only have arrived here if endpoints is non empty
+    if (endpoints.empty()) {
+      return {"", "", std::move("unsupported URL specified")};
+    }
+    endpoint = endpoints.front();
+    relative = url.substr(endpoint.size());
+  } else if (!url.empty() && url[0] == '/') {
+    size_t found;
+    // relative URL. prefix it with last endpoint
+    relative = url;
+    url = lastEndpoint + url;
+    endpoint = lastEndpoint;
+    if (endpoint.substr(0, 5) == "http:") {
+      endpoint = endpoint.substr(5);
+      found = endpoint.find(":");
+      if (found == std::string::npos) {
+        endpoint = endpoint + ":80";
+      }
+      endpoint = "tcp:" + endpoint;
+    } else if (endpoint.substr(0, 6) == "https:") {
+      endpoint = endpoint.substr(6);
+      found = endpoint.find(":");
+      if (found == std::string::npos) {
+        endpoint = endpoint + ":443";
+      }
+      endpoint = "ssl:" + endpoint;
+    }
+  } else {
+    std::string msg("unsupported URL specified: '");
+    msg.append(url).append("'");
+    return {"", "", std::move(msg)};
+  }
+  return {std::move(endpoint), std::move(relative), ""};
+};
+}  // namespace
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
