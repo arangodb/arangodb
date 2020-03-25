@@ -1139,17 +1139,53 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
 
+  auto const& storedColumns = _meta._storedValues.columns();
+  bool nonDefaultCompression = false;
+  for (auto c : storedColumns) {
+    if (c.compression != IResearchViewStoredValues::ColumnCompression::LZ4) {
+      nonDefaultCompression = true;
+      break;
+    }
+  }
+  std::map<irs::string_ref,
+    IResearchViewStoredValues::ColumnCompression> compressionMap;
+  if (nonDefaultCompression) {
+    for (auto c : storedColumns) {
+      compressionMap.emplace(c.name, c.compression);
+    }
+  }
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
   if (encrypt) {
-    options.column_info = [](const irs::string_ref& name) -> irs::column_info {
-      // do not waste resources to encrypt primary key column
-      return { irs::compression::lz4::type(), {}, DocumentPrimaryKey::PK() != name };
-    };
+    if (nonDefaultCompression) {
+      options.column_info = [compressionMap](const irs::string_ref& name) -> irs::column_info {
+        auto compress = compressionMap.find(name);
+        // do not waste resources to encrypt primary key column
+        return { (compress == compressionMap.end() || 
+                 compress->second == IResearchViewStoredValues::ColumnCompression::LZ4) ?
+                 irs::compression::lz4::type() : irs::compression::raw::type(),
+                 {}, DocumentPrimaryKey::PK() != name };
+      };
+    } else {
+      options.column_info = [](const irs::string_ref& name) -> irs::column_info {
+        // do not waste resources to encrypt primary key column
+        return { irs::compression::lz4::type(), {}, DocumentPrimaryKey::PK() != name };
+      };
+    }
   } else {
-    options.column_info = [](const irs::string_ref& /*name*/) -> irs::column_info {
-      return { irs::compression::lz4::type(), {}, false };
-    };
+    if (nonDefaultCompression) {
+      options.column_info = [compressionMap](const irs::string_ref& name) -> irs::column_info {
+        auto compress = compressionMap.find(name);
+        return { (compress == compressionMap.end() ||
+                 compress->second == IResearchViewStoredValues::ColumnCompression::LZ4) ?
+                 irs::compression::lz4::type() : irs::compression::raw::type(),
+                 {}, false };
+      };
+    } else {
+      options.column_info = [](const irs::string_ref& /*name*/) -> irs::column_info {
+        return { irs::compression::lz4::type(), {}, false };
+      };
+    }
   }
 
   auto openFlags = irs::OM_APPEND;
