@@ -111,7 +111,7 @@ class RestAnalyzerHandlerTest
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope;  // (&execContext);
   arangodb::aql::QueryRegistry queryRegistry;  // required for UserManager::loadFromDB()

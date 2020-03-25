@@ -227,7 +227,8 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
   }
 
   // This call is only used internally.
-  auto call = stack.isRelevant() ? stack.popCall() : AqlCall{};
+  auto callList = stack.popCall();
+  auto call = callList.peekNextCall();
 
   // We do not have anymore data locally.
   // Need to fetch more from upstream
@@ -249,7 +250,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
       // If we get here we have data and can return it.
       // However the call might force us to drop everything (e.g. hardLimit ==
       // 0) So we need to refetch data eventually.
-      stack.pushCall(call);
+      stack.pushCall(callList);
       auto [state, skipped, result] = dataContainer.execute(stack, _upstreamState);
       if (state == ExecutionState::DONE || !skipped.nothingSkipped() || result != nullptr) {
         // We have a valid result.
@@ -270,7 +271,7 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
   // They can differ between different calls to this executor.
   // We may need to revisit this for performance reasons.
   AqlCall call{};
-  stack.pushCall(std::move(call));
+  stack.pushCall(AqlCallList{std::move(call)});
 
   TRI_ASSERT(_dependencies.size() == 1);
   auto [state, skipped, block] = _dependencies[0]->execute(stack);
@@ -297,7 +298,7 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
-  AqlCallStack stack(AqlCall::SimulateGetSome(atMost), true);
+  AqlCallStack stack(AqlCallList{AqlCall::SimulateGetSome(atMost)}, true);
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(skipped.nothingSkipped());
   return {state, block};
@@ -308,7 +309,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>
 template <class Executor>
 std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
-  AqlCallStack stack(AqlCall::SimulateSkipSome(atMost), true);
+  AqlCallStack stack(AqlCallList{AqlCall::SimulateSkipSome(atMost)}, true);
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(block == nullptr);
   return {state, skipped.getSkipCount()};

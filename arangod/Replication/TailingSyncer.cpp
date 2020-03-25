@@ -334,7 +334,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
-    if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
+    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
       LOG_TOPIC("0a3a4", WARN, Logger::REPLICATION)
           << "seeing database creation marker "
           << "for an already existing db. Dropping db...";
@@ -357,7 +357,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   } else if (type == REPLICATION_DATABASE_DROP) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
-    if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
+    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
       // abort all ongoing transactions for the database to be dropped
       abortOngoingTransactions(name);
 

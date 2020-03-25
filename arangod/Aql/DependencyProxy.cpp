@@ -97,7 +97,7 @@ ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {
   // Temporary.
   // Just do a copy of the stack here to not mess with it.
   AqlCallStack stack = _injectedStack;
-  stack.pushCall(AqlCall::SimulateGetSome(atMost));
+  stack.pushCall(AqlCallList{AqlCall::SimulateGetSome(atMost)});
   // Also temporary, will not be used here.
   SkipResult skipped;
   do {
@@ -188,7 +188,7 @@ DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, si
   // Temporary.
   // Just do a copy of the stack here to not mess with it.
   AqlCallStack stack = _injectedStack;
-  stack.pushCall(AqlCall::SimulateGetSome(atMost));
+  stack.pushCall(AqlCallList{AqlCall::SimulateGetSome(atMost)});
   // Also temporary, will not be used here.
   SkipResult skipped{};
 
@@ -239,7 +239,7 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSomeFor
   // Temporary.
   // Just do a copy of the stack here to not mess with it.
   AqlCallStack stack = _injectedStack;
-  stack.pushCall(AqlCall::SimulateSkipSome(atMost));
+  stack.pushCall(AqlCallList{AqlCall::SimulateSkipSome(atMost)});
   // Also temporary, will not be used here.
   SharedAqlItemBlockPtr block;
 
@@ -249,9 +249,8 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSomeFor
     {
       // Make sure we call with the correct offset
       // This is just a temporary dance until execute is implemented everywhere.
-      auto tmpCall = stack.popCall();
+      auto& tmpCall = stack.modifyTopCall();
       tmpCall.offset = atMost - _skipped;
-      stack.pushCall(std::move(tmpCall));
     }
     std::tie(state, skippedNow, block) = upstream.execute(stack);
     if (state == ExecutionState::WAITING) {
@@ -285,7 +284,7 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
   // Temporary.
   // Just do a copy of the stack here to not mess with it.
   AqlCallStack stack = _injectedStack;
-  stack.pushCall(AqlCall::SimulateSkipSome(toSkip));
+  stack.pushCall(AqlCallList{AqlCall::SimulateSkipSome(toSkip)});
   // Also temporary, will not be used here.
   SharedAqlItemBlockPtr block;
 
@@ -297,9 +296,8 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
     {
       // Make sure we call with the correct offset
       // This is just a temporary dance until execute is implemented everywhere.
-      auto tmpCall = stack.popCall();
+      auto& tmpCall = stack.modifyTopCall();
       tmpCall.offset = toSkip - _skipped;
-      stack.pushCall(std::move(tmpCall));
     }
     if (_distributeId.empty()) {
       std::tie(state, skippedNow, block) = upstreamBlock().execute(stack);
@@ -379,7 +377,7 @@ DependencyProxy<blockPassthrough>::DependencyProxy(
       _currentDependency(0),
       _skipped(0),
       _vpackOptions(options),
-      _injectedStack(AqlCall{}) {
+      _injectedStack(AqlCallList{AqlCall{}}) {
   // Make the default stack usable, for tests only.
   // This needs to be removed soon.
   _injectedStack.popCall();

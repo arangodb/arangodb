@@ -25,6 +25,7 @@
 
 #include "Actions/RestActionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
@@ -159,7 +160,7 @@ void RestAdminServerHandler::handleMode() {
     if (af->isActive() && !_request->user().empty()) {
       auth::Level lvl;
       if (af->userManager() != nullptr) {
-        lvl = af->userManager()->databaseAuthLevel(_request->user(), TRI_VOC_SYSTEM_DATABASE,
+        lvl = af->userManager()->databaseAuthLevel(_request->user(), StaticStrings::SystemDatabase,
                                                    /*configured*/ true);
       } else {
         lvl = auth::Level::RW;

@@ -25,6 +25,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
   Aql/AllRowsFetcherTest.cpp
+  Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
@@ -51,6 +52,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
   Aql/IndexNodeTest.cpp
+  Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
   Aql/KShortestPathsExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
