@@ -1834,6 +1834,54 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
   return AqlValue(AqlValueHintBool(dist <= unsignedMaxDistanceValue));
 }
 
+/// @brief function IN_RANGE
+AqlValue Functions::InRange(ExpressionContext* ctx, transaction::Methods* trx,
+  VPackFunctionParameters const& args) {
+  static char const* AFN = "IN_RANGE";
+
+  auto const argc = args.size();
+
+  if (argc != 5) {
+    registerWarning(
+      ctx, AFN,
+      arangodb::Result{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                        "5 arguments are expected." });
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto const& attributeVal = extractFunctionParameterValue(args, 0);
+  auto const& lowerVal = extractFunctionParameterValue(args, 1);
+  auto const& upperVal = extractFunctionParameterValue(args, 2);
+  auto const& includeLowerVal = extractFunctionParameterValue(args, 3);
+  auto const& includeUpperVal = extractFunctionParameterValue(args, 4);
+
+  if (ADB_UNLIKELY(!includeLowerVal.isBoolean())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+
+  if (ADB_UNLIKELY(!includeUpperVal.isBoolean())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{ arangodb::aql::AqlValueHintNull{} };
+  }
+
+  auto const includeLower = includeLowerVal.toBoolean();
+  auto const includeUpper = includeUpperVal.toBoolean();
+
+  // first check lower bound
+  {
+    auto const compareLowerResult = AqlValue::Compare(trx, lowerVal, attributeVal, true);
+    if ((!includeLower && compareLowerResult >= 0) || (includeLower && compareLowerResult > 0)) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  // lower bound is fine, check upper
+  auto const compareUpperResult = AqlValue::Compare(trx, attributeVal, upperVal, true);
+  return AqlValue(AqlValueHintBool((includeUpper && compareUpperResult <= 0) ||
+                                  (!includeUpper && compareUpperResult < 0)));
+}
+
 /// @brief function TO_BOOL
 AqlValue Functions::ToBool(ExpressionContext*, transaction::Methods* /*trx*/,
                            VPackFunctionParameters const& parameters) {

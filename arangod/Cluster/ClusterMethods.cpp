@@ -216,6 +216,14 @@ void recursiveAddRocksDB(VPackSlice const& value, VPackBuilder& builder) {
                                                                {"cacheUsage"})));
   updated.add("documentsSize", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                                {"documentsSize"})));
+  
+  updated.add("indexes", VPackValue(VPackValueType::Object));
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                     {"indexes", "count"})));
+  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                    {"indexes", "size"})));
+  updated.close();
+  
   updated.close();
 
   TRI_ASSERT(updated.slice().isObject());
