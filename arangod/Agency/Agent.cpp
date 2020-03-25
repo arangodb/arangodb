@@ -860,28 +860,30 @@ futures::Future<query_t> Agent::poll(index_t index) {
     commitIndex = _commitIndex;
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder e(builder.get());
-    auto const logs = _state.get(index, commitIndex);
-    TRI_ASSERT(!logs.empty());
-    if (!logs.empty()) {
-      builder->add("accepted", VPackValue(true));
-      builder->add(VPackValue("result"));
+  if (index <= commitIndex) {
+    auto builder = std::make_shared<VPackBuilder>();
+    {
       VPackObjectBuilder e(builder.get());
-      builder->add("firstIndex", VPackValue(logs.front().index));
-      builder->add("commitIndex", VPackValue(logs.back().index));
-      builder->add(VPackValue("log"));
-      VPackArrayBuilder ls(builder.get());
-      for (auto const& i : logs) {
-        VPackObjectBuilder l(builder.get());
-        builder->add("index", VPackValue(i.index));
-        builder->add("query", VPackSlice(i.entry->data()));
+      auto const logs = _state.get(index, commitIndex);
+      TRI_ASSERT(!logs.empty());
+      if (!logs.empty()) {
+        builder->add("accepted", VPackValue(true));
+        builder->add(VPackValue("result"));
+        VPackObjectBuilder e(builder.get());
+        builder->add("firstIndex", VPackValue(logs.front().index));
+        builder->add("commitIndex", VPackValue(logs.back().index));
+        builder->add(VPackValue("log"));
+        VPackArrayBuilder ls(builder.get());
+        for (auto const& i : logs) {
+          VPackObjectBuilder l(builder.get());
+          builder->add("index", VPackValue(i.index));
+          builder->add("query", VPackSlice(i.entry->data()));
+        }
       }
     }
+    return futures::makeFuture(std::move(builder));
   }
-  return futures::makeFuture(std::move(builder));
-  
+    
   std::lock_guard guard(_promLock);
 
   auto res = _promises.try_emplace(
