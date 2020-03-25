@@ -1075,7 +1075,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // data from upstream. Or if we have ordered a SOFT LIMIT.
       // Otherwise we will overallocate here.
       // In production it is now very unlikely in the non-softlimit case
-      // that the upstream is no block using less then batchSize many rows, but returns HASMORE.
+      // that the upstream is no block using less than batchSize many rows, but returns HASMORE.
       if (inputRange.upstreamState() == ExecutorState::DONE || call.hasSoftLimit()) {
         blockSize = _executor.expectedNumberOfRowsNew(inputRange, call);
         // The executor cannot expect to produce more then the limit!
