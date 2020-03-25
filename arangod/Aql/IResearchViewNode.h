@@ -181,8 +181,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
       aql::ExecutionEngine& engine,
       std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const override;
 
-  std::shared_ptr<std::unordered_set<aql::RegisterId>> calcInputRegs() const;
-
   bool isLateMaterialized() const noexcept{
     return _outNonMaterializedDocId != nullptr &&
            _outNonMaterializedColPtr != nullptr;

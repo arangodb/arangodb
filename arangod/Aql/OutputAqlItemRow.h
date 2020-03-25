@@ -216,11 +216,6 @@ class OutputAqlItemRow {
   void didSkip(size_t n);
 
  private:
-  [[nodiscard]] std::unordered_set<RegisterId> const& outputRegisters() const {
-    TRI_ASSERT(_outputRegisters != nullptr);
-    return *_outputRegisters;
-  }
-
   [[nodiscard]] std::unordered_set<RegisterId> const& registersToKeep() const {
     TRI_ASSERT(_registersToKeep != nullptr);
     return *_registersToKeep;
@@ -232,7 +227,8 @@ class OutputAqlItemRow {
   }
 
   [[nodiscard]] bool isOutputRegister(RegisterId registerId) const {
-    return outputRegisters().find(registerId) != outputRegisters().end();
+    TRI_ASSERT(_outputRegisters != nullptr);
+    return _outputRegisters->find(registerId) != _outputRegisters->end();
   }
 
  private:
@@ -294,7 +290,8 @@ class OutputAqlItemRow {
   }
 
   [[nodiscard]] size_t numRegistersToWrite() const {
-    return outputRegisters().size();
+    TRI_ASSERT(_outputRegisters != nullptr);
+    return _outputRegisters->size();
   }
 
   [[nodiscard]] bool allValuesWritten() const {

@@ -1355,30 +1355,6 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
   return vars;
 }
 
-std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInputRegs() const {
-  std::shared_ptr<std::unordered_set<aql::RegisterId>> inputRegs =
-      std::make_shared<std::unordered_set<aql::RegisterId>>();
-
-  if (!::filterConditionIsEmpty(_filterCondition)) {
-    ::arangodb::containers::HashSet<aql::Variable const*> vars;
-    aql::Ast::getReferencedVariables(_filterCondition, vars);
-
-    if (noMaterialization()) {
-      vars.erase(_outVariable);
-    }
-
-    for (auto const& it : vars) {
-      aql::RegisterId reg = varToRegUnchecked(*it);
-      // The filter condition may refer to registers that are written here
-      if (reg < getNrInputRegisters()) {
-        inputRegs->emplace(reg);
-      }
-    }
-  }
-
-  return inputRegs;
-}
-
 void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
   _filterCondition = !node ? &ALL : node;
 }
@@ -1523,7 +1499,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
   aql::ExecutorInfos infos =
-      createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
+      createRegisterInfos(std::move(writableOutputRegisters));
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   ViewValuesRegisters outNonMaterializedViewRegs;

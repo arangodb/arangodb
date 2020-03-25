@@ -970,7 +970,6 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
 
 // This is the general case and will not work if e.g. there is no predecessor.
 ExecutorInfos ExecutionNode::createRegisterInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const {
   RegisterId const nrOutRegs = getNrOutputRegisters();
   RegisterId const nrInRegs = getNrInputRegisters();
