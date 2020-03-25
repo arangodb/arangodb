@@ -607,7 +607,6 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
   // deny access to database with NONE
- // if (vc->databaseAuthLevel() == auth::Level::NONE) {
   if (vc->databaseAuthLevel() == auth::Level::NONE && !StringUtils::isPrefix(path, ApiUser)) {
     result = Flow::Abort;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
