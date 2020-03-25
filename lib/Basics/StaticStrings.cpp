@@ -331,6 +331,8 @@ std::string const StaticStrings::AqlRemoteSkipped("skipped");
 std::string const StaticStrings::AqlRemoteState("state");
 std::string const StaticStrings::AqlRemoteStateDone("done");
 std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
+std::string const StaticStrings::AqlCallListSpecific("specifics");
+std::string const StaticStrings::AqlCallListDefault("default");
 
 // validation
 std::string const StaticStrings::ValidatorLevelNone("none");

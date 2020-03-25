@@ -88,7 +88,10 @@ std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatri
 }
 
 ExecutorState AqlItemBlockInputMatrix::upstreamState() const noexcept {
-  if (hasDataRow() || hasShadowRow()) {
+  if (_aqlItemMatrix == nullptr) {
+    return _finalState;
+  }
+  if (hasShadowRow() || _aqlItemMatrix->stoppedOnShadowRow()) {
     return ExecutorState::DONE;
   }
   return _finalState;
@@ -108,8 +111,7 @@ bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
   auto tmpShadowRow = _shadowRow;
 
-  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow() &&
-      !_aqlItemMatrix->peekShadowRow().isRelevant()) {
+  if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
     // next row will be a shadow row
     _shadowRow = _aqlItemMatrix->popShadowRow();
     resetBlockIndex();
@@ -118,12 +120,8 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRo
   }
 
   auto state = ExecutorState::HASMORE;
-  if (_shadowRow.isInitialized()) {
-    TRI_ASSERT(!_shadowRow.isRelevant());
+  if (_shadowRow.isInitialized() || _aqlItemMatrix->stoppedOnShadowRow()) {
     state = ExecutorState::HASMORE;
-  } else if (_aqlItemMatrix->stoppedOnShadowRow() &&
-             _aqlItemMatrix->peekShadowRow().isRelevant()) {
-    state = ExecutorState::DONE;
   } else {
     state = _finalState;
   }
@@ -152,7 +150,10 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
       _shadowRow = _aqlItemMatrix->popShadowRow();
       TRI_ASSERT(_shadowRow.isRelevant());
     } else {
-      TRI_ASSERT(_finalState == ExecutorState::DONE);
+      // This can happen if we are either DONE.
+      // or if the executor above produced
+      // exactly one full block and was done
+      // but there was no place for the ShadowRow.
       _aqlItemMatrix->clear();
     }
     resetBlockIndex();
@@ -176,4 +177,24 @@ ExecutorState AqlItemBlockInputMatrix::incrBlockIndex() {
 void AqlItemBlockInputMatrix::resetBlockIndex() noexcept {
   _lastRange = {AqlItemBlockInputRange{upstreamState()}};
   _currentBlockRowIndex = 0;
+}
+
+[[nodiscard]] auto AqlItemBlockInputMatrix::countDataRows() const noexcept -> std::size_t {
+  if (_aqlItemMatrix == nullptr) {
+    return 0;
+  }
+  return _aqlItemMatrix->countDataRows();
+}
+
+[[nodiscard]] auto AqlItemBlockInputMatrix::countShadowRows() const noexcept -> std::size_t {
+  if (_aqlItemMatrix == nullptr) {
+    return 0;
+  }
+  // Count the remainder in the Matrix
+  // And count the one shadowRow we have here, but not delivered
+  return _aqlItemMatrix->countShadowRows() + (hasShadowRow() ? 1 : 0);
+}
+
+[[nodiscard]] auto AqlItemBlockInputMatrix::finalState() const noexcept -> ExecutorState {
+  return _finalState;
 }

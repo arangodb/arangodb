@@ -23,7 +23,7 @@
 #ifndef ARANGOD_AQL_AQL_CALLSTACK_H
 #define ARANGOD_AQL_AQL_CALLSTACK_H 1
 
-#include "Aql/AqlCall.h"
+#include "Aql/AqlCallList.h"
 #include "Cluster/ResultT.h"
 
 #include <stack>
@@ -34,12 +34,26 @@ class Slice;
 }
 namespace aql {
 
+/**
+ * @brief This is a stack of AqlCallLists.
+ *        While the AqlCallList defines the call(s) for a single
+ *        Executor only, the AqlCallStack is used to transport information
+ *        for outer subqueries.
+ *        At the very beginning of the query this Stack has exactly one
+ *        CallList entry, which defines what should be done on the outermost query.
+ *        If we now enter a spliced subquery, there will be another CallList
+ *        added on top of this stack. If we leave the spliced subquery, the topmost
+ *        CallList will be removed.
+ *
+ *        Using this stack, we can transport all necessary calls from the outer
+ *        subqueries to the Executors that need to produce data for them.
+ */
 class AqlCallStack {
  public:
   // Initial
-  explicit AqlCallStack(AqlCall call, bool compatibilityMode3_6 = false);
+  explicit AqlCallStack(AqlCallList call, bool compatibilityMode3_6 = false);
   // Used in subquery
-  AqlCallStack(AqlCallStack const& other, AqlCall call);
+  AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
   AqlCallStack(AqlCallStack const& other);
 
@@ -49,41 +63,26 @@ class AqlCallStack {
 
   auto toString() const -> std::string;
 
-  // Quick test is this CallStack is of local relevance, or it is sufficient to pass it through
-  bool isRelevant() const;
-
-  // Get the top most Call element (this must be relevant).
+  // Get the top most Call element.
   // This is popped of the stack and caller can take responsibility for it
-  AqlCall popCall();
+  AqlCallList popCall();
 
-  // Peek at the top most Call element (this must be relevant).
-  // The responsibility will stay at the stack
+  // Peek at the topmost Call element (this must be relevant).
+  // The responsibility for the peek-ed call will stay with the stack
   AqlCall const& peek() const;
 
   // Put another call on top of the stack.
-  void pushCall(AqlCall&& call);
+  void pushCall(AqlCallList&& call);
 
   // Put another call on top of the stack.
-  void pushCall(AqlCall const& call);
-
-  // Pops one subquery level.
-  // if this isRelevent it pops the top-most call from the stack.
-  // if this is not revelent it reduces the depth by 1.
-  // Can be savely called on every subquery Start.
-  void pop();
-
-  // Increase the subquery by one, not placing another call on the stack
-  // This is used to bypass all executors until we reach the next subquery start.
-  void increaseSubqueryDepth();
+  void pushCall(AqlCallList const& call);
 
   // TODO: Remove me again, only used to fake DONE
   [[deprecated]] auto empty() const noexcept -> bool {
-    return _operations.empty() && _depth == 0;
+    return _operations.empty();
   }
 
-  auto subqueryLevel() const noexcept -> size_t {
-    return _operations.size() + _depth;
-  }
+  auto subqueryLevel() const noexcept -> size_t { return _operations.size(); }
 
   void toVelocyPack(velocypack::Builder& builder) const;
 
@@ -103,17 +102,19 @@ class AqlCallStack {
 
   /**
    * @brief Check if we are in a subquery that is in-fact required to
-   *        be skipped. This is relevant for executors that have created
+   *        be counted, either as skipped or as produced.
+   *        This is relevant for executors that have created
    *        an equivalentFetchAllShadowRows stack, in order to decide if
    *        the need to produce output or if they are skipped.
    *
    * @return true
    * @return false
    */
-  auto needToSkipSubquery() const noexcept -> bool;
+  auto needToCountSubquery() const noexcept -> bool;
 
+  auto needToSkipSubquery() const noexcept -> bool;
   /**
-   * @brief This is only valid if needToSkipSubquery is true.
+   * @brief This is only valid if needToCountSubquery is true.
    *        It will resolve to the heighest subquery level
    *        (outermost) that needs to be skipped.
    *
@@ -130,21 +131,24 @@ class AqlCallStack {
    */
   auto modifyCallAtDepth(size_t depth) -> AqlCall&;
 
+  /**
+   * @brief Get a reference to the top most call.
+   *        This is modifiable, but caller will not take
+   *        responsibility.
+   *
+   * @return AqlCall& reference to the call, can be modified.
+   */
+  auto modifyTopCall() -> AqlCall&;
+
  private:
-  explicit AqlCallStack(std::vector<AqlCall>&& operations);
+  explicit AqlCallStack(std::vector<AqlCallList>&& operations);
 
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from main
   // query) NOTE: This is only mutable on 3.6 compatibility mode. We need to
   // inject an additional call in any const operation here just to pretend we
   // are not empty. Can be removed after 3.7.
-  mutable std::vector<AqlCall> _operations;
-
-  // The depth of subqueries that have not issued calls into operations,
-  // as they have been skipped.
-  // In most cases this will be zero.
-  // However if we skip a subquery that has a nested subquery this depth will be 1 in the nested subquery.
-  size_t _depth{0};
+  mutable std::vector<AqlCallList> _operations;
 
   // This flag will be set if and only if
   // we are called with the 3.6 and earlier API
