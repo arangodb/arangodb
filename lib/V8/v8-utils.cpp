@@ -710,7 +710,7 @@ auto getEndpoint(v8::Isolate* isolate, std::vector<std::string> const& endpoints
       relative = "/" + relative;
     }
     if (endpoint.find(':') == std::string::npos) {
-      endpoint.append(":80");
+      endpoint.append(":443");
     }
     endpoint = "ssl://" + endpoint;
   } else if (url.substr(0, 6) == "srv://") {
