@@ -581,6 +581,9 @@
         },
         Settings: {
           route: '#cSettings/' + encodeURIComponent(collectionName)
+        },
+        Validation: {
+          route: '#cValidation/' + encodeURIComponent(collectionName)
         }
       };
 

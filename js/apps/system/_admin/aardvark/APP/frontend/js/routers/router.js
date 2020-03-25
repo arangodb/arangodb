@@ -23,6 +23,7 @@
       'collection/:colid/documents/:pageid': 'documents',
       'cIndices/:colname': 'cIndices',
       'cSettings/:colname': 'cSettings',
+      'cValidation/:colname': 'cValidation',
       'cInfo/:colname': 'cInfo',
       'collection/:colid/:docid': 'document',
       'shell': 'shell',
@@ -694,6 +695,28 @@
       });
     },
 
+    cValidation: function (colname, initialized) {
+      var self = this;
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cValidation.bind(this), colname);
+        return;
+      }
+      this.arangoCollectionsStore.fetch({
+        cache: false,
+        success: function () {
+          self.settingsView = new window.ValidationView({
+            collectionName: colname,
+            collection: self.arangoCollectionsStore.findWhere({
+              name: colname
+            })
+          });
+          self.settingsView.render();
+        }
+      });
+    },
+
     cInfo: function (colname, initialized) {
       var self = this;
 
@@ -1141,6 +1164,10 @@
       }
       if (this.documentView && Backbone.history.getFragment().indexOf('collection') > -1) {
         this.documentView.resize();
+      }
+      if (this.validationView && Backbone.history.getFragment().indexOf('cValidation') > -1) {
+        //TODO the resize does not work :( -- kittens die -- Heiko Help:)
+        this.validationView.resize();
       }
     },
 
