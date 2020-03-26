@@ -40,7 +40,7 @@ namespace aql {
 struct Collection;
 class ExecutionBlock;
 class ExecutionEngine;
-class RegisterPlan;
+struct RegisterPlan;
 struct VarInfo;
 }  // namespace aql
 

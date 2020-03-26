@@ -45,7 +45,7 @@ class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
 class Expression;
-class RegisterPlan;
+struct RegisterPlan;
 
 /// @brief struct to hold the member-indexes in the _condition node
 struct NonConstExpression {
