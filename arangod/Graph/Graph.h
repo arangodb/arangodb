@@ -164,10 +164,6 @@ class Graph {
   bool hasEdgeCollection(std::string const& collectionName) const;
   bool hasVertexCollection(std::string const& collectionName) const;
   bool hasOrphanCollection(std::string const& collectionName) const;
-
-  /// @brief Check if the collection is being used or not
-  Result isCollectionUsed(std::string const& collectionName);
-
   bool renameCollections(std::string const& oldName, std::string const& newName);
 
   std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(

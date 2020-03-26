@@ -172,20 +172,6 @@ auto Graph::clone() const -> std::unique_ptr<Graph> {
   return std::make_unique<std::decay_t<decltype(*this)>>(*this);
 }
 
-Result Graph::isCollectionUsed(std::string const& collectionName) {
-  if (hasOrphanCollection(collectionName)) {
-    return {TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS};
-  }
-  if (hasVertexCollection(collectionName)) {
-    return {TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF};
-  }
-  if (hasEdgeCollection(collectionName)) {
-    return {TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF};
-  }
-
-  return {TRI_ERROR_NO_ERROR};
-}
-
 void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
   if (!edgeDefs.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
