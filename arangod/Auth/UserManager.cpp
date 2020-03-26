@@ -90,7 +90,6 @@ auth::UserManager::UserManager(application_features::ApplicationServer& server)
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
-      _queryRegistry(nullptr),
       _authHandler(nullptr) {}
 
 auth::UserManager::UserManager(application_features::ApplicationServer& server,
@@ -98,7 +97,6 @@ auth::UserManager::UserManager(application_features::ApplicationServer& server,
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
-      _queryRegistry(nullptr),
       _authHandler(std::move(handler)) {}
 #endif
 
@@ -125,8 +123,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   return result;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::ApplicationServer& server,
-                                                   aql::QueryRegistry* queryRegistry) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::ApplicationServer& server) {
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
@@ -140,15 +137,16 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(false, *vocbase, arangodb::aql::QueryString(queryStr),
-                             emptyBuilder, emptyBuilder, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(*vocbase),
+                             arangodb::aql::QueryString(queryStr),
+                             emptyBuilder, emptyBuilder);
 
   query.queryOptions().cache = false;
 
   LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
 
-  aql::QueryResult queryResult = query.executeSync(queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -191,7 +189,6 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 // private, will acquire _userCacheLock in write-mode and release it.
 // will also acquire _loadFromDBLock and release it
 void auth::UserManager::loadFromDB() {
-  TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
 
   if (_internalVersion.load(std::memory_order_acquire) == globalVersion()) {
@@ -204,7 +201,7 @@ void auth::UserManager::loadFromDB() {
   }
 
   try {
-    std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server, _queryRegistry);
+    std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server);
     if (builder) {
       VPackSlice usersSlice = builder->slice();
       if (usersSlice.length() != 0) {
@@ -381,8 +378,7 @@ void auth::UserManager::createRootUser() {
 
 VPackBuilder auth::UserManager::allUsers() {
   // will query db directly, no need for _userCacheLock
-  TRI_ASSERT(_queryRegistry != nullptr);
-  std::shared_ptr<VPackBuilder> users = QueryAllUsers(_server, _queryRegistry);
+  std::shared_ptr<VPackBuilder> users = QueryAllUsers(_server);
 
   VPackBuilder result;
   {

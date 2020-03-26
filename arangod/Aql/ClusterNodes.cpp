@@ -130,9 +130,10 @@ arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
 /// @brief constructor for RemoteNode
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : DistributeConsumerNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _vocbase(&(plan->getAst()->query().vocbase())),
       _server(base.get("server").copyString()),
-      _queryId(base.get("queryId").copyString()) {
+      _queryId(base.get("queryId").copyString()),
+      _apiToUse(getApiProperty(base, StaticStrings::AqlRemoteApi)) {
   // Backwards compatibility (3.4.x)(3.5.0) and earlier, coordinator might send ownName.
   arangodb::velocypack::StringRef tmpId(getDistributeId());
   tmpId = VelocyPackHelper::getStringRef(base, "ownName", tmpId);
@@ -175,7 +176,7 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
                       std::move(regsToKeep));
 
   return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
-      &engine, this, std::move(infos), server(), getDistributeId(), queryId());
+      &engine, this, std::move(infos), server(), getDistributeId(), queryId(), api());
 }
 
 /// @brief toVelocyPack, for RemoteNode
@@ -187,6 +188,7 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
   nodes.add("queryId", VPackValue(_queryId));
+  nodes.add(StaticStrings::AqlRemoteApi, apiToVpack(_apiToUse));
 
   // And close it:
   nodes.close();
@@ -207,6 +209,22 @@ CostEstimate RemoteNode::estimateCost() const {
   return estimate;
 }
 
+auto RemoteNode::api() const noexcept -> Api {
+  return _apiToUse;
+}
+
+auto RemoteNode::apiToVpack(Api const api) -> velocypack::Value {
+  return VPackValue(static_cast<std::underlying_type_t<Api>>(api));
+}
+
+auto RemoteNode::getApiProperty(VPackSlice slice, std::string const& key)
+    -> RemoteNode::Api {
+  using ApiType = std::underlying_type_t<Api>;
+  // Default to GET_SOME
+  return static_cast<Api>(
+      VelocyPackHelper::getNumericValue<ApiType>(slice, key, static_cast<ApiType>(Api::GET_SOME)));
+}
+
 /// @brief construct a scatter node
 ScatterNode::ScatterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
@@ -225,10 +243,10 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                      std::move(regsToKeep));
+  ScatterExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                             std::move(regsToKeep), _clients);
   return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this,
-                                                               std::move(infos), _clients);
+                                                               std::move(infos));
 }
 
 /// @brief toVelocyPack, for ScatterNode
@@ -323,9 +341,6 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                      std::move(regsToKeep));
-
   RegisterId regId;
   RegisterId alternativeRegId = RegisterPlan::MaxRegisterId;
 
@@ -352,10 +367,18 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
   }
+  auto inAndOutRegs = make_shared_unordered_set({regId});
+  if (alternativeRegId != RegisterPlan::MaxRegisterId) {
+    inAndOutRegs->emplace(alternativeRegId);
+  }
+  DistributeExecutorInfos infos(inAndOutRegs, inAndOutRegs, nrInRegs, nrOutRegs,
+                                std::move(regsToClear), std::move(regsToKeep),
+                                clients(), collection(), regId, alternativeRegId,
+                                _allowSpecifiedKeys, _allowKeyConversionToObject,
+                                _createKeys, getScatterType());
 
-  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
-      &engine, this, std::move(infos), clients(), collection(), regId, alternativeRegId,
-      _allowSpecifiedKeys, _allowKeyConversionToObject, _createKeys);
+  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
+                                                                  std::move(infos));
 }
 
 /// @brief toVelocyPack, for DistributedNode
@@ -427,10 +450,10 @@ CostEstimate DistributeNode::estimateCost() const {
 GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                        SortElementVector const& elements)
     : ExecutionNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _vocbase(&(plan->getAst()->query().vocbase())),
       _elements(elements),
       _sortmode(SortMode::MinElement),
-      _parallelism(Parallelism::Undefined), 
+      _parallelism(Parallelism::Undefined),
       _limit(0) {
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
@@ -441,18 +464,18 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
              "creating 'GatherNode' from vpack";
     }
 
-    _limit =
-        basics::VelocyPackHelper::getNumericValue<decltype(_limit)>(base,
-                                                                    "limit", 0);
+    _limit = VelocyPackHelper::getNumericValue<decltype(_limit)>(base, "limit", 0);
   }
-    
-  setParallelism(parallelismFromString(VelocyPackHelper::getStringValue(base, "parellelism", "")));
+
+  setParallelism(parallelismFromString(
+      VelocyPackHelper::getStringValue(base, "parellelism", "")));
 }
 
-GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, Parallelism parallelism) noexcept
-    : ExecutionNode(plan, id), 
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _sortmode(sortMode), 
+GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode,
+                       Parallelism parallelism) noexcept
+    : ExecutionNode(plan, id),
+      _vocbase(&(plan->getAst()->query().vocbase())),
+      _sortmode(sortMode),
       _parallelism(parallelism),
       _limit(0) {}
 
@@ -461,7 +484,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                     std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
- 
+
   nodes.add("parallelism", VPackValue(toString(_parallelism)));
 
   if (_elements.empty()) {
@@ -488,7 +511,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       }
     }
   }
-  
+
   // And close it:
   nodes.close();
 }
@@ -509,17 +532,18 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
           &engine, this, std::move(infos));
     } else {
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                            calcRegsToKeep(), getRegsToClear());
+                            calcRegsToKeep(), getRegsToClear(), false);
+
       return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
-                                                                           std::move(infos));
+                                                                          std::move(infos));
     }
   }
-  
+
   Parallelism p = _parallelism;
   if (ServerState::instance()->isDBServer() && p != Parallelism::Async) {
     p = Parallelism::Serial; // not supported in v36
   }
-  
+
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
   SortingGatherExecutorInfos infos(make_shared_unordered_set(),
@@ -527,7 +551,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                    calcRegsToKeep(), std::move(sortRegister),
-                                   _plan->getAst()->query()->readOnlyTrx(), sortMode(),
+                                   _plan->getAst()->query(), sortMode(),
                                    constrainedSortLimit(), p);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
@@ -563,6 +587,12 @@ void GatherNode::cloneRegisterPlan(ExecutionNode* dependency) {
   setVarsUsedLater(dependency->getVarsUsedLater());
   setVarsValid(dependency->getVarsValid());
   setVarUsageValid();
+}
+
+GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
+                                                  size_t shardsRequiredForHeapMerge) noexcept {
+  return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap
+                                                      : SortMode::MinElement;
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
@@ -616,7 +646,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
       in, outputNew, outputOld, out,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
+      calcRegsToKeep(), _plan->getAst()->query(), std::move(options),
       _collection, ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,

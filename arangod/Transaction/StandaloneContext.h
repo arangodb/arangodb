@@ -46,7 +46,7 @@ class StandaloneContext : public Context {
   ~StandaloneContext() = default;
 
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
+  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
 
   /// @brief return the parent transaction (none in our case)
   std::shared_ptr<TransactionState> getParentTransaction() const override final { return nullptr; }

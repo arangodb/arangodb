@@ -40,7 +40,7 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
       RegisterId outputOldRegisterId, RegisterId outputRegisterId,
       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
       std::unordered_set<RegisterId> const& registersToClear,
-      std::unordered_set<RegisterId>&& registersToKeep, transaction::Methods* trx,
+      std::unordered_set<RegisterId>&& registersToKeep, arangodb::aql::QueryContext& query,
       OperationOptions options, aql::Collection const* aqlCollection,
       ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
       IgnoreDocumentNotFound ignoreDocumentNotFound,  // end of base class params
@@ -50,7 +50,7 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
                                   outputOldRegisterId, outputRegisterId,
                                   nrInputRegisters, nrOutputRegisters,
                                   registersToClear, std::move(registersToKeep),
-                                  trx, std::move(options), aqlCollection,
+                                  query, std::move(options), aqlCollection,
                                   ProducesResults(false), consultAqlWriteFilter,
                                   ignoreErrors, DoCount(true), IsReplace(false),
                                   ignoreDocumentNotFound),
@@ -99,9 +99,17 @@ struct SingleRemoteModificationExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
- protected:
-  bool doSingleRemoteModificationOperation(InputAqlItemRow&, OutputAqlItemRow&, Stats&);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
+ protected:
+  auto doSingleRemoteModificationOperation(InputAqlItemRow&, Stats&) -> OperationResult;
+  auto doSingleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
+                                        OperationResult&) -> void;
+  
+  transaction::Methods _trx;
   Infos& _info;
   Fetcher& _fetcher;
   ExecutionState _upstreamState;

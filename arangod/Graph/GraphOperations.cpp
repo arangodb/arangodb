@@ -897,10 +897,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
       bindVars->add("toDeleteId", VPackValue(toDeleteId));
       bindVars->close();
 
-      arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
-                                 nullptr, arangodb::aql::PART_DEPENDENT);
-      query.setTransactionContext(ctx());  // hack to share the same transaction
-
+      arangodb::aql::Query query(ctx(), queryString, bindVars, nullptr);
       auto queryResult = query.executeSync(QueryRegistryFeature::registry());
 
       if (queryResult.result.fail()) {

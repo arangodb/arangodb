@@ -34,11 +34,16 @@ class Query;
 
 class DocumentExpressionContext final : public QueryExpressionContext {
  public:
-  DocumentExpressionContext(Query* query, arangodb::velocypack::Slice document);
+  DocumentExpressionContext(transaction::Methods& trx, RegexCache& cache,
+                            arangodb::velocypack::Slice document);
 
   ~DocumentExpressionContext() = default;
 
   size_t numRegisters() const override;
+  
+  bool isDataFromCollection(Variable const* variable) const override {
+    return true;
+  }
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;

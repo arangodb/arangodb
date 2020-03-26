@@ -24,7 +24,6 @@
 #include "Basics/Common.h"
 
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
@@ -41,7 +40,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
@@ -49,6 +47,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -918,11 +917,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     binds->openObject();
     binds->add("@coll", VPackValue(cname));
     binds->close();
-    arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
-                               std::make_shared<VPackBuilder>(), arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::registry();
-    TRI_ASSERT(queryRegistry != nullptr);
-    aql::QueryResult queryResult = query.executeSync(queryRegistry);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
+                               aql::QueryString(q), binds, std::make_shared<VPackBuilder>());
+    aql::QueryResult queryResult = query.executeSync();
 
     Result res = queryResult.result;
     if (queryResult.result.ok()) {

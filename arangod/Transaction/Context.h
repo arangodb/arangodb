@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,7 +68,7 @@ class Context {
   virtual ~Context();
 
   /// @brief factory to create a custom type handler, not managed
-  static arangodb::velocypack::CustomTypeHandler* createCustomTypeHandler(
+  static std::unique_ptr<arangodb::velocypack::CustomTypeHandler> createCustomTypeHandler(
       TRI_vocbase_t&, arangodb::CollectionNameResolver const&);
 
   /// @brief return the vocbase
@@ -111,7 +111,7 @@ class Context {
 
  public:
   /// @brief get a custom type handler
-  virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() = 0;
+  virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
 
   /// @brief get parent transaction (if any) increase nesting
   virtual std::shared_ptr<TransactionState> getParentTransaction() const = 0;
@@ -133,6 +133,8 @@ class Context {
   /// @brief only supported on some contexts
   virtual std::shared_ptr<Context> clone() const;
   
+  virtual bool isV8Context() { return false; }
+  
   /// @brief generates correct ID based on server type
   static TRI_voc_tid_t makeTransactionId();
 
@@ -143,10 +145,11 @@ class Context {
  protected:
   TRI_vocbase_t& _vocbase;
   CollectionNameResolver const* _resolver;
-  std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
+  std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
-  ::arangodb::containers::SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
-  ::arangodb::containers::SmallVector<arangodb::velocypack::Builder*, 32> _builders;
+  using BuilderList = containers::SmallVector<arangodb::velocypack::Builder*, 32>;
+  BuilderList::allocator_type::arena_type _arena;
+  BuilderList _builders;
 
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
 

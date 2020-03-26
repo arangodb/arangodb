@@ -30,6 +30,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 #include "Indexes/IndexIterator.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -39,20 +40,22 @@
 namespace arangodb {
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class ExecutorInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 class NoStats;
 
-template<typename T>
+template <typename T>
 class MaterializerExecutorInfos : public ExecutorInfos {
  public:
   MaterializerExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                             std::unordered_set<RegisterId> registersToClear,
                             std::unordered_set<RegisterId> registersToKeep,
                             T collectionSource, RegisterId inNmDocId,
-                            RegisterId outDocRegId, transaction::Methods* trx);
+                            RegisterId outDocRegId, aql::QueryContext& query);
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -67,18 +70,16 @@ class MaterializerExecutorInfos : public ExecutorInfos {
     return _inNonMaterializedDocRegId;
   }
 
-  transaction::Methods* trx() const {
-    return _trx;
-  }
+  aql::QueryContext& query() const { return _query; }
 
-  T collectionSource() const {
-    return _collectionSource;
-  }
+  T collectionSource() const { return _collectionSource; }
 
  private:
-  std::shared_ptr<std::unordered_set<RegisterId>> getReadableInputRegisters(T const collectionSource, RegisterId inNmDocId) {
+  std::shared_ptr<std::unordered_set<RegisterId>> getReadableInputRegisters(
+      T const collectionSource, RegisterId inNmDocId) {
     if constexpr (std::is_same<T, RegisterId>::value) {
-      return make_shared_unordered_set(std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
+      return make_shared_unordered_set(
+          std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
     } else {
       return make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId}));
     }
@@ -91,10 +92,10 @@ class MaterializerExecutorInfos : public ExecutorInfos {
   /// @brief register to store materialized document
   RegisterId const _outMaterializedDocumentRegId;
 
-  transaction::Methods* _trx;
+  aql::QueryContext& _query;
 };
 
-template<typename T>
+template <typename T>
 class MaterializeExecutor {
  public:
   struct Properties {
@@ -108,19 +109,35 @@ class MaterializeExecutor {
 
   MaterializeExecutor(MaterializeExecutor&&) = default;
   MaterializeExecutor(MaterializeExecutor const&) = delete;
-  MaterializeExecutor(Fetcher& fetcher, Infos& infos) : _readDocumentContext(infos), _infos(infos), _fetcher(fetcher) {}
+  MaterializeExecutor(Fetcher& fetcher, Infos& infos);
 
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
+
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  protected:
   class ReadContext {
    public:
     explicit ReadContext(Infos& infos)
-      : _infos(&infos),
-      _inputRow(nullptr),
-      _outputRow(nullptr),
-      _callback(copyDocumentCallback(*this)) {}
+        : _infos(&infos),
+          _inputRow(nullptr),
+          _outputRow(nullptr),
+          _callback(copyDocumentCallback(*this)) {}
 
     ReadContext(ReadContext&&) = default;
 
@@ -132,6 +149,8 @@ class MaterializeExecutor {
    private:
     static arangodb::IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
   };
+  
+  transaction::Methods _trx;
   ReadContext _readDocumentContext;
   Infos const& _infos;
   Fetcher& _fetcher;

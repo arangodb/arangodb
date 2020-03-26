@@ -37,13 +37,20 @@ class InputAqlItemRow;
 
 class ExecutorExpressionContext final : public QueryExpressionContext {
  public:
-  ExecutorExpressionContext(Query* query, InputAqlItemRow const& inputRow,
+  ExecutorExpressionContext(transaction::Methods& trx,
+                            QueryWarnings& warnings,
+                            RegexCache& cache, InputAqlItemRow const& inputRow,
                             std::vector<Variable const*> const& vars,
                             std::vector<RegisterId> const& regs);
 
   ~ExecutorExpressionContext() override = default;
 
   size_t numRegisters() const override;
+  
+  bool isDataFromCollection(Variable const* variable) const override {
+#warning TODO perhaps that should be fixed?
+    return false;
+  }
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;

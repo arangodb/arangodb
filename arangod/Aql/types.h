@@ -46,6 +46,11 @@ typedef std::unordered_map<size_t, std::unordered_map<std::string, std::vector<s
 // Enable/Disable block passthrough in fetchers
 enum class BlockPassthrough { Disable, Enable };
 
+class ExecutionEngine;
+// list of snippets on coordinators
+using SnippetList = std::vector<std::pair<QueryId, std::unique_ptr<ExecutionEngine>>>;
+
+
 }  // namespace aql
 }  // namespace arangodb
 

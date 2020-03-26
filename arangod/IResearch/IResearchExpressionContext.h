@@ -48,8 +48,10 @@ class IResearchViewNode;
 ///        epxressions with loop variable in SEARCH expressions
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContextBase : public aql::QueryExpressionContext {
-  explicit ViewExpressionContextBase(arangodb::aql::Query* query)
-      : aql::QueryExpressionContext(query) {}
+  explicit ViewExpressionContextBase(arangodb::transaction::Methods& trx,
+                                     aql::QueryWarnings& warnings,
+                                     aql::RegexCache& cache)
+      : aql::QueryExpressionContext(trx, warnings, cache) {}
 
   aql::AstNode const* _expr{};  // for troubleshooting
 };                              // ViewExpressionContextBase
@@ -60,16 +62,23 @@ struct ViewExpressionContextBase : public aql::QueryExpressionContext {
 struct ViewExpressionContext final : public ViewExpressionContextBase {
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
-  ViewExpressionContext(aql::Query* query, aql::RegisterId numRegs,
+  ViewExpressionContext(arangodb::transaction::Methods& trx,
+                        aql::QueryWarnings& warnings,
+                        aql::RegexCache& cache, aql::RegisterId numRegs,
                         aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
-      : ViewExpressionContextBase(query),
+      : ViewExpressionContextBase(trx, warnings, cache),
         _numRegs(numRegs),
         _outVar(outVar),
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
 
   virtual size_t numRegisters() const override;
+  
+  virtual bool isDataFromCollection(aql::Variable const* variable) const {
+#warning TODO
+    return false;
+  }
 
   virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                          bool& mustDestroy) const override;

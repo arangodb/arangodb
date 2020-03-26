@@ -64,11 +64,6 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
   builder.close();
 }
 
-void ExecutionStats::toVelocyPackStatic(VPackBuilder& builder) {
-  ExecutionStats s;
-  s.toVelocyPack(builder, true);
-}
-
 /// @brief sumarize two sets of ExecutionStats
 void ExecutionStats::add(ExecutionStats const& summand) {
   writesExecuted += summand.writesExecuted;
@@ -82,7 +77,8 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   }
   count += summand.count;
   peakMemoryUsage = std::max(summand.peakMemoryUsage, peakMemoryUsage);
-  // intentionally no modification of executionTime
+  // intentionally no modification of executionTime, as the overall
+  // time is calculated in the end
 
   for (auto const& pair : summand.nodes) {
     size_t nid = pair.first;

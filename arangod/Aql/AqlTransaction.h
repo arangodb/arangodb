@@ -45,12 +45,12 @@ class AqlTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction and add all collections
   /// from the query context
-  static std::shared_ptr<AqlTransaction>
+  static std::unique_ptr<AqlTransaction>
     create(std::shared_ptr<transaction::Context> const& transactionContext,
-                                std::map<std::string, aql::Collection*> const* collections,
-                                transaction::Options const& options, bool isMainTransaction,
-                                std::unordered_set<std::string> inaccessibleCollections =
-                                    std::unordered_set<std::string>());
+            std::map<std::string, aql::Collection*> const* collections,
+            transaction::Options const& options,
+            std::unordered_set<std::string> inaccessibleCollections =
+                std::unordered_set<std::string>());
 
   /// @brief end the transaction
   ~AqlTransaction() override = default;

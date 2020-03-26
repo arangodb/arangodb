@@ -44,7 +44,7 @@ class V8Context final : public Context {
   ~V8Context() = default;
 
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
+  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
 
   /// @brief get parent transaction (if any)
   std::shared_ptr<TransactionState> getParentTransaction() const override;
@@ -66,6 +66,8 @@ class V8Context final : public Context {
 
   /// @brief whether or not the transaction context is a global one
   bool isGlobal() const;
+  
+  virtual bool isV8Context() override { return true; }
 
   /// @brief return parent transaction state or none
   static std::shared_ptr<TransactionState> getParentState();

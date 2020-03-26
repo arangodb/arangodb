@@ -263,13 +263,12 @@ std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(DocumentP
 DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
     RegisterId const outputRegister, bool produceResult,
-    Query* query, transaction::Methods* trx, Expression* filter,
+    transaction::Methods& trx, Expression* filter,
     std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool useRawDocumentPointers, bool checkUniqueness)
     : _inputRow(inputRow),
       _outputRow(outputRow),
-      _query(query),
       _trx(trx),
       _filter(filter),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
@@ -307,7 +306,7 @@ std::vector<std::pair<ProjectionType, std::string>> const& DocumentProducingFunc
 }
 
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr() const noexcept {
-  return _trx;
+  return &_trx;
 }
 
 std::vector<size_t> const& DocumentProducingFunctionContext::getCoveringIndexAttributePositions() const
@@ -377,10 +376,10 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
 }
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
-  DocumentExpressionContext ctx(_query, slice);
+  DocumentExpressionContext ctx(_trx, _regexCache, slice);
 
   bool mustDestroy;  // will get filled by execution
-  AqlValue a = _filter->execute(getTrxPtr(), &ctx, mustDestroy);
+  AqlValue a = _filter->execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
   return a.toBoolean();

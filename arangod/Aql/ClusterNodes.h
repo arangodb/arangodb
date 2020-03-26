@@ -35,6 +35,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <utility>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -53,14 +55,20 @@ struct Collection;
 class RemoteNode final : public DistributeConsumerNode {
   friend class ExecutionBlock;
 
-  /// @brief constructor with an id
  public:
+  /// @brief Type of API; the legacy pre-3.7 getSome/skipSome API, or the
+  ///        execute API. Used for rolling upgrades. Can be removed in 3.8.
+  ///        It is serialized as an integral, changing the values will break the
+  ///        API!
+  enum class Api { GET_SOME = 0, EXECUTE = 1 };
+
+  /// @brief constructor with an id
   RemoteNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             std::string const& server, std::string const& ownName, std::string const& queryId)
+             std::string server, std::string const& ownName, std::string queryId, Api = Api::EXECUTE)
       : DistributeConsumerNode(plan, id, ownName),
         _vocbase(vocbase),
-        _server(server),
-        _queryId(queryId) {
+        _server(std::move(server)),
+        _queryId(std::move(queryId)) {
     // note: server and queryId may be empty and filled later
   }
 
@@ -82,7 +90,7 @@ class RemoteNode final : public DistributeConsumerNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
     return cloneHelper(std::make_unique<RemoteNode>(plan, _id, _vocbase, _server,
-                                                    getDistributeId(), _queryId),
+                                                    getDistributeId(), _queryId, _apiToUse),
                        withDependencies, withProperties);
   }
 
@@ -109,6 +117,12 @@ class RemoteNode final : public DistributeConsumerNode {
     _queryId = arangodb::basics::StringUtils::itoa(queryId);
   }
 
+  [[nodiscard]] auto api() const noexcept -> Api;
+
+ private:
+  static auto apiToVpack(Api) -> velocypack::Value;
+  static auto getApiProperty(VPackSlice slice, std::string const& key) -> Api;
+
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -118,6 +132,10 @@ class RemoteNode final : public DistributeConsumerNode {
 
   /// @brief the ID of the query on the server as a string
   std::string _queryId;
+
+  /// @brief Whether to use the pre-3.7 getSome/skipSome API, instead of the
+  ///        execute API. Used for rolling upgrades, so can be removed in 3.8.
+  Api _apiToUse = Api::EXECUTE;
 };
 
 /// @brief class ScatterNode
@@ -302,10 +320,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @returns sort mode for the specified number of shards
   static SortMode evaluateSortMode(size_t numberOfShards,
-                                   size_t shardsRequiredForHeapMerge = 5) noexcept {
-    return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap
-                                                        : SortMode::MinElement;
-  }
+                                   size_t shardsRequiredForHeapMerge = 5) noexcept;
 
   /// @brief constructor with an id
   GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, 

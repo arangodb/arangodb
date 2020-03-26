@@ -26,9 +26,10 @@
 
 using namespace arangodb::aql;
 
-DocumentExpressionContext::DocumentExpressionContext(Query* query,
+DocumentExpressionContext::DocumentExpressionContext(transaction::Methods& trx,
+                                                     RegexCache& cache,
                                                      arangodb::velocypack::Slice document)
-    : QueryExpressionContext(query), _document(document) {}
+    : QueryExpressionContext(trx, cache), _document(document) {}
 
 size_t DocumentExpressionContext::numRegisters() const {
   // hard-coded

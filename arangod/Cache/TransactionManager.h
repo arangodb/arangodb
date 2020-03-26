@@ -70,14 +70,19 @@ class TransactionManager {
   std::uint64_t term();
 
  private:
-  std::atomic<std::uint64_t> _openReads;
-  std::atomic<std::uint64_t> _openSensitive;
-  std::atomic<std::uint64_t> _openWrites;
-  std::atomic<std::uint64_t> _term;
-  std::atomic<bool> _lock;
+  struct Counters {
+    uint64_t openReads : 21;
+    uint64_t openWrites : 21;
+    uint64_t openSensitive : 21;
+  };
+  static_assert(sizeof(Counters) == sizeof(uint64_t), "unexpected size");
 
-  void lock();
-  void unlock();
+  struct alignas(16) State {
+    Counters counters;
+    uint64_t term;
+  };
+
+  std::atomic<State> _state;
 };
 
 };  // end namespace cache

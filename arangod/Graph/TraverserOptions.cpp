@@ -26,7 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Expression.h"
 #include "Aql/PruneExpressionEvaluator.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Basics/VelocyPackHelper.h"
@@ -64,7 +64,7 @@ arangodb::velocypack::StringRef getEdgeDestination(arangodb::velocypack::Slice e
 }
 }  // namespace
 
-TraverserOptions::TraverserOptions(aql::Query* query)
+TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
@@ -75,7 +75,8 @@ TraverserOptions::TraverserOptions(aql::Query* query)
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {}
 
-TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
+TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
+                                   VPackSlice obj)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
@@ -173,7 +174,7 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
   _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
 }
 
-arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* query,
+arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                                         VPackSlice info, VPackSlice collections)
     : BaseOptions(query, info, collections),
       _baseVertexExpression(nullptr),
@@ -355,7 +356,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
           TRI_ERROR_BAD_PARAMETER,
           "The options require vertexExpressions to be an object");
     }
-    _baseVertexExpression = new aql::Expression(query->plan(), query->ast(), read);
+    _baseVertexExpression.reset(new aql::Expression(query->plan(), query->ast(), read));
   }
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
@@ -388,10 +389,10 @@ arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& 
 }
 
 TraverserOptions::~TraverserOptions() {
-  for (auto& pair : _vertexExpressions) {
-    delete pair.second;
-  }
-  delete _baseVertexExpression;
+//  for (auto& pair : _vertexExpressions) {
+//    delete pair.second;
+//  }
+//  delete _baseVertexExpression;
 }
 
 void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
@@ -653,9 +654,9 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
   auto specific = _vertexExpressions.find(depth);
 
   if (specific != _vertexExpressions.end()) {
-    expression = specific->second;
+    expression = specific->second.get();
   } else {
-    expression = _baseVertexExpression;
+    expression = _baseVertexExpression.get();
   }
 
   if (vertex.isExternal()) {

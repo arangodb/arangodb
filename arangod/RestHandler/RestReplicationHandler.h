@@ -341,8 +341,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
  private:
   struct RevisionOperationContext {
     uint64_t batchId;
-    std::size_t resume;
-    TRI_voc_tick_t tickEnd;
+    TRI_voc_rid_t resume;
     std::string cname;
     std::shared_ptr<LogicalCollection> collection;
     std::unique_ptr<ReplicationIterator> iter;
@@ -374,7 +373,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName);
+  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName, bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
@@ -525,7 +524,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        It will be registered with the given id, and it will have
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
-  Result createBlockingTransaction(aql::QueryId id, LogicalCollection& col, double ttl,
+  Result createBlockingTransaction(TRI_voc_tid_t tid, LogicalCollection& col, double ttl,
                                    AccessMode::Type access, RebootId const& rebootId,
                                    std::string const& serverId);
 
@@ -536,7 +535,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error, if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> isLockHeld(aql::QueryId id) const;
+  ResultT<bool> isLockHeld(TRI_voc_tick_t tid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compute a local checksum for the given collection

@@ -207,25 +207,44 @@ uint64_t Manager::getActiveTransactionCount() {
   return _nrRunning.load(std::memory_order_relaxed);
 }
 
-Manager::ManagedTrx::ManagedTrx(MetaType t, std::shared_ptr<TransactionState> st)
+/*static*/ double Manager::ttlForType(Manager::MetaType type) {
+  if (type == Manager::MetaType::Tombstone) {
+    return tombstoneTTL;
+  }
+
+  auto role = ServerState::instance()->getRole();
+  if ((ServerState::isSingleServer(role) || ServerState::isCoordinator(role))) {
+    return  idleTTL;
+  }
+  return idleTTLDBServer;
+}
+
+Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl,
+                                std::shared_ptr<TransactionState> st)
     : type(t),
       finalStatus(Status::UNDEFINED),
-      usedTimeSecs(TRI_microtime()),
+      timeToLive(ttl),
+      expiryTime(TRI_microtime() + Manager::ttlForType(t)),
       state(std::move(st)),
       user(::currentUser()),
       rwlock() {}
 
 bool Manager::ManagedTrx::expired() const {
-  double now = TRI_microtime();
-  if (type == Manager::MetaType::Tombstone) {
-    return (now - usedTimeSecs) > tombstoneTTL;
-  }
+  return this->expiryTime < TRI_microtime();
+//  double now = TRI_microtime();
+//  if (type == Manager::MetaType::Tombstone) {
+//    return (now - usedTimeSecs) > tombstoneTTL;
+//  }
+//
+//  auto role = ServerState::instance()->getRole();
+//  if ((ServerState::isSingleServer(role) || ServerState::isCoordinator(role))) {
+//    return (now - usedTimeSecs) > idleTTL;
+//  }
+//  return (now - usedTimeSecs) > idleTTLDBServer;
+}
 
-  auto role = ServerState::instance()->getRole();
-  if ((ServerState::isSingleServer(role) || ServerState::isCoordinator(role))) {
-    return (now - usedTimeSecs) > idleTTL;
-  }
-  return (now - usedTimeSecs) > idleTTLDBServer;
+void Manager::ManagedTrx::updateExpiry() {
+  this->expiryTime = TRI_microtime() + this->timeToLive;// Manager::ttlForType(this->type);
 }
 
 Manager::ManagedTrx::~ManagedTrx() {
@@ -277,7 +296,9 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
                                      std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-    buck._managed.try_emplace(tid, MetaType::StandaloneAQL, state);
+
+    double ttl = Manager::ttlForType(MetaType::StandaloneAQL);
+    buck._managed.try_emplace(tid, MetaType::StandaloneAQL, ttl, state);
   }
 }
 
@@ -364,7 +385,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                                  std::vector<std::string> const& readCollections,
                                  std::vector<std::string> const& writeCollections,
                                  std::vector<std::string> const& exclusiveCollections,
-                                 transaction::Options options) {
+                                 transaction::Options options,
+                                 double ttl) {
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -470,6 +492,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     TRI_ASSERT(!state->isRunning());
     return res;
   }
+  
+  if (ttl <= 0) {
+    ttl = Manager::ttlForType(MetaType::Managed);
+  }
 
   {  // add transaction to bucket
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
@@ -480,7 +506,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                        std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
-    _transactions[bucket]._managed.try_emplace(tid,MetaType::Managed, std::move(state));
+    _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed, ttl, std::move(state));
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
@@ -535,7 +561,11 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 
     writeLocker.unlock();  // failure;
     allTransactionsLocker.unlock();
-    std::this_thread::yield();
+    
+    // we should not be here unless some one does a bulk write
+    // within a el-cheapo / V8 transaction into multiple shards
+    // on the same server (Then its bad though).
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     if (i++ > 32) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
@@ -574,9 +604,9 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
   TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 0);
 
   // garbageCollection might soft abort used transactions
-  const bool isSoftAborted = it->second.usedTimeSecs == 0;
+  const bool isSoftAborted = it->second.expiryTime == 0;
   if (!isSoftAborted) {
-    it->second.usedTimeSecs = TRI_microtime();
+    it->second.updateExpiry();
   }
   if (AccessMode::isWriteOrExclusive(mode)) {
     it->second.rwlock.unlockWrite();
@@ -680,7 +710,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
     } else if (mtrx.type == MetaType::Tombstone) {
       TRI_ASSERT(mtrx.state == nullptr);
       // make sure everyone who asks gets the updated timestamp
-      mtrx.usedTimeSecs = TRI_microtime();
+      mtrx.updateExpiry();
       if (mtrx.finalStatus == status) {
         return res;  // all good
       } else {
@@ -689,6 +719,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
         return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION, std::move(msg));
       }
     }
+    TRI_ASSERT(mtrx.type == MetaType::Managed);
 
     if (mtrx.expired() && status != transaction::Status::ABORTED) {
       status = transaction::Status::ABORTED;
@@ -698,7 +729,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
     std::swap(state, mtrx.state);
     TRI_ASSERT(mtrx.state == nullptr);
     mtrx.type = MetaType::Tombstone;
-    mtrx.usedTimeSecs = TRI_microtime();
+    mtrx.updateExpiry();
     mtrx.finalStatus = status;
     // it is sufficient to pretend that the operation already succeeded
   }
@@ -794,7 +825,7 @@ bool Manager::garbageCollect(bool abortAll) {
             TRI_ASSERT(it->first == mtrx.state->id());
             toAbort.emplace_back(mtrx.state->id());
           } else if (abortAll) {    // transaction is in
-            mtrx.usedTimeSecs = 0;  // soft-abort transaction
+            mtrx.expiryTime = 0;  // soft-abort transaction
             didWork = true;
           }
         }
@@ -966,8 +997,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     TRI_ASSERT(queryList != nullptr);
     // we are only interested in killed write queries
     queryList->kill([](aql::Query& query) {
-      auto* state = query.trx()->state();
-      return state && !state->isReadOnlyTransaction();
+      return query.isModificationQuery();
     }, false);
   });
 
@@ -1018,19 +1048,14 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
       futures.emplace_back(std::move(f));
     }
 
-    if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
-      for (auto const& it : responses) {
-        if (!it.hasValue()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
-        }
-        auto& resp = it.get();
-        if (resp.response && resp.response->statusCode() != fuerte::StatusOK) {
-          auto slices = resp.response->slices();
-          if (!slices.empty()) {
-            VPackSlice slice = slices[0];
-            res.reset(network::resultFromBody(slice, TRI_ERROR_FAILED));
-          }
+    for (auto& f : futures) {
+      network::Response& resp = f.get();
+      
+      if (resp.response && resp.response->statusCode() != fuerte::StatusOK) {
+        auto slices = resp.response->slices();
+        if (!slices.empty()) {
+          VPackSlice slice = slices[0];
+          res.reset(network::resultFromBody(slice, TRI_ERROR_FAILED));
         }
       }
     }

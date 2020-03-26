@@ -51,7 +51,7 @@ class SmartContext : public Context {
   ~SmartContext();
 
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
+  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
 
   /// @brief return the resolver
   CollectionNameResolver const& resolver() override final;

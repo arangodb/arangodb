@@ -53,9 +53,6 @@ struct ExecutionStats {
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
 
-  /// @brief create empty statistics for VelocyPack
-  static void toVelocyPackStatic(arangodb::velocypack::Builder&);
-
   /// @brief sets query execution time from the outside
   void setExecutionTime(double value);
 

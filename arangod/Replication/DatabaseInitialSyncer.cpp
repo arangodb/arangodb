@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -185,13 +186,15 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
   std::size_t current = 0;
   auto guard = arangodb::scopeGuard(
       [&current, &stats]() -> void { stats.numDocsRequested += current; });
+  char ridBuffer[11];
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
   while (current < toFetch.size()) {
     arangodb::transaction::BuilderLeaser requestBuilder(&trx);
     {
       VPackArrayBuilder list(requestBuilder.get());
       for (std::size_t i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
-        requestBuilder->add(VPackValue(toFetch[current + i]));
+        requestBuilder->add(arangodb::basics::HybridLogicalClock::encodeTimeStampToValuePair(
+            toFetch[current + i], ridBuffer));
       }
     }
     std::string request = requestBuilder->slice().toJson();
@@ -1386,11 +1389,14 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   {
     VPackBuilder requestBuilder;
     {
+      char ridBuffer[11];
       VPackArrayBuilder list(&requestBuilder);
       for (auto& pair : ranges) {
         VPackArrayBuilder range(&requestBuilder);
-        requestBuilder.add(VPackValue(pair.first));
-        requestBuilder.add(VPackValue(pair.second));
+        requestBuilder.add(
+            basics::HybridLogicalClock::encodeTimeStampToValuePair(pair.first, ridBuffer));
+        requestBuilder.add(
+            basics::HybridLogicalClock::encodeTimeStampToValuePair(pair.second, ridBuffer));
       }
     }
     std::string request = requestBuilder.slice().toJson();
@@ -1401,7 +1407,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                       "&batchId=" + std::to_string(_config.batch.id);
     auto headers = replutils::createHeaders();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
-    std::size_t requestResume = ranges[0].first;  // start with beginning
+    TRI_voc_rid_t requestResume = ranges[0].first;  // start with beginning
     TRI_ASSERT(requestResume);
     TRI_voc_rid_t iterResume = static_cast<TRI_voc_rid_t>(requestResume);
     std::size_t chunk = 0;
@@ -1417,7 +1423,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     RevisionReplicationIterator& local =
         *static_cast<RevisionReplicationIterator*>(iter.get());
 
-    while (requestResume < std::numeric_limits<std::size_t>::max()) {
+    while (requestResume < std::numeric_limits<TRI_voc_rid_t>::max()) {
       if (isAborted()) {
         return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
       }
@@ -1427,7 +1433,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         _config.barrier.extend(_config.connection);
       }
 
-      std::string batchUrl = url + "&resume=" + std::to_string(requestResume);
+      std::string batchUrl =
+          url + "&" + StaticStrings::RevisionTreeResume + "=" +
+          basics::HybridLogicalClock::encodeTimeStamp(requestResume);
       std::string msg = "fetching collection revision ranges for collection '" +
                         coll->name() + "' from " + batchUrl;
       _config.progress.set(msg);
@@ -1460,14 +1468,15 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       }
 
       VPackSlice const resumeSlice = slice.get("resume");
-      if (!resumeSlice.isNone() && !resumeSlice.isNumber()) {
+      if (!resumeSlice.isNone() && !resumeSlice.isString()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from master at ") +
                           _config.master.endpoint + batchUrl +
                           ": response field 'resume' is not a number");
       }
-      requestResume = resumeSlice.isNone() ? std::numeric_limits<std::size_t>::max()
-                                           : resumeSlice.getNumber<std::size_t>();
+      requestResume = resumeSlice.isNone()
+                          ? std::numeric_limits<TRI_voc_rid_t>::max()
+                          : basics::HybridLogicalClock::decodeTimeStamp(resumeSlice);
 
       VPackSlice const rangesSlice = slice.get("ranges");
       if (!rangesSlice.isArray()) {
@@ -1477,8 +1486,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                           ": response field 'ranges' is not an array");
       }
 
-      for (std::size_t i = 0; i < rangesSlice.length(); ++i) {
-        VPackSlice masterSlice = rangesSlice.at(i);
+      for (VPackSlice masterSlice : VPackArrayIterator(rangesSlice)) {
         if (!masterSlice.isArray()) {
           return Result(
               TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1493,15 +1501,16 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                               static_cast<TRI_voc_rid_t>(currentRange.first)));
         }
 
-        std::size_t removalBound = masterSlice.isEmptyArray()
-                                       ? currentRange.second + 1
-                                       : masterSlice.at(0).getNumber<std::size_t>();
+        TRI_voc_rid_t removalBound =
+            masterSlice.isEmptyArray()
+                ? currentRange.second + 1
+                : basics::HybridLogicalClock::decodeTimeStamp(masterSlice.at(0));
         TRI_ASSERT(currentRange.first <= removalBound);
         TRI_ASSERT(removalBound <= currentRange.second + 1);
-        std::size_t mixedBound =
-            masterSlice.isEmptyArray()
-                ? currentRange.second
-                : masterSlice.at(masterSlice.length() - 1).getNumber<std::size_t>();
+        std::size_t mixedBound = masterSlice.isEmptyArray()
+                                     ? currentRange.second
+                                     : basics::HybridLogicalClock::decodeTimeStamp(
+                                           masterSlice.at(masterSlice.length() - 1));
         TRI_ASSERT(currentRange.first <= mixedBound);
         TRI_ASSERT(mixedBound <= currentRange.second);
 
@@ -1513,7 +1522,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
         std::size_t index = 0;
         while (local.hasMore() && local.revision() <= mixedBound) {
-          TRI_voc_rid_t masterRev = masterSlice.at(index).getNumber<TRI_voc_rid_t>();
+          TRI_voc_rid_t masterRev =
+              basics::HybridLogicalClock::decodeTimeStamp(masterSlice.at(index));
 
           if (local.revision() < masterRev) {
             toRemove.emplace_back(local.revision());
@@ -1532,14 +1542,15 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
           }
         }
         for (; index < masterSlice.length(); ++index) {
-          TRI_voc_rid_t masterRev = masterSlice.at(index).getNumber<TRI_voc_rid_t>();
+          TRI_voc_rid_t masterRev =
+              basics::HybridLogicalClock::decodeTimeStamp(masterSlice.at(index));
           // fetch any leftovers
           toFetch.emplace_back(masterRev);
           iterResume = std::max(iterResume, masterRev + 1);
         }
 
         while (local.hasMore() &&
-               local.revision() <= std::min(requestResume - 1, currentRange.second)) {
+               local.revision() <= std::min(requestResume - 1, static_cast<TRI_voc_rid_t>(currentRange.second))) {
           toRemove.emplace_back(local.revision());
           iterResume = std::max(iterResume, local.revision() + 1);
           local.next();

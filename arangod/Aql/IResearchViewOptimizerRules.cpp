@@ -766,7 +766,7 @@ void scatterViewInClusterRule(Optimizer* opt,
 
   TRI_ASSERT(plan->getAst() && plan->getAst()->query() &&
              plan->getAst()->query()->trx());
-  auto* resolver = plan->getAst()->query()->trx()->resolver();
+  auto* resolver = plan->getAst()->query().resolver();
   TRI_ASSERT(resolver);
 
   for (auto* node : nodes) {

@@ -218,12 +218,17 @@ set(LIB_ARANGO_PREGEL_SOURCES
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
+  Aql/AqlCall.cpp
+  Aql/AqlCallSet.cpp
+  Aql/AqlCallStack.cpp
+  Aql/AqlExecuteResult.cpp
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
+  Aql/AqlItemBlockInputMatrix.cpp
+  Aql/AqlItemBlockInputRange.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
   Aql/AqlItemMatrix.cpp
-  Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/AqlValueGroup.cpp
@@ -232,9 +237,9 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/Ast.cpp
   Aql/AstHelper.cpp
   Aql/AstNode.cpp
+  Aql/AstResources.cpp
   Aql/AsyncExecutor.cpp
   Aql/AttributeAccessor.cpp
-  Aql/BaseExpressionContext.cpp
   Aql/BindParameters.cpp
   Aql/BlockCollector.cpp
   Aql/BlocksWithClients.cpp
@@ -295,12 +300,14 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/KShortestPathsNode.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
+  Aql/LimitStats.cpp
   Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorHelpers.cpp
   Aql/ModificationExecutorInfos.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
+  Aql/MultiAqlItemBlockInputRange.cpp
   Aql/MultiDependencySingleRowFetcher.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
@@ -309,22 +316,23 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/OptimizerRulesCluster.cpp
   Aql/OptimizerRulesFeature.cpp
   Aql/OptimizerRulesReplaceFunctions.cpp
+  Aql/OptimizerUtils.cpp
   Aql/OutputAqlItemRow.cpp
   Aql/ParallelStartExecutor.cpp
-  Aql/ParallelEndExecutor.cpp
   Aql/Parser.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
+  Aql/QueryContext.cpp
   Aql/QueryExecutionState.cpp
   Aql/QueryExpressionContext.cpp
   Aql/QueryList.cpp
   Aql/QueryOptions.cpp
   Aql/QueryProfile.cpp
   Aql/QueryRegistry.cpp
-  Aql/QueryResources.cpp
   Aql/QuerySnippet.cpp
   Aql/QueryString.cpp
+  Aql/QueryWarnings.cpp
   Aql/Range.cpp
   Aql/RemoveModifier.cpp
   Aql/RegexCache.cpp
@@ -344,6 +352,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SimpleModifier.cpp
   Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
+  Aql/SkipResult.cpp
   Aql/SortCondition.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp

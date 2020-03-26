@@ -423,8 +423,6 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
 
-  auto query = ast->query();
-
   switch (type) {
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
@@ -435,11 +433,11 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       value.type = VALUE_TYPE_STRING;
       VPackSlice v = slice.get("name");
       if (v.isNone()) {
-        setStringValue(query->registerString("", 0), 0);
+        setStringValue(ast->resources().registerString("", 0), 0);
       } else {
         VPackValueLength l;
         char const* p = v.getString(l);
-        setStringValue(query->registerString(p, l), l);
+        setStringValue(ast->resources().registerString(p, l), l);
       }
       break;
     }
@@ -464,7 +462,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
           VPackSlice v = slice.get("value");
           VPackValueLength l;
           char const* p = v.getString(l);
-          setStringValue(query->registerString(p, l), l);
+          setStringValue(ast->resources().registerString(p, l), l);
           break;
         }
         default: {
@@ -494,7 +492,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       VPackSlice v = slice.get("name");
       VPackValueLength l;
       char const* p = v.getString(l);
-      setStringValue(query->registerString(p, l), l);
+      setStringValue(ast->resources().registerString(p, l), l);
       break;
     }
     case NODE_TYPE_EXPANSION: {
@@ -605,8 +603,8 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
 
     try {
       for (VPackSlice it : VPackArrayIterator(subNodes)) {
-        int type = it.get("typeID").getNumericValue<int>();
-        if (static_cast<AstNodeType>(type) == NODE_TYPE_NOP) {
+        int t = it.get("typeID").getNumericValue<int>();
+        if (static_cast<AstNodeType>(t) == NODE_TYPE_NOP) {
           // special handling for nop as it is a singleton
           addMember(Ast::getNodeNop());
         } else {
@@ -624,7 +622,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     }
   }
 
-  ast->query()->addNode(this);
+  ast->resources().addNode(this);
 }
 
 /// @brief create the node
@@ -2825,9 +2823,9 @@ bool AstNode::getExcludesNull() const noexcept {
   return value.value._bool;
 }
 
-void AstNode::setValueType(AstNodeValueType type) {
+void AstNode::setValueType(AstNodeValueType t) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  value.type = type;
+  value.type = t;
 }
 
 bool AstNode::isValueType(AstNodeValueType expectedType) const noexcept {

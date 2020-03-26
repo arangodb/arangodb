@@ -36,6 +36,7 @@
 #include <velocypack/StringRef.h>
 
 #include "Aql/AstNode.h"
+#include "Aql/AstResources.h"
 #include "Aql/Scopes.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
@@ -46,6 +47,10 @@
 namespace arangodb {
 class CollectionNameResolver;
 
+namespace transaction {
+class Methods;
+}
+
 namespace velocypack {
 class Slice;
 }
@@ -53,7 +58,8 @@ class Slice;
 namespace aql {
 
 class BindParameters;
-class Query;
+class QueryContext;
+class RegexCache;
 struct Variable;
 
 typedef std::unordered_map<Variable const*, std::unordered_set<std::string>> TopLevelAttributes;
@@ -64,14 +70,17 @@ class Ast {
 
  public:
   /// @brief create the AST
-  explicit Ast(Query*);
+  explicit Ast(QueryContext&);
 
   /// @brief destroy the AST
   ~Ast();
 
  public:
+  
   /// @brief return the query
-  Query* query() const;
+  QueryContext& query() const { return _query; }
+  
+  AstResources& resources() { return _resources; }
 
   /// @brief return the variable generator
   VariableGenerator* variables();
@@ -102,6 +111,10 @@ class Ast {
 
   /// @brief whether or not the query contains a traversal
   bool containsTraversal() const;
+  
+  /// @brief whether or not query contains any modification operations
+  bool containsModificationOp() const;
+  void setContainsModificationOp();
 
   /// @brief convert the AST into VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
@@ -368,16 +381,16 @@ class Ast {
                             arangodb::CollectionNameResolver const& resolver);
 
   /// @brief replace variables
-  AstNode* replaceVariables(AstNode*, std::unordered_map<VariableId, Variable const*> const&);
+  static AstNode* replaceVariables(AstNode*, std::unordered_map<VariableId, Variable const*> const&);
 
   /// @brief replace a variable reference in the expression with another
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
   /// latter
   /// becomes `a + b + 1`
-  AstNode* replaceVariableReference(AstNode*, Variable const*, AstNode const*);
+  static AstNode* replaceVariableReference(AstNode*, Variable const*, AstNode const*);
 
   /// @brief optimizes the AST
-  void validateAndOptimize();
+  void validateAndOptimize(transaction::Methods&);
 
   /// @brief determines the variables referenced in an expression
   static void getReferencedVariables(AstNode const*,
@@ -455,9 +468,9 @@ class Ast {
   /// @brief optimizes the binary logical operators && and ||
   AstNode* optimizeBinaryOperatorLogical(AstNode*, bool);
 
-  /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and
-  /// IN
-  AstNode* optimizeBinaryOperatorRelational(AstNode*);
+  /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
+  AstNode* optimizeBinaryOperatorRelational(transaction::Methods&,
+                                            RegexCache&, AstNode*);
 
   /// @brief optimizes the binary arithmetic operators +, -, *, / and %
   AstNode* optimizeBinaryOperatorArithmetic(AstNode*);
@@ -470,7 +483,8 @@ class Ast {
                                    std::unordered_map<Variable const*, AstNode const*> const&);
 
   /// @brief optimizes a call to a built-in function
-  AstNode* optimizeFunctionCall(AstNode*);
+  AstNode* optimizeFunctionCall(transaction::Methods&,
+                                RegexCache&, AstNode*);
 
   /// @brief optimizes a reference to a variable
   AstNode* optimizeReference(AstNode*);
@@ -543,7 +557,9 @@ class Ast {
 
  private:
   /// @brief the query
-  Query* _query;
+  QueryContext& _query;
+  
+  AstResources _resources;
 
   /// @brief all scopes used in the query
   Scopes _scopes;
@@ -571,6 +587,9 @@ class Ast {
 
   /// @brief whether or not the query contains bind parameters
   bool _containsBindParameters;
+  
+  /// @brief
+  bool _containsModificationOp;
 
   /// @brief a singleton no-op node instance
   static AstNode const NopNode;

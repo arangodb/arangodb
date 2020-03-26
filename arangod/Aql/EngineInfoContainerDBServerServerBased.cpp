@@ -76,11 +76,11 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string&
 
 EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngineShardLists(
     GraphNode const* node, ServerID const& server,
-    std::unordered_map<ShardID, ServerID> const& shardMapping, Query const& query)
+    std::unordered_map<ShardID, ServerID> const& shardMapping, QueryContext const& query)
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
-  std::unordered_set<std::string> const& restrictToShards = query.queryOptions().shardIds;
+  std::unordered_set<std::string> const& restrictToShards = query.queryOptions().restrictToShards;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
     _edgeCollections.emplace_back(
@@ -94,7 +94,9 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
     auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
-#ifdef USE_ENTERPRISE
+#warning FIXME
+//#ifdef USE_ENTERPRISE
+#if 0
     for (auto const& s : shards) {
       if (query.trx()->isInaccessibleCollectionId(col->getPlanId())) {
         _inaccessibleShards.insert(s);
@@ -189,8 +191,8 @@ void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializ
   TRI_ASSERT(infoBuilder.isOpenArray());
 }
 
-EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Query& query) noexcept
-    : _query(query), _shardLocking(&query), _lastSnippetId(1) {
+EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(QueryContext& query) noexcept
+    : _query(query), _shardLocking(query), _lastSnippetId(1) {
   // NOTE: We need to start with _lastSnippetID > 0. 0 is reserved for GraphNodes
 }
 
@@ -198,7 +200,7 @@ void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* g
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
     std::map<std::string, Collection*> const* allCollections =
-        _query.collections()->collections();
+        _query.collections().collections();
     auto& resolver = _query.resolver();
     for (auto const& it : *allCollections) {
       // If resolver cannot resolve this collection
@@ -292,7 +294,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
   // Build Lookup Infos
   VPackBuilder infoBuilder;
-  transaction::Methods* trx = _query.trx();
+  transaction::Methods& trx = _query.trxForOptimization();
 
   network::RequestOptions options;
   options.database = _query.vocbase().name();
@@ -325,7 +327,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     TRI_ASSERT(infoBuilder.isOpenObject());
 
     infoBuilder.add(StaticStrings::SerializationFormat,
-                    VPackValue(static_cast<int>(aql::SerializationFormat::SHADOWROWS)));
+                    VPackValue(static_cast<SerializationFormatType>(
+                        aql::SerializationFormat::SHADOWROWS)));
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
 
@@ -353,7 +356,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     // add the transaction ID header
     network::Headers headers;
-    ClusterTrxMethods::addAQLTransactionHeader(*trx, server, headers);
+    ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
     auto res = network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
                                     "/_api/aql/setup", std::move(buffer),
                                     options, std::move(headers))

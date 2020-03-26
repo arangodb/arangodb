@@ -46,15 +46,15 @@ transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
 }
 
 /// @brief order a custom type handler for the collection
-std::shared_ptr<VPackCustomTypeHandler> transaction::V8Context::orderCustomTypeHandler() {
+VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     transaction::V8Context* main = _sharedTransactionContext->_mainScope;
 
     if (main != nullptr && main != this && !main->isGlobal()) {
-      _customTypeHandler = main->orderCustomTypeHandler();
+      _customTypeHandler = transaction::Context::createCustomTypeHandler(_vocbase, main->resolver());
     } else {
-      _customTypeHandler.reset(
-          transaction::Context::createCustomTypeHandler(_vocbase, resolver()));
+      _customTypeHandler =
+          transaction::Context::createCustomTypeHandler(_vocbase, resolver());
     }
 
     _options.customTypeHandler = _customTypeHandler.get();
@@ -65,7 +65,7 @@ std::shared_ptr<VPackCustomTypeHandler> transaction::V8Context::orderCustomTypeH
   TRI_ASSERT(_options.customTypeHandler != nullptr);
   TRI_ASSERT(_dumpOptions.customTypeHandler != nullptr);
 
-  return _customTypeHandler;
+  return _customTypeHandler.get();
 }
 
 /// @brief return the resolver
@@ -121,7 +121,7 @@ bool transaction::V8Context::isGlobal() const {
 }
 
 /// @brief return parent transaction state or none
-std::shared_ptr<TransactionState> transaction::V8Context::getParentState() {
+/*static*/ std::shared_ptr<TransactionState> transaction::V8Context::getParentState() {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
       v8::Isolate::GetCurrent()->GetData(V8PlatformFeature::V8_DATA_SLOT));
   if (v8g == nullptr || v8g->_transactionContext == nullptr) {
@@ -131,7 +131,7 @@ std::shared_ptr<TransactionState> transaction::V8Context::getParentState() {
 }
 
 /// @brief check whether the transaction is embedded
-bool transaction::V8Context::isEmbedded() {
+/*static*/ bool transaction::V8Context::isEmbedded() {
   return (getParentState() != nullptr);
 }
 

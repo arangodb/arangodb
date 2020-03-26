@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_SUBQUERY_END_EXECUTOR_H
 #define ARANGOD_AQL_SUBQUERY_END_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -49,7 +50,7 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
                            std::unordered_set<RegisterId> const& registersToClear,
                            std::unordered_set<RegisterId> registersToKeep,
                            velocypack::Options const* options, RegisterId inReg,
-                           RegisterId outReg);
+                           RegisterId outReg, bool isModificationSubquery);
 
   SubqueryEndExecutorInfos() = delete;
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) noexcept = default;
@@ -60,11 +61,13 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
   [[nodiscard]] RegisterId getOutputRegister() const noexcept;
   [[nodiscard]] bool usesInputRegister() const noexcept;
   [[nodiscard]] RegisterId getInputRegister() const noexcept;
+  [[nodiscard]] bool isModificationSubquery() const noexcept;
 
  private:
   velocypack::Options const* _vpackOptions;
   RegisterId const _outReg;
   RegisterId const _inReg;
+  bool const _isModificationSubquery;
 };
 
 class SubqueryEndExecutor {
@@ -82,8 +85,30 @@ class SubqueryEndExecutor {
   SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos);
   ~SubqueryEndExecutor();
 
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[deprecated]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+
+  // produceRows accumulates all input rows it can get into _accumulator, which
+  // will then be read out by ExecutionBlockImpl
+  // TODO: can the production of output be moved to produceRows again?
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  // skipRowsRange consumes all data rows available on the input and just
+  // ignores it. real skips of a subqueries will not execute the whole subquery
+  // so this might not be necessary at all (except for modifying subqueries,
+  // where we have to execute the subquery)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+
+  /**
+   * @brief Consume the given shadow row and write the aggregated value to it
+   *
+   * @param shadowRow The shadow row
+   * @param output Output block
+   */
+  auto consumeShadowRow(ShadowAqlItemRow shadowRow, OutputAqlItemRow& output) -> void;
+
+  [[nodiscard]] auto isModificationSubquery() const noexcept -> bool;
 
  private:
   enum class State {
@@ -117,8 +142,6 @@ class SubqueryEndExecutor {
   SubqueryEndExecutorInfos& _infos;
 
   Accumulator _accumulator;
-
-  State _state{State::ACCUMULATE_DATA_ROWS};
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -73,11 +73,6 @@ class UserManager {
   typedef std::function<Result(auth::User&)> UserCallback;
   typedef std::function<Result(auth::User const&)> ConstUserCallback;
 
-  void setQueryRegistry(aql::QueryRegistry* registry) {
-    TRI_ASSERT(registry != nullptr);
-    _queryRegistry = registry;
-  }
-
   /// Tells coordinator to reload its data. Only called in HeartBeat thread
   void setGlobalVersion(uint64_t version) {
     _globalVersion.store(version, std::memory_order_release);
@@ -182,8 +177,6 @@ class UserManager {
 
   /// Caches permissions and other user info
   UserMap _userCache;
-
-  aql::QueryRegistry* _queryRegistry;
 #ifdef USE_ENTERPRISE
   /// iterface to external authentication systems like LDAP
   std::unique_ptr<arangodb::auth::Handler> _authHandler;

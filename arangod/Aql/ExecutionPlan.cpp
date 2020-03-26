@@ -140,7 +140,7 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections, AstN
   }
 }
 
-std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
+std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& query,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
   auto options = std::make_unique<traverser::TraverserOptions>(query);
@@ -222,7 +222,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
   return options;
 }
 
-std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Query* query,
+std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::QueryContext& query,
                                                               AstNode const* node) {
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
 
@@ -297,7 +297,14 @@ ExecutionPlan::~ExecutionPlan() {
     }
   }
 #endif
-
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // we are in the destructor here already. decreasing the memory usage counters
+  // will only provide a benefit (in terms of assertions) if we are in
+  // maintainer mode, so we can save all these operations in non-maintainer mode
+  _resourceMonitor->decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode)); 
+#endif
+  
   for (auto& x : _ids) {
     delete x.second;
   }
@@ -316,7 +323,7 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
   plan->_root = plan->fromNode(root);
 
   // set fullCount flag for last LIMIT node on main level
-  if (plan->_lastLimitNode != nullptr && ast->query()->queryOptions().fullCount) {
+  if (plan->_lastLimitNode != nullptr && ast->query().queryOptions().fullCount) {
     ExecutionNode::castTo<LimitNode*>(plan->_lastLimitNode)->setFullCount();
   }
 
@@ -354,7 +361,7 @@ void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast, VPackSlice const slic
   }
 
   for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
-    ast->query()->addCollection(
+    ast->query().collections().add(
         arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                    "name"),
         AccessMode::fromString(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
@@ -391,18 +398,18 @@ ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 
 /// @brief create an execution plan identical to this one
 ///   keep the memory of the plan on the query object specified.
-ExecutionPlan* ExecutionPlan::clone(Query const& query) {
-  auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
-  // Clone nextID, this is required, if we need to create Nodes after
-  // this clone;
-  otherPlan->_nextId = _nextId;
-  for (auto const& it : _ids) {
-    auto clonedNode = it.second->clone(otherPlan.get(), false, true);
-    otherPlan->registerNode(clonedNode);
-  }
-
-  return otherPlan.release();
-}
+//ExecutionPlan* ExecutionPlan::clone(Query const& query) {
+//  auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
+//  // Clone nextID, this is required, if we need to create Nodes after
+//  // this clone;
+//  otherPlan->_nextId = _nextId;
+//  for (auto const& it : _ids) {
+//    auto clonedNode = it.second->clone(otherPlan.get(), false, true);
+//    otherPlan->registerNode(clonedNode);
+//  }
+//
+//  return otherPlan.release();
+//}
 
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
@@ -438,7 +445,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   // set up collections
   builder.add(VPackValue("collections"));
   builder.openArray();
-  for (auto const& c : *ast->query()->collections()->collections()) {
+  for (auto const& c : *ast->query().collections().collections()) {
     builder.openObject();
     builder.add("name", VPackValue(c.first));
     builder.add("type", VPackValue(AccessMode::typeString(c.second->accessType())));
@@ -454,7 +461,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   // simon: who is reading this ?
   builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
   builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
-  builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));
+  builder.add("isModificationQuery", VPackValue(ast->containsModificationOp()));
 
   builder.close();
 }
@@ -802,9 +809,9 @@ ModificationOptions ExecutionPlan::createModificationOptions(AstNode const* node
       // its unclear which collections the traversal will access
       isReadWrite = true;
     } else {
-      auto const collections = _ast->query()->collections();
+      auto const& collections = _ast->query().collections();
 
-      for (auto const& it : *(collections->collections())) {
+      for (auto const& it : *(collections.collections())) {
         if (it.second->isReadWrite()) {
           isReadWrite = true;
           break;
@@ -854,6 +861,10 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > 0);
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
+  
+  // may throw
+  _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
+  
   auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
   TRI_ASSERT(emplaced);
   return node.release();
@@ -867,6 +878,9 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
+    // may throw
+    _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
+    
     auto [it, emplaced] = _ids.try_emplace(node->id(), node);
     if (!emplaced) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -933,8 +947,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
     std::string const collectionName = expression->getString();
-    auto collections = _ast->query()->collections();
-    auto collection = collections->get(collectionName);
+    auto& collections = _ast->query().collections();
+    auto collection = collections.get(collectionName);
 
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -944,7 +958,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
     std::string const viewName = expression->getString();
-    auto& vocbase = _ast->query()->vocbase();
+    auto& vocbase = _ast->query().vocbase();
 
     std::shared_ptr<LogicalView> view;
 
@@ -1021,7 +1035,7 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
   TRI_ASSERT(expression->type == NODE_TYPE_VIEW);
 
   std::string const viewName = expression->getString();
-  auto& vocbase = _ast->query()->vocbase();
+  auto& vocbase = _ast->query().vocbase();
 
   std::shared_ptr<LogicalView> view;
 
@@ -1105,7 +1119,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
 
   // First create the node
   auto travNode =
-      new TraversalNode(this, nextId(), &(_ast->query()->vocbase()), direction, start,
+      new TraversalNode(this, nextId(), &(_ast->query().vocbase()), direction, start,
                         graph, std::move(pruneExpression), std::move(options));
 
   auto variable = node->getMember(5);
@@ -1177,10 +1191,10 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  auto options = createShortestPathOptions(getAst()->query(), node->getMember(4));
+  auto options = createShortestPathOptions(_ast->query(), node->getMember(4));
 
   // First create the node
-  auto spNode = new ShortestPathNode(this, nextId(), &(_ast->query()->vocbase()), direction,
+  auto spNode = new ShortestPathNode(this, nextId(), &(_ast->query().vocbase()), direction,
                                      start, target, graph, std::move(options));
 
   auto variable = node->getMember(5);
@@ -1223,7 +1237,7 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   auto options = createShortestPathOptions(getAst()->query(), node->getMember(4));
 
   // First create the node
-  auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query()->vocbase()), direction,
+  auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query().vocbase()), direction,
                                        start, target, graph, std::move(options));
 
   auto variable = node->getMember(5);
@@ -1717,8 +1731,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous, AstNode co
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1759,8 +1773,8 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous, AstNode co
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1808,8 +1822,8 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous, AstNode co
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1872,8 +1886,8 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous, AstNode c
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1936,8 +1950,8 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous, AstNode co
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

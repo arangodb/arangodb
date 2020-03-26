@@ -45,7 +45,7 @@ ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, AsyncNode const* node, ExecutorInfos&& infos)
     : ExecutionBlock(engine, node),
       _infos(std::move(infos)),
-      _query(*engine->getQuery()) {}
+      _sharedState(engine->sharedState()) {}
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
@@ -65,9 +65,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecuto
 //    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
 //  }
 
-  if (getQuery().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
+//  if (getQuery().killed()) {
+//    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+//  }
   
   std::lock_guard<std::mutex> guard(_mutex);
   
@@ -82,7 +82,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecuto
   TRI_ASSERT(_internalState == AsyncState::Empty);
   
   _internalState = AsyncState::InProgress;
-  bool queued = _query.sharedState()->asyncExecuteAndWakeup([this, atMost](bool isAsync) {
+  bool queued = _sharedState->asyncExecuteAndWakeup([this, atMost](bool isAsync) {
     std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
     if (isAsync) {
       guard.lock();
@@ -112,9 +112,9 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSome(si
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSomeWithoutTrace(size_t atMost) {
 
-  if (getQuery().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
+//  if (getQuery().killed()) {
+//    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+//  }
 
   std::lock_guard<std::mutex> guard(_mutex);
 
@@ -127,7 +127,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSomeWit
   TRI_ASSERT(_internalState == AsyncState::Empty);
 
   _internalState = AsyncState::InProgress;
-  bool queued = _query.sharedState()->asyncExecuteAndWakeup([this, atMost](bool isAsync) {
+  bool queued = _sharedState->asyncExecuteAndWakeup([this, atMost](bool isAsync) {
     std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
     if (isAsync) {
       guard.lock();

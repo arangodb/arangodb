@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 
 #include <velocypack/Builder.h>
@@ -39,6 +40,16 @@
 
 namespace arangodb {
 namespace aql {
+
+struct AqlCall;
+class AqlItemBlockInputRange;
+class InputAqlItemRow;
+class OutputAqlItemRow;
+class ExecutorInfos;
+class FilterStats;
+template <BlockPassthrough>
+class SingleRowFetcher;
+
 //
 // ModificationExecutor is the "base" class for the Insert, Remove,
 // UpdateReplace and Upsert executors.
@@ -163,9 +174,17 @@ class ModificationExecutor {
 
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  [[nodiscard]] auto produceRows(typename FetcherType::DataRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  [[nodiscard]] auto skipRowsRange(typename FetcherType::DataRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+
  protected:
-  std::pair<ExecutionState, Stats> doCollect(size_t maxOutputs);
+  void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
   void doOutput(OutputAqlItemRow& output, Stats& stats);
+  
+  transaction::Methods _trx;
 
   // The state that was returned on the last call to produceRows. For us
   // this is relevant because we might have collected some documents in the

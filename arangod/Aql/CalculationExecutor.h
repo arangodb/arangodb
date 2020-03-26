@@ -26,6 +26,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegexCache.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
@@ -40,10 +41,12 @@ class Methods;
 
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 class Expression;
 class OutputAqlItemRow;
-class Query;
-template<BlockPassthrough>
+class QueryContext;
+template <BlockPassthrough>
 class SingleRowFetcher;
 struct Variable;
 
@@ -51,7 +54,7 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   CalculationExecutorInfos(RegisterId outputRegister, RegisterId nrInputRegisters,
                            RegisterId nrOutputRegisters,
                            std::unordered_set<RegisterId> registersToClear,
-                           std::unordered_set<RegisterId> registersToKeep, Query& query,
+                           std::unordered_set<RegisterId> registersToKeep, QueryContext& query,
                            Expression& expression, std::vector<Variable const*>&& expInVars,
                            std::vector<RegisterId>&& expInRegs);
 
@@ -62,7 +65,7 @@ struct CalculationExecutorInfos : public ExecutorInfos {
 
   RegisterId getOutputRegisterId() const noexcept;
 
-  Query& getQuery() const noexcept;
+  QueryContext& getQuery() const noexcept;
   transaction::Methods* getTrx() const noexcept;
 
 
@@ -75,8 +78,7 @@ struct CalculationExecutorInfos : public ExecutorInfos {
  private:
   RegisterId _outputRegisterId;
 
-  Query& _query;
-  transaction::Methods* _trx;
+  QueryContext& _query;
   Expression& _expression;
   std::vector<Variable const*> _expInVars;  // input variables for expresseion
   std::vector<RegisterId> _expInRegs;       // input registers for expression
@@ -107,6 +109,14 @@ class CalculationExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
+
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
@@ -124,6 +134,8 @@ class CalculationExecutor {
   [[nodiscard]] bool shouldExitContextBetweenBlocks() const;
 
  private:
+  transaction::Methods _trx;
+  aql::RegexCache _regexCache;
   CalculationExecutorInfos& _infos;
 
   Fetcher& _fetcher;
@@ -136,7 +148,6 @@ class CalculationExecutor {
   // exitContext; but only for assertions in maintainer mode.
   bool _hasEnteredContext;
 };
-
 
 }  // namespace aql
 }  // namespace arangodb

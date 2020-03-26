@@ -170,7 +170,7 @@ class IRESEARCH_API flags {
 
   static const flags& empty_instance();
 
-  flags();
+  flags() = default;
   flags(const flags&) = default;
   flags(flags&& rhs) noexcept;
   flags(std::initializer_list<const attribute::type_id*> flags);
@@ -178,8 +178,8 @@ class IRESEARCH_API flags {
   flags& operator=(flags&& rhs) noexcept;
   flags& operator=(const flags&) = default;
 
-  type_map::const_iterator begin() const { return map_.begin(); }
-  type_map::const_iterator end() const { return map_.end(); }
+  type_map::const_iterator begin() const noexcept { return map_.begin(); }
+  type_map::const_iterator end() const noexcept { return map_.end(); }
 
   template< typename T >
   flags& add() {
@@ -209,8 +209,8 @@ class IRESEARCH_API flags {
     return *this;
   }
   
-  bool empty() const { return map_.empty(); }
-  size_t size() const { return map_.size(); }
+  bool empty() const noexcept { return map_.empty(); }
+  size_t size() const noexcept { return map_.size(); }
   void clear() noexcept { map_.clear(); }
   void reserve(size_t /*capacity*/) {
     // NOOP for std::set

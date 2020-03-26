@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H 1
 
 #include "Aql/types.h"
+#include "Aql/ExecutionEngine.h"
 
 #include <stack>
 #include <string>
@@ -35,10 +36,10 @@ class Result;
 
 namespace aql {
 
-class ExecutionEngine;
+class AqlItemBlockManager;
 class ExecutionEngineResult;
 class ExecutionNode;
-class Query;
+class QueryContext;
 class QueryRegistry;
 
 class EngineInfoContainerCoordinator {
@@ -56,10 +57,11 @@ class EngineInfoContainerCoordinator {
 
     void addNode(ExecutionNode* en);
 
-    Result buildEngine(Query& query, QueryRegistry* queryRegistry, std::string const& dbname,
-                       std::unordered_set<std::string> const& restrictToShards,
-                       MapRemoteToSnippet const& dbServerQueryIds,
-                       std::vector<uint64_t>& coordinatorQueryIds) const;
+    Result buildEngine(QueryContext& query,
+      AqlItemBlockManager& mgr,
+      std::unordered_set<std::string> const& restrictToShards,
+      MapRemoteToSnippet const& dbServerQueryIds,
+      std::unique_ptr<ExecutionEngine>& engine) const;
 
     QueryId queryId() const;
 
@@ -95,13 +97,12 @@ class EngineInfoContainerCoordinator {
 
   // Build the Engines on the coordinator
   //   * Creates the ExecutionBlocks
-  //   * Injects all Parts but the First one into QueryRegistery
+  //   * Injects all Parts into the snippet list
   //   Return the first engine which is not added in the Registry
-  ExecutionEngineResult buildEngines(Query& query, QueryRegistry* registry,
-                                     std::string const& dbname,
-                                     std::unordered_set<std::string> const& restrictToShards,
-                                     MapRemoteToSnippet const& dbServerQueryIds,
-                                     std::vector<uint64_t>& coordinatorQueryIds) const;
+  Result buildEngines(QueryContext& query, AqlItemBlockManager& mgr,
+                      std::unordered_set<std::string> const& restrictToShards,
+                      MapRemoteToSnippet const& dbServerQueryIds
+                      SnippetList& snippets) const;
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster

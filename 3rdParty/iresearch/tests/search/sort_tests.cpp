@@ -68,7 +68,7 @@ struct aligned_scorer : public irs::sort {
     ) const override {
       return { nullptr, nullptr };
     }
-    const irs::flags& features() const {
+    virtual const irs::flags& features() const override {
       return features_;
     }
 

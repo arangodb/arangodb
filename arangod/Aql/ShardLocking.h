@@ -81,7 +81,7 @@ class ShardLocking {
 
  public:
   // @brief prepare a shardlocking for the new query.
-  explicit ShardLocking(Query* query) : _query(query) { TRI_ASSERT(_query != nullptr); }
+  explicit ShardLocking(QueryContext& query) : _query(query) {}
 
   // @brief Every ExectionNode that is send to a Database server needs to be passed through this method
   // this class will check if a collection (or more) is used, and will adapt the locking.
@@ -138,7 +138,7 @@ class ShardLocking {
                      bool useAsSatellite);
 
  private:
-  Query* _query;
+  QueryContext& _query;
 
   std::unordered_map<Collection const*, CollectionLockingInformation> _collectionLocking;
 

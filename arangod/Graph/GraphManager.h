@@ -67,14 +67,11 @@ class GraphManager {
   GraphManager(TRI_vocbase_t& vocbase, bool isInTransaction)
       : _vocbase(vocbase), _isInTransaction(isInTransaction) {}
 
-  OperationResult readGraphs(velocypack::Builder& builder,
-                             arangodb::aql::QueryPart queryPart) const;
+  OperationResult readGraphs(velocypack::Builder& builder) const;
 
-  OperationResult readGraphKeys(velocypack::Builder& builder,
-                                arangodb::aql::QueryPart queryPart) const;
+  OperationResult readGraphKeys(velocypack::Builder& builder) const;
 
   OperationResult readGraphByQuery(velocypack::Builder& builder,
-                                   arangodb::aql::QueryPart queryPart,
                                    std::string queryStr) const;
 
   ////////////////////////////////////////////////////////////////////////////////

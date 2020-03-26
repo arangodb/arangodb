@@ -89,7 +89,7 @@ RestStatus RestCursorHandler::continueExecute() {
 
   if (_query != nullptr) {  // non-stream query
     if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
-      return processQuery();
+      return processQuery(/*continuation*/ true);
     }
   } else if (_cursor) {  // stream cursor query
 
@@ -241,22 +241,13 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
   // non-stream case. Execute query, then build a cursor
   //  with the entire result set.
-  VPackValueLength l;
-  char const* queryStr = querySlice.getString(l);
-  TRI_ASSERT(l > 0);
 
-  auto query = std::make_unique<aql::Query>(
-      false, _vocbase, arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
-      bindVarsBuilder, _options, arangodb::aql::PART_MAIN);
-  query->setTransactionContext(createTransactionContext());
-
-  std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
-  ss->setWakeupHandler([self = shared_from_this()] {
-    return self->wakeupHandler();
-  });
+  auto query = std::make_unique<aql::Query>(createTransactionContext(),
+      arangodb::aql::QueryString(querySlice.copyString()),
+      bindVarsBuilder, _options);
 
   registerQuery(std::move(query));
-  return processQuery();
+  return processQuery(/*continuation*/false);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -265,7 +256,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 /// in AQL we can post a handler calling this function again.
 //////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::processQuery() {
+RestStatus RestCursorHandler::processQuery(bool continuation) {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -277,9 +268,16 @@ RestStatus RestCursorHandler::processQuery() {
     auto guard = scopeGuard([this]() { unregisterQuery(); });
 
     // continue handler is registered earlier
-    auto state = _query->execute(_queryRegistry, _queryResult);
+    auto state = _query->execute(_queryResult);
     if (state == aql::ExecutionState::WAITING) {
       guard.cancel();
+      
+      if (!continuation) {
+        _query->sharedState()->setWakeupHandler([self = shared_from_this()] {
+          return self->wakeupHandler();
+        });
+      }
+      
       return RestStatus::WAITING;
     }
     TRI_ASSERT(state == aql::ExecutionState::DONE);

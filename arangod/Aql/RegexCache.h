@@ -38,7 +38,8 @@ class Methods;
 
 namespace aql {
 
-class RegexCache {
+/// cache for parsed regexes, not thread safe
+class RegexCache final {
  public:
   RegexCache(RegexCache const&) = delete;
   RegexCache& operator=(RegexCache const&) = delete;

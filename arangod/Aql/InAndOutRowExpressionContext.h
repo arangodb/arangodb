@@ -52,6 +52,8 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
   void invalidateInputRow();
 
   size_t numRegisters() const override;
+    
+  bool isDataFromCollection(Variable const* variable) const override;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;

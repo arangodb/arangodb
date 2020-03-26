@@ -84,6 +84,11 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   std::unordered_set<std::string> attributes;
 
   for (auto& n : nodes) {
+    // isDeterministic is false for EnumerateCollectionNodes when the "random" flag is set.
+    bool const isRandomOrder = 
+      (n->getType() == EN::ENUMERATE_COLLECTION && 
+       !ExecutionNode::castTo<EnumerateCollectionNode*>(n)->isDeterministic());
+
     bool stop = false;
     bool optimize = false;
     attributes.clear();
@@ -194,6 +199,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
     // projections are currently limited (arbitrarily to 5 attributes)
     if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
       if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
+          !isRandomOrder &&
           std::find(attributes.begin(), attributes.end(), StaticStrings::IdString) ==
               attributes.end()) {
         // the node is still an EnumerateCollection... now check if we should
@@ -204,10 +210,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto const& hint = en->hint();
 
         // now check all indexes if they cover the projection
-        auto trx = plan->getAst()->query()->trx();
+        auto& trx = plan->getAst()->query().trxForOptimization();
         std::shared_ptr<Index> picked;
         std::vector<std::shared_ptr<Index>> indexes;
-        if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+        if (!trx.isInaccessibleCollection(en->collection()->getCollection()->name())) {
           indexes = en->collection()->getCollection()->getIndexes();
         }
 
@@ -290,7 +296,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       }
 
       modified = true;
-    } else if (!stop && attributes.empty() && n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+    } else if (!stop && 
+               attributes.empty() && 
+               n->getType() == ExecutionNode::ENUMERATE_COLLECTION && 
+               !isRandomOrder) {
       // replace collection access with primary index access (which can be
       // faster given the fact that keys and values are stored together in
       // RocksDB, but average values are much bigger in the documents column
@@ -299,10 +308,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       EnumerateCollectionNode* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
       auto const& hint = en->hint();
 
-      auto trx = plan->getAst()->query()->trx();
+      auto& trx = plan->getAst()->query().trxForOptimization();
       std::shared_ptr<Index> picked;
       std::vector<std::shared_ptr<Index>> indexes;
-      if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+      if (!trx.isInaccessibleCollection(en->collection()->getCollection()->name())) {
         indexes = en->collection()->getCollection()->getIndexes();
       }
 

@@ -108,12 +108,12 @@ class Methods {
   Methods(Methods const&) = delete;
   Methods& operator=(Methods const&) = delete;
 
- protected:
+ public:
+  
   /// @brief create the transaction
   explicit Methods(std::shared_ptr<transaction::Context> const& transactionContext,
           transaction::Options const& options = transaction::Options());
 
- public:
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,
           std::vector<std::string> const& readCollections,
@@ -167,7 +167,7 @@ class Methods {
                    char const*& key, size_t& outLength);
 
   /// @brief return a pointer to the transaction context
-  std::shared_ptr<transaction::Context> transactionContext() const {
+  std::shared_ptr<transaction::Context> const& transactionContext() const {
     return _transactionContext;
   }
 
@@ -405,11 +405,6 @@ class Methods {
   /// @brief fetch the LogicalCollection by name
   arangodb::LogicalCollection* documentCollection(std::string const& name) const;
 
-  /// @brief get the index by its identifier. Will either throw or
-  ///        return a valid index. nullptr is impossible.
-  ENTERPRISE_VIRT IndexHandle getIndexByIdentifier(std::string const& collectionName,
-                                                   std::string const& indexHandle);
-
   /// @brief get all indexes for a collection name
   ENTERPRISE_VIRT std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
       std::string const& collectionName);
@@ -538,10 +533,6 @@ class Methods {
       arangodb::aql::SortCondition const& sortCondition, size_t itemsInCollection,
       aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition, bool& isSparse) const;
-
-  /// @brief Get one index by id for a collection name, coordinator case
-  std::shared_ptr<arangodb::Index> indexForCollectionCoordinator(std::string const&,
-                                                                 std::string const&) const;
 
   /// @brief Get all indexes for a collection name, coordinator case
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(std::string const&) const;

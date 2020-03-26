@@ -59,7 +59,7 @@ struct QueryOptions {
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);
   void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
-  TEST_VIRTUAL ProfileLevel getProfileLevel() { return profile; };
+  TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; };
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
@@ -81,7 +81,7 @@ struct QueryOptions {
   bool verboseErrors;
   bool inspectSimplePlans;
   std::vector<std::string> optimizerRules;
-  std::unordered_set<std::string> shardIds;
+  std::unordered_set<std::string> restrictToShards;
 #ifdef USE_ENTERPRISE
   // TODO: remove as soon as we have cluster wide transactions
   std::unordered_set<std::string> inaccessibleCollections;

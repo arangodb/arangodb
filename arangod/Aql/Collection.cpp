@@ -189,7 +189,7 @@ void Collection::setCollection(std::shared_ptr<arangodb::LogicalCollection> cons
 /// @brief either use the set collection or get one from ClusterInfo:
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   if (_collection == nullptr) {
-    TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
     auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     return clusterInfo.getCollection(_vocbase->name(), _name);
   }
@@ -218,12 +218,6 @@ bool Collection::isReadWrite() const { return _isReadWrite; }
 
 void Collection::isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
 
-void Collection::setCurrentShard(std::string const& shard) {
-  _currentShard = shard;
-}
-
-void Collection::resetCurrentShard() { _currentShard.clear(); }
-
 std::string const& Collection::name() const {
   if (!_currentShard.empty()) {
     // sharding case: return the current shard name instead of the collection
@@ -233,4 +227,53 @@ std::string const& Collection::name() const {
 
   // non-sharding case: simply return the name
   return _name;
+}
+
+// moved here from transaction::Methods::getIndexByIdentifier(..)
+std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const& idxId) const {
+   if (idxId.empty()) {
+     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                    "The index id cannot be empty.");
+   }
+
+   if (!arangodb::Index::validateId(idxId.c_str())) {
+     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+   }
+  
+  auto coll = this->getCollection();
+  if (!coll) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "aql::Collection object not initialized");
+  }
+  
+  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(idxId);
+  auto idx = coll->lookupIndex(iid);
+
+  if (!idx) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                                   "Could not find index '" + idxId +
+                                       "' in collection '" + this->name() +
+                                       "'.");
+  }
+  
+  return idx;
+ }
+
+std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
+  auto coll = this->getCollection();
+  if (!coll) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "aql::Collection object not initialized");
+  }
+  
+  // update selectivity estimates if they were expired
+  if (ServerState::instance()->isCoordinator()) {
+    coll->clusterIndexEstimates(true);  // TODO breaks on mmfiles
+  }
+  
+  std::vector<std::shared_ptr<Index>> indexes = coll->getIndexes();
+  indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                               [](std::shared_ptr<Index> const& x) {
+                                 return x->isHidden();
+                               }),
+                indexes.end());
+  return indexes;
 }

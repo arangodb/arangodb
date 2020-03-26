@@ -46,7 +46,7 @@ class CalculationNode;
 class CollectNode;
 class ExecutionNode;
 struct OptimizerRule;
-class Query;
+class QueryContext;
 
 class ExecutionPlan {
  public:
@@ -76,7 +76,7 @@ class ExecutionPlan {
 
   /// @brief create an execution plan identical to this one
   ///   keep the memory of the plan on the query object specified.
-  ExecutionPlan* clone(Query const&);
+//  ExecutionPlan* clone(Query const&);
 
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose) const;

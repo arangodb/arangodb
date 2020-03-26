@@ -25,6 +25,7 @@
 #define ARANGOD_GRAPH_BASE_OPTIONS_H 1
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/RegexCache.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -39,7 +40,7 @@ namespace aql {
 struct AstNode;
 class ExecutionPlan;
 class Expression;
-class Query;
+class QueryContext;
 
 }  // namespace aql
 
@@ -73,7 +74,9 @@ struct BaseOptions {
     LookupInfo(LookupInfo const&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
+    LookupInfo(arangodb::aql::QueryContext&,
+               arangodb::aql::Ast&,
+               arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
 
     /// @brief Build a velocypack containing all relevant information
@@ -85,16 +88,18 @@ struct BaseOptions {
 
  public:
   static std::unique_ptr<BaseOptions> createOptionsFromSlice(
-      arangodb::aql::Query* query, arangodb::velocypack::Slice const& definition);
+      arangodb::aql::QueryContext& query, arangodb::aql::Ast&,
+      arangodb::velocypack::Slice const& definition);
 
-  explicit BaseOptions(arangodb::aql::Query* query);
+  explicit BaseOptions(arangodb::aql::QueryContext& query);
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
   explicit BaseOptions(BaseOptions const&);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
-  BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
+  BaseOptions(aql::QueryContext&, arangodb::aql::Ast&,
+              arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
 
@@ -120,8 +125,8 @@ struct BaseOptions {
   void setProduceVertices(bool value) { _produceVertices = value; }
 
   transaction::Methods* trx() const;
-
-  aql::Query* query() const;
+  
+  aql::QueryContext& query() const;
 
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
@@ -145,8 +150,6 @@ struct BaseOptions {
                      std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
 
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
-  
-  void setTrx(transaction::Methods* trx) { _trx = trx; }
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -167,20 +170,15 @@ struct BaseOptions {
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
-  aql::Query* _query;
-
-  aql::FixedVarExpressionContext _ctx;
-
-  transaction::Methods* _trx;
+  
+  arangodb::transaction::Methods _trx;
+  arangodb::aql::RegexCache _regexCache; // needed for expression evaluation
+  arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
   std::vector<LookupInfo> _baseLookupInfos;
-
-  /// @brief whether or not the traversal will produce vertices
-  bool _produceVertices;
- 
-  /// @brief whether or not we are running on a coordinator
-  bool const _isCoordinator;
+  
+  aql::QueryContext& _query;
 
   aql::Variable const* _tmpVar;
 
@@ -189,6 +187,12 @@ struct BaseOptions {
 
   // @brief - translations for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
+  
+   /// @brief whether or not the traversal will produce vertices
+   bool _produceVertices;
+  
+   /// @brief whether or not we are running on a coordinator
+   bool const _isCoordinator;
 };
 
 }  // namespace graph

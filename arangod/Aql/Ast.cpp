@@ -26,11 +26,12 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Ast.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Arithmetic.h"
-#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -38,7 +39,8 @@
 #include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/ModificationOptions.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
+#include "Aql/RegexCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -75,7 +77,7 @@ auto doNothingVisitor = [](AstNode const*) {};
  * to the translated name (cid => name if required).
  */
 LogicalDataSource::Category const* injectDataSourceInQuery(
-    Query& query, arangodb::CollectionNameResolver const& resolver, AccessMode::Type accessType,
+    Ast& ast, arangodb::CollectionNameResolver const& resolver, AccessMode::Type accessType,
     bool failIfDoesNotExist, arangodb::velocypack::StringRef& nameRef) {
   std::string const name = nameRef.toString();
   // NOTE The name may be modified if a numeric collection ID is given instead
@@ -93,7 +95,7 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
     // case it is ok that the datasource does not exist, but we need to track
     // the names of datasources used in the query
-    query.addCollection(name, accessType);
+    ast.query().collections().add(name, accessType);
 
     return LogicalCollection::category();
   }
@@ -106,28 +108,28 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
   if (nameRef != name) {
     // name has changed by the lookup, so we need to reserve the collection
     // name on the heap and update our arangodb::velocypack::StringRef
-    char* p = query.registerString(dataSourceName.data(), dataSourceName.size());
+    char* p = ast.resources().registerString(dataSourceName.data(), dataSourceName.size());
     nameRef = arangodb::velocypack::StringRef(p, dataSourceName.size());
   }
 
   // add views to the collection list
   // to register them with transaction as well
-  query.addCollection(nameRef, accessType);
+  ast.query().collections().add(nameRef.toString(), accessType);
 
   if (dataSource->category() == LogicalCollection::category()) {
     // it's a collection!
     // add datasource to query
     if (nameRef != name) {
-      query.addCollection(name, accessType);  // Add collection by ID as well
+      ast.query().collections().add(name, accessType);  // Add collection by ID as well
     }
   } else if (dataSource->category() == LogicalView::category()) {
     // it's a view!
-    query.addDataSource(dataSource);
+    ast.query().addDataSource(dataSource);
 
     // Make sure to add all collections now:
     resolver.visitCollections(
-        [&query, accessType](LogicalCollection& col) -> bool {
-          query.addCollection(col.name(), accessType);
+        [&ast, accessType](LogicalCollection& col) -> bool {
+          ast.query().collections().add(col.name(), accessType);
           return true;
         },
         dataSource->id());
@@ -179,14 +181,14 @@ std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GE}};
 
 /// @brief create the AST
-Ast::Ast(Query* query)
+Ast::Ast(QueryContext& query)
     : _query(query),
+      _resources(&query.resourceMonitor()),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
-      _containsBindParameters(false) {
-  TRI_ASSERT(_query != nullptr);
-
+      _containsBindParameters(false),
+      _containsModificationOp(false) {
   startSubQuery();
 
   TRI_ASSERT(_root != nullptr);
@@ -648,7 +650,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
   }
 
   if (isUserDefined && *name == '_') {
-    _query->registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
+    _query.warnings().registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
     return nullptr;
   }
 
@@ -665,7 +667,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
       return node;
     }
 
-    _query->registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
+    _query.warnings().registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
     return nullptr;
   }
 
@@ -690,7 +692,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
   validateDataSourceName(nameRef, validateName);
   // this call may update nameRef
   LogicalCollection::Category const* category =
-      injectDataSourceInQuery(*_query, resolver, accessType, failIfDoesNotExist, nameRef);
+      injectDataSourceInQuery(*this, resolver, accessType, failIfDoesNotExist, nameRef);
 
   if (category == LogicalCollection::category()) {
     return createNodeCollectionNoValidation(nameRef, accessType);
@@ -717,11 +719,11 @@ AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resol
   validateDataSourceName(nameRef, true);
   // this call may update nameRef
   LogicalCollection::Category const* category =
-      injectDataSourceInQuery(*_query, resolver, accessType, false, nameRef);
+      injectDataSourceInQuery(*this, resolver, accessType, false, nameRef);
 
   if (category == LogicalCollection::category()) {
     // add collection to query
-    _query->addCollection(nameRef, accessType);
+    _query.collections().add(nameRef.toString(), accessType);
 
     // call private function after validation
     return createNodeCollectionNoValidation(nameRef, accessType);
@@ -796,7 +798,7 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode,
                                         std::vector<std::string> const& path) {
   AstNode* rv = refNode->clone(this);
   for (auto const& part : path) {
-    char const* p = query()->registerString(part.data(), part.size());
+    char const* p = _resources.registerString(part.data(), part.size());
     rv = createNodeAttributeAccess(rv, p, part.size());
   }
   return rv;
@@ -1258,23 +1260,23 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
       // this call may update nameRef
       arangodb::velocypack::StringRef nameRef(name);
       LogicalDataSource::Category const* category =
-          injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
+          injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ, false, nameRef);
       if (category == LogicalCollection::category()) {
-        _query->addCollection(name, AccessMode::Type::READ);
+        _query.collections().add(name, AccessMode::Type::READ);
 
         if (ServerState::instance()->isCoordinator()) {
-          auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+          auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
           // We want to tolerate that a collection name is given here
           // which does not exist, if only for some unit tests:
-          auto coll = ci.getCollectionNT(_query->vocbase().name(), name);
+          auto coll = ci.getCollectionNT(_query.vocbase().name(), name);
           if (coll != nullptr) {
             auto names = coll->realNames();
 
             for (auto const& n : names) {
               arangodb::velocypack::StringRef shardsNameRef(n);
               LogicalDataSource::Category const* shardsCategory =
-                  injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ,
+                  injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
                                           false, shardsNameRef);
               TRI_ASSERT(shardsCategory == LogicalCollection::category());
             }
@@ -1305,18 +1307,18 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
   auto doTheAdd = [&](std::string const& name) {
     arangodb::velocypack::StringRef nameRef(name);
     LogicalDataSource::Category const* category =
-        injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
+        injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
       if (ss->isCoordinator()) {
-        auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-        auto c = ci.getCollectionNT(_query->vocbase().name(), name);
+        auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+        auto c = ci.getCollectionNT(_query.vocbase().name(), name);
         if (c != nullptr) {
           auto const& names = c->realNames();
 
           for (auto const& n : names) {
             arangodb::velocypack::StringRef shardsNameRef(n);
             LogicalDataSource::Category const* shardsCategory =
-                injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ,
+                injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
                                         false, shardsNameRef);
             TRI_ASSERT(shardsCategory == LogicalCollection::category());
           }
@@ -1523,7 +1525,7 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
     // user-defined function
     node = createNode(NODE_TYPE_FCALL_USER);
     // register the function name
-    char* fname = _query->registerString(normalized.first);
+    char* fname = _resources.registerString(normalized.first);
     node->setStringValue(fname, normalized.first.size());
 
     _functionsMayAccessDocuments = true;
@@ -1581,7 +1583,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
 
         if (param.empty()) {
           // parameter name must not be empty
-          _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
+          _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
           return nullptr;
         }
 
@@ -1589,7 +1591,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
 
         if (it == p.end()) {
           // query uses a bind parameter that was not defined by the user
-          _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
+          _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
           return nullptr;
         }
 
@@ -1720,19 +1722,19 @@ void Ast::injectBindParameters(BindParameters& parameters,
     bool isExclusive = it.second;
     if (c->type == NODE_TYPE_COLLECTION) {
       std::string const name = c->getString();
-      _query->addCollection(name, isExclusive ? AccessMode::Type::EXCLUSIVE
+      _query.collections().add(name, isExclusive ? AccessMode::Type::EXCLUSIVE
                                               : AccessMode::Type::WRITE);
       if (ServerState::instance()->isCoordinator()) {
-        auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+        auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
         // We want to tolerate that a collection name is given here
         // which does not exist, if only for some unit tests:
-        auto coll = ci.getCollectionNT(_query->vocbase().name(), name);
+        auto coll = ci.getCollectionNT(_query.vocbase().name(), name);
         if (coll != nullptr) {
           auto names = coll->realNames();
 
           for (auto const& n : names) {
-            _query->addCollection(n, isExclusive ? AccessMode::Type::EXCLUSIVE
+            _query.collections().add(n, isExclusive ? AccessMode::Type::EXCLUSIVE
                                                  : AccessMode::Type::WRITE);
           }
         }
@@ -1803,7 +1805,7 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
 }
 
 /// @brief replace variables
-AstNode* Ast::replaceVariables(AstNode* node,
+/*static*/ AstNode* Ast::replaceVariables(AstNode* node,
                                std::unordered_map<VariableId, Variable const*> const& replacements) {
   auto visitor = [&replacements](AstNode* node) -> AstNode* {
     if (node == nullptr) {
@@ -1834,7 +1836,7 @@ AstNode* Ast::replaceVariables(AstNode* node,
 /// @brief replace a variable reference in the expression with another
 /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter
 /// becomes `a + b + 1`
-AstNode* Ast::replaceVariableReference(AstNode* node, Variable const* variable,
+/*static*/ AstNode* Ast::replaceVariableReference(AstNode* node, Variable const* variable,
                                        AstNode const* expressionNode) {
   struct SearchPattern {
     Variable const* variable;
@@ -1865,11 +1867,15 @@ AstNode* Ast::replaceVariableReference(AstNode* node, Variable const* variable,
 /// this does not only optimize but also performs a few validations after
 /// bind parameter injection. merging this pass with the regular AST
 /// optimizations saves one extra pass over the AST
-void Ast::validateAndOptimize() {
+void Ast::validateAndOptimize(transaction::Methods& trx) {
   struct TraversalContext {
+    TraversalContext(transaction::Methods& t) : trx(t) {}
+    
     std::unordered_set<std::string> writeCollectionsSeen;
     std::unordered_map<std::string, int64_t> collectionsFirstSeen;
     std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
+    RegexCache regexCache;
+    transaction::Methods& trx;
     int64_t stopOptimizationRequests = 0;
     int64_t nestingLevel = 0;
     int64_t filterDepth = -1;  // -1 = not in filter
@@ -1877,7 +1883,7 @@ void Ast::validateAndOptimize() {
     bool hasSeenWriteNodeInCurrentScope = false;
   };
 
-  TraversalContext context;
+  TraversalContext context(trx);
 
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;
@@ -2020,7 +2026,7 @@ void Ast::validateAndOptimize() {
         node->type == NODE_TYPE_OPERATOR_BINARY_LE || node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         node->type == NODE_TYPE_OPERATOR_BINARY_GE || node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-      return this->optimizeBinaryOperatorRelational(node);
+      return this->optimizeBinaryOperatorRelational(ctx->trx, ctx->regexCache, node);
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
@@ -2062,7 +2068,7 @@ void Ast::validateAndOptimize() {
 
       if (ctx->stopOptimizationRequests == 0) {
         // optimization allowed
-        return this->optimizeFunctionCall(node);
+        return this->optimizeFunctionCall(ctx->trx, ctx->regexCache, node);
       }
       // optimization not allowed
       return node;
@@ -2544,8 +2550,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     auto member = node->getMemberUnchecked(0);
     VPackSlice lhs = member->computeValue();
     for (size_t i = 1; i < n; ++i) {
-      auto member = node->getMemberUnchecked(i);
-      VPackSlice rhs = member->computeValue();
+      VPackSlice rhs = node->getMemberUnchecked(i)->computeValue();
 
       if (arangodb::basics::VelocyPackHelper::equal(lhs, rhs, false, nullptr)) {
         unique = false;
@@ -2710,7 +2715,7 @@ AstNode* Ast::createArithmeticResultNode(double value) {
     // IEEE754 NaN values have an interesting property that we can exploit...
     // if the architecture does not use IEEE754 values then this shouldn't do
     // any harm either
-    _query->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    _query.warnings().registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
     return const_cast<AstNode*>(&NullNode);
   }
 
@@ -2883,7 +2888,9 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node, bool canModifyResultT
 }
 
 /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
-AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
+AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
+                                               RegexCache& regex,
+                                               AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -2912,7 +2919,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
                                         rhs->getMember(0));
       }
       // and optimize ourselves...
-      return optimizeBinaryOperatorRelational(node);
+      return optimizeBinaryOperatorRelational(trx, regex, node);
     }
     // intentionally falls through
   }
@@ -2953,15 +2960,19 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
   }
 
   TRI_ASSERT(lhs->isConstant() && rhs->isConstant());
+  
+//  QueryWarnings& warnings,
+//  RegexCache& cache,
+//  transaction::Methods& trx
 
-  Expression exp(nullptr, this, node);
-  FixedVarExpressionContext context(_query);
+  Expression exp(this, node);
+  FixedVarExpressionContext context(trx, _query.warnings(), regex);
   bool mustDestroy;
 
-  AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
+  AqlValue a = exp.execute(&context, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
-  AqlValueMaterializer materializer(_query->trx());
+  AqlValueMaterializer materializer(trx.transactionContextPtr()->getVPackOptions());
   return nodeFromVPack(materializer.slice(a, false), true);
 }
 
@@ -3050,7 +3061,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         auto r = right->getIntValue();
 
         if (r == 0) {
-          _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+          _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
           return const_cast<AstNode*>(&NullNode);
         }
 
@@ -3064,7 +3075,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       }
 
       if (right->getDoubleValue() == 0.0) {
-        _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+        _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
         return const_cast<AstNode*>(&NullNode);
       }
 
@@ -3079,7 +3090,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         auto r = right->getIntValue();
 
         if (r == 0) {
-          _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+          _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
           return const_cast<AstNode*>(&NullNode);
         }
 
@@ -3093,7 +3104,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       }
 
       if (right->getDoubleValue() == 0.0) {
-        _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+        _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
         return const_cast<AstNode*>(&NullNode);
       }
 
@@ -3180,7 +3191,8 @@ AstNode* Ast::optimizeAttributeAccess(
 }
 
 /// @brief optimizes a call to a built-in function
-AstNode* Ast::optimizeFunctionCall(AstNode* node) {
+AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
+                                   RegexCache& regex, AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
@@ -3250,20 +3262,20 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
         TRI_ASSERT(!wildcardIsLastChar);
 
         // can turn LIKE into ==
-        char const* p = _query->registerString(unescapedPattern.data(), unescapedPattern.size());
+        char const* p = _resources.registerString(unescapedPattern.data(), unescapedPattern.size());
         AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
 
         return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, args->getMember(0), pattern);
       } else if (!unescapedPattern.empty()) {
         // can turn LIKE into >= && <=
-        char const* p = _query->registerString(unescapedPattern.data(), unescapedPattern.size());
+        char const* p = _resources.registerString(unescapedPattern.data(), unescapedPattern.size());
         AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
         AstNode* lhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, args->getMember(0), pattern);
 
         // add a new end character that is expected to sort "higher" than anything else
         char const* v = "\xef\xbf\xbf";
         unescapedPattern.append(&v[0], 3);
-        p = _query->registerString(unescapedPattern.data(), unescapedPattern.size());
+        p = _resources.registerString(unescapedPattern.data(), unescapedPattern.size());
         pattern = createNodeValueString(p, unescapedPattern.size());
         AstNode* rhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, args->getMember(0), pattern);
 
@@ -3289,25 +3301,20 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
     return node;
   }
 
-  // when we are called, we should have a transaction object in
-  // place. note that the transaction has not necessarily been
-  // started yet...
-  TRI_ASSERT(_query->trx() != nullptr);
-
   if (node->willUseV8()) {
     // if the expression is going to use V8 internally, we do not
     // bother to optimize it here
     return node;
   }
 
-  Expression exp(nullptr, this, node);
-  FixedVarExpressionContext context(_query);
+  Expression exp(this, node);
+  FixedVarExpressionContext context(trx, _query.warnings(), regex);
   bool mustDestroy;
 
-  AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
+  AqlValue a = exp.execute(&context, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
-  AqlValueMaterializer materializer(_query->trx());
+  AqlValueMaterializer materializer(trx.transactionContextPtr()->getVPackOptions());
   return nodeFromVPack(materializer.slice(a, false), true);
 }
 
@@ -3521,7 +3528,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 
     if (copyStringValues) {
       // we must copy string values!
-      p = _query->registerString(p, static_cast<size_t>(length));
+      p = _resources.registerString(p, static_cast<size_t>(length));
     }
     // we can get away without copying string values
     return createNodeValueString(p, static_cast<size_t>(length));
@@ -3557,7 +3564,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
       if (copyStringValues) {
         // create a copy of the string value
         attributeName =
-            _query->registerString(attributeName, static_cast<size_t>(nameLength));
+            _resources.registerString(attributeName, static_cast<size_t>(nameLength));
       }
 
       node->addMember(
@@ -3755,12 +3762,10 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t
 
 /// @brief create a node of the specified type
 AstNode* Ast::createNode(AstNodeType type) {
-  TRI_ASSERT(_query != nullptr);
-
   auto node = new AstNode(type);
 
   // register the node so it gets freed automatically later
-  _query->addNode(node);
+  _resources.addNode(node);
 
   return node;
 }
@@ -3774,9 +3779,12 @@ void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name,
       (validateStrict &&
        !TRI_vocbase_t::IsAllowedName(
            true, arangodb::velocypack::StringRef(name.data(), name.size())))) {
-    // will throw
-    std::string const nameString(name.data(), name.size());
-    _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, nameString.c_str());
+    // will throw    
+    std::string errorMessage(TRI_errno_string(TRI_ERROR_ARANGO_ILLEGAL_NAME));
+    errorMessage.append(": ");
+    errorMessage.append(name.data(), name.size());
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, errorMessage);
   }
 }
 
@@ -3785,15 +3793,15 @@ void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name,
 AstNode* Ast::createNodeCollectionNoValidation(arangodb::velocypack::StringRef const& name,
                                                AccessMode::Type accessType) {
   if (ServerState::instance()->isCoordinator()) {
-    auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     // We want to tolerate that a collection name is given here
     // which does not exist, if only for some unit tests:
-    auto coll = ci.getCollectionNT(_query->vocbase().name(), name.toString());
+    auto coll = ci.getCollectionNT(_query.vocbase().name(), name.toString());
     if (coll != nullptr) {
       if (coll->isSmart()) {
         // add names of underlying smart-edge collections
         for (auto const& n : coll->realNames()) {
-          _query->addCollection(n, accessType);
+          _query.collections().add(n, accessType);
         }
       }
     }
@@ -3810,40 +3818,38 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
   if (graphNode->type == NODE_TYPE_VALUE) {
     TRI_ASSERT(graphNode->isStringValue());
     std::string graphName = graphNode->getString();
-    auto graph = _query->lookupGraphByName(graphName);
+    auto graph = _query.lookupGraphByName(graphName);
     if (graph == nullptr) {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
     }
     TRI_ASSERT(graph != nullptr);
 
     for (const auto& n : graph->vertexCollections()) {
-      _query->addCollection(n, AccessMode::Type::READ);
+      _query.collections().add(n, AccessMode::Type::READ);
     }
 
     auto const& eColls = graph->edgeCollections();
 
     for (const auto& n : eColls) {
-      _query->addCollection(n, AccessMode::Type::READ);
+      _query.collections().add(n, AccessMode::Type::READ);
     }
 
     if (ServerState::instance()->isCoordinator()) {
-      auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+      auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
       for (const auto& n : eColls) {
-        auto c = ci.getCollection(_query->vocbase().name(), n);
+        auto c = ci.getCollection(_query.vocbase().name(), n);
         if (c != nullptr) {
           auto names = c->realNames();
 
           for (auto const& name : names) {
-            _query->addCollection(name, AccessMode::Type::READ);
+            _query.collections().add(name, AccessMode::Type::READ);
           }
         }
       }
     }
   }
 }
-
-Query* Ast::query() const { return _query; }
 
 VariableGenerator* Ast::variables() { return &_variables; }
 
@@ -3900,6 +3906,13 @@ bool Ast::functionsMayAccessDocuments() const {
 }
 
 bool Ast::containsTraversal() const { return _containsTraversal; }
+
+bool Ast::containsModificationOp() const { return _containsModificationOp; }
+
+void Ast::setContainsModificationOp() {
+  _containsModificationOp = true;
+}
+
 AstNode* Ast::createNodeAttributeAccess(AstNode const* node,
                                         std::vector<basics::AttributeName> const& attrs) {
   std::vector<std::string> vec;  // change to std::string_view once available

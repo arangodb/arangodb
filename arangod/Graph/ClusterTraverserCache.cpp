@@ -40,7 +40,7 @@ using namespace arangodb::basics;
 using namespace arangodb::graph;
 
 ClusterTraverserCache::ClusterTraverserCache(
-    aql::Query* query, 
+    aql::QueryContext& query,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, 
     BaseOptions const* options)
     : TraverserCache(query, options), 
@@ -71,7 +71,7 @@ aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(arangodb::velocypack::
   }
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + id.toString() + "' not found";
-  _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
 
   // Document not found return NULL
   return aql::AqlValue(aql::AqlValueHintNull());
@@ -93,7 +93,7 @@ void ClusterTraverserCache::insertVertexIntoResult(arangodb::velocypack::StringR
   }
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + id.toString() + "' not found";
-  _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
 
   // Document not found append NULL
   result.add(arangodb::velocypack::Slice::nullSlice());

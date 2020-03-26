@@ -189,7 +189,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     while (it.valid()) {
       VPackSlice value = it.value();
       if (value.isString()) {
-        shardIds.emplace(value.copyString());
+        restrictToShards.emplace(value.copyString());
       }
       it.next();
     }
@@ -249,9 +249,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   }
   builder.close();  // optimizer
 
-  if (!shardIds.empty()) {
+  if (!restrictToShards.empty()) {
     builder.add("shardIds", VPackValue(VPackValueType::Array));
-    for (auto const& it : shardIds) {
+    for (auto const& it : restrictToShards) {
       builder.add(VPackValue(it));
     }
     builder.close();  // shardIds

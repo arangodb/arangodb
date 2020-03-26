@@ -37,19 +37,19 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::shared_ptr<AqlTransaction> AqlTransaction::create(
+std::unique_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> const& transactionContext,
     std::map<std::string, aql::Collection*> const* collections,
-    transaction::Options const& options, bool isMainTransaction,
+    transaction::Options const& options,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
-    return std::make_shared<transaction::IgnoreNoAccessAqlTransaction>(
-        transactionContext, collections, options, isMainTransaction,
+    return std::make_unique<transaction::IgnoreNoAccessAqlTransaction>(
+        transactionContext, collections, options,
         std::move(inaccessibleCollections));
   }
 #endif
-  return std::make_shared<AqlTransaction>(transactionContext, collections, options, isMainTransaction);
+  return std::make_unique<AqlTransaction>(transactionContext, collections, options);
 }
 
 /// @brief add a list of collections to the transaction
@@ -122,11 +122,7 @@ AqlTransaction::AqlTransaction(
     std::map<std::string, aql::Collection*> const* collections,
     transaction::Options const& options, bool isMainTransaction)
     : transaction::Methods(transactionContext, options), _collections(*collections) {
-  if (!isMainTransaction) {
-    addHint(transaction::Hints::Hint::LOCK_NEVER);
-  } else {
-    addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
-  }
+  addHint(transaction::Hints::Hint::LOCK_ENTIRELY); 
   addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
   Result res = addCollections(*collections);

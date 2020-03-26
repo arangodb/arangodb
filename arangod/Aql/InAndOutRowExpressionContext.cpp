@@ -60,6 +60,21 @@ void InAndOutRowExpressionContext::invalidateInputRow() {
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
 }
 
+bool InAndOutRowExpressionContext::isDataFromCollection(Variable const* variable) const {  
+  for (size_t i = 0; i < _vars.size(); ++i) {
+    auto const& v = _vars[i];
+    if (v->id == variable->id) {
+      TRI_ASSERT(i < _regs.size());
+        if (i == _vertexVarIdx ||
+            i == _edgeVarIdx ||
+            i == _pathVarIdx) {
+          return true;
+        }
+    }
+  }
+  return false;
+}
+
 AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                         bool& mustDestroy) const {
   TRI_ASSERT(_input.isInitialized());

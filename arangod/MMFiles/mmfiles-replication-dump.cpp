@@ -443,7 +443,7 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
 
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
-  dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
+  dump->_vpackOptions.customTypeHandler = customTypeHandler;
 
   auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
   // create a barrier so the underlying collection is not unloaded
@@ -481,7 +481,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
 
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
-  dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
+  dump->_vpackOptions.customTypeHandler = customTypeHandler;
 
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;

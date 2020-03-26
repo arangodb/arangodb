@@ -75,12 +75,8 @@ static bool ArrayContainsCollection(VPackSlice array, std::string const& colName
 }  // namespace
 
 std::shared_ptr<transaction::Context> GraphManager::ctx() const {
-  if (_isInTransaction) {
-    // we must use v8
-    return transaction::V8Context::Create(_vocbase, true);
-  }
-
-  return transaction::StandaloneContext::Create(_vocbase);
+  // we must use v8
+  return transaction::V8Context::CreateWhenRequired(_vocbase, true);
 }
 
 OperationResult GraphManager::createEdgeCollection(std::string const& name,
@@ -599,24 +595,21 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
       vocbase, collectionsToCreate, waitForSync, true, false, nullptr, created);
 };
 
-OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
-                                         aql::QueryPart const queryPart) const {
+OperationResult GraphManager::readGraphs(velocypack::Builder& builder) const {
   std::string const queryStr{
       "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
-  return readGraphByQuery(builder, queryPart, queryStr);
+  return readGraphByQuery(builder, queryStr);
 }
 
-OperationResult GraphManager::readGraphKeys(velocypack::Builder& builder,
-                                            aql::QueryPart const queryPart) const {
+OperationResult GraphManager::readGraphKeys(velocypack::Builder& builder) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g._key"};
-  return readGraphByQuery(builder, queryPart, queryStr);
+  return readGraphByQuery(builder, queryStr);
 }
 
 OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
-                                               aql::QueryPart const queryPart,
                                                std::string queryStr) const {
-  arangodb::aql::Query query(false, ctx()->vocbase(), arangodb::aql::QueryString(queryStr),
-                             nullptr, nullptr, queryPart);
+  arangodb::aql::Query query(ctx(), arangodb::aql::QueryString(queryStr),
+                             nullptr, nullptr);
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";

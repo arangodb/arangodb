@@ -33,7 +33,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Quantifier.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/Range.h"
 #include "Aql/V8Executor.h"
 #include "Aql/Variable.h"
@@ -61,8 +61,8 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the expression
-Expression::Expression(ExecutionPlan const* plan, Ast* ast, AstNode* node)
-    : _plan(plan), _ast(ast), _node(node), _type(UNPROCESSED), _expressionContext(nullptr) {
+Expression::Expression(Ast* ast, AstNode* node)
+    : _ast(ast), _node(node), _type(UNPROCESSED), _expressionContext(nullptr) {
   _ast->query()->unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
@@ -81,9 +81,9 @@ void Expression::variables(::arangodb::containers::HashSet<Variable const*>& res
 }
 
 /// @brief execute the expression
-AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
-                             bool& mustDestroy) {
-  buildExpression(trx);
+AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
+  auto& trx = ctx->trx();
+  buildExpression(&trx);
 
   TRI_ASSERT(_type != UNPROCESSED);
       
@@ -98,12 +98,14 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
     }
 
     case SIMPLE: {
-      return executeSimpleExpression(_node, trx, mustDestroy, true);
+      return executeSimpleExpression(_node, &trx, mustDestroy, true);
     }
 
     case ATTRIBUTE_ACCESS: {
-      TRI_ASSERT(_accessor != nullptr);
-      auto resolver = trx->resolver();
+      if (!_accessor) {
+        initAccessor();
+      }
+      auto resolver = trx.resolver();
       TRI_ASSERT(resolver != nullptr);
       return _accessor->get(*resolver, ctx, mustDestroy);
     }
@@ -121,7 +123,7 @@ void Expression::replaceVariables(std::unordered_map<VariableId, Variable const*
   _node = _ast->clone(_node);
   TRI_ASSERT(_node != nullptr);
 
-  _node = _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
+  _node = Ast::replaceVariables(const_cast<AstNode*>(_node), replacements);
 
   if (_type == ATTRIBUTE_ACCESS && _accessor != nullptr) {
     _accessor->replaceVariable(replacements);
@@ -137,7 +139,7 @@ void Expression::replaceVariableReference(Variable const* variable, AstNode cons
   _node = _ast->clone(_node);
   TRI_ASSERT(_node != nullptr);
 
-  _node = _ast->replaceVariableReference(const_cast<AstNode*>(_node), variable, node);
+  _node = Ast::replaceVariableReference(const_cast<AstNode*>(_node), variable, node);
   invalidateAfterReplacements();
 }
 
@@ -146,7 +148,7 @@ void Expression::replaceAttributeAccess(Variable const* variable,
   _node = _ast->clone(_node);
   TRI_ASSERT(_node != nullptr);
 
-  _node = _ast->replaceAttributeAccess(const_cast<AstNode*>(_node), variable, attribute);
+  _node = Ast::replaceAttributeAccess(const_cast<AstNode*>(_node), variable, attribute);
   invalidateAfterReplacements();
 }
 
@@ -298,6 +300,13 @@ void Expression::initExpression() {
   }
 
   // optimization for attribute accesses
+  _type = ATTRIBUTE_ACCESS;
+}
+
+void Expression::initAccessor() {
+  TRI_ASSERT(_type == ATTRIBUTE_ACCESS);
+  TRI_ASSERT(_accessor == nullptr);
+  
   TRI_ASSERT(_node->numMembers() == 1);
   auto member = _node->getMemberUnchecked(0);
   std::vector<std::string> parts{_node->getString()};
@@ -312,21 +321,10 @@ void Expression::initExpression() {
   }
   auto v = static_cast<Variable const*>(member->getData());
 
-  bool dataIsFromCollection = false;
-  if (_plan != nullptr) {
-    // check if the variable we are referring to is set by
-    // a collection enumeration/index enumeration
-    auto setter = _plan->getVarSetBy(v->id);
-    if (setter != nullptr && (setter->getType() == ExecutionNode::INDEX ||
-                              setter->getType() == ExecutionNode::ENUMERATE_COLLECTION)) {
-      // it is
-      dataIsFromCollection = true;
-    }
-  }
-
+  TRI_ASSERT(_expressionContext != nullptr);
+  bool const dataIsFromColl = _expressionContext->isDataFromCollection(v);
   // specialize the simple expression into an attribute accessor
-  _accessor = AttributeAccessor::create(std::move(parts), v, dataIsFromCollection);
-  _type = ATTRIBUTE_ACCESS;
+  _accessor = AttributeAccessor::create(std::move(parts), v, dataIsFromColl);
 }
 
 /// @brief build the expression
@@ -502,7 +500,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(AstNode const* node,
   if (result.isArray()) {
     AqlValue indexResult = executeSimpleExpression(index, trx, mustDestroy, false);
 
-    AqlValueGuard guard(indexResult, mustDestroy);
+    AqlValueGuard guardIdx(indexResult, mustDestroy);
 
     if (indexResult.isNumber()) {
       return result.at(indexResult.toInt64(), mustDestroy, true);
@@ -526,7 +524,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(AstNode const* node,
   } else if (result.isObject()) {
     AqlValue indexResult = executeSimpleExpression(index, trx, mustDestroy, false);
 
-    AqlValueGuard guard(indexResult, mustDestroy);
+    AqlValueGuard guardIdx(indexResult, mustDestroy);
 
     if (indexResult.isNumber()) {
       std::string const indexString = std::to_string(indexResult.toInt64());
@@ -815,7 +813,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
 }
 
 AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
-                                      transaction::Methods* trx, std::string const& jsName,
+                                      std::string const& jsName,
                                       std::string const& ucInvokeFN, char const* AFN,
                                       bool rethrowV8Exception, size_t callArgs,
                                       v8::Handle<v8::Value>* args, bool& mustDestroy) {
@@ -860,7 +858,8 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  transaction::BuilderLeaser builder(trx);
+  auto& trx = expressionContext->trx();
+  transaction::BuilderLeaser builder(&trx);
 
   int res = TRI_V8ToVPack(isolate, *builder.get(), result, false);
 
@@ -935,7 +934,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
       }
     }
 
-    return invokeV8Function(_expressionContext, trx, jsName, "", "", true,
+    return invokeV8Function(_expressionContext, jsName, "", "", true,
                             callArgs, args.get(), mustDestroy);
   }
 }

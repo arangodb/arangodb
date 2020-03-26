@@ -36,7 +36,7 @@ class TraverserCache;
 struct BaseOptions;
 
 namespace CacheFactory {
-TraverserCache* CreateCache(arangodb::aql::Query* query, bool activateDocumentCache,
+TraverserCache* CreateCache(arangodb::aql::QueryContext& query, bool activateDocumentCache,
                             std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const* opts);
 
 }  // namespace cacheFactory

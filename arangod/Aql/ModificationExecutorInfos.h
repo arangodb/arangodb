@@ -36,6 +36,8 @@
 namespace arangodb {
 namespace aql {
 
+class QueryContext;
+
 struct BoolWrapper {
   explicit BoolWrapper(bool b) { _value = b; }
   operator bool() const noexcept { return _value; }
@@ -67,7 +69,7 @@ struct ModificationExecutorInfos : public ExecutorInfos {
       RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
       RegisterId outputRegisterId, RegisterId nrInputRegisters,
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx,
+      std::unordered_set<RegisterId> registersToKeep, arangodb::aql::QueryContext& query,
       OperationOptions options, aql::Collection const* aqlCollection,
       ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
       IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
@@ -79,7 +81,7 @@ struct ModificationExecutorInfos : public ExecutorInfos {
   ~ModificationExecutorInfos() = default;
 
   /// @brief the variable produced by Return
-  transaction::Methods* _trx;
+  arangodb::aql::QueryContext& _query;
   OperationOptions _options;
   aql::Collection const* _aqlCollection;
   ProducesResults _producesResults;

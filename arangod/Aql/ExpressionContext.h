@@ -30,12 +30,12 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
+class BufferCache ;
 class Methods;
 }
 
 namespace aql {
 struct AqlValue;
-class Query;
 struct Variable;
 
 class ExpressionContext {
@@ -45,6 +45,10 @@ class ExpressionContext {
   virtual ~ExpressionContext() = default;
 
   virtual size_t numRegisters() const = 0;
+  
+  /// true if the variable we are referring to is set by
+  /// a collection enumeration/index enumeration
+  virtual bool isDataFromCollection(Variable const* variable) const = 0;
 
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
                                     bool& mustDestroy) const = 0;
@@ -61,7 +65,7 @@ class ExpressionContext {
                                                bool& isEmptyExpression) = 0;
 
   virtual TRI_vocbase_t& vocbase() const = 0;
-  virtual Query* query() const = 0;
+  virtual transaction::Methods& trx() const = 0;
 };
 }  // namespace aql
 }  // namespace arangodb

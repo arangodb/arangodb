@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,12 +24,12 @@
 #ifndef ARANGOD_AQL_EXECUTION_ENGINE_H
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
-#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Containers/SmallVector.h"
 
 #include <memory>
 #include <string>
@@ -38,30 +38,38 @@
 #include <vector>
 
 namespace arangodb {
-class Result;
 namespace aql {
+
+class AqlCallStack;
 class AqlItemBlock;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
 class QueryRegistry;
-class Query;
-enum class SerializationFormat;
+class QueryContext;
+class SkipResult;
+class SharedQueryState;
 
 class ExecutionEngine {
  public:
   /// @brief create the engine
-  ExecutionEngine(Query& query, SerializationFormat format);
+  ExecutionEngine(QueryContext& query,
+                  AqlItemBlockManager& itemBlockManager,
+                  SerializationFormat format);
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
 
  public:
+  
   // @brief create an execution engine from a plan
-  static ExecutionEngine* instantiateFromPlan(QueryRegistry& queryRegistry, Query& query,
-                                              ExecutionPlan& plan, bool planRegisters,
-                                              SerializationFormat format);
-
+  static Result instantiateFromPlan(QueryContext& query,
+                                    AqlItemBlockManager& itemBlockManager,
+                                    ExecutionPlan& plan,
+                                    bool planRegisters,
+                                    SerializationFormat format,
+                                    SnippetList& list);
+  
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
                                    std::unordered_set<std::string> const& restrictToShards,
                                    MapRemoteToSnippet const& queryIds);
@@ -73,7 +81,11 @@ class ExecutionEngine {
   TEST_VIRTUAL void root(ExecutionBlock* root);
 
   /// @brief get the query
-  TEST_VIRTUAL Query* getQuery() const;
+  TEST_VIRTUAL QueryContext& getQuery() const;
+  
+  std::shared_ptr<SharedQueryState> sharedState() const {
+    return _sharedState;
+  }
 
   /// @brief server to snippet mapping
   void snippetMapping(MapRemoteToSnippet&& dbServerMapping,
@@ -95,6 +107,12 @@ class ExecutionEngine {
   /// @brief shutdown, will be called exactly once for the whole query, may
   /// return waiting
   std::pair<ExecutionState, Result> shutdown(int errorCode);
+
+  auto execute(AqlCallStack const& stack)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
+  auto executeForClient(AqlCallStack const& stack, std::string const& clientId)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   /// @brief getSome
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost);
@@ -118,23 +136,22 @@ class ExecutionEngine {
   /// @brief accessor to the memory recyler for AqlItemBlocks
   TEST_VIRTUAL AqlItemBlockManager& itemBlockManager();
 
- public:
-  /// @brief execution statistics for the query
-  /// note that the statistics are modification by execution blocks
-  ExecutionStats _stats;
+  void collectStats(ExecutionStats&) const noexcept;
 
  private:
+  /// @brief a pointer to the query
+  QueryContext& _query;
+  
   /// @brief memory recycler for AqlItemBlocks
-  AqlItemBlockManager _itemBlockManager;
+  AqlItemBlockManager& _itemBlockManager;
+  
+  std::shared_ptr<SharedQueryState> _sharedState;
 
   /// @brief all blocks registered, used for memory management
   std::vector<ExecutionBlock*> _blocks;
 
   /// @brief root block of the engine
   ExecutionBlock* _root;
-
-  /// @brief a pointer to the query
-  Query& _query;
 
   /// @brief the register the final result of the query is stored in
   RegisterId _resultRegister;

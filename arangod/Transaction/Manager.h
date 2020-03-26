@@ -69,10 +69,12 @@ class Manager final {
   };
 
   struct ManagedTrx {
-    ManagedTrx(MetaType t, std::shared_ptr<TransactionState> st);
+    ManagedTrx(MetaType t, double ttl,
+               std::shared_ptr<TransactionState> st);
     ~ManagedTrx();
 
     bool expired() const;
+    void updateExpiry();
 
    public:
     MetaType type;            /// managed, AQL or tombstone
@@ -80,7 +82,8 @@ class Manager final {
     /// necessary to avoid getting error on a 'diamond' commit or accidantally
     /// repeated commit / abort messages
     transaction::Status finalStatus;
-    double usedTimeSecs;      /// last time used
+    const double timeToLive;
+    double expiryTime;  // time this expires
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
     std::string user;         /// user owning the transaction
     /// cheap usage lock for _state
@@ -139,7 +142,8 @@ class Manager final {
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
-                          transaction::Options options);
+                          transaction::Options options,
+                          double ttl = 0.0);
 
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TRI_voc_tid_t tid,
@@ -208,6 +212,10 @@ class Manager final {
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
+  
+  static double ttlForType(Manager::MetaType);
+  
+ private:
 
   ManagerFeature& _feature;
 

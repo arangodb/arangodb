@@ -156,18 +156,16 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& 
       _guard(vocbase),
       _exportCount(-1),
       _queryResultPos(0) {
-  auto registry = QueryRegistryFeature::registry();
-  TRI_ASSERT(registry != nullptr);
 
-  _query = std::make_unique<Query>(contextOwnedByExterior, _guard.database(),
-                                   aql::QueryString(query), std::move(bindVars),
-                                   std::move(opts), arangodb::aql::PART_MAIN);
-  _query->setTransactionContext(std::move(ctx));
-  _query->prepare(registry, SerializationFormat::SHADOWROWS);
+  _query = std::make_unique<Query>(std::move(ctx), aql::QueryString(query),
+                                   std::move(bindVars), std::move(opts));
+  _query->prepare(SerializationFormat::SHADOWROWS);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
 
   // we replaced the rocksdb export cursor with a stream AQL query
   // for this case we need to support printing the collection "count"
+#warning FIXME
+#if 0
   if (_query->optionsSlice().hasKey("exportCollection")) {
     std::string cname = _query->optionsSlice().get("exportCollection").copyString();
     TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
@@ -196,6 +194,7 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& 
   if (!_query->trx()->addStatusChangeCallback(&_stateChangeCb)) {
     _stateChangeCb = nullptr;
   }
+ #endif
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
@@ -348,7 +347,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
       while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
         AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
         if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
-          value.toVelocyPack(_query->trx(), builder, false);
+          value.toVelocyPack(&_query->vpackOptions(), builder, false);
           ++rowsWritten;
         }
         ++_queryResultPos;
@@ -425,7 +424,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 }
 
 std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
-  return _query->trx()->transactionContext();
+  return _query->newTrxContext();
 }
 
 ExecutionState QueryStreamCursor::prepareDump() {
@@ -465,8 +464,11 @@ ExecutionState QueryStreamCursor::prepareDump() {
 
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
+#warning FIXME
+#if 0
   transaction::Methods* trx = _query->trx();
   if (trx && _stateChangeCb) {
     trx->removeStatusChangeCallback(&_stateChangeCb);
   }
+#endif
 }

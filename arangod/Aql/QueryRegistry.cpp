@@ -24,7 +24,7 @@
 #include "QueryRegistry.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"

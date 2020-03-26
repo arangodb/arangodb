@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_SUBQUERY_EXECUTOR_H
 #define ARANGOD_AQL_SUBQUERY_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -63,7 +65,7 @@ class SubqueryExecutorInfos : public ExecutorInfos {
   bool const _isConst;
 };
 
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
 class SubqueryExecutor {
  public:
   struct Properties {
@@ -94,6 +96,15 @@ class SubqueryExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutionState, Stats, AqlCall>;
+
+  // skipRowsRange <=> isModificationSubquery
+
+  template <bool E = isModificationSubquery, std::enable_if_t<E, int> = 0>
+  auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
+
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
@@ -103,12 +114,31 @@ class SubqueryExecutor {
    */
   void writeOutput(OutputAqlItemRow& output);
 
+  /**
+   * @brief Translate _state => to to execution allowing waiting.
+   *
+   */
+  auto translatedReturnType() const noexcept -> ExecutionState;
+
+  /**
+   * @brief Initiliaze the subquery with next input row
+   *        Throws if there was an error during initialize cursor
+   *
+   *
+   * @param input Container for more data
+   * @return std::tuple<ExecutionState, bool> Result state (WAITING or
+   * translatedReturnType())
+   * bool flag if we have initialized the query, if not, we require more data.
+   */
+  auto initializeSubquery(AqlItemBlockInputRange& input)
+      -> std::tuple<ExecutionState, bool>;
+
  private:
   Fetcher& _fetcher;
   SubqueryExecutorInfos& _infos;
 
   // Upstream state, used to determine if we are done with all subqueries
-  ExecutionState _state;
+  ExecutorState _state;
 
   // Flag if the current subquery is initialized and worked on
   bool _subqueryInitialized;
@@ -127,6 +157,8 @@ class SubqueryExecutor {
 
   // Cache for the input row we are currently working on
   InputAqlItemRow _input;
+
+  size_t _skipped = 0;
 };
 }  // namespace aql
 }  // namespace arangodb

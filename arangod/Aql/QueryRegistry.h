@@ -111,15 +111,6 @@ class QueryRegistry {
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
  private:
-  /**
-   * @brief Set the thread-local _noLockHeaders variable
-   *
-   * @param engine The Query engine that contains the no-lock-header
-   *        information.
-   */
-  void setNoLockHeaders(ExecutionEngine* engine) const;
-  
- private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {
     QueryInfo(QueryInfo const&) = delete;

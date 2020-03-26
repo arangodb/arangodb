@@ -817,7 +817,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
   
-  _cTypeHandler.reset(transaction::Context::createCustomTypeHandler(vocbase, _resolver));
+  _cTypeHandler = transaction::Context::createCustomTypeHandler(vocbase, _resolver);
   vpackOptions.customTypeHandler = _cTypeHandler.get();
   setSorted(sorted);
 

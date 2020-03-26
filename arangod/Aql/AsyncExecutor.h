@@ -74,8 +74,6 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
   ExecutorInfos const& infos() const { return _infos; }
-
-  Query const& getQuery() const { return _query; }
   
   enum class AsyncState {
     Empty,
@@ -86,7 +84,7 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
  private:
   ExecutorInfos _infos;
 
-  Query const& _query;
+  std::shared_ptr<SharedQueryState> _sharedState;
 
   std::mutex _mutex;
   SharedAqlItemBlockPtr _returnBlock;

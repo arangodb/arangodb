@@ -24,6 +24,7 @@
 #include "EngineInfoContainerCoordinator.h"
 
 #include "Aql/AqlResult.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
@@ -62,49 +63,42 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 }
 
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
-    Query& query, QueryRegistry* queryRegistry, std::string const& dbname,
+    QueryContext& query,
+    AqlItemBlockManager& mgr,
     std::unordered_set<std::string> const& restrictToShards,
     MapRemoteToSnippet const& dbServerQueryIds,
-    std::vector<uint64_t>& coordinatorQueryIds) const {
+    std::unique_ptr<ExecutionEngine>& engine) const {
   TRI_ASSERT(!_nodes.empty());
-  {
-    auto uniqEngine =
-        std::make_unique<ExecutionEngine>(query, SerializationFormat::SHADOWROWS);
-    query.setEngine(uniqEngine.release());
-  }
-
-  auto engine = query.engine();
+  engine = std::make_unique<ExecutionEngine>(query, mgr, SerializationFormat::SHADOWROWS);
 
   auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
   if (!res.ok()) {
+    engine.reset();
     return res;
   }
 
   TRI_ASSERT(engine->root() != nullptr);
 
-  LOG_TOPIC("16287", DEBUG, arangodb::Logger::AQL)
-      << "Storing Coordinator engine: " << _id;
-
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately
-  if (_id != 0) {
-    coordinatorQueryIds.emplace_back(_id);
-
-    double ttl = query.queryOptions().ttl;
-    TRI_ASSERT(ttl > 0);
-    try {
-      queryRegistry->insert(_id, &query, ttl, true, false);
-    } catch (basics::Exception const& e) {
-      coordinatorQueryIds.pop_back();
-      return {e.code(), e.message()};
-    } catch (std::exception const& e) {
-      coordinatorQueryIds.pop_back();
-      return {TRI_ERROR_INTERNAL, e.what()};
-    } catch (...) {
-      coordinatorQueryIds.pop_back();
-      return {TRI_ERROR_INTERNAL, "unable to store query in registry"};
-    }
-  }
+//  if (_id != 0) {
+//    coordinatorQueryIds.emplace_back(_id);
+//
+//    double ttl = query.queryOptions().ttl;
+//    TRI_ASSERT(ttl > 0);
+//    try {
+//      queryRegistry->insert(_id, &query, ttl, true, false);
+//    } catch (basics::Exception const& e) {
+//      coordinatorQueryIds.pop_back();
+//      return {e.code(), e.message()};
+//    } catch (std::exception const& e) {
+//      coordinatorQueryIds.pop_back();
+//      return {TRI_ERROR_INTERNAL, e.what()};
+//    } catch (...) {
+//      coordinatorQueryIds.pop_back();
+//      return {TRI_ERROR_INTERNAL, "unable to store query in registry"};
+//    }
+//  }
 
   return {TRI_ERROR_NO_ERROR};
 }
@@ -145,69 +139,55 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
   return id;
 }
 
-ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
-    Query& query, QueryRegistry* registry, std::string const& dbname,
+Result EngineInfoContainerCoordinator::buildEngines(
+    QueryContext& query,
+    AqlItemBlockManager& mgr,
     std::unordered_set<std::string> const& restrictToShards,
     MapRemoteToSnippet const& dbServerQueryIds,
-    std::vector<uint64_t>& coordinatorQueryIds) const {
+    aql::SnippetList& snippets) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
   // destroy all query snippets in case of error
-  auto guard = scopeGuard([&dbname, &registry, &coordinatorQueryIds]() {
-    for (auto const& it : coordinatorQueryIds) {
-      registry->destroy(dbname, it, TRI_ERROR_INTERNAL, false);
-    }
-  });
-
-  Query* localQuery = &query;
+//  auto guard = scopeGuard([&dbname, &registry, &coordinatorQueryIds]() {
+//    for (auto const& it : coordinatorQueryIds) {
+//      registry->destroy(dbname, it, TRI_ERROR_INTERNAL, false);
+//    }
+//  });
+  
   try {
     bool first = true;
     for (EngineInfo const& info : _engines) {
-      if (!first) {
-        // need a new query instance on the coordinator
-        localQuery = query.clone(PART_DEPENDENT, false);
-        if (localQuery == nullptr) {
-          // clone() cannot return nullptr, but some mocks seem to do it
-          return ExecutionEngineResult(TRI_ERROR_INTERNAL,
-                                       "cannot clone query");
-        }
-        TRI_ASSERT(localQuery != nullptr);
+//      if (!first) {
+//        // need a new query instance on the coordinator
+//        localQuery = query.clone(PART_DEPENDENT, false);
+//        if (localQuery == nullptr) {
+//          // clone() cannot return nullptr, but some mocks seem to do it
+//          return ExecutionEngineResult(TRI_ERROR_INTERNAL,
+//                                       "cannot clone query");
+//        }
+//        TRI_ASSERT(localQuery != nullptr);
+//      }
+      std::unique_ptr<ExecutionEngine> engine;
+      auto res = info.buildEngine(query, mgr, restrictToShards, dbServerQueryIds, engine);
+      if (res.fail()) {
+        return res;
       }
-      try {
-        auto res = info.buildEngine(*localQuery, registry, dbname, restrictToShards,
-                                    dbServerQueryIds, coordinatorQueryIds);
-        if (!res.ok()) {
-          if (!first) {
-            // We need to clean up this query.
-            // It is not in the registry.
-            delete localQuery;
-          }
-          return ExecutionEngineResult(res.errorNumber(), res.errorMessage());
-        }
-      } catch (...) {
-        // We do not catch any other error here.
-        // All errors we throw are handled by the result
-        // above
-        if (!first) {
-          // We need to clean up this query.
-          // It is not in the registry.
-          delete localQuery;
-        }
-        return ExecutionEngineResult(TRI_ERROR_INTERNAL);
-      }
+      TRI_ASSERT(!first || info.queryId() == 0);
       first = false;
+      
+      snippets.emplace_back(std::make_pair(info.queryId(), std::move(engine)));
     }
   } catch (basics::Exception const& ex) {
-    return ExecutionEngineResult(ex.code(), ex.message());
+    return Result(ex.code(), ex.message());
   } catch (std::exception const& ex) {
-    return ExecutionEngineResult(TRI_ERROR_INTERNAL, ex.what());
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return ExecutionEngineResult(TRI_ERROR_INTERNAL);
+    return Result(TRI_ERROR_INTERNAL);
   }
 
   // This deactivates the defered cleanup.
   // From here on we rely on the AQL shutdown mechanism.
-  guard.cancel();
-  return ExecutionEngineResult(query.engine());
+//  guard.cancel();
+  return Result();
 }
