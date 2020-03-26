@@ -368,10 +368,11 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync,
                                                        bool dropCollection) {
 #ifdef USE_ENTERPRISE
   {
-    OperationResult initRes =
-        ensureEnterpriseCollectionInitialCheck(collectionName, dropCollection);
-    if (initRes.fail()) {
-      return initRes;
+    if (dropCollection) {
+      bool initial = isUsedAsInitialCollection(collectionName);
+      if (initial) {
+        return OperationResult(TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL);
+      }
     }
   }
 #endif
