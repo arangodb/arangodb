@@ -240,7 +240,7 @@ class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
 
   virtual bool next() override {
     bool next = false;
-    while ((next = approx_.next()) && !(phrase_freq_.value = this->phrase_freq())) {}
+    while ((next = approx_.next()) && !doc_limits::valid(phrase_freq_.value = this->phrase_freq())) {}
 
     return next;
   }

@@ -31,6 +31,8 @@
 NS_LOCAL
 
 using irs::automaton;
+using irs::automaton_table_matcher;
+using irs::term_reader;
 
 // table contains indexes of states in
 // utf8_transitions_builder::rho_states_ table
@@ -57,6 +59,42 @@ const automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
   // 4 bytes sequence (240-255)
   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 };
+
+
+automaton_table_matcher get_automaton_matcher(const automaton& acceptor, bool& error) {
+  automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+
+  if (fst::kError == matcher.Properties(0)) {
+    IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
+                  "got the following properties " IR_UINT64_T_SPECIFIER "",
+                  acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
+
+    error = true;
+  }
+  return matcher;
+}
+
+template<typename Visitor>
+void automaton_visit_with_matcher(
+    const term_reader& reader,
+    automaton_table_matcher& matcher,
+    Visitor& visitor) {
+  auto terms = reader.iterator(matcher);
+
+  if (IRS_UNLIKELY(!terms)) {
+    return;
+  }
+
+  if (terms->next()) {
+    visitor.prepare(*terms);
+
+    do {
+      terms->read(); // read term attributes
+
+      visitor.visit();
+    } while (terms->next());
+  }
+}
 
 NS_END
 
@@ -290,45 +328,6 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   a.EmplaceArc(rho_states_[2], fst::fsa::kRho, rho_states_[1]);
   a.EmplaceArc(rho_states_[3], fst::fsa::kRho, rho_states_[2]);
 }
-
-automaton_table_matcher get_automaton_matcher(const automaton& acceptor, bool& error) {
-  automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
-
-  if (fst::kError == matcher.Properties(0)) {
-    IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
-                  "got the following properties " IR_UINT64_T_SPECIFIER "",
-                  acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
-
-    error = true;
-  }
-  return matcher;
-}
-
-NS_LOCAL
-
-template<typename Visitor>
-void automaton_visit_with_matcher(
-    const term_reader& reader,
-    automaton_table_matcher& matcher,
-    Visitor& visitor) {
-  auto terms = reader.iterator(matcher);
-
-  if (IRS_UNLIKELY(!terms)) {
-    return;
-  }
-
-  if (terms->next()) {
-    visitor.prepare(terms);
-
-    do {
-      terms->read(); // read term attributes
-
-      visitor.visit();
-    } while (terms->next());
-  }
-}
-
-NS_END
 
 void automaton_visit(
     const term_reader& reader,

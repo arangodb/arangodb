@@ -6339,7 +6339,7 @@ TEST(by_phrase_test, boost) {
       ASSERT_EQ(boost, prepared->boost());
     }
 
-    // prefix, wildcard, and levenshtein terms
+    // prefix, wildcard, levenshtein, set
     {
       irs::by_phrase q;
       irs::by_phrase::prefix_term pt;
@@ -6349,7 +6349,8 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase::levenshtein_term lt;
       lt.max_distance = 1;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("brwn"));
-      q.field("field").push_back(std::move(pt)).push_back(std::move(wt)).push_back(lt);
+      irs::by_phrase::set_term ct{{irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))}};
+      q.field("field").push_back(std::move(pt)).push_back(std::move(wt)).push_back(lt).push_back(ct);
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
@@ -6440,6 +6441,47 @@ TEST(by_phrase_test, push_back_insert) {
     ASSERT_TRUE(st3);
     ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))}, *st3);
     ASSERT_EQ(10, q.size());
+
+    {
+      irs::by_phrase::simple_term st1{irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"))};
+      q.insert(st1, 5);
+      const irs::by_phrase::simple_term* st2 = q.get<irs::by_phrase::simple_term>(5);
+      ASSERT_TRUE(st2);
+      ASSERT_EQ(st1, *st2);
+      ASSERT_EQ(10, q.size());
+
+      irs::by_phrase::prefix_term pt1;
+      pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("cat"));
+      q.insert(pt1, 7);
+      const irs::by_phrase::prefix_term* pt2 = q.get<irs::by_phrase::prefix_term>(7);
+      ASSERT_TRUE(pt2);
+      ASSERT_EQ(pt1, *pt2);
+      ASSERT_EQ(10, q.size());
+
+      irs::by_phrase::wildcard_term wt1;
+      wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("dog"));
+      q.insert(wt1, 9);
+      const irs::by_phrase::wildcard_term* wt2 = q.get<irs::by_phrase::wildcard_term>(9);
+      ASSERT_TRUE(wt2);
+      ASSERT_EQ(wt1, *wt2);
+      ASSERT_EQ(10, q.size());
+
+      irs::by_phrase::levenshtein_term lt1;
+      lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("whale"));
+      q.insert(lt1, 29);
+      const irs::by_phrase::levenshtein_term* lt2 = q.get<irs::by_phrase::levenshtein_term>(29);
+      ASSERT_TRUE(lt2);
+      ASSERT_EQ(lt1, *lt2);
+      ASSERT_EQ(11, q.size());
+
+      irs::by_phrase::set_term ct1;
+      ct1.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("bird"))};
+      q.insert(ct1, 29);
+      const irs::by_phrase::set_term* ct2 = q.get<irs::by_phrase::set_term>(29);
+      ASSERT_TRUE(ct2);
+      ASSERT_EQ(ct1, *ct2);
+      ASSERT_EQ(11, q.size());
+    }
   }
 }
 
@@ -6569,6 +6611,42 @@ TEST(by_phrase_test, equal) {
     q1.push_back(std::move(wt2));
     q1.push_back(std::move(lt2));
     ASSERT_NE(q0, q1);
+  }
+}
+
+TEST(by_phrase_test, copy_move) {
+  {
+    irs::by_phrase q0;
+    irs::by_phrase::simple_term st{irs::ref_cast<irs::byte_type>(irs::string_ref("very"))};
+    irs::by_phrase::prefix_term pt;
+    pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
+    irs::by_phrase::set_term ct;
+    ct.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("light")),
+                irs::ref_cast<irs::byte_type>(irs::string_ref("dark"))};
+    irs::by_phrase::wildcard_term wt;
+    wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
+    irs::by_phrase::levenshtein_term lt;
+    lt.max_distance = 2;
+    lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+    q0.field("name");
+    q0.push_back(st);
+    q0.push_back(pt);
+    q0.push_back(ct);
+    q0.push_back(wt);
+    q0.push_back(lt);
+    q0.push_back(std::move(st));
+    q0.push_back(std::move(pt));
+    q0.push_back(std::move(ct));
+    q0.push_back(std::move(wt));
+    q0.push_back(std::move(lt));
+
+    irs::by_phrase q1 = q0;
+    ASSERT_EQ(q0, q1);
+    ASSERT_EQ(q0.hash(), q1.hash());
+    irs::by_phrase q2 = q0;
+    irs::by_phrase q3 = std::move(q2);
+    ASSERT_EQ(q0, q3);
+    ASSERT_EQ(q0.hash(), q3.hash());
   }
 }
 

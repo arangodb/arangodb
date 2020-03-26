@@ -159,7 +159,7 @@ class IRESEARCH_API by_phrase : public filter {
   #pragma GCC diagnostic pop
 #endif
 
-    phrase_part& operator=(const phrase_part& other) noexcept;
+    phrase_part& operator=(const phrase_part& other);
     phrase_part& operator=(phrase_part&& other) noexcept;
 
     bool operator==(const phrase_part& other) const noexcept;
@@ -186,18 +186,18 @@ class IRESEARCH_API by_phrase : public filter {
         phrase_terms_ = &phrase_terms;
       }
 
-      virtual void prepare(const seek_term_iterator::ptr& terms) noexcept override {
+      virtual void prepare(const seek_term_iterator& terms) noexcept override {
         terms_ = &terms;
         found_ = true;
       }
 
       virtual void visit() override {
         assert(terms_);
-        collectors_.collect(segment_, reader_, term_offset_, (*terms_)->attributes()); // collect statistics
+        collectors_.collect(segment_, reader_, term_offset_, terms_->attributes()); // collect statistics
 
         // estimate phrase & term
         assert(phrase_terms_);
-        phrase_terms_->emplace_back((*terms_)->cookie());
+        phrase_terms_->emplace_back(terms_->cookie());
       }
 
       void reset() noexcept {
@@ -224,7 +224,7 @@ class IRESEARCH_API by_phrase : public filter {
       const term_reader& reader_;
       const Collectors& collectors_;
       phrase_state<order::prepared::FixedContainer>::terms_states_t* phrase_terms_ = nullptr;
-      const seek_term_iterator::ptr* terms_ = nullptr;
+      const seek_term_iterator* terms_ = nullptr;
     };
 
     static bool variadic_type_collect(

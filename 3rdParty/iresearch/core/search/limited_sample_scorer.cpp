@@ -107,7 +107,7 @@ void limited_sample_scorer::score(const index_reader& index,
     // find the stats for the current term
     const auto res = map_utils::try_emplace(
       term_stats,
-      make_hashed_ref(bytes_ref(scored_state.term), std::hash<bytes_ref>()),
+      make_hashed_ref(bytes_ref(scored_state.term)),
       index, field, order, stats_offset);
 
     // find term attributes using cached state

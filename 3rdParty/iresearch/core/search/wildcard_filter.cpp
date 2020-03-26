@@ -32,9 +32,9 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_ROOT
-
 NS_LOCAL
+
+using namespace irs;
 
 inline bytes_ref unescape(const bytes_ref& in, bstring& out) {
   out.reserve(in.size());
@@ -122,6 +122,12 @@ inline void automaton_visit(const term_reader& reader,
 
 NS_END
 
+NS_ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        by_wildcard implementation
+// -----------------------------------------------------------------------------
+
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
 
@@ -167,7 +173,7 @@ by_wildcard::by_wildcard() noexcept
       by_prefix_visit(reader, term, fv);
     },
     [&reader, &fv](const bytes_ref& term) {
-      automaton_visit(reader, term, fv);
+      ::automaton_visit(reader, term, fv);
     }
   );
 }

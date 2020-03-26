@@ -29,5 +29,9 @@
   {"name":"PHW2","phrase":"z_o"},
   {"name":"PHW3","phrase":"elephant giraff_y"},
   {"name":"PHW4","phrase":"elephant _iraffe"},
-  {"name":"PHW5","phrase":"elephant gira_fe"}
+  {"name":"PHW5","phrase":"elephant gira_fe"},
+  {"name":"SPWLC0","phrase":"cookies cake pie biscuit meringue cookies cake pie biscuit marshmallows paste bread" },
+  {"name":"SPWLC1","phrase":"cookies cake pie biskuit marshmallows cookies pie meringue" },
+  {"name":"SPWLC2","phrase":"cookies cake pie biscwit meringue pie biscuit paste" },
+  {"name":"SPWLC3","phrase":"cookies cake pie biscuet marshmallows cake meringue" }
 ]

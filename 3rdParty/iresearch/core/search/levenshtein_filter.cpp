@@ -33,12 +33,9 @@
 #include "utils/noncopyable.hpp"
 #include "utils/std.hpp"
 
-NS_ROOT
-
-DEFINE_FILTER_TYPE(by_edit_distance)
-DEFINE_FACTORY_DEFAULT(by_edit_distance)
-
 NS_LOCAL
+
+using namespace irs;
 
 template<typename Invalid, typename Term, typename Levenshtein>
 inline void executeLevenshtein(byte_type max_distance,
@@ -61,6 +58,15 @@ inline void executeLevenshtein(byte_type max_distance,
 }
 
 NS_END
+
+NS_ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                   by_edit_distance implementation
+// -----------------------------------------------------------------------------
+
+DEFINE_FILTER_TYPE(by_edit_distance)
+DEFINE_FACTORY_DEFAULT(by_edit_distance)
 
 /*static*/ filter::prepared::ptr by_edit_distance::prepare(
     const index_reader& index,

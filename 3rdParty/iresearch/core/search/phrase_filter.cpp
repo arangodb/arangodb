@@ -269,7 +269,7 @@ by_phrase::phrase_part::phrase_part(phrase_part&& other) noexcept {
   allocate(std::move(other));
 }
 
-by_phrase::phrase_part& by_phrase::phrase_part::operator=(const phrase_part& other) noexcept {
+by_phrase::phrase_part& by_phrase::phrase_part::operator=(const phrase_part& other) {
   if (&other == this) {
     return *this;
   }
@@ -464,7 +464,7 @@ size_t by_phrase::hash() const noexcept {
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);
   std::for_each(
-    phrase_.begin(), phrase_.end(),
+    phrase_.cbegin(), phrase_.cend(),
     [&seed](const by_phrase::term_t& term) {
       ::boost::hash_combine(seed, term);
   });

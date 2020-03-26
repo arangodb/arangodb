@@ -27,6 +27,7 @@
 #include "tests_shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
+#include "search/filter_visitor.hpp"
 #include "search/score.hpp"
 #include "search/filter.hpp"
 #include "search/tfidf.hpp"
@@ -607,6 +608,34 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
     return irs::bytes_ref::NIL;
   }
 }; // empty_term_reader
+
+class empty_filter_visitor : public irs::filter_visitor {
+ public:
+  virtual void prepare(const irs::seek_term_iterator& /*terms*/) noexcept override {
+    ++prepare_calls_counter_;
+  }
+
+  virtual void visit() noexcept override {
+    ++visit_calls_counter_;
+  }
+
+  void reset() noexcept {
+    prepare_calls_counter_ = 0;
+    visit_calls_counter_ = 0;
+  }
+
+  size_t prepare_calls_counter() const noexcept {
+    return prepare_calls_counter_;
+  }
+
+  size_t visit_calls_counter() const noexcept {
+    return visit_calls_counter_;
+  }
+
+ private:
+  size_t prepare_calls_counter_ = 0;
+  size_t visit_calls_counter_ = 0;
+}; // empty_filter_visitor
 
 NS_END // tests
 

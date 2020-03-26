@@ -738,8 +738,8 @@ class IRESEARCH_API order final {
     template<template<typename...> class T>
     class IRESEARCH_API collectors: private util::noncopyable { // noncopyable required by MSVC
      public:
-      collectors(const prepared& buckets);
-      collectors(collectors&& other) noexcept; // function definition explicitly required by MSVC
+      explicit collectors(const prepared& buckets);
+      explicit collectors(collectors&& other) noexcept; // function definition explicitly required by MSVC
 
       //////////////////////////////////////////////////////////////////////////
       /// @brief collect field related statistics, i.e. field used in the filter

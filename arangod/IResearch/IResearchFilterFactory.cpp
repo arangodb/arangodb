@@ -2056,7 +2056,8 @@ typedef std::function<
                    irs::by_phrase*,
                    QueryContext const&,
                    arangodb::aql::AstNode const&,
-                   size_t)
+                   size_t,
+                   irs::analysis::analyzer*)
 > ConversionPhraseHandler;
 
 std::string getSubFuncErrorSuffix(char const* funcName, size_t const funcArgumentPosition) {
@@ -2106,7 +2107,8 @@ arangodb::Result fromFuncPhraseTerm(char const* funcName,
                                     irs::by_phrase* filter,
                                     QueryContext const& ctx,
                                     arangodb::aql::AstNode const& elem,
-                                    size_t firstOffset) {
+                                    size_t firstOffset,
+                                    irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   ScopedAqlValue termValue;
   irs::string_ref term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName,
@@ -2127,7 +2129,8 @@ arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
                                           irs::by_phrase* filter,
                                           QueryContext const& ctx,
                                           arangodb::aql::AstNode const& elem,
-                                          size_t firstOffset) {
+                                          size_t firstOffset,
+                                          irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   ScopedAqlValue termValue;
   irs::string_ref term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName,
@@ -2149,7 +2152,8 @@ arangodb::Result fromFuncPhraseLike(char const* funcName,
                                     irs::by_phrase* filter,
                                     QueryContext const& ctx,
                                     arangodb::aql::AstNode const& elem,
-                                    size_t firstOffset) {
+                                    size_t firstOffset,
+                                    irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   ScopedAqlValue termValue;
   irs::string_ref term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName,
@@ -2274,7 +2278,8 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
                                                 irs::by_phrase* filter,
                                                 QueryContext const& ctx,
                                                 arangodb::aql::AstNode const& array,
-                                                size_t firstOffset) {
+                                                size_t firstOffset,
+                                                irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   if (!array.isArray()) {
     return {
       TRI_ERROR_BAD_PARAMETER,
@@ -2314,7 +2319,8 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
                                      irs::by_phrase* filter,
                                      QueryContext const& ctx,
                                      arangodb::aql::AstNode const& array,
-                                     size_t firstOffset) {
+                                     size_t firstOffset,
+                                     irs::analysis::analyzer* analyzer = nullptr) {
   if (!array.isArray()) {
     return {
       TRI_ERROR_BAD_PARAMETER,
@@ -2342,8 +2348,7 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
     };
   }
 
-  std::vector<irs::bstring> terms;
-  terms.reserve(argc);
+  std::set<irs::bstring> terms;
   ScopedAqlValue termValue;
   irs::string_ref term;
   for (size_t i = 0; i < argc; ++i) {
@@ -2355,10 +2360,23 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
         res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
       };
     }
-    terms.emplace_back(irs::ref_cast<irs::byte_type>(term));
+    if (analyzer != nullptr) {
+      // reset analyzer
+      analyzer->reset(term);
+      // get token attribute
+      irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
+      // add tokens
+      while (analyzer->next()) {
+        terms.emplace(token.value());
+      }
+    } else {
+      terms.emplace(irs::ref_cast<irs::byte_type>(term));
+    }
   }
   if (filter) {
-    filter->push_back(irs::by_phrase::set_term{std::move(terms)}, firstOffset);
+    filter->push_back(irs::by_phrase::set_term{
+        std::vector<irs::bstring>(std::make_move_iterator(terms.begin()), std::make_move_iterator(terms.end()))},
+      firstOffset);
   }
   return {};
 }
@@ -2379,7 +2397,8 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
                                             irs::by_phrase* filter,
                                             QueryContext const& ctx,
                                             arangodb::aql::AstNode const& object,
-                                            size_t firstOffset) {
+                                            size_t firstOffset,
+                                            irs::analysis::analyzer* analyzer = nullptr) {
   TRI_ASSERT(object.isObject() && object.numMembers() == 1);
   auto const* objectElem = object.getMember(0);
   std::string name = objectElem->getStringValue();
@@ -2398,7 +2417,7 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
   if (!elem->isArray()) {
     elem = objectElem;
   }
-  return entry->second(funcName, funcArgumentPosition, entry->first.c_str(), filter, ctx, *elem, firstOffset);
+  return entry->second(funcName, funcArgumentPosition, entry->first.c_str(), filter, ctx, *elem, firstOffset, analyzer);
 }
 
 arangodb::Result processPhraseArgs(
@@ -2422,7 +2441,7 @@ arangodb::Result processPhraseArgs(
     if (currentArg->isArray()) {
       // '[' <term0> [, <term1>, ...] ']'
       if (isInArray) {
-        auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, *currentArg, offset);
+        auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, *currentArg, offset, &*analyzer);
         if (res.fail()) {
           return res;
         }

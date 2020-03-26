@@ -27,12 +27,9 @@
 #include "filter_visitor.hpp"
 #include "index/index_reader.hpp"
 
-NS_ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         term_query implementation
-// -----------------------------------------------------------------------------
 NS_LOCAL
+
+using namespace irs;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_visitor
@@ -49,14 +46,14 @@ class term_visitor final : public filter_visitor {
   ) : term_offset_(term_offset), segment_(segment), reader_(reader),
     collectors_(collectors), states_(states) {}
 
-  virtual void prepare(const seek_term_iterator::ptr& terms) noexcept override {
+  virtual void prepare(const seek_term_iterator& terms) noexcept override {
     terms_ = &terms;
   }
 
   virtual void visit() override {
     // collect statistics
     assert(terms_);
-    collectors_.collect(segment_, reader_, term_offset_, (*terms_)->attributes());
+    collectors_.collect(segment_, reader_, term_offset_, terms_->attributes());
 
     // Cache term state in prepared query attributes.
     // Later, using cached state we could easily "jump" to
@@ -64,7 +61,7 @@ class term_visitor final : public filter_visitor {
     auto& state = states_.insert(segment_);
     state.reader = &reader_;
     assert(terms_);
-    state.cookie = (*terms_)->cookie();
+    state.cookie = terms_->cookie();
   }
 
  private:
@@ -73,7 +70,7 @@ class term_visitor final : public filter_visitor {
   const term_reader& reader_;
   const order::prepared::fixed_terms_collectors& collectors_;
   term_query::states_t& states_;
-  const seek_term_iterator::ptr* terms_ = nullptr;
+  const seek_term_iterator* terms_ = nullptr;
 };
 
 template<typename Visitor>
@@ -88,7 +85,7 @@ void visit(
     return;
   }
 
-  visitor.prepare(terms);
+  visitor.prepare(*terms);
 
   // read term attributes
   terms->read();
@@ -98,11 +95,17 @@ void visit(
 
 NS_END
 
+NS_ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         term_query implementation
+// -----------------------------------------------------------------------------
+
 /*static*/ void term_query::visit(
     const term_reader& reader,
     const bytes_ref& term,
     filter_visitor& visitor) {
-  irs::visit(reader, term, visitor);
+  ::visit(reader, term, visitor);
 }
 
 /*static*/ term_query::ptr term_query::make(
@@ -128,7 +131,7 @@ NS_END
     // term_offset = 0 because only 1 term
     term_visitor tv(segment, *reader, collectors, states, 0);
 
-    irs::visit(*reader, term, tv);
+    ::visit(*reader, term, tv);
   }
 
   bstring stats(ord.stats_size(), 0);

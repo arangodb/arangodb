@@ -287,6 +287,60 @@ TEST_P(tfidf_test, test_phrase) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+
+  // "cookies ca* p_e bisKuit meringue|marshmallows" with order
+  {
+    irs::by_phrase filter;
+    irs::by_phrase::simple_term st{irs::ref_cast<irs::byte_type>(irs::string_ref("cookies"))};
+    irs::by_phrase::prefix_term pt;
+    pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("ca"));
+    irs::by_phrase::wildcard_term wt;
+    wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("p_e"));
+    irs::by_phrase::levenshtein_term lt;
+    lt.max_distance = 1;
+    lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("biscuit"));
+    irs::by_phrase::set_term ct{{irs::ref_cast<irs::byte_type>(irs::string_ref("meringue")), irs::ref_cast<irs::byte_type>(irs::string_ref("marshmallows"))}};
+    filter.field("phrase_anl").push_back(st).push_back(pt).push_back(wt).push_back(lt).push_back(ct);
+
+    std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
+
+    std::vector<std::string> expected{
+      "SPWLC0", // cookies cake pie biscuit meringue cookies cake pie biscuit marshmallows paste bread
+      "SPWLC1", // cookies cake pie biskuit marshmallows cookies pie meringue
+      "SPWLC2", // cookies cake pie biscwit meringue pie biscuit paste
+      "SPWLC3"  // cookies cake pie biscuet marshmallows cake meringue
+    };
+
+    auto prepared_filter = filter.prepare(*index, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+    ASSERT_TRUE(bool(score));
+
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+    irs::bytes_ref key_value;
+
+    while (docs->next()) {
+      score->evaluate();
+      ASSERT_TRUE(values(docs->value(), key_value));
+
+      sorted.emplace(
+        score_value,
+        irs::to_string<std::string>(key_value.c_str())
+      );
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
 }
 
 TEST_P(tfidf_test, test_query) {
