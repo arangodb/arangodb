@@ -45,6 +45,9 @@ class IResearchViewStoredValues {
   enum class ColumnCompression {
     NONE = 0,
     LZ4
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    ,TEST = 999
+#endif
   };
 
   struct StoredColumn {

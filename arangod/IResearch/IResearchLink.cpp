@@ -1142,50 +1142,69 @@ Result IResearchLink::initDataStore(
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
 
-  bool nonDefaultCompression = false;
-  for (auto c : storedColumns) {
-    if (c.compression != IResearchViewStoredValues::ColumnCompression::LZ4) {
-      nonDefaultCompression = true;
-      break;
+  bool differentCompressions = false; // storedValues uses different compression method
+  IResearchViewStoredValues::ColumnCompression soleCompressionType{ 
+      IResearchViewStoredValues::ColumnCompression::LZ4 };
+  std::map<std::string, // we must store string as storedColumns could be temporary
+    const irs::compression::type_id&> compressionMap;
+  if (!storedColumns.empty()) {
+    soleCompressionType = storedColumns.front().compression;
+    for (auto c : storedColumns) {
+      if (soleCompressionType != c.compression) {
+        differentCompressions = true;
+        break;
+      }
     }
   }
-  std::map<std::string,
-    IResearchViewStoredValues::ColumnCompression> compressionMap;
-  if (nonDefaultCompression) {
+  const irs::compression::type_id* soleCompression{ &irs::compression::lz4::type() };
+  if (differentCompressions) { 
+    // we will need compression map to handle compressions
+    // on insert
     for (auto c : storedColumns) {
-      compressionMap.emplace(c.name, c.compression);
+      compressionMap.emplace(c.name, 
+        (c.compression == IResearchViewStoredValues::ColumnCompression::LZ4) ?
+        irs::compression::lz4::type() : irs::compression::raw::type());
+    }
+  } else {
+    switch (soleCompressionType) {
+      case IResearchViewStoredValues::ColumnCompression::NONE:
+        soleCompression = irs::compression::raw::type();
+        break;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      //case IResearchViewStoredValues::ColumnCompression::TEST:
+      //  soleCompression = &arangodb::Tests::TestCompressor::type();
+      //  break;
+#endif
+      default:
+        TRI_ASSERT(false);
     }
   }
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
   if (encrypt) {
-    if (nonDefaultCompression) {
+    if (differentCompressions) {
       options.column_info = [compressionMap](const irs::string_ref& name) -> irs::column_info {
         auto compress = compressionMap.find(name);
+        TRI_ASSERT(compress != compressionMap.end());
         // do not waste resources to encrypt primary key column
-        return { (compress == compressionMap.end() || 
-                 compress->second == IResearchViewStoredValues::ColumnCompression::LZ4) ?
-                 irs::compression::lz4::type() : irs::compression::raw::type(),
-                 {}, DocumentPrimaryKey::PK() != name };
+        return { compress->second, {}, DocumentPrimaryKey::PK() != name };
       };
     } else {
-      options.column_info = [](const irs::string_ref& name) -> irs::column_info {
+      options.column_info = [soleCompression](const irs::string_ref& name) -> irs::column_info {
         // do not waste resources to encrypt primary key column
-        return { irs::compression::lz4::type(), {}, DocumentPrimaryKey::PK() != name };
+        return { *soleCompression, {}, DocumentPrimaryKey::PK() != name };
       };
     }
   } else {
-    if (nonDefaultCompression) {
+    if (differentCompressions) {
       options.column_info = [compressionMap](const irs::string_ref& name) -> irs::column_info {
         auto compress = compressionMap.find(name);
-        return { (compress == compressionMap.end() ||
-                 compress->second == IResearchViewStoredValues::ColumnCompression::LZ4) ?
-                 irs::compression::lz4::type() : irs::compression::raw::type(),
-                 {}, false };
+        TRI_ASSERT(compress != compressionMap.end());
+        return { compress->second, {}, false };
       };
     } else {
-      options.column_info = [](const irs::string_ref& /*name*/) -> irs::column_info {
-        return { irs::compression::lz4::type(), {}, false };
+      options.column_info = [soleCompression](const irs::string_ref& /*name*/) -> irs::column_info {
+        return { *soleCompression, {}, false };
       };
     }
   }

@@ -46,6 +46,9 @@ const std::unordered_map<
   arangodb::iresearch::IResearchViewStoredValues::ColumnCompression> COMPRESSION_CONVERT_MAP = {
 { "lz4", arangodb::iresearch::IResearchViewStoredValues::ColumnCompression::LZ4 },
 { "none", arangodb::iresearch::IResearchViewStoredValues::ColumnCompression::NONE },
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+{ "test", arangodb::iresearch::IResearchViewStoredValues::ColumnCompression::TEST },
+#endif
 };
 
 }
