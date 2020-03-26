@@ -25,7 +25,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-auto aql::operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair) -> std::ostream& {
+auto aql::operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
+    -> std::ostream& {
   return out << callPair.dependency << " => " << callPair.call;
 }
 
@@ -45,10 +46,6 @@ auto aql::operator<<(std::ostream& out, AqlCallSet const& callSet) -> std::ostre
   return out;
 }
 
-auto AqlCallSet::empty() const noexcept -> bool {
-  return calls.empty();
-}
+auto AqlCallSet::empty() const noexcept -> bool { return calls.empty(); }
 
-auto AqlCallSet::size() const noexcept -> size_t {
-  return calls.size();
-}
+auto AqlCallSet::size() const noexcept -> size_t { return calls.size(); }
