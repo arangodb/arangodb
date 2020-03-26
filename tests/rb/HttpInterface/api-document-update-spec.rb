@@ -118,6 +118,34 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cid).should eq(0)
       end
+      
+      it "create a document and update it with invalid JSON" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        rev = doc.parsed_response['_rev']
+
+        # update document
+        cmd = "/_api/document/#{did}"
+        body = "{ \"World\" : \"Hallo\xff\" }"
+        doc = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(600)
+        doc.parsed_response['code'].should eq(400)
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cid).should eq(0)
+      end
     end
 
 ################################################################################
