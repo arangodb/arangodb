@@ -1293,6 +1293,7 @@ function processQuery(query, explain, planIndex) {
         }
 
         e = [];
+        eNames = [];
         if (node.hasOwnProperty('graphDefinition')) {
           v = [];
           vNames = [];
@@ -1405,6 +1406,7 @@ function processQuery(query, explain, planIndex) {
 
         shortestPathDetails.push(node);
         e = [];
+        eNames = [];
         if (node.hasOwnProperty('graphDefinition')) {
           v = [];
           vNames = [];
