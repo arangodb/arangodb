@@ -69,9 +69,6 @@ class StorageEngine;
 /// @brief predefined collection name for users
 constexpr auto TRI_COL_NAME_USERS = "_users";
 
-/// @brief name of the system database
-constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
-
 /// @brief maximal name length
 constexpr size_t TRI_COL_NAME_LENGTH = 256;
 
@@ -264,7 +261,7 @@ struct TRI_vocbase_t {
   bool markAsDropped();
 
   /// @brief returns whether the database is the system database
-  bool isSystem() const { return _info.getName() == TRI_VOC_SYSTEM_DATABASE; }
+  bool isSystem() const;
 
   /// @brief stop operations in this vocbase. must be called prior to
   /// shutdown to clean things up

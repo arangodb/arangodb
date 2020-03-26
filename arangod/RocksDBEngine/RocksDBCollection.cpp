@@ -845,7 +845,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   }
 
   VPackSlice newSlice = builder->slice();
-  if(options.validate) {
+  if(options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(newSlice, trx->transactionContextPtr()->getVPackOptions());
 
     if (res.fail()) {
@@ -993,7 +993,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     }
   }
 
-  if(options.validate) {
+  if(options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(builder->slice(), oldDoc, trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {
       return res;
@@ -1102,7 +1102,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
   VPackSlice const newDoc(builder->slice());
 
-  if(options.validate) {
+  if(options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(newDoc, oldDoc, trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {
       return res;
@@ -1576,17 +1576,17 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
 
   transaction::StringLeaser buffer(trx);
   rocksdb::PinnableSlice ps(buffer.get());
-  
+
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
 
   if (!s.ok()) {
     return false;
   }
-    
+
   TRI_ASSERT(ps.size() > 0);
   cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
-  
+
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
@@ -1606,7 +1606,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
       }
     }
   }
-  
+
   return true;
 }
 

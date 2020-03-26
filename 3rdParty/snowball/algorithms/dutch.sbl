@@ -1,0 +1,164 @@
+routines (
+           prelude postlude
+           e_ending
+           en_ending
+           mark_regions
+           R1 R2
+           undouble
+           standard_suffix
+)
+
+externals ( stem )
+
+booleans ( e_found )
+
+integers ( p1 p2 )
+
+groupings ( v v_I v_j )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a"   '{U+00E4}'
+stringdef e"   '{U+00EB}'
+stringdef i"   '{U+00EF}'
+stringdef o"   '{U+00F6}'
+stringdef u"   '{U+00FC}'
+
+stringdef a'   '{U+00E1}'
+stringdef e'   '{U+00E9}'
+stringdef i'   '{U+00ED}'
+stringdef o'   '{U+00F3}'
+stringdef u'   '{U+00FA}'
+
+stringdef e`   '{U+00E8}'
+
+define v       'aeiouy{e`}'
+define v_I     v + 'I'
+define v_j     v + 'j'
+
+define prelude as (
+    test repeat (
+        [substring] among(
+            '{a"}' '{a'}'
+                (<- 'a')
+            '{e"}' '{e'}'
+                (<- 'e')
+            '{i"}' '{i'}'
+                (<- 'i')
+            '{o"}' '{o'}'
+                (<- 'o')
+            '{u"}' '{u'}'
+                (<- 'u')
+            ''  (next)
+        ) //or next
+    )
+    try(['y'] <- 'Y')
+    repeat goto (
+        v [('i'] v <- 'I') or
+           ('y']   <- 'Y')
+    )
+)
+
+define mark_regions as (
+
+    $p1 = limit
+    $p2 = limit
+
+    gopast v  gopast non-v  setmark p1
+    try($p1 < 3  $p1 = 3)  // at least 3
+    gopast v  gopast non-v  setmark p2
+
+)
+
+define postlude as repeat (
+
+    [substring] among(
+        'Y'  (<- 'y')
+        'I'  (<- 'i')
+        ''   (next)
+    ) //or next
+
+)
+
+backwardmode (
+
+    define R1 as $p1 <= cursor
+    define R2 as $p2 <= cursor
+
+    define undouble as (
+        test among('kk' 'dd' 'tt') [next] delete
+    )
+
+    define e_ending as (
+        unset e_found
+        ['e'] R1 test non-v delete
+        set e_found
+        undouble
+    )
+
+    define en_ending as (
+        R1 non-v and not 'gem' delete
+        undouble
+    )
+
+    define standard_suffix as (
+        do (
+            [substring] among(
+                'heden'
+                (   R1 <- 'heid'
+                )
+                'en' 'ene'
+                (   en_ending
+                )
+                's' 'se'
+                (   R1 non-v_j delete
+                )
+            )
+        )
+        do e_ending
+
+        do ( ['heid'] R2 not 'c' delete
+             ['en'] en_ending
+           )
+
+        do (
+            [substring] among(
+                'end' 'ing'
+                (   R2 delete
+                    (['ig'] R2 not 'e' delete) or undouble
+                )
+                'ig'
+                (   R2 not 'e' delete
+                )
+                'lijk'
+                (   R2 delete e_ending
+                )
+                'baar'
+                (   R2 delete
+                )
+                'bar'
+                (   R2 e_found delete
+                )
+            )
+        )
+        do (
+            non-v_I
+            test (
+                among ('aa' 'ee' 'oo' 'uu')
+                non-v
+            )
+            [next] delete
+        )
+    )
+)
+
+define stem as (
+
+        do prelude
+        do mark_regions
+        backwards
+            do standard_suffix
+        do postlude
+)

@@ -157,7 +157,8 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
       }
 
       // Non const case, or first run in const
-      auto [state, skipped, block] = _subquery.execute(AqlCallStack(AqlCall{}));
+      auto [state, skipped, block] =
+          _subquery.execute(AqlCallStack(AqlCallList{AqlCall{}}));
       TRI_ASSERT(skipped.nothingSkipped());
       if (state == ExecutionState::WAITING) {
         return {state, NoStats{}, getUpstreamCall()};
@@ -296,7 +297,8 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
       // Simply jump over it.
       AqlCall subqueryCall{};
       subqueryCall.hardLimit = 0;
-      auto [state, skipRes, block] = _subquery.execute(AqlCallStack(subqueryCall));
+      auto [state, skipRes, block] =
+          _subquery.execute(AqlCallStack(AqlCallList{subqueryCall}));
       TRI_ASSERT(skipRes.nothingSkipped());
       if (state == ExecutionState::WAITING) {
         return {state, NoStats{}, 0, getUpstreamCall()};
@@ -340,6 +342,16 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
   call.didSkip(_skipped);
   _skipped = 0;
   return {translatedReturnType(), NoStats{}, call.getSkipCount(), getUpstreamCall()};
+}
+template <bool isModificationSubquery>
+[[nodiscard]] auto SubqueryExecutor<isModificationSubquery>::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if constexpr (isModificationSubquery) {
+    // This executor might skip data.
+    // It could overfetch it before.
+    return std::min(call.getLimit(), input.countDataRows());
+  }
+  return input.countDataRows();
 }
 
 template class ::arangodb::aql::SubqueryExecutor<true>;

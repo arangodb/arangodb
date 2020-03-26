@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GlobalTailingSyncer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -43,7 +44,7 @@ GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& 
                     configuration, initialTick, useTick, barrierId),
       _queriedTranslations(false) {
   _ignoreDatabaseMarkers = false;
-  _state.databaseName = TRI_VOC_SYSTEM_DATABASE;
+  _state.databaseName = StaticStrings::SystemDatabase;
 }
 
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {

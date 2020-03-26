@@ -742,7 +742,8 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::UsesRevisionsAsDocumentIds,
              VPackValue(usesRevisionsAsDocumentIds()));
   result.add(StaticStrings::MinRevision, VPackValue(minRevision()));
-             
+  result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
+
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
   }

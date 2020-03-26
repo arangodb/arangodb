@@ -32,6 +32,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -1759,7 +1760,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     double timeout                            // request timeout
 ) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  if (name == TRI_VOC_SYSTEM_DATABASE) {
+  if (name == StaticStrings::SystemDatabase) {
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
@@ -2004,7 +2005,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       if (info.state != ClusterCollectionCreationState::INIT) {
         // All leaders have reported either good or bad
         // We might be called by followers if they get in sync fast enough
-        // In this IF we are in the followers case, we can savely ignore
+        // In this IF we are in the followers case, we can safely ignore
         return true;
       }
 

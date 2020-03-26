@@ -1049,7 +1049,9 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     return Result();
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isSuperuser() ||
+      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
 
   auto* col = _vocbase.lookupCollection(name).get();
 
@@ -1218,7 +1220,8 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
-  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+      _vocbase.sharding() == "single") {
     auto const isSatellite =
         VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
                                        velocypack::StringRef{""}) == StaticStrings::Satellite;
@@ -1247,14 +1250,6 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
     } else {
       numberOfShards = numberOfShardsSlice.getUInt();
-    }
-
-    if (_vocbase.sharding() == "single" &&
-        parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
-        !_vocbase.IsSystemName(name) && numberOfShards <= 1) {
-      // shard like _graphs
-      toMerge.add(StaticStrings::DistributeShardsLike,
-                  VPackValue(_vocbase.shardingPrototypeName()));
     }
   }
 
@@ -1434,7 +1429,9 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   bool generateNewRevisionIds =
       !_request->parsedValue(StaticStrings::PreserveRevisionIds, false);
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isSuperuser() ||
+      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
 
   if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
@@ -1905,7 +1902,10 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 
   Result fres;
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isSuperuser() ||
+      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
   // look up the collection

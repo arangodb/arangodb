@@ -60,7 +60,25 @@ function ValidationBasicsSuite () {
       } catch (ex) {}
       validatorJson = {
         level : "strict",
-        rule : { properties: { zahlen : { type : "array", items : { type : "number", maximum : 6 }}}},
+        rule : {
+          type: "object",
+          properties: {
+            zahlen : {
+              type : "array",
+              items : { type : "number", maximum : 6 }
+            },
+            name : {
+              type : "string",
+              minLength: 4,
+              maxLength: 10
+            },
+            number : {
+              type : "number",
+              items : { minimum: 1000000 }
+            },
+          },
+          additionalProperties : false
+        },
         message : "Json-Schema validation failed",
         type : "json"
       };
@@ -286,7 +304,7 @@ function ValidationBasicsSuite () {
 
     },
     // json  ////////////////////////////////////////////////////////////////////////////////////////////
-    testJson : () => {
+    testJson: () => {
       const v =  validatorJson;
       v.level = "strict";
       testCollection.properties({"validation" : v });
@@ -300,6 +318,49 @@ function ValidationBasicsSuite () {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
     },
+
+    testJsonRequire  : () => {
+      let p = {
+        ...validatorJson.rule,
+        required: [ "zahlen", "name" ]
+      };
+      validatorJson.rule = p;
+      validatorJson.level = "strict";
+
+      testCollection.properties({ "validation" : validatorJson });
+      sleepInCluster();
+
+      try {
+        //name missing
+        testCollection.insert({
+          "zahlen" : [1,2,3,4,5],
+        });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+
+      try {
+        //name too short
+        testCollection.insert({
+          "zahlen" : [1,2,3,4,5],
+          "name" : "ulf"
+        });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+
+      {
+        // good document
+        testCollection.insert({
+          "zahlen" : [1,2,3,4,5],
+          "name" : "guterName"
+        });
+      }
+
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
   }; // return
 } // END - ValidationBasicsSuite
