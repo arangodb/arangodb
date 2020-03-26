@@ -606,8 +606,9 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
 
   VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
-  // deny access to database with NONE, (except /_api/user)
-  if (vc->databaseAuthLevel() == auth::Level::NONE/* && !StringUtils::isPrefix(path, ApiUser)*/) {
+  // deny access to database with NONE
+  if (result == Flow::Continue &&
+      vc->databaseAuthLevel() == auth::Level::NONE) {
     result = Flow::Abort;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
   }
@@ -629,7 +630,6 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
 
     if (result == Flow::Abort && _auth->authenticationSystemOnly()) {
       // authentication required, but only for /_api, /_admin etc.
-
       if (!path.empty()) {
         // check if path starts with /_
         // or path begins with /
@@ -660,7 +660,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
-      } else if (StringUtils::isPrefix(path, ApiUser)) {
+      } else if (userAuthenticated && StringUtils::isPrefix(path, ApiUser)) {
         result = Flow::Continue;
       }
     }

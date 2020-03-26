@@ -2034,13 +2034,15 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   template <typename T>
   void replaceStartTargetVariables(ExecutionNode* en) {
-    auto node = std::invoke([en](auto) {
-      if constexpr (std::is_base_of_v<GraphNode, T>) {
-        return dynamic_cast<T*>(en);
-      } else {
-        return static_cast<T*>(en);
-      }
-    }, 0);
+    auto node = std::invoke(
+        [en](auto) {
+          if constexpr (std::is_base_of_v<GraphNode, T>) {
+            return dynamic_cast<T*>(en);
+          } else {
+            return static_cast<T*>(en);
+          }
+        },
+        0);
     if (node->_inStartVariable != nullptr) {
       node->_inStartVariable = Variable::replace(node->_inStartVariable, _replacements);
     }
@@ -4366,8 +4368,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 /// filters are moved as far up in the plan as possible to make result sets
 /// as small as possible as early as possible
 void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
-                                                       std::unique_ptr<ExecutionPlan> plan,
-                                                       OptimizerRule const& rule) {
+                                                      std::unique_ptr<ExecutionPlan> plan,
+                                                      OptimizerRule const& rule) {
   bool modified = false;
 
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -5801,7 +5803,8 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   // variables from them
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
-    auto* options = static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
+    auto* options =
+        static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
 
     std::vector<Variable const*> pruneVars;
     traversal->getPruneVariables(pruneVars);
@@ -5843,18 +5846,15 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       traversal->setPathOutput(nullptr);
       modified = true;
     }
-  
+
     // check if we can make use of the optimized neighbors enumerator
     if (!ServerState::instance()->isCoordinator()) {
-      if (traversal->vertexOutVariable() != nullptr &&
-          traversal->edgeOutVariable() == nullptr &&
-          traversal->pathOutVariable() == nullptr &&
-          options->useBreadthFirst &&
+      if (traversal->vertexOutVariable() != nullptr && traversal->edgeOutVariable() == nullptr &&
+          traversal->pathOutVariable() == nullptr && options->useBreadthFirst &&
           options->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL &&
-          !options->usesPrune() &&
-          !options->hasDepthLookupInfo()) {
+          !options->usesPrune() && !options->hasDepthLookupInfo()) {
         // this is possible in case *only* vertices are produced (no edges, no path),
-        // the traversal is breadth-first, the vertex uniqueness level is set to "global", 
+        // the traversal is breadth-first, the vertex uniqueness level is set to "global",
         // there is no pruning and there are no depth-specific filters
         options->useNeighbors = true;
         modified = true;
@@ -7362,14 +7362,22 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && !plan->contains(EN::TRAVERSAL) &&
-      !plan->contains(EN::SHORTEST_PATH) && !plan->contains(EN::K_SHORTEST_PATHS) &&
-      !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
+  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
     GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
 
     if (!gn->isInSubquery() && gn->isParallelizable()) {
-      gn->setParallelism(GatherNode::Parallelism::Parallel);
-      modified = true;
+      // find all graph nodes and make sure that they all are using satellite
+      nodes.clear();
+      plan->findNodesOfType(nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::K_SHORTEST_PATHS}, true);
+      bool const allSatellite = std::all_of(nodes.begin(), nodes.end(), [](auto n) {
+        GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
+        return graphNode->isSatelliteNode();
+      });
+
+      if (allSatellite) {
+        gn->setParallelism(GatherNode::Parallelism::Parallel);
+        modified = true;
+      }
     }
   }
 

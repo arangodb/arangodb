@@ -367,7 +367,7 @@ TEST_F(IResearchViewTest, test_defaults) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -885,7 +885,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   {
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -5161,7 +5161,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -5233,7 +5233,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -5272,7 +5272,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -5336,7 +5336,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -5404,7 +5404,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -5467,7 +5467,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scopedExecContext(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -5531,7 +5531,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scopedExecContext(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -5599,7 +5599,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scopedExecContext(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -6984,7 +6984,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -7056,7 +7056,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -7095,7 +7095,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -7159,7 +7159,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -7227,7 +7227,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
