@@ -82,7 +82,7 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
     std::string const& val_str = _request->value(name, found);
 
     if (!found) {
-      LOG_TOPIC("f4732", WARN, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
+      LOG_TOPIC("f4732", DEBUG, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
       return false;
     } else {
       try {

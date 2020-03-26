@@ -173,10 +173,10 @@ RestStatus RestAgencyHandler::pollIndex(index_t start) {
           VPackObjectBuilder r(&builder);
           VPackSlice slice = res.get("result");
           VPackSlice logs = slice.get("log");
-          index_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>();
-          index_t commitIndex = slice.get("commitIndex").getNumber<uint64_t>();
-          size_t first = start - firstIndex;
-          builder.add("commitIndex", VPackValue(commitIndex));
+          auto const firstIndex = slice.get("firstIndex");
+          size_t first = start - slice.get("firstIndex").getNumber<uint64_t>();
+          builder.add("commitIndex", slice.get("commitIndex"));
+          builder.add("firstIndex", firstIndex);
           builder.add(VPackValue("log"));
           VPackArrayBuilder a(&builder);
           for (size_t i = first; i < logs.length(); ++i) {
@@ -221,6 +221,11 @@ RestStatus RestAgencyHandler::handlePoll() {
   // Get queryString index
   index_t index = 0;
   if (!readValue("index", index)) { // Give it all
+    VPackBuilder tmp;
+    {
+      VPackObjectBuilder t(&tmp);
+      index = _agent->readDB(tmp);
+    }
     VPackBuilder body;
     {
       VPackObjectBuilder o(&body);
@@ -228,7 +233,9 @@ RestStatus RestAgencyHandler::handlePoll() {
       body.add("code", VPackValue(int(ResponseCode::OK)));
       body.add(VPackValue("result"));
       VPackObjectBuilder r(&body);
-      index = _agent->readDB(body);
+      body.add("commitIndex", VPackValue(index));
+      body.add("firstIndex", VPackValue(0));
+      body.add("readDB", tmp.slice().get("agency"));
     }
     LOG_TOPIC("0f843", DEBUG, Logger::AGENCY)
       << "providing readDB up to index " << index;
