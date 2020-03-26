@@ -322,11 +322,17 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
                      std::string{TRI_errno_string(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
     }
   } else {
+    // Hint: Now needed because of the initial property
+    res = gmngr.ensureCollections(&_graph, waitForSync);
+    if (res.fail()) {
+      return OperationResult{std::move(res)};
+    }
+
     if (def->type() != TRI_COL_TYPE_DOCUMENT) {
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
     }
 
-    res = _graph.validateCollection(*(def.get()), _vocbase, true);
+    res = _graph.validateCollection(*(def.get()));
     if (res.fail()) {
       return OperationResult{std::move(res)};
     }

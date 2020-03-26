@@ -695,9 +695,11 @@ void Graph::graphForClient(VPackBuilder& builder) const {
   builder.close();  // graph object
 }
 
-Result Graph::validateCollection(LogicalCollection& col,
-                                 const TRI_vocbase_t& vocbase, bool isOrphan) {
+Result Graph::validateCollection(LogicalCollection& col) const {
   return {TRI_ERROR_NO_ERROR};
+}
+
+void Graph::ensureInitial(const LogicalCollection& col) {
 }
 
 void Graph::edgesToVpack(VPackBuilder& builder) const {
