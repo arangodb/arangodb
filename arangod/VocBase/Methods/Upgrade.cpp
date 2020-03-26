@@ -160,8 +160,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
             << "  --database.auto-upgrade true";
         LOG_TOPIC("13414", ERR, Logger::STARTUP)
             << "option to upgrade the data in the database directory.";
-        LOG_TOPIC("24bd1", ERR, Logger::STARTUP)	
-            << "---------------------------------------------------------------"	
+        LOG_TOPIC("24bd1", ERR, Logger::STARTUP)
+            << "---------------------------------------------------------------"
                "-------'";
         return UpgradeResult(TRI_ERROR_BAD_PARAMETER, vinfo.status);
       }
