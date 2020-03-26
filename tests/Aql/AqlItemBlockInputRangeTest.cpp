@@ -72,8 +72,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     // Test Shadow Rows
     EXPECT_FALSE(testee.hasShadowRow());
     {
-      auto const [state, row] = testee.peekShadowRowAndState();
-      EXPECT_EQ(GetParam(), state);
+      auto const& row = testee.peekShadowRow();
       EXPECT_FALSE(row.isInitialized());
     }
     {
@@ -92,15 +91,14 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     auto rowIndexBefore = testee.getRowIndex();
     // Validate that shadowRowAPI does not move on
     {
-      auto [state, row] = testee.peekShadowRowAndState();
-      EXPECT_EQ(state, ExecutorState::DONE);
+      auto const& row = testee.peekShadowRow();
       EXPECT_FALSE(row.isInitialized());
       ASSERT_EQ(rowIndexBefore, testee.getRowIndex())
           << "Skipped a non processed row.";
     }
     {
       auto [state, row] = testee.nextShadowRow();
-      EXPECT_EQ(state, ExecutorState::DONE);
+      // EXPECT_EQ(state, ExecutorState::HASMORE);
       EXPECT_FALSE(row.isInitialized());
       ASSERT_EQ(rowIndexBefore, testee.getRowIndex())
           << "Skipped a non processed row.";
@@ -154,8 +152,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     }
     // Validate ShadowRow API
     {
-      auto [state, row] = testee.peekShadowRowAndState();
-      EXPECT_EQ(state, expectedState);
+      auto const& row = testee.peekShadowRow();
       EXPECT_TRUE(row.isInitialized());
       auto val = row.getValue(0);
       ASSERT_TRUE(val.isNumber());
@@ -209,8 +206,7 @@ TEST_P(InputRangeTest, empty_does_not_have_more_shadow_rows) {
 
 TEST_P(InputRangeTest, empty_peek_shadow_is_empty) {
   auto testee = createEmpty();
-  auto const [state, row] = testee.peekShadowRowAndState();
-  EXPECT_EQ(GetParam(), state);
+  auto const& row = testee.peekShadowRow();
   EXPECT_FALSE(row.isInitialized());
 }
 
@@ -241,7 +237,7 @@ TEST_P(InputRangeTest, level_0_shadow_rows_in_block) {
   auto testee = createFromBlock(inputBlock);
 
   validateNextIsDataRow(testee, ExecutorState::DONE, 1);
-  validateNextIsShadowRow(testee, ExecutorState::DONE, 2, 0);
+  validateNextIsShadowRow(testee, ExecutorState::HASMORE, 2, 0);
   validateNextIsDataRow(testee, ExecutorState::DONE, 3);
   // Last Row needs to return upstream State
   validateNextIsShadowRow(testee, GetParam(), 4, 0);
@@ -259,7 +255,7 @@ TEST_P(InputRangeTest, multi_level_shadow_rows_in_block) {
   validateNextIsDataRow(testee, ExecutorState::DONE, 3);
   validateNextIsShadowRow(testee, ExecutorState::HASMORE, 4, 0);
   validateNextIsShadowRow(testee, ExecutorState::HASMORE, 5, 1);
-  validateNextIsShadowRow(testee, ExecutorState::DONE, 6, 2);
+  validateNextIsShadowRow(testee, ExecutorState::HASMORE, 6, 2);
 
   // Last Row needs to return upstream State
   validateNextIsDataRow(testee, GetParam(), 7);
@@ -276,7 +272,25 @@ TEST_P(InputRangeTest, multi_shadow_rows_batches_in_block) {
   validateNextIsDataRow(testee, ExecutorState::HASMORE, 2);
   validateNextIsDataRow(testee, ExecutorState::DONE, 3);
   validateNextIsShadowRow(testee, ExecutorState::HASMORE, 4, 0);
-  validateNextIsShadowRow(testee, ExecutorState::DONE, 5, 1);
+  validateNextIsShadowRow(testee, ExecutorState::HASMORE, 5, 1);
+  validateNextIsShadowRow(testee, ExecutorState::HASMORE, 6, 0);
+
+  // Last Row needs to return upstream State
+  validateNextIsShadowRow(testee, GetParam(), 7, 1);
+  validateEndReached(testee);
+}
+
+TEST_P(InputRangeTest, multi_shadow_rows_batches_with_skip) {
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}, {{7}}},
+                    {{3, 0}, {4, 1}, {5, 0}, {6, 1}});
+  auto testee = createFromBlock(inputBlock);
+
+  validateNextIsDataRow(testee, ExecutorState::HASMORE, 1);
+  validateNextIsDataRow(testee, ExecutorState::HASMORE, 2);
+  validateNextIsDataRow(testee, ExecutorState::DONE, 3);
+  validateNextIsShadowRow(testee, ExecutorState::HASMORE, 4, 0);
+  validateNextIsShadowRow(testee, ExecutorState::HASMORE, 5, 1);
   validateNextIsShadowRow(testee, ExecutorState::HASMORE, 6, 0);
 
   // Last Row needs to return upstream State
