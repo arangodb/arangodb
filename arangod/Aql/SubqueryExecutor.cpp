@@ -157,7 +157,8 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
       }
 
       // Non const case, or first run in const
-      auto [state, skipped, block] = _subquery.execute(AqlCallStack(AqlCall{}));
+      auto [state, skipped, block] =
+          _subquery.execute(AqlCallStack(AqlCallList{AqlCall{}}));
       TRI_ASSERT(skipped.nothingSkipped());
       if (state == ExecutionState::WAITING) {
         return {state, NoStats{}, getUpstreamCall()};
@@ -296,7 +297,8 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
       // Simply jump over it.
       AqlCall subqueryCall{};
       subqueryCall.hardLimit = 0;
-      auto [state, skipRes, block] = _subquery.execute(AqlCallStack(subqueryCall));
+      auto [state, skipRes, block] =
+          _subquery.execute(AqlCallStack(AqlCallList{subqueryCall}));
       TRI_ASSERT(skipRes.nothingSkipped());
       if (state == ExecutionState::WAITING) {
         return {state, NoStats{}, 0, getUpstreamCall()};

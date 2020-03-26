@@ -114,7 +114,7 @@ struct ExecutorTestHelper {
   }
 
   auto setCall(AqlCall c) -> ExecutorTestHelper& {
-    _callStack = AqlCallStack{c};
+    _callStack = AqlCallStack{AqlCallList{c}};
     return *this;
   }
 
@@ -298,15 +298,13 @@ struct ExecutorTestHelper {
       do {
         auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
         finalState = state;
-        auto call = _callStack.popCall();
+        auto& call = _callStack.modifyTopCall();
         skippedTotal.merge(skipped, false);
         call.didSkip(skipped.getSkipCount());
         if (result != nullptr) {
           call.didProduce(result->size());
           allResults.add(result);
         }
-        _callStack.pushCall(std::move(call));
-
       } while (finalState != ExecutionState::DONE &&
                (!_callStack.peek().hasSoftLimit() ||
                 (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
@@ -416,7 +414,7 @@ struct ExecutorTestHelper {
   }
 
   // Default initialize with a fetchAll call.
-  AqlCallStack _callStack{AqlCall{}};
+  AqlCallStack _callStack{AqlCallList{AqlCall{}}};
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
   std::vector<std::pair<size_t, uint64_t>> _outputShadowRows{};
