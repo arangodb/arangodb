@@ -423,8 +423,14 @@ CostEstimate DistributeNode::estimateCost() const {
 
   while (node) {
     switch (node->getType()) {
-      case ENUMERATE_COLLECTION:
-        return castTo<EnumerateCollectionNode const*>(node)->collection();
+      case ENUMERATE_COLLECTION: {
+        auto const* enumNode = castTo<EnumerateCollectionNode const*>(node);
+
+        if (!enumNode->isUsedAsSatellite() && enumNode->prototypeCollection() == nullptr) {
+          return enumNode->collection();
+        }
+        break;
+      }
       case INDEX:
         return castTo<IndexNode const*>(node)->collection();
       case TRAVERSAL:
@@ -432,11 +438,13 @@ CostEstimate DistributeNode::estimateCost() const {
       case K_SHORTEST_PATHS:
         return castTo<GraphNode const*>(node)->collection();
       case SCATTER:
+        TRI_ASSERT(false);
         return nullptr;  // diamond boundary
       default:
-        node = node->getFirstDependency();
         break;
     }
+
+    node = node->getFirstDependency();
   }
 
   return nullptr;
