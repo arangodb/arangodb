@@ -41,7 +41,7 @@ CountCollectExecutorInfos::CountCollectExecutorInfos(
     std::vector<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
     std::vector<RegisterId> registersToKeep)
-    : ExecutorInfos(make_shared_unordered_set({collectRegister}),
+    : ExecutorInfos(std::vector<RegisterId>({collectRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _collectRegister(collectRegister) {}

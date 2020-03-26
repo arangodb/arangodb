@@ -32,13 +32,12 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 ScatterExecutorInfos::ScatterExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    std::vector<RegisterId> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep, std::vector<std::string> clientIds)
-    : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
-                    nrOutputRegisters, registersToClear, registersToKeep),
+    : ExecutorInfos(std::move(writeableOutputRegisters), nrInputRegisters,
+                    nrOutputRegisters, std::move(registersToClear), std::move(registersToKeep)),
       ClientsExecutorInfos(std::move(clientIds)) {}
 
 ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,

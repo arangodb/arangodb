@@ -245,23 +245,14 @@ TEST_F(AqlItemRowsTest, dropping_a_register_from_source_while_writing_to_target)
 }
 
 TEST_F(AqlItemRowsTest, writing_rows_to_target) {
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  std::vector<RegisterId> outputRegisters;
   std::vector<RegisterId> registersToClear;
   std::vector<RegisterId> registersToKeep;
   
   RegisterId nrInputRegisters = 0;
   RegisterId nrOutputRegisters = 0;
 
-  *inputRegisters = {};
-  *outputRegisters = {3, 4};
-  registersToClear.clear();
-  registersToKeep = {0, 1, 2};
-  nrInputRegisters = 3;
-  nrOutputRegisters = 5;
-
-  *inputRegisters = {};
-  *outputRegisters = {3, 4};
+  outputRegisters = {3, 4};
   registersToClear = {1, 2};
   registersToKeep = {0};
   nrInputRegisters = 3;

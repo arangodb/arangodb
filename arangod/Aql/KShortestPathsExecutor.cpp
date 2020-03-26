@@ -54,18 +54,16 @@ static bool isValidId(VPackSlice id) {
   return tester.find('/') != std::string::npos;
 }
 static RegisterId selectOutputRegister(
-    std::shared_ptr<std::unordered_set<RegisterId> const> const& outputRegisters) {
-  TRI_ASSERT(outputRegisters != nullptr);
-  TRI_ASSERT(outputRegisters->size() == 1);
-  RegisterId reg = *(outputRegisters->begin());
+    std::vector<RegisterId> const& outputRegisters) {
+  TRI_ASSERT(outputRegisters.size() == 1);
+  RegisterId reg = outputRegisters[0];
   TRI_ASSERT(reg != RegisterPlan::MaxRegisterId);
   return reg;
 }
 }  // namespace
 
 KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
+    std::vector<RegisterId> outputRegisters, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep,
     std::unique_ptr<graph::KShortestPathsFinder>&& finder, InputVertex&& source,

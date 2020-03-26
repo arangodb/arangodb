@@ -71,8 +71,7 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
         : type(Type::REGISTER), reg(reg), value("") {}
   };
 
-  KShortestPathsExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                              std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+  KShortestPathsExecutorInfos(std::vector<RegisterId> outputRegisters,
                               RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                               std::vector<RegisterId> registersToClear,
                               std::vector<RegisterId> registersToKeep,

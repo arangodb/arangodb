@@ -234,7 +234,7 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
-  ScatterExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, getRegsToClear(),
+  ScatterExecutorInfos infos({}, nrInRegs, nrOutRegs, getRegsToClear(),
                              calcRegsToKeep(), _clients);
   return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this,
                                                                std::move(infos));
@@ -355,11 +355,11 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
   }
-  auto inAndOutRegs = make_shared_unordered_set({regId});
+  std::vector<RegisterId> inAndOutRegs({regId});
   if (alternativeRegId != RegisterPlan::MaxRegisterId) {
-    inAndOutRegs->emplace(alternativeRegId);
+    inAndOutRegs.emplace_back(alternativeRegId);
   }
-  DistributeExecutorInfos infos(inAndOutRegs, inAndOutRegs, nrInRegs, nrOutRegs,
+  DistributeExecutorInfos infos(inAndOutRegs, nrInRegs, nrOutRegs,
                                 getRegsToClear(), calcRegsToKeep(),
                                 clients(), collection(), regId, alternativeRegId,
                                 _allowSpecifiedKeys, _allowKeyConversionToObject,
@@ -533,13 +533,12 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     p = Parallelism::Serial;  // not supported in v36
   }
 
-  std::vector<SortRegister> sortRegister;
-  SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
-  SortingGatherExecutorInfos infos(make_shared_unordered_set(),
-                                   make_shared_unordered_set(),
+  std::vector<SortRegister> sortRegisters;
+  SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegisters);
+  SortingGatherExecutorInfos infos(std::vector<RegisterId>(),
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                   calcRegsToKeep(), std::move(sortRegister),
+                                   calcRegsToKeep(), std::move(sortRegisters),
                                    _plan->getAst()->query()->trx(), sortMode(),
                                    constrainedSortLimit(), p);
 

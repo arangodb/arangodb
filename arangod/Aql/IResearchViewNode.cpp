@@ -1379,7 +1379,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 #endif
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
-    aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+    aql::ExecutorInfos infos(std::vector<arangodb::aql::RegisterId>(),
                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
                              getRegisterPlan()->nrRegs[getDepth()],
                              getRegsToClear(), calcRegsToKeep());
@@ -1437,7 +1437,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // nothing to query
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
-    aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+    aql::ExecutorInfos infos(std::vector<arangodb::aql::RegisterId>(),
                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
                              getRegisterPlan()->nrRegs[getDepth()],
                              getRegsToClear(), calcRegsToKeep());
@@ -1486,18 +1486,17 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   // These must of course fit in the available registers.
   // There may be unused registers reserved for later blocks.
   TRI_ASSERT(getNrInputRegisters() + numDocumentRegs + numScoreRegisters + numViewVarsRegisters <= getNrOutputRegisters());
-  std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
-      aql::make_shared_unordered_set();
-  writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
+  std::vector<aql::RegisterId> writableOutputRegisters;
+  writableOutputRegisters.reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
   for (aql::RegisterId reg = firstOutputRegister;
        reg < firstOutputRegister + numScoreRegisters + numDocumentRegs + numViewVarsRegisters; ++reg) {
-    writableOutputRegisters->emplace(reg);
+    writableOutputRegisters.emplace_back(reg);
   }
 
-  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
-  TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
-  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
-                                                      writableOutputRegisters->end()));
+  TRI_ASSERT(writableOutputRegisters.size() == numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
+  TRI_ASSERT(writableOutputRegisters.begin() != writableOutputRegisters.end());
+  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters.begin(),
+                                                      writableOutputRegisters.end()));
   aql::ExecutorInfos infos =
       createRegisterInfos(std::move(writableOutputRegisters));
 

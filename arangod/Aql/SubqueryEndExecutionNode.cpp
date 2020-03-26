@@ -92,18 +92,12 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-
   auto inReg = variableToRegisterOptionalId(_inVariable);
-  if (inReg != RegisterPlan::MaxRegisterId) {
-    inputRegisters->emplace(inReg);
-  }
   auto outReg = variableToRegisterId(_outVariable);
-  outputRegisters->emplace(outReg);
+  std::vector<RegisterId> outputRegisters({outReg});
 
   auto const vpackOptions = trx->transactionContextPtr()->getVPackOptions();
-  SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
+  SubqueryEndExecutorInfos infos(std::move(outputRegisters),
                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                  getRegisterPlan()->nrRegs[getDepth()],
                                  getRegsToClear(), calcRegsToKeep(), vpackOptions,

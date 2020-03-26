@@ -36,8 +36,7 @@ class DistributeNode;
 
 class DistributeExecutorInfos : public ExecutorInfos, public ClientsExecutorInfos {
  public:
-  DistributeExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                          std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+  DistributeExecutorInfos(std::vector<RegisterId> writeableOutputRegisters,
                           RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                           std::vector<RegisterId> registersToClear,
                           std::vector<RegisterId> registersToKeep,

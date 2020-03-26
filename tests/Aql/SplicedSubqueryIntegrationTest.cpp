@@ -73,92 +73,71 @@ class SplicedSubqueryIntegrationTest
     : public AqlExecutorTestCaseWithParam<SubqueryExecutorParamType, false> {
  protected:
   auto makeSubqueryStartInfos() -> SubqueryStartExecutor::Infos {
-    auto inputRegisterSet = make_shared_unordered_set({0});
-    auto outputRegisterSet = make_shared_unordered_set({});
-
+    std::vector<RegisterId> inputRegisters({0});
+    std::vector<RegisterId> outputRegisters;
     std::vector<RegisterId> toKeepRegisters{0};
 
-    return SubqueryStartExecutor::Infos(outputRegisterSet,
-                                        inputRegisterSet->size(),
-                                        inputRegisterSet->size() +
-                                            outputRegisterSet->size(),
+    return SubqueryStartExecutor::Infos(outputRegisters,
+                                        inputRegisters.size(),
+                                        inputRegisters.size() + outputRegisters.size(),
                                         {}, toKeepRegisters);
   }
 
   auto makeSubqueryEndInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
-    auto inputRegisterSet = make_shared_unordered_set({inputRegister});
-    auto const outputRegister = RegisterId{inputRegister + 1};
+    auto outputRegister = RegisterId(inputRegister + 1);
+    std::vector<RegisterId> inputRegisters({inputRegister});
+    std::vector<RegisterId> outputRegisters({outputRegister});
     for (RegisterId r = 0; r <= inputRegister; ++r) {
-      inputRegisterSet->emplace(r);
+      inputRegisters.emplace_back(r);
     }
-    auto outputRegisterSet = make_shared_unordered_set({outputRegister});
     std::vector<RegisterId> toKeepRegisters{0};
 
-    return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet,
-                                      inputRegisterSet->size(),
-                                      inputRegisterSet->size() +
-                                          outputRegisterSet->size(),
+    return SubqueryEndExecutor::Infos(outputRegisters,
+                                      inputRegisters.size(),
+                                      inputRegisters.size() + outputRegisters.size(),
                                       {}, toKeepRegisters, nullptr,
                                       inputRegister, outputRegister, false);
   }
 
   auto makeDoNothingInfos() -> LambdaExe::Infos {
     auto numRegs = size_t{1};
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
 
-    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{0});
-    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
-
+    std::vector<RegisterId> outRegisterList({1});
     std::vector<RegisterId> toKeep;
 
     for (RegisterId r = 0; r < numRegs; ++r) {
       toKeep.emplace_back(r);
     }
 
-    return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
+    return LambdaExe::Infos(outRegisterList, 1, 2, {}, toKeep,
                             createProduceCall(), createSkipCall());
   }
 
   auto makeAssertInfos() -> LambdaExe::Infos {
     auto numRegs = size_t{1};
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
 
-    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{0});
-    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
-
+    std::vector<RegisterId> outRegisterList({1});
     std::vector<RegisterId> toKeep;
 
     for (RegisterId r = 0; r < numRegs; ++r) {
       toKeep.emplace_back(r);
     }
 
-    return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
+    return LambdaExe::Infos(outRegisterList, 1, 2, {}, toKeep,
                             createAssertCall(), createSkipCall());
   }
 
   auto makeAssertInfos(AqlCall call) -> LambdaExe::Infos {
     auto numRegs = size_t{1};
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
 
-    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{0});
-    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
-
+    std::vector<RegisterId> outRegisterList({1});
     std::vector<RegisterId> toKeep;
 
     for (RegisterId r = 0; r < numRegs; ++r) {
       toKeep.emplace_back(r);
     }
 
-    return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
+    return LambdaExe::Infos(outRegisterList, 1, 2, {}, toKeep,
                             createAssertCallCall(call), createSkipCall());
   }
 

@@ -29,7 +29,7 @@ using namespace arangodb::aql;
 
 ExecutorInfos::ExecutorInfos(
     // cppcheck-suppress passedByValue
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    std::vector<RegisterId> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
     std::vector<RegisterId> registersToClear,
@@ -51,13 +51,9 @@ ExecutorInfos::ExecutorInfos(
   TRI_ASSERT(std::is_sorted(_registersToClear.begin(), _registersToClear.end()));
   TRI_ASSERT(std::unique(_registersToKeep.begin(), _registersToKeep.end()) == _registersToKeep.end());
   TRI_ASSERT(std::unique(_registersToClear.begin(), _registersToClear.end()) == _registersToClear.end());
+  TRI_ASSERT(std::unique(_outRegs.begin(), _outRegs.end()) == _outRegs.end());
 #endif
 
-  // We allow these to be passed as nullptr for ease of use, but do NOT allow
-  // the members to be null for simplicity and safety.
-  if (_outRegs == nullptr) {
-    _outRegs = std::make_shared<decltype(_outRegs)::element_type>();
-  }
   // The second assert part is from ReturnExecutor special case, we shrink all
   // results into a single Register column.
   TRI_ASSERT((nrInputRegisters <= nrOutputRegisters) ||
@@ -65,7 +61,7 @@ ExecutorInfos::ExecutorInfos(
               _registersToClear.empty()));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  for (RegisterId const outReg : *_outRegs) {
+  for (RegisterId const& outReg : _outRegs) {
     TRI_ASSERT(outReg < nrOutputRegisters);
   }
   for (auto const& regToClear : _registersToClear) {
@@ -80,7 +76,7 @@ ExecutorInfos::ExecutorInfos(
 #endif
 }
 
-std::shared_ptr<std::unordered_set<RegisterId> const> ExecutorInfos::getOutputRegisters() const {
+std::vector<RegisterId> const& ExecutorInfos::getOutputRegisters() const {
   return _outRegs;
 }
 
@@ -105,17 +101,4 @@ std::vector<RegisterId> ExecutorInfos::makeRegisterVector(RegisterId size) {
     result.push_back(i);
   }
   return result;
-}
-
-std::shared_ptr<std::unordered_set<RegisterId>> arangodb::aql::make_shared_unordered_set(
-    const std::initializer_list<RegisterId>& list) {
-  return std::make_shared<std::unordered_set<RegisterId>>(list);
-}
-
-std::shared_ptr<std::unordered_set<RegisterId>> arangodb::aql::make_shared_unordered_set(RegisterId size) {
-  auto set = make_shared_unordered_set();
-  for (RegisterId i = 0; i < size; i++) {
-    set->insert(i);
-  }
-  return set;
 }

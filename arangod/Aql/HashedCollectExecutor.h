@@ -56,7 +56,6 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
    * @param nrOutputRegisters Number Registers in the output row
    * @param registersToClear Registers that need to be empty after this
    * @param registersToKeep Registers that will be copied after this
-   * @param readableInputRegisters InputRegisters this Executor is allowed to read
    * @param writeableOutputRegisters OutputRegisters this Executor is required to write
    * @param groupRegisters Registers the grouping is based on.
    *                       If values in the registers are identical,
@@ -72,8 +71,7 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   HashedCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                              std::vector<RegisterId> registersToClear,
                              std::vector<RegisterId> registersToKeep,
-                             std::unordered_set<RegisterId>&& readableInputRegisters,
-                             std::unordered_set<RegisterId>&& writeableOutputRegisters,
+                             std::vector<RegisterId> writeableOutputRegisters,
                              std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,

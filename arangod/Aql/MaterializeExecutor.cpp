@@ -81,7 +81,7 @@ arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
     // cppcheck-suppress passedByValue
     std::vector<RegisterId> registersToKeep, T const collectionSource,
     RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
-    : ExecutorInfos(make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
+    : ExecutorInfos(std::vector<RegisterId>({outDocRegId}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _collectionSource(collectionSource),

@@ -40,8 +40,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    std::vector<RegisterId> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep, velocypack::Options const* const options,

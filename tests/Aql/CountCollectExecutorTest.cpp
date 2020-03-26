@@ -57,30 +57,28 @@ class CountCollectExecutorTest
   }
 
   auto MakeSubqueryStartInfos() -> SubqueryStartExecutor::Infos {
-    auto inputRegisterSet = make_shared_unordered_set({0});
-    auto outputRegisterSet = make_shared_unordered_set({});
+    std::vector<RegisterId> inputRegisters({0});
+    std::vector<RegisterId> outputRegisters;
 
     auto registersToKeep = std::vector<RegisterId>{0};
 
-    return SubqueryStartExecutor::Infos(outputRegisterSet,
-                                        inputRegisterSet->size(),
-                                        inputRegisterSet->size() +
-                                            outputRegisterSet->size(),
+    return SubqueryStartExecutor::Infos(outputRegisters,
+                                        inputRegisters.size(),
+                                        inputRegisters.size() + outputRegisters.size(),
                                         {}, registersToKeep);
   }
 
   auto MakeSubqueryEndInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
     auto const outputRegister = RegisterId{inputRegister + 1};
-    auto inputRegisterSet = make_shared_unordered_set({});
+    std::vector<RegisterId> inputRegisters;
     for (RegisterId r = 0; r <= inputRegister; ++r) {
-      inputRegisterSet->emplace(r);
+      inputRegisters.emplace_back(r);
     }
-    auto outputRegisterSet = make_shared_unordered_set({outputRegister});
+    std::vector<RegisterId> outputRegisters({outputRegister});
 
-    return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet,
-                                      inputRegisterSet->size(),
-                                      inputRegisterSet->size() +
-                                          outputRegisterSet->size(),
+    return SubqueryEndExecutor::Infos(outputRegisters,
+                                      inputRegisters.size(),
+                                      inputRegisters.size() + outputRegisters.size(),
                                       {}, {}, nullptr,
                                       inputRegister, outputRegister, false);
   }
@@ -88,9 +86,7 @@ class CountCollectExecutorTest
   auto MakeRemoveAllLinesInfos() -> LambdaExe::Infos {
     auto numRegs = size_t{1};
 
-    auto inRegisterList = make_shared_unordered_set({});
-    auto outRegisterList = make_shared_unordered_set({});
-
+    std::vector<RegisterId> outRegisterList;
     std::vector<RegisterId> toKeep;
 
     for (RegisterId r = 0; r < numRegs; ++r) {
@@ -110,7 +106,7 @@ class CountCollectExecutorTest
               AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
     };
 
-    return LambdaExe::Infos(inRegisterList, outRegisterList, numRegs, numRegs,
+    return LambdaExe::Infos(outRegisterList, numRegs, numRegs,
                             {}, toKeep, prod, skip);
   }
 };

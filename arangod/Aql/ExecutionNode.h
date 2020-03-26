@@ -455,8 +455,7 @@ class ExecutionNode {
 
   RegisterId variableToRegisterOptionalId(Variable const* var) const;
 
-  virtual ExecutorInfos createRegisterInfos(
-      std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const;
+  ExecutorInfos createRegisterInfos(std::vector<RegisterId> writableOutputRegisters) const;
 
   RegisterId getNrInputRegisters() const;
 

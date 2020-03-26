@@ -280,28 +280,18 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  if (usesStartInVariable()) {
-    inputRegisters->emplace(varToRegUnchecked(startInVariable()));
-  }
-  if (usesTargetInVariable()) {
-    inputRegisters->emplace(varToRegUnchecked(targetInVariable()));
-  }
 
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  std::vector<RegisterId> outputRegisters;
   TRI_ASSERT(usesPathOutVariable());  // This node always produces the path!
-  outputRegisters->emplace(varToRegUnchecked(pathOutVariable()));
+  outputRegisters.emplace_back(varToRegUnchecked(pathOutVariable()));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
   KShortestPathsExecutorInfos::InputVertex sourceInput = ::prepareVertexInput(this, false);
   KShortestPathsExecutorInfos::InputVertex targetInput = ::prepareVertexInput(this, true);
 
-  std::unique_ptr<KShortestPathsFinder> finder;
-  finder.reset(new graph::KShortestPathsFinder(*opts));
-
-  TRI_ASSERT(finder != nullptr);
-  KShortestPathsExecutorInfos infos(inputRegisters, outputRegisters,
+  auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
+  KShortestPathsExecutorInfos infos(outputRegisters,
                                     getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                     getRegisterPlan()->nrRegs[getDepth()],
                                     getRegsToClear(), calcRegsToKeep(), std::move(finder),

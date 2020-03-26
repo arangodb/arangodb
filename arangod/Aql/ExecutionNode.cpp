@@ -977,7 +977,7 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
 
 // This is the general case and will not work if e.g. there is no predecessor.
 ExecutorInfos ExecutionNode::createRegisterInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const {
+    std::vector<RegisterId> writableOutputRegisters) const {
   RegisterId const nrOutRegs = getNrOutputRegisters();
   RegisterId const nrInRegs = getNrInputRegisters();
 
@@ -1821,16 +1821,13 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-
   auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
   TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
   RegisterId outReg = outVar->second.registerId;
-  outputRegisters->emplace(outReg);
+  std::vector<RegisterId> outputRegisters({outReg});
 
   // The const_cast has been taken from previous implementation.
-  SubqueryExecutorInfos infos(inputRegisters, outputRegisters,
+  SubqueryExecutorInfos infos(std::move(outputRegisters),
                               getRegisterPlan()->nrRegs[previousNode->getDepth()],
                               getRegisterPlan()->nrRegs[getDepth()],
                               getRegsToClear(), calcRegsToKeep(), *subquery,
@@ -2185,7 +2182,7 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+  ExecutorInfos infos(std::vector<RegisterId>(),
                       getRegisterPlan()->nrRegs[previousNode->getDepth()],
                       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                       calcRegsToKeep());

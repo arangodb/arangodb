@@ -27,18 +27,21 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 
+#include <algorithm>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-std::shared_ptr<std::unordered_set<RegisterId>> makeSet(std::initializer_list<RegisterId> regList) {
-  auto rv = make_shared_unordered_set();
+std::vector<RegisterId> makeRegisters(std::initializer_list<RegisterId> regList) {
+  std::vector<RegisterId> result;
   for (RegisterId regId : regList) {
     if (regId < RegisterPlan::MaxRegisterId) {
-      rv->insert(regId);
+      result.emplace_back(regId);
     }
   }
-  return rv;
+  std::sort(result.begin(), result.end());
+  return result;
 }
 
 }  // namespace
@@ -56,7 +59,7 @@ ModificationExecutorInfos::ModificationExecutorInfos(
     ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
     IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
     IgnoreDocumentNotFound ignoreDocumentNotFound)
-    : ExecutorInfos(makeSet({outputOldRegisterId, outputNewRegisterId, outputRegisterId}) /*output registers*/,
+    : ExecutorInfos(::makeRegisters({outputOldRegisterId, outputNewRegisterId, outputRegisterId}) /*output registers*/,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _trx(trx),

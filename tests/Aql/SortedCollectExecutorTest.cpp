@@ -74,8 +74,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   std::vector<std::pair<std::string, RegisterId>> variables;
   bool count;
 
-  std::unordered_set<RegisterId> readableInputRegisters;
-  std::unordered_set<RegisterId> writeableOutputRegisters;
+  std::vector<RegisterId> writeableOutputRegisters;
 
   SortedCollectExecutorInfos infos;
 
@@ -92,10 +91,9 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        readableInputRegisters{0},
         writeableOutputRegisters{1},
         infos(1 /*nrIn*/, 2 /*nrOut*/, {}, {},
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+              std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count),
@@ -150,11 +148,9 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
 
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
-  std::unordered_set<RegisterId> readableInputRegisters;
-
   RegisterId collectRegister;
 
-  std::unordered_set<RegisterId> writeableOutputRegisters;
+  std::vector<RegisterId> writeableOutputRegisters;
 
   RegisterId nrOutputRegister;
 
@@ -177,7 +173,6 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        readableInputRegisters({0}),
         collectRegister(2),
         writeableOutputRegisters({1, 2}),
         nrOutputRegister(3),
@@ -185,7 +180,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         expressionVariable(nullptr),
         count(false),
         infos(1, nrOutputRegister, {}, {},
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+              std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count),
@@ -395,8 +390,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters = {{1, 0}};
 
-  std::unordered_set<RegisterId> readableInputRegisters = {0};
-  std::unordered_set<RegisterId> writeableOutputRegisters = {1, 2};
+  std::vector<RegisterId> writeableOutputRegisters = {1, 2};
   RegisterId nrOutputRegister = 3;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
@@ -410,7 +404,6 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   std::vector<std::pair<std::string, RegisterId>> variables;
 
   SortedCollectExecutorInfos infos(1, nrOutputRegister, {}, {},
-                                   std::move(readableInputRegisters),
                                    std::move(writeableOutputRegisters),
                                    std::move(groupRegisters), collectRegister,
                                    expressionRegister, expressionVariable,
@@ -480,11 +473,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
   groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
 
-  std::unordered_set<RegisterId> readableInputRegisters;
-  readableInputRegisters.insert(0);
-
-  std::unordered_set<RegisterId> writeableOutputRegisters;
-  writeableOutputRegisters.insert(1);
+  std::vector<RegisterId> writeableOutputRegisters;
+  writeableOutputRegisters.emplace_back(1);
 
   RegisterId nrOutputRegister = 3;
 
@@ -498,10 +488,9 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  writeableOutputRegisters.insert(2);
+  writeableOutputRegisters.emplace_back(2);
 
   SortedCollectExecutorInfos infos(1, nrOutputRegister, {}, {},
-                                   std::move(readableInputRegisters),
                                    std::move(writeableOutputRegisters),
                                    std::move(groupRegisters), collectRegister,
                                    expressionRegister, expressionVariable,
@@ -589,11 +578,9 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
 
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
-  std::unordered_set<RegisterId> readableInputRegisters;
-
   RegisterId collectRegister;
 
-  std::unordered_set<RegisterId> writeableOutputRegisters;
+  std::vector<RegisterId> writeableOutputRegisters;
 
   RegisterId nrOutputRegister;
 
@@ -616,7 +603,6 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        readableInputRegisters({0}),
         collectRegister(2),
         writeableOutputRegisters({1, 2}),
         nrOutputRegister(3),
@@ -624,7 +610,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
         expressionVariable(nullptr),
         count(false),
         infos(1, nrOutputRegister, {}, {},
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+              std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count),
@@ -912,11 +898,9 @@ class SortedCollectExecutorTestSplit
 
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
-  std::unordered_set<RegisterId> readableInputRegisters;
-
   RegisterId collectRegister;
 
-  std::unordered_set<RegisterId> writeableOutputRegisters;
+  std::vector<RegisterId> writeableOutputRegisters;
 
   RegisterId nrOutputRegister;
 
@@ -934,7 +918,6 @@ class SortedCollectExecutorTestSplit
   SortedCollectExecutorTestSplit()
       : trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        readableInputRegisters({0}),
         collectRegister(2),
         writeableOutputRegisters({1, 2}),
         nrOutputRegister(3),
@@ -942,7 +925,7 @@ class SortedCollectExecutorTestSplit
         expressionVariable(nullptr),
         count(false),
         infos(1, nrOutputRegister, {}, {},
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+              std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count) {}

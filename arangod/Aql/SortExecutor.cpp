@@ -77,7 +77,7 @@ SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
                                      std::vector<RegisterId> registersToClear,
                                      std::vector<RegisterId> registersToKeep,
                                      velocypack::Options const* options, bool stable)
-    : ExecutorInfos(nullptr,
+    : ExecutorInfos(std::vector<RegisterId>(),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _limit(limit),

@@ -45,7 +45,7 @@ FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nr
                                          std::vector<RegisterId> registersToClear,
                                          // cppcheck-suppress passedByValue
                                          std::vector<RegisterId> registersToKeep)
-    : ExecutorInfos(nullptr, nrInputRegisters, nrOutputRegisters,
+    : ExecutorInfos(std::vector<RegisterId>(), nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister) {}
 

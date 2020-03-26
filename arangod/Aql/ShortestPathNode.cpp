@@ -249,34 +249,31 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   auto& varInfo = getRegisterPlan()->varInfo;
   if (usesStartInVariable()) {
     auto it = varInfo.find(startInVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
   }
   if (usesTargetInVariable()) {
     auto it = varInfo.find(targetInVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
   }
 
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  std::vector<RegisterId> outputRegisters;
   std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> outputRegisterMapping;
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
                                       it->second.registerId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace_back(it->second.registerId);
   }
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::EDGE,
                                       it->second.registerId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace_back(it->second.registerId);
   }
 
   auto opts = static_cast<ShortestPathOptions*>(options());
@@ -292,7 +289,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
   }
 
   TRI_ASSERT(finder != nullptr);
-  ShortestPathExecutorInfos infos(inputRegisters, outputRegisters,
+  ShortestPathExecutorInfos infos(std::move(outputRegisters),
                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                   getRegisterPlan()->nrRegs[getDepth()],
                                   getRegsToClear(), calcRegsToKeep(),

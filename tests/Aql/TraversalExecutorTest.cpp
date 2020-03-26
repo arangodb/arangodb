@@ -275,8 +275,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   RegisterId inReg;
   RegisterId outReg;
   TraverserHelper* traverser;
-  std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
+  std::vector<RegisterId> outputRegisters;
   std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping;
 
   std::string const noFixed;
@@ -293,13 +292,10 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
         inReg(0),
         outReg(1),
         traverser(traverserPtr.get()),
-        inputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{inReg})),
-        outputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{outReg})),
+        outputRegisters(std::initializer_list<RegisterId>{outReg}),
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         noFixed(""),
-        infos(inputRegisters, outputRegisters, 1, 2, {}, {0}, std::move(traverserPtr),
+        infos(outputRegisters, 1, 2, {}, {0}, std::move(traverserPtr),
               registerMapping, noFixed, inReg, filterConditionVariables)
 
   {}
@@ -459,8 +455,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
 
   RegisterId outReg;
   TraverserHelper* traverser;
-  std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
+  std::vector<RegisterId> outputRegisters;
   std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping;
 
   std::string const fixed;
@@ -476,13 +471,10 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
         traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, trx, myGraph)),
         outReg(1),
         traverser(traverserPtr.get()),
-        inputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{})),
-        outputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{1})),
+        outputRegisters(std::initializer_list<RegisterId>{1}),
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         fixed("v/1"),
-        infos(inputRegisters, outputRegisters, 1, 2, {}, {0},
+        infos(outputRegisters, 1, 2, {}, {0},
               std::move(traverserPtr), registerMapping, fixed,
               RegisterPlan::MaxRegisterId, filterConditionVariables) {}
 };

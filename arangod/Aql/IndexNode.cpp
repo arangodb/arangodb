@@ -484,18 +484,19 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   // the output register for document id
   // These must of course fit in the available registers.
   // There may be unused registers reserved for later blocks.
-  std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
-      aql::make_shared_unordered_set();
-  writableOutputRegisters->reserve(numDocumentRegs + numIndVarsRegisters);
+  std::vector<aql::RegisterId> writableOutputRegisters;
+  writableOutputRegisters.reserve(numDocumentRegs + numIndVarsRegisters);
   for (aql::RegisterId reg = firstOutputRegister;
        reg < firstOutputRegister + numIndVarsRegisters + numDocumentRegs; ++reg) {
-    writableOutputRegisters->emplace(reg);
+    writableOutputRegisters.emplace_back(reg);
   }
 
-  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numIndVarsRegisters);
-  TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
-  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->cbegin(),
-                                                      writableOutputRegisters->cend()));
+  TRI_ASSERT(writableOutputRegisters.size() == numDocumentRegs + numIndVarsRegisters);
+  TRI_ASSERT(writableOutputRegisters.begin() != writableOutputRegisters.end());
+  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters.cbegin(),
+                                                      writableOutputRegisters.cend()));
+
+  std::sort(writableOutputRegisters.begin(), writableOutputRegisters.end());
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   IndexValuesRegisters outNonMaterializedIndRegs;

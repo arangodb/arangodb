@@ -67,8 +67,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     RegisterId numRegisters = inputBlock->getNrRegs();
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows, numRegisters));
     // We do not add or remove anything, just move
-    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+    std::vector<RegisterId> outputRegisters;
     std::vector<RegisterId> registersToKeep;
     for (RegisterId r = 0; r < numRegisters; ++r) {
       registersToKeep.emplace_back(r);
@@ -110,8 +109,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
                                        numRegisters + 1));
     // We do not add or remove anything, just move
-    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{numRegisters});
+    std::vector<RegisterId> outputRegisters({numRegisters});
     std::vector<RegisterId> registersToKeep;
     for (RegisterId r = 0; r < numRegisters; ++r) {
       registersToKeep.emplace_back(r);

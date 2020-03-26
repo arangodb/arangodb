@@ -35,14 +35,13 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 SubqueryExecutorInfos::SubqueryExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    std::vector<RegisterId> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::vector<RegisterId> const& registersToClear,
-    std::vector<RegisterId>&& registersToKeep, ExecutionBlock& subQuery,
+    std::vector<RegisterId> registersToClear,
+    std::vector<RegisterId> registersToKeep, ExecutionBlock& subQuery,
     RegisterId outReg, bool subqueryIsConst)
-    : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
-                    nrOutputRegisters, registersToClear, std::move(registersToKeep)),
+    : ExecutorInfos(std::move(writeableOutputRegisters), nrInputRegisters,
+                    nrOutputRegisters, std::move(registersToClear), std::move(registersToKeep)),
       _subQuery(subQuery),
       _outReg(outReg),
       _returnsData(subQuery.getPlanNode()->getType() == ExecutionNode::RETURN),

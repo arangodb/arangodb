@@ -58,15 +58,11 @@ class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInp
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
-  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>>& registersToKeep;
   FilterExecutorInfos infos;
 
   FilterExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        outputRegisters(make_shared_unordered_set()),
-        registersToKeep(outputRegisters),
         infos(0, 1, 1, {}, {}) {}
 
   auto getSplit() -> FilterExecutorSplitType {

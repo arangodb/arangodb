@@ -84,9 +84,7 @@ class SharedScatterExecutionBlockTest {
   }
 
   auto generateInfos() const -> ScatterExecutorInfos {
-    auto inputRegs = make_shared_unordered_set({0});
-    auto outputRegs = make_shared_unordered_set({});
-    return {inputRegs, outputRegs, 1, 1, {}, {0}, clientIds};
+    return {std::vector<RegisterId>(), 1, 1, {}, {0}, clientIds};
   }
 
   auto createProducer(SharedAqlItemBlockPtr inputBlock) -> WaitingExecutionBlockMock {

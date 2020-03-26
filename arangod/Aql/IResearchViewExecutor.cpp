@@ -140,8 +140,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
-  TRI_ASSERT(getOutputRegisters()->find(firstOutputRegister) !=
-             getOutputRegisters()->end());
+  TRI_ASSERT(std::find(getOutputRegisters().begin(), getOutputRegisters().end(), firstOutputRegister) != getOutputRegisters().end());
 }
 
 RegisterId IResearchViewExecutorInfos::getOutputRegister() const noexcept {

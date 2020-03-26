@@ -55,5 +55,5 @@ TestEmptyExecutorHelperInfos::TestEmptyExecutorHelperInfos(
     RegisterId inputRegister, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep)
-    : ExecutorInfos(nullptr, nrInputRegisters, nrOutputRegisters,
+    : ExecutorInfos(std::vector<RegisterId>(), nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)) {}

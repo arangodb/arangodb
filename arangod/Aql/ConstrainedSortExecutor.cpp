@@ -144,7 +144,7 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
                                                          _infos.numberOfOutputRegisters())),
       _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.vpackOptions(),
                                                      _infos.sortRegisters())),
-      _heapOutputRow{_heapBuffer, make_shared_unordered_set(),
+      _heapOutputRow{_heapBuffer, std::vector<RegisterId>(),
                      ExecutorInfos::makeRegisterVector(_infos.numberOfOutputRegisters()),
                      _infos.registersToClear()} {
   TRI_ASSERT(_infos.limit() > 0);

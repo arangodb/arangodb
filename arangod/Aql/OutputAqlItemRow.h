@@ -31,7 +31,9 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
+#include <algorithm>
 #include <memory>
+#include <vector>
 
 namespace arangodb::aql {
 
@@ -52,7 +54,7 @@ class OutputAqlItemRow {
   enum class CopyRowBehavior { CopyInputRows, DoNotCopyInputRows };
 
   explicit OutputAqlItemRow(SharedAqlItemBlockPtr block,
-                            std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
+                            std::vector<RegisterId> outputRegisters,
                             std::vector<RegisterId> registersToKeep,
                             std::vector<RegisterId> registersToClear,
                             AqlCall clientCall = AqlCall{},
@@ -225,8 +227,7 @@ class OutputAqlItemRow {
   }
 
   [[nodiscard]] bool isOutputRegister(RegisterId registerId) const {
-    TRI_ASSERT(_outputRegisters != nullptr);
-    return _outputRegisters->find(registerId) != _outputRegisters->end();
+    return std::find(_outputRegisters.begin(), _outputRegisters.end(), registerId) != _outputRegisters.end();
   }
 
  private:
@@ -245,6 +246,12 @@ class OutputAqlItemRow {
    * @brief Whether the input registers were copied from a source row.
    */
   bool _inputRowCopied;
+  
+  /**
+   * @brief Set if and only if the current ExecutionBlock passes the
+   * AqlItemBlocks through.
+   */
+  bool const _doNotCopyInputRow;
 
   /**
    * @brief The last source row seen. Note that this is invalid before the first
@@ -265,13 +272,7 @@ class OutputAqlItemRow {
    */
   AqlCall _call;
 
-  /**
-   * @brief Set if and only if the current ExecutionBlock passes the
-   * AqlItemBlocks through.
-   */
-  bool const _doNotCopyInputRow;
-
-  std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
+  std::vector<RegisterId> _outputRegisters;
   std::vector<RegisterId> _registersToKeep;
   std::vector<RegisterId> _registersToClear;
 
@@ -288,8 +289,7 @@ class OutputAqlItemRow {
   }
 
   [[nodiscard]] size_t numRegistersToWrite() const {
-    TRI_ASSERT(_outputRegisters != nullptr);
-    return _outputRegisters->size();
+    return _outputRegisters.size();
   }
 
   [[nodiscard]] bool allValuesWritten() const {

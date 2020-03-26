@@ -46,10 +46,9 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableInputRegisters,
+    std::vector<RegisterId> writeableInputRegisters,
     std::pair<RegisterId, RegisterId> groupRegister, transaction::Methods* trxPtr)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
+    : ExecutorInfos(std::move(writeableInputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _groupRegister(groupRegister),

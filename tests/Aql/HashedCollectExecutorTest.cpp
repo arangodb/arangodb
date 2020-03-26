@@ -79,8 +79,7 @@ class HashedCollectExecutorTest
       -> HashedCollectExecutorInfos {
     std::vector<RegisterId> registersToClear{};
     std::vector<RegisterId> registersToKeep{};
-    std::unordered_set<RegisterId> readableInputRegisters{};
-    std::unordered_set<RegisterId> writeableOutputRegisters{};
+    std::vector<RegisterId> writeableOutputRegisters{};
 
     for (RegisterId i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
@@ -88,29 +87,25 @@ class HashedCollectExecutorTest
     }
 
     for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters.emplace(in);
-      writeableOutputRegisters.emplace(out);
+      writeableOutputRegisters.emplace_back(out);
     }
 
     // It seems that count <=> collectRegister exists
     bool count = false;
     if (collectRegister != RegisterPlan::MaxRegisterId) {
-      writeableOutputRegisters.emplace(collectRegister);
+      writeableOutputRegisters.emplace_back(collectRegister);
       count = true;
     }
     TRI_ASSERT(aggregateTypes.size() == aggregateRegisters.size());
     for (auto const& [out, in] : aggregateRegisters) {
-      if (in != RegisterPlan::MaxRegisterId) {
-        readableInputRegisters.emplace(in);
-      }
-      writeableOutputRegisters.emplace(out);
+      writeableOutputRegisters.emplace_back(out);
     }
-
+    std::sort(writeableOutputRegisters.begin(), writeableOutputRegisters.end());
+    
     return HashedCollectExecutorInfos{nrInputRegisters,
                                       nrOutputRegisters,
                                       registersToClear,
                                       registersToKeep,
-                                      std::move(readableInputRegisters),
                                       std::move(writeableOutputRegisters),
                                       std::move(groupRegisters),
                                       collectRegister,
@@ -543,8 +538,7 @@ class HashedCollectExecutorTestAggregate
       -> HashedCollectExecutorInfos {
     std::vector<RegisterId> registersToClear{};
     std::vector<RegisterId> registersToKeep{};
-    std::unordered_set<RegisterId> readableInputRegisters{};
-    std::unordered_set<RegisterId> writeableOutputRegisters{};
+    std::vector<RegisterId> writeableOutputRegisters{};
 
     for (RegisterId i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
@@ -552,8 +546,7 @@ class HashedCollectExecutorTestAggregate
     }
 
     for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters.emplace(in);
-      writeableOutputRegisters.emplace(out);
+      writeableOutputRegisters.emplace_back(out);
     }
 
     bool count = false;
@@ -562,17 +555,14 @@ class HashedCollectExecutorTestAggregate
     auto agg = getAggregator();
     std::vector<std::string> aggregateTypes{agg.name};
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{3, agg.inReg}};
-    if (agg.inReg != RegisterPlan::MaxRegisterId) {
-      readableInputRegisters.emplace(agg.inReg);
-    }
-
-    writeableOutputRegisters.emplace(3);
+    writeableOutputRegisters.emplace_back(3);
+    
+    std::sort(writeableOutputRegisters.begin(), writeableOutputRegisters.end());
 
     return HashedCollectExecutorInfos{nrInputRegisters,
                                       nrOutputRegisters,
                                       registersToClear,
                                       registersToKeep,
-                                      std::move(readableInputRegisters),
                                       std::move(writeableOutputRegisters),
                                       std::move(groupRegisters),
                                       collectRegister,

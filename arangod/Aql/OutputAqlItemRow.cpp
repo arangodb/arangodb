@@ -49,7 +49,7 @@ using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
     SharedAqlItemBlockPtr block,
-    std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
+    std::vector<RegisterId> outputRegisters,
     std::vector<RegisterId> registersToKeep,
     std::vector<RegisterId> registersToClear,
     AqlCall clientCall, CopyRowBehavior copyRowBehavior)
@@ -57,10 +57,10 @@ OutputAqlItemRow::OutputAqlItemRow(
       _baseIndex(0),
       _lastBaseIndex(0),
       _inputRowCopied(false),
+      _doNotCopyInputRow(copyRowBehavior == CopyRowBehavior::DoNotCopyInputRows),
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0),
       _call(clientCall),
-      _doNotCopyInputRow(copyRowBehavior == CopyRowBehavior::DoNotCopyInputRows),
       _outputRegisters(std::move(outputRegisters)),
       _registersToKeep(std::move(registersToKeep)),
       _registersToClear(std::move(registersToClear)),
@@ -70,7 +70,7 @@ OutputAqlItemRow::OutputAqlItemRow(
       _allowSourceRowUninitialized(false) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
-    for (auto const& reg : *_outputRegisters) {
+    for (auto const& reg : _outputRegisters) {
       TRI_ASSERT(reg < _block->getNrRegs());
     }
     for (auto const& reg : _registersToKeep) {

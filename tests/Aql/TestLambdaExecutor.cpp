@@ -30,8 +30,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 LambdaExecutorInfos::LambdaExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    std::vector<RegisterId> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep, ProduceCall lambda, ResetCall reset)
@@ -47,8 +46,7 @@ auto LambdaExecutorInfos::getProduceLambda() const -> ProduceCall const& {
 auto LambdaExecutorInfos::reset() -> void { _resetLambda(); }
 
 LambdaSkipExecutorInfos::LambdaSkipExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    std::vector<RegisterId> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep, ProduceCall lambda,

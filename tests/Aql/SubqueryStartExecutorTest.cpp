@@ -45,8 +45,7 @@ using namespace arangodb::tests::aql;
 
 namespace {
 ExecutorInfos MakeBaseInfos(RegisterId numRegs) {
-  auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{});
+  std::vector<RegisterId> emptyRegisterList;
   std::vector<RegisterId> toKeep;
   for (RegisterId r = 0; r < numRegs; ++r) {
     toKeep.emplace_back(r);

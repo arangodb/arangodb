@@ -43,8 +43,8 @@ CalculationExecutorInfos::CalculationExecutorInfos(
     RegisterId outputRegister, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep, Query& query, Expression& expression,
-    std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs)
-    : ExecutorInfos(make_shared_unordered_set({outputRegister}),
+    std::vector<Variable const*> expInVars, std::vector<RegisterId>&& expInRegs)
+    : ExecutorInfos(std::vector<RegisterId>({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _outputRegisterId(outputRegister),

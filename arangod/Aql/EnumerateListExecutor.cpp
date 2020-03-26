@@ -56,7 +56,7 @@ EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     std::vector<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
     std::vector<RegisterId> registersToKeep)
-    : ExecutorInfos(make_shared_unordered_set({outputRegister}),
+    : ExecutorInfos(std::vector<RegisterId>({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister),

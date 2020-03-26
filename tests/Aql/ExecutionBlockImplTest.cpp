@@ -461,27 +461,27 @@ class SharedExecutionBlockImplTest {
       EXPECT_EQ(outputRegisters, 0);
     }
 
-    auto readAble = make_shared_unordered_set();
-    auto writeAble = make_shared_unordered_set();
+    std::vector<RegisterId> writeAble;
     std::vector<RegisterId> registersToKeep;
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= inputRegisters; ++i) {
-        readAble->emplace(i);
         registersToKeep.emplace_back(i);
       }
       for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
+        writeAble.emplace_back(i);
       }
     } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
+        writeAble.emplace_back(i);
       }
     }
+    std::sort(writeAble.begin(), writeAble.end());
+
     RegisterId regsToRead =
         (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
     RegisterId regsToWrite =
         (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
-    return LambdaExecutorInfos(readAble, writeAble, regsToRead, regsToWrite, {},
+    return LambdaExecutorInfos(writeAble, regsToRead, regsToWrite, {},
                                registersToKeep, std::move(call));
   }
 
@@ -509,27 +509,27 @@ class SharedExecutionBlockImplTest {
       EXPECT_EQ(outputRegisters, 0);
     }
 
-    auto readAble = make_shared_unordered_set();
-    auto writeAble = make_shared_unordered_set();
+    std::vector<RegisterId> writeAble;
     std::vector<RegisterId> registersToKeep;
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= inputRegisters; ++i) {
-        readAble->emplace(i);
         registersToKeep.emplace_back(i);
       }
       for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
+        writeAble.emplace_back(i);
       }
     } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
+        writeAble.emplace_back(i);
       }
     }
+    std::sort(writeAble.begin(), writeAble.end());
+
     RegisterId regsToRead =
         (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
     RegisterId regsToWrite =
         (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
-    return LambdaSkipExecutorInfos(readAble, writeAble, regsToRead, regsToWrite,
+    return LambdaSkipExecutorInfos(writeAble, regsToRead, regsToWrite,
                                    {}, registersToKeep, std::move(call),
                                    std::move(skipCall), std::move(reset));
   }

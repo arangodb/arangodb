@@ -43,7 +43,7 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
                                        // cppcheck-suppress passedByValue
                                        std::vector<RegisterId> registersToKeep,
                                        size_t offset, size_t limit, bool fullCount)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
+    : ExecutorInfos(std::vector<RegisterId>(),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _offset(offset),

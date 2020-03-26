@@ -174,8 +174,7 @@ SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow, 
     : dependencyIndex{index}, row{std::move(prow)}, state{pstate} {}
 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
+    std::vector<RegisterId> outputRegisters, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep,
     std::vector<SortRegister>&& sortRegister, arangodb::transaction::Methods* trx,

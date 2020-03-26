@@ -54,7 +54,7 @@ struct CalculationExecutorInfos : public ExecutorInfos {
                            RegisterId nrOutputRegisters,
                            std::vector<RegisterId> registersToClear,
                            std::vector<RegisterId> registersToKeep, Query& query,
-                           Expression& expression, std::vector<Variable const*>&& expInVars,
+                           Expression& expression, std::vector<Variable const*> expInVars,
                            std::vector<RegisterId>&& expInRegs);
 
   CalculationExecutorInfos() = delete;

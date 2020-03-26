@@ -56,7 +56,7 @@ class NoResultsExecutorTest : public AqlExecutorTestCaseWithParam<NoResultsInput
   }
 
   auto makeInfos() -> ExecutorInfos {
-    return ExecutorInfos{make_shared_unordered_set(),
+    return ExecutorInfos{std::vector<RegisterId>(),
                          1,
                          1,
                          {},

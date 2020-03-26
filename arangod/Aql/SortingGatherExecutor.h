@@ -49,8 +49,7 @@ struct SortRegister;
 
 class SortingGatherExecutorInfos : public ExecutorInfos {
  public:
-  SortingGatherExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                             std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+  SortingGatherExecutorInfos(std::vector<RegisterId> outputRegisters,
                              RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                              std::vector<RegisterId> registersToClear,
                              std::vector<RegisterId> registersToKeep,

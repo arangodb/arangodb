@@ -35,17 +35,6 @@
 namespace arangodb {
 namespace aql {
 
-std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(
-    std::initializer_list<RegisterId> const& list = std::initializer_list<RegisterId>{});
-
-std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(RegisterId size);
-
-template <typename Iterator>
-inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(Iterator begin,
-                                                                                 Iterator end) {
-  return std::make_shared<std::unordered_set<RegisterId>>(begin, end);
-}
-
 /**
  * @brief Class to be handed into Executors during construction
  *        This class should be independend from AQL internal
@@ -71,7 +60,7 @@ class ExecutorInfos {
    *   RegisterId register = it->second.registerId;
    */
 
-  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+  ExecutorInfos(std::vector<RegisterId> writeableOutputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                 std::vector<RegisterId> registersToClear,
                 std::vector<RegisterId> registersToKeep);
@@ -90,7 +79,7 @@ class ExecutorInfos {
    *
    * @return The indices of the output registers.
    */
-  std::shared_ptr<std::unordered_set<RegisterId> const> getOutputRegisters() const;
+  std::vector<RegisterId> const& getOutputRegisters() const;
 
   /**
    * @brief Total number of registers in input AqlItemBlocks. Not to be confused
@@ -113,7 +102,7 @@ class ExecutorInfos {
   static std::vector<RegisterId> makeRegisterVector(RegisterId size);
 
  protected:
-  std::shared_ptr<std::unordered_set<RegisterId> const> _outRegs;
+  std::vector<RegisterId> _outRegs;
 
   RegisterId _numInRegs;
 

@@ -379,7 +379,7 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     // the register planning.
     TRI_ASSERT(newBlock->getNrRegs() == _infos.numberOfOutputRegisters());
     // Check that all output registers are empty.
-    for (auto const& reg : *_infos.getOutputRegisters()) {
+    for (auto const& reg : _infos.getOutputRegisters()) {
       for (size_t row = 0; row < newBlock->size(); row++) {
         AqlValue const& val = newBlock->getValueReference(row, reg);
         TRI_ASSERT(val.isEmpty());
@@ -924,7 +924,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASS_THROUGH> {
     TRI_ASSERT(block->getNrRegs() == nrRegs);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Check that all output registers are empty.
-    for (auto const& reg : *infos.getOutputRegisters()) {
+    for (auto const& reg : infos.getOutputRegisters()) {
       for (size_t row = 0; row < block->size(); row++) {
         AqlValue const& val = block->getValueReference(row, reg);
         TRI_ASSERT(val.isEmpty());

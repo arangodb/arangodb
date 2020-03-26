@@ -53,8 +53,7 @@ class TraversalExecutorInfos : public ExecutorInfos {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
 
-  TraversalExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                         std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+  TraversalExecutorInfos(std::vector<RegisterId> outputRegisters,
                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                          std::vector<RegisterId> registersToClear,
                          std::vector<RegisterId> registersToKeep,

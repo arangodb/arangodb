@@ -35,7 +35,7 @@ using namespace arangodb::aql;
 ParallelUnsortedGatherExecutorInfos::ParallelUnsortedGatherExecutorInfos(
     RegisterId nrInOutRegisters, std::vector<RegisterId> registersToKeep,
     std::vector<RegisterId> registersToClear)
-    : ExecutorInfos(make_shared_unordered_set(),
+    : ExecutorInfos(std::vector<RegisterId>(),
                     nrInOutRegisters, nrInOutRegisters,
                     std::move(registersToClear), std::move(registersToKeep)) {}
 

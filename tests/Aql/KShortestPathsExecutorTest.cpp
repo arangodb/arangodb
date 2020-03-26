@@ -62,7 +62,6 @@ namespace tests {
 namespace aql {
 
 using Vertex = KShortestPathsExecutorInfos::InputVertex;
-using RegisterSet = std::unordered_set<RegisterId>;
 using Path = std::vector<std::string>;
 using PathSequence = std::vector<Path>;
 
@@ -161,8 +160,7 @@ struct KShortestPathsTestParameters {
 
   Vertex _source;
   Vertex _target;
-  RegisterSet _inputRegisters;
-  RegisterSet _outputRegisters;
+  std::vector<RegisterId> _outputRegisters;
   MatrixBuilder<2> _inputMatrix;
   PathSequence _paths;
   AqlCall _call;
@@ -205,8 +203,7 @@ class KShortestPathsExecutorTest
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
-        infos(std::make_shared<RegisterSet>(parameters._inputRegisters),
-              std::make_shared<RegisterSet>(parameters._outputRegisters), 2, 3, {}, {0},
+        infos(std::vector<RegisterId>(parameters._outputRegisters), 2, 3, {}, {0},
               std::make_unique<FakeKShortestPathsFinder>(options, parameters._paths),
               std::move(parameters._source), std::move(parameters._target)),
         finder(static_cast<FakeKShortestPathsFinder&>(infos.finder())),

@@ -154,7 +154,7 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
-    std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,
+    std::vector<aql::RegisterId> writableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId outputRegister, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
     std::vector<RegisterId> registersToClear,

@@ -38,8 +38,7 @@ using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
 TraversalExecutorInfos::TraversalExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
+    std::vector<RegisterId> outputRegisters, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep, std::unique_ptr<Traverser>&& traverser,
     std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,

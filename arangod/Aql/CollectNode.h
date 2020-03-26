@@ -94,22 +94,19 @@ class CollectNode : public ExecutionNode {
                           std::unordered_set<ExecutionNode const*>& seen) const final;
 
   /// @brief calculate the expression register
-  void calcExpressionRegister(RegisterId& expressionRegister,
-                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+  void calcExpressionRegister(RegisterId& expressionRegister) const;
 
   /// @brief calculate the collect register
   void calcCollectRegister(RegisterId& collectRegister,
-                           std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                           std::vector<RegisterId>& writeableOutputRegisters) const;
 
   /// @brief calculate the group registers
   void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
-                          std::unordered_set<RegisterId>& readableInputRegisters,
-                          std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                          std::vector<RegisterId>& writeableOutputRegisters) const;
 
   /// @brief calculate the aggregate registers
   void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                              std::unordered_set<RegisterId>& readableInputRegisters,
-                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                              std::vector<RegisterId>& writeableOutputRegisters) const;
 
   void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
   void calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const;

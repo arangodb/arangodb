@@ -59,7 +59,7 @@ struct NonConstExpression;
 class IndexExecutorInfos : public ExecutorInfos {
  public:
   IndexExecutorInfos(
-      std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,
+      std::vector<aql::RegisterId> writableOutputRegisters,
       RegisterId nrInputRegisters, RegisterId firstOutputRegister,
       RegisterId nrOutputRegisters, std::vector<RegisterId> registersToClear,
       std::vector<RegisterId> registersToKeep, ExecutionEngine* engine,

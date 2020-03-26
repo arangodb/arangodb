@@ -65,8 +65,7 @@ using ResetCall = std::function<void()>;
 class LambdaExecutorInfos : public ExecutorInfos {
  public:
   LambdaExecutorInfos(
-      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-      std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+      std::vector<RegisterId> writeableOutputRegisters,
       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
       std::vector<RegisterId> registersToClear,
       std::vector<RegisterId> registersToKeep, ProduceCall lambda,
@@ -94,8 +93,7 @@ class LambdaExecutorInfos : public ExecutorInfos {
 class LambdaSkipExecutorInfos : public ExecutorInfos {
  public:
   LambdaSkipExecutorInfos(
-      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-      std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+      std::vector<RegisterId> writeableOutputRegisters,
       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
       std::vector<RegisterId> registersToClear,
       std::vector<RegisterId> registersToKeep, ProduceCall lambda,

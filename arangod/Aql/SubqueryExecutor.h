@@ -41,11 +41,10 @@ class SingleRowFetcher;
 
 class SubqueryExecutorInfos : public ExecutorInfos {
  public:
-  SubqueryExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                        std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+  SubqueryExecutorInfos(std::vector<RegisterId> writeableOutputRegisters,
                         RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                        std::vector<RegisterId> const& registersToClear,
-                        std::vector<RegisterId>&& registersToKeep,
+                        std::vector<RegisterId> registersToClear,
+                        std::vector<RegisterId> registersToKeep,
                         ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
 
   SubqueryExecutorInfos() = delete;

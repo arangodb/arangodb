@@ -55,8 +55,7 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
   DistinctCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                std::vector<RegisterId> registersToClear,
                                std::vector<RegisterId> registersToKeep,
-                               std::unordered_set<RegisterId>&& readableInputRegisters,
-                               std::unordered_set<RegisterId>&& writeableInputRegisters,
+                               std::vector<RegisterId> writeableInputRegisters,
                                std::pair<RegisterId, RegisterId> groupRegister,
                                transaction::Methods* trxPtr);
 

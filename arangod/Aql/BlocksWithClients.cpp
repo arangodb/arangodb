@@ -100,9 +100,6 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
 
   _clientBlockData.reserve(shardIds.size());
 
-  auto readAble = make_shared_unordered_set();
-  auto writeAble = make_shared_unordered_set();
-
   for (auto const& id : shardIds) {
     _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _infos});
   }

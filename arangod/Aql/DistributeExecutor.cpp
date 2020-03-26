@@ -42,15 +42,14 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 DistributeExecutorInfos::DistributeExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    std::vector<RegisterId> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::vector<RegisterId> registersToClear,
     std::vector<RegisterId> registersToKeep,
     std::vector<std::string> clientIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys, ScatterNode::ScatterType type)
-    : ExecutorInfos(writeableOutputRegisters, nrInputRegisters,
+    : ExecutorInfos(std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
       ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
@@ -61,13 +60,7 @@ DistributeExecutorInfos::DistributeExecutorInfos(
       _allowSpecifiedKeys(allowSpecifiedKeys),
       _collection(collection),
       _logCol(collection->getCollection()),
-      _type(type) {
-  TRI_ASSERT(readableInputRegisters->find(_regId) != readableInputRegisters->end());
-  if (hasAlternativeRegister()) {
-    TRI_ASSERT(readableInputRegisters->find(_alternativeRegId) !=
-               readableInputRegisters->end());
-  }
-}
+      _type(type) {}
 
 auto DistributeExecutorInfos::registerId() const noexcept -> RegisterId {
   TRI_ASSERT(_regId != RegisterPlan::MaxRegisterId);
@@ -193,7 +186,7 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
       _blockManager.requestBlock(numRows, _infos.numberOfOutputRegisters());
   // We create a block, with correct register information
   // but we do not allow outputs to be written.
-  OutputAqlItemRow output{newBlock, make_shared_unordered_set(),
+  OutputAqlItemRow output{newBlock, std::vector<RegisterId>(),
                           _infos.registersToKeep(), _infos.registersToClear()};
   while (!output.isFull()) {
     // If the queue is empty our sizing above would not be correct

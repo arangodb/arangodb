@@ -77,8 +77,7 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
 
-  ShortestPathExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                            std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+  ShortestPathExecutorInfos(std::vector<RegisterId> outputRegisters,
                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                             std::vector<RegisterId> registersToClear,
                             std::vector<RegisterId> registersToKeep,
