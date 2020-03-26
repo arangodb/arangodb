@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertTrue */
+/*global fail, assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the authentication
@@ -58,7 +58,7 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
+      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
 
       try {
         users.remove(user);
@@ -72,13 +72,126 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
+      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
       try {
         users.remove(user);
       }
       catch (err) {
       }
     },
+    
+    testApiUserRW: function () {
+      users.save(user, "foobar");
+      users.grantDatabase(user, '_system');
+      users.grantCollection(user, '_system', "*");
+      users.reload();
 
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
+
+      let result = arango.GET('/_api/user/' + encodeURIComponent(user));
+      assertEqual(user, result.user);
+    },
+    
+    testApiUserRO: function () {
+      users.save(user, "foobar");
+      users.grantDatabase(user, '_system', 'ro');
+      users.reload();
+
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
+
+      let result = arango.GET('/_api/user/' + encodeURIComponent(user));
+      assertEqual(user, result.user);
+    },
+    
+    testApiUserWrongCredentials: function () {
+      users.save(user, "foobar");
+      users.grantDatabase(user, '_system', 'ro');
+      users.reload();
+
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
+      users.update(user, "foobar!!!!!");
+      
+      let result = arango.GET('/_api/user/' + encodeURIComponent(user));
+      assertEqual(401, result.code);
+    },
+    
+    testApiUserNone: function () {
+      users.save(user, "foobar");
+      users.grantDatabase(user, '_system', 'rw');
+      users.reload();
+
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
+      users.revokeDatabase(user, '_system');
+      try {
+        users.reload();
+      } catch (err) {
+      }
+
+      let result = arango.GET('/_api/user/' + encodeURIComponent(user));
+      assertEqual(user, result.user);
+    },
+    
+    testApiUserDeleted: function () {
+      users.save(user, "foobar");
+      users.grantDatabase(user, '_system', 'rw');
+      users.reload();
+
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
+      users.remove(user);
+      try {
+        users.reload();
+      } catch (err) {
+      }
+
+      let result = arango.GET('/_api/user/' + encodeURIComponent(user));
+      assertEqual(401, result.code);
+    },
+    
+    testApiNonExistingUserRW: function () {
+      users.save(user, "foobar");
+      users.grantDatabase(user, '_system');
+      users.grantCollection(user, '_system', "*");
+      users.reload();
+
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
+
+      let result = arango.GET('/_api/user/noone');
+      assertEqual(404, result.code);
+    },
+    
+    testApiNonExistingUserRO: function () {
+      users.save(user, "foobar");
+      users.grantDatabase(user, '_system', 'ro');
+      users.reload();
+
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
+
+      let result = arango.GET('/_api/user/noone');
+      assertEqual(403, result.code);
+    },
+    
+    testApiNonExistingUserNone: function () {
+      users.save(user, "foobar");
+      users.grantDatabase(user, '_system', 'rw');
+      users.reload();
+
+      try {
+        // connection will fail, but it will effectively set the username
+        // for all follow-up requests (which is what we need)
+        arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
+      } catch (err) {
+      }
+      
+      users.revokeDatabase(user, '_system');
+      try {
+        users.reload();
+      } catch (err) {
+      }
+
+      let result = arango.GET('/_api/user/noone');
+      assertEqual(403, result.code);
+    },
+    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test creating a new user
     ////////////////////////////////////////////////////////////////////////////////
@@ -573,7 +686,6 @@ function AuthSuite() {
         db._dropDatabase("other");
       }
     }
-
   };
 }
 
