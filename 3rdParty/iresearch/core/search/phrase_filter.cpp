@@ -59,17 +59,17 @@ class phrase_query : public filter::prepared {
   bstring stats_;
 }; // phrase_query
 
-class fixed_phrase_query : public phrase_query<order::prepared::FixedContainer> {
+class fixed_phrase_query : public phrase_query<FixedContainer> {
  public:
 
   DECLARE_SHARED_PTR(fixed_phrase_query);
 
   fixed_phrase_query(
-      typename phrase_query<order::prepared::FixedContainer>::states_t&& states,
-      typename phrase_query<order::prepared::FixedContainer>::positions_t&& positions,
+      typename phrase_query<FixedContainer>::states_t&& states,
+      typename phrase_query<FixedContainer>::positions_t&& positions,
       bstring&& stats,
       boost_t boost) noexcept
-    : phrase_query<order::prepared::FixedContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
+    : phrase_query<FixedContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
   }
 
   using filter::prepared::execute;
@@ -137,7 +137,7 @@ class fixed_phrase_query : public phrase_query<order::prepared::FixedContainer> 
   }
 }; // fixed_phrase_query
 
-class variadic_phrase_query : public phrase_query<order::prepared::VariadicContainer> {
+class variadic_phrase_query : public phrase_query<VariadicContainer> {
  public:
 
   DECLARE_SHARED_PTR(variadic_phrase_query);
@@ -147,7 +147,7 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
       positions_t&& positions,
       bstring&& stats,
       boost_t boost) noexcept
-    : phrase_query<order::prepared::VariadicContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
+    : phrase_query<VariadicContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
   }
 
   using filter::prepared::execute;
@@ -309,7 +309,7 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
 /*static*/ bool by_phrase::phrase_part::variadic_type_collect(
     const term_reader& reader,
     const phrase_part& phr_part,
-    phrase_term_visitor<order::prepared::variadic_terms_collectors>& ptv) {
+    phrase_term_visitor<variadic_terms_collectors>& ptv) {
   auto found = false;
   switch (phr_part.type) {
     case PhrasePartType::TERM:
@@ -508,21 +508,21 @@ filter::prepared::ptr by_phrase::prepare(
 
   // prepare phrase stats (collector for each term)
   if (is_simple_term_only_) {
-    return fixed_prepare_collect(rdr, ord, boost, ord.fixed_prepare_collectors(phrase_size));
+    return fixed_prepare_collect(rdr, ord, boost, fixed_terms_collectors(ord, phrase_size));
   }
-  return variadic_prepare_collect(rdr, ord, boost, ord.variadic_prepare_collectors(phrase_size));
+  return variadic_prepare_collect(rdr, ord, boost, variadic_terms_collectors(ord, phrase_size));
 }
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    order::prepared::fixed_terms_collectors collectors) const {
+    fixed_terms_collectors collectors) const {
   // per segment phrase states
   fixed_phrase_query::states_t phrase_states(index.size());
 
   // per segment phrase terms
-  phrase_state<order::prepared::FixedContainer>::terms_states_t phrase_terms;
+  phrase_state<FixedContainer>::terms_states_t phrase_terms;
   auto phrase_size = phrase_.size();
   phrase_terms.reserve(phrase_size);
 
@@ -547,7 +547,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     size_t term_offset = 0;
     auto is_ord_empty = ord.empty();
 
-    phrase_part::phrase_term_visitor<order::prepared::fixed_terms_collectors> ptv(
+    phrase_part::phrase_term_visitor<fixed_terms_collectors> ptv(
       segment, *reader, collectors, phrase_terms);
 
     for (const auto& word : phrase_) {
@@ -607,12 +607,12 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    order::prepared::variadic_terms_collectors collectors) const {
+    variadic_terms_collectors collectors) const {
   // per segment phrase states
   variadic_phrase_query::states_t phrase_states(index.size());
 
   // per segment phrase terms
-  phrase_state<order::prepared::VariadicContainer>::terms_states_t phrase_terms;
+  phrase_state<VariadicContainer>::terms_states_t phrase_terms;
   auto phrase_size = phrase_.size();
   phrase_terms.resize(phrase_size);
 
@@ -639,7 +639,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     size_t term_offset = 0;
     size_t found_words_count = 0;
 
-    phrase_part::phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
+    phrase_part::phrase_term_visitor<variadic_terms_collectors> ptv(
       segment, *reader, collectors);
 
     for (const auto& word : phrase_) {

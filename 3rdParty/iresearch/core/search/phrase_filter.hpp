@@ -181,7 +181,7 @@ class IRESEARCH_API by_phrase : public filter {
         const sub_reader& segment,
         const term_reader& reader,
         const Collectors& collectors,
-        phrase_state<order::prepared::FixedContainer>::terms_states_t& phrase_terms
+        phrase_state<FixedContainer>::terms_states_t& phrase_terms
       ) : phrase_term_visitor(segment, reader, collectors) {
         phrase_terms_ = &phrase_terms;
       }
@@ -210,7 +210,7 @@ class IRESEARCH_API by_phrase : public filter {
         term_offset_ = term_offset;
       }
 
-      void reset(phrase_state<order::prepared::FixedContainer>::terms_states_t& phrase_terms, size_t term_offset) noexcept {
+      void reset(phrase_state<FixedContainer>::terms_states_t& phrase_terms, size_t term_offset) noexcept {
         reset(term_offset);
         phrase_terms_ = &phrase_terms;
       }
@@ -223,14 +223,14 @@ class IRESEARCH_API by_phrase : public filter {
       const sub_reader& segment_;
       const term_reader& reader_;
       const Collectors& collectors_;
-      phrase_state<order::prepared::FixedContainer>::terms_states_t* phrase_terms_ = nullptr;
+      phrase_state<FixedContainer>::terms_states_t* phrase_terms_ = nullptr;
       const seek_term_iterator* terms_ = nullptr;
     };
 
     static bool variadic_type_collect(
       const term_reader& reader,
       const phrase_part& phr_part,
-      phrase_term_visitor<order::prepared::variadic_terms_collectors>& ptv);
+      phrase_term_visitor<variadic_terms_collectors>& ptv);
 
    private:
     void allocate(const phrase_part& other);
@@ -314,13 +314,13 @@ class IRESEARCH_API by_phrase : public filter {
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    order::prepared::fixed_terms_collectors collectors) const;
+    fixed_terms_collectors collectors) const;
 
   filter::prepared::ptr variadic_prepare_collect(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    order::prepared::variadic_terms_collectors collectors) const;
+    variadic_terms_collectors collectors) const;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string fld_;

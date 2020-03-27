@@ -55,10 +55,10 @@ class multiterm_visitor final : public filter_visitor {
   multiterm_visitor(
       const sub_reader& segment,
       const term_reader& reader,
-      limited_sample_scorer& scorer,
+      limited_sample_collector<term_frequency>& collector,
       multiterm_query::states_t& states)
     : segment_(segment), reader_(reader),
-      scorer_(scorer), states_(states) {
+      collector_(collector), states_(states) {
   }
 
   virtual void prepare(const seek_term_iterator& terms) override {
@@ -76,6 +76,9 @@ class multiterm_visitor final : public filter_visitor {
     state_->reader = &reader_;
 
     terms_ = &terms;
+
+    collector_.prepare(segment_, terms, *state_);
+    key_.offset = 0;
   }
 
   virtual void visit() override {
@@ -83,16 +86,18 @@ class multiterm_visitor final : public filter_visitor {
     assert(state_);
     assert(docs_count_);
     assert(terms_);
-    scorer_.collect(*docs_count_, state_->count++, *state_, segment_, *terms_);
-    state_->estimation += *docs_count_; // collect cost
+    key_.frequency = *docs_count_;
+    collector_.collect(key_);
+    ++key_.offset;
   }
 
  private:
   const decltype(term_meta::docs_count) no_docs_ = 0;
   const sub_reader& segment_;
   const term_reader& reader_;
-  limited_sample_scorer& scorer_;
+  limited_sample_collector<term_frequency>& collector_;
   multiterm_query::states_t& states_;
+  term_frequency key_;
   multiterm_state* state_ = nullptr;
   const decltype(term_meta::docs_count)* docs_count_ = nullptr;
   const seek_term_iterator* terms_ = nullptr;

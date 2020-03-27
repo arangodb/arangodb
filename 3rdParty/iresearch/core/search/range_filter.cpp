@@ -38,7 +38,7 @@ void collect_terms(
     const irs::term_reader& field,
     irs::seek_term_iterator& terms,
     irs::multiterm_query::states_t& states,
-    irs::limited_sample_scorer& scorer,
+    irs::limited_sample_collector<irs::term_frequency>& collector,
     Comparer cmp) {
   auto& value = terms.value();
 
@@ -60,10 +60,12 @@ void collect_terms(
     // probably due to broken optimization
     const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
 
+    collector.prepare(segment, terms, state);
+    irs::term_frequency key{*docs_count, 0};
+
     do {
       // fill scoring candidates
-      scorer.collect(*docs_count, state.count++, state, segment, terms);
-      state.estimation += *docs_count;
+      collector.collect(key);
 
       if (!terms.next()) {
         break;
@@ -71,6 +73,9 @@ void collect_terms(
 
       // read attributes
       terms.read();
+
+      ++key.offset;
+      key.frequency = *docs_count;
     } while (cmp(value));
   }
 }
@@ -127,7 +132,7 @@ filter::prepared::ptr by_range::prepare(
     return prepared::empty();
   }
 
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
   multiterm_query::states_t states(index.size());
 
   const string_ref field = this->field();
@@ -169,19 +174,19 @@ filter::prepared::ptr by_range::prepare(
     switch (rng_.max_type) {
       case BoundType::UNBOUNDED:
         ::collect_terms(
-          segment, *reader, *terms, states, scorer, [](const bytes_ref&) {
+          segment, *reader, *terms, states, collector, [](const bytes_ref&) {
             return true;
         });
         break;
       case BoundType::INCLUSIVE:
         ::collect_terms(
-          segment, *reader, *terms, states, scorer, [max](const bytes_ref& term) {
+          segment, *reader, *terms, states, collector, [max](const bytes_ref& term) {
             return term <= max;
         });
         break;
       case BoundType::EXCLUSIVE:
         ::collect_terms(
-          segment, *reader, *terms, states, scorer, [max](const bytes_ref& term) {
+          segment, *reader, *terms, states, collector, [max](const bytes_ref& term) {
             return term < max;
         });
         break;
@@ -189,9 +194,11 @@ filter::prepared::ptr by_range::prepare(
   }
 
   std::vector<bstring> stats;
-  scorer.score(index, ord, stats);
+  collector.score(index, ord, stats);
 
-  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
+  return memory::make_shared<multiterm_query>(
+    std::move(states), std::move(stats),
+    boost, sort::MergeType::AGGREGATE);
 }
 
 NS_END // ROOT

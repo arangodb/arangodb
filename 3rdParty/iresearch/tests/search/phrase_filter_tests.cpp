@@ -69,7 +69,7 @@ NS_END
 
 class phrase_filter_test_case : public tests::filter_test_case_base {
  protected:
-  void sequential() {
+  void sequential_one_term() {
     // add segment
     {
       tests::json_doc_generator gen(
@@ -1600,6 +1600,38 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(values(docs->value(), actual_value));
       ASSERT_EQ("PHW5", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC0", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC0", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC1", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC1", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC2", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC2", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC3", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC3", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
       ASSERT_FALSE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
@@ -2638,6 +2670,19 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
+  }
+
+  void sequential_three_terms() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("phrase_sequential.json"),
+        &tests::analyzed_json_field_factory);
+      add_segment(gen);
+    }
+
+    // read segment
+    auto rdr = open_reader();
 
     // "quick brown fox"
     {
@@ -4572,6 +4617,19 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
+  }
+
+  void sequential_several_terms() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("phrase_sequential.json"),
+        &tests::analyzed_json_field_factory);
+      add_segment(gen);
+    }
+
+    // read segment
+    auto rdr = open_reader();
 
     // "fox ... quick"
     {
@@ -6255,7 +6313,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
 }; // phrase_filter_test_case
 
 TEST_P(phrase_filter_test_case, by_phrase) {
-  sequential();
+  sequential_one_term();
+  sequential_three_terms();
+  sequential_several_terms();
 }
 
 TEST(by_phrase_test, ctor) {

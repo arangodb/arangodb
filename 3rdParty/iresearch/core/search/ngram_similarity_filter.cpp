@@ -495,7 +495,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   term_states.terms.reserve(ngrams_.size());
 
   // prepare ngrams stats
-  auto collectors = ord.fixed_prepare_collectors(ngrams_.size());
+  fixed_terms_collectors collectors(ord, ngrams_.size());
 
   for (const auto& segment : rdr) {
     // get term dictionary for field

@@ -40,7 +40,7 @@ class term_visitor final : public filter_visitor {
   term_visitor(
     const sub_reader& segment,
     const term_reader& reader,
-    const order::prepared::fixed_terms_collectors& collectors,
+    const fixed_terms_collectors& collectors,
     term_query::states_t& states,
     size_t term_offset
   ) : term_offset_(term_offset), segment_(segment), reader_(reader),
@@ -68,7 +68,7 @@ class term_visitor final : public filter_visitor {
   const size_t term_offset_;
   const sub_reader& segment_;
   const term_reader& reader_;
-  const order::prepared::fixed_terms_collectors& collectors_;
+  const fixed_terms_collectors& collectors_;
   term_query::states_t& states_;
   const seek_term_iterator* terms_ = nullptr;
 };
@@ -115,7 +115,7 @@ NS_ROOT
     const string_ref& field,
     const bytes_ref& term) {
   term_query::states_t states(index.size());
-  auto collectors = ord.fixed_prepare_collectors(1);
+  fixed_terms_collectors collectors(ord, 1);
 
   // iterate over the segments
   for (const auto& segment : index) {

@@ -29,11 +29,9 @@
 #include "range_filter.hpp"
 #include "multiterm_query.hpp"
 #include "term_query.hpp"
-#include "limited_sample_scorer.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
-
 
 NS_LOCAL
 
@@ -78,17 +76,13 @@ irs::multiterm_state& collect_terms(
     const irs::sub_reader& reader,
     const irs::term_reader& tr,
     irs::seek_term_iterator& terms,
-    irs::limited_sample_scorer& scorer,
+    irs::limited_sample_collector<irs::term_frequency>& collector,
     const Comparer& cmp) {
   auto& state = states.emplace(
     std::piecewise_construct,
     std::forward_as_tuple(&reader),
     std::forward_as_tuple()
   )->second; // create a new range state
-
-  // initialize range state
-  terms.read(); // read attributes (needed for cookie())
-  state.reader = &tr;
 
   auto& meta = terms.attributes().get<irs::term_meta>(); // get term metadata
   const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
@@ -99,6 +93,14 @@ irs::multiterm_state& collect_terms(
   // probably due to broken optimization
   const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
 
+  // initialize range state
+  terms.read(); // read attributes (needed for cookie())
+  state.reader = &tr;
+
+  collector.prepare(reader, terms, state);
+
+  irs::term_frequency key{0, 0};
+
   do {
     terms.read(); // read attributes
 
@@ -107,15 +109,9 @@ irs::multiterm_state& collect_terms(
     }
 
     // fill scoring candidates
-    scorer.collect(
-      *docs_count,
-      state.count++, // current term offset in state
-      state,
-      reader,
-      terms
-    );
-
-    state.estimation += *docs_count;
+    key.frequency = *docs_count;
+    collector.collect(key);
+    ++key.offset;
   } while (terms.next());
 
   return state;
@@ -129,7 +125,7 @@ void collect_terms_between(
     const irs::term_reader& tr,
     irs::seek_term_iterator& terms,
     size_t prefix_size,
-    irs::limited_sample_scorer& scorer,
+    irs::limited_sample_collector<irs::term_frequency>& collector,
     const irs::bytes_ref& begin_term,
     const irs::bytes_ref& end_term, // granularity level for end_term is ingored during comparison
     bool include_begin_term, // should begin_term also be included
@@ -164,7 +160,7 @@ void collect_terms_between(
   const auto& masked_end_term = mask_value(end_term, prefix_size); // the ending term for range collection
 
   collect_terms(
-    states, sr, tr, terms, scorer, [&prefix_size, &masked_begin_level, &masked_end_term, include_end_term](
+    states, sr, tr, terms, collector, [&prefix_size, &masked_begin_level, &masked_end_term, include_end_term](
       const irs::term_iterator& itr
     )->bool {
       const auto& masked_current_level = mask_granularity(itr.value(), prefix_size);
@@ -191,13 +187,13 @@ void collect_terms_from(
     size_t prefix_size,
     const irs::by_granular_range::terms_t& min_term,
     bool min_term_inclusive,
-    irs::limited_sample_scorer& scorer) {
+    irs::limited_sample_collector<irs::term_frequency>& collector) {
   auto min_term_itr = min_term.rbegin(); // start with least granular
 
   // for the case where there is no min_term, include remaining range at the current granularity level
   if (min_term_itr == min_term.rend()) {
     collect_terms_between(
-      states, sr, tr, terms, prefix_size, scorer,
+      states, sr, tr, terms, prefix_size, collector,
       irs::bytes_ref::NIL, // collect full granularity range
       irs::bytes_ref::NIL, // collect full granularity range
       true, true
@@ -215,7 +211,7 @@ void collect_terms_from(
 
   // seek to least-granular term, advance by one and seek to end, (end is when masked next term is < masked current term)
   collect_terms_between(
-    states, sr, tr, terms, prefix_size, scorer,
+    states, sr, tr, terms, prefix_size, collector,
     min_term_itr->second, // the min term for the current granularity level
     irs::bytes_ref::NIL, // collect full granularity range
     min_term_inclusive && exact_min_term == &(min_term_itr->second), true // add min_term if requested
@@ -253,7 +249,7 @@ void collect_terms_from(
     }
 
     collect_terms_between(
-      states, sr, tr, terms, prefix_size, scorer,
+      states, sr, tr, terms, prefix_size, collector,
       current_min_term_itr->second, // the min term for the current granularity level
       end_term, // the min term for the previous lesser granularity level
       min_term_inclusive && is_most_granular_term, // add min_term if requested
@@ -271,13 +267,13 @@ void collect_terms_until(
     size_t prefix_size,
     const irs::by_granular_range::terms_t& max_term,
     bool max_term_inclusive,
-    irs::limited_sample_scorer& scorer) {
+    irs::limited_sample_collector<irs::term_frequency>& collector) {
   auto max_term_itr = max_term.rbegin(); // start with least granular
 
   // for the case where there is no max_term, remaining range at the current granularity level
   if (max_term_itr == max_term.rend()) {
     collect_terms_between(
-      states, sr, tr, terms, prefix_size, scorer,
+      states, sr, tr, terms, prefix_size, collector,
       irs::bytes_ref::NIL, // collect full granularity range
       irs::bytes_ref::NIL, // collect full granularity range
       true, true
@@ -306,7 +302,7 @@ void collect_terms_until(
 
   // advance by one and collect all terms excluding the current max_term
   collect_terms_between(
-    states, sr, tr, terms, prefix_size, scorer,
+    states, sr, tr, terms, prefix_size, collector,
     irs::bytes_ref::NIL, // collect full granularity range
     max_term_itr->second, // the max term for the current granularity level
     true, max_term_inclusive && exact_max_term == &(max_term_itr->second) // add max_term if requested
@@ -332,7 +328,7 @@ void collect_terms_until(
     }
 
     collect_terms_between(
-      states, sr, tr, terms, prefix_size, scorer,
+      states, sr, tr, terms, prefix_size, collector,
       tmp_term, // the max term for the previous lesser granularity level
       current_max_term_itr->second, // the max term for the current granularity level
       true, max_term_inclusive && exact_max_term == &(current_max_term_itr->second) // add max_term if requested
@@ -351,13 +347,13 @@ void collect_terms_within(
     const irs::by_granular_range::terms_t& max_term,
     bool min_term_inclusive,
     bool max_term_inclusive,
-    irs::limited_sample_scorer& scorer) {
+    irs::limited_sample_collector<irs::term_frequency>& collector) {
   auto min_term_itr = min_term.rbegin(); // start with least granular
 
   // for the case where there is no min_term, include remaining range at the current granularity level
   if (min_term_itr == min_term.rend()) {
     collect_terms_until(
-      states, sr, tr, terms, prefix_size, max_term, max_term_inclusive, scorer
+      states, sr, tr, terms, prefix_size, max_term, max_term_inclusive, collector
     );
 
     return; // done
@@ -423,7 +419,7 @@ void collect_terms_within(
 
   // seek to least-granular term, advance by one and seek to end, (end is when masked next term is < masked current term)
   collect_terms_between(
-    states, sr, tr, terms, prefix_size, scorer,
+    states, sr, tr, terms, prefix_size, collector,
     min_term_itr->second, // the min term for the current granularity level
     max_term.empty() ? irs::bytes_ref::NIL : irs::bytes_ref(max_term_itr->second), // collect up to max term at same granularity range
     min_term_inclusive && exact_min_term == &(min_term_itr->second), false // add min_term if requested, end_term already covered by a less-granular range
@@ -459,7 +455,7 @@ void collect_terms_within(
     }
 
     collect_terms_between(
-      states, sr, tr, terms, prefix_size, scorer,
+      states, sr, tr, terms, prefix_size, collector,
       current_min_term_itr->second, // the min term for the current granularity level
       end_term, // the min term for the previous lesser granularity level
       min_term_inclusive && exact_min_term == &(current_min_term_itr->second), false // add min_term if requested, end_term already covered by a less-granular range
@@ -475,7 +471,7 @@ void collect_terms_within(
   // if max is a defined range then seek to max_term that was collected above and collect max_term range
   if (!max_term.empty() && terms.seek(max_term_itr->second)) {
     collect_terms_until(
-      states, sr, tr, terms, prefix_size, max_term, max_term_inclusive, scorer
+      states, sr, tr, terms, prefix_size, max_term, max_term_inclusive, collector
     );
   }
 }
@@ -536,7 +532,7 @@ filter::prepared::ptr by_granular_range::prepare(
     }
   }
 
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
   granular_states_t states(rdr.size());
 
   // iterate over the segments
@@ -562,7 +558,7 @@ filter::prepared::ptr by_granular_range::prepare(
       if (rng_.max.empty()) { // open max range
         // collect all terms
         static const terms_t empty;
-        collect_terms_from(states, sr, *tr, *terms, prefix_size, empty, true, scorer);
+        collect_terms_from(states, sr, *tr, *terms, prefix_size, empty, true, collector);
         continue;
       }
 
@@ -571,7 +567,7 @@ filter::prepared::ptr by_granular_range::prepare(
 
       // collect terms ending with max granularity range, include/exclude max term
       if (irs::SeekResult::END != terms->seek_ge(smallest_term)) {
-        collect_terms_until(states, sr, *tr, *terms, prefix_size, rng_.max, BoundType::INCLUSIVE == rng_.max_type, scorer);
+        collect_terms_until(states, sr, *tr, *terms, prefix_size, rng_.max, BoundType::INCLUSIVE == rng_.max_type, collector);
       }
 
       continue;
@@ -579,16 +575,16 @@ filter::prepared::ptr by_granular_range::prepare(
 
     if (rng_.max.empty()) { // open max range
       // collect terms starting with min granularity range, include/exclude min term
-      collect_terms_from(states, sr, *tr, *terms, prefix_size, rng_.min, BoundType::INCLUSIVE == rng_.min_type, scorer);
+      collect_terms_from(states, sr, *tr, *terms, prefix_size, rng_.min, BoundType::INCLUSIVE == rng_.min_type, collector);
       continue;
     }
 
     // collect terms starting with min granularity range and ending with max granularity range, include/exclude min/max term
-    collect_terms_within(states, sr, *tr, *terms, prefix_size, rng_.min, rng_.max, BoundType::INCLUSIVE == rng_.min_type, BoundType::INCLUSIVE == rng_.max_type, scorer);
+    collect_terms_within(states, sr, *tr, *terms, prefix_size, rng_.min, rng_.max, BoundType::INCLUSIVE == rng_.min_type, BoundType::INCLUSIVE == rng_.max_type, collector);
   }
 
   std::vector<bstring> stats;
-  scorer.score(rdr, ord, stats);
+  collector.score(rdr, ord, stats);
 
   // ...........................................................................
   // group the range states into a minimal number of groups per sub_reader
@@ -608,7 +604,7 @@ filter::prepared::ptr by_granular_range::prepare(
       previous_reader = reader;
     }
 
-    if (!state.count) {
+    if (state.empty()) {
       continue; // skip empty ranges
     }
 
@@ -647,7 +643,8 @@ filter::prepared::ptr by_granular_range::prepare(
 
   for (auto& range_state: range_states) {
     multirange_filter.add<multiterm_filter_proxy>().query_
-        = memory::make_shared<multiterm_query>(std::move(range_state), shared_stats, irs::no_boost());
+        = memory::make_shared<multiterm_query>(std::move(range_state), shared_stats,
+                                               no_boost(), sort::MergeType::AGGREGATE);
   }
 
   return multirange_filter.boost(this->boost()).prepare(rdr, ord, boost);

@@ -24,7 +24,6 @@
 
 #include "index/index_reader.hpp"
 #include "search/filter_visitor.hpp"
-#include "search/limited_sample_scorer.hpp"
 #include "search/multiterm_query.hpp"
 #include "utils/fst_table_matcher.hpp"
 
@@ -356,7 +355,7 @@ filter::prepared::ptr prepare_automaton_filter(
     return filter::prepared::empty();
   }
 
-  limited_sample_scorer scorer(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
 
   for (const auto& segment : index) {
@@ -367,15 +366,17 @@ filter::prepared::ptr prepare_automaton_filter(
       continue;
     }
 
-    multiterm_visitor mtv(segment, *reader, scorer, states);
+    multiterm_visitor mtv(segment, *reader, collector, states);
 
     automaton_visit_with_matcher(*reader, matcher, mtv);
   }
 
   std::vector<bstring> stats;
-  scorer.score(index, order, stats);
+  collector.score(index, order, stats);
 
-  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
+  return memory::make_shared<multiterm_query>(
+    std::move(states), std::move(stats),
+    boost, sort::MergeType::AGGREGATE);
 }
 
 NS_END

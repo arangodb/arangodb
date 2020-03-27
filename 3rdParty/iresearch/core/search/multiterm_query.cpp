@@ -68,8 +68,8 @@ doc_iterator::ptr multiterm_query::execute(
 
   // add an iterator for each of the scored states
   for (auto& entry : state->scored_states) {
-    assert(entry.first);
-    if (!terms->seek(bytes_ref::NIL, *entry.first)) {
+    assert(entry.cookie);
+    if (!terms->seek(bytes_ref::NIL, *entry.cookie)) {
       return doc_iterator::empty(); // internal error
     }
 
@@ -79,10 +79,10 @@ doc_iterator::ptr multiterm_query::execute(
     // set score
     auto& score = attrs.get<irs::score>();
     if (score) {
-      assert(entry.second < stats.size());
-      auto* stat = stats[entry.second].c_str();
+      assert(entry.stat_offset < stats.size());
+      auto* stat = stats[entry.stat_offset].c_str();
 
-      score->prepare(ord, ord.prepare_scorers(segment, *state->reader, stat, attrs, boost()));
+      score->prepare(ord, ord.prepare_scorers(segment, *state->reader, stat, attrs, entry.boost*boost()));
     }
 
     itrs.emplace_back(std::move(docs));
@@ -94,9 +94,8 @@ doc_iterator::ptr multiterm_query::execute(
   }
 
   return make_disjunction<disjunction_t>(
-      std::move(itrs), ord,
-      sort::MergeType::AGGREGATE,
-      state->estimation);
+    std::move(itrs), ord,
+    merge_type_, state->estimation());
 }
 
 NS_END // ROOT

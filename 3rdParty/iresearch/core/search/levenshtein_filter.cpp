@@ -23,7 +23,6 @@
 #include "levenshtein_filter.hpp"
 
 #include "shared.hpp"
-#include "limited_sample_scorer.hpp"
 #include "term_query.hpp"
 #include "index/index_reader.hpp"
 #include "utils/automaton_utils.hpp"
