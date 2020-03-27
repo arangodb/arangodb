@@ -164,8 +164,8 @@ RestStatus RestAgencyHandler::pollIndex(index_t start) {
       if (res.hasKey("accepted")) {
         TRI_ASSERT(res.hasKey("result"));
         VPackBuffer<uint8_t> payload;
+        VPackBuilder builder(payload);
         {
-          VPackBuilder builder(payload);
           VPackObjectBuilder ob(&builder);
           builder.add(StaticStrings::Error, VPackValue(false));
           builder.add("code", VPackValue(int(ResponseCode::OK)));
@@ -173,14 +173,13 @@ RestStatus RestAgencyHandler::pollIndex(index_t start) {
           VPackObjectBuilder r(&builder);
           VPackSlice slice = res.get("result");
           auto const firstIndex = slice.get("firstIndex");
-          size_t first = start - slice.get("firstIndex").getNumber<uint64_t>();
           builder.add("commitIndex", slice.get("commitIndex"));
           builder.add("firstIndex", firstIndex);
           if (slice.hasKey("log")) {
             VPackSlice logs = slice.get("log");
             builder.add(VPackValue("log"));
             VPackArrayBuilder a(&builder);
-            for (size_t i = first; i < logs.length(); ++i) {
+            for (size_t i = start - firstIndex.getNumber<uint64_t>(); i < logs.length(); i++) {
               builder.add(logs[i]);
             }
           } else {

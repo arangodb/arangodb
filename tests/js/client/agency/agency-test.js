@@ -379,6 +379,140 @@ function agencyTestSuite () {
 /// @brief Test transact interface
 ////////////////////////////////////////////////////////////////////////////////
 
+    testPoll : function () {
+      var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      var ret, result, log, ci, job, wr;
+
+      ret = request({url: agencyLeader + "/_api/agency/poll",
+                         method: "GET", followRedirect: true});
+      if (ret.statusCode === 202) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("readDB"));
+      assertEqual(result.readDB, {});
+      assertTrue(result.hasOwnProperty("commitIndex"));
+      ci = result.commitIndex;
+      assertTrue(result.hasOwnProperty("firstIndex"));
+      assertEqual(result.firstIndex, 0);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=0",
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 202) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("readDB"));
+      assertEqual(result.readDB, {});
+      assertTrue(result.hasOwnProperty("commitIndex"));
+      assertEqual(result.commitIndex, ci);
+      assertTrue(result.hasOwnProperty("firstIndex"));
+      assertEqual(result.firstIndex, 0);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 202) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, 1);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 202) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, 1);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 202) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertEqual(log.length, 1);
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, ci);
+
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 202) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertEqual(log.length, 1);
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, ci);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + (ci + 1),
+                     method: "GET", headers: {"X-arango-async": "store"}});
+
+      assertEqual(ret.statusCode, 202);
+      assertTrue(ret.headers.hasOwnProperty("x-arango-async-id"));
+      job = ret.headers["x-arango-async-id"];
+
+      ret = request({url: agencyLeader + "/_api/job/" + job, method: "GET"});
+      assertEqual(ret.statusCode, 204);
+      wr = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      ret = request({url: agencyLeader + "/_api/job/" + job,
+                     method: "GET", followRedirect: true});
+      assertEqual(ret.statusCode, 200);
+      ret = request({url: agencyLeader + "/_api/job/" + job, method: "PUT"});
+      assertEqual(ret.statusCode, 202);
+      ret.bodyParsed = JSON.parse(ret.body);
+      result = ret.bodyParsed.result;
+
+      assertTrue(result.hasOwnProperty("log"));
+      assertTrue(result.hasOwnProperty("commitIndex"));
+      assertTrue(result.hasOwnProperty("firstIndex"));
+      assertEqual(result.firstIndex, ci+1);
+      assertEqual(result.commitIndex, ci+1);
+
+      // Multiple writes
+      ci = result.commitIndex;
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + (ci + 1),
+                     method: "GET", followRedirect: true, headers: {"X-arango-async": "store"}});
+      assertTrue(ret.headers.hasOwnProperty("x-arango-async-id"));
+      job = ret.headers["x-arango-async-id"];
+      wr = accessAgency("write",[[{"/": {"op":"delete"}}],[{"/": {"op":"delete"}}],[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      ret = request({url: agencyLeader + "/_api/job/" + job,
+                     method: "PUT", followRedirect: true, body: {}});
+      assertEqual(ret.statusCode, 202);
+      ret.bodyParsed = JSON.parse(ret.body);
+      result = ret.bodyParsed.result;
+      assertEqual(result.firstIndex, ci+1);
+      assertEqual(result.commitIndex, ci+3);
+      ci = result.commitIndex;
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test transact interface
+////////////////////////////////////////////////////////////////////////////////
+
     testTransact : function () {
 
       var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
@@ -853,7 +987,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[2.71828182845904523536]}}]);
-      
+
       writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":1}}]]);
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
       writeAndCheck([[{"/version/c":{"op":"push", "new":"world"}}]]); // int before
@@ -906,7 +1040,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{}]);
       writeAndCheck([[{"/version/c":{"op":"prepend", "new":"hello"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-      
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
