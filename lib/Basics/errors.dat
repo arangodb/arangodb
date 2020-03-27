@@ -440,7 +440,7 @@ ERROR_MODULE_SYNTAX_ERROR,3101,"syntax error in module","The module could not be
 ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module in its context."
 
 ################################################################################
-## Enterprise errors
+## Enterprise Edition errors
 ################################################################################
 
 ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
