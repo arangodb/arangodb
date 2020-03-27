@@ -285,7 +285,7 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   // Only admin users are permitted to create databases
   ExecContext const& exec = ExecContext::current();
 
-  if (!exec.isAdminUser()) {
+  if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
     events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
     return Result(TRI_ERROR_FORBIDDEN);
   }

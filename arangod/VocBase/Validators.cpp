@@ -195,7 +195,6 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
   if (!rule.isObject()) {
     std::string msg = "No valid schema in rule attribute given (no object): ";
     msg += params.toJson();
-    LOG_TOPIC("ababf", ERR, Logger::VALIDATION) << msg;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
   }
   auto taoRuleValue = validation::slice_to_value(rule);
