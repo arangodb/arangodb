@@ -259,9 +259,6 @@ void AqlFunctionFeature::addNumericFunctions() {
 
   // special flags:
   add({"RAND", "", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Rand});  // not deterministic and not cacheable
-
-  add({"GET_VALIDATION", ".", flags, &Functions::GetValidation});
-  add({"VALIDATE", ".,.", flags, &Functions::Validate});
 }
 
 void AqlFunctionFeature::addListFunctions() {
@@ -438,6 +435,10 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
   add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only function without a
                                                                             // C++ implementation
+                                                                            //
+  auto validationFlags = Function::makeFlags(FF::None);
+  add({"GET_SCHEMA", ".", validationFlags, &Functions::GetValidation});
+  add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::Validate});
 
   // special flags:
   add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  // deterministic, not cacheable. only on

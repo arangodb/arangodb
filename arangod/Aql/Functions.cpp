@@ -7529,7 +7529,7 @@ AqlValue Functions::GetValidation(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
 
-  static char const* AFN = "GET_VALIDATION"; // GET_VALIDATON("collectionName")
+  static char const* AFN = "GET_SCHEMA"; // GET_VALIDATON("collectionName")
 
   if(parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
@@ -7543,19 +7543,34 @@ AqlValue Functions::GetValidation(ExpressionContext* expressionContext,
 
   auto logicalCollection = expressionContext->vocbase().lookupCollection(collectionName);
   if(!logicalCollection) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "could not find collection");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "could not find collection: " + collectionName);
   }
 
   VPackBuilder builder;
-  logicalCollection->validatorsToVelocyPack(builder); // returns object but should return Array
-  return AqlValue(builder);
+  logicalCollection->validatorsToVelocyPack(builder);
+  auto slice = builder.slice();
+
+  if(!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "collection has no validaiton object");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto ruleSlice =  slice.get(StaticStrings::ValidatorParameterRule);
+
+  if(!ruleSlice.isObject()){
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "validation object has no rule object");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  return AqlValue(ruleSlice);
 }
 
 AqlValue Functions::Validate(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
 
-  static char const* AFN = "VALIDATE"; // VALIDATE(doc, [ validator ] )
+  static char const* AFN = "SCHEMA_VALIDATE"; // SCHEMA_VALIDATE(doc, [ validator ] )
+  auto const* vpackOptions = trx->transactionContext()->getVPackOptions();
 
   if(parameters.size() != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
@@ -7565,11 +7580,20 @@ AqlValue Functions::Validate(ExpressionContext* expressionContext,
   AqlValue const& schemaValue = extractFunctionParameterValue(parameters, 1);
 
   if(!schemaValue.isObject()){
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "no object given validation objects");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "no schema object given: " + schemaValue.slice().toJson());
   }
 
-  arangodb::ValidatorJsonSchema validator(schemaValue.slice());
-  auto res = validator.validateOne(docValue.slice(), trx->transactionContext()->getVPackOptions());
+  VPackBuilder validationBuilder(vpackOptions);
+  {
+    VPackObjectBuilder guard(&validationBuilder);
+    validationBuilder.add(StaticStrings::ValidatorParameterRule, schemaValue.slice());
+    validationBuilder.add(StaticStrings::ValidatorParameterMessage, VPackValue("Schema Test failed"));
+    validationBuilder.add(StaticStrings::ValidatorParameterLevel, VPackValue(StaticStrings::ValidatorLevelStrict));
+    validationBuilder.add(StaticStrings::ValidatorParameterType, VPackValue(StaticStrings::ValidatorTypeAQL));
+  }
+
+  arangodb::ValidatorJsonSchema validator(validationBuilder.slice());
+  auto res = validator.validateOne(docValue.slice(), vpackOptions);
 
   transaction::BuilderLeaser resultBuilder(trx);
   {
