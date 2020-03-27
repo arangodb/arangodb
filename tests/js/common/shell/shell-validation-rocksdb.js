@@ -360,6 +360,28 @@ function ValidationBasicsSuite () {
       }
 
     },
+    // AQL  ////////////////////////////////////////////////////////////////////////////////////////////
+    testGET_SCHEMA: () => {
+      const v =  validatorJson;
+      v.level = "strict";
+      testCollection.properties({"validation" : v });
+      sleepInCluster();
+
+      let res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
+      assertEqual(res[0], v.rule);
+    },
+
+    testSCHEMA_VALIDATE: () => {
+      const v =  validatorJson;
+      testCollection.properties({"validation" : { rule:{} } });
+      sleepInCluster();
+
+      let res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : 24}, { "properties" : { "foo" : { "type" : "string" } } } )`).toArray();
+      assertEqual(res[0].valid, false);
+
+      res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : "bar"}, { "properties" : { "foo" : { "type" : "string" } } } )`).toArray();
+      assertEqual(res[0].valid, true);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
   }; // return
