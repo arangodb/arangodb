@@ -1187,6 +1187,7 @@ function processQuery(query, explain, planIndex) {
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
           `   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
           '   ' + annotation(indexAnnotation);
+
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1322,6 +1323,10 @@ function processQuery(query, explain, planIndex) {
         allIndexes.forEach(function (idx) {
           indexes.push(idx);
         });
+
+        if (node.isSatelliteNode) {
+          rc += annotation(' /* satellite node, ' + (node.isUsedAsSatellite ? '' : 'not ') + 'used as satellite */');
+        }
 
         return rc;
       case 'ShortestPathNode': {
@@ -1702,7 +1707,7 @@ function processQuery(query, explain, planIndex) {
         }
         if (node.sortmode !== 'unset') {
           gatherAnnotations.push('sort mode: ' + node.sortmode);
-        } 
+        }
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
           if (node.path && node.path.length) {
             return variableName(node.inVariable) + node.path.map(function (n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
@@ -1796,7 +1801,7 @@ function processQuery(query, explain, planIndex) {
       } else {
         runtime = String(Math.abs(node.runtime).toFixed(5));
       }
-  
+
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
         pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
@@ -2021,7 +2026,7 @@ function debug(query, bindVars, options) {
   };
   // mangle with graphs used in query
   findGraphs(result.explain.plan.nodes);
-  
+
   let handleCollection = function(collection) {
     let c = db._collection(collection.name);
     if (c === null) {
@@ -2044,7 +2049,7 @@ function debug(query, bindVars, options) {
       let examples;
       if (input.options.examples) {
         // include example data from collections
-        let max = 10; // default number of documents 
+        let max = 10; // default number of documents
         if (typeof input.options.examples === 'number') {
           max = input.options.examples;
         }
