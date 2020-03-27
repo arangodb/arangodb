@@ -253,7 +253,7 @@ void EnvironmentFeature::prepare() {
     overriddenmsg = " (overridden by environment variable)";
   }
   LOG_TOPIC("25362", INFO, Logger::MEMORY)
-  << "Available physical memory: " << ram << overriddenmsg;
+  << "Available physical memory: " << ram << overriddenmsg << " bytes";
 
   // test local ipv6 support
   try {
