@@ -71,9 +71,8 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::mock::test_compressor);
-std::function<irs::bytes_ref(irs::byte_type* src, size_t size, irs::bstring& out)> iresearch::compression::mock::test_compressor::compress_mock;
-std::function<irs::bytes_ref(irs::byte_type* src, size_t src_size, irs::byte_type* dst, size_t dst_size)> iresearch::compression::mock::test_compressor::decompress_mock;
+//std::function<irs::bytes_ref(irs::byte_type* src, size_t size, irs::bstring& out)> iresearch::compression::mock::test_compressor::compress_mock;
+//std::function<irs::bytes_ref(irs::byte_type* src, size_t src_size, irs::byte_type* dst, size_t dst_size)> iresearch::compression::mock::test_compressor::decompress_mock;
 REGISTER_COMPRESSION(iresearch::compression::mock::test_compressor,
                      &iresearch::compression::mock::test_compressor::compressor,
                      &iresearch::compression::mock::test_compressor::decompressor);
@@ -885,7 +884,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
   }");
   std::string compressed_values;
-  irs::compression::mock::test_compressor::compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
+  irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
     out.append(src, size);
     compressed_values.append(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()),  size);
@@ -980,7 +979,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
                       {\"field\":\"ghi\", \"compression\":\"test\"}]\
   }");
   std::string compressed_values;
-  irs::compression::mock::test_compressor::compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
+  irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
     out.append(src, size);
     compressed_values.append(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);

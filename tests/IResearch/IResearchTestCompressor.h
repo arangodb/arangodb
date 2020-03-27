@@ -26,18 +26,26 @@
 #include "utils/compression.hpp"
 #include <functional>
 
+namespace {
+// to avoid adding new file to both arangodbtests and arangod 
+// we create here a header-only static by using this holder
+struct function_holder {
+  std::function<irs::bytes_ref(irs::byte_type* src, size_t size, irs::bstring& out)> compress_mock;
+  std::function<irs::bytes_ref(irs::byte_type* src, size_t src_size,
+    irs::byte_type* dst, size_t dst_size)> decompress_mock;
+};
+}
 
 namespace iresearch {
 namespace compression {
 namespace mock {
 struct test_compressor {
-  DECLARE_COMPRESSION_TYPE();
   class  test_compressor_compressor final : public compressor{
  public:
  
   virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override {
-    return test_compressor::compress_mock ?
-             test_compressor::compress_mock(src, size, out) : bytes_ref::EMPTY;
+    return test_compressor::functions().compress_mock ?
+             test_compressor::functions().compress_mock(src, size, out) : bytes_ref::EMPTY;
   }
   };
 
@@ -45,8 +53,8 @@ struct test_compressor {
    public:
     virtual bytes_ref decompress(byte_type* src, size_t src_size,
                                   byte_type* dst, size_t dst_size) override {
-      return test_compressor::decompress_mock ?
-               test_compressor::decompress_mock(src, src_size, dst, dst_size) :
+      return test_compressor::functions().decompress_mock ?
+               test_compressor::functions().decompress_mock(src, src_size, dst, dst_size) :
                bytes_ref::EMPTY;
     }
   };
@@ -60,9 +68,15 @@ struct test_compressor {
     return iresearch::memory::make_shared<test_compressor_decompressor>();
   }
 
-  static std::function<bytes_ref(byte_type* src, size_t size, bstring& out)> compress_mock;
-  static std::function<bytes_ref(byte_type* src, size_t src_size,
-                          byte_type* dst, size_t dst_size)> decompress_mock;
+  static function_holder& functions() {
+    static function_holder holder;
+    return holder;
+  }
+
+  static iresearch::compression::type_id& type() {
+    static iresearch::compression::type_id type("iresearch::compression::mock::test_compressor");
+    return type;
+  }
 };
 } // mock
 } // compression
