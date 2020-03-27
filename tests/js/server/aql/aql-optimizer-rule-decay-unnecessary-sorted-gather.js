@@ -42,6 +42,9 @@ function optimizerRuleTestSuite() {
 
   const satelliteCollection = "sat";
 
+  const smartJoinCollection1 = "smartJoin1";
+  const smartJoinCollection2 = "smartJoin2";
+  const smartJoinAttribute = "attr";
 
   return {
 
@@ -51,6 +54,10 @@ function optimizerRuleTestSuite() {
 
       if (isEnterprise) {
         db._create(satelliteCollection, {replicationFactor: "satellite"});
+
+        db._create(smartJoinCollection1, {numberOfShards: 6, shardKeys: ["_key"]});
+        db._create(smartJoinCollection2, {numberOfShards: 6, shardKeys: ["_key:"], smartJoinAttribute: smartJoinAttribute, distributeShardsLike: smartJoinCollection1});
+
       }
     },
 
@@ -58,6 +65,8 @@ function optimizerRuleTestSuite() {
       db._drop(sharedCollection);
       db._drop(singleShardCollection);
       db._drop(satelliteCollection);
+      db._drop(smartJoinCollection2);
+      db._drop(smartJoinCollection1);
     },
 
     testNonEnterprise: function () {
@@ -140,7 +149,7 @@ function optimizerRuleTestSuite() {
     },
 
 
-    testWithSatelliteSingelShard: function () {
+    testWithSatelliteSingleShard: function () {
       if (!isEnterprise) {
         return ;
       }
@@ -159,49 +168,29 @@ function optimizerRuleTestSuite() {
 
       assertTrue(0 === nodes[2].elements.length, "Gather node should not be sorted");
       assertTrue(result.plan.rules.includes(ruleName));
-    }
+    },
 
-    /*
-        testDisabled: function () {
-          let queries = [
-            `FOR v, e, p IN 1..3 OUTBOUND "${vertexCollectionName}/0" GRAPH "${graphName}" RETURN v`
-          ];
+    testWithSmartJoin: function () {
+      if (!isEnterprise) {
+        return ;
+      }
 
-          queries.forEach(function (query) {
-            let result = AQL_EXPLAIN(query);
-            assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-          });
+      // Do a satellite join with a shared collection, i.e. gather should be sorted
+      let query = `FOR x IN ${smartJoinCollection1} FOR y IN ${smartJoinCollection2} FILTER x._key == y.${smartJoinAttribute} SORT x.attr RETURN {x, y}`;
 
-          queries.forEach(function (query) {
-            let result = AQL_EXPLAIN(query, null, {optimizer: {rules: ["-" + ruleName]}});
-            assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-          });
-        },
+      db._explain(query);
+      let result = AQL_EXPLAIN(query);
+      let nodes = result.plan.nodes.filter(function (n) {
+        return ["SortNode", "GatherNode"].includes(n.type);
+      });
 
-        testRuleNoEffect: function () {
-          let queries = [
-            `FOR v, e, p IN 1..3 OUTBOUND "${vertexCollectionName}/0" GRAPH "${graphName}" RETURN v`,
-            `FOR doc IN ${collectionName} SORT doc.x FOR v, e, p IN 1..3 OUTBOUND doc.ref GRAPH "${graphName}" RETURN v`
-          ];
+      assertEqual(2, nodes.length, "Expected number of Sort and Gather nodes");
+      assertEqual("SortNode", nodes[0].type);
+      assertEqual("GatherNode", nodes[1].type);
 
-          queries.forEach(function (query) {
-            let result = AQL_EXPLAIN(query);
-            assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-          });
-        },
-
-        testRuleHasEffect: function () {
-          let queries = [
-            `FOR doc IN ${collectionName} FOR v, e, p IN 1..3 OUTBOUND doc.ref GRAPH "${graphName}" RETURN v`,
-            `FOR doc IN ${collectionName} FOR v, e, p IN 1..3 OUTBOUND doc.ref GRAPH "${graphName}" RETURN v`,
-            `FOR v, e, p IN 1..3 OUTBOUND "v/1" GRAPH "${graphName}" FOR doc IN ${collectionName} FILTER v.ref == doc.ref RETURN v`
-          ];
-
-          queries.forEach(function (query) {
-            let result = AQL_EXPLAIN(query);
-            assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-          });
-        },*/
+      assertTrue(1 === nodes[1].elements.length, "Gather node should be sorted");
+      assertFalse(result.plan.rules.includes(ruleName));
+    },
   };
 }
 
