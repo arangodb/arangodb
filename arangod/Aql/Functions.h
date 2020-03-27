@@ -471,10 +471,10 @@ struct Functions {
   static AqlValue CurrentUser(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
 
-  static AqlValue GetValidation(arangodb::aql::ExpressionContext*,
-                              transaction::Methods*, VPackFunctionParameters const&);
-  static AqlValue Validate(arangodb::aql::ExpressionContext*,
-                              transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue GetSchema(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue SchemaValidate(arangodb::aql::ExpressionContext*,
+                                 transaction::Methods*, VPackFunctionParameters const&);
 
   /// @brief dummy function that will only throw an error when called
   static AqlValue NotImplemented(arangodb::aql::ExpressionContext*,

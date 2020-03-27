@@ -437,8 +437,8 @@ void AqlFunctionFeature::addMiscFunctions() {
                                                                             // C++ implementation
                                                                             //
   auto validationFlags = Function::makeFlags(FF::None);
-  add({"GET_SCHEMA", ".", validationFlags, &Functions::GetValidation});
-  add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::Validate});
+  add({"GET_SCHEMA", ".", validationFlags, &Functions::GetSchema});
+  add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::SchemaValidate});
 
   // special flags:
   add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  // deterministic, not cacheable. only on
