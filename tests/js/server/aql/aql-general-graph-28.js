@@ -445,12 +445,12 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       assertEqual(actual[3], v4 + "/v8");
     },
 
-	/* FOR v IN ...
-	FILTER (
-	  IS_SAME_COLLECTION(v, `UnitTestsAhuacatlVertex1`) ||
-	  IS_SAME_COLLECTION(v, `UnitTestsAhuacatlVertex3`) 
-	 )*/
-	  
+    /* FOR v IN ...
+    FILTER (
+      IS_SAME_COLLECTION(v, `UnitTestsAhuacatlVertex1`) ||
+      IS_SAME_COLLECTION(v, `UnitTestsAhuacatlVertex3`) 
+     )*/
+      
     testNeighborsAnyStartExampleRestrictVertices: function () {
       var bindVars = {
         name: gN,
@@ -460,8 +460,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
           vertexCollectionRestriction: [v1, v3]
         }
       };
-      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
-	  assertEqual(actual.length, 4);
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars); 
+      assertEqual(actual.length, 4);
       assertEqual(actual[0], v1 + "/v1");
       assertEqual(actual[1], v1 + "/v2");
       assertEqual(actual[2], v3 + "/v5");
