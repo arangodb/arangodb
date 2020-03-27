@@ -423,16 +423,14 @@ CostEstimate DistributeNode::estimateCost() const {
 
   while (node) {
     switch (node->getType()) {
+      case INDEX:
       case ENUMERATE_COLLECTION: {
-        auto const* enumNode = castTo<EnumerateCollectionNode const*>(node);
-
-        if (!enumNode->isUsedAsSatellite() && enumNode->prototypeCollection() == nullptr) {
-          return enumNode->collection();
+        auto const* cNode = castTo<CollectionAccessingNode const*>(node);
+        if (!cNode->isUsedAsSatellite() && cNode->prototypeCollection() == nullptr) {
+          return cNode->collection();
         }
         break;
       }
-      case INDEX:
-        return castTo<IndexNode const*>(node)->collection();
       case TRAVERSAL:
       case SHORTEST_PATH:
       case K_SHORTEST_PATHS:

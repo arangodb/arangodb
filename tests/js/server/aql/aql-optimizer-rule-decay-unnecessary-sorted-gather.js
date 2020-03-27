@@ -37,8 +37,9 @@ const isEnterprise = require("internal").isEnterprise();
 function optimizerRuleTestSuite() {
   const ruleName = "decay-unnecessary-sorted-gather";
 
-  const sharedCollection = "c";
+  const shardedCollection = "c";
   const singleShardCollection = "d";
+  const indexAttribute = "iattr";
 
   const satelliteCollection = "sat";
 
@@ -49,8 +50,10 @@ function optimizerRuleTestSuite() {
   return {
 
     setUpAll: function () {
-      db._create(sharedCollection, {numberOfShards: 3});
-      db._create(singleShardCollection, {numberOfShards: 1});
+      db._create(singleShardCollection, {numberOfShards: 1})
+          .ensureIndex({type: "hash", fields: [indexAttribute]});
+      db._create(shardedCollection, {numberOfShards: 3})
+          .ensureIndex({type: "hash", fields: [indexAttribute]});
 
       if (isEnterprise) {
         db._create(satelliteCollection, {replicationFactor: "satellite"});
@@ -62,7 +65,7 @@ function optimizerRuleTestSuite() {
     },
 
     tearDownAll: function () {
-      db._drop(sharedCollection);
+      db._drop(shardedCollection);
       db._drop(singleShardCollection);
       db._drop(satelliteCollection);
       db._drop(smartJoinCollection2);
@@ -73,7 +76,28 @@ function optimizerRuleTestSuite() {
       // this query has to be that complicated, because
       // 1. if we only use a single collection with repl fact 1, the one shard rule will apply
       // 2. the FILTER forces the sharded collection to enumerated first
-      let query = `FOR x IN ${sharedCollection} FILTER x.attr FOR y IN ${singleShardCollection} SORT y.attr RETURN {x, y}`;
+      let query = `FOR x IN ${shardedCollection} FILTER x.attr FOR y IN ${singleShardCollection} SORT y.attr RETURN {x, y}`;
+
+      let result = AQL_EXPLAIN(query);
+
+      let nodes = result.plan.nodes.filter(function (n) {
+        return ["SortNode", "GatherNode"].includes(n.type);
+      });
+
+      assertEqual(3, nodes.length, "Expected number of Sort and Gather nodes");
+      assertEqual("GatherNode", nodes[0].type);
+      assertEqual("SortNode", nodes[1].type);
+      assertEqual("GatherNode", nodes[2].type);
+
+      assertEqual(0, nodes[2].elements.length, "Gather node should be unsorted");
+      assertTrue(result.plan.rules.includes(ruleName));
+    },
+
+    testNonEnterpriseIndex: function () {
+      // this query has to be that complicated, because
+      // 1. if we only use a single collection with repl fact 1, the one shard rule will apply
+      // 2. the FILTER forces the sharded collection to enumerated first
+      let query = `FOR x IN ${shardedCollection} FILTER x.attr FOR y IN ${singleShardCollection} SORT y.${indexAttribute} RETURN {x, y}`;
 
       let result = AQL_EXPLAIN(query);
 
@@ -95,7 +119,7 @@ function optimizerRuleTestSuite() {
       // this query has to be that complicated, because
       // 1. if we only use a single collection with repl fact 1, the one shard rule will apply
       // 2. the FILTER forces the sharded collection to enumerated first
-      let query = `FOR x IN ${sharedCollection} FILTER x.attr FOR y IN ${singleShardCollection} SORT y.attr RETURN {x, y}`;
+      let query = `FOR x IN ${shardedCollection} FILTER x.attr FOR y IN ${singleShardCollection} SORT y.attr RETURN {x, y}`;
       let result = AQL_EXPLAIN(query, null, {optimizer: {rules: ["-" + ruleName]}});
       let nodes = result.plan.nodes.filter(function (n) {
         return ["SortNode", "GatherNode"].includes(n.type);
@@ -113,7 +137,7 @@ function optimizerRuleTestSuite() {
 
     testNonEnterpriseNoMatch: function () {
       // Here we first scan the single shared collection, then the shared collection. The gather must therefore be sorted.
-      let query = `FOR x IN ${singleShardCollection} FILTER x.attr FOR y IN ${sharedCollection} SORT y.attr RETURN {x, y}`;
+      let query = `FOR x IN ${singleShardCollection} FILTER x.attr FOR y IN ${shardedCollection} SORT y.attr RETURN {x, y}`;
       let result = AQL_EXPLAIN(query);
       let nodes = result.plan.nodes.filter(function (n) {
         return ["SortNode", "GatherNode"].includes(n.type);
@@ -134,7 +158,7 @@ function optimizerRuleTestSuite() {
       }
 
       // Do a satellite join with a shared collection, i.e. gather should be sorted
-      let query = `FOR x IN ${sharedCollection} FOR y IN ${satelliteCollection} FILTER x.ref == y.ref SORT x.attr RETURN {x, y}`;
+      let query = `FOR x IN ${shardedCollection} FOR y IN ${satelliteCollection} FILTER x.ref == y.ref SORT x.attr RETURN {x, y}`;
       let result = AQL_EXPLAIN(query);
       let nodes = result.plan.nodes.filter(function (n) {
         return ["SortNode", "GatherNode"].includes(n.type);
@@ -155,7 +179,7 @@ function optimizerRuleTestSuite() {
       }
 
       // Do a satellite join with a shared collection, i.e. gather should be sorted
-      let query = `FOR x IN ${sharedCollection} FOR y IN ${singleShardCollection} FILTER y.attr FOR z IN ${satelliteCollection} FILTER y.ref == z.ref SORT x.attr RETURN {x, y, z}`;
+      let query = `FOR x IN ${shardedCollection} FOR y IN ${singleShardCollection} FILTER y.attr FOR z IN ${satelliteCollection} FILTER y.ref == z.ref SORT x.attr RETURN {x, y, z}`;
       let result = AQL_EXPLAIN(query);
       let nodes = result.plan.nodes.filter(function (n) {
         return ["SortNode", "GatherNode"].includes(n.type);
@@ -178,7 +202,6 @@ function optimizerRuleTestSuite() {
       // Do a satellite join with a shared collection, i.e. gather should be sorted
       let query = `FOR x IN ${smartJoinCollection1} FOR y IN ${smartJoinCollection2} FILTER x._key == y.${smartJoinAttribute} SORT x.attr RETURN {x, y}`;
 
-      db._explain(query);
       let result = AQL_EXPLAIN(query);
       let nodes = result.plan.nodes.filter(function (n) {
         return ["SortNode", "GatherNode"].includes(n.type);
