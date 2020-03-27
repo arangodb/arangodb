@@ -172,15 +172,19 @@ RestStatus RestAgencyHandler::pollIndex(index_t start) {
           builder.add(VPackValue("result"));
           VPackObjectBuilder r(&builder);
           VPackSlice slice = res.get("result");
-          VPackSlice logs = slice.get("log");
           auto const firstIndex = slice.get("firstIndex");
           size_t first = start - slice.get("firstIndex").getNumber<uint64_t>();
           builder.add("commitIndex", slice.get("commitIndex"));
           builder.add("firstIndex", firstIndex);
-          builder.add(VPackValue("log"));
-          VPackArrayBuilder a(&builder);
-          for (size_t i = first; i < logs.length(); ++i) {
-            builder.add(logs[i]);
+          if (slice.hasKey("log")) {
+            VPackSlice logs = slice.get("log");
+            builder.add(VPackValue("log"));
+            VPackArrayBuilder a(&builder);
+            for (size_t i = first; i < logs.length(); ++i) {
+              builder.add(logs[i]);
+            }
+          } else {
+            builder.add("readDB", slice.get("readDB"));
           }
         }
         resetResponse(rest::ResponseCode::ACCEPTED);
@@ -220,30 +224,7 @@ RestStatus RestAgencyHandler::handlePoll() {
 
   // Get queryString index
   index_t index = 0;
-  if (!readValue("index", index)) { // Give it all
-    VPackBuilder tmp;
-    {
-      VPackObjectBuilder t(&tmp);
-      index = _agent->readDB(tmp);
-    }
-    VPackBuilder body;
-    {
-      VPackObjectBuilder o(&body);
-      body.add("error", VPackValue(false));
-      body.add("code", VPackValue(int(ResponseCode::OK)));
-      body.add(VPackValue("result"));
-      VPackObjectBuilder r(&body);
-      body.add("commitIndex", VPackValue(index));
-      body.add("firstIndex", VPackValue(0));
-      body.add("readDB", tmp.slice().get("agency"));
-    }
-    LOG_TOPIC("0f843", DEBUG, Logger::AGENCY)
-      << "providing readDB up to index " << index;
-    auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-    generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptionsForDump());
-    return RestStatus::DONE;
-  }
-
+  readValue("index", index);
   return pollIndex(index);
 
 }

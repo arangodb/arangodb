@@ -853,25 +853,31 @@ void Agent::advanceCommitIndex() {
 futures::Future<query_t> Agent::poll(index_t index) {
   using namespace std::chrono;
 
-  // Get current commitIndex and return a fulfilled promise
   index_t commitIndex;
+  std::vector<log_t> logs;
+  query_t readDB = nullptr;
   {
     READ_LOCKER(oLocker, _outputLock);
     commitIndex = _commitIndex;
+    if (index == 0 || index < _state.firstIndex()) {  // deliver as if index = 0
+      readDB = std::make_shared<VPackBuilder>();
+      VPackArrayBuilder r(readDB.get());
+      _readDB.get().toBuilder(*readDB, true);
+    } else if (index <= commitIndex) {   // deliver immediately all logs since index
+      logs = _state.get(index, commitIndex);
+    }
   }
 
-  if (index <= commitIndex) {
+  if (!logs.empty() || readDB != nullptr) {
     auto builder = std::make_shared<VPackBuilder>();
     {
       VPackObjectBuilder e(builder.get());
-      auto const logs = _state.get(index, commitIndex);
-      TRI_ASSERT(!logs.empty());
+      builder->add("accepted", VPackValue(true));
+      builder->add(VPackValue("result"));
+      VPackObjectBuilder r(builder.get());
+      builder->add("commitIndex", VPackValue(commitIndex));
       if (!logs.empty()) {
-        builder->add("accepted", VPackValue(true));
-        builder->add(VPackValue("result"));
-        VPackObjectBuilder e(builder.get());
         builder->add("firstIndex", VPackValue(logs.front().index));
-        builder->add("commitIndex", VPackValue(logs.back().index));
         builder->add(VPackValue("log"));
         VPackArrayBuilder ls(builder.get());
         for (auto const& i : logs) {
@@ -879,11 +885,14 @@ futures::Future<query_t> Agent::poll(index_t index) {
           builder->add("index", VPackValue(i.index));
           builder->add("query", VPackSlice(i.entry->data()));
         }
+      } else {
+        builder->add("firstIndex", VPackValue(0));
+        builder->add("readDB", readDB->slice()[0]);
       }
     }
     return futures::makeFuture(std::move(builder));
   }
-    
+
   std::lock_guard guard(_promLock);
 
   auto res = _promises.try_emplace(
