@@ -82,17 +82,17 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
     std::string const& val_str = _request->value(name, found);
 
     if (!found) {
-      LOG_TOPIC("f4732", DEBUG, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
+      LOG_TOPIC("f4723", DEBUG, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
       return false;
     } else {
       try {
         val = stp<T>::convert(val_str);
       } catch (std::invalid_argument const&) {
-        LOG_TOPIC("c7aeb", WARN, Logger::AGENCY) << "Value for query string "
+        LOG_TOPIC("c7abe", WARN, Logger::AGENCY) << "Value for query string "
                                         << name << " cannot be converted to integral type";
         return false;
       } catch (std::out_of_range const&) {
-        LOG_TOPIC("59881", WARN, Logger::AGENCY)
+        LOG_TOPIC("59818", WARN, Logger::AGENCY)
             << "Value for query string " << name
             << " does not fit into range of integral type";
         return false;
