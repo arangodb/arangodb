@@ -54,7 +54,7 @@ struct ValidatorBase {
   virtual ~ValidatorBase() = default;
 
   // Validation function as it should be used in the logical collection or storage engine.
-  Result validate(VPackSlice new_, VPackSlice old_, bool isInsert, VPackOptions const*) const;
+  Result validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert, VPackOptions const*) const;
 
   // Validate a single document in the specialized class ignoring the the level.
   // This version is used in the implementations of AQL Functions.
