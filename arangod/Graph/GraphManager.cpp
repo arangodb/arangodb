@@ -551,14 +551,13 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
 
   // II. Validate graph
   // a) Initial Validation
-  if (existentDocumentCollections.empty()) {
-  } else {
+  if (!existentDocumentCollections.empty()) {
     for (auto const& col : existentDocumentCollections) {
       graph->ensureInitial(*col);
     }
   }
 
-  // b) Enterprise Sharding
+    // b) Enterprise Sharding
 #ifdef USE_ENTERPRISE
   {
     Result res = ensureEnterpriseCollectionSharding(graph, waitForSync,
