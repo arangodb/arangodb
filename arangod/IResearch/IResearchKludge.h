@@ -37,6 +37,8 @@ namespace arangodb {
 namespace iresearch {
 namespace kludge {
 
+const std::string primarySortColumnName{ "" };
+
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
 

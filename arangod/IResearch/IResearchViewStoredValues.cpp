@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/AttributeNameParser.h"
+#include "IResearchCommon.h"
 #include "IResearchViewStoredValues.h"
 #include <unordered_map>
 
@@ -41,16 +42,6 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
 
 const char* FIELD_COLUMN_PARAM = "field";
 const char* COMPRESSION_COLUMN_PARAM = "compression";
-const std::unordered_map<
-  std::string,
-  arangodb::iresearch::IResearchViewStoredValues::ColumnCompression> COMPRESSION_CONVERT_MAP = {
-{ "lz4", arangodb::iresearch::IResearchViewStoredValues::ColumnCompression::LZ4 },
-{ "none", arangodb::iresearch::IResearchViewStoredValues::ColumnCompression::NONE },
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-{ "test", arangodb::iresearch::IResearchViewStoredValues::ColumnCompression::TEST },
-#endif
-};
-
 }
 
 namespace arangodb {
@@ -70,15 +61,9 @@ bool IResearchViewStoredValues::toVelocyPack(velocypack::Builder& builder) const
         builder.add(VPackValue(field.first));
       }
     }
-    irs::string_ref encodedCompression;
-    for (auto it : COMPRESSION_CONVERT_MAP) {
-      if (it.second == column.compression) {
-        encodedCompression = it.first;
-        break;
-      }
-    }
-    TRI_ASSERT(encodedCompression.size());
-    if (ADB_LIKELY(encodedCompression.size())) {
+    irs::string_ref encodedCompression = columnCompressionToString(column.compression);
+    TRI_ASSERT(!encodedCompression.null());
+    if (ADB_LIKELY(!encodedCompression.null())) {
       addStringRef(builder, COMPRESSION_COLUMN_PARAM, encodedCompression);
     }
   }
@@ -223,10 +208,9 @@ bool IResearchViewStoredValues::fromVelocyPack(
           if (columnSlice.hasKey(COMPRESSION_COLUMN_PARAM)) {
             auto compressionKey = columnSlice.get(COMPRESSION_COLUMN_PARAM);
             if (ADB_LIKELY(compressionKey.isString())) {
-              auto decodedCompression = COMPRESSION_CONVERT_MAP.find(
-                                            iresearch::getStringRef(compressionKey));
-              if (ADB_LIKELY(decodedCompression != COMPRESSION_CONVERT_MAP.end())) {
-                compression = decodedCompression->second;
+              auto decodedCompression = columnCompressionFromString(iresearch::getStringRef(compressionKey));
+              if (ADB_LIKELY(decodedCompression != ColumnCompression::INVALID)) {
+                compression = decodedCompression;
               } else {
                 errorField = "[" + std::to_string(idx) + "].compression";
                 return false;

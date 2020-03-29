@@ -28,6 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include "VelocyPackHelper.h"
+#include "IResearchCompression.h"
 #include <unordered_set>
 
 namespace arangodb {
@@ -41,14 +42,6 @@ namespace iresearch {
 class IResearchViewStoredValues {
  public:
   static const char FIELDS_DELIMITER;
-
-  enum class ColumnCompression {
-    NONE = 0,
-    LZ4
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-    ,TEST = 999
-#endif
-  };
 
   struct StoredColumn {
     std::string name;
