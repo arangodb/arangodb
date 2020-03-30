@@ -154,6 +154,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
  private:
 
+  void logsForTrigger();
+
   /// @brief clear expired polls registered by Agent::poll
   ///        if qu is nullptr, we're resigning.
   ///        Caller must have _promLock!

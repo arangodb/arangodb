@@ -375,6 +375,40 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
   }
 }
 
+void Agent::logsForTrigger() {
+  // Wake up poll rest handlers:
+  // Get everything from _lowestPromise
+  // Create one builder pass shared pointer to all rest handlers
+  // Every resthandler takes, what it needs.
+  // Delete all promises.
+  // Reset _lowestPromise.
+  std::lock_guard lck(_promLock);
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder e(builder.get());
+    auto const logs = _state.get(_lowestPromise, _commitIndex);
+
+    TRI_ASSERT(!logs.empty());
+    if (!logs.empty()) {
+      builder->add("accepted", VPackValue(true));
+      builder->add(VPackValue("result"));
+      VPackObjectBuilder e(builder.get());
+      builder->add("firstIndex", VPackValue(logs.front().index));
+      builder->add("commitIndex", VPackValue(logs.back().index));
+      builder->add(VPackValue("log"));
+      VPackArrayBuilder ls(builder.get());
+      for (auto const& i : logs) {
+        VPackObjectBuilder l(builder.get());
+        builder->add("index", VPackValue(i.index));
+        builder->add("query", VPackSlice(i.entry->data()));
+      }
+    }
+  }
+  triggerPollsNoLock(builder);
+  _lowestPromise = std::numeric_limits<index_t>::max();
+}
+
+
 /// Followers' append entries
 priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leaderId,
                                            index_t prevIndex, term_t prevTerm,
@@ -425,7 +459,11 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
           << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
-        _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+        auto const tmp = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+        if (tmp > _commitIndex) {
+          logsForTrigger();
+        }
+        _commitIndex = tmp;
       }
       return priv_rpc_ret_t(true, t);
     } else {
@@ -450,7 +488,11 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
   {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+    auto const tmp = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+    if (tmp > _commitIndex) {
+      logsForTrigger();
+    }
+    _commitIndex = tmp;
     _waitForCV.broadcast();
     if (leaderCommitIndex >= _state.nextCompactionAfter() &&
         payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
@@ -809,38 +851,7 @@ void Agent::advanceCommitIndex() {
       // Wake up write rest handlers:
       _waitForCV.broadcast();
 
-      // Wake up poll rest handlers:
-      // Get everything from _lowestPromise
-      // Create one builder pass shared pointer to all rest handlers
-      // Every resthandler takes, what it needs.
-      // Delete all promises.
-      // Reset _lowestPromise.
-      {
-        std::lock_guard lck(_promLock);
-        auto builder = std::make_shared<VPackBuilder>();
-        {
-          VPackObjectBuilder e(builder.get());
-          auto const logs = _state.get(_lowestPromise, _commitIndex);
-
-          TRI_ASSERT(!logs.empty());
-          if (!logs.empty()) {
-            builder->add("accepted", VPackValue(true));
-            builder->add(VPackValue("result"));
-            VPackObjectBuilder e(builder.get());
-            builder->add("firstIndex", VPackValue(logs.front().index));
-            builder->add("commitIndex", VPackValue(logs.back().index));
-            builder->add(VPackValue("log"));
-            VPackArrayBuilder ls(builder.get());
-            for (auto const& i : logs) {
-              VPackObjectBuilder l(builder.get());
-              builder->add("index", VPackValue(i.index));
-              builder->add("query", VPackSlice(i.entry->data()));
-            }
-          }
-        }
-        triggerPollsNoLock(builder);
-        _lowestPromise = std::numeric_limits<index_t>::max();
-      }
+      logsForTrigger();
 
       if (_commitIndex >= _state.nextCompactionAfter()) {
         _compactor.wakeUp();
@@ -1483,7 +1494,10 @@ void Agent::run() {
                                 // reach the end of our log
     }
 
-    // Leader working only
+    // Clear expired long polls
+    clearExpiredPolls();
+
+      // Leader working only
     if (leading()) {
       if (1 == getPrepareLeadership()) {
         // Skip the usual work and the waiting such that above preparation
