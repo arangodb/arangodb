@@ -1120,7 +1120,7 @@ arangodb::Result PhysicalCollectionMock::insert(
       _documents.emplace(key, DocElement{builder.steal(), ++_lastDocumentId});
   TRI_ASSERT(didInsert);
 
-  result.setUnmanaged(ref->second.vptr());
+  result.setManaged(ref->second.vptr());
   TRI_ASSERT(result.revisionId() == revisionId);
 
   for (auto& index : _indexes) {
@@ -1257,7 +1257,7 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
   before();
   auto it = _documents.find(key);
   if (it != _documents.end()) {
-    result.setUnmanaged(it->second.vptr());
+    result.setManaged(it->second.vptr());
     return arangodb::Result(TRI_ERROR_NO_ERROR);
   }
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -1270,7 +1270,7 @@ bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,
   for (auto const& entry : _documents) {
     auto& doc = entry.second;
     if (doc.docId() == token) {
-      result.setUnmanaged(doc.vptr());
+      result.setManaged(doc.vptr());
       return true;
     }
   }
@@ -1303,7 +1303,7 @@ arangodb::Result PhysicalCollectionMock::remove(
   arangodb::velocypack::StringRef keyRef{key};
   auto old = _documents.find(keyRef);
   if (old != _documents.end()) {
-    previous.setUnmanaged(old->second.vptr());
+    previous.setManaged(old->second.vptr());
     _graveyard.emplace_back(old->second.rawData());
     TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(old->second.data()));
     _documents.erase(keyRef);
@@ -1394,7 +1394,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     }
     auto nextBuffer = builder.steal();
     // Set previous
-    previous.setUnmanaged(it->second.vptr());
+    previous.setManaged(it->second.vptr());
     TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc));
 
     // swap with new data
@@ -1403,7 +1403,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     // Put the now old buffer into the graveyour for previous to stay valid
     _graveyard.emplace_back(nextBuffer);
 
-    result.setUnmanaged(it->second.vptr());
+    result.setManaged(it->second.vptr());
     TRI_ASSERT(result.revisionId() != previous.revisionId());
     return TRI_ERROR_NO_ERROR;
   }
@@ -1541,13 +1541,6 @@ arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_c
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 
   return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock view persisted OK
-}
-
-void StorageEngineMock::getViewProperties(TRI_vocbase_t& vocbase,
-                                          arangodb::LogicalView const& view,
-                                          VPackBuilder& builder) {
-  before();
-  // NOOP
 }
 
 TRI_voc_tick_t StorageEngineMock::currentTick() const {
@@ -1767,10 +1760,6 @@ std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
 
 void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
   TRI_ASSERT(false);
-}
-
-void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
-  // NOOP
 }
 
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {

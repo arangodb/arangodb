@@ -874,12 +874,12 @@ void transaction::Methods::buildDocumentIdentity(
     builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));
   }
   if (oldDoc != nullptr) {
-    builder.add(VPackValue("old"));
-    oldDoc->addToBuilder(builder, true);
+    builder.add(VPackValue(StaticStrings::Old));
+    oldDoc->addToBuilder(builder);
   }
   if (newDoc != nullptr) {
-    builder.add(VPackValue("new"));
-    newDoc->addToBuilder(builder, true);
+    builder.add(VPackValue(StaticStrings::New));
+    newDoc->addToBuilder(builder);
   }
   builder.close();
 }
@@ -1186,7 +1186,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     return res;
   }
 
-  mmdr->addToBuilder(result, true);
+  mmdr->addToBuilder(result);
   return Result(TRI_ERROR_NO_ERROR);
 }
 
@@ -1319,7 +1319,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     }
 
     if (!options.silent) {
-      result.addToBuilder(resultBuilder, true);
+      result.addToBuilder(resultBuilder);
     } else if (isMultiple) {
       resultBuilder.add(VPackSlice::nullSlice());
     }

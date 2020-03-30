@@ -55,8 +55,6 @@ class ManagedDocumentResult {
     other.clear();
   }
 
-  /// @brief store pointer to a valid document, sets revisionid
-  void setUnmanaged(uint8_t const* vpack);
   /// @brief copy in a valid document, sets revisionid
   void setManaged(uint8_t const* vpack);
 
@@ -93,11 +91,7 @@ class ManagedDocumentResult {
     return (_vpack == nullptr && _string.empty());
   }
 
-  inline bool canUseInExternal() const noexcept {
-    return _vpack != nullptr;
-  }
-
-  void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
+  void addToBuilder(velocypack::Builder& builder) const;
 
  private:
   std::string _string;

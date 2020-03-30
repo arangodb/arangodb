@@ -169,8 +169,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // care of error handling the return values will be the usual  TRI_ERROR_*
   // codes.
 
-  virtual void waitForSyncTick(TRI_voc_tick_t tick) = 0;
-
   /// @brief return a list of the currently open WAL files
   virtual std::vector<std::string> currentWalFiles() const = 0;
 
@@ -293,11 +291,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // to "createCview" returns
   virtual arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
                                       arangodb::LogicalView const& view) = 0;
-
-  // asks storage engine to put some view
-  // specific properties into a specified builder
-  virtual void getViewProperties(TRI_vocbase_t& vocbase, LogicalView const& view,
-                                 VPackBuilder& builder) = 0;
 
   // asks the storage engine to drop the specified view and persist the
   // deletion info. Note that physical deletion of the view data must not

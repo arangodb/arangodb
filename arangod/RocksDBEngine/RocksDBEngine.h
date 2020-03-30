@@ -209,9 +209,6 @@ class RocksDBEngine final : public StorageEngine {
   // database, collection and index management
   // -----------------------------------------
 
-  // intentionally empty, not useful for this type of engine
-  void waitForSyncTick(TRI_voc_tick_t) override {}
-
   /// @brief return a list of the currently open WAL files
   std::vector<std::string> currentWalFiles() const override;
 
@@ -262,12 +259,6 @@ class RocksDBEngine final : public StorageEngine {
 
   arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
                               arangodb::LogicalView const& view) override;
-
-  virtual void getViewProperties(TRI_vocbase_t& /*vocbase*/,
-                                 LogicalView const& /*view*/, velocypack::Builder& /*builder*/
-                                 ) override {
-    // does nothing
-  }
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
 

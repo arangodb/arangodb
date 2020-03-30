@@ -130,7 +130,7 @@ void DatabaseManagerThread::run() {
           auto oldLists = databaseFeature._databasesLists.load();
           decltype(oldLists) newLists = nullptr;
           try {
-            newLists = new DatabasesLists();
+            newLists = new DatabaseFeature::DatabasesLists();
             newLists->_databases = oldLists->_databases;
             for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
               if (vocbase != database) {

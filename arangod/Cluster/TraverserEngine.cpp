@@ -263,7 +263,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
         if (res.ok()) {
           // FOUND short circuit.
           builder.add(v);
-          mmdr.addToBuilder(builder, true);
+          mmdr.addToBuilder(builder);
           break;
         } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // We are in a very bad condition here...
@@ -383,7 +383,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
           // FOUND short circuit.
           read++;
           builder.add(v);
-          mmdr.addToBuilder(builder, true);
+          mmdr.addToBuilder(builder);
           break;
         } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // We are in a very bad condition here...
