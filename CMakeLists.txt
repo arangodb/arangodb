@@ -50,7 +50,7 @@ option(VERBOSE "be verbose about flags used" OFF)
 option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
 
 # use strictly required OpenSSL version (from ./VERSIONS file)
-option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" ON)
+option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" OFF)
 
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
@@ -280,6 +280,12 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
+# enable dtrace
+option(USE_DTRACE "enable dtrace probes" OFF)
+if (USE_DTRACE)
+  add_definitions("-DUSE_DTRACE=1")
+endif ()
+
 # enable enterprise features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
@@ -293,6 +299,10 @@ option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replicati
 if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
+
+# we want the following definitions to be in effect for both rocksdb and arangodb
+add_definitions("-DNROCKSDB_THREAD_STATUS")
+add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
 
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")

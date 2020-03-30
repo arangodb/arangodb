@@ -142,6 +142,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     UPSTREAM,
     // We are done with a subquery, we need to pass forward ShadowRows
     SHADOWROWS,
+    // We have passed the shadowRows and check if we can continue with the next subquery
+    NEXTSUBQUERY,
     // Locally done, ready to return, will set state to resetted
     DONE
   };
@@ -258,7 +260,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
   std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
-      AqlCallStack& stack, AqlCallType const& aqlCall);
+      AqlCallStack& stack, AqlCallType const& aqlCall, bool wasCalledWithContinueCall);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);
@@ -309,12 +311,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] ExecutionState fetchShadowRowInternal();
 
   // Allocate an output block and install a call in it
-  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call)
+  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
       -> std::unique_ptr<OutputAqlItemRow>;
 
-  // Ensure that we have an output block of the desired dimenstions
+  // Ensure that we have an output block of the desired dimensions
   // Will as a side effect modify _outputItemRow
-  void ensureOutputBlock(AqlCall&& call);
+  void ensureOutputBlock(AqlCall&& call, DataRange const& inputRange);
 
   // Compute the next state based on the given call.
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
@@ -323,7 +325,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Executor is done, we need to handle ShadowRows of subqueries.
   // In most executors they are simply copied, in subquery executors
   // there needs to be actions applied here.
-  [[nodiscard]] auto shadowRowForwarding() -> ExecState;
+  [[nodiscard]] auto shadowRowForwarding(AqlCallStack& stack) -> ExecState;
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
@@ -340,20 +342,14 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
                                                    SkipResult& skipResult) -> ExecState;
 
-  /**
-   * @brief Transition to the next state after shadowRows
-   *
-   * @param state the state returned by the getShadowRowCall
-   * @param range the current data range
-   * @return ExecState The next state
-   */
-  [[nodiscard]] auto nextStateAfterShadowRows(ExecutorState const& state,
-                                              DataRange const& range) const
-      noexcept -> ExecState;
-
   void initOnce();
 
   [[nodiscard]] auto executorNeedsCall(AqlCallType& call) const noexcept -> bool;
+
+  auto memoizeCall(AqlCall const& call, bool wasCalledWithContinueCall) noexcept -> void;
+
+  [[nodiscard]] auto createUpstreamCall(AqlCall const& call, bool wasCalledWithContinueCall)
+      -> AqlCallList;
 
  private:
   /**
@@ -390,6 +386,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ExecState _execState;
 
   AqlCallType _upstreamRequest;
+
+  std::optional<AqlCallType> _defaultUpstreamRequest{std::nullopt};
+
+  bool _hasMemoizedCall{false};
 
   AqlCall _clientRequest;
 

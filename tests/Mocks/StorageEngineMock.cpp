@@ -141,7 +141,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
 
 class EdgeIndexMock final : public arangodb::Index {
  public:
-  static std::shared_ptr<arangodb::Index> make(TRI_idx_iid_t iid,
+  static std::shared_ptr<arangodb::Index> make(arangodb::IndexId iid,
                                                arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition) {
     auto const typeSlice = definition.get("type");
@@ -309,7 +309,7 @@ class EdgeIndexMock final : public arangodb::Index {
     return matcher.specializeOne(this, node, reference);
   }
 
-  EdgeIndexMock(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection)
+  EdgeIndexMock(arangodb::IndexId iid, arangodb::LogicalCollection& collection)
       : arangodb::Index(
             iid, collection, arangodb::StaticStrings::IndexNameEdge,
             {{arangodb::basics::AttributeName(arangodb::StaticStrings::FromString, false)},
@@ -691,7 +691,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
 
 class HashIndexMock final : public arangodb::Index {
  public:
-  static std::shared_ptr<arangodb::Index> make(TRI_idx_iid_t iid,
+  static std::shared_ptr<arangodb::Index> make(arangodb::IndexId iid,
                                                arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition) {
     auto const typeSlice = definition.get("type");
@@ -883,7 +883,8 @@ class HashIndexMock final : public arangodb::Index {
                                                    std::move(keys));
   }
 
-  HashIndexMock(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSlice const& slice)
+  HashIndexMock(arangodb::IndexId iid, arangodb::LogicalCollection& collection,
+                VPackSlice const& slice)
       : arangodb::Index(iid, collection, slice), _hashData(_fields) {}
 
   /// @brief the hash table for data
@@ -960,20 +961,20 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   std::shared_ptr<arangodb::Index> index;
 
   if (0 == type.compare("edge")) {
-    index = EdgeIndexMock::make(id, _logicalCollection, info);
+    index = EdgeIndexMock::make(arangodb::IndexId{id}, _logicalCollection, info);
   } else if (0 == type.compare("hash")) {
-    index = HashIndexMock::make(id, _logicalCollection, info);
+    index = HashIndexMock::make(arangodb::IndexId{id}, _logicalCollection, info);
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
     try {
       auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {
         auto& factory =
             server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
-        index = factory.instantiate(_logicalCollection, info, id, false);
+        index = factory.instantiate(_logicalCollection, info, arangodb::IndexId{id}, false);
       } else {
         auto& factory =
             server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-        index = factory.instantiate(_logicalCollection, info, id, false);
+        index = factory.instantiate(_logicalCollection, info, arangodb::IndexId{id}, false);
       }
     } catch (std::exception const& ex) {
       // ignore the details of all errors here
@@ -1043,7 +1044,7 @@ void PhysicalCollectionMock::deferDropCollection(
   callback(_logicalCollection);  // assume noone is using this collection (drop immediately)
 }
 
-bool PhysicalCollectionMock::dropIndex(TRI_idx_iid_t iid) {
+bool PhysicalCollectionMock::dropIndex(arangodb::IndexId iid) {
   before();
 
   for (auto itr = _indexes.begin(), end = _indexes.end(); itr != end; ++itr) {
@@ -1211,7 +1212,7 @@ bool PhysicalCollectionMock::addIndex(std::shared_ptr<arangodb::Index> idx) {
     }
   }
 
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id.id()));
 
   _indexes.emplace(idx);
   return true;
@@ -1626,7 +1627,7 @@ void StorageEngineMock::getDatabases(arangodb::velocypack::Builder& result) {
   arangodb::velocypack::Builder system;
 
   system.openObject();
-  system.add("name", arangodb::velocypack::Value(TRI_VOC_SYSTEM_DATABASE));
+  system.add("name", arangodb::velocypack::Value(arangodb::StaticStrings::SystemDatabase));
   system.close();
 
   // array expected

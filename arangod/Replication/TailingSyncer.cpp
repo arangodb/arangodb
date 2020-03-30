@@ -334,7 +334,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
-    if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
+    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
       LOG_TOPIC("0a3a4", WARN, Logger::REPLICATION)
           << "seeing database creation marker "
           << "for an already existing db. Dropping db...";
@@ -357,7 +357,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   } else if (type == REPLICATION_DATABASE_DROP) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
-    if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
+    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
       // abort all ongoing transactions for the database to be dropped
       abortOngoingTransactions(name);
 
@@ -1448,13 +1448,13 @@ void TailingSyncer::getLocalState() {
   // a _state.master.serverId value of 0 may occur if no proper connection could
   // be established to the master initially
   if (_state.master.serverId != _applier->_state._serverId &&
-      _applier->_state._serverId != 0 && _state.master.serverId != 0) {
+      _applier->_state._serverId.isSet() && _state.master.serverId.isSet()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_MASTER_CHANGE,
         std::string(
             "encountered wrong master id in replication state file. found: ") +
-            StringUtils::itoa(_state.master.serverId) +
-            ", expected: " + StringUtils::itoa(_applier->_state._serverId));
+            StringUtils::itoa(_state.master.serverId.id()) +
+            ", expected: " + StringUtils::itoa(_applier->_state._serverId.id()));
   }
 }
 

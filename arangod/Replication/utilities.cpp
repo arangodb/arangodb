@@ -113,8 +113,8 @@ arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& conn
 
   // validate all values we got
   std::string const masterIdString(serverId.copyString());
-  TRI_server_id_t const masterId = arangodb::basics::StringUtils::uint64(masterIdString);
-  if (masterId == 0) {
+  arangodb::ServerId const masterId{arangodb::basics::StringUtils::uint64(masterIdString)};
+  if (masterId.empty()) {
     // invalid master id
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("invalid server id in response") + endpointString);
@@ -157,10 +157,11 @@ arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& conn
   master.engine = engineString;
 
   LOG_TOPIC("6c920", INFO, arangodb::Logger::REPLICATION)
-      << "connected to master at " << master.endpoint << ", id " << master.serverId
-      << ", version " << master.majorVersion << "." << master.minorVersion
-      << ", last log tick " << master.lastLogTick << ", last uncommitted log tick "
-      << master.lastUncommittedLogTick << ", engine " << master.engine;
+      << "connected to master at " << master.endpoint << ", id "
+      << master.serverId.id() << ", version " << master.majorVersion << "."
+      << master.minorVersion << ", last log tick " << master.lastLogTick
+      << ", last uncommitted log tick " << master.lastUncommittedLogTick
+      << ", engine " << master.engine;
 
   return Result();
 }
@@ -173,7 +174,7 @@ std::string const ReplicationUrl = "/_api/replication";
 
 Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& applierConfig)
     : _endpointString{applierConfig._endpoint},
-      _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId())},
+      _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId().id())},
       _clientInfo{applierConfig._clientInfoString} {
   std::unique_ptr<httpclient::GeneralClientConnection> connection;
   std::unique_ptr<Endpoint> endpoint{Endpoint::clientFactory(_endpointString)};
@@ -539,7 +540,7 @@ MasterInfo::MasterInfo(ReplicationApplierConfiguration const& applierConfig) {
 Result MasterInfo::getState(replutils::Connection& connection, bool isChildSyncer) {
   if (isChildSyncer) {
     TRI_ASSERT(endpoint.empty());
-    TRI_ASSERT(serverId != 0);
+    TRI_ASSERT(serverId.isSet());
     TRI_ASSERT(majorVersion != 0);
     return Result();
   }
@@ -588,7 +589,7 @@ Result MasterInfo::getState(replutils::Connection& connection, bool isChildSynce
 }
 
 bool MasterInfo::simulate32Client() const {
-  TRI_ASSERT(!endpoint.empty() && serverId != 0 && majorVersion != 0);
+  TRI_ASSERT(!endpoint.empty() && serverId.isSet() && majorVersion != 0);
   bool is33 = (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 3));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // allows us to test the old replication API

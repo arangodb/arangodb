@@ -242,6 +242,7 @@ std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::Satellite("satellite");
+std::string const StaticStrings::SyncByRevision("syncByRevision");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Validation("validation");
@@ -330,6 +331,8 @@ std::string const StaticStrings::AqlRemoteSkipped("skipped");
 std::string const StaticStrings::AqlRemoteState("state");
 std::string const StaticStrings::AqlRemoteStateDone("done");
 std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
+std::string const StaticStrings::AqlCallListSpecific("specifics");
+std::string const StaticStrings::AqlCallListDefault("default");
 
 // validation
 std::string const StaticStrings::ValidatorLevelNone("none");

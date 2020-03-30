@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "MMFiles/MMFilesDatafileStatisticsContainer.h"
+#include "VocBase/Identifiers/FileId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -55,31 +56,31 @@ class MMFilesDatafileStatistics {
   MMFilesDatafileStatistics::CompactionStats getStats();
 
   /// @brief create (empty) statistics for a datafile
-  void create(TRI_voc_fid_t);
+  void create(FileId);
 
   /// @brief create statistics for a datafile, using the stats provided
-  void create(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&);
+  void create(FileId, MMFilesDatafileStatisticsContainer const&);
 
   /// @brief remove statistics for a datafile
-  void remove(TRI_voc_fid_t);
+  void remove(FileId);
 
   /// @brief merge statistics for a datafile
-  void update(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&, bool warn);
+  void update(FileId, MMFilesDatafileStatisticsContainer const&, bool warn);
 
   /// @brief merge statistics for a datafile, by copying the stats from another
-  void update(TRI_voc_fid_t fid, TRI_voc_fid_t src, bool warn);
+  void update(FileId fid, FileId src, bool warn);
 
   /// @brief replace statistics for a datafile
-  void replace(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&, bool warn);
+  void replace(FileId, MMFilesDatafileStatisticsContainer const&, bool warn);
 
   /// @brief increase dead stats for a datafile, if it exists
-  void increaseDead(TRI_voc_fid_t, int64_t, int64_t);
+  void increaseDead(FileId, int64_t, int64_t);
 
   /// @brief increase number of uncollected entries
-  void increaseUncollected(TRI_voc_fid_t, int64_t);
+  void increaseUncollected(FileId, int64_t);
 
   /// @brief return a copy of the datafile statistics for a file
-  MMFilesDatafileStatisticsContainer get(TRI_voc_fid_t);
+  MMFilesDatafileStatisticsContainer get(FileId);
 
   /// @brief return aggregated datafile statistics for all files
   MMFilesDatafileStatisticsContainer all();
@@ -89,7 +90,7 @@ class MMFilesDatafileStatistics {
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief per-file statistics
-  std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer*> _stats;
+  std::unordered_map<FileId, MMFilesDatafileStatisticsContainer*> _stats;
 
   // @brief per-collection runtime statistics
   arangodb::basics::ReadWriteLock _statisticsLock;

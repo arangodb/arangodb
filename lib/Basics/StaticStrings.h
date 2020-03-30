@@ -224,6 +224,7 @@ class StaticStrings {
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
+  static std::string const SyncByRevision;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Validation;
   static std::string const WriteConcern;
@@ -304,6 +305,8 @@ class StaticStrings {
   static std::string const AqlRemoteState;
   static std::string const AqlRemoteStateDone;
   static std::string const AqlRemoteStateHasmore;
+  static std::string const AqlCallListSpecific;
+  static std::string const AqlCallListDefault;
 
   // validation
   static std::string const ValidatorLevelNone;

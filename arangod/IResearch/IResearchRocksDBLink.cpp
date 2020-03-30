@@ -41,8 +41,7 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchRocksDBLink::IResearchRocksDBLink(TRI_idx_iid_t iid,
-                                           arangodb::LogicalCollection& collection)
+IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, arangodb::LogicalCollection& collection)
     : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
                    RocksDBColumnFamily::invalid(), false),
       IResearchLink(iid, collection) {
@@ -56,10 +55,11 @@ void IResearchRocksDBLink::toVelocyPack( // generate definition
     std::underlying_type<arangodb::Index::Serialize>::type flags // definition flags
 ) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
-      std::string("failed to generate link definition for arangosearch view RocksDB link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+        TRI_ERROR_BAD_PARAMETER,              // code
+        std::string("failed to generate link definition for arangosearch view "
+                    "RocksDB link '") +
+            std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
   auto forPersistence = // definition for persistence
@@ -68,10 +68,11 @@ void IResearchRocksDBLink::toVelocyPack( // generate definition
   builder.openObject();
 
   if (!properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failed to generate link definition for arangosearch view RocksDB link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+        TRI_ERROR_INTERNAL,                   // code
+        std::string("failed to generate link definition for arangosearch view "
+                    "RocksDB link '") +
+            std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals)) {
@@ -180,7 +181,7 @@ bool IResearchRocksDBLink::IndexFactory::equal(arangodb::velocypack::Slice const
 
 std::shared_ptr<arangodb::Index> IResearchRocksDBLink::IndexFactory::instantiate(
     arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id, bool /*isClusterConstructor*/) const {
+    IndexId id, bool /*isClusterConstructor*/) const {
   auto link = std::shared_ptr<arangodb::iresearch::IResearchRocksDBLink>(
       new arangodb::iresearch::IResearchRocksDBLink(id, collection));
   auto res = link->init(definition, RocksDBLinkInitCallback);

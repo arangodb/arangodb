@@ -160,11 +160,23 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPat
       _resultCode(TRI_ERROR_NO_ERROR),
       _intermediateSet(false),
       _intermediate() {
+  // cppcheck-suppress *
   _forwardCursor = _options.buildCursor(false);
+  // cppcheck-suppress *
   _backwardCursor = _options.buildCursor(true);
 }
 
 AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() = default;
+
+void AttributeWeightShortestPathFinder::clear() {
+  options().cache()->clear();
+  _highscoreSet = false;
+  _highscore = 0;
+  _bingo = false;
+  _resultCode = TRI_ERROR_NO_ERROR;
+  _intermediateSet = false;
+  _intermediate = arangodb::velocypack::StringRef{};
+}
 
 bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice const& st,
                                                      arangodb::velocypack::Slice const& ta,
@@ -275,18 +287,17 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
 }
 
 void AttributeWeightShortestPathFinder::inserter(
-  std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
-  std::vector<std::unique_ptr<Step>>& result,
-  arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
-  double currentWeight, EdgeDocumentToken&& edge) {
-
-  auto [cand, emplaced] = candidates.try_emplace(
-    t,
-    arangodb::lazyConstruct([&]{
-    result.emplace_back(std::make_unique<Step>(t, s, currentWeight, std::move(edge)));
-      return result.size() - 1;
-    })
-  );
+    std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
+    std::vector<std::unique_ptr<Step>>& result,
+    arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
+    double currentWeight, EdgeDocumentToken&& edge) {
+  auto [cand, emplaced] =
+      candidates.try_emplace(t, arangodb::lazyConstruct([&] {
+                               result.emplace_back(
+                                   std::make_unique<Step>(t, s, currentWeight,
+                                                          std::move(edge)));
+                               return result.size() - 1;
+                             }));
 
   if (!emplaced) {
     // Compare weight

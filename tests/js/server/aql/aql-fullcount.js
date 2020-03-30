@@ -28,15 +28,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
 
 function optimizerFullcountTestSuite () {
-  var c;
+  let c;
 
   return {
     setUpAll : function () {
@@ -254,11 +250,38 @@ function optimizerFullcountTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+function optimizerFullcountQueryTestSuite () {
+  let c;
+
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection");
+      c.ensureIndex({ type: "geo", fields: ["location"] }); 
+      c.insert([
+        { location: [2, 0] },
+        { location: [3, 0] },
+        { location: [4, 0] },
+        { location: [6, 0] }
+      ]); 
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+    testQueryRegression : function () {
+      let result = db._query({ query: "FOR e IN " + c.name() + " SORT DISTANCE(e.location[0], e.location[1], 0, 0) LIMIT 2, 2 RETURN e", options: { fullCount: true }}).toArray();
+      assertEqual(2, result.length);
+      assertEqual([4, 0], result[0].location);
+      assertEqual([6, 0], result[1].location);
+    },
+    
+  };
+}
 
 jsunity.run(optimizerFullcountTestSuite);
+jsunity.run(optimizerFullcountQueryTestSuite);
 
 return jsunity.done();
 

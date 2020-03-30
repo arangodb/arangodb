@@ -119,23 +119,27 @@ class DeSerializeAqlCallStackTest : public ::testing::TestWithParam<AqlCallStack
   void SetUp() override { aqlCallStack = GetParam(); }
 
  protected:
-  AqlCallStack aqlCallStack{AqlCall{}};
+  AqlCallStack aqlCallStack{AqlCallList{AqlCall{}}};
 };
 
 auto const testingAqlCallStacks = ::testing::ValuesIn(std::array{
-    AqlCallStack{AqlCall{}},
-    AqlCallStack{AqlCall{3, false, AqlCall::Infinity{}}},
-    AqlCallStack{AqlCallStack{AqlCall{}}, AqlCall{3, false, AqlCall::Infinity{}}},
-    AqlCallStack{AqlCallStack{AqlCallStack{AqlCall{1}}, AqlCall{2}}, AqlCall{3}},
-    AqlCallStack{AqlCallStack{AqlCallStack{AqlCall{3}}, AqlCall{2}}, AqlCall{1}},
-});
+    AqlCallStack{AqlCallList{AqlCall{}}},
+    AqlCallStack{AqlCallList{AqlCall{3, false, AqlCall::Infinity{}}}},
+    AqlCallStack{AqlCallStack{AqlCallList{AqlCall{}}},
+                 AqlCallList{AqlCall{3, false, AqlCall::Infinity{}}}},
+    AqlCallStack{AqlCallStack{AqlCallStack{AqlCallList{AqlCall{1}}}, AqlCallList{AqlCall{2}}},
+                 AqlCallList{AqlCall{3}}},
+    AqlCallStack{AqlCallStack{AqlCallStack{AqlCallList{AqlCall{3}}}, AqlCallList{AqlCall{2}}},
+                 AqlCallList{AqlCall{1}}},
+    AqlCallStack{AqlCallList{AqlCall{3, false, AqlCall::Infinity{}}, AqlCall{}}},
+    AqlCallStack{AqlCallStack{AqlCallList{AqlCall{}, AqlCall{3, false, AqlCall::Infinity{}}}},
+                 AqlCallList{AqlCall{3, false, AqlCall::Infinity{}}, AqlCall{}}}});
 
 TEST_P(DeSerializeAqlCallStackTest, testSuite) {
   auto builder = velocypack::Builder{};
   aqlCallStack.toVelocyPack(builder);
 
   ASSERT_TRUE(builder.isClosed());
-
   auto const maybeDeSerializedCallStack = std::invoke([&]() {
     try {
       return AqlCallStack::fromVelocyPack(builder.slice());

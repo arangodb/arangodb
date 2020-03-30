@@ -48,13 +48,15 @@ class ShortestPathFinder {
 
   ShortestPathOptions& options() const;
 
+  virtual void clear() = 0;
+
   /// @brief return number of HTTP requests made, and reset it to 0
-  size_t getAndResetHttpRequests() { 
+  size_t getAndResetHttpRequests() {
     size_t value = _httpRequests;
     _httpRequests = 0;
     return value;
   }
-  
+
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
 
  protected:
@@ -62,7 +64,7 @@ class ShortestPathFinder {
   /// @brief The options to modify this shortest path computation
   //////////////////////////////////////////////////////////////////////////////
   ShortestPathOptions& _options;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Number of HTTP requests made
   //////////////////////////////////////////////////////////////////////////////

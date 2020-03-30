@@ -61,7 +61,8 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       } else {
         auto callSet = AqlCallSet{};
         callSet.calls.emplace_back(
-            AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
+            AqlCallSet::DepCallPair{currentDependency(),
+                                    AqlCallList{output.getClientCall()}});
         return {input.upstreamState(currentDependency()), Stats{}, callSet};
       }
     }
@@ -84,7 +85,7 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
   } else {
     auto callSet = AqlCallSet{};
     callSet.calls.emplace_back(
-        AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
+        AqlCallSet::DepCallPair{currentDependency(), AqlCallList{output.getClientCall()}});
     return {input.upstreamState(currentDependency()), Stats{}, callSet};
   }
 }
@@ -92,6 +93,10 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
   auto skipped = size_t{0};
+
+  if (done()) {
+    return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
+  }
 
   if (call.getOffset() > 0) {
     skipped = input.skipForDependency(currentDependency(), call.getOffset());
@@ -108,15 +113,15 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   // Here we are either done, or currentDependency() still could produce more
   if (done()) {
     return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
-  } else {
-    // If we're not done skipping, we can just request the current clientcall
-    // from upstream
-    auto callSet = AqlCallSet{};
-    if (call.needSkipMore()) {
-      callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
-    }
-    return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
   }
+  // If we're not done skipping, we can just request the current clientcall
+  // from upstream
+  auto callSet = AqlCallSet{};
+  if (call.needSkipMore()) {
+    callSet.calls.emplace_back(
+        AqlCallSet::DepCallPair{currentDependency(), AqlCallList{call}});
+  }
+  return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
 }
 
 auto UnsortedGatherExecutor::numDependencies() const

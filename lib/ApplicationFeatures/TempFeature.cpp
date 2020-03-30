@@ -60,8 +60,8 @@ void TempFeature::prepare() {
   TRI_SetApplicationName(_appname);
   if (!_path.empty()) {
     TRI_SetTempPath(_path);
-    CrashHandler::setTempFilename();
   }
+  CrashHandler::setTempFilename();
 }
 
 void TempFeature::start() {

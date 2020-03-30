@@ -23,14 +23,15 @@
 #ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H 1
 
+#include <velocypack/StringRef.h>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "ClusterEngine/ClusterSelectivityEstimates.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/StringRef.h>
 
 namespace rocksdb {
 class Transaction;
@@ -105,7 +106,7 @@ class ClusterCollection final : public PhysicalCollection {
                                      bool restore, bool& created) override;
 
   /// @brief Drop an index with the given iid.
-  bool dropIndex(TRI_idx_iid_t iid) override;
+  bool dropIndex(IndexId iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 

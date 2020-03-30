@@ -1,27 +1,50 @@
 devel
 -----
 
+* Upgraded bundled RocksDB library to version 6.8.0.
+
+* Added AQL function `IN_RANGE`.
+
+* Added startup option `--ssl.prefer-http1-in-alpn` to optionally let the 
+  server prefer HTTP/1.1 over HTTP/2 in ALPN protocol negotiations.
+
+* Compilation issues with wrong cv-qualifiers and unnecessary
+  temporary copying.
+
+* Add DTRACE points to track a request through the infrastructure.
+
+* Fixed issue #11275: indexes backward compatibility broken in 3.5+.
+
+* Updated snowball dependency to the latest version.
+  More stemmers are available. Built-in analyzer list is unchanged.
+
+* Reactive REST API endpoint at `/_admin/auth/reload`, as it is called by DC2DC.
+
 * Fix an endless loop in FollowerInfo::persistInAgency which could trigger
   a hanger if a collection was dropped at the wrong time.
 
+* Updated LZ4 dependency to version 1.9.2.
+
 * Fix cluster representation of the collection figures for RocksDB.
 
-* Changed behavior for creating new collections in OneShard databases
-  (i.e. databases with "sharding" attribute set to "single"):
+* Changed behavior for creating new collections in OneShard databases (i.e.
+  databases with "sharding" attribute set to "single"):
 
-  Previously it was allowed to override "distributeShardsLike" and "numberOfShards"
-  for each new collection. The default values were "_graphs" and 1 and were not
-  modified if the user did not alter them, but it was still possible to alter them.
-  This is now (silenly) ignored. Any attempt to set any value for 
+  Previously it was allowed to override "distributeShardsLike" and
+  "numberOfShards" for each new collection. The default values were "_graphs"
+  and 1 and were not modified if the user did not alter them, but it was still
+  possible to alter them.
+  This is now (silenly) ignored. Any attempt to set any value for
   "distributeShardsLike" or "numberOfShards" for new collections in a OneShard
-  database will silently be ignored. The collection will automatically be sharded
-  like the sharding prototype and will have a single shard.
+  database will silently be ignored. The collection will automatically be
+  sharded like the sharding prototype and will have a single shard.
 
   The behavior has been adjusted to match the behavior when creating collections
-  in a cluster started with `--cluster.force-one-shard true` option. Here any user-
-  supplied values for "distributeShardsLike" or "numberOfShards" were always ignored.
+  in a cluster started with `--cluster.force-one-shard true` option. Here any
+  user-supplied values for "distributeShardsLike" or "numberOfShards" were
+  always ignored.
 
-  Now the behavior is identical for OneShard databases and databases in cluster 
+  Now the behavior is identical for OneShard databases and databases in cluster
   started with `--cluster.force-one-shard true`.
 
   The web interface now also hides the "Distribute shards like" settings in this
@@ -44,7 +67,7 @@ devel
 
 * Allow to override the detected total amount of memory via an environment
   variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
- 
+
 * `splice-subqueries` optimization is not limited by any type of operation within the
   subquery any more. It can now be applied on every subquery and will be by default.
   However they may be a performance impact on some queries where splice-subqueries

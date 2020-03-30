@@ -11,7 +11,7 @@ must have the following pattern:
 - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 
 If no *endpoint* is specified, the server will look up its internal
-endpoint address in the agency. If no endpoint can be found in the agency
+endpoint address in the Agency. If no endpoint can be found in the Agency
 for the server's id, ArangoDB will refuse to start.
 
 @EXAMPLES
