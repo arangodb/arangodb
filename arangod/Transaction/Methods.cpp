@@ -1427,53 +1427,9 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   TRI_voc_cid_t cid = addCollectionAtRuntime(cname, AccessMode::Type::WRITE);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
-  bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
-
-  // If we maybe will overwrite, we cannot do single document operations, thus:
-  // options.overwrite => !needsLock
-  TRI_ASSERT(!options.overwrite || !needsLock);
-
-  // Assert my assumption that we don't have a lock only with mmfiles single
-  // document operations.
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (!isMock) {
-      // needsLock => !value.isArray()
-      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
-      // However, due to nested transactions, 
-      TRI_ASSERT(!needsLock);
-      TRI_ASSERT(!needsLock || !value.isArray());
-      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
-    }
-  }
-#endif
-
-  // If we are
-  // - not on a single server (i.e. maybe replicating),
-  // - using the MMFiles storage engine, and
-  // - doing a single document operation,
-  // we have to:
-  // - Get the list of followers during the time span we actually do hold a
-  //   collection level lock. This is to avoid races with the replication where
-  //   a follower may otherwise be added between the actual document operation
-  //   and the point where we get our copy of the followers, regardless of the
-  //   latter happens before or after the document operation.
-
-  // Note that getting the followers this way also doesn't do any harm in other
-  // cases, except for babies because it would be done multiple times. Thus this
-  // bool.
-  // I suppose alternatively we could also do it via the updateFollowers
-  // callback and set updateFollowers to nullptr afterwards, so we only do it
-  // once.
-  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
-
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  if (needsToGetFollowersUnderLock) {
-    TRI_ASSERT(false);
-  } else if (_state->isDBServer()) {
+  if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
   }
@@ -1505,7 +1461,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || !followers->empty()) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1537,11 +1493,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     docResult.clear();
     prevDocResult.clear();
 
-    // insert with overwrite may NOT be a single document operation, as we
-    // possibly need to do two separate operations (insert and replace).
-    TRI_ASSERT(!(options.overwrite && needsLock));
-
-    TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
     Result res = collection->insert(this, value, docResult, options);
 
     bool didReplace = false;
@@ -1549,7 +1500,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       // RepSert Case - unique_constraint violated ->  try replace
       // If we're overwriting, we already have a lock. Therefore we also don't
       // need to get the followers under the lock.
-      TRI_ASSERT(!needsToGetFollowersUnderLock);
       if (options.overwriteModeUpdate) {
         res = collection->update(this, value, docResult, options, prevDocResult);
       } else {
@@ -1742,39 +1692,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
 
-  bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
-
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (!isMock) {
-      // needsLock => !newValue.isArray()
-      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
-      // However, due to nested transactions, there are mmfiles single
-      // operations that already have a lock.
-      TRI_ASSERT(!needsLock);
-      TRI_ASSERT(!needsLock || !newValue.isArray());
-      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
-    }
-  }
-#endif
-
-  // If we are
-  // - not on a single server (i.e. maybe replicating),
-  // - using the MMFiles storage engine, and
-  // - doing a single document operation,
-  // we have to:
-  // - Get the list of followers during the time span we actually do hold a
-  //   collection level lock. This is to avoid races with the replication where
-  //   a follower may otherwise be added between the actual document operation
-  //   and the point where we get our copy of the followers, regardless of the
-  //   latter happens before or after the document operation.
-  // In update/replace we do NOT have to get document level locks as in insert
-  // or remove, as we still hold a lock during the replication in this case.
-  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -1810,7 +1729,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || !followers->empty()) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1831,8 +1750,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  // Iff we didn't have a lock before, we got one now.
-  TRI_ASSERT(needsLock == lockResult.is(TRI_ERROR_LOCKED));
 
   VPackBuilder resultBuilder;  // building the complete result
   ManagedDocumentResult previous;
@@ -1914,10 +1831,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // therefore not doing single document operations. But if we didn't hold it
     // at the beginning of the method the followers may not be up-to-date.
     TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
-    if (needsToGetFollowersUnderLock) {
-      followers = collection->followers()->get();
-    }
-
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
 
@@ -2008,43 +1921,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
 
-  bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
-
-  // Assert my assumption that we don't have a lock only with mmfiles single
-  // document operations.
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (!isMock) {
-      // needsLock => !value.isArray()
-      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
-      // However, due to nested transactions, there are mmfiles single
-      // operations that already have a lock.
-      TRI_ASSERT(!needsLock);
-      TRI_ASSERT(!needsLock || !value.isArray());
-      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
-    }
-  }
-#endif
-
-  // If we are
-  // - not on a single server (i.e. maybe replicating),
-  // - using the MMFiles storage engine, and
-  // - doing a single document operation,
-  // we have to:
-  // - Get the list of followers during the time span we actually do hold a
-  //   collection level lock. This is to avoid races with the replication where
-  //   a follower may otherwise be added between the actual document operation
-  //   and the point where we get our copy of the followers, regardless of the
-  //   latter happens before or after the document operation.
-  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
-
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  if (needsToGetFollowersUnderLock) {
-    TRI_ASSERT(false);
-  } else if (_state->isDBServer()) {
+  if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
   }
@@ -2076,7 +1955,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || !followers->empty()) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -2115,8 +1994,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     }
 
     previous.clear();
-
-    TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
 
     auto res = collection->remove(*this, value, options, previous);
 
