@@ -512,7 +512,6 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, config),
     'define': 'TOP_DIR=' + TOP_DIR,
-    'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
     'javascript.copy-installation': false,
     'http.trusted-origin': options.httpTrustedOrigin || 'all',

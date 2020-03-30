@@ -2657,7 +2657,6 @@ function complexFilteringSuite() {
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
           assertTrue(stats.scannedIndex <= 5, stats.scannedIndex);
-          }
         } else {
           // Cluster uses a lookup cache.
           // Pointless in single-server mode
