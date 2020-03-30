@@ -30,7 +30,7 @@
 #include "Logger/LoggerStream.h"
 #include "MMFiles/MMFilesDatafile.h"
 
-using namespace arangodb;
+namespace arangodb {
 
 /// @brief create statistics manager for a collection
 MMFilesDatafileStatistics::MMFilesDatafileStatistics()
@@ -61,7 +61,7 @@ MMFilesDatafileStatistics::CompactionStats MMFilesDatafileStatistics::getStats()
 }
 
 /// @brief create an empty statistics container for a file
-void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid) {
+void MMFilesDatafileStatistics::create(FileId fid) {
   auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
 
   WRITE_LOCKER(writeLocker, _lock);
@@ -80,7 +80,7 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid) {
 }
 
 /// @brief create statistics for a datafile, using the stats provided
-void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
+void MMFilesDatafileStatistics::create(FileId fid,
                                        MMFilesDatafileStatisticsContainer const& src) {
   auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
   *stats = src;
@@ -102,7 +102,7 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
 }
 
 /// @brief remove statistics for a file
-void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
+void MMFilesDatafileStatistics::remove(FileId fid) {
   LOG_TOPIC("2a42f", TRACE, arangodb::Logger::DATAFILES)
       << "removing statistics for datafile " << fid;
 
@@ -122,7 +122,7 @@ void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
 }
 
 /// @brief merge statistics for a file
-void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
+void MMFilesDatafileStatistics::update(FileId fid,
                                        MMFilesDatafileStatisticsContainer const& src,
                                        bool warn) {
   WRITE_LOCKER(writeLocker, _lock);
@@ -146,7 +146,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
 }
 
 /// @brief merge statistics for a file, by copying the stats from another
-void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src, bool warn) {
+void MMFilesDatafileStatistics::update(FileId fid, FileId src, bool warn) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
@@ -181,7 +181,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src, boo
 }
 
 /// @brief replace statistics for a file
-void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
+void MMFilesDatafileStatistics::replace(FileId fid,
                                         MMFilesDatafileStatisticsContainer const& src,
                                         bool warn) {
   WRITE_LOCKER(writeLocker, _lock);
@@ -205,7 +205,7 @@ void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
 }
 
 /// @brief increase dead stats for a datafile, if it exists
-void MMFilesDatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, int64_t size) {
+void MMFilesDatafileStatistics::increaseDead(FileId fid, int64_t number, int64_t size) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
@@ -223,7 +223,7 @@ void MMFilesDatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, 
 }
 
 /// @brief increase number of uncollected entries
-void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t number) {
+void MMFilesDatafileStatistics::increaseUncollected(FileId fid, int64_t number) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
@@ -241,7 +241,7 @@ void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t n
 }
 
 /// @brief return a copy of the datafile statistics for a file
-MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t fid) {
+MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::get(FileId fid) {
   MMFilesDatafileStatisticsContainer result;
   {
     READ_LOCKER(readLocker, _lock);
@@ -275,3 +275,5 @@ MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::all() {
 
   return result;
 }
+
+}  // namespace arangodb

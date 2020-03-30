@@ -24,15 +24,17 @@
 #ifndef ARANGOD_MMFILES_GEO_INDEX_H
 #define ARANGOD_MMFILES_GEO_INDEX_H 1
 
-#include "Geo/GeoParams.h"
-#include "GeoIndex/Index.h"
-#include "MMFiles/MMFilesIndex.h"
-#include "VocBase/LocalDocumentId.h"
-
 #include <s2/s2cell_id.h>
 #include <s2/s2point.h>
 #include <s2/util/gtl/btree_map.h>
+
 #include <velocypack/Builder.h>
+
+#include "Geo/GeoParams.h"
+#include "GeoIndex/Index.h"
+#include "MMFiles/MMFilesIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace arangodb {
 
@@ -40,7 +42,7 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
  public:
   MMFilesGeoIndex() = delete;
 
-  MMFilesGeoIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  MMFilesGeoIndex(IndexId iid, LogicalCollection& collection,
                   arangodb::velocypack::Slice const& info, std::string const& typeName);
 
   struct IndexValue {
