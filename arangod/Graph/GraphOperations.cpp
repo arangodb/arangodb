@@ -161,18 +161,20 @@ OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync,
     // add the edge collection itself for removal
     gmngr.pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(), collectionsToBeRemoved);
     for (auto const& cname : collectionsToBeRemoved) {
-#ifdef USE_ENTERPRISE
-      {
-        bool initial = isUsedAsInitialCollection(cname);
-        if (initial) {
-          return OperationResult(TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL);
-        }
-      }
-#endif
       std::shared_ptr<LogicalCollection> coll;
       res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
         TRI_ASSERT(coll);
+#ifdef USE_ENTERPRISE
+        {
+          if (coll->type() == TRI_COL_TYPE_DOCUMENT) {
+            bool initial = isUsedAsInitialCollection(cname);
+            if (initial) {
+              return OperationResult(TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL);
+            }
+          }
+        }
+#endif
         res = methods::Collections::drop(*coll, false, -1.0);
         if (res.fail()) {
           res = trx.finish(result.result);
