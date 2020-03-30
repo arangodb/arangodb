@@ -7525,34 +7525,35 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
 }
 
 AqlValue Functions::Interleave(arangodb::aql::ExpressionContext* expressionContext,
-                               transaction::Methods* trx, VPackFunctionParameters const& parameters) {
+                               transaction::Methods* trx,
+                               VPackFunctionParameters const& parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "INTERLEAVE";
 
-  struct ArrayPairs {
-    AqlValueMaterializer materializer;
-    VPackSlice slice;
+  struct ArrayIteratorPair {
     VPackArrayIterator current;
     VPackArrayIterator end;
-
   };
 
-  std::list<ArrayPairs> iters;
+  std::list<ArrayIteratorPair> iters;
+  std::vector<AqlValueMaterializer> materializers;
+  materializers.reserve(parameters.size());
+
   for (AqlValue const& parameter : parameters) {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(parameter, false);
+    auto& materializer = materializers.emplace_back(trx);
+    VPackSlice slice = materializer.slice(parameter, true);
 
     if (!slice.isArray()) {
       // not an array
       registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
       return AqlValue(AqlValueHintNull());
     } else if (slice.isEmptyArray()) {
-      continue; // skip empty array here
+      continue;  // skip empty array here
     }
 
     VPackArrayIterator iter(slice);
-    ArrayPairs pair{std::move(materializer), slice, iter.begin(), iter.end()};
-    iters.emplace_back(std::move(pair));
+    ArrayIteratorPair pair{iter.begin(), iter.end()};
+    iters.emplace_back(pair);
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -7561,7 +7562,6 @@ AqlValue Functions::Interleave(arangodb::aql::ExpressionContext* expressionConte
   while (!iters.empty()) {  // in this loop we only deal with nonempty arrays
     for (auto i = iters.begin(); i != iters.end();) {
       builder->add(i->current.value());  // thus this will always be valid on the first iteration
-
       i->current++;
       if (i->current == i->end) {
         i = iters.erase(i);
