@@ -890,10 +890,10 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
   }");
-  std::string compressed_values;
+  std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
     out.append(src, size);
-    compressed_values.append(reinterpret_cast<const char*>(src), size);
+    compressed_values.emplace(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()),  size);
   };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -950,11 +950,11 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   }
 
   EXPECT_EQ(2, reader.reopen().live_docs_count());
-  std::string expected;
+  std::set<std::string> expected;
   auto abcSlice = doc0->slice().get("abc");
-  expected.append(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
   auto abc2Slice = doc0->slice().get("abc2");
-  expected.append(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
   EXPECT_EQ(expected, compressed_values);
 }
 
@@ -984,10 +984,10 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
   }");
-  std::string compressed_values;
+  std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
     out.append(src, size);
-    compressed_values.append(reinterpret_cast<const char*>(src), size);
+    compressed_values.emplace(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
   };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -1044,15 +1044,15 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
   }
 
   EXPECT_EQ(2, reader.reopen().live_docs_count());
-  std::string expected;
+  std::set<std::string> expected;
   auto sortSlice = doc0->slice().get("sort");
-  expected.append(reinterpret_cast<const char*>(sortSlice.start()), sortSlice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(sortSlice.start()), sortSlice.byteSize());
   auto abcSlice = doc0->slice().get("abc");
-  expected.append(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
   auto abc2Slice = doc0->slice().get("abc2");
-  expected.append(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
   auto sortSlice1 = doc1->slice().get("sort");
-  expected.append(reinterpret_cast<const char*>(sortSlice1.start()), sortSlice1.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(sortSlice1.start()), sortSlice1.byteSize());
   EXPECT_EQ(expected, compressed_values);
 }
 
@@ -1085,10 +1085,10 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
                       {\"field\":\"abc2\", \"compression\":\"lz4\"},\
                       {\"field\":\"ghi\", \"compression\":\"test\"}]\
   }");
-  std::string compressed_values;
+  std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
     out.append(src, size);
-    compressed_values.append(reinterpret_cast<const char*>(src), size);
+    compressed_values.emplace(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
   };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -1145,11 +1145,11 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   }
 
   EXPECT_EQ(2, reader.reopen().live_docs_count());
-  std::string expected;
+  std::set<std::string> expected;
   auto abcSlice = doc0->slice().get("abc");
-  expected.append(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
   auto abc2Slice = doc1->slice().get("ghi");
-  expected.append(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
   EXPECT_EQ(expected, compressed_values);
 }
 
@@ -1184,10 +1184,10 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
                       {\"field\":\"abc2\", \"compression\":\"lz4\"},\
                       {\"field\":\"ghi\", \"compression\":\"test\"}]\
   }");
-  std::string compressed_values;
+  std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
     out.append(src, size);
-    compressed_values.append(reinterpret_cast<const char*>(src), size);
+    compressed_values.emplace(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
   };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -1244,14 +1244,14 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   }
 
   EXPECT_EQ(2, reader.reopen().live_docs_count());
-  std::string expected;
+  std::set<std::string> expected;
   auto sortSlice = doc0->slice().get("sort");
-  expected.append(reinterpret_cast<const char*>(sortSlice.start()), sortSlice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(sortSlice.start()), sortSlice.byteSize());
   auto abcSlice = doc0->slice().get("abc");
-  expected.append(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
   auto sortSlice1 = doc1->slice().get("sort");
-  expected.append(reinterpret_cast<const char*>(sortSlice1.start()), sortSlice1.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(sortSlice1.start()), sortSlice1.byteSize());
   auto abc2Slice = doc1->slice().get("ghi");
-  expected.append(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
+  expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
   EXPECT_EQ(expected, compressed_values);
 }
