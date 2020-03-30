@@ -52,6 +52,10 @@ template <>
 struct stp<uint32_t> {
   static uint64_t convert(std::string const& s) { return std::stoul(s); }
 };
+template <>
+struct stp<double> {
+  static double convert(std::string const& s) { return std::stod(s); }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief REST handler for outside calls to agency (write & read)
@@ -73,7 +77,10 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
 
   using fvoid = futures::Future<futures::Unit>;
 
-  RestStatus pollIndex(consensus::index_t index);
+  /**
+   * @brief Async call to Agent poll with index to wait for within timeout
+   */
+  RestStatus pollIndex(consensus::index_t const& index, double const& timeout);
 
  private:
   template <class T>

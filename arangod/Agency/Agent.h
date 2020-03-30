@@ -123,7 +123,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   read_ret_t read(query_t const&);
 
   /// @brief Long pool for higher index than given
-  futures::Future<query_t> poll(index_t index);
+  futures::Future<query_t> poll(index_t const& index, double const& timeout);
 
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);
@@ -159,7 +159,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///        Caller must have _promLock!
   void triggerPollsNoLock(
     query_t qu = nullptr,
-    SteadyTimePoint const& tp = std::chrono::steady_clock::now() + std::chrono::seconds(3600));
+    SteadyTimePoint const& tp = std::chrono::steady_clock::now() + std::chrono::seconds(60));
 
   /// @brief trigger all expire polls
   void clearExpiredPolls();
@@ -525,8 +525,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   // @brief promises for poll interface and the guard (mvm-style
   std::mutex _promLock;
   index_t _lowestPromise;
-  std::map<std::chrono::time_point<std::chrono::steady_clock>,
-           futures::Promise<query_t>> _promises;
+  std::map<SteadyTimePoint, futures::Promise<query_t>> _promises;
 
   Counter& _write_ok;
   Counter& _write_no_leader;

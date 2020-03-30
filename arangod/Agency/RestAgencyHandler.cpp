@@ -156,9 +156,10 @@ RestStatus RestAgencyHandler::handleTransient() {
 /// { accepted:bool, result: { firstIndex, commitIndex, logs:[{index, log}] } }
 /// if !accepted, lost leadership
 /// else respond
-RestStatus RestAgencyHandler::pollIndex(index_t start) {
+RestStatus RestAgencyHandler::pollIndex(
+  index_t const& start, double const& timeout) {
   return waitForFuture(
-    _agent->poll(start)
+    _agent->poll(start, timeout)
     .thenValue([this, start](std::shared_ptr<VPackBuilder> rb) {
       VPackSlice res = rb->slice();
       if (res.hasKey("accepted")) {
@@ -223,8 +224,12 @@ RestStatus RestAgencyHandler::handlePoll() {
 
   // Get queryString index
   index_t index = 0;
+  double timeout = 60.0;
+
   readValue("index", index);
-  return pollIndex(index);
+  readValue("timeout", timeout);
+
+  return pollIndex(index, timeout);
 
 }
 

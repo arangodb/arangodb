@@ -697,8 +697,9 @@ void Agent::sendAppendEntriesRPC() {
 }
 
 void Agent::resign(term_t otherTerm) {
-  LOG_TOPIC("494a7", DEBUG, Logger::AGENCY) << "Resigning in term " << _constituent.term()
-                                   << " because of peer's term " << otherTerm;
+  LOG_TOPIC("494a7", DEBUG, Logger::AGENCY)
+    << "Resigning in term " << _constituent.term()
+    << " because of peer's term " << otherTerm;
   _constituent.follow(otherTerm, NO_LEADER);
 
   // Wake up all polls with resignation letter
@@ -850,7 +851,9 @@ void Agent::advanceCommitIndex() {
 
 }
 
-futures::Future<query_t> Agent::poll(index_t index) {
+futures::Future<query_t> Agent::poll(
+  index_t const& index, double const& timeout) {
+
   using namespace std::chrono;
 
   index_t commitIndex;
@@ -895,8 +898,11 @@ futures::Future<query_t> Agent::poll(index_t index) {
 
   std::lock_guard guard(_promLock);
 
-  auto res = _promises.try_emplace(
-    steady_clock::now() + seconds(60), futures::Promise<query_t>());
+
+  auto tp = steady_clock::now() +
+    duration_cast<milliseconds>(duration<double>(timeout));
+  auto res = _promises.try_emplace(tp, futures::Promise<query_t>());
+
   if (!res.second) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "Failed to add promise for polling");
@@ -1401,12 +1407,21 @@ read_ret_t Agent::read(query_t const& query) {
 
 // trigger all polls, who have timed out with empty result
 void Agent::clearExpiredPolls() {
+  index_t commitIndex = 0;
+  {
+    READ_LOCKER(oLocker, _outputLock);
+    commitIndex = _commitIndex;
+  }
   auto empty = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder obj(empty.get());
     empty->add("accepted", VPackValue(true));
     empty->add(VPackValue("result"));
-    VPackArrayBuilder arr(empty.get());
+    VPackObjectBuilder res(empty.get());
+    empty->add("firstIndex", VPackValue(commitIndex));
+    empty->add("commitIndex", VPackValue(commitIndex));
+    empty->add(VPackValue("log"));
+    VPackArrayBuilder a(empty.get());
   }
   std::lock_guard lck(_promLock);
   triggerPollsNoLock(empty, std::chrono::steady_clock::now());
@@ -1417,6 +1432,7 @@ void Agent::clearExpiredPolls() {
 /// Wake up everybody with quertand delete with empty
 /// If qu is nullptr, we're resigning.
 void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
+
   if (qu == nullptr) { // We have resigned
     qu = std::make_shared<VPackBuilder>();
     VPackObjectBuilder qb(qu.get());
@@ -1424,6 +1440,7 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
     qu->add(VPackValue("result"));
     VPackArrayBuilder arr(qu.get());
   }
+
   auto it = _promises.begin();
   while (it != _promises.end()) {
     if (it->first < tp) {
