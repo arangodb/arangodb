@@ -669,8 +669,7 @@ void RocksDBTransactionState::trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid) 
   }
 }
 
-void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid,
-                                               TRI_idx_iid_t idxId, uint64_t hash) {
+void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid, IndexId idxId, uint64_t hash) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackIndexInsert(idxId, hash);
@@ -679,8 +678,7 @@ void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid,
   }
 }
 
-void RocksDBTransactionState::trackIndexRemove(TRI_voc_cid_t cid,
-                                               TRI_idx_iid_t idxId, uint64_t hash) {
+void RocksDBTransactionState::trackIndexRemove(TRI_voc_cid_t cid, IndexId idxId, uint64_t hash) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackIndexRemove(idxId, hash);

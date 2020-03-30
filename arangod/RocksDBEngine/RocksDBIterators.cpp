@@ -384,7 +384,7 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   options.fill_cache = false;
   options.verify_checksums = false;
 
-  auto index = col->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
+  auto index = col->lookupIndex(IndexId::primary());  // RocksDBCollection->primaryIndex() is private
   TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 

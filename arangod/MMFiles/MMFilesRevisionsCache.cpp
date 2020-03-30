@@ -86,9 +86,8 @@ void MMFilesRevisionsCache::clear() {
 }
 
 MMFilesDocumentPosition MMFilesRevisionsCache::insert(LocalDocumentId const& documentId,
-                                                      uint8_t const* dataptr,
-                                                      TRI_voc_fid_t fid, bool isInWal,
-                                                      bool shouldLock) {
+                                                      uint8_t const* dataptr, FileId fid,
+                                                      bool isInWal, bool shouldLock) {
   TRI_ASSERT(documentId.isSet());
   TRI_ASSERT(dataptr != nullptr);
 
@@ -110,8 +109,8 @@ void MMFilesRevisionsCache::insert(MMFilesDocumentPosition const& position, bool
   _positions.insert(nullptr, position);
 }
 
-void MMFilesRevisionsCache::update(LocalDocumentId const& documentId, uint8_t const* dataptr,
-                                   TRI_voc_fid_t fid, bool isInWal) {
+void MMFilesRevisionsCache::update(LocalDocumentId const& documentId,
+                                   uint8_t const* dataptr, FileId fid, bool isInWal) {
   TRI_ASSERT(documentId.isSet());
   TRI_ASSERT(dataptr != nullptr);
 
@@ -132,7 +131,7 @@ void MMFilesRevisionsCache::update(LocalDocumentId const& documentId, uint8_t co
 bool MMFilesRevisionsCache::updateConditional(LocalDocumentId const& documentId,
                                               MMFilesMarker const* oldPosition,
                                               MMFilesMarker const* newPosition,
-                                              TRI_voc_fid_t newFid, bool isInWal) {
+                                              FileId newFid, bool isInWal) {
   WRITE_LOCKER(locker, _lock);
 
   MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, documentId.data());

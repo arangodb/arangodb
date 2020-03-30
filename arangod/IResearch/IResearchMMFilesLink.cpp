@@ -38,8 +38,7 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchMMFilesLink::IResearchMMFilesLink(TRI_idx_iid_t iid,
-                                           arangodb::LogicalCollection& collection)
+IResearchMMFilesLink::IResearchMMFilesLink(IndexId iid, arangodb::LogicalCollection& collection)
     : MMFilesIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -51,10 +50,11 @@ void IResearchMMFilesLink::toVelocyPack(
     arangodb::velocypack::Builder& builder,
     std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
-      std::string("failed to generate link definition for arangosearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+        TRI_ERROR_BAD_PARAMETER,              // code
+        std::string("failed to generate link definition for arangosearch view "
+                    "MMFiles link '") +
+            std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
   auto forPersistence = // definition for persistence
@@ -63,10 +63,11 @@ void IResearchMMFilesLink::toVelocyPack(
   builder.openObject();
 
   if (!properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failed to generate link definition for arangosearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+        TRI_ERROR_INTERNAL,                   // code
+        std::string("failed to generate link definition for arangosearch view "
+                    "MMFiles link '") +
+            std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
@@ -104,7 +105,7 @@ bool IResearchMMFilesLink::IndexFactory::equal(arangodb::velocypack::Slice const
 
 std::shared_ptr<arangodb::Index> IResearchMMFilesLink::IndexFactory::instantiate(
     arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id, bool isClusterConstructor) const {
+    IndexId id, bool isClusterConstructor) const {
   // ensure loaded so that we have valid data in next check
   if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
     collection.load();

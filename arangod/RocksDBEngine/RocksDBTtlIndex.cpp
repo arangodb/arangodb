@@ -32,15 +32,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-  
-RocksDBTtlIndex::RocksDBTtlIndex(
-    TRI_idx_iid_t iid,
-    LogicalCollection& coll,
-    arangodb::velocypack::Slice const& info
-)
+
+RocksDBTtlIndex::RocksDBTtlIndex(IndexId iid, LogicalCollection& coll,
+                                 arangodb::velocypack::Slice const& info)
     : RocksDBSkiplistIndex(iid, coll, info),
       _expireAfter(info.get(StaticStrings::IndexExpireAfter).getNumericValue<double>()) {
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // ttl index must always be non-unique, but sparse
   TRI_ASSERT(!info.get(StaticStrings::IndexUnique).getBool()); 

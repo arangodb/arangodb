@@ -24,6 +24,8 @@
 #ifndef ARANGOD_MMFILES_SKIPLIST_INDEX_H
 #define ARANGOD_MMFILES_SKIPLIST_INDEX_H 1
 
+#include <list>
+
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Containers/Skiplist.h"
@@ -33,10 +35,9 @@
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <list>
 
 namespace arangodb {
 namespace aql {
@@ -256,7 +257,7 @@ class MMFilesSkiplistIndex : public MMFilesPathBasedIndex {
  public:
   MMFilesSkiplistIndex() = delete;
 
-  MMFilesSkiplistIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  MMFilesSkiplistIndex(IndexId iid, LogicalCollection& collection,
                        arangodb::velocypack::Slice const& info);
 
   ~MMFilesSkiplistIndex();

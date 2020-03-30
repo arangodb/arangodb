@@ -1448,13 +1448,13 @@ void TailingSyncer::getLocalState() {
   // a _state.master.serverId value of 0 may occur if no proper connection could
   // be established to the master initially
   if (_state.master.serverId != _applier->_state._serverId &&
-      _applier->_state._serverId != 0 && _state.master.serverId != 0) {
+      _applier->_state._serverId.isSet() && _state.master.serverId.isSet()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_MASTER_CHANGE,
         std::string(
             "encountered wrong master id in replication state file. found: ") +
-            StringUtils::itoa(_state.master.serverId) +
-            ", expected: " + StringUtils::itoa(_applier->_state._serverId));
+            StringUtils::itoa(_state.master.serverId.id()) +
+            ", expected: " + StringUtils::itoa(_applier->_state._serverId.id()));
   }
 }
 

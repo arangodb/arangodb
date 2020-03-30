@@ -38,8 +38,7 @@
 using namespace arangodb;
 
 /// @brief create the index
-MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
-                                             arangodb::LogicalCollection& collection,
+MMFilesPathBasedIndex::MMFilesPathBasedIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                              arangodb::velocypack::Slice const& info,
                                              size_t baseSize, bool allowPartialIndex)
     : MMFilesIndex(iid, collection, info),
@@ -49,7 +48,7 @@ MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
       _allowPartialIndex(allowPartialIndex) {
   TRI_ASSERT(!_fields.empty());
 
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(!iid.isPrimary() && !iid.isNone());
 
   fillPaths(_paths, _expanding);
 
