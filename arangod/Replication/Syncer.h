@@ -31,6 +31,7 @@
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
@@ -154,7 +155,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     std::string leaderId{};
 
     /// @brief local server id
-    TRI_server_id_t localServerId{0};
+    ServerId localServerId{ServerId::none()};
 
     /// @brief local server id
     std::string localServerIdString{};

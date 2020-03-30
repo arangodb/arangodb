@@ -117,9 +117,9 @@ MMFilesLogfileManager::MMFilesLogfileManager(application_features::ApplicationSe
       _allocatorThread(nullptr),
       _collectorThread(nullptr),
       _removerThread(nullptr),
-      _lastOpenedId(0),
-      _lastCollectedId(0),
-      _lastSealedId(0),
+      _lastOpenedId(FileId::none()),
+      _lastCollectedId(FileId::none()),
+      _lastSealedId(FileId::none()),
       _shutdownFileLock(),
       _droppedCollections(),
       _droppedDatabases(),
@@ -621,7 +621,7 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
     // to already seal and collect logfiles. the only thing that needs to be
     // ensured for read-only transactions is that a logfile does not get thrown
     // away while the read-only transaction is ongoing
-    lastSealedId = 0;
+    lastSealedId = FileId::none();
   }
 
   try {
@@ -887,13 +887,14 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
     lastSealedLogfileId = _lastSealedId;
   }
 
-  if (lastOpenLogfileId == 0) {
+  if (lastOpenLogfileId.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
 
   LOG_TOPIC("3c773", TRACE, arangodb::Logger::REPLICATION)
-      << "about to flush active WAL logfile. currentLogfileId: " << lastOpenLogfileId
-      << ", waitForSync: " << waitForSync << ", waitForCollector: " << waitForCollector
+      << "about to flush active WAL logfile. currentLogfileId: "
+      << lastOpenLogfileId.id() << ", waitForSync: " << waitForSync
+      << ", waitForCollector: " << waitForCollector
       << ", last committed tick: " << _slots->lastCommittedTick();
 
   int res = _slots->flush(waitForSync);
@@ -917,14 +918,15 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
       LOG_TOPIC("d7042", TRACE, arangodb::Logger::ENGINES)
-          << "entering waitForCollector with lastOpenLogfileId " << lastOpenLogfileId;
+          << "entering waitForCollector with lastOpenLogfileId "
+          << lastOpenLogfileId.id();
       res = this->waitForCollector(lastOpenLogfileId, maxWaitTime, abortWaitOnShutdown);
 
       if (res == TRI_ERROR_LOCK_TIMEOUT) {
         LOG_TOPIC("f6b77", DEBUG, arangodb::Logger::ENGINES)
             << "got lock timeout when waiting for WAL flush. "
                "lastOpenLogfileId: "
-            << lastOpenLogfileId;
+            << lastOpenLogfileId.id();
       }
       LOG_TOPIC("73165", TRACE, Logger::ENGINES)
           << "waitForCollector returned with res = " << res;
@@ -933,13 +935,13 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
       // we need to wait for the collector to collect the previously sealed
       // datafile
 
-      if (lastSealedLogfileId > 0) {
+      if (lastSealedLogfileId.isSet()) {
         res = this->waitForCollector(lastSealedLogfileId, maxWaitTime, abortWaitOnShutdown);
 
         if (res == TRI_ERROR_LOCK_TIMEOUT) {
           LOG_TOPIC("ca961", DEBUG, arangodb::Logger::ENGINES)
               << "got lock timeout when waiting for WAL flush. "
-              << "lastSealedLogfileId: " << lastSealedLogfileId;
+              << "lastSealedLogfileId: " << lastSealedLogfileId.id();
         }
         LOG_TOPIC("f5cce", TRACE, Logger::ENGINES)
             << "waitForCollector returned with res = " << res;
@@ -1085,7 +1087,8 @@ int MMFilesLogfileManager::getLogfileDescriptor(MMFilesWalLogfile::IdType id) {
 
   if (it == _logfiles.end()) {
     // error
-    LOG_TOPIC("78579", ERR, arangodb::Logger::ENGINES) << "could not find logfile " << id;
+    LOG_TOPIC("78579", ERR, arangodb::Logger::ENGINES)
+        << "could not find logfile " << id.id();
     return -1;
   }
 
@@ -1438,7 +1441,8 @@ int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
 // get a logfile to collect. this may return nullptr
 MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
-  MMFilesWalLogfile::IdType minId = UINT64_MAX;
+  MMFilesWalLogfile::IdType minId{
+      std::numeric_limits<MMFilesWalLogfile::IdType::BaseType>::max()};
 
   LOG_TOPIC("f2032", DEBUG, Logger::ENGINES) << "getCollectableLogfile: called";
 
@@ -1446,7 +1450,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
     MMFilesWalLogfile::IdType lastWrittenId =
         static_cast<MMFilesTransactionData const*>(data)->lastSealedId;
 
-    if (lastWrittenId < minId && lastWrittenId != 0) {
+    if (lastWrittenId < minId && lastWrittenId.isSet()) {
       minId = lastWrittenId;
     }
   };
@@ -1469,14 +1473,14 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
 
       if (logfile->id() <= minId && logfile->canBeCollected(released)) {
         LOG_TOPIC("19526", DEBUG, Logger::ENGINES)
-            << "getCollectableLogfile: found logfile id: " << logfile->id();
+            << "getCollectableLogfile: found logfile id: " << logfile->id().id();
         return logfile;
       }
 
       if (logfile->id() > minId) {
         LOG_TOPIC("c2cb6", DEBUG, Logger::ENGINES)
-            << "getCollectableLogfile: abort early1 " << logfile->id()
-            << " minId: " << minId;
+            << "getCollectableLogfile: abort early1 " << logfile->id().id()
+            << " minId: " << minId.id();
         break;
       }
       if (!logfile->hasBeenReleased(released)) {
@@ -1488,8 +1492,9 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
     }
   }
 
-  LOG_TOPIC("dbee0", DEBUG, Logger::ENGINES) << "getCollectableLogfile: "
-                                    << "found no logfile to collect, minId: " << minId;
+  LOG_TOPIC("dbee0", DEBUG, Logger::ENGINES)
+      << "getCollectableLogfile: "
+      << "found no logfile to collect, minId: " << minId.id();
 
   return nullptr;
 }
@@ -1501,16 +1506,17 @@ MMFilesWalLogfile* MMFilesLogfileManager::getRemovableLogfile() {
   TRI_ASSERT(!isInRecovery());
 
   // take all barriers into account
-  MMFilesWalLogfile::IdType const minBarrierTick = getMinBarrierTick();
+  MMFilesWalLogfile::IdType const minBarrierTick{getMinBarrierTick()};
 
-  MMFilesWalLogfile::IdType minId = UINT64_MAX;
+  MMFilesWalLogfile::IdType minId{
+      std::numeric_limits<MMFilesWalLogfile::IdType::BaseType>::max()};
 
   // iterate over all active transactions and find their minimum used logfile id
   auto cb = [&minId](TRI_voc_tid_t, TransactionData const* data) {
     MMFilesWalLogfile::IdType lastCollectedId =
         static_cast<MMFilesTransactionData const*>(data)->lastCollectedId;
 
-    if (lastCollectedId < minId && lastCollectedId != 0) {
+    if (lastCollectedId < minId && lastCollectedId.isSet()) {
       minId = lastCollectedId;
     }
   };
@@ -1533,8 +1539,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getRemovableLogfile() {
       }
 
       if (logfile->id() <= minId && logfile->canBeRemoved() &&
-          (minBarrierTick == 0 || (logfile->df()->_tickMin < minBarrierTick &&
-                                   logfile->df()->_tickMax < minBarrierTick))) {
+          (minBarrierTick.empty() || (logfile->df()->_tickMin < minBarrierTick.id() &&
+                                      logfile->df()->_tickMax < minBarrierTick.id()))) {
         // only check those logfiles that are outside the ranges specified by
         // barriers
 
@@ -1698,8 +1704,10 @@ MMFilesLogfileManager::LogfileRanges MMFilesLogfileManager::ranges() {
 // get information about running transactions
 std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType> MMFilesLogfileManager::runningTransactions() {
   size_t count = 0;
-  MMFilesWalLogfile::IdType lastCollectedId = UINT64_MAX;
-  MMFilesWalLogfile::IdType lastSealedId = UINT64_MAX;
+  MMFilesWalLogfile::IdType lastCollectedId{
+      std::numeric_limits<MMFilesWalLogfile::IdType::BaseType>::max()};
+  MMFilesWalLogfile::IdType lastSealedId{
+      std::numeric_limits<MMFilesWalLogfile::IdType::BaseType>::max()};
 
   auto cb = [&count, &lastCollectedId,
              &lastSealedId](TRI_voc_tid_t, TransactionData const* data) {
@@ -1707,12 +1715,12 @@ std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType> MMFiles
 
     MMFilesWalLogfile::IdType value =
         static_cast<MMFilesTransactionData const*>(data)->lastCollectedId;
-    if (value < lastCollectedId && value != 0) {
+    if (value < lastCollectedId && value.isSet()) {
       lastCollectedId = value;
     }
 
     value = static_cast<MMFilesTransactionData const*>(data)->lastSealedId;
-    if (value < lastSealedId && value != 0) {
+    if (value < lastSealedId && value.isSet()) {
       lastSealedId = value;
     }
   };
@@ -1782,7 +1790,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
   }
 
   LOG_TOPIC("0e003", TRACE, arangodb::Logger::ENGINES)
-      << "waiting for collector thread to collect logfile " << logfileId;
+      << "waiting for collector thread to collect logfile " << logfileId.id();
 
   // wait for the collector thread to finish the collection
   double const end = TRI_microtime() + maxWaitTime;
@@ -1807,8 +1815,8 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
     locker.unlock();
 
     LOG_TOPIC("2c5fe", DEBUG, arangodb::Logger::ENGINES)
-        << "still waiting for collector. logfileId: " << logfileId
-        << " lastCollected: " << _lastCollectedId.load() << ", result: " << res;
+        << "still waiting for collector. logfileId: " << logfileId.id()
+        << " lastCollected: " << _lastCollectedId.load().id() << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -1826,7 +1834,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
   }
 
   LOG_TOPIC("6c07d", DEBUG, arangodb::Logger::ENGINES)
-      << "going into lock timeout. having waited for logfile: " << logfileId
+      << "going into lock timeout. having waited for logfile: " << logfileId.id()
       << ", maxWaitTime: " << maxWaitTime;
   logStatus();
 
@@ -1840,12 +1848,13 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
 void MMFilesLogfileManager::logStatus() {
   LOG_TOPIC("a9666", DEBUG, arangodb::Logger::ENGINES)
-      << "logfile manager status report: lastCollectedId: " << _lastCollectedId.load()
-      << ", lastSealedId: " << _lastSealedId.load();
+      << "logfile manager status report: lastCollectedId: "
+      << _lastCollectedId.load().id()
+      << ", lastSealedId: " << _lastSealedId.load().id();
   READ_LOCKER(locker, _logfilesLock);
   for (auto logfile : _logfiles) {
     LOG_TOPIC("b1d96", DEBUG, arangodb::Logger::ENGINES)
-        << "- logfile " << logfile.second->id() << ", filename '"
+        << "- logfile " << logfile.second->id().id() << ", filename '"
         << logfile.second->filename() << "', status " << logfile.second->statusText();
   }
 }
@@ -1978,8 +1987,8 @@ int MMFilesLogfileManager::readShutdownInfo() {
 
     LOG_TOPIC("38f13", TRACE, arangodb::Logger::ENGINES)
         << "initial values for WAL logfile manager: tick: " << lastTick
-        << ", hlc: " << hlc << ", lastCollected: " << _lastCollectedId.load()
-        << ", lastSealed: " << _lastSealedId.load();
+        << ", hlc: " << hlc << ", lastCollected: " << _lastCollectedId.load().id()
+        << ", lastSealed: " << _lastSealedId.load().id();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2011,8 +2020,9 @@ int MMFilesLogfileManager::writeShutdownInfo(bool writeShutdownTime) {
 
     builder.add("tick", VPackValue(basics::StringUtils::itoa(TRI_CurrentTickServer())));
     builder.add("hlc", VPackValue(basics::StringUtils::itoa(TRI_HybridLogicalClock())));
-    builder.add("lastCollected", VPackValue(basics::StringUtils::itoa(lastCollectedId)));
-    builder.add("lastSealed", VPackValue(basics::StringUtils::itoa(lastSealedId)));
+    builder.add("lastCollected",
+                VPackValue(basics::StringUtils::itoa(lastCollectedId.id())));
+    builder.add("lastSealed", VPackValue(basics::StringUtils::itoa(lastSealedId.id())));
     builder.add("releasedTick", VPackValue(basics::StringUtils::itoa(released)));
 
     if (writeShutdownTime) {
@@ -2137,7 +2147,7 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
 
     if (canAbort) {
       MUTEX_LOCKER(mutexLocker, _idLock);
-      if (_lastSealedId == _lastCollectedId) {
+      if (_lastSealedId.load() == _lastCollectedId.load()) {
         break;
       }
     }
@@ -2188,15 +2198,15 @@ int MMFilesLogfileManager::inventory() {
 
     if (StringUtils::isPrefix(file, "logfile-") &&
         StringUtils::isSuffix(file, ".db")) {
-      MMFilesWalLogfile::IdType const id =
-          basics::StringUtils::uint64(file.substr(8, file.size() - 8 - 3));
+      MMFilesWalLogfile::IdType const id{
+          basics::StringUtils::uint64(file.substr(8, file.size() - 8 - 3))};
 
-      if (id == 0) {
+      if (id.empty()) {
         LOG_TOPIC("dc4f6", WARN, arangodb::Logger::ENGINES)
             << "encountered invalid id for logfile '" << file << "'. ids must be > 0";
       } else {
         // update global tick
-        TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
+        TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id.id()));
 
         WRITE_LOCKER(writeLocker, _logfilesLock);
         _logfiles.try_emplace(id, nullptr);
@@ -2220,7 +2230,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
 
     if (logfile != nullptr) {
       LOG_TOPIC("ca138", DEBUG, arangodb::Logger::ENGINES)
-          << "logfile " << logfile->id() << ", filename '"
+          << "logfile " << logfile->id().id() << ", filename '"
           << logfile->filename() << "', status " << logfile->statusText();
     }
   }
@@ -2266,7 +2276,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
     }
 
     LOG_TOPIC("f4891", TRACE, arangodb::Logger::ENGINES)
-        << "inspecting logfile " << logfile->id() << " ("
+        << "inspecting logfile " << logfile->id().id() << " ("
         << logfile->statusText() << ")";
 
     MMFilesDatafile* df = logfile->df();
@@ -2282,7 +2292,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
     }
 
     LOG_TOPIC("b7073", TRACE, arangodb::Logger::ENGINES)
-        << "inspected logfile " << logfile->id() << " (" << logfile->statusText()
+        << "inspected logfile " << logfile->id().id() << " (" << logfile->statusText()
         << "), tickMin: " << df->_tickMin << ", tickMax: " << df->_tickMax;
 
     if (logfile->status() == MMFilesWalLogfile::StatusType::SEALED) {
@@ -2416,6 +2426,6 @@ std::string MMFilesLogfileManager::shutdownFilename() const {
 
 // return an absolute filename for a logfile id
 std::string MMFilesLogfileManager::logfileName(MMFilesWalLogfile::IdType id) const {
-  return _directory + std::string("logfile-") + basics::StringUtils::itoa(id) +
-         std::string(".db");
+  return _directory + std::string("logfile-") +
+         basics::StringUtils::itoa(id.id()) + std::string(".db");
 }

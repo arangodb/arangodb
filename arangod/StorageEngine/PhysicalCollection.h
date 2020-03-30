@@ -36,6 +36,7 @@
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/ReplicationIterator.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -117,7 +118,7 @@ class PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
 
   /// @brief Find index by iid
-  std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
+  std::shared_ptr<Index> lookupIndex(IndexId) const;
 
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string const&) const;
@@ -136,7 +137,7 @@ class PhysicalCollection {
   virtual std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
                                              bool restore, bool& created) = 0;
 
-  virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
+  virtual bool dropIndex(IndexId iid) = 0;
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;

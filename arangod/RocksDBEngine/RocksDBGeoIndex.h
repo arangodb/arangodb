@@ -23,12 +23,13 @@
 #ifndef ARANGOD_ROCKSDB_GEO_INDEX_H
 #define ARANGOD_ROCKSDB_GEO_INDEX_H 1
 
+#include <velocypack/Builder.h>
+
 #include "Basics/Result.h"
 #include "GeoIndex/Index.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Builder.h>
 
 namespace arangodb {
 
@@ -38,7 +39,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
  public:
   RocksDBGeoIndex() = delete;
 
-  RocksDBGeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+  RocksDBGeoIndex(IndexId iid, arangodb::LogicalCollection& collection,
                   arangodb::velocypack::Slice const& info, std::string const& typeName);
 
   ~RocksDBGeoIndex() override {}

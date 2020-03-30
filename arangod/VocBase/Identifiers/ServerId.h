@@ -18,40 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SAME_THREAD_ASSERTER_H
-#define ARANGODB_BASICS_SAME_THREAD_ASSERTER_H 1
+#ifndef ARANGOD_VOCBASE_IDENTIFIERS_SERVER_ID_H
+#define ARANGOD_VOCBASE_IDENTIFIERS_SERVER_ID_H 1
 
-#include "Basics/Common.h"
-#include "Basics/Thread.h"
-#include "Basics/debugging.h"
+#include "Basics/Identifier.h"
 
 namespace arangodb {
 
-class SameThreadAsserter {
+/// @brief server id type
+class ServerId : public arangodb::basics::Identifier {
  public:
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  constexpr ServerId() noexcept : Identifier() {}
+  constexpr explicit ServerId(BaseType id) noexcept : Identifier(id) {}
 
-  SameThreadAsserter() : _startingThreadId(currentThreadId()) {}
-
-  ~SameThreadAsserter() { TRI_ASSERT(_startingThreadId == currentThreadId()); }
-
- private:
-  TRI_tid_t currentThreadId() const { return Thread::currentThreadId(); }
-
- private:
-  TRI_tid_t const _startingThreadId;
-
-#else
-
-  SameThreadAsserter() {}
-  ~SameThreadAsserter() = default;
-
-#endif
+ public:
+  /// @brief create a not-set file id
+  static constexpr ServerId none() { return ServerId{0}; }
 };
 
+static_assert(sizeof(ServerId) == sizeof(ServerId::BaseType),
+              "invalid size of ServerId");
 }  // namespace arangodb
+
+DECLARE_HASH_FOR_IDENTIFIER(arangodb::ServerId)
 
 #endif

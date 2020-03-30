@@ -232,7 +232,7 @@ void MMFilesAnyIndexIterator::reset() {
 }
 
 MMFilesPrimaryIndex::MMFilesPrimaryIndex(arangodb::LogicalCollection& collection)
-    : MMFilesIndex(0, collection, StaticStrings::IndexNamePrimary,
+    : MMFilesIndex(IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
                    /*unique*/ true, /*sparse*/ false) {

@@ -41,6 +41,7 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -62,8 +63,8 @@ MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  TRI_server_id_t const clientId =
-      StringUtils::uint64(_request->value("serverId"));
+  arangodb::ServerId const clientId{
+      StringUtils::uint64(_request->value("serverId"))};
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
   std::string const clientInfo = _request->value("clientInfo");
 

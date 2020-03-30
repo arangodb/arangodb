@@ -54,7 +54,7 @@ inline uint64_t ensureObjectId(uint64_t oid) {
 }
 }  // namespace
 
-RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
                            std::string const& name,
                            std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                            bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
@@ -75,7 +75,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
   engine->addIndexMapping(_objectId, collection.vocbase().id(), collection.id(), _iid);
 }
 
-RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
                            arangodb::velocypack::Slice const& info,
                            rocksdb::ColumnFamilyHandle* cf, bool useCache)
     : Index(id, collection, info),

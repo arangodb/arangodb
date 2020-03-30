@@ -29,7 +29,7 @@
 #include "IResearchLinkMeta.h"
 #include "VelocyPackHelper.h"
 
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
 

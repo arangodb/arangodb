@@ -31,6 +31,7 @@
 #include <unordered_map>
 
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
@@ -166,7 +167,7 @@ struct BatchInfo {
 struct MasterInfo {
   std::string endpoint;
   std::string engine;  // storage engine (optional)
-  TRI_server_id_t serverId{0};
+  ServerId serverId{0};
   int majorVersion{0};
   int minorVersion{0};
   TRI_voc_tick_t lastLogTick{0};

@@ -29,6 +29,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/MutexUnlocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -264,7 +265,7 @@ void MMFilesEngine::start() {
   if (names.empty()) {
     // no databases found, i.e. there is no system database!
     // create a database for the system database
-    int res = createDatabaseDirectory(TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE);
+    int res = createDatabaseDirectory(TRI_NewTickServer(), StaticStrings::SystemDatabase);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("982c7", ERR, arangodb::Logger::ENGINES)
@@ -1509,9 +1510,8 @@ Result MMFilesEngine::changeView(TRI_vocbase_t& vocbase,
 // creation requests will not fail.
 // the WAL entry for the index creation will be written *after* the call
 // to "createIndex" returns
-void MMFilesEngine::createIndex(TRI_vocbase_t& vocbase,
-                                TRI_voc_cid_t collectionId, TRI_idx_iid_t id,
-                                arangodb::velocypack::Slice const& data) {
+void MMFilesEngine::createIndex(TRI_vocbase_t& vocbase, TRI_voc_cid_t collectionId,
+                                IndexId id, arangodb::velocypack::Slice const& data) {
   // construct filename
   auto filename = indexFilename(vocbase.id(), collectionId, id);
 
@@ -1535,8 +1535,7 @@ void MMFilesEngine::createIndex(TRI_vocbase_t& vocbase,
 // the actual deletion.
 // the WAL entry for index deletion will be written *after* the call
 // to "dropIndex" returns
-void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase,
-                              TRI_voc_cid_t collectionId, TRI_idx_iid_t id) {
+void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId, IndexId id) {
   // construct filename
   std::string const filename = indexFilename(vocbase->id(), collectionId, id);
 
@@ -1992,15 +1991,15 @@ std::string MMFilesEngine::viewParametersFilename(TRI_voc_tick_t databaseId,
 }
 
 /// @brief build an index filename (absolute path)
-std::string MMFilesEngine::indexFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                         TRI_idx_iid_t id) const {
+std::string MMFilesEngine::indexFilename(TRI_voc_tick_t databaseId,
+                                         TRI_voc_cid_t collectionId, IndexId id) const {
   return basics::FileUtils::buildFilename(collectionDirectory(databaseId, collectionId),
                                           indexFilename(id));
 }
 
 /// @brief build an index filename (relative path)
-std::string MMFilesEngine::indexFilename(TRI_idx_iid_t id) const {
-  return std::string("index-") + std::to_string(id) + ".json";
+std::string MMFilesEngine::indexFilename(IndexId id) const {
+  return std::string("index-") + std::to_string(id.id()) + ".json";
 }
 
 /// @brief open an existing database. internal function
@@ -2969,7 +2968,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   // convert the sealed journals into datafiles
   if (!stop) {
     for (auto& datafile : sealed) {
-      std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
+      std::string dname("datafile-" + std::to_string(datafile->fid().id()) +
+                        ".db");
       std::string filename =
           arangodb::basics::FileUtils::buildFilename(physical->path(), dname);
 
@@ -3211,7 +3211,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection, TRI_v
   TRI_ASSERT(datafile != nullptr);
 
   if (cache->lastFid != datafile->fid()) {
-    if (cache->lastFid > 0) {
+    if (cache->lastFid.isSet()) {
       // rotated the existing journal... now update the old journal's stats
       auto& dfi = cache->createDfi(cache->lastFid);
       static_cast<MMFilesCollection*>(collection->getPhysical())
@@ -3472,7 +3472,7 @@ Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
   // "server" part
   builder.add("server", VPackValue(VPackValueType::Object));  // open
   builder.add("version", VPackValue(ARANGODB_VERSION));
-  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
   builder.add("engine", VPackValue(EngineName));  // "mmfiles"
   builder.close();
 

@@ -420,7 +420,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     } else if (s.IsNotFound()) {  // expected with nosync recovery tests
       LOG_TOPIC("ecdbb", WARN, Logger::ENGINES)
           << "recalculating index estimate for index "
-          << "type '" << idx->typeName() << "' with id '" << idx->id() << "'";
+          << "type '" << idx->typeName() << "' with id '" << idx->id().id() << "'";
       idx->recalculateEstimates();
       continue;
     }
