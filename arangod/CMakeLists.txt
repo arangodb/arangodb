@@ -396,7 +396,6 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
   VocBase/KeyGenerator.cpp
-  VocBase/KeyLockInfo.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalDataSource.cpp
   VocBase/LogicalView.cpp

@@ -137,7 +137,7 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result, OperationOptions& options,
-                bool lock, KeyLockInfo* /*keyLockInfo*/,
+                bool lock, 
                 std::function<void()> const& callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
@@ -150,7 +150,7 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock, KeyLockInfo* keyLockInfo,
+                bool lock,
                 std::function<void()> const& callbackDuringLock) override;
 
  protected:

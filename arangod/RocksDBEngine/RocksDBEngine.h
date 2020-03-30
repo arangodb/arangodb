@@ -233,9 +233,6 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief current recovery tick
   TRI_voc_tick_t recoveryTick() noexcept override;
 
-  // start compactor thread and delete files form collections marked as deleted
-  void recoveryDone(TRI_vocbase_t& vocbase) override;
-
  public:
   /// @brief disallow purging of WAL files even if the archive gets too big
   /// removing WAL files does not seem to be thread-safe, so we have to track

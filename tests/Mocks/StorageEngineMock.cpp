@@ -1091,7 +1091,7 @@ void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) 
 arangodb::Result PhysicalCollectionMock::insert(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
-    bool lock, arangodb::KeyLockInfo* /*keyLockInfo*/,
+    bool lock, 
     std::function<void()> const& callbackDuringLock) {
   TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
   before();
@@ -1295,7 +1295,7 @@ bool PhysicalCollectionMock::readDocumentWithCallback(
 arangodb::Result PhysicalCollectionMock::remove(
     arangodb::transaction::Methods& trx, arangodb::velocypack::Slice slice,
     arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options,
-    bool lock, arangodb::KeyLockInfo* /*keyLockInfo*/,
+    bool lock, 
     std::function<void()> const& callbackDuringLock) {
   TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
   before();

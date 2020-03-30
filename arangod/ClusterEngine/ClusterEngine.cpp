@@ -236,10 +236,6 @@ TRI_voc_tick_t ClusterEngine::recoveryTick() {
   return 0;  // never in recovery
 }
 
-void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {
-  // nothing to do here
-}
-
 std::string ClusterEngine::createCollection(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& collection) {
   TRI_ASSERT(collection.id() != 0);

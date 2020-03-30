@@ -41,7 +41,6 @@
 
 namespace arangodb {
 
-struct KeyLockInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -191,13 +190,13 @@ class PhysicalCollection {
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
+                        OperationOptions& options, bool lock,
                         std::function<void()> const& cbDuringLock) = 0;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, bool lock) {
-    return insert(trx, newSlice, result, options, lock, nullptr, nullptr);
+    return insert(trx, newSlice, result, options, lock, nullptr);
   }
 
   virtual Result update(arangodb::transaction::Methods* trx,
@@ -212,12 +211,12 @@ class PhysicalCollection {
 
   virtual Result remove(transaction::Methods& trx, velocypack::Slice slice,
                         ManagedDocumentResult& previous, OperationOptions& options,
-                        bool lock, KeyLockInfo* keyLockInfo,
+                        bool lock,
                         std::function<void()> const& cbDuringLock) = 0;
 
   virtual Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                         ManagedDocumentResult& previous, OperationOptions& options,
-                        bool lock, KeyLockInfo* keyLockInfo,
+                        bool lock,
                         std::function<void()> const& cbDuringLock);
 
   /// @brief new object for insert, value must have _key set correctly.

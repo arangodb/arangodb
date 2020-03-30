@@ -1242,8 +1242,6 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
   return TRI_voc_tick_t(server().getFeature<RocksDBRecoveryManager>().recoveryTick());
 }
 
-void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {}
-
 std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& collection) {
   const TRI_voc_cid_t cid = collection.id();

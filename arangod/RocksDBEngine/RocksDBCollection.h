@@ -112,7 +112,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options,
-                bool lock, KeyLockInfo* /*keyLockInfo*/,
+                bool lock,
                 std::function<void()> const& cbDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
@@ -125,12 +125,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock, KeyLockInfo* keyLockInfo,
+                bool lock,
                 std::function<void()> const& cbDuringLock) override;
 
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                 ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock, KeyLockInfo* keyLockInfo,
+                bool lock, 
                 std::function<void()> const& cbDuringLock) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }

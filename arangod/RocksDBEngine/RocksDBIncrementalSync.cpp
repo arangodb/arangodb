@@ -108,7 +108,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
           auto r = physical->remove(trx, builder.slice(), mdr, options,
-                                    /*lock*/false, nullptr, nullptr);
+                                    /*lock*/false, nullptr);
 
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
@@ -145,7 +145,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
           auto r = physical->remove(trx, builder.slice(), mdr, options,
-                                    /*lock*/false, nullptr, nullptr);
+                                    /*lock*/false, nullptr);
 
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
@@ -295,7 +295,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         keyBuilder->add(VPackValue(localKey));
 
         auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options,
-                                  /*lock*/false, nullptr, nullptr);
+                                  /*lock*/false, nullptr);
 
         if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // ignore not found, we remove conflicting docs ahead of time
@@ -349,7 +349,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       keyBuilder->add(VPackValue(localKey));
 
       auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options,
-                                /*lock*/false, nullptr, nullptr);
+                                /*lock*/false, nullptr);
 
       if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore not found, we remove conflicting docs ahead of time
@@ -475,7 +475,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         keyBuilder->add(VPackValue(conflictingKey));
 
         auto res = physical->remove(*trx, keyBuilder->slice(), mdr, options,
-                                    /*lock*/false, nullptr, nullptr);
+                                    /*lock*/false, nullptr);
 
         if (res.ok()) {
           ++stats.numDocsRemoved;
@@ -491,7 +491,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
         Result res = physical->insert(trx, it, mdr, options,
-                                      /*lock*/false, nullptr, nullptr);
+                                      /*lock*/false, nullptr);
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               res.errorMessage() > keySlice.copyString()) {
@@ -504,7 +504,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
             options.indexOperationMode = Index::OperationMode::normal;
             res = physical->insert(trx, it, mdr, options,
-                                   /*lock*/false, nullptr, nullptr);
+                                   /*lock*/false, nullptr);
             options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
               return res;
@@ -743,7 +743,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
             ManagedDocumentResult previous;
             auto r = physical->remove(trx, tempBuilder.slice(), previous,
-                                      options, /*lock*/false, nullptr, nullptr);
+                                      options, /*lock*/false, nullptr);
 
             if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
               // ignore not found, we remove conflicting docs ahead of time

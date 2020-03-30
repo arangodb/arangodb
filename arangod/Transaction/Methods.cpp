@@ -70,7 +70,6 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
-#include "VocBase/KeyLockInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
@@ -1491,11 +1490,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     followers = collection->followers()->get();
   }
 
-  // we may need to lock individual keys here so we can ensure that even with
-  // concurrent operations on the same keys we have the same order of data
-  // application on leader and followers
-  KeyLockInfo keyLockInfo;
-
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -1561,7 +1555,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
     Result res = collection->insert(this, value, docResult, options, needsLock,
-                                    &keyLockInfo, updateFollowers);
+                                    updateFollowers);
 
     bool didReplace = false;
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
@@ -2081,11 +2075,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     followers = collection->followers()->get();
   }
 
-  // we may need to lock individual keys here so we can ensure that even with
-  // concurrent operations on the same keys we have the same order of data
-  // application on leader and followers
-  KeyLockInfo keyLockInfo;
-
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -2156,7 +2145,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
 
     auto res = collection->remove(*this, value, options, needsLock, previous,
-                                  &keyLockInfo, updateFollowers);
+                                  updateFollowers);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {

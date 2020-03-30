@@ -831,7 +831,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options,
-                                 bool /*lock*/, KeyLockInfo* /*keyLockInfo*/,
+                                 bool /*lock*/, 
                                  std::function<void()> const& cbDuringLock) {
 
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
@@ -1151,7 +1151,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
+                                 OperationOptions& options, bool lock, 
                                  std::function<void()> const& cbDuringLock) {
   VPackSlice keySlice;
   if (slice.isString()) {
@@ -1180,7 +1180,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
+                                 OperationOptions& options, bool lock,
                                  std::function<void()> const& cbDuringLock) {
   return remove(trx, documentId, LocalDocumentId(), previousMdr, options, cbDuringLock);
 }

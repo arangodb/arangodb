@@ -574,9 +574,6 @@ void DatabaseFeature::recoveryDone() {
       continue;
     }
 
-    // execute the engine-specific callbacks on successful recovery
-    engine->recoveryDone(*vocbase);
-
     if (vocbase->replicationApplier()) {
       if (server().hasFeature<ReplicationFeature>()) {
         server().getFeature<ReplicationFeature>().startApplier(vocbase);
@@ -686,9 +683,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
     }
 
     if (!engine->inRecovery()) {
-      // starts compactor etc.
-      engine->recoveryDone(*vocbase);
-
       if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
         if (server().hasFeature<ReplicationFeature>()) {
           server().getFeature<ReplicationFeature>().startApplier(vocbase.get());

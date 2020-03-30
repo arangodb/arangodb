@@ -120,12 +120,6 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
     _state.barrier.id = barrierId;
     _state.barrier.updateTime = TRI_microtime();
   }
-
-  // FIXME: move this into engine code
-  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-
-  // Replication for RocksDB expects only one open transaction at a time
-  _supportsMultipleOpenTransactions = (engineName != "rocksdb");
 }
 
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
@@ -618,7 +612,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   LOG_TOPIC("e39dc", TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_supportsMultipleOpenTransactions || countOngoingTransactions(slice) == 0);
+  TRI_ASSERT(countOngoingTransactions(slice) == 0);
 #endif
 
   auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
@@ -692,7 +686,7 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   _ongoingTransactions.erase(it);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_supportsMultipleOpenTransactions || countOngoingTransactions(slice) == 0);
+  TRI_ASSERT(countOngoingTransactions(slice) == 0);
 #endif
   return res;
 }
@@ -1514,8 +1508,7 @@ Result TailingSyncer::runContinuousSync() {
       // important: we must not resume tailing in the middle of a RocksDB transaction,
       // as this would mean we would be missing the transaction begin marker. this would
       // cause "unexpected transaction errors"
-      std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-      if (engineName == "rocksdb" && _state.master.engine == engineName) {
+      if (_state.master.engine == "rocksdb") {
         fromTick = safeResumeTick;
       }
     }
@@ -1742,7 +1735,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_supportsMultipleOpenTransactions || !hasMultipleOngoingTransactions());
+  TRI_ASSERT(!hasMultipleOngoingTransactions());
 #endif
 
   {
@@ -2068,8 +2061,7 @@ void TailingSyncer::checkParallel() {
     return;
   }
 
-  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-  if (engineName == "rocksdb" && _state.master.engine == engineName) {
+  if (_state.master.engine == "rocksdb") {
     // master and slave are both on RocksDB... that means we do not need
     // to post the list of open transactions every time, and we can
     // also make the WAL tailing work in parallel on master and slave

@@ -51,7 +51,6 @@ class FollowerInfo;
 class Index;
 class IndexIterator;
 class KeyGenerator;
-struct KeyLockInfo;
 class LocalDocumentId;
 class ManagedDocumentResult;
 struct OperationOptions;
@@ -283,7 +282,7 @@ class LogicalCollection : public LogicalDataSource {
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
                 ManagedDocumentResult& result, OperationOptions& options, bool lock) {
-    return insert(trx, slice, result, options, lock, nullptr, nullptr);
+    return insert(trx, slice, result, options, lock, nullptr);
   }
 
   /**
@@ -293,7 +292,7 @@ class LogicalCollection : public LogicalDataSource {
    */
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options, bool lock,
-                KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
+                std::function<void()> const& cbDuringLock);
 
   Result update(transaction::Methods*, velocypack::Slice newSlice,
                 ManagedDocumentResult& result, OperationOptions&, bool lock,
@@ -305,7 +304,7 @@ class LogicalCollection : public LogicalDataSource {
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 OperationOptions& options, bool lock, ManagedDocumentResult& previousMdr,
-                KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
+                std::function<void()> const& cbDuringLock);
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const;

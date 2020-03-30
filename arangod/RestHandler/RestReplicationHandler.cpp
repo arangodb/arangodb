@@ -2737,7 +2737,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   bool doSoftLock = VelocyPackHelper::getBooleanValue(body, StaticStrings::ReplicationSoftLockOnly, false);
   AccessMode::Type lockType = AccessMode::Type::READ;
-  if (!doSoftLock && EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
+  if (!doSoftLock) {
     // With not doSoftLock we trigger RocksDB to stop writes on this shard.
     // With a softLock we only stop the WAL from being collected,
     // but still allow writes.

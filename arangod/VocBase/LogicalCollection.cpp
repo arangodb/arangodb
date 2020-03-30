@@ -1068,12 +1068,12 @@ Result LogicalCollection::compact() { return getPhysical()->compact(); }
 
 Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
                                  ManagedDocumentResult& result, OperationOptions& options,
-                                 bool lock, KeyLockInfo* keyLockInfo,
+                                 bool lock, 
                                  std::function<void()> const& cbDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
   }
-  return getPhysical()->insert(trx, slice, result, options, lock, keyLockInfo, cbDuringLock);
+  return getPhysical()->insert(trx, slice, result, options, lock, cbDuringLock);
 }
 
 /// @brief updates a document or edge in a collection
@@ -1108,12 +1108,12 @@ Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const ne
 /// @brief removes a document or edge
 Result LogicalCollection::remove(transaction::Methods& trx, velocypack::Slice const slice,
                                  OperationOptions& options, bool lock,
-                                 ManagedDocumentResult& previous, KeyLockInfo* keyLockInfo,
+                                 ManagedDocumentResult& previous, 
                                  std::function<void()> const& cbDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
   }
-  return getPhysical()->remove(trx, slice, previous, options, lock, keyLockInfo, cbDuringLock);
+  return getPhysical()->remove(trx, slice, previous, options, lock, cbDuringLock);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx, LocalDocumentId const& token,

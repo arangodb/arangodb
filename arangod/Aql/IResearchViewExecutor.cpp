@@ -239,7 +239,7 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
   static CallbackFactory const callbackFactory{
       [](ReadContext& ctx) {
         return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-          AqlValue a{AqlValueHintDocumentNoCopy(doc.begin())};
+          AqlValue a{AqlValueHintCopy(doc.begin())};
           bool mustDestroy = true;
           AqlValueGuard guard{a, mustDestroy};
           ctx.outputRow.moveValueInto(ctx.docOutReg, ctx.inputRow, guard);

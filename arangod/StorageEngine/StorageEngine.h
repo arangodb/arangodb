@@ -232,9 +232,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   /// @brief current recovery tick
   virtual TRI_voc_tick_t recoveryTick() = 0;
 
-  /// @brief function to be run when recovery is done
-  virtual void recoveryDone(TRI_vocbase_t& /*vocbase*/) {}
-
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server

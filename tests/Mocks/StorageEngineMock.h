@@ -39,7 +39,6 @@
 
 namespace arangodb {
 
-struct KeyLockInfo;
 class TransactionManager;
 class WalAccess;
 
@@ -88,7 +87,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                   arangodb::velocypack::Slice const newSlice,
                                   arangodb::ManagedDocumentResult& result,
                                   arangodb::OperationOptions& options, bool lock,
-                                  arangodb::KeyLockInfo* /*keyLockInfo*/,
                                   std::function<void()> const& callbackDuringLock) override;
 
   virtual arangodb::LocalDocumentId lookupKey(arangodb::transaction::Methods*,
@@ -112,7 +110,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                   arangodb::velocypack::Slice slice,
                                   arangodb::ManagedDocumentResult& previous,
                                   arangodb::OperationOptions& options, bool lock,
-                                  arangodb::KeyLockInfo* /*keyLockInfo*/,
                                   std::function<void()> const& callbackDuringLock) override;
   virtual arangodb::Result replace(arangodb::transaction::Methods* trx,
                                    arangodb::velocypack::Slice const newSlice,
