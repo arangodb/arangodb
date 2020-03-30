@@ -1452,7 +1452,12 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
     }
     // If we do not have more shadowRows
     // we need to return.
-    return ExecState::DONE;
+    auto& subqueryCall = stack.modifyTopCall();
+    if (subqueryCall.getLimit() == 0 && !subqueryCall.needSkipMore()) {
+      return ExecState::DONE;
+    }
+    _executorReturnedDone = false;
+    return ExecState::NEXTSUBQUERY;
   }
 }
 
