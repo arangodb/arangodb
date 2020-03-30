@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/slice.h>

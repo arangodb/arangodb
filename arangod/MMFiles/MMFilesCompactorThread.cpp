@@ -94,10 +94,10 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df,
   TRI_ASSERT(df != nullptr);
 
   std::unique_ptr<MMFilesDatafile> datafile(df);
-  TRI_voc_fid_t fid = datafile->fid();
+  FileId fid = datafile->fid();
 
   std::string copy;
-  std::string name("deleted-" + std::to_string(fid) + ".db");
+  std::string name("deleted-" + std::to_string(fid.id()) + ".db");
   std::string filename =
       arangodb::basics::FileUtils::buildFilename(physical->path(), name);
 
@@ -180,7 +180,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
 
   if (datafile->isPhysical()) {
     // construct a suitable tempname
-    std::string jname("temp-" + std::to_string(datafile->fid()) + ".db");
+    std::string jname("temp-" + std::to_string(datafile->fid().id()) + ".db");
     std::string tempFilename =
         arangodb::basics::FileUtils::buildFilename(physical->path(), jname);
     std::string realName = datafile->getName();
@@ -409,7 +409,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   /// too!!
   auto compactifier = [&context, &physical, this](MMFilesMarker const* marker,
                                                   MMFilesDatafile* datafile) -> bool {
-    TRI_voc_fid_t const targetFid = context->_compactor->fid();
+    FileId const targetFid = context->_compactor->fid();
 
     MMFilesMarkerType const type = marker->getType();
 

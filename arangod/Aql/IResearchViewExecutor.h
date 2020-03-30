@@ -33,7 +33,7 @@
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "Indexes/IndexIterator.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 #include <formats/formats.hpp>
 #include <index/heap_iterator.hpp>

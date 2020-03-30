@@ -390,7 +390,7 @@ uint64_t RocksDBEdgeIndex::HashForKey(const rocksdb::Slice& key) {
   return static_cast<uint64_t>(hasher(tmp));
 }
 
-RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                    arangodb::velocypack::Slice const& info,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection,
@@ -415,7 +415,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
     TRI_ASSERT(_estimator != nullptr);
   }
   // edge indexes are always created with ID 1 or 2
-  TRI_ASSERT(iid == 1 || iid == 2);
+  TRI_ASSERT(iid.isEdge());
   TRI_ASSERT(_objectId != 0);
 }
 

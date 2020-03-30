@@ -63,7 +63,7 @@ arangodb::ClusterEngineType getEngineType() {
 namespace arangodb {
 namespace iresearch {
 
-IResearchLinkCoordinator::IResearchLinkCoordinator(TRI_idx_iid_t id, LogicalCollection& collection)
+IResearchLinkCoordinator::IResearchLinkCoordinator(IndexId id, LogicalCollection& collection)
     : arangodb::ClusterIndex(id, collection, ::getEngineType(),
                              arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
                              IResearchLinkHelper::emptyIndexSlice()),
@@ -78,10 +78,11 @@ void IResearchLinkCoordinator::toVelocyPack( // generate definition
     std::underlying_type<arangodb::Index::Serialize>::type flags // definition flags
 ) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
-      std::string("failed to generate link definition for arangosearch view Cluster link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+        TRI_ERROR_BAD_PARAMETER,              // code
+        std::string("failed to generate link definition for arangosearch view "
+                    "Cluster link '") +
+            std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
   auto forPersistence = // definition for persistence
@@ -90,10 +91,11 @@ void IResearchLinkCoordinator::toVelocyPack( // generate definition
   builder.openObject();
 
   if (!properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failed to generate link definition for arangosearch view Cluster link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+        TRI_ERROR_INTERNAL,                   // code
+        std::string("failed to generate link definition for arangosearch view "
+                    "Cluster link '") +
+            std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
@@ -115,7 +117,7 @@ bool IResearchLinkCoordinator::IndexFactory::equal(arangodb::velocypack::Slice c
 
 std::shared_ptr<arangodb::Index> IResearchLinkCoordinator::IndexFactory::instantiate(
     arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id, bool isClusterConstructor) const {
+    IndexId id, bool isClusterConstructor) const {
   auto link = std::shared_ptr<arangodb::iresearch::IResearchLinkCoordinator>(
       new arangodb::iresearch::IResearchLinkCoordinator(id, collection));
   auto res = link->init(definition);

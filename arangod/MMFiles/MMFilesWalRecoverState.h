@@ -28,6 +28,7 @@
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesWalLogfile.h"
 #include "MMFiles/MMFilesWalMarker.h"
+#include "VocBase/Identifiers/FileId.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -144,7 +145,7 @@ struct MMFilesWalRecoverState {
   arangodb::LogicalCollection* getCollection(TRI_voc_tick_t, TRI_voc_cid_t);
 
   /// @brief executes a single operation inside a transaction
-  int executeSingleOperation(TRI_voc_tick_t, TRI_voc_cid_t, MMFilesMarker const*, TRI_voc_fid_t,
+  int executeSingleOperation(TRI_voc_tick_t, TRI_voc_cid_t, MMFilesMarker const*, FileId,
                              std::function<int(SingleCollectionTransaction*, MMFilesMarkerEnvelope*)>);
 
   /// @brief callback to handle one marker during recovery
