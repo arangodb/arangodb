@@ -638,7 +638,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
           arangodb::basics::AttributeName(VPackStringRef("nested")),
           arangodb::basics::AttributeName(VPackStringRef("field"))},
       false);
-
+  meta._primarySortCompression = arangodb::iresearch::ColumnCompression::NONE;
   auto storedValuesJSON = arangodb::velocypack::Parser::fromJson("[[], \"\", [\"\"], \"test.t\", {\"field\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}]");
   std::string error;
   meta._storedValues.fromVelocyPack(storedValuesJSON->slice(), error);
@@ -656,7 +656,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
 
   auto slice = builder.slice();
 
-  EXPECT_EQ(11, slice.length());
+  EXPECT_EQ(12, slice.length());
   tmpSlice = slice.get("collections");
   EXPECT_TRUE((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -687,6 +687,10 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 11 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("writebufferSizeMax");
   EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 12 == tmpSlice.getNumber<size_t>()));
+
+  tmpSlice = slice.get("primarySortCompression");
+  EXPECT_TRUE(tmpSlice.isString());
+  EXPECT_EQ("none", tmpSlice.copyString());
 
   tmpSlice = slice.get("primarySort");
   EXPECT_TRUE(true == tmpSlice.isArray());
@@ -738,6 +742,7 @@ TEST_F(IResearchViewMetaTest, test_readMaskAll) {
     \"writebufferIdle\": 11, \
     \"writebufferSizeMax\": 12, \
     \"primarySort\":[{\"field\":\"aaa\", \"direction\":\"asc\"}],\
+    \"primarySortCompression\":\"none\",\
     \"storedValues\":[{\"field\":\"foo\", \"compression\":\"lz4\"}]\
   }");
   EXPECT_TRUE(meta.init(json->slice(), errorField,
@@ -756,6 +761,7 @@ TEST_F(IResearchViewMetaTest, test_readMaskAll) {
   EXPECT_TRUE(mask._writebufferSizeMax);
   EXPECT_TRUE(mask._primarySort);
   EXPECT_TRUE(mask._storedValues);
+  EXPECT_TRUE(mask._primarySortCompression);
 }
 
 TEST_F(IResearchViewMetaTest, test_readMaskNone) {
@@ -784,6 +790,7 @@ TEST_F(IResearchViewMetaTest, test_readMaskNone) {
   EXPECT_FALSE(mask._writebufferSizeMax);
   EXPECT_FALSE(mask._primarySort);
   EXPECT_FALSE(mask._storedValues);
+  EXPECT_FALSE(mask._primarySortCompression);
 }
 
 TEST_F(IResearchViewMetaTest, test_writeMaskAll) {

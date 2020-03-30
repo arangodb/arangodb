@@ -797,7 +797,8 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
     }
   }
 
-  if (writeAnalyzerDefinition && (!mask || mask->_sortCompression)) {
+  if (writeAnalyzerDefinition && (!mask || mask->_sortCompression)
+      && (!ignoreEqual || _sortCompression != ignoreEqual->_sortCompression)) {
     addStringRef(builder, "primarySortCompression", columnCompressionToString(_sortCompression));
   }
 

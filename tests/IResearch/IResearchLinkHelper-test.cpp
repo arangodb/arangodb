@@ -252,6 +252,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     "{ \
       \"type\":\"arangosearch\", \
       \"primarySort\":[], \
+      \"primarySortCompression\":\"lz4\",\
       \"fields\":{}, \
       \"includeAllFields\": false, \
       \"trackListPositions\": false, \
@@ -342,6 +343,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     "{ \
       \"type\":\"arangosearch\", \
       \"primarySort\":[], \
+      \"primarySortCompression\":\"lz4\",\
       \"fields\":{}, \
       \"includeAllFields\": false, \
       \"trackListPositions\": false, \
@@ -408,6 +410,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       "{ \
       \"type\":\"arangosearch\", \
       \"primarySort\":[], \
+      \"primarySortCompression\":\"lz4\",\
       \"fields\":{}, \
       \"includeAllFields\": false, \
       \"trackListPositions\": false, \
