@@ -36,46 +36,48 @@
 using namespace arangodb::aql;
 
 namespace {
-  bool attributesMatch(TRI_idx_iid_t& commonIndexId, IndexNode const* indexNode, latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>& node) {
-    // check all node attributes to be in index
-    for (auto& nodeAttr : node.attrs) {
-      nodeAttr.afData.field = nullptr;
-      for (auto& index : indexNode->getIndexes()) {
-        if (!index->hasCoveringIterator()) {
-          continue;
-        }
-        auto indexId = index->id();
-        // use one index only
-        if (commonIndexId != 0 && commonIndexId != indexId) {
-          continue;
-        }
-        size_t indexFieldNum = 0;
-        for (auto const& field : index->fields()) {
-          if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
-            if (commonIndexId == 0) {
-              commonIndexId = indexId;
-            }
-            nodeAttr.afData.fieldNumber = indexFieldNum;
-            nodeAttr.afData.field = &field;
-            break;
+bool attributesMatch(arangodb::IndexId& commonIndexId, IndexNode const* indexNode,
+                     latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>& node) {
+  // check all node attributes to be in index
+  for (auto& nodeAttr : node.attrs) {
+    nodeAttr.afData.field = nullptr;
+    for (auto& index : indexNode->getIndexes()) {
+      if (!index->hasCoveringIterator()) {
+        continue;
+      }
+      auto indexId = index->id();
+      // use one index only
+      if (!commonIndexId.isPrimary() && commonIndexId != indexId) {
+        continue;
+      }
+      size_t indexFieldNum = 0;
+      for (auto const& field : index->fields()) {
+        if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
+          if (commonIndexId.isPrimary()) {
+            commonIndexId = indexId;
           }
-          ++indexFieldNum;
-        }
-        if (commonIndexId != 0 || nodeAttr.afData.field != nullptr) {
+          nodeAttr.afData.fieldNumber = indexFieldNum;
+          nodeAttr.afData.field = &field;
           break;
         }
+        ++indexFieldNum;
       }
-      // not found
-      if (nodeAttr.afData.field == nullptr) {
-        return false;
+      if (!commonIndexId.isPrimary() || nodeAttr.afData.field != nullptr) {
+        break;
       }
     }
-    return true;
+    // not found
+    if (nodeAttr.afData.field == nullptr) {
+      return false;
+    }
+  }
+  return true;
   }
 
-  bool processCalculationNode(IndexNode const* indexNode, CalculationNode* calculationNode,
-                              std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>>& nodesToChange,
-                              TRI_idx_iid_t& commonIndexId) {
+  bool processCalculationNode(
+      IndexNode const* indexNode, CalculationNode* calculationNode,
+      std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>>& nodesToChange,
+      arangodb::IndexId& commonIndexId) {
     auto astNode = calculationNode->expression()->nodeForModification();
     latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData> node;
     node.node = calculationNode;
@@ -133,7 +135,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       bool stickToSortNode = false;
       auto const* var = indexNode->outVariable();
       std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>> nodesToChange;
-      TRI_idx_iid_t commonIndexId = 0; // use one index only
+      IndexId commonIndexId = IndexId::primary();  // use one index only
       while (current != loop) {
         auto valid = true;
         auto type = current->getType();

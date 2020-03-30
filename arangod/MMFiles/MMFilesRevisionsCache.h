@@ -29,7 +29,8 @@
 #include "Basics/fasthash.h"
 #include "Containers/AssocUnique.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/FileId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesMarker;
@@ -74,14 +75,13 @@ class MMFilesRevisionsCache {
   void clear();
   MMFilesDocumentPosition lookup(LocalDocumentId const& documentId) const;
   MMFilesDocumentPosition insert(LocalDocumentId const& documentId, uint8_t const* dataptr,
-                                 TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+                                 FileId fid, bool isInWal, bool shouldLock);
   void batchLookup(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const;
   void insert(MMFilesDocumentPosition const& position, bool shouldLock);
   void update(LocalDocumentId const& documentId, uint8_t const* dataptr,
-              TRI_voc_fid_t fid, bool isInWal);
-  bool updateConditional(LocalDocumentId const& documentId,
-                         MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition,
-                         TRI_voc_fid_t newFid, bool isInWal);
+              FileId fid, bool isInWal);
+  bool updateConditional(LocalDocumentId const& documentId, MMFilesMarker const* oldPosition,
+                         MMFilesMarker const* newPosition, FileId newFid, bool isInWal);
   void remove(LocalDocumentId const& documentId);
   MMFilesDocumentPosition fetchAndRemove(LocalDocumentId const& documentId);
 

@@ -31,6 +31,7 @@
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesWalMarker.h"
+#include "VocBase/Identifiers/FileId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -38,7 +39,7 @@ namespace arangodb {
 class MMFilesWalLogfile {
  public:
   /// @brief typedef for logfile ids
-  typedef TRI_voc_fid_t IdType;
+  typedef FileId IdType;
 
   /// @brief logfile status
   enum class StatusType : uint32_t {
@@ -217,7 +218,7 @@ class MMFilesWalLogfile {
 
     LOG_TOPIC("10910", TRACE, arangodb::Logger::ENGINES)
         << "changing logfile status from " << statusText(_status) << " to "
-        << statusText(status) << " for logfile " << id();
+        << statusText(status) << " for logfile " << id().id();
     _status = status;
   }
 

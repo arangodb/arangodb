@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -38,12 +39,12 @@ class Slice;
 
 class MMFilesIndex : public Index {
  public:
-  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
+  MMFilesIndex(IndexId id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse)
       : Index(id, collection, name, attributes, unique, sparse) {}
 
-  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+  MMFilesIndex(IndexId id, LogicalCollection& collection,
                arangodb::velocypack::Slice const& info)
       : Index(id, collection, info) {}
 

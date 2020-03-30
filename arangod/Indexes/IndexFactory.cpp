@@ -54,8 +54,8 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
   }
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection&,
-                               arangodb::velocypack::Slice const& definition,
-                               TRI_idx_iid_t, bool) const override {
+                                               arangodb::velocypack::Slice const& definition,
+                                               arangodb::IndexId, bool) const override {
     std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
         definition, arangodb::StaticStrings::IndexType, "");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
@@ -307,28 +307,28 @@ std::unordered_map<std::string, std::string> IndexFactory::indexAliases() const 
   return std::unordered_map<std::string, std::string>();
 }
 
-TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
-                                          bool generateKey, bool isClusterConstructor) {
+IndexId IndexFactory::validateSlice(arangodb::velocypack::Slice info,
+                                    bool generateKey, bool isClusterConstructor) {
   if (!info.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "expecting object for index definition");
   }
 
-  TRI_idx_iid_t iid = 0;
+  IndexId iid = IndexId::none();
   auto value = info.get(StaticStrings::IndexId);
 
   if (value.isString()) {
-    iid = basics::StringUtils::uint64(value.copyString());
+    iid = IndexId{basics::StringUtils::uint64(value.copyString())};
   } else if (value.isNumber()) {
-    iid = basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(
-        info, StaticStrings::IndexId.c_str(), 0);
+    iid = IndexId{basics::VelocyPackHelper::getNumericValue<IndexId::BaseType>(
+        info, StaticStrings::IndexId.c_str(), 0)};
   } else if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "cannot restore index without index identifier");
   }
 
-  if (iid == 0 && !isClusterConstructor) {
+  if (iid.isNone() && !isClusterConstructor) {
     // Restore is not allowed to generate an id
     VPackSlice type = info.get(StaticStrings::IndexType);
     // dont generate ids for indexes of type "primary"
