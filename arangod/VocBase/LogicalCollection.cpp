@@ -492,7 +492,8 @@ bool LogicalCollection::determineSyncByRevision() const {
         server.hasFeature<ReplicationFeature>()) {
       auto& engine = server.getFeature<EngineSelectorFeature>();
       auto& replication = server.getFeature<ReplicationFeature>();
-      return engine.isRocksDB() && replication.syncByRevision();
+      return engine.isRocksDB() && replication.syncByRevision() &&
+             usesRevisionsAsDocumentIds();
     }
   }
   return false;

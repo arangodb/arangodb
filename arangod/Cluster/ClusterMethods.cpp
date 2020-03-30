@@ -1092,8 +1092,6 @@ futures::Future<Result> upgradeOnCoordinator(ClusterFeature& feature,
       }
     }
 
-    LOG_DEVEL << oldProps.slice().toJson();
-
     velocypack::Builder newProps;
     {
       velocypack::ObjectBuilder guard(&newProps);
