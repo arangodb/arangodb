@@ -138,9 +138,6 @@ class MultiDependencySingleRowFetcher {
   [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
       -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
 
-  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
-      -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
-
   [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
  private:
@@ -160,6 +157,9 @@ class MultiDependencySingleRowFetcher {
   bool _didReturnSubquerySkips{false};
 
  private:
+  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
+      -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
+
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
