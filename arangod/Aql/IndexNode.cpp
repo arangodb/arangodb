@@ -122,13 +122,13 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     TRI_ASSERT(vars);
 
     auto const indexIdSlice = base.get("indexIdOfVars");
-    if (!indexIdSlice.isNumber<TRI_idx_iid_t>()) {
+    if (!indexIdSlice.isNumber<IndexId::BaseType>()) {
       THROW_ARANGO_EXCEPTION_FORMAT(
           TRI_ERROR_BAD_PARAMETER, "\"indexIdOfVars\" %s should be a number",
             indexIdSlice.toString().c_str());
     }
 
-    auto const indexId = indexIdSlice.getNumber<TRI_idx_iid_t>();
+    IndexId const indexId{indexIdSlice.getNumber<IndexId::BaseType>()};
 
     auto const indexValuesVarsSlice = base.get("indexValuesVars");
     if (!indexValuesVarsSlice.isArray()) {
@@ -287,7 +287,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
     builder.add(VPackValue("outNmDocId"));
     _outNonMaterializedDocId->toVelocyPack(builder);
 
-    builder.add("indexIdOfVars", VPackValue(_outNonMaterializedIndVars.first));
+    builder.add("indexIdOfVars", VPackValue(_outNonMaterializedIndVars.first.id()));
     // container _indexes contains a few items
     auto indIt = std::find_if(_indexes.cbegin(), _indexes.cend(), [this](auto const& index) {
       return index->id() == _outNonMaterializedIndVars.first;
@@ -646,8 +646,7 @@ std::vector<transaction::Methods::IndexHandle> const& IndexNode::getIndexes() co
   return _indexes;
 }
 
-void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
-                                    TRI_idx_iid_t commonIndexId,
+void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
                                     IndexVarsInfo const& indexVariables) {
   _outNonMaterializedIndVars.second.clear();
   _outNonMaterializedIndVars.first = commonIndexId;
