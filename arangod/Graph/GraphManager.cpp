@@ -501,12 +501,12 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
+  LOG_DEVEL << "X";
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentDocumentCollections{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentEdgeCollections{};
 
   auto& vocbase = ctx()->vocbase();
   Result innerRes{TRI_ERROR_NO_ERROR};
-
 
   // I. Check which collections do exists and which not.
   // Check that all edgeCollections are either to be created
@@ -545,7 +545,9 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     } else {
-      documentCollectionsToCreate.emplace(vertexColl);
+      if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
+        documentCollectionsToCreate.emplace(vertexColl);
+      }
     }
   }
 
@@ -557,7 +559,7 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     }
   }
 
-    // b) Enterprise Sharding
+  // b) Enterprise Sharding
 #ifdef USE_ENTERPRISE
   {
     Result res = ensureEnterpriseCollectionSharding(graph, waitForSync,
