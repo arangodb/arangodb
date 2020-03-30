@@ -354,7 +354,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     }
 
     TRI_ASSERT(!_config.master.endpoint.empty());
-    TRI_ASSERT(_config.master.serverId != 0);
+    TRI_ASSERT(_config.master.serverId.isSet());
     TRI_ASSERT(_config.master.majorVersion != 0);
 
     LOG_TOPIC("6fd2b", DEBUG, Logger::REPLICATION) << "client: got master state";

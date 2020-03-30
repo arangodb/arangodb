@@ -25,6 +25,7 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_SKIPLIST_INDEX_H 1
 
 #include "RocksDBEngine/RocksDBVPackIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
@@ -32,7 +33,7 @@ class RocksDBSkiplistIndex : public RocksDBVPackIndex {
  public:
   RocksDBSkiplistIndex() = delete;
 
-  RocksDBSkiplistIndex(TRI_idx_iid_t iid, LogicalCollection& coll,
+  RocksDBSkiplistIndex(IndexId iid, LogicalCollection& coll,
                        arangodb::velocypack::Slice const& info)
       : RocksDBVPackIndex(iid, coll, info) {}
 

@@ -49,7 +49,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> const PrimaryIndexAttr
 
 };  // namespace
 
-ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
                            ClusterEngineType engineType, Index::IndexType itype,
                            arangodb::velocypack::Slice const& info)
     : Index(id, collection, info),

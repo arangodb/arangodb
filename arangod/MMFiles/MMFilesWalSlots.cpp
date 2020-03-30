@@ -377,13 +377,13 @@ MMFilesWalSyncRegion MMFilesWalSlots::getSyncRegion() {
       // the region for
       auto otherId = slot->logfileId();
 
-      if (region.logfileId != 0 && otherId != 0 && otherId != region.logfileId) {
+      if (region.logfileId.isSet() && otherId.isSet() && otherId != region.logfileId) {
         region.canSeal = true;
       }
       break;
     }
 
-    if (region.logfileId == 0) {
+    if (region.logfileId.empty()) {
       // first member
       MMFilesWalLogfile::StatusType status;
 
@@ -432,7 +432,7 @@ MMFilesWalSyncRegion MMFilesWalSlots::getSyncRegion() {
 
 /// @brief return a region to the freelist
 void MMFilesWalSlots::returnSyncRegion(MMFilesWalSyncRegion const& region) {
-  TRI_ASSERT(region.logfileId != 0);
+  TRI_ASSERT(region.logfileId.isSet());
 
   size_t slotIndex = region.firstSlotIndex;
 
@@ -631,8 +631,7 @@ int MMFilesWalSlots::writeHeader(MMFilesWalSlot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
   MMFilesDatafileHeaderMarker header = MMFilesDatafileHelper::CreateHeaderMarker(
-      static_cast<uint32_t>(_logfile->allocatedSize()),
-      static_cast<TRI_voc_fid_t>(_logfile->id()));
+      static_cast<uint32_t>(_logfile->allocatedSize()), FileId{_logfile->id()});
   size_t const size = header.base.getSize();
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));

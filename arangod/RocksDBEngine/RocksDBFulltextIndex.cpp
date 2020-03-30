@@ -84,12 +84,11 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
 
 } // namespace
 
-RocksDBFulltextIndex::RocksDBFulltextIndex(TRI_idx_iid_t iid,
-                                           arangodb::LogicalCollection& collection,
+RocksDBFulltextIndex::RocksDBFulltextIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                            arangodb::velocypack::Slice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
       _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid.isSet());
   TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext());
 
   VPackSlice const value = info.get("minLength");
@@ -149,7 +148,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 
     // Short circuit. If id is correct the index is identical.
     arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid);
+    return idRef == std::to_string(_iid.id());
   }
 
   value = info.get("minLength");

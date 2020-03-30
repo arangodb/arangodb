@@ -518,9 +518,8 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
       // try to find duplicate condition parts, and only return each
       // unique condition part once
       try {
-        std::string conditionString =
-            conditionData->first->toString() + " - " +
-            std::to_string(conditionData->second->id());
+        std::string conditionString = conditionData->first->toString() + " - " +
+                                      std::to_string(conditionData->second->id().id());
         isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
         // we already saw the same combination of index & condition
         // don't add it again
@@ -3040,7 +3039,7 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
   auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   auto collection = ci.getCollection(vocbase().name(), name);
-  TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
+  IndexId iid{basics::StringUtils::uint64(id)};
   return collection->lookupIndex(iid);
 }
 
@@ -3097,8 +3096,7 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
 
-
-  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(idxId);
+  IndexId iid{arangodb::basics::StringUtils::uint64(idxId)};
   std::shared_ptr<arangodb::Index> idx = document->lookupIndex(iid);
 
   if (idx == nullptr) {
