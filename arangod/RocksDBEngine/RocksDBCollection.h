@@ -25,6 +25,7 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
 
 #include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace rocksdb {
 class PinnableSlice;
@@ -79,7 +80,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                      bool restore, bool& created) override;
 
   /// @brief Drop an index with the given iid.
-  bool dropIndex(TRI_idx_iid_t iid) override;
+  bool dropIndex(IndexId iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 

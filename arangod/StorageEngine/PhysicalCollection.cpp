@@ -153,7 +153,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(VPackSlice const& info) c
   return findIndex(info, _indexes);
 }
 
-std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) const {
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(IndexId idxId) const {
   READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {

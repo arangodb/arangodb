@@ -26,7 +26,7 @@
 
 #include <set>
 
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "mmfiles-fulltext-common.h"
 

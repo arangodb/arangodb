@@ -28,6 +28,7 @@
 
 #include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
@@ -39,7 +40,7 @@ namespace iresearch {
 
 class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  IResearchRocksDBLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
+  IResearchRocksDBLink(IndexId iid, arangodb::LogicalCollection& collection);
 
   void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
@@ -129,7 +130,7 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
 
     std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                  arangodb::velocypack::Slice const& definition,
-                                                 TRI_idx_iid_t id,
+                                                 IndexId id,
                                                  bool /*isClusterConstructor*/) const override;
 
     virtual arangodb::Result normalize(             // normalize definition

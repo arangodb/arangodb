@@ -449,7 +449,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
                                          arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(0, collection, StaticStrings::IndexNamePrimary,
+    : RocksDBIndex(IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),

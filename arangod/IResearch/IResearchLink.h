@@ -29,12 +29,13 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchVPackComparer.h"
+#include "IResearch/IResearchViewMeta.h"
 #include "Indexes/Index.h"
-#include "IResearchLinkMeta.h"
-#include "IResearchViewMeta.h"
-#include "IResearchVPackComparer.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
@@ -134,7 +135,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the identifier for this link
   //////////////////////////////////////////////////////////////////////////////
-  TRI_idx_iid_t id() const noexcept { return _id; }
+  IndexId id() const noexcept { return _id; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
@@ -255,7 +256,7 @@ class IResearchLink {
   /// @brief construct an uninitialized IResearch link, must call init(...)
   /// after
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchLink(TRI_idx_iid_t iid, LogicalCollection& collection);
+  IResearchLink(IndexId iid, LogicalCollection& collection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief link was created during recovery
@@ -329,7 +330,7 @@ class IResearchLink {
   LogicalCollection& _collection; // the linked collection
   DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
   std::shared_ptr<FlushSubscription> _flushSubscription;
-  TRI_idx_iid_t const _id; // the index identifier
+  IndexId const _id;                 // the index identifier
   TRI_voc_tick_t _lastCommittedTick; // protected by _commitMutex
   IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
   std::mutex _commitMutex; // prevents data store sequential commits

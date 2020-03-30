@@ -362,9 +362,9 @@ TEST_F(IResearchViewDBServerTest, test_open) {
 
     // ensure we have shard view in vocbase
     struct Link : public arangodb::iresearch::IResearchLink {
-      Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col)
+      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
           : IResearchLink(id, col) {}
-    } link(42, *logicalCollection);
+    } link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
@@ -691,9 +691,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     }
 
     struct Link : public arangodb::iresearch::IResearchLink {
-      Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col)
+      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
           : IResearchLink(id, col) {}
-    } link(42, *logicalCollection);
+    } link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
@@ -719,9 +719,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
 
     // ensure we have shard view in vocbase
     struct Link : public arangodb::iresearch::IResearchLink {
-      Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col)
+      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
           : IResearchLink(id, col) {}
-    } link(42, *logicalCollection);
+    } link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
@@ -1518,9 +1518,9 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
 
     // ensure we have shard view in vocbase
     struct Link : public arangodb::iresearch::IResearchLink {
-      Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col)
+      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
           : IResearchLink(id, col) {}
-    } link(42, *logicalCollection);
+    } link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());

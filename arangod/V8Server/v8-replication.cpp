@@ -412,7 +412,7 @@ static void JS_ServerIdReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId());
+  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId().id());
   TRI_V8_RETURN_STD_STRING(serverId);
   TRI_V8_TRY_CATCH_END
 }
