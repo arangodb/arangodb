@@ -160,6 +160,88 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   return f;
 }
 
+/// @brief send a request to all responsible servers for a given shard; use this
+/// method to send a message to followers as well as leader
+std::vector<FutureRes> sendRequests(ConnectionPool* pool, DestinationId dest,
+                                    RestVerb type, std::string path,
+                                    velocypack::Buffer<uint8_t> payload,
+                                    RequestOptions const& options, Headers headers) {
+  LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
+      << "request to '" << dest << "' '" << fuerte::to_string(type) << " "
+      << path << "'";
+
+  std::vector<FutureRes> fs;
+
+  // FIXME build future.reset(..)
+  auto req = prepareRequest(type, std::move(path), std::move(payload), options,
+                            std::move(headers));
+
+  if (!pool || !pool->config().clusterInfo) {
+    LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
+        << "connection pool unavailable";
+    fs.emplace_back(futures::makeFuture(
+        Response{std::move(dest), Error::Canceled, nullptr, std::move(req)}));
+    return fs;
+  }
+
+  std::vector<arangodb::network::EndpointSpec> specs;
+  int res = resolveDestinations(*pool->config().clusterInfo, dest, specs);
+  if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
+    fs.emplace_back(futures::makeFuture(
+        Response{std::move(dest), Error::Canceled, nullptr, std::move(req)}));
+    return fs;
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  for (auto& spec : specs) {
+    TRI_ASSERT(!spec.endpoint.empty());
+  }
+#endif
+
+  struct Pack {
+    DestinationId dest;
+    futures::Promise<network::Response> promise;
+    std::unique_ptr<fuerte::Response> tmp;
+    std::unique_ptr<fuerte::Request> tmp_req;
+    bool skipScheduler;
+    Pack(DestinationId& dest, bool skip)
+        : dest(dest), promise(), skipScheduler(skip) {}
+  };
+
+  for (auto& spec : specs) {
+    // fits in SSO of std::function
+    static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
+    auto conn = pool->leaseConnection(spec.endpoint);
+    auto p = std::make_shared<Pack>(dest, options.skipScheduler);
+
+    fs.emplace_back(p->promise.getFuture());
+    auto reqCopy = std::make_unique<fuerte::Request>(*req);
+    conn->sendRequest(std::move(reqCopy), [p(std::move(p))](fuerte::Error err,
+                                                            std::unique_ptr<fuerte::Request> req,
+                                                            std::unique_ptr<fuerte::Response> res) {
+      Scheduler* sch = SchedulerFeature::SCHEDULER;
+      if (p->skipScheduler || sch == nullptr) {
+        p->promise.setValue(network::Response{std::move(p->dest), err,
+                                              std::move(res), std::move(req)});
+        return;
+      }
+
+      p->tmp = std::move(res);
+      p->tmp_req = std::move(req);
+
+      bool queued = sch->queue(RequestLane::CLUSTER_INTERNAL, [p, err]() {
+        p->promise.setValue(Response{std::move(p->dest), err, std::move(p->tmp),
+                                     std::move(p->tmp_req)});
+      });
+      if (ADB_UNLIKELY(!queued)) {
+        p->promise.setValue(Response{std::move(p->dest), fuerte::Error::Canceled,
+                                     nullptr, std::move(p->tmp_req)});
+      }
+    });
+  }
+
+  return fs;
+}
+
 /// Handler class with enough information to keep retrying
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {

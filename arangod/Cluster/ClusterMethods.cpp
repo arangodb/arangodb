@@ -32,9 +32,9 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -62,6 +62,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/ticks.h"
 
@@ -1064,23 +1065,60 @@ futures::Future<Result> upgradeOnCoordinator(ClusterFeature& feature,
     VPackBuffer<uint8_t> buffer;
     buffer.append(VPackSlice::emptyObjectSlice().begin(), 1);
 
-    auto future =
-        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
-                             "/_api/collection/" +
-                                 StringUtils::urlEncode(p.first) + "/upgrade",
-                             std::move(buffer), opts);
-    futures.emplace_back(std::move(future));
+    auto some =
+        network::sendRequests(pool, "shard:" + p.first, fuerte::RestVerb::Get,
+                              "/_api/collection/" +
+                                  StringUtils::urlEncode(p.first) + "/upgrade",
+                              std::move(buffer), opts);
+    for (auto& future : some) {
+      futures.emplace_back(std::move(future));
+    }
   }
 
-  auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
+  auto handleShardResponses = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(results,
                                         [](Result&, VPackBuilder&, ShardID&, VPackSlice) -> void {
                                           // we don't care about response bodies, just that the requests succeeded
                                         });
   };
+  auto updateProperties = [& collection = *collinfo]() -> Result {
+    methods::Collections::Context ctx{collection.vocbase(), collection};
+    velocypack::Builder oldProps;
+    {
+      velocypack::ObjectBuilder guard(&oldProps);
+      Result res = methods::Collections::properties(ctx, oldProps);
+      if (res.fail()) {
+        return res;
+      }
+    }
+
+    LOG_DEVEL << oldProps.slice().toJson();
+
+    velocypack::Builder newProps;
+    {
+      velocypack::ObjectBuilder guard(&newProps);
+      for (auto pair : velocypack::ObjectIterator(oldProps.slice())) {
+        if (pair.key.isEqualString(StaticStrings::SyncByRevision)) {
+          newProps.add(StaticStrings::SyncByRevision, velocypack::Value(true));
+        } else if (pair.key.isEqualString(StaticStrings::UsesRevisionsAsDocumentIds)) {
+          newProps.add(StaticStrings::UsesRevisionsAsDocumentIds, velocypack::Value(true));
+        } else {
+          newProps.add(pair.key);
+          newProps.add(pair.value);
+        }
+      }
+    }
+
+    return methods::Collections::updateProperties(collection, newProps.slice());
+  };
   return futures::collectAll(std::move(futures))
-      .thenValue(std::move(cb))
-      .thenValue([](OperationResult&& opRes) -> Result { return opRes.result; });
+      .thenValue(std::move(handleShardResponses))
+      .thenValue([updateProperties = std::move(updateProperties)](OperationResult&& opRes) -> Result {
+        if (opRes.result.fail()) {
+          return opRes.result;
+        }
+        return updateProperties();
+      });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1676,11 +1676,6 @@ Result RocksDBCollection::upgrade() {
     return res;
   }
 
-  if (_logicalCollection.system()) {
-    res.reset(TRI_ERROR_BAD_PARAMETER, "no upgrading system collections");
-    return res;
-  }
-
   auto& server = _logicalCollection.vocbase().server();
   auto& selector = server.getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
@@ -1729,8 +1724,6 @@ Result RocksDBCollection::upgrade() {
   // TODO write recovery method to trigger post-recovery cleanup if we failed
 
   // TODO handle smart edge collections
-
-  // TODO handle rollback in case of failure
 
   cleanupGuard.cancel();
   return cleanupAfterUpgrade();

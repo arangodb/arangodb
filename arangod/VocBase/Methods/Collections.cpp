@@ -899,6 +899,11 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
     return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
   }
 
+  if (coll.system()) {
+    return futures::makeFuture(
+        Result(TRI_ERROR_BAD_PARAMETER, "no upgrading system collections"));
+  }
+
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll.id());
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
