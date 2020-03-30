@@ -76,6 +76,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Validators.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
@@ -7529,7 +7530,8 @@ AqlValue Functions::GetSchema(ExpressionContext* expressionContext,
         "could not extract collection name from parameters");
   }
 
-  auto logicalCollection = expressionContext->vocbase().lookupCollection(collectionName);
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
+  methods::Collections::lookup(trx->vocbase(), collectionName, logicalCollection);
   if (!logicalCollection) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    "could not find collection: " + collectionName);
