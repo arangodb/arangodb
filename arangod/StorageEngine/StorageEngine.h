@@ -78,7 +78,6 @@ class RestHandlerFactory;
 namespace transaction {
 
 class Context;
-class ContextData;
 class Manager;
 class ManagerFeature;
 struct Options;
@@ -107,10 +106,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter<ViewTypesFeature>();
   }
 
-  virtual bool supportsDfdb() const = 0;
-
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
-  virtual std::unique_ptr<transaction::ContextData> createTransactionContextData() = 0;
   virtual std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) = 0;
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
@@ -251,11 +247,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::string createCollection(TRI_vocbase_t& vocbase,
                                        LogicalCollection const& collection) = 0;
 
-  // asks the storage engine to persist the collection.
-  // After this call the collection is persisted over recovery.
-  virtual arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
-                                             LogicalCollection const& collection) = 0;
-
   // asks the storage engine to drop the specified collection and persist the
   // deletion info. Note that physical deletion of the collection data must not
   // be carried out by this call, as there may
@@ -382,13 +373,11 @@ class StorageEngine : public application_features::ApplicationFeature {
                             std::shared_ptr<velocypack::Builder>& builderSPtr) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
-  virtual bool useRawDocumentPointers() = 0;
-
   void getCapabilities(velocypack::Builder& builder) const {
     builder.openObject();
     builder.add("name", velocypack::Value(typeName()));
     builder.add("supports", velocypack::Value(VPackValueType::Object));
-    builder.add("dfdb", velocypack::Value(supportsDfdb()));
+    builder.add("dfdb", velocypack::Value(false));
 
     builder.add("indexes", velocypack::Value(VPackValueType::Array));
     for (auto const& it : indexFactory().supportedIndexes()) {

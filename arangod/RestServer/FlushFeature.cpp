@@ -35,10 +35,6 @@
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesDatafile.h"
-#include "MMFiles/MMFilesEngine.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesWalMarker.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
@@ -65,7 +61,6 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
   startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<StorageEngineFeature>();
-  startsAfter<MMFilesLogfileManager>();
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

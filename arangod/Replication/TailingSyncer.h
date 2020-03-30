@@ -221,7 +221,7 @@ class TailingSyncer : public Syncer {
   bool _workInParallel;
 
   /// @brief max parallel open transactions
-  /// this will be set to false for RocksDB, and to true for MMFiles
+  /// this will be set to false for RocksDB
   bool _supportsMultipleOpenTransactions;
 
   /// @brief which transactions were open and need to be treated specially

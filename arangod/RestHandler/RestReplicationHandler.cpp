@@ -2735,7 +2735,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
-  bool doSoftLock = VelocyPackHelper::getBooleanValue(body, "doSoftLockOnly", false);
+  bool doSoftLock = VelocyPackHelper::getBooleanValue(body, StaticStrings::ReplicationSoftLockOnly, false);
   AccessMode::Type lockType = AccessMode::Type::READ;
   if (!doSoftLock && EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
     // With not doSoftLock we trigger RocksDB to stop writes on this shard.

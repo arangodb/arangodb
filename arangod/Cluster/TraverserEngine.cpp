@@ -209,7 +209,6 @@ bool BaseEngine::lockCollection(std::string const& shard) {
   if (cid == 0) {
     return false;
   }
-  _trx->pinData(cid);  // will throw when it fails
 
   Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
 

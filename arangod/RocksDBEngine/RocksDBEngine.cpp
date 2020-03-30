@@ -84,7 +84,6 @@
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
-#include "Transaction/ContextData.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
@@ -209,7 +208,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
-  // to configure this engine and the MMFiles PersistentIndexFeature
+  // to configure this engine
   startsAfter<RocksDBOptionFeature>();
 
   server.addFeature<RocksDBRecoveryManager>();
@@ -866,10 +865,6 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
   return std::make_unique<transaction::Manager>(feature, /*keepData*/ false);
 }
 
-std::unique_ptr<transaction::ContextData> RocksDBEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(nullptr);  // not used by rocksdb
-}
-
 std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
   return std::make_unique<RocksDBTransactionState>(vocbase, tid, options);
@@ -1268,11 +1263,6 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
   }
 
   return std::string();  // no need to return a path
-}
-
-arangodb::Result RocksDBEngine::persistCollection(TRI_vocbase_t& vocbase,
-                                                  LogicalCollection const& collection) {
-  return {};
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,

@@ -44,7 +44,6 @@ class ClusterEngine final : public StorageEngine {
   void setActualEngine(StorageEngine* e);
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
-  bool isMMFiles() const;
   bool isMock() const;
   ClusterEngineType engineType() const;
 
@@ -63,11 +62,7 @@ class ClusterEngine final : public StorageEngine {
   void prepare() override;
   void start() override;
 
-  bool supportsDfdb() const override { return false; }
-  bool useRawDocumentPointers() override { return false; }
-
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
-  std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
                                                            TRI_voc_tid_t tid,
                                                            transaction::Options const& options) override;
@@ -188,9 +183,6 @@ class ClusterEngine final : public StorageEngine {
  public:
   std::string createCollection(TRI_vocbase_t& vocbase,
                                LogicalCollection const& collection) override;
-
-  arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection) override;
 
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 

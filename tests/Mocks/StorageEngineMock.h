@@ -34,7 +34,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/ContextData.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -214,7 +213,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
       arangodb::TransactionState& state, TRI_voc_cid_t cid,
       arangodb::AccessMode::Type, int nestingLevel) override;
-  virtual std::unique_ptr<arangodb::transaction::ContextData> createTransactionContextData() override;
   virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
       arangodb::transaction::ManagerFeature&) override;
   virtual std::unique_ptr<arangodb::TransactionState> createTransactionState(
@@ -263,8 +261,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                       std::shared_ptr<VPackBuilder>& builderSPtr) override;
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                                       bool isUpgrade) override;
-  virtual arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
-                                             arangodb::LogicalCollection const& collection) override;
   virtual void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker,
                                    int& status) override;
   using StorageEngine::registerCollection;
@@ -282,10 +278,8 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual int saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) override;
   virtual int shutdownDatabase(TRI_vocbase_t& vocbase) override;
   virtual void signalCleanup(TRI_vocbase_t& vocbase) override;
-  virtual bool supportsDfdb() const override;
   virtual void unloadCollection(TRI_vocbase_t& vocbase,
                                 arangodb::LogicalCollection& collection) override;
-  virtual bool useRawDocumentPointers() override { return false; }
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
   virtual void waitForSyncTick(TRI_voc_tick_t tick) override;

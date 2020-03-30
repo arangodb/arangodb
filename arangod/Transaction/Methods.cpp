@@ -824,27 +824,6 @@ TransactionCollection* transaction::Methods::trxCollection(std::string const& na
   return _state->collection(name, type);
 }
 
-/// @brief order a ditch for a collection
-void transaction::Methods::pinData(TRI_voc_cid_t cid) {
-  TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
-             _state->status() == transaction::Status::CREATED);
-
-  TransactionCollection* trxColl = trxCollection(cid, AccessMode::Type::READ);
-  if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "unable to determine transaction collection");
-  }
-
-  TRI_ASSERT(trxColl->collection() != nullptr);
-  _transactionContextPtr->pinData(trxColl->collection().get());
-}
-
-/// @brief whether or not a ditch has been created for the collection
-bool transaction::Methods::isPinned(TRI_voc_cid_t cid) const {
-  return _transactionContextPtr->isPinned(cid);
-}
-
 /// @brief extract the _id attribute from a slice, and convert it into a
 /// string
 std::string transaction::Methods::extractIdString(VPackSlice slice) {
@@ -1048,8 +1027,6 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     throwCollectionNotFound(collectionName.c_str());
   }
 
-  pinData(cid);  // will throw when it fails
-
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
@@ -1191,8 +1168,6 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
-  pinData(cid);  // will throw when it fails
-
   arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1213,8 +1188,6 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   if (res.fail()) {
     return res;
   }
-
-  TRI_ASSERT(isPinned(cid));
 
   mmdr->addToBuilder(result, true);
   return Result(TRI_ERROR_NO_ERROR);
@@ -1239,16 +1212,13 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
   TRI_ASSERT(trxColl != nullptr);
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   TRI_ASSERT(collection != nullptr);
-  _transactionContextPtr->pinData(collection.get());  // will throw when it fails
 
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
   bool isLocked = trxColl->isLocked(AccessMode::Type::READ, _state->nestingLevel());
-  Result res = collection->read(this, key, result, shouldLock && !isLocked);
-  TRI_ASSERT(res.fail() || isPinned(cid));
-  return res;
+  return collection->read(this, key, result, shouldLock && !isLocked);
 }
 
 namespace {
@@ -1318,10 +1288,6 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
-  if (!options.silent) {
-    pinData(cid);  // will throw when it fails
-  }
-
   VPackBuilder resultBuilder;
   ManagedDocumentResult result;
 
@@ -1344,8 +1310,6 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     if (res.fail()) {
       return res;
     }
-
-    TRI_ASSERT(isPinned(cid));
 
     if (expectedRevision != 0) {
       TRI_voc_rid_t foundRevision =
@@ -1475,8 +1439,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   // options.overwrite => !needsLock
   TRI_ASSERT(!options.overwrite || !needsLock);
 
-  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
-
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
@@ -1484,12 +1446,10 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   {
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
-      // needsLock => isMMFiles
       // needsLock => !value.isArray()
       // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
-      // However, due to nested transactions, there are mmfiles single
-      // operations that already have a lock.
-      TRI_ASSERT(!needsLock || isMMFiles);
+      // However, due to nested transactions, 
+      TRI_ASSERT(!needsLock);
       TRI_ASSERT(!needsLock || !value.isArray());
       TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
     }
@@ -1557,16 +1517,13 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
 
       replicationType = ReplicationType::LEADER;
-      if (isMMFiles && needsLock) {
-        keyLockInfo.shouldLock = true;
-      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || keyLockInfo.shouldLock || !followers->empty()) {
+      if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1579,9 +1536,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
     }
   }  // isDBServer - early block
-  if (options.returnOld || options.returnNew) {
-    pinData(cid);  // will throw when it fails
-  }
 
   VPackBuilder resultBuilder;
   ManagedDocumentResult docResult;
@@ -1818,15 +1772,13 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
-      // needsLock => isMMFiles
       // needsLock => !newValue.isArray()
       // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
       // However, due to nested transactions, there are mmfiles single
       // operations that already have a lock.
-      TRI_ASSERT(!needsLock || isMMFiles);
+      TRI_ASSERT(!needsLock);
       TRI_ASSERT(!needsLock || !newValue.isArray());
       TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
     }
@@ -1894,10 +1846,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       }
     }
   }  // isDBServer - early block
-
-  if (options.returnOld || options.returnNew) {
-    pinData(cid);  // will throw when it fails
-  }
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
@@ -2086,7 +2034,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   auto const& collection = trxCollection(cid)->collection();
 
   bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
-  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
@@ -2095,12 +2042,11 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   {
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
-      // needsLock => isMMFiles
       // needsLock => !value.isArray()
       // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
       // However, due to nested transactions, there are mmfiles single
       // operations that already have a lock.
-      TRI_ASSERT(!needsLock || isMMFiles);
+      TRI_ASSERT(!needsLock);
       TRI_ASSERT(!needsLock || !value.isArray());
       TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
     }
@@ -2161,9 +2107,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
 
       replicationType = ReplicationType::LEADER;
-      if (isMMFiles && needsLock) {
-        keyLockInfo.shouldLock = true;
-      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -2183,10 +2126,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
     }
   }  // isDBServer - early block
-
-  if (options.returnOld) {
-    pinData(cid);  // will throw when it fails
-  }
 
   VPackBuilder resultBuilder;
   ManagedDocumentResult previous;
@@ -2318,8 +2257,6 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
                                                OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
 
-  pinData(cid);  // will throw when it fails
-
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
@@ -2422,8 +2359,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       }
     }
   }  // isDBServer - early block
-
-  pinData(cid);  // will throw when it fails
 
   Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
 
@@ -2843,9 +2778,6 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
   }
   std::shared_ptr<LogicalCollection> const& logical = trxColl->collection();
   TRI_ASSERT(logical != nullptr);
-
-  // will throw when it fails
-  _transactionContextPtr->pinData(logical.get());
 
   std::unique_ptr<IndexIterator> iterator;
   switch (cursorType) {

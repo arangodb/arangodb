@@ -46,13 +46,7 @@ function runSetup () {
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   v.properties(meta);
 
-  if (db._path().indexOf("databases") !== -1) {
-    // mmfiles
-    path = fs.join(db._path(), '..', 'arangosearch-' + v._id);
-  } else {
-    // rocksdb
-    path = fs.join(db._path(), 'databases', 'arangosearch-' + v._id);
-  }
+  path = fs.join(db._path(), 'databases', 'arangosearch-' + v._id);
 
   for (let i = 0; i < 10000; i++) {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i });

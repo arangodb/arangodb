@@ -42,11 +42,9 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
-#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -56,6 +54,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -127,7 +126,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     try {
       auto& factory =
-          server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
+          server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::RocksDBEngine>();
       factory.instantiate(*logicalCollection, json->slice(), arangodb::IndexId{1}, false);
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& ex) {
@@ -147,7 +146,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     ASSERT_TRUE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
     auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
+        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::RocksDBEngine>();
     EXPECT_NE(nullptr, factory.instantiate(*logicalCollection, json->slice(),
                                            arangodb::IndexId{1}, false));
   }
@@ -358,7 +357,7 @@ TEST_F(IResearchLinkTest, test_init) {
     }
 
     auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
+        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::RocksDBEngine>();
     std::shared_ptr<arangodb::Index> link =
         factory.instantiate(*logicalCollection, linkJson->slice(),
                             arangodb::IndexId{1}, false);
@@ -434,7 +433,7 @@ TEST_F(IResearchLinkTest, test_init) {
     }
 
     auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
+        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::RocksDBEngine>();
     std::shared_ptr<arangodb::Index> link =
         factory.instantiate(*logicalCollection, linkJson->slice(),
                             arangodb::IndexId{1}, false);
@@ -500,7 +499,7 @@ TEST_F(IResearchLinkTest, test_self_token) {
     auto logicalView = vocbase.createView(viewJson->slice());
     EXPECT_TRUE((false == !logicalView));
     auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
+        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::RocksDBEngine>();
     std::shared_ptr<arangodb::Index> index =
         factory.instantiate(*logicalCollection, linkJson->slice(),
                             arangodb::IndexId{42}, false);
@@ -532,7 +531,7 @@ TEST_F(IResearchLinkTest, test_drop) {
     ASSERT_TRUE((false == !logicalView));
 
     auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
+        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::RocksDBEngine>();
     std::shared_ptr<arangodb::Index> link0 =
         factory.instantiate(*logicalCollection, linkJson->slice(),
                             arangodb::IndexId{1}, false);
@@ -637,7 +636,7 @@ TEST_F(IResearchLinkTest, test_unload) {
     ASSERT_TRUE((false == !logicalView));
 
     auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
+        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::RocksDBEngine>();
     std::shared_ptr<arangodb::Index> link =
         factory.instantiate(*logicalCollection, linkJson->slice(),
                             arangodb::IndexId{1}, false);

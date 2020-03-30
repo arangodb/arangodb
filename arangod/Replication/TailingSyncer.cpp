@@ -510,8 +510,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // we will always check if the target document already exists and then either
     // carry out an insert or a replace.
     // so we will be carrying out either a read-then-insert or a read-then-replace
-    // operation, which is a single write operation. and for MMFiles this is also
-    // safe as we have the exclusive lock on the underlying collection anyway 
+    // operation, which is a single write operation.
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     Result res = trx.begin();

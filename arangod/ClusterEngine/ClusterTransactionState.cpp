@@ -80,28 +80,6 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     setRegistered();
-
-    ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-    if (ce->isMMFiles() && hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      TRI_ASSERT(isCoordinator());
-
-      std::vector<std::string> leaders;
-      allCollections([&leaders](TransactionCollection& c) {
-        auto shardIds = c.collection()->shardIds();
-        for (auto const& pair : *shardIds) {
-          std::vector<arangodb::ShardID> const& servers = pair.second;
-          if (!servers.empty()) {
-            leaders.push_back(servers[0]);
-          }
-        }
-        return true; // continue
-      });
-
-      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
-      if (res.fail()) { // something is wrong
-        return res;
-      }
-    }
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }

@@ -214,12 +214,6 @@ class Methods {
   /// @brief return a collection name
   std::string name(TRI_voc_cid_t cid) const;
 
-  /// @brief order a ditch for a collection
-  ENTERPRISE_VIRT void pinData(TRI_voc_cid_t);
-
-  /// @brief whether or not a ditch has been created for the collection
-  ENTERPRISE_VIRT bool isPinned(TRI_voc_cid_t cid) const;
-
   /// @brief extract the _id attribute from a slice,
   /// and convert it into a string
   std::string extractIdString(VPackSlice);

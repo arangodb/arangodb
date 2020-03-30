@@ -36,13 +36,15 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
-#include "IResearch/IResearchMMFilesLink.h"
+#include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RestServer/FlushFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
@@ -973,7 +975,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
         index = factory.instantiate(_logicalCollection, info, arangodb::IndexId{id}, false);
       } else {
         auto& factory =
-            server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
+            server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::RocksDBEngine>();
         index = factory.instantiate(_logicalCollection, info, arangodb::IndexId{id}, false);
       }
     } catch (std::exception const& ex) {
@@ -1152,10 +1154,13 @@ arangodb::Result PhysicalCollectionMock::insert(
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
       } else {
-        auto* l = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(index.get());
-        if (!l->insert(*trx, ref->second.docId(),
+        arangodb::OperationOptions options;
+        options.indexOperationMode = arangodb::Index::OperationMode::normal;
+        arangodb::RocksDBMethods* mthds = arangodb::RocksDBTransactionState::toMethods(trx);
+        auto* l = static_cast<arangodb::iresearch::IResearchRocksDBLink*>(index.get());
+        if (!l->insert(*trx, mthds, ref->second.docId(),
                        arangodb::velocypack::Slice(result.vpack()),
-                       arangodb::Index::OperationMode::normal)
+                       options)
                  .ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
@@ -1512,10 +1517,6 @@ std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransa
       new TransactionCollectionMock(&state, cid, accessType));
 }
 
-std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTransactionContextData() {
-  return std::unique_ptr<arangodb::transaction::ContextData>();
-}
-
 std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager(
     arangodb::transaction::ManagerFeature& feature) {
   return std::make_unique<arangodb::transaction::Manager>(feature, /*keepData*/ false);
@@ -1702,12 +1703,6 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(arangodb::CreateD
                                          std::move(new_info));
 }
 
-arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t& vocbase,
-                                                      arangodb::LogicalCollection const& collection) {
-  before();
-  return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock collection persisted OK
-}
-
 void StorageEngineMock::prepareDropDatabase(TRI_vocbase_t& vocbase,
                                             bool useWriteMarker, int& status) {
   // NOOP
@@ -1760,11 +1755,6 @@ int StorageEngineMock::shutdownDatabase(TRI_vocbase_t& vocbase) {
 void StorageEngineMock::signalCleanup(TRI_vocbase_t& vocbase) {
   before();
   // NOOP, assume cleanup thread signaled OK
-}
-
-bool StorageEngineMock::supportsDfdb() const {
-  TRI_ASSERT(false);
-  return false;
 }
 
 void StorageEngineMock::unloadCollection(TRI_vocbase_t& vocbase,

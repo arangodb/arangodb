@@ -51,7 +51,6 @@ class TransactionState;
 
 namespace transaction {
 
-class ContextData;
 class Methods;
 
 class Context {
@@ -73,12 +72,6 @@ class Context {
 
   /// @brief return the vocbase
   TRI_vocbase_t& vocbase() const { return _vocbase; }
-
-  /// @brief pin data for the collection
-  void pinData(arangodb::LogicalCollection*);
-
-  /// @brief whether or not the data for the collection is pinned
-  bool isPinned(TRI_voc_cid_t);
 
   /// @brief temporarily lease a StringBuffer object
   basics::StringBuffer* leaseStringBuffer(size_t initialSize);
@@ -154,8 +147,6 @@ class Context {
   arangodb::velocypack::Options _dumpOptions;
   
  private:
-  std::unique_ptr<transaction::ContextData> _contextData;
-
   struct {
     TRI_voc_tid_t id;
     bool hasFailedOperations;

@@ -467,8 +467,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
 
-  trxPtr->pinData(_collection->id());
-
   bool hasV8Expression = false;
   /// @brief _inVars, a vector containing for each expression above
   /// a vector of Variable*, used to execute the expression
@@ -530,7 +528,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                            isProduceResult(),
                            this->_filter.get(), this->projections(),
                            this->coveringIndexAttributePositions(),
-                           EngineSelectorFeature::ENGINE->useRawDocumentPointers(),
                            std::move(nonConstExpressions), std::move(inVars),
                            std::move(inRegs), hasV8Expression, _condition->root(),
                            this->getIndexes(), _plan->getAst(), this->options(),

@@ -54,7 +54,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
-#include "IResearch/IResearchMMFilesLink.h"
+#include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -66,6 +66,8 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -2926,10 +2928,13 @@ class IResearchViewBlockTest
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
       auto indexes = collection0->getIndexes();
       EXPECT_FALSE(indexes.empty());
+      arangodb::RocksDBMethods* mthds = arangodb::RocksDBTransactionState::toMethods(trx.get());
+      arangodb::OperationOptions options;
+      options.indexOperationMode = arangodb::Index::normal;
       auto* l =
-          static_cast<arangodb::iresearch::IResearchMMFilesLink*>(indexes[0].get());
+          static_cast<arangodb::iresearch::IResearchRocksDBLink*>(indexes[0].get());
       for (size_t i = 2; i < 10; ++i) {
-        l->insert(*trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::normal);
+        l->insert(*trx, mthds, arangodb::LocalDocumentId(i), doc->slice(), options);
       }
     }
     // in collection only one alive doc

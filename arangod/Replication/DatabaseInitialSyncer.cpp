@@ -971,8 +971,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
                     std::string("unable to start transaction: ") + res.errorMessage());
     }
 
-    trx.pinData(coll->id());  // will throw when it fails
-
     double t = TRI_microtime();
     TRI_ASSERT(!trx.isSingleOperationTransaction());
     res = parseCollectionDump(trx, coll, dumpResponse.get(), markersProcessed);
