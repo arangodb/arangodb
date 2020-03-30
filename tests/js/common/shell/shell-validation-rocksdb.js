@@ -367,20 +367,56 @@ function ValidationBasicsSuite () {
       testCollection.properties({"validation" : v });
       sleepInCluster();
 
-      let res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
+      let res;
+
+      // get regular schema
+      res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
       assertEqual(res[0], v.rule);
+
+      // schema on non existing collection
+      try {
+        res = db._query(`RETURN GET_SCHEMA("nonExistingTestCollection")`).toArray();
+        assertEqual(res[0], null);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+
+      // no validation available must return `null`
+      testCollection.drop();
+      db._create(testCollectionName);
+      res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
+      assertEqual(res[0], null);
     },
 
     testSCHEMA_VALIDATE: () => {
       const v =  validatorJson;
+      // unset validation
+      // FIXME - just pass empty object (PR 11346)
       testCollection.properties({"validation" : { rule:{} } });
       sleepInCluster();
 
-      let res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : 24}, { "properties" : { "foo" : { "type" : "string" } } } )`).toArray();
+      let res;
+      // doc does not match schema
+      res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : 24}, { "properties" : { "foo" : { "type" : "string" } } } )`).toArray();
       assertEqual(res[0].valid, false);
 
+      // doc matches schema
       res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : "bar"}, { "properties" : { "foo" : { "type" : "string" } } } )`).toArray();
       assertEqual(res[0].valid, true);
+
+      //invalid schema
+      res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : "bar"}, null)`).toArray();
+      assertEqual(res[0].valid, true);
+
+      // invalid schema
+      try {
+        res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : "bar"}, [])`).toArray();
+        assertEqual(res[0].valid, true);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

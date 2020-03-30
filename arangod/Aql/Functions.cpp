@@ -7514,7 +7514,8 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
 AqlValue Functions::GetSchema(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
-  static char const* AFN = "GET_SCHEMA";  // GET_VALIDATON("collectionName")
+  // GET_VALIDATON("collectionName")
+  static char const* AFN = "GET_SCHEMA";
 
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
@@ -7556,7 +7557,8 @@ AqlValue Functions::GetSchema(ExpressionContext* expressionContext,
 AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
                                    transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
-  static char const* AFN = "SCHEMA_VALIDATE";  // SCHEMA_VALIDATE(doc, schema )
+  // SCHEMA_VALIDATE(doc, schema )
+  static char const* AFN = "SCHEMA_VALIDATE";
   auto const* vpackOptions = trx->transactionContext()->getVPackOptions();
 
   if (parameters.size() != 2) {
@@ -7566,9 +7568,18 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   AqlValue const& docValue = extractFunctionParameterValue(parameters, 0);
   AqlValue const& schemaValue = extractFunctionParameterValue(parameters, 1);
 
+  if (schemaValue.isNull(false)) {
+    transaction::BuilderLeaser resultBuilder(trx);
+    {
+      VPackObjectBuilder guard(resultBuilder.builder());
+      resultBuilder->add("valid", VPackValue(true));
+    }
+    return AqlValue(resultBuilder->slice());
+  }
+
   if (!schemaValue.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER, "second pararmeter is not a schema object: " +
+        TRI_ERROR_BAD_PARAMETER, "second parameter is not a schema object: " +
                                      schemaValue.slice().toJson());
   }
 
