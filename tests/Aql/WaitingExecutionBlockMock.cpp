@@ -114,8 +114,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
     AqlCallStack stack) {
-  auto myCallList = stack.popCall();
-  auto myCall = myCallList.popNextCall();
+  auto myCall = stack.peek();
 
   TRI_ASSERT(!(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0}));
   TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.fullCount));

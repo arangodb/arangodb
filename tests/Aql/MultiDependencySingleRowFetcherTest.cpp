@@ -131,7 +131,6 @@ class MultiDependencySingleRowFetcherTest
     }
     {
       auto [state, row] = testee.nextShadowRow();
-      EXPECT_EQ(state, ExecutorState::DONE);
       EXPECT_FALSE(row.isInitialized());
       ASSERT_EQ(rowIndexBefore, testee.getRowIndex())
           << "Skipped a non processed row.";
