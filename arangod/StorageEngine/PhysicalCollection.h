@@ -184,20 +184,11 @@ class PhysicalCollection {
    * @brief Perform document insert, may generate a '_key' value
    * If (options.returnNew == false && !options.silent) result might
    * just contain an object with the '_key' field
-   * @param callbackDuringLock Called immediately after a successful insert.
-   *        If the insert wasn't successful, it isn't called. May be nullptr.
    */
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options,
-                        std::function<void()> const& cbDuringLock) = 0;
-
-  Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options) {
-    return insert(trx, newSlice, result, options, nullptr);
-  }
+                        OperationOptions& options) = 0;
 
   virtual Result update(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
@@ -210,12 +201,10 @@ class PhysicalCollection {
                          ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                        ManagedDocumentResult& previous, OperationOptions& options,
-                        std::function<void()> const& cbDuringLock) = 0;
+                        ManagedDocumentResult& previous, OperationOptions& options) = 0;
 
   virtual Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                        ManagedDocumentResult& previous, OperationOptions& options,
-                        std::function<void()> const& cbDuringLock);
+                        ManagedDocumentResult& previous, OperationOptions& options);
 
   /// @brief new object for insert, value must have _key set correctly.
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,

@@ -113,7 +113,7 @@ arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
 
   for (std::size_t rid : toRemove) {
     double t = TRI_microtime();
-    auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr, options, nullptr);
+    auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr, options);
 
     stats.waitedForRemovals += TRI_microtime() - t;
     if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -173,7 +173,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
     keyBuilder->clear();
     keyBuilder->add(VPackValue(conflictingKey));
 
-    auto res = physical->remove(trx, keyBuilder->slice(), mdr, options, nullptr);
+    auto res = physical->remove(trx, keyBuilder->slice(), mdr, options);
 
     if (res.ok()) {
       ++stats.numDocsRemoved;
@@ -252,7 +252,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
 
       TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
 
-      Result res = physical->insert(&trx, masterDoc, mdr, options, nullptr);
+      Result res = physical->insert(&trx, masterDoc, mdr, options);
       
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
@@ -264,7 +264,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
             return res;
           }
           options.indexOperationMode = arangodb::Index::OperationMode::normal;
-          res = physical->insert(&trx, masterDoc, mdr, options, nullptr);
+          res = physical->insert(&trx, masterDoc, mdr, options);
           
           options.indexOperationMode = arangodb::Index::OperationMode::internal;
           if (res.fail()) {

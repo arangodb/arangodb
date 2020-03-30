@@ -1067,16 +1067,15 @@ Result LogicalCollection::compact() { return getPhysical()->compact(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
-                                 ManagedDocumentResult& result, OperationOptions& options,
-                                 std::function<void()> const& cbDuringLock) {
+                                 ManagedDocumentResult& result, OperationOptions& options) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
   }
-  return getPhysical()->insert(trx, slice, result, options, cbDuringLock);
+  return getPhysical()->insert(trx, slice, result, options);
 }
 
 /// @brief updates a document or edge in a collection
-Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const newSlice,
+Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
                                  ManagedDocumentResult& result, OperationOptions& options,
                                  ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::update") {
@@ -1091,7 +1090,7 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const new
 }
 
 /// @brief replaces a document or edge in a collection
-Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
+Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice newSlice,
                                   ManagedDocumentResult& result, OperationOptions& options,
                                   ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::replace") {
@@ -1107,12 +1106,11 @@ Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const ne
 /// @brief removes a document or edge
 Result LogicalCollection::remove(transaction::Methods& trx, velocypack::Slice const slice,
                                  OperationOptions& options,
-                                 ManagedDocumentResult& previous, 
-                                 std::function<void()> const& cbDuringLock) {
+                                 ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
   }
-  return getPhysical()->remove(trx, slice, previous, options, cbDuringLock);
+  return getPhysical()->remove(trx, slice, previous, options);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx, LocalDocumentId const& token,

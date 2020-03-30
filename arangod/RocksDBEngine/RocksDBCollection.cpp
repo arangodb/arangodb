@@ -830,9 +830,7 @@ bool RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
 Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
-                                 OperationOptions& options,
-                                 std::function<void()> const& cbDuringLock) {
-
+                                 OperationOptions& options) {
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
@@ -911,10 +909,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                               TRI_VOC_DOCUMENT_OPERATION_INSERT,
                               hasPerformedIntermediateCommit);
 
-    if (res.ok() && cbDuringLock != nullptr) {
-      cbDuringLock();
-    }
-
     guard.finish(hasPerformedIntermediateCommit);
   }
 
@@ -922,7 +916,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 }
 
 Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const newSlice,
+                                 arangodb::velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
 
@@ -1040,7 +1034,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 }
 
 Result RocksDBCollection::replace(transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
+                                  arangodb::velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
 
@@ -1150,8 +1144,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options,
-                                 std::function<void()> const& cbDuringLock) {
+                                 OperationOptions& options) {
   VPackSlice keySlice;
   if (slice.isString()) {
     keySlice = slice;
@@ -1174,20 +1167,18 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
     expectedId = LocalDocumentId::create(TRI_ExtractRevisionId(slice));
   }
 
-  return remove(trx, documentId, expectedId, previousMdr, options, cbDuringLock);
+  return remove(trx, documentId, expectedId, previousMdr, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options,
-                                 std::function<void()> const& cbDuringLock) {
-  return remove(trx, documentId, LocalDocumentId(), previousMdr, options, cbDuringLock);
+                                 OperationOptions& options) {
+  return remove(trx, documentId, LocalDocumentId(), previousMdr, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  LocalDocumentId expectedId, ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options,
-                                 std::function<void()> const& cbDuringLock) {
+                                 OperationOptions& options) {
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
@@ -1237,10 +1228,6 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
     res = state->addOperation(_logicalCollection.id(), newRevisionId(),
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                               hasPerformedIntermediateCommit);
-
-    if (res.ok() && cbDuringLock != nullptr) {
-      cbDuringLock();
-    }
 
     guard.finish(hasPerformedIntermediateCommit);
   }

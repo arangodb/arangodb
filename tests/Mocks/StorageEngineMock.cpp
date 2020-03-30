@@ -1089,10 +1089,8 @@ void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) 
 }
 
 arangodb::Result PhysicalCollectionMock::insert(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
-    arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
-    std::function<void()> const& callbackDuringLock) {
-  TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+    arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options) {
   before();
 
   TRI_ASSERT(newSlice.isObject());
@@ -1293,9 +1291,7 @@ bool PhysicalCollectionMock::readDocumentWithCallback(
 
 arangodb::Result PhysicalCollectionMock::remove(
     arangodb::transaction::Methods& trx, arangodb::velocypack::Slice slice,
-    arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options,
-    std::function<void()> const& callbackDuringLock) {
-  TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
+    arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options) {
   before();
 
   auto key = slice.get(arangodb::StaticStrings::KeyString);
@@ -1313,14 +1309,14 @@ arangodb::Result PhysicalCollectionMock::remove(
 }
 
 arangodb::Result PhysicalCollectionMock::update(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
     arangodb::ManagedDocumentResult& previous) {
   return updateInternal(trx, newSlice, result, options, previous, true);
 }
 
 arangodb::Result PhysicalCollectionMock::replace(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
     arangodb::ManagedDocumentResult& previous) {
   return updateInternal(trx, newSlice, result, options, previous, false);
@@ -1349,7 +1345,7 @@ arangodb::Result PhysicalCollectionMock::compact() {
 }
 
 arangodb::Result PhysicalCollectionMock::updateInternal(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
     arangodb::ManagedDocumentResult& previous, bool isUpdate) {
   auto key = newSlice.get(arangodb::StaticStrings::KeyString);

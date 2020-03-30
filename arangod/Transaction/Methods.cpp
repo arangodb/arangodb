@@ -1471,15 +1471,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  std::function<void()> updateFollowers;
-
   if (needsToGetFollowersUnderLock) {
-    FollowerInfo const& followerInfo = *collection->followers();
-
-    updateFollowers = [&followerInfo, &followers]() {
-      TRI_ASSERT(followers == nullptr);
-      followers = followerInfo.get();
-    };
+    TRI_ASSERT(false);
   } else if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
@@ -1549,7 +1542,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     TRI_ASSERT(!(options.overwrite && needsLock));
 
     TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
-    Result res = collection->insert(this, value, docResult, options, updateFollowers);
+    Result res = collection->insert(this, value, docResult, options);
 
     bool didReplace = false;
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
@@ -1557,7 +1550,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       // If we're overwriting, we already have a lock. Therefore we also don't
       // need to get the followers under the lock.
       TRI_ASSERT(!needsToGetFollowersUnderLock);
-      TRI_ASSERT(updateFollowers == nullptr);
       if (options.overwriteModeUpdate) {
         res = collection->update(this, value, docResult, options, prevDocResult);
       } else {
@@ -1962,8 +1954,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::removeAsync(std::string const& cname,
-                                                  VPackSlice const value,
-                                                  OperationOptions const& options) {
+                                                          VPackSlice const value,
+                                                          OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
@@ -2050,15 +2042,8 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  std::function<void()> updateFollowers = nullptr;
-
   if (needsToGetFollowersUnderLock) {
-    auto const& followerInfo = *collection->followers();
-
-    updateFollowers = [&followerInfo, &followers]() {
-      TRI_ASSERT(followers == nullptr);
-      followers = followerInfo.get();
-    };
+    TRI_ASSERT(false);
   } else if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
@@ -2133,7 +2118,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
 
-    auto res = collection->remove(*this, value, options, previous, updateFollowers);
+    auto res = collection->remove(*this, value, options, previous);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {

@@ -365,29 +365,26 @@ bool ClusterCollection::readDocumentWithCallback(transaction::Methods* trx,
 Result ClusterCollection::insert(arangodb::transaction::Methods*,
                                  arangodb::velocypack::Slice const,
                                  arangodb::ManagedDocumentResult&,
-                                 OperationOptions&,
-                                 std::function<void()> const&) {
+                                 OperationOptions&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::update(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const newSlice,
+                                 arangodb::velocypack::Slice newSlice,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
                                  ManagedDocumentResult& previous) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::replace(transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
+                                  arangodb::velocypack::Slice newSlice,
                                   ManagedDocumentResult& mdr, OperationOptions& options,
                                   ManagedDocumentResult& previous) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
-                                 ManagedDocumentResult& previous, OperationOptions& options,
-                                 std::function<void()> const& /*callbackDuringLock*/
-) {
+                                 ManagedDocumentResult& previous, OperationOptions& options) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

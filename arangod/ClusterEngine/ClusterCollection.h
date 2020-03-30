@@ -136,20 +136,18 @@ class ClusterCollection final : public PhysicalCollection {
                                 IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result, OperationOptions& options,
-                std::function<void()> const& callbackDuringLock) override;
+                arangodb::ManagedDocumentResult& result, OperationOptions& options) override;
 
-  Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+  Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 ManagedDocumentResult& result, OperationOptions& options,
                 ManagedDocumentResult& previous) override;
 
-  Result replace(transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+  Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  ManagedDocumentResult& previous) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous, OperationOptions& options,
-                std::function<void()> const& callbackDuringLock) override;
+                ManagedDocumentResult& previous, OperationOptions& options) override;
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine

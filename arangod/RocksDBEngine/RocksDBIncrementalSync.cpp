@@ -107,7 +107,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
-          auto r = physical->remove(trx, builder.slice(), mdr, options, nullptr);
+          auto r = physical->remove(trx, builder.slice(), mdr, options);
 
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
@@ -143,7 +143,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
-          auto r = physical->remove(trx, builder.slice(), mdr, options, nullptr);
+          auto r = physical->remove(trx, builder.slice(), mdr, options);
 
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
@@ -292,7 +292,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         keyBuilder->clear();
         keyBuilder->add(VPackValue(localKey));
 
-        auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options, nullptr);
+        auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options);
 
         if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // ignore not found, we remove conflicting docs ahead of time
@@ -345,7 +345,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       keyBuilder->clear();
       keyBuilder->add(VPackValue(localKey));
 
-      auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options, nullptr);
+      auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options);
 
       if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore not found, we remove conflicting docs ahead of time
@@ -470,7 +470,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         keyBuilder->clear();
         keyBuilder->add(VPackValue(conflictingKey));
 
-        auto res = physical->remove(*trx, keyBuilder->slice(), mdr, options, nullptr);
+        auto res = physical->remove(*trx, keyBuilder->slice(), mdr, options);
 
         if (res.ok()) {
           ++stats.numDocsRemoved;
@@ -485,7 +485,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         // INSERT
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
-        Result res = physical->insert(trx, it, mdr, options, nullptr);
+        Result res = physical->insert(trx, it, mdr, options);
         
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
@@ -498,7 +498,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             }
 
             options.indexOperationMode = Index::OperationMode::normal;
-            res = physical->insert(trx, it, mdr, options, nullptr);
+            res = physical->insert(trx, it, mdr, options);
             
             options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
@@ -737,7 +737,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             tempBuilder.add(VPackValue(docKey));
 
             ManagedDocumentResult previous;
-            auto r = physical->remove(trx, tempBuilder.slice(), previous, options, nullptr);
+            auto r = physical->remove(trx, tempBuilder.slice(), previous, options);
 
             if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
               // ignore not found, we remove conflicting docs ahead of time

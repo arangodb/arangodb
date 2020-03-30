@@ -34,7 +34,6 @@ using namespace arangodb;
 void ManagedDocumentResult::setManaged(uint8_t const* vpack) {
   VPackSlice const slice(vpack);
   _string.assign(slice.startAs<char>(), slice.byteSize());
-  _vpack = nullptr;
   _revisionId = transaction::helpers::extractRevFromDocument(slice);
 }
 
@@ -45,10 +44,6 @@ void ManagedDocumentResult::setRevisionId() noexcept {
 
 void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder) const {
   TRI_ASSERT(!empty());
-  if (_vpack == nullptr) { // managed
-    TRI_ASSERT(!_string.empty());
-    builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(_string.data())));
-  } else {
-    builder.addExternal(_vpack);
-  }
+  TRI_ASSERT(!_string.empty());
+  builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(_string.data())));
 }

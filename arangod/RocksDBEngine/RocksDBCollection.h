@@ -111,8 +111,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                 IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options,
-                std::function<void()> const& cbDuringLock) override;
+                arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 ManagedDocumentResult& resultMdr, OperationOptions& options,
@@ -123,12 +122,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                  ManagedDocumentResult& previousMdr) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous, OperationOptions& options,
-                std::function<void()> const& cbDuringLock) override;
+                ManagedDocumentResult& previous, OperationOptions& options) override;
 
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                ManagedDocumentResult& previous, OperationOptions& options,
-                std::function<void()> const& cbDuringLock) override;
+                ManagedDocumentResult& previous, OperationOptions& options) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
@@ -137,7 +134,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
  protected:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                 LocalDocumentId expectedId, ManagedDocumentResult& previous,
-                OperationOptions& options, std::function<void()> const& cbDuringLock);
+                OperationOptions& options);
 
  private:
   /// @brief return engine-specific figures
