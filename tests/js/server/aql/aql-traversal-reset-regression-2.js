@@ -44,14 +44,14 @@ const containsEdgeCollectionName = "RegressionContains";
 
 const expectedResult = [
   {
-    name: "Matt",
-    surname: "Smith",
-    number: 34,
+    name: "Adam",
+    lastname: "Smith",
+    number: 294,
   },
   {
-    name: "John",
-    surname: "Smith",
-    age: 52,
+    name: "Matt",
+    lastname: "Smith",
+    number: 34,
   }
 ];
 
@@ -64,12 +64,12 @@ var cleanup = function() {
 };
 
 var createBaseGraph = function() {
-  customer = internal.db._createDocumentCollection("customer");
-  product = internal.db._createDocumentCollection("product");
-  material = internal.db._createDocumentCollection("material");
+  customer = internal.db._createDocumentCollection(customerCollectionName);
+  product = internal.db._createDocumentCollection(productCollectionName);
+  material = internal.db._createDocumentCollection(materialCollectionName);
 	
-  owns = internal.db._createEdgeCollection("owns");
-  contains = internal.db._createEdgeCollection("contains");
+  owns = internal.db._createEdgeCollection(ownsEdgeCollectionName);
+  contains = internal.db._createEdgeCollection(containsEdgeCollectionName);
 
   john = customer.save({ name: "John", lastname: "Smith", number: 52 });
   adam = customer.save({ name: "Adam", lastname: "Smith", number: 294} );
@@ -122,12 +122,14 @@ function traversalResetRegression2Suite() {
     ////////////////////////////////////////////////////////////////////////////////
     testTraversalResetCrashes: function() {
       const query = `
-              FOR e IN customer
-                 FILTER (FOR e1 IN 1..1 ANY e._id owns
-                   FILTER (FOR e2 IN 1..1 ANY e1._id contains
+              FOR e IN @@customer
+                 FILTER (FOR e1 IN 1..1 ANY e._id @@owns
+                   FILTER (FOR e2 IN 1..1 ANY e1._id @@contains
                      FILTER e2.name == "wood" RETURN 1)[0] == 1 RETURN 1)[0] == 1
                  RETURN {name: e.name, lastname: e.lastname, number: e.number}`;
-      const bindVars = { };
+      const bindVars = { "@customer": customerCollectionName,
+	                 "@owns": ownsEdgeCollectionName,
+	                 "@contains": containsEdgeCollectionName };
 
       var actual = db._query(query, bindVars);
       assertEqual(actual.toArray(), expectedResult);
