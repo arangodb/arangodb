@@ -596,9 +596,189 @@ TEST_P(MultiDependencySingleRowFetcherTest,
   }
 }
 
-// TODO:
-// Skip
-// Reverse
+TEST_P(MultiDependencySingleRowFetcherTest,
+       many_blocks_upstream_all_deps_differ_sequentially_using_shadowRows_no_callList_reverse_order) {
+  // NOTE: The fetcher does NOT care to snychronize the shadowRows between blocks.
+  // This has to be done by the InputRange hold externally.
+  // It has seperate tests
+  std::vector<std::deque<SharedAqlItemBlockPtr>> data;
+  for (size_t i = 0; i < numberDependencies(); ++i) {
+    std::deque<SharedAqlItemBlockPtr> blockDeque{};
+    blockDeque.emplace_back(
+        buildBlock<1>(itemBlockManager,
+                      {{1 * (i + 1)}, {2 * (i + 1)}, {0}, {3 * (i + 1)}}, {{2, 0}}));
+    blockDeque.emplace_back(
+        buildBlock<1>(itemBlockManager,
+                      {{4 * (i + 1)}, {5 * (i + 1)}, {1}, {2}, {6 * (i + 1)}},
+                      {{2, 0}, {3, 1}}));
+    blockDeque.emplace_back(
+        buildBlock<1>(itemBlockManager, {{7 * (i + 1)}, {8 * (i + 1)}, {9 * (i + 1)}}));
+    data.emplace_back(std::move(blockDeque));
+  }
+
+  auto testee = buildFetcher(data);
+  auto stack = makeStack();
+  for (size_t depCounter = numberDependencies(); depCounter > 0; --depCounter) {
+    TRI_ASSERT(depCounter > 0);
+    auto dep = depCounter - 1;
+    AqlCallSet set{};
+    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCall{}});
+    testWaiting(testee, set);
+
+    {
+      // First Block, split after shadowRow, we cannot overfetch
+      auto [state, skipped, ranges] = testee.execute(stack, set);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+      EXPECT_TRUE(skipped.nothingSkipped());
+      EXPECT_EQ(ranges.size(), set.size());
+      for (auto [dep, range] : ranges) {
+        // All Ranges are non empty
+        validateNextIsDataRow(range, ExecutorState::HASMORE, 1 * (dep + 1));
+        validateNextIsDataRow(range, ExecutorState::DONE, 2 * (dep + 1));
+        validateNextIsShadowRow(range, ExecutorState::HASMORE, 0, 0);
+      }
+    }
+
+    {
+      // First Block, part 2
+      auto [state, skipped, ranges] = testee.execute(stack, set);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+      EXPECT_TRUE(skipped.nothingSkipped());
+      EXPECT_EQ(ranges.size(), set.size());
+      for (auto [dep, range] : ranges) {
+        validateNextIsDataRow(range, ExecutorState::HASMORE, 3 * (dep + 1));
+      }
+    }
+
+    {
+      // Second Block, split after the higher depth shadow row
+      auto [state, skipped, ranges] = testee.execute(stack, set);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+      EXPECT_TRUE(skipped.nothingSkipped());
+      EXPECT_EQ(ranges.size(), set.size());
+      for (auto [dep, range] : ranges) {
+        // All Ranges are non empty
+        validateNextIsDataRow(range, ExecutorState::HASMORE, 4 * (dep + 1));
+        validateNextIsDataRow(range, ExecutorState::DONE, 5 * (dep + 1));
+        validateNextIsShadowRow(range, ExecutorState::HASMORE, 1, 0);
+        validateNextIsShadowRow(range, ExecutorState::HASMORE, 2, 1);
+      }
+    }
+
+    {
+      // Second Block, part 2
+      auto [state, skipped, ranges] = testee.execute(stack, set);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+      EXPECT_TRUE(skipped.nothingSkipped());
+      EXPECT_EQ(ranges.size(), set.size());
+      for (auto [dep, range] : ranges) {
+        // All Ranges are non empty
+        validateNextIsDataRow(range, ExecutorState::HASMORE, 6 * (dep + 1));
+      }
+    }
+
+    {
+      // Third Block
+      auto [state, skipped, ranges] = testee.execute(stack, set);
+      if (dep == 0) {
+        // Only the last dependency reports a global DONE
+        EXPECT_EQ(state, ExecutionState::DONE);
+      } else {
+        // All others still report HASMORE on the other parts
+        EXPECT_EQ(state, ExecutionState::HASMORE);
+      }
+
+      EXPECT_TRUE(skipped.nothingSkipped());
+      EXPECT_EQ(ranges.size(), set.size());
+      for (auto [dep, range] : ranges) {
+        // All Ranges are non empty
+        validateNextIsDataRow(range, ExecutorState::HASMORE, 7 * (dep + 1));
+        validateNextIsDataRow(range, ExecutorState::HASMORE, 8 * (dep + 1));
+        validateNextIsDataRow(range, ExecutorState::DONE, 9 * (dep + 1));
+      }
+    }
+  }
+}
+
+TEST_P(MultiDependencySingleRowFetcherTest,
+       many_blocks_upstream_all_deps_differ_sequentially_using_shadowRows_no_callList_offset) {
+  // NOTE: The fetcher does NOT care to snychronize the shadowRows between blocks.
+  // This has to be done by the InputRange hold externally.
+  // It has seperate tests
+  std::vector<std::deque<SharedAqlItemBlockPtr>> data;
+  for (size_t i = 0; i < numberDependencies(); ++i) {
+    std::deque<SharedAqlItemBlockPtr> blockDeque{};
+    blockDeque.emplace_back(
+        buildBlock<1>(itemBlockManager,
+                      {{1 * (i + 1)}, {2 * (i + 1)}, {0}, {3 * (i + 1)}}, {{2, 0}}));
+    blockDeque.emplace_back(
+        buildBlock<1>(itemBlockManager,
+                      {{4 * (i + 1)}, {5 * (i + 1)}, {1}, {2}, {6 * (i + 1)}},
+                      {{2, 0}, {3, 1}}));
+    blockDeque.emplace_back(
+        buildBlock<1>(itemBlockManager, {{7 * (i + 1)}, {8 * (i + 1)}, {9 * (i + 1)}}));
+    data.emplace_back(std::move(blockDeque));
+  }
+
+  auto testee = buildFetcher(data);
+  auto stack = makeStack();
+  for (size_t dep = 0; dep < numberDependencies(); ++dep) {
+    AqlCallSet set{};
+    // offset 10
+    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCall{10}});
+    testWaiting(testee, set);
+
+    {
+      // First Block, split after shadowRow, we cannot overfetch
+      auto [state, skipped, ranges] = testee.execute(stack, set);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+      EXPECT_FALSE(skipped.nothingSkipped());
+      EXPECT_EQ(skipped.getSkipCount(), 2);
+      EXPECT_EQ(ranges.size(), set.size());
+      for (auto [dep, range] : ranges) {
+        // All Ranges are non empty
+        validateNextIsShadowRow(range, ExecutorState::HASMORE, 0, 0);
+      }
+    }
+
+    {
+      // Second Block, split after the higher depth shadow row
+      auto [state, skipped, ranges] = testee.execute(stack, set);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+      EXPECT_FALSE(skipped.nothingSkipped());
+      // We skip 1 from firstBlock part 2 and 2 in this block
+      EXPECT_EQ(skipped.getSkipCount(), 3);
+      EXPECT_EQ(ranges.size(), set.size());
+      for (auto [dep, range] : ranges) {
+        // All Ranges are non empty
+        validateNextIsShadowRow(range, ExecutorState::HASMORE, 1, 0);
+        validateNextIsShadowRow(range, ExecutorState::HASMORE, 2, 1);
+      }
+    }
+
+    {
+      // Third Block
+      auto [state, skipped, ranges] = testee.execute(stack, set);
+      if (dep + 1 == numberDependencies()) {
+        // Only the last dependency reports a global DONE
+        EXPECT_EQ(state, ExecutionState::DONE);
+      } else {
+        // All others still report HASMORE on the other parts
+        EXPECT_EQ(state, ExecutionState::HASMORE);
+      }
+
+      // We skip 1 from secondBlock part 2 and 3 in this block
+      EXPECT_EQ(skipped.getSkipCount(), 4);
+      EXPECT_EQ(ranges.size(), set.size());
+      for (auto [dep, range] : ranges) {
+        // All Ranges are empty
+        EXPECT_FALSE(range.hasShadowRow());
+        EXPECT_FALSE(range.hasDataRow());
+        EXPECT_EQ(range.upstreamState(), ExecutorState::DONE);
+      }
+    }
+  }
+}
 
 }  // namespace aql
 }  // namespace tests
