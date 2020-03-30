@@ -649,7 +649,6 @@ function locateLongSetupTeardown(options, results) {
     'export',
     'hot_backup',
     'dump_multiple',
-    'dfdb',
     'config'
   ];
   let testsToShow = 11;
