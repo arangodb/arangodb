@@ -22,32 +22,69 @@
 
 #include "AgencyCache.cpp"
 
+AgencyCache::AgencyCache(application_features::ApplicationServer& server)
+  : _agency(server), _commitIndex(0),  _readDB(server, nullptr, "raadDB") {}
+
 // Get Builder from readDB mainly /Plan /Current
-VPackBuider const get(std::string const& path) const { 
+VPackBuider const get(std::string const& path) const {
   std::shared_lock(_lock);
-  _readDB.toBuilder(path);
+
+  // _readDB.toBuilder(path);
 }
 
 void run() {
 
-  // _commitIndex = 0, _readDB = {}, _agentEP = random(agents)
-  // while (not stopping) {
-  //   res = GET _api/agency/poll?index=_commitIndex timeout(60s)
-  //   if (res.code == 200) {
-  //     if (res.body) {
-  //       if (complete readDB) {
-  //         _readDB = res.body.readDB
-  //         _commitIndex = res.body.commitIndex
-  //       } else { 
-  //         _read.DB.apply(res.body.logs)
-  //       }
-  //     }
-  //   } else if (503) {
-  //     wait(1s)
-  //     _agent = random(agents)
-  //   } else if (307) {
-  //     _agent = body.agent
-  //   }
-  // }
-  
+  _commitIndex = 0;
+  _readDB.clear();
+  double wait = 0.0;
+
+  using std::chrono;
+
+  TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
+
+  steady_clock::time_point last =
+  auto arangoPath = arangodb::cluster::paths::root()->arango();
+  auto sendTransaction =
+    [&](VPackBuilder& r) {
+      auto ret = AsyncAgencyComm().getValue(60s, arangoPath);
+      r.add(ret.value());
+      return ret;
+    };
+  auto self(shared_from_this());
+  VPackBuilder result;
+
+  while (!this->isStopping()) {
+
+    builder.clear();
+    std::this_thread::sleep_for(std::chrono::duration<double>(wait));
+
+    auto ret = waitForFuture(
+      sendTransaction(builder)
+      .thenValue(
+        [this, wantToActive](AsyncAgencyCommResult&& result) {
+          if (result.ok() && result.statusCode() == 200) {
+            _readDB.applyTransactions(result.get(logs));
+            wait = 0.0;
+          } else {
+            wait += 0.1;
+            LOG_TOPIC("9a9e3", DEBUG, Logger::Cluster) <<
+              "Failed to get poll result from agency: " << e.what();
+          }
+          return futures::makeFuture();
+        })
+      .thenError<VPackException>(
+        [this](VPackException const& e) {
+          LOG_TOPIC("9a9e3", DEBUG, Logger::Cluster) <<
+            "Failed to parse poll result from agency: " << e.what();
+          wait += 0.1;
+        })
+      .thenError<std::exception>(
+        [this](std::exception const& e) {
+          LOG_TOPIC("9a9e3", DEBUG, Logger::Cluster) <<
+            "Failed to get poll result from agency: " << e.what();
+          wait += 0.1;
+        }));
+
+  }
+
 }

@@ -49,7 +49,10 @@ public:
   VPackBuider const get(std::string const& path) const;
 
 private:
-  
+
+  // Agency communication layer
+  AgencyComm _agency;
+
   /// @brief Local copy of the read DB from the agency
   arangodb::consensus::Store _readDB;
 
