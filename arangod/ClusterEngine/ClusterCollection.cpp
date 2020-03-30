@@ -344,7 +344,7 @@ LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,
 
 Result ClusterCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result, bool) {
+                               ManagedDocumentResult& result) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -365,7 +365,7 @@ bool ClusterCollection::readDocumentWithCallback(transaction::Methods* trx,
 Result ClusterCollection::insert(arangodb::transaction::Methods*,
                                  arangodb::velocypack::Slice const,
                                  arangodb::ManagedDocumentResult&,
-                                 OperationOptions&, bool /*lock*/,
+                                 OperationOptions&,
                                  std::function<void()> const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -373,20 +373,20 @@ Result ClusterCollection::insert(arangodb::transaction::Methods*,
 Result ClusterCollection::update(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const newSlice,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
-                                 bool /*lock*/, ManagedDocumentResult& previous) {
+                                 ManagedDocumentResult& previous) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::replace(transaction::Methods* trx,
                                   arangodb::velocypack::Slice const newSlice,
                                   ManagedDocumentResult& mdr, OperationOptions& options,
-                                  bool /*lock*/, ManagedDocumentResult& previous) {
+                                  ManagedDocumentResult& previous) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previous, OperationOptions& options,
-                                 bool /*lock*/, std::function<void()> const& /*callbackDuringLock*/
+                                 std::function<void()> const& /*callbackDuringLock*/
 ) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

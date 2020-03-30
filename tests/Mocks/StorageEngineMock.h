@@ -86,7 +86,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual arangodb::Result insert(arangodb::transaction::Methods* trx,
                                   arangodb::velocypack::Slice const newSlice,
                                   arangodb::ManagedDocumentResult& result,
-                                  arangodb::OperationOptions& options, bool lock,
+                                  arangodb::OperationOptions& options,
                                   std::function<void()> const& callbackDuringLock) override;
 
   virtual arangodb::LocalDocumentId lookupKey(arangodb::transaction::Methods*,
@@ -99,7 +99,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
   virtual arangodb::Result read(arangodb::transaction::Methods*,
                                 arangodb::velocypack::StringRef const& key,
-                                arangodb::ManagedDocumentResult& result, bool) override;
+                                arangodb::ManagedDocumentResult& result) override;
   virtual bool readDocument(arangodb::transaction::Methods* trx,
                             arangodb::LocalDocumentId const& token,
                             arangodb::ManagedDocumentResult& result) const override;
@@ -109,12 +109,12 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual arangodb::Result remove(arangodb::transaction::Methods& trx,
                                   arangodb::velocypack::Slice slice,
                                   arangodb::ManagedDocumentResult& previous,
-                                  arangodb::OperationOptions& options, bool lock,
+                                  arangodb::OperationOptions& options,
                                   std::function<void()> const& callbackDuringLock) override;
   virtual arangodb::Result replace(arangodb::transaction::Methods* trx,
                                    arangodb::velocypack::Slice const newSlice,
                                    arangodb::ManagedDocumentResult& result,
-                                   arangodb::OperationOptions& options, bool lock,
+                                   arangodb::OperationOptions& options,
                                    arangodb::ManagedDocumentResult& previous) override;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   virtual void setPath(std::string const&) override;
@@ -124,7 +124,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual arangodb::Result update(arangodb::transaction::Methods* trx,
                                   arangodb::velocypack::Slice const newSlice,
                                   arangodb::ManagedDocumentResult& result,
-                                  arangodb::OperationOptions& options, bool lock,
+                                  arangodb::OperationOptions& options,
                                   arangodb::ManagedDocumentResult& previous) override;
   virtual void load() override {}
   virtual void unload() override {}
@@ -137,7 +137,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   arangodb::Result updateInternal(arangodb::transaction::Methods* trx,
                                   arangodb::velocypack::Slice const newSlice,
                                   arangodb::ManagedDocumentResult& result,
-                                  arangodb::OperationOptions& options, bool lock,
+                                  arangodb::OperationOptions& options,
                                   arangodb::ManagedDocumentResult& previous, bool isUpdate);
 
   uint64_t _lastDocumentId;

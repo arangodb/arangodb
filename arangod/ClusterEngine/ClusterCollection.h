@@ -127,7 +127,7 @@ class ClusterCollection final : public PhysicalCollection {
   LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result, bool) override;
+              ManagedDocumentResult& result) override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
@@ -137,20 +137,18 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result, OperationOptions& options,
-                bool lock, 
                 std::function<void()> const& callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                bool lock, ManagedDocumentResult& previous) override;
+                ManagedDocumentResult& previous) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
-                 bool lock, ManagedDocumentResult& previous) override;
+                 ManagedDocumentResult& previous) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock,
                 std::function<void()> const& callbackDuringLock) override;
 
  protected:

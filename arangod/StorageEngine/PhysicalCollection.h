@@ -170,7 +170,7 @@ class PhysicalCollection {
                                     arangodb::velocypack::Slice const&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result, bool lock) = 0;
+                      ManagedDocumentResult& result) = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
@@ -190,33 +190,31 @@ class PhysicalCollection {
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options, bool lock,
+                        OperationOptions& options,
                         std::function<void()> const& cbDuringLock) = 0;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result,
-                OperationOptions& options, bool lock) {
-    return insert(trx, newSlice, result, options, lock, nullptr);
+                OperationOptions& options) {
+    return insert(trx, newSlice, result, options, nullptr);
   }
 
   virtual Result update(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         ManagedDocumentResult& result, OperationOptions& options,
-                        bool lock, ManagedDocumentResult& previous) = 0;
+                        ManagedDocumentResult& previous) = 0;
 
   virtual Result replace(arangodb::transaction::Methods* trx,
                          arangodb::velocypack::Slice newSlice,
                          ManagedDocumentResult& result, OperationOptions& options,
-                         bool lock, ManagedDocumentResult& previous) = 0;
+                         ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(transaction::Methods& trx, velocypack::Slice slice,
                         ManagedDocumentResult& previous, OperationOptions& options,
-                        bool lock,
                         std::function<void()> const& cbDuringLock) = 0;
 
   virtual Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                         ManagedDocumentResult& previous, OperationOptions& options,
-                        bool lock,
                         std::function<void()> const& cbDuringLock);
 
   /// @brief new object for insert, value must have _key set correctly.

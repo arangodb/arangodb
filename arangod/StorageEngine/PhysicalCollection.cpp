@@ -631,7 +631,6 @@ void PhysicalCollection::adjustNumberDocuments(transaction::Methods&, int64_t) {
 
 Result PhysicalCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                   ManagedDocumentResult& previous, OperationOptions& options,
-                                  bool lock, 
                                   std::function<void()> const& cbDuringLock) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }

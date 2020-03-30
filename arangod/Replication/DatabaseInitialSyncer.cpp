@@ -113,8 +113,8 @@ arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
 
   for (std::size_t rid : toRemove) {
     double t = TRI_microtime();
-    auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr, options,
-                              /*lock*/ false, nullptr);
+    auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr, options, nullptr);
+
     stats.waitedForRemovals += TRI_microtime() - t;
     if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // ignore not found, we remove conflicting docs ahead of time
@@ -173,8 +173,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
     keyBuilder->clear();
     keyBuilder->add(VPackValue(conflictingKey));
 
-    auto res = physical->remove(trx, keyBuilder->slice(), mdr, options,
-                                /*lock*/ false, nullptr);
+    auto res = physical->remove(trx, keyBuilder->slice(), mdr, options, nullptr);
 
     if (res.ok()) {
       ++stats.numDocsRemoved;
@@ -253,8 +252,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
 
       TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
 
-      Result res = physical->insert(&trx, masterDoc, mdr, options,
-                                    /*lock*/ false, nullptr);
+      Result res = physical->insert(&trx, masterDoc, mdr, options, nullptr);
+      
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
@@ -265,8 +264,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
             return res;
           }
           options.indexOperationMode = arangodb::Index::OperationMode::normal;
-          res = physical->insert(&trx, masterDoc, mdr, options,
-                                 /*lock*/ false, nullptr);
+          res = physical->insert(&trx, masterDoc, mdr, options, nullptr);
+          
           options.indexOperationMode = arangodb::Index::OperationMode::internal;
           if (res.fail()) {
             return res;

@@ -271,7 +271,7 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief reads an element from the document collection
   Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& mdr, bool lock);
+              ManagedDocumentResult& mdr);
 
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);
@@ -281,8 +281,8 @@ class LogicalCollection : public LogicalDataSource {
 
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
-                ManagedDocumentResult& result, OperationOptions& options, bool lock) {
-    return insert(trx, slice, result, options, lock, nullptr);
+                ManagedDocumentResult& result, OperationOptions& options) {
+    return insert(trx, slice, result, options, nullptr);
   }
 
   /**
@@ -291,19 +291,19 @@ class LogicalCollection : public LogicalDataSource {
    * successful, it isn't called. May be nullptr.
    */
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
-                ManagedDocumentResult& result, OperationOptions& options, bool lock,
+                ManagedDocumentResult& result, OperationOptions& options,
                 std::function<void()> const& cbDuringLock);
 
   Result update(transaction::Methods*, velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions&, bool lock,
+                ManagedDocumentResult& result, OperationOptions&,
                 ManagedDocumentResult& previousMdr);
 
   Result replace(transaction::Methods*, velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions&, bool lock,
+                 ManagedDocumentResult& result, OperationOptions&,
                  ManagedDocumentResult& previousMdr);
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options, bool lock, ManagedDocumentResult& previousMdr,
+                OperationOptions& options, ManagedDocumentResult& previousMdr,
                 std::function<void()> const& cbDuringLock);
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,

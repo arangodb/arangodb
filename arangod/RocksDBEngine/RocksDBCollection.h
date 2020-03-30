@@ -101,7 +101,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                       TRI_voc_rid_t& revisionId) const;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result, bool) override;
+              ManagedDocumentResult& result) override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
@@ -112,25 +112,22 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options,
-                bool lock,
                 std::function<void()> const& cbDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 ManagedDocumentResult& resultMdr, OperationOptions& options,
-                bool lock, ManagedDocumentResult& previousMdr) override;
+                ManagedDocumentResult& previousMdr) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& resultMdr, OperationOptions& options,
-                 bool lock, ManagedDocumentResult& previousMdr) override;
+                 ManagedDocumentResult& previousMdr) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock,
                 std::function<void()> const& cbDuringLock) override;
 
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                 ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock, 
                 std::function<void()> const& cbDuringLock) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }

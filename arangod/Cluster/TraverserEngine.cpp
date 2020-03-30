@@ -259,7 +259,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
     if (shouldProduceVertices) {
       arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
       for (std::string const& shard : shards->second) {
-        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
+        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
         if (res.ok()) {
           // FOUND short circuit.
           builder.add(v);
@@ -378,7 +378,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     if (_opts->produceVertices()) {
       arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
       for (std::string const& shard : shards->second) {
-        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
+        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
         if (res.ok()) {
           // FOUND short circuit.
           read++;

@@ -1146,7 +1146,7 @@ TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collec
 Result transaction::Methods::documentFastPath(std::string const& collectionName,
                                               ManagedDocumentResult* mmdr,
                                               VPackSlice const value,
-                                              VPackBuilder& result, bool shouldLock) {
+                                              VPackBuilder& result) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   if (!value.isObject() && !value.isString()) {
     // must provide a document object or string
@@ -1180,9 +1180,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   TRI_ASSERT(mmdr != nullptr);
 
-  Result res =
-      collection->read(this, key, *mmdr,
-                       shouldLock && !isLocked(collection.get(), AccessMode::Type::READ));
+  Result res = collection->read(this, key, *mmdr);
 
   if (res.fail()) {
     return res;
@@ -1201,8 +1199,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(std::string const& collectionName,
                                                    arangodb::velocypack::StringRef const& key,
-                                                   ManagedDocumentResult& result,
-                                                   bool shouldLock) {
+                                                   ManagedDocumentResult& result) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
@@ -1216,8 +1213,7 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  bool isLocked = trxColl->isLocked(AccessMode::Type::READ, _state->nestingLevel());
-  return collection->read(this, key, result, shouldLock && !isLocked);
+  return collection->read(this, key, result);
 }
 
 namespace {
@@ -1303,8 +1299,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
 
     result.clear();
 
-    Result res = collection->read(this, key, result,
-                                  !isLocked(collection.get(), AccessMode::Type::READ));
+    Result res = collection->read(this, key, result);
 
     if (res.fail()) {
       return res;
@@ -1554,23 +1549,19 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     TRI_ASSERT(!(options.overwrite && needsLock));
 
     TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
-    Result res = collection->insert(this, value, docResult, options, needsLock,
-                                    updateFollowers);
+    Result res = collection->insert(this, value, docResult, options, updateFollowers);
 
     bool didReplace = false;
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // RepSert Case - unique_constraint violated ->  try replace
       // If we're overwriting, we already have a lock. Therefore we also don't
       // need to get the followers under the lock.
-      TRI_ASSERT(!needsLock);
       TRI_ASSERT(!needsToGetFollowersUnderLock);
       TRI_ASSERT(updateFollowers == nullptr);
       if (options.overwriteModeUpdate) {
-        res = collection->update(this, value, docResult, options,
-                                 /*lock*/ false, prevDocResult);
+        res = collection->update(this, value, docResult, options, prevDocResult);
       } else {
-        res = collection->replace(this, value, docResult, options,
-                                  /*lock*/ false, prevDocResult);
+        res = collection->replace(this, value, docResult, options, prevDocResult);
       }
       TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
       didReplace = true;
@@ -1873,11 +1864,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      res = collection->replace(this, newVal, result, options,
-                                /*lock*/ false, previous);
+      res = collection->replace(this, newVal, result, options, previous);
     } else {
-      res = collection->update(this, newVal, result, options,
-                               /*lock*/ false, previous);
+      res = collection->update(this, newVal, result, options, previous);
     }
 
     if (res.fail()) {
@@ -2144,8 +2133,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
 
-    auto res = collection->remove(*this, value, options, needsLock, previous,
-                                  updateFollowers);
+    auto res = collection->remove(*this, value, options, previous, updateFollowers);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {

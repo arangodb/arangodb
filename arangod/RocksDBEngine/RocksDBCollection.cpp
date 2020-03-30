@@ -776,7 +776,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result, bool /*lock*/) {
+                               ManagedDocumentResult& result) {
   Result res;
   do {
     LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
@@ -831,7 +831,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options,
-                                 bool /*lock*/, 
                                  std::function<void()> const& cbDuringLock) {
 
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
@@ -925,7 +924,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
-                                 bool /*lock*/, ManagedDocumentResult& previousMdr) {
+                                 ManagedDocumentResult& previousMdr) {
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1043,7 +1042,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 Result RocksDBCollection::replace(transaction::Methods* trx,
                                   arangodb::velocypack::Slice const newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
-                                  bool /*lock*/, ManagedDocumentResult& previousMdr) {
+                                  ManagedDocumentResult& previousMdr) {
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1151,7 +1150,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options, bool lock, 
+                                 OperationOptions& options,
                                  std::function<void()> const& cbDuringLock) {
   VPackSlice keySlice;
   if (slice.isString()) {
@@ -1180,7 +1179,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options, bool lock,
+                                 OperationOptions& options,
                                  std::function<void()> const& cbDuringLock) {
   return remove(trx, documentId, LocalDocumentId(), previousMdr, options, cbDuringLock);
 }

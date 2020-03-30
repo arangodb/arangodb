@@ -248,8 +248,7 @@ class Methods {
   ENTERPRISE_VIRT Result documentFastPath(std::string const& collectionName,
                                           ManagedDocumentResult* mmdr,
                                           arangodb::velocypack::Slice const value,
-                                          arangodb::velocypack::Builder& result,
-                                          bool shouldLock);
+                                          arangodb::velocypack::Builder& result);
 
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document
@@ -259,8 +258,7 @@ class Methods {
   ///        server, not in cluster case!
   ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
                                                arangodb::velocypack::StringRef const& key,
-                                               ManagedDocumentResult& result,
-                                               bool shouldLock);
+                                               ManagedDocumentResult& result);
 
   /// @brief return one or multiple documents from a collection
   /// @deprecated use async variant

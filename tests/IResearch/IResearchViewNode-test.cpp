@@ -2511,7 +2511,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     EXPECT_TRUE(trx.begin().ok());
 
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt, false);
+    auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt);
     EXPECT_TRUE(res.ok());
 
     EXPECT_TRUE(trx.commit().ok());
@@ -2942,7 +2942,7 @@ class IResearchViewBlockTest
     arangodb::ManagedDocumentResult insertResult;
     arangodb::OperationOptions options;
     EXPECT_TRUE(collection0
-                    ->insert(trx.get(), aliveDoc->slice(), insertResult, options, false)
+                    ->insert(trx.get(), aliveDoc->slice(), insertResult, options)
                     .ok());
     EXPECT_TRUE(trx->commit().ok());
   }
