@@ -64,22 +64,22 @@ var cleanup = function() {
 };
 
 var createBaseGraph = function() {
-  customer = internal.db._createDocumentCollection(customerCollectionName);
-  product = internal.db._createDocumentCollection(productCollectionName);
-  material = internal.db._createDocumentCollection(materialCollectionName);
+  const customer = internal.db._createDocumentCollection(customerCollectionName);
+  const product = internal.db._createDocumentCollection(productCollectionName);
+  const material = internal.db._createDocumentCollection(materialCollectionName);
 	
-  owns = internal.db._createEdgeCollection(ownsEdgeCollectionName);
-  contains = internal.db._createEdgeCollection(containsEdgeCollectionName);
+  const owns = internal.db._createEdgeCollection(ownsEdgeCollectionName);
+  const contains = internal.db._createEdgeCollection(containsEdgeCollectionName);
 
-  john = customer.save({ name: "John", lastname: "Smith", number: 52 });
-  adam = customer.save({ name: "Adam", lastname: "Smith", number: 294} );
-  matt = customer.save({ name: "Matt", lastname: "Smith", number: 34 });
-  phone = product.save({ name: "phone" });
-  car = product.save({ name: "car"});
-  chair = product.save({ name: "chair"});
-  wood = material.save({name: "wood"});
-  metal = material.save({name: "metal"});
-  glass = material.save({name: "glass"});
+  const john = customer.save({ name: "John", lastname: "Smith", number: 52 });
+  const adam = customer.save({ name: "Adam", lastname: "Smith", number: 294} );
+  const matt = customer.save({ name: "Matt", lastname: "Smith", number: 34 });
+  const phone = product.save({ name: "phone" });
+  const car = product.save({ name: "car"});
+  const chair = product.save({ name: "chair"});
+  const wood = material.save({name: "wood"});
+  const metal = material.save({name: "metal"});
+  const glass = material.save({name: "glass"});
 
   owns.save({_from: john._id, _to: phone._id});
   owns.save({_from: john._id, _to: car._id});
