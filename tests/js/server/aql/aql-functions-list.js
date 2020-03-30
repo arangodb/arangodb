@@ -40,14 +40,14 @@ var assertQueryError = helper.assertQueryError;
 
 function ahuacatlListTestSuite () {
   var collectionName = "UnitTestList";
-  var collection; 
+  var collection;
 
   return {
 
     setUpAll : function () {
       internal.db._drop(collectionName);
       collection = internal.db._create(collectionName);
-      
+
       for (var i = 0; i < 10; ++i) {
         collection.save({_key: "test" + i});
       }
@@ -261,13 +261,13 @@ function ahuacatlListTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnshiftInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSHIFT()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSHIFT([ ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSHIFT([ ], 1, 2, 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSHIFT()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSHIFT([ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSHIFT([ ], 1, 2, 3)");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNSHIFT())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNSHIFT([ ]))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNSHIFT([ ], 1, 2, 3))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNSHIFT())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNSHIFT([ ]))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNSHIFT([ ], 1, 2, 3))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -456,13 +456,13 @@ function ahuacatlListTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShiftInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SHIFT()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SHIFT([ ], 1)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SHIFT([ ], 1, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SHIFT()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SHIFT([ ], 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SHIFT([ ], 1, 2)");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SHIFT())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SHIFT([ ], 1))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SHIFT([ ], 1, 2))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SHIFT())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SHIFT([ ], 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SHIFT([ ], 1, 2))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -570,7 +570,7 @@ function ahuacatlListTestSuite () {
       var lx = l.concat(l1);
       assertEqual(1500, actual[0].length);
       assertEqual(lx, actual[0]);
-      
+
       actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + "))");
       assertEqual(1500, actual[0].length);
       assertEqual(lx, actual[0]);
@@ -578,7 +578,7 @@ function ahuacatlListTestSuite () {
       actual = getQueryResults("RETURN APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ", true)");
       assertEqual(1000, actual[0].length);
       assertEqual(l1.concat(l2), actual[0]);
-      
+
       actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ", true))");
       assertEqual(1000, actual[0].length);
       assertEqual(l1.concat(l2), actual[0]);
@@ -618,7 +618,7 @@ function ahuacatlListTestSuite () {
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i]._key, "test" + i);
       }
-      
+
       actual = getQueryResults("LET doc = DOCUMENT('nonexistantCollection/nonexistantDocument') RETURN append(doc.t,[1,2,2], true)");
       assertEqual(actual[0], [1,2,2]);
     },
@@ -634,7 +634,7 @@ function ahuacatlListTestSuite () {
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i]._key, "test" + i);
       }
-      
+
       actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND('stringvalue', tmp)", bindVars);
       assertEqual(actual.length, 1);
       assertNull(actual[0]);
@@ -652,7 +652,7 @@ function ahuacatlListTestSuite () {
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i], collectionName + "/test" + i);
       }
-      
+
       actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN APPEND('stringvalue', tmp)", bindVars);
       assertEqual(actual.length, 1);
       assertNull(actual[0]);
@@ -663,7 +663,7 @@ function ahuacatlListTestSuite () {
       assertEqual(actual.length, 1);
       actual = actual[0];
       assertNull(actual);
-      
+
       actual = getQueryResults("RETURN APPEND([1,1,1,1,1,1], 'stringvalue', true)");
       assertEqual(actual.length, 1);
       assertEqual([1, 'stringvalue'], actual[0]);
@@ -674,14 +674,14 @@ function ahuacatlListTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAppendInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND([ ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND([ ], [ ], false, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND([ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND([ ], [ ], false, [ ])");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(APPEND())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(APPEND([ ]))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(APPEND([ ], [ ], false, [ ]))"); 
-      
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(APPEND())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(APPEND([ ]))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(APPEND([ ], [ ], false, [ ]))");
+
       assertEqual([ null ], getQueryResults("RETURN APPEND('foo', [1])"));
     },
 
@@ -729,13 +729,13 @@ function ahuacatlListTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveValuesInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUES()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUES([ ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUES([ ], [ ], true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUES()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUES([ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUES([ ], [ ], true)");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUES())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUES([ ]))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUES([ ], [ ], true))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUES())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUES([ ]))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUES([ ], [ ], true))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -787,13 +787,13 @@ function ahuacatlListTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveValueInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUE()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUE([ ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUE([ ], [ ], true, true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUE()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUE([ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUE([ ], [ ], true, true)");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUE())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUE([ ]))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUE([ ], [ ], true, true))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUE())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUE([ ]))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUE([ ], [ ], true, true))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -847,21 +847,41 @@ function ahuacatlListTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveNthInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_NTH()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_NTH([ ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_NTH([ ], 1, true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_NTH()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_NTH([ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_NTH([ ], 1, true)");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_NTH())");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_NTH([ ]))");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_NTH([ ], 1, true))");
-    }
+    },
+
+
+    testInterleave: function () {
+      const data = [
+        {input: [[], []], expected: []},
+        {input: [[1, 1], [2, 2]], expected: [1, 2, 1, 2]},
+        {input: [[1, 3, 5], [2, 4, 6]], expected: [1, 2, 3, 4, 5, 6]},
+        {input: [[1, 3, 5], [2]], expected: [1, 2, 3, 5]},
+        {input: [[1, 1, 1], [2, 2], [3]], expected: [1, 2, 3, 1, 2, 1]},
+        {input: [[1, 4, 7], [2, 5], [3]], expected: [1, 2, 3, 4, 5, 7]},
+        {input: [[1],[1],[1],[1],[1],[1],[1]], expected: [1, 1, 1, 1, 1, 1, 1]},
+      ];
+
+      data.forEach(function (d) {
+        const actual = getQueryResults("RETURN INTERLEAVE(" + d.input.map(function (v) {
+          return JSON.stringify(v);
+        }).join(", ") + ")");
+        assertEqual(d.expected, actual[0], d);
+      });
+    },
 
   };
 }
 
 function ahuacatlDocumentAppendTestSuite () {
   var collectionName = "UnitTestList";
-  var collection; 
+  var collection;
 
   return {
 
