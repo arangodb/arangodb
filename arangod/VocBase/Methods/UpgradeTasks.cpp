@@ -62,7 +62,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
                                   arangodb::LogicalCollection& collection,
                                   arangodb::RocksDBIndex* oldIndex) {
   arangodb::Result res;
-  TRI_idx_iid_t iid = oldIndex->id();
+  IndexId iid = oldIndex->id();
 
   VPackBuilder oldDesc;
   oldIndex->toVelocyPack(oldDesc, Index::makeFlags());
@@ -113,7 +113,7 @@ Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
       if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
           index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
         LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
-            << "Upgrading legacy geo index '" << rIndex->id() << "'";
+            << "Upgrading legacy geo index '" << rIndex->id().id() << "'";
 
         auto res = ::recreateGeoIndex(vocbase, *collection, rIndex);
 

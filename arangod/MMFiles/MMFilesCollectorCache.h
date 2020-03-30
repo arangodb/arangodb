@@ -28,6 +28,7 @@
 #include "Basics/debugging.h"
 #include "MMFiles/MMFilesDatafileStatisticsContainer.h"
 #include "MMFiles/MMFilesDitch.h"
+#include "VocBase/Identifiers/FileId.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesDatafile;
@@ -38,7 +39,7 @@ class MMFilesWalLogfile;
 
 struct MMFilesCollectorOperation {
   MMFilesCollectorOperation(char const* datafilePosition, uint32_t datafileMarkerSize,
-                            char const* walPosition, TRI_voc_fid_t datafileId)
+                            char const* walPosition, FileId datafileId)
       : datafilePosition(datafilePosition),
         datafileMarkerSize(datafileMarkerSize),
         walPosition(walPosition),
@@ -46,13 +47,13 @@ struct MMFilesCollectorOperation {
     TRI_ASSERT(datafilePosition != nullptr);
     TRI_ASSERT(datafileMarkerSize > 0);
     TRI_ASSERT(walPosition != nullptr);
-    TRI_ASSERT(datafileId > 0);
+    TRI_ASSERT(datafileId.isSet());
   }
 
   char const* datafilePosition;
   uint32_t datafileMarkerSize;
   char const* walPosition;
-  TRI_voc_fid_t datafileId;
+  FileId datafileId;
 };
 
 struct MMFilesCollectorCache {
@@ -80,13 +81,11 @@ struct MMFilesCollectorCache {
   }
 
   /// @brief return a reference to an existing datafile statistics struct
-  MMFilesDatafileStatisticsContainer& getDfi(TRI_voc_fid_t fid) {
-    return dfi[fid];
-  }
+  MMFilesDatafileStatisticsContainer& getDfi(FileId fid) { return dfi[fid]; }
 
   /// @brief return a reference to an existing datafile statistics struct,
   /// create it if it does not exist
-  MMFilesDatafileStatisticsContainer& createDfi(TRI_voc_fid_t fid) {
+  MMFilesDatafileStatisticsContainer& createDfi(FileId fid) {
     // implicitly creates the entry if it does not exist yet
     return dfi[fid];
   }
@@ -125,10 +124,10 @@ struct MMFilesCollectorCache {
   std::vector<arangodb::MMFilesDocumentDitch*> ditches;
 
   /// @brief datafile info cache, updated when the collector transfers markers
-  std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer> dfi;
+  std::unordered_map<FileId, MMFilesDatafileStatisticsContainer> dfi;
 
   /// @brief id of last datafile handled
-  TRI_voc_fid_t lastFid;
+  FileId lastFid;
 
   /// @brief last datafile written to
   MMFilesDatafile* lastDatafile;

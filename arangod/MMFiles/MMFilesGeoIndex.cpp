@@ -206,11 +206,11 @@ struct NearIterator final : public IndexIterator {
 
 typedef NearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+MMFilesGeoIndex::MMFilesGeoIndex(IndexId iid, LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info,
                                  std::string const& typeName)
     : MMFilesIndex(iid, collection, info), geo_index::Index(info, _fields), _typeName(typeName) {
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(!iid.isPrimary() && !iid.isNone());
   _unique = false;
   _sparse = true;
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
@@ -254,7 +254,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
     }
     // Short circuit. If id is correct the index is identical.
     arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid);
+    return idRef == std::to_string(_iid.id());
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IndexUnique,

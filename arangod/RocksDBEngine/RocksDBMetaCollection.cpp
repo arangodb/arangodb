@@ -336,7 +336,7 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   for (std::shared_ptr<Index> i : _indexes) {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
     out = index->memory();
-    builder.add(std::to_string(index->id()), VPackValue(out));
+    builder.add(std::to_string(index->id().id()), VPackValue(out));
     total += out;
   }
   builder.close();

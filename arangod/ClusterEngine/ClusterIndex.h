@@ -23,20 +23,21 @@
 #ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
 
+#include <velocypack/Builder.h>
+#include <velocypack/StringRef.h>
+
 #include "Basics/Common.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/Common.h"
 #include "Indexes/Index.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 class LogicalCollection;
 
 class ClusterIndex : public Index {
  public:
-  ClusterIndex(TRI_idx_iid_t id, LogicalCollection& collection, ClusterEngineType engineType,
+  ClusterIndex(IndexId id, LogicalCollection& collection, ClusterEngineType engineType,
                Index::IndexType type, arangodb::velocypack::Slice const& info);
 
   ~ClusterIndex();

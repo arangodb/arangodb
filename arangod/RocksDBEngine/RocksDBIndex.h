@@ -24,14 +24,15 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
 
+#include <rocksdb/status.h>
+
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-
-#include <rocksdb/status.h>
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace rocksdb {
 class Comparator;
@@ -124,12 +125,12 @@ class RocksDBIndex : public Index {
   bool isPersistent() const override final { return true; }
 
  protected:
-  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
+  RocksDBIndex(IndexId id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache);
 
-  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+  RocksDBIndex(IndexId id, LogicalCollection& collection,
                arangodb::velocypack::Slice const& info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
