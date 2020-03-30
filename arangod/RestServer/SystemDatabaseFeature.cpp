@@ -24,6 +24,7 @@
 #include "SystemDatabaseFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -55,7 +56,7 @@ SystemDatabaseFeature::SystemDatabaseFeature(application_features::ApplicationSe
 void SystemDatabaseFeature::start() {
   if (server().hasFeature<arangodb::DatabaseFeature>()) {
     auto& feature = server().getFeature<arangodb::DatabaseFeature>();
-    _vocbase.store(feature.lookupDatabase(TRI_VOC_SYSTEM_DATABASE));
+    _vocbase.store(feature.lookupDatabase(StaticStrings::SystemDatabase));
 
     return;
   }

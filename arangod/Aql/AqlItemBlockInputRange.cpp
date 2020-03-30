@@ -103,22 +103,15 @@ arangodb::aql::ShadowAqlItemRow AqlItemBlockInputRange::peekShadowRow() const {
   return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
 }
 
-std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRowAndState() const {
+std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow() {
   if (hasShadowRow()) {
-    return std::make_pair(nextState<LookAhead::NEXT, RowType::SHADOW>(),
-                          ShadowAqlItemRow{_block, _rowIndex});
+    ShadowAqlItemRow row{_block, _rowIndex};
+    // Advance the current row.
+    _rowIndex++;
+    return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(), row);
   }
   return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(),
                         ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
-}
-
-std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow() {
-  auto res = peekShadowRowAndState();
-  if (res.second.isInitialized()) {
-    // Advance the current row.
-    _rowIndex++;
-  }
-  return res;
 }
 
 size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {
@@ -153,16 +146,12 @@ ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
     return ExecutorState::DONE;
   } else {
     static_assert(RowType::SHADOW == type);
-    // We Return HASMORE, if the next shadow row is NOT relevant.
-    // So we can directly fetch the next shadow row without informing
-    // the executor about an empty subquery.
-    if (isShadowRow) {
-      ShadowAqlItemRow nextRow{_block, testRowIndex};
-      if (!nextRow.isRelevant()) {
-        return ExecutorState::HASMORE;
-      }
-    }
-    return ExecutorState::DONE;
+    // We checked the case of index invalid above
+    // hence we have something now.
+    // On the ShadowRow state we only need to return DONE
+    // if there is absolutely nothing left.
+    // So We have something => Return HASMORE;
+    return ExecutorState::HASMORE;
   }
 }
 
@@ -187,7 +176,11 @@ auto AqlItemBlockInputRange::countDataRows() const noexcept -> std::size_t {
     return 0;
   }
   auto const& block = getBlock();
-  return block->size() - block->getShadowRowIndexes().size();
+  auto total = block->size();
+  if (_rowIndex >= total) {
+    return 0;
+  }
+  return total - _rowIndex - countShadowRows();
 }
 
 auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
@@ -195,7 +188,9 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
     return 0;
   }
   auto const& block = getBlock();
-  return block->getShadowRowIndexes().size();
+  auto const& rows = block->getShadowRowIndexes();
+  return std::count_if(rows.begin(), rows.end(),
+                       [&](auto r) -> bool { return r >= _rowIndex; });
 }
 
 [[nodiscard]] auto AqlItemBlockInputRange::finalState() const noexcept -> ExecutorState {

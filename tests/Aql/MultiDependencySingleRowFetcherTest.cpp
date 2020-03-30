@@ -87,7 +87,7 @@ class MultiDependencySingleRowFetcherTest
   auto makeStack() -> AqlCallStack {
     // We need a stack for the API, an empty one will do.
     // We are not testing subqueries here
-    AqlCallStack stack{AqlCall{}};
+    AqlCallStack stack{AqlCallList{AqlCall{}}};
     stack.popCall();
     return stack;
   }
@@ -95,7 +95,7 @@ class MultiDependencySingleRowFetcherTest
   auto makeSameCallToAllDependencies(AqlCall call) -> AqlCallSet {
     AqlCallSet set{};
     for (size_t i = 0; i < _dependencies.size(); ++i) {
-      set.calls.emplace_back(AqlCallSet::DepCallPair{i, call});
+      set.calls.emplace_back(AqlCallSet::DepCallPair{i, AqlCallList{call}});
     }
     return set;
   }
@@ -124,8 +124,7 @@ class MultiDependencySingleRowFetcherTest
     auto rowIndexBefore = testee.getRowIndex();
     // Validate that shadowRowAPI does not move on
     {
-      auto [state, row] = testee.peekShadowRowAndState();
-      EXPECT_EQ(state, ExecutorState::DONE);
+      auto row = testee.peekShadowRow();
       EXPECT_FALSE(row.isInitialized());
       ASSERT_EQ(rowIndexBefore, testee.getRowIndex())
           << "Skipped a non processed row.";
@@ -186,8 +185,7 @@ class MultiDependencySingleRowFetcherTest
     }
     // Validate ShadowRow API
     {
-      auto [state, row] = testee.peekShadowRowAndState();
-      EXPECT_EQ(state, expectedState);
+      auto row = testee.peekShadowRow();
       EXPECT_TRUE(row.isInitialized());
       auto val = row.getValue(0);
       ASSERT_TRUE(val.isNumber());
@@ -440,7 +438,7 @@ TEST_P(MultiDependencySingleRowFetcherTest, many_blocks_upstream_all_deps_differ
   auto stack = makeStack();
   for (size_t dep = 0; dep < numberDependencies(); ++dep) {
     AqlCallSet set{};
-    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCall{}});
+    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCallList{AqlCall{}}});
     testWaiting(testee, set);
 
     {
@@ -518,7 +516,7 @@ TEST_P(MultiDependencySingleRowFetcherTest,
   auto stack = makeStack();
   for (size_t dep = 0; dep < numberDependencies(); ++dep) {
     AqlCallSet set{};
-    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCall{}});
+    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCallList{AqlCall{}}});
     testWaiting(testee, set);
 
     {
@@ -622,7 +620,7 @@ TEST_P(MultiDependencySingleRowFetcherTest,
     TRI_ASSERT(depCounter > 0);
     auto dep = depCounter - 1;
     AqlCallSet set{};
-    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCall{}});
+    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCallList{AqlCall{}}});
     testWaiting(testee, set);
 
     {
@@ -725,7 +723,7 @@ TEST_P(MultiDependencySingleRowFetcherTest,
   for (size_t dep = 0; dep < numberDependencies(); ++dep) {
     AqlCallSet set{};
     // offset 10
-    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCall{10}});
+    set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCallList{AqlCall{10}}});
     testWaiting(testee, set);
 
     {

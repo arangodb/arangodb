@@ -92,6 +92,10 @@ class SharedExecutionBlockImplTest {
     return res;
   }
 
+  AqlCallStack buildStack(AqlCall call) {
+    return AqlCallStack{AqlCallList{call}};
+  }
+
   /**
    * @brief Prepare the executor infos for a LambdaExecutor with passthrough.
    *
@@ -349,7 +353,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
    */
   auto runTest(ProduceCall& prod, SkipCall& skip, AqlCall call)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-    AqlCallStack stack{std::move(call)};
+    auto stack = buildStack(call);
     auto singleton = createSingleton();
     if (GetParam()) {
       ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(),
@@ -554,7 +558,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_relevant_shadowrow_does_not_f
   auto testee = onceLinesProducer(singleton.get(), ExecutionBlock::DefaultBatchSize);
 
   AqlCall fullCall{};
-  AqlCallStack stack{fullCall};
+  auto stack = buildStack(fullCall);
   {
     // First call. Fetch all rows (data only)
     auto const& [state, skipped, block] = testee->execute(stack);
@@ -597,7 +601,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_in_
   auto testee = onceLinesProducer(singleton.get(), ExecutionBlock::DefaultBatchSize);
 
   AqlCall fullCall{};
-  AqlCallStack stack{fullCall};
+  auto stack = buildStack(fullCall);
   {
     // First call. Fetch all rows (data only)
     auto const& [state, skipped, block] = testee->execute(stack);
@@ -647,7 +651,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
   auto testee = onceLinesProducer(singleton.get(), ExecutionBlock::DefaultBatchSize - 1);
 
   AqlCall fullCall{};
-  AqlCallStack stack{fullCall};
+  auto stack = buildStack(fullCall);
   {
     // First call. Fetch all rows (data + relevant shadow row)
     auto const& [state, skipped, block] = testee->execute(stack);
@@ -1340,7 +1344,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_waiting_block_mock) {
                                        : WaitingExecutionBlockMock::WaitingBehaviour::NEVER};
 
   auto const& call = getCall();
-  AqlCallStack stack{call};
+  auto stack = buildStack(call);
 
   auto [state, skipped, block] = testee.execute(stack);
   if (doesWaiting()) {
@@ -1375,7 +1379,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
   auto producer = produceBlock(singleton.get(), builder, outReg);
 
   auto const& call = getCall();
-  AqlCallStack stack{call};
+  auto stack = buildStack(call);
   if (doesWaiting()) {
     auto const [state, skipped, block] = producer->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1409,7 +1413,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
   auto producerFirst = produceBlock(singleton.get(), builder, outRegFirst);
   auto producer = produceBlock(producerFirst.get(), builder, outRegSecond);
   auto const& call = getCall();
-  AqlCallStack stack{call};
+  auto stack = buildStack(call);
   if (doesWaiting()) {
     auto const [state, skipped, block] = producer->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1452,7 +1456,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
 // We use two pass-through producers, that simply copy over input and assert an calls.
 // On top of them we have a 1000 line producer.
 // We expect the result to be identical to the 1000 line producer only.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_passthrough) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_passthrough) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1470,7 +1474,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_p
   auto lower = forwardBlock(lowerState, upper.get(), outReg);
 
   auto const& call = getCall();
-  AqlCallStack stack{call};
+  auto stack = buildStack(call);
   if (doesWaiting()) {
     auto const [state, skipped, block] = lower->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1495,7 +1499,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_p
 // does skipping.
 // On top of them we have a 1000 line producer.
 // We expect the result to be identical to the 1000 line producer only.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_implement_skip) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_skip) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1554,7 +1558,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_i
   lower->addDependency(upper.get());
 
   auto const& call = getCall();
-  AqlCallStack stack{call};
+  auto stack = buildStack(call);
   if (doesWaiting()) {
     auto const [state, skipped, block] = lower->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1598,7 +1602,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls) {
   RegisterId outReg = 0;
   auto testee = forwardBlock(produceAsserter, skipAsserter, producer.get(), outReg);
   auto const& call = getCall();
-  AqlCallStack stack{call};
+  auto stack = buildStack(call);
   auto [state, skipped, block] = testee->execute(stack);
   size_t killSwitch = 0;
   while (state == ExecutionState::WAITING) {
@@ -1656,7 +1660,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
 
   if (limit == 0) {
     // we can bypass everything and get away with a single call
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     auto [state, skipped, block] = testee->execute(stack);
     if (doesWaiting()) {
       size_t waited = 0;
@@ -1685,9 +1689,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
       ++it;
     }
     for (size_t i = 0; i < limit && it.valid(); ++i) {
-      // We need to reset the skippedRows counter.
       call.skippedRows = 0;
-      AqlCallStack stack{call};
+      auto stack = buildStack(call);
       auto [state, skipped, block] = testee->execute(stack);
       if (doesWaiting()) {
         size_t waited = 0;
@@ -1789,7 +1792,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
     // We always take a new call. We do not want the call to be modified cross
     // subqueries, this would not be done by Executors.
     auto const& call = getCall();
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     // We cannot group shadowRows within a single call.
     // So we end up with 3 results, each 1 shadowRow, no matter what the call is
     auto [state, skipped, block] = testee->execute(stack);
@@ -1850,7 +1853,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
   auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
 
   auto const& call = getCall();
-  AqlCallStack stack{call};
+  auto stack = buildStack(call);
   if (doesWaiting()) {
     auto const [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1902,7 +1905,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRo
   auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
 
   auto const& call = getCall();
-  AqlCallStack stack{call};
+  auto stack = buildStack(call);
   if (doesWaiting()) {
     auto const [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1971,7 +1974,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
     }
     subqueryData->close();
     auto const& call = getCall();
-    AqlCallStack stack{call};
+    auto stack = buildStack(call);
     if (doesWaiting()) {
       auto const [state, skipped, block] = testee->execute(stack);
       EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1992,7 +1995,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
         AqlCall forwardCall{};
         forwardCall.hardLimit = 0;
         forwardCall.fullCount = false;
-        AqlCallStack forwardStack{forwardCall};
+        auto forwardStack = buildStack(forwardCall);
         auto const [forwardState, forwardSkipped, forwardBlock] =
             testee->execute(forwardStack);
         // We do not care for any data left
@@ -2052,7 +2055,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   auto testee = forwardBlock(getAsserter, skipAsserter, singleton.get(), outReg);
 
   if (doesWaiting()) {
-    AqlCallStack stack{getCall()};
+    AqlCallStack stack{AqlCallList{getCall()}};
     // we only wait exactly once, only one block upstream that is not sliced.
     auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -2063,7 +2066,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   bool skip = call.getOffset() > 0 || (call.getLimit() == 0 && call.needsFullCount());
   {
     // First subquery
-    AqlCallStack stack{getCall()};
+    AqlCallStack stack{AqlCallList{getCall()}};
     auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     ASSERT_NE(block, nullptr);
@@ -2102,7 +2105,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   {
     // Second subquery
-    AqlCallStack stack{getCall()};
+    AqlCallStack stack{AqlCallList{getCall()}};
     auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     ASSERT_NE(block, nullptr);
@@ -2128,7 +2131,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   {
     // Third subquery
-    AqlCallStack stack{getCall()};
+    AqlCallStack stack{AqlCallList{getCall()}};
     auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(block, nullptr);
@@ -2155,126 +2158,6 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     getAsserter.reset();
     skipAsserter.reset();
   }
-}
-
-// Test forward outer queries.
-// The executors should not be called if there is no relevant call on the Stack
-// Block shall be returned unmodified.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest,
-       DISABLED_test_outer_subquery_forwarding_passthrough) {
-  std::deque<SharedAqlItemBlockPtr> blockDeque;
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    MatrixBuilder<1> matrix;
-    matrix.reserve(250);
-    builder->openArray();
-    for (size_t i = 0; i < 250; ++i) {
-      builder->add(VPackValue(i));
-      matrix.emplace_back(RowBuilder<1>{i});
-    }
-    builder->close();
-    SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), std::move(matrix));
-    blockDeque.push_back(std::move(block));
-  }
-
-  // Note: WaitingExecutionBlockMock does not use the ExecutionBlockImpl logic
-  // and will React to any call on the spec, if it is relevant or not.
-  auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
-      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
-                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-
-  auto const& call = getCall();
-  AqlCallStack stack{call};
-  ASSERT_TRUE(stack.isRelevant());
-  stack.increaseSubqueryDepth();
-  EXPECT_FALSE(stack.isRelevant());
-
-  ProduceCall prodCall = generateNeverProduceCall();
-
-  ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(),
-                                                  generateNodeDummy(),
-                                                  makeInfos(prodCall)};
-
-  testee.addDependency(singleton.get());
-
-  auto [state, skipped, block] = testee.execute(stack);
-  if (doesWaiting()) {
-    EXPECT_EQ(state, ExecutionState::WAITING);
-    EXPECT_EQ(skipped.getSkipCount(), 0);
-    EXPECT_EQ(block, nullptr);
-    std::tie(state, skipped, block) = testee.execute(stack);
-  }
-
-  if (call.getLimit() > builder->slice().length() || call.needsFullCount() ||
-      call.hasHardLimit()) {
-    // We need to consume everything
-    EXPECT_EQ(state, ExecutionState::DONE);
-  } else {
-    // We cannot consume everything.
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-  }
-  ValidateResult(builder, skipped, block, 0);
-}
-
-// Test forward outer queries.
-// The executors should not be called if there is no relevant call on the Stack
-// Block shall be returned unmodified.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_outer_subquery_forwarding) {
-  std::deque<SharedAqlItemBlockPtr> blockDeque;
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    MatrixBuilder<1> matrix;
-    matrix.reserve(250);
-    builder->openArray();
-    for (size_t i = 0; i < 250; ++i) {
-      builder->add(VPackValue(i));
-      matrix.emplace_back(RowBuilder<1>{i});
-    }
-    builder->close();
-    SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), std::move(matrix));
-    blockDeque.push_back(std::move(block));
-  }
-
-  // Note: WaitingExecutionBlockMock does not use the ExecutionBlockImpl logic
-  // and will React to any call on the spec, if it is relevant or not.
-  auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
-      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
-                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-
-  auto const& call = getCall();
-  AqlCallStack stack{call};
-  ASSERT_TRUE(stack.isRelevant());
-  stack.increaseSubqueryDepth();
-  EXPECT_FALSE(stack.isRelevant());
-
-  ProduceCall prodCall = generateNeverProduceCall();
-  SkipCall skipCall = generateNeverSkipCall();
-  ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), generateNodeDummy(),
-                                       makeSkipInfos(prodCall, skipCall)};
-
-  testee.addDependency(singleton.get());
-
-  auto [state, skipped, block] = testee.execute(stack);
-  if (doesWaiting()) {
-    EXPECT_EQ(state, ExecutionState::WAITING);
-    EXPECT_EQ(skipped.getSkipCount(), 0);
-    EXPECT_EQ(block, nullptr);
-    std::tie(state, skipped, block) = testee.execute(stack);
-  }
-
-  if (call.getLimit() > builder->slice().length() || call.needsFullCount() ||
-      call.hasHardLimit()) {
-    // We need to consume everything
-    EXPECT_EQ(state, ExecutionState::DONE);
-  } else {
-    // We cannot consume everything.
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-  }
-  ValidateResult(builder, skipped, block, 0);
 }
 
 // The numbers here are random, but all of them are below 1000 which is the default batch size

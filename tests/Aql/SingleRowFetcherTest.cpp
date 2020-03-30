@@ -102,12 +102,7 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
       EXPECT_FALSE(input.hasDataRow());
 
       auto [state, row] = input.nextShadowRow();
-
-      if (depth == result.back().first && value == result.back().second) {
-        EXPECT_EQ(state, ExecutorState::DONE);
-      } else {
-        EXPECT_EQ(state, ExecutorState::HASMORE);
-      }
+      EXPECT_EQ(state, ExecutorState::HASMORE);
       ASSERT_TRUE(row.isInitialized());
       auto const& inputVal = row.getValue(0);
 
@@ -1223,7 +1218,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_oneAndDone
   {
     SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
     AqlCall call;
-    auto stack = AqlCallStack{call};
+    auto stack = AqlCallStack{AqlCallList{call}};
 
     // First no data row
     auto [state, skipped, input] = testee.execute(stack);
@@ -1258,7 +1253,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_twoAndHasM
   {
     SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
     AqlCall call;
-    auto stack = AqlCallStack{call};
+    auto stack = AqlCallStack{AqlCallList{call}};
 
     auto [state, skipped, input] = testee.execute(stack);
     // We only have one block, no more calls to execute necessary

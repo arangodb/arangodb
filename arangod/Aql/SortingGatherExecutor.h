@@ -40,6 +40,7 @@ class Methods;
 namespace aql {
 
 struct AqlCall;
+class AqlCallList;
 class MultiDependencySingleRowFetcher;
 class MultiAqlItemBlockInputRange;
 class NoStats;
@@ -190,7 +191,7 @@ class SortingGatherExecutor {
   [[nodiscard]] auto limitReached() const noexcept -> bool;
 
   [[nodiscard]] auto calculateUpstreamCall(AqlCall const& clientCall) const
-      noexcept -> AqlCall;
+      noexcept -> AqlCallList;
 
  private:
   // Flag if we are past the initialize phase (fetched one block for every dependency).

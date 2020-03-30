@@ -39,8 +39,6 @@ ConstFetcher::ConstFetcher(DependencyProxy& executionBlock)
 
 auto ConstFetcher::execute(AqlCallStack& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
-  // Note this fetcher can only be executed on top level (it is the singleton, or test)
-  TRI_ASSERT(stack.isRelevant());
   // We only peek the call here, as we do not take over ownership.
   // We can replace this by pop again if all executors also only take a reference to the stack.
   auto call = stack.peek();

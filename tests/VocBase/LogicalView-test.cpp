@@ -173,7 +173,7 @@ TEST_F(LogicalViewTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -191,7 +191,7 @@ TEST_F(LogicalViewTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RO) {}
+                                  arangodb::auth::Level::RO, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -210,7 +210,7 @@ TEST_F(LogicalViewTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RW) {}
+                                  arangodb::auth::Level::RW, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();

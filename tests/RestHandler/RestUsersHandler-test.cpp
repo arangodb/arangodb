@@ -196,7 +196,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, userName,
                                 "", arangodb::auth::Level::RW,
-                                arangodb::auth::Level::NONE) {
+                                arangodb::auth::Level::NONE, true) {
     }  // ExecContext::isAdminUser() == true
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);

@@ -97,7 +97,7 @@ ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {
   // Temporary.
   // Just do a copy of the stack here to not mess with it.
   AqlCallStack stack = _injectedStack;
-  stack.pushCall(AqlCall::SimulateGetSome(atMost));
+  stack.pushCall(AqlCallList{AqlCall::SimulateGetSome(atMost)});
   // Also temporary, will not be used here.
   SkipResult skipped;
   do {
@@ -188,7 +188,7 @@ DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, si
   // Temporary.
   // Just do a copy of the stack here to not mess with it.
   AqlCallStack stack = _injectedStack;
-  stack.pushCall(AqlCall::SimulateGetSome(atMost));
+  stack.pushCall(AqlCallList{AqlCall::SimulateGetSome(atMost)});
   // Also temporary, will not be used here.
   SkipResult skipped{};
 
@@ -261,7 +261,7 @@ DependencyProxy<blockPassthrough>::DependencyProxy(
       _currentDependency(0),
       _skipped(0),
       _vpackOptions(options),
-      _injectedStack(AqlCall{}) {
+      _injectedStack(AqlCallList{AqlCall{}}) {
   // Make the default stack usable, for tests only.
   // This needs to be removed soon.
   _injectedStack.popCall();

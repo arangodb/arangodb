@@ -114,10 +114,9 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
     AqlCallStack stack) {
-  while (!stack.isRelevant()) {
-    stack.pop();
-  }
-  auto myCall = stack.peek();
+  auto myCallList = stack.popCall();
+  auto myCall = myCallList.popNextCall();
+
   TRI_ASSERT(!(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0}));
   TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.fullCount));
   TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.hasHardLimit()));
@@ -142,13 +141,12 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
 
     if (result != nullptr && !result->hasShadowRows()) {
       // Count produced rows
-      auto modCall = stack.popCall();
+      auto& modCall = stack.modifyTopCall();
       modCall.didProduce(result->size());
-      stack.pushCall(std::move(modCall));
     }
 
     if (!skipped.nothingSkipped()) {
-      auto modCall = stack.popCall();
+      auto& modCall = stack.modifyTopCall();
       modCall.didSkip(skipped.getSkipCount());
       // Reset the internal counter.
       // We reuse the call to upstream
@@ -158,7 +156,6 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
         // We do not have anything to do for this call
         shouldReturn = true;
       }
-      stack.pushCall(std::move(modCall));
     }
     if (shouldReturn) {
       if (!_doesContainShadowRows && state == ExecutionState::HASMORE) {
