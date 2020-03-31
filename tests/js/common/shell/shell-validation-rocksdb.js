@@ -227,20 +227,18 @@ function ValidationBasicsSuite () {
 
     // levels ////////////////////////////////////////////////////////////////////////////////////////////
     testLevelNone : () => {
-      const v =  validatorJson;
-      v.level = "none";
-      testCollection.properties({"validation" : v });
+      validatorJson.level = "none";
+      testCollection.properties({"validation" : validatorJson });
       sleepInCluster();
-      assertEqual(testCollection.properties().validation.level, v.level);
+      assertEqual(testCollection.properties().validation.level, validatorJson.level);
       let  doc = testCollection.insert(badDoc);
     },
 
     testLevelNew : () => {
-      const v =  validatorJson;
-      v.level = "new";
-      testCollection.properties({"validation" : v });
+      validatorJson.level = "new";
+      testCollection.properties({"validation" : validatorJson });
       sleepInCluster();
-      assertEqual(testCollection.properties().validation.level, v.level);
+      assertEqual(testCollection.properties().validation.level, validatorJson.level);
 
       let  doc = testCollection.insert(badDoc, skipOptions);
       try {
@@ -254,11 +252,10 @@ function ValidationBasicsSuite () {
     },
 
     testLevelModerate : () => {
-      const v =  validatorJson;
-      v.level = "moderate";
-      testCollection.properties({"validation" : v });
+      validatorJson.level = "moderate";
+      testCollection.properties({"validation" : validatorJson });
       sleepInCluster();
-      assertEqual(testCollection.properties().validation.level, v.level);
+      assertEqual(testCollection.properties().validation.level, validatorJson.level);
 
       let  doc = testCollection.insert(badDoc, skipOptions);
       try {
@@ -273,11 +270,10 @@ function ValidationBasicsSuite () {
     },
 
     testLevelStict : () => {
-      const v =  validatorJson;
-      v.level = "strict";
-      testCollection.properties({"validation" : v });
+      validatorJson.level = "strict";
+      testCollection.properties({"validation" : validatorJson });
       sleepInCluster();
-      assertEqual(testCollection.properties().validation.level, v.level);
+      assertEqual(testCollection.properties().validation.level, validatorJson.level);
 
       let  doc = testCollection.insert(badDoc, skipOptions);
 
@@ -307,13 +303,13 @@ function ValidationBasicsSuite () {
     testRemoveValidation: () => {
       testCollection.properties({"validation" : { } });
       sleepInCluster();
+      assertEqual(testCollection.properties().validation, null);
     },
 
     // json  ////////////////////////////////////////////////////////////////////////////////////////////
     testJson: () => {
-      const v =  validatorJson;
-      v.level = "strict";
-      testCollection.properties({"validation" : v });
+      validatorJson.level = "strict";
+      testCollection.properties({"validation" : validatorJson });
       sleepInCluster();
 
       let  doc = testCollection.insert(goodDoc, skipOptions);
@@ -368,16 +364,13 @@ function ValidationBasicsSuite () {
     },
     // AQL  ////////////////////////////////////////////////////////////////////////////////////////////
     test_GET_SCHEMA: () => {
-      const v =  validatorJson;
-      v.level = "strict";
-      testCollection.properties({"validation" : v });
+      validatorJson.level = "strict";
+      testCollection.properties({"validation" : validatorJson });
       sleepInCluster();
 
-      let res;
-
       // get regular schema
-      res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
-      assertEqual(res[0], v.rule);
+      let res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
+      assertEqual(res[0], validatorJson.rule);
     },
 
     test_GET_SCHEMA_no_collection: () => {
@@ -398,7 +391,6 @@ function ValidationBasicsSuite () {
     },
 
     test_SCHEMA_VALIDATE: () => {
-      const v =  validatorJson;
       // unset validation
       testCollection.properties({validation : {}});
       sleepInCluster();
