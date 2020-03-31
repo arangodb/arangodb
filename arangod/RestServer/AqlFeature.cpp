@@ -20,16 +20,19 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Basics/StaticStrings.h>
 #include <thread>
 
 #include "RestServer/AqlFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 
@@ -76,6 +79,11 @@ void AqlFeature::unlease() noexcept { ::leases.fetch_sub(1); }
 
 void AqlFeature::start() {
   ::leases.fetch_or(::readyBit);
+
+  // register query time metrics
+  server().getFeature<arangodb::MetricsFeature>().counter(
+      StaticStrings::AqlQueryRuntimeMs, 0,
+      "Total execution time of all queries");
 
   LOG_TOPIC("cf921", DEBUG, Logger::QUERIES) << "AQL feature started";
 }

@@ -285,7 +285,7 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   // Only admin users are permitted to create databases
   ExecContext const& exec = ExecContext::current();
 
-  if (!exec.isAdminUser()) {
+  if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
     events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
     return Result(TRI_ERROR_FORBIDDEN);
   }
@@ -380,7 +380,7 @@ int dropDBCoordinator(std::string const& dbName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-const std::string dropError = "Error when dropping Datbase";
+const std::string dropError = "Error when dropping database";
 }  // namespace
 
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {

@@ -42,9 +42,8 @@ using namespace arangodb::pregel;
 
 template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
-    : _config(state), _format(format) {
-  _baseUrl = Utils::baseUrl(Utils::workerPrefix);
-}
+    : _config(state), _format(format),
+      _baseUrl(Utils::baseUrl(Utils::workerPrefix)) {}
 
 // ================= ArrayOutCache ==================
 

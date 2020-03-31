@@ -108,6 +108,12 @@ std::pair<ExecutionState, size_t> CountCollectExecutor::expectedNumberOfRows(siz
   return {ExecutionState::HASMORE, 1};
 }
 
+auto CountCollectExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                                   AqlCall const& call) const
+    noexcept -> size_t {
+  return std::min<size_t>(1, call.getLimit());
+}
+
 const CountCollectExecutor::Infos& CountCollectExecutor::infos() const noexcept {
   return _infos;
 }

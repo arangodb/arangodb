@@ -217,3 +217,17 @@ void ShortestPathOptions::isQueryKilledCallback() const {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }
+
+ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
+                                         bool const allowAlreadyBuiltCopy)
+    : BaseOptions(other, allowAlreadyBuiltCopy),
+      start{other.start},
+      direction{other.direction},
+      weightAttribute{other.weightAttribute},
+      defaultWeight{other.defaultWeight},
+      bidirectional{other.bidirectional},
+      multiThreaded{other.multiThreaded},
+      end{other.end},
+      startBuilder{other.startBuilder},
+      endBuilder{other.endBuilder},
+      _reverseLookupInfos{other._reverseLookupInfos} {}

@@ -47,6 +47,7 @@
 #include "V8/v8-buffer.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8/v8-deadline.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -154,7 +155,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
       setCustomError(503, msg);
       return nullptr;
     }
-    
+
     std::lock_guard<std::recursive_mutex> guard(_lock);
     _connection = newConnection;
 
@@ -204,11 +205,11 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
 
 std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  
+
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
-  
-  if (!_connection || 
+
+  if (!_connection ||
       (_connection->state() == fu::Connection::State::Disconnected ||
        _connection->state() == fu::Connection::State::Failed)) {
     return createConnection();
@@ -455,6 +456,9 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
 static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -506,9 +510,10 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
   }
 
   V8SecurityFeature& v8security = v8connection->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint)) {
+  if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint, endpoint)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to connect to this endpoint");
+                                   std::string("not allowed to connect to this endpoint") +
+                                   endpoint);
   }
 
   client->setEndpoint(endpoint);
@@ -564,6 +569,9 @@ static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
   // get the connection
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -614,6 +622,9 @@ static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> con
                                          bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -666,6 +677,9 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
                                            bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -722,6 +736,9 @@ static void ClientConnection_httpOptionsAny(v8::FunctionCallbackInfo<v8::Value> 
                                             bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -774,6 +791,9 @@ static void ClientConnection_httpPostAny(v8::FunctionCallbackInfo<v8::Value> con
                                          bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -825,6 +845,9 @@ static void ClientConnection_httpPutAny(v8::FunctionCallbackInfo<v8::Value> cons
                                         bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -878,6 +901,9 @@ static void ClientConnection_httpPatchAny(v8::FunctionCallbackInfo<v8::Value> co
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
   // get the connection
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -927,6 +953,10 @@ static void ClientConnection_httpPatchRaw(v8::FunctionCallbackInfo<v8::Value> co
 static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -982,6 +1012,9 @@ static void ClientConnection_getEndpoint(v8::FunctionCallbackInfo<v8::Value> con
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
   // get the connection
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -1013,6 +1046,9 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "importCsvFile(<filename>, <collection>[, <options>])");
@@ -1121,6 +1157,9 @@ static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("importJsonFile(<filename>, <collection>)");
   }
@@ -1195,6 +1234,10 @@ static void ClientConnection_lastHttpReturnCode(v8::FunctionCallbackInfo<v8::Val
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
   // get the connection
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -1220,6 +1263,10 @@ static void ClientConnection_lastErrorMessage(v8::FunctionCallbackInfo<v8::Value
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
   // get the connection
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -1244,6 +1291,10 @@ static void ClientConnection_lastErrorMessage(v8::FunctionCallbackInfo<v8::Value
 static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -1271,6 +1322,10 @@ static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> con
 static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -1305,6 +1360,10 @@ static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const
 static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -1343,6 +1402,10 @@ static void ClientConnection_toString(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
   // get the connection
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -1379,6 +1442,10 @@ static void ClientConnection_getVersion(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
   // get the connection
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -1402,6 +1469,10 @@ static void ClientConnection_getVersion(v8::FunctionCallbackInfo<v8::Value> cons
 static void ClientConnection_getMode(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -1427,6 +1498,10 @@ static void ClientConnection_getRole(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
   // get the connection
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -1451,6 +1526,10 @@ static void ClientConnection_getDatabaseName(v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
   // get the connection
   V8ClientConnection* v8connection =
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
@@ -1474,6 +1553,10 @@ static void ClientConnection_getDatabaseName(v8::FunctionCallbackInfo<v8::Value>
 static void ClientConnection_setDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
 
   // get the connection
   V8ClientConnection* v8connection =
@@ -1590,7 +1673,7 @@ again:
       } else {
         req->header.contentType(fu::ContentType::Custom);
       }
-      
+
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
       if (pair.second == StaticStrings::MimeTypeVPack) {
         req->header.acceptType(fu::ContentType::VPack);
@@ -1667,7 +1750,9 @@ again:
       req->header.acceptType(fu::ContentType::VPack);
     }
   }
-  req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
+  req->timeout(
+      correctTimeoutToExecutionDeadline(
+        std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Failed) {
@@ -1683,7 +1768,7 @@ again:
   } catch (fu::Error const& ec) {
     rc = ec;
   }
-    
+
   if (rc == fu::Error::ConnectionClosed && retry) {
     retry = false;
     goto again;
@@ -1696,7 +1781,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fu::RestVerb method, arangodb::velocypack::StringRef const& location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
-  
+
   bool retry = true;
 
 again:
@@ -1749,7 +1834,9 @@ again:
   if (req->header.acceptType() == fu::ContentType::Unset) {
     req->header.acceptType(fu::ContentType::VPack);
   }
-  req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
+  req->timeout(
+      correctTimeoutToExecutionDeadline(
+        std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Failed) {
@@ -1766,7 +1853,7 @@ again:
     _lastErrorMessage.assign(fu::to_string(e));
     _lastHttpReturnCode = 503;
   }
-  
+
   if (rc == fu::Error::ConnectionClosed && retry) {
     retry = false;
     goto again;
@@ -1847,7 +1934,7 @@ again:
                 TRI_V8_ASCII_STRING(isolate, "body"),
                 bufObj).FromMaybe(false);
   }
-  
+
   for (auto const& it : response->header.meta()) {
     headers->Set(context,
                  TRI_V8_STD_STRING(isolate, it.first),
@@ -1861,7 +1948,7 @@ again:
     headers->Set(context,
                  TRI_V8_STD_STRING(isolate, StaticStrings::ContentLength),
                  TRI_V8_STD_STRING(isolate, std::to_string(responseBody.size()))).FromMaybe(false);
-    
+
   }
 
   result->Set(context,
@@ -1939,7 +2026,7 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
       VPackParser parser(builder);
       try {
         parser.parse(str, sb.size());
-        ret = TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr); 
+        ret = TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr);
       } catch (std::exception const& ex) {
         std::string err("Error parsing the server JSON reply: ");
         err += ex.what();

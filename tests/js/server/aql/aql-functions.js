@@ -4124,6 +4124,79 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test IN_RANGE function
+////////////////////////////////////////////////////////////////////////////////
+    testInRange: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IN_RANGE()");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, null, true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, false, null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, 1, true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, false, 0)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, [1, 2, 3], true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, false, [1,2,3])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, 'true', true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, false, 'false')");
+      {
+        let res = getQueryResults("RETURN IN_RANGE(5, 1, 10, false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }     
+      {
+        let res = getQueryResults("RETURN IN_RANGE(5+1, 1+1, 10-1, false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE(MAX([5,6]), MIN([1,0]), MAX([0,6]), false, true)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE(MAX([5,6]), MIN([1,0]), MAX([0,6]), false, false)");
+        assertEqual(1, res.length);  
+        assertFalse(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE(NOOPT(MAX([5,6])), MIN([1,0]), MAX([0,6]), false, false)");
+        assertEqual(1, res.length);  
+        assertFalse(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE('foo', MIN([1,0]), 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE('foo', null, 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE(123, null, 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE({a:1}, null, 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertFalse(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE('foo', 'boo', 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test non-existing functions
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -445,7 +445,7 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, Aq
         TRI_ASSERT(!input.hasDataRow(dep));
         TRI_ASSERT(input.skippedInFlight(dep) == 0);
         // We need to fetch more data, but can fullCount now
-        AqlCall request{0, true, 0, AqlCall::LimitType::HARD};
+        AqlCallList request{AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
         callSet.calls.emplace_back(AqlCallSet::DepCallPair{dep, request});
         if (!_fetchParallel) {
           break;
@@ -485,7 +485,7 @@ auto SortingGatherExecutor::limitReached() const noexcept -> bool {
 }
 
 [[nodiscard]] auto SortingGatherExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
-    noexcept -> AqlCall {
+    noexcept -> AqlCallList {
   auto upstreamCall = AqlCall{};
   if (constrainedSort()) {
     if (clientCall.hasSoftLimit()) {
@@ -525,5 +525,5 @@ auto SortingGatherExecutor::limitReached() const noexcept -> bool {
   // We do never send a skip to upstream here.
   // We need to look at every relevant line ourselves
   TRI_ASSERT(upstreamCall.offset == 0);
-  return upstreamCall;
+  return AqlCallList{upstreamCall};
 }

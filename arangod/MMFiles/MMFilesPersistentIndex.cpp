@@ -77,7 +77,7 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
       _db(db),
       _reverse(reverse),
       _probe(false) {
-  TRI_idx_iid_t const id = index->id();
+  IndexId const id = index->id();
   std::string const prefix =
       MMFilesPersistentIndex::buildPrefix(trx->vocbase().id(),
                                           _primaryIndex->collection().id(), id);
@@ -287,8 +287,7 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb, si
 }
 
 /// @brief create the index
-MMFilesPersistentIndex::MMFilesPersistentIndex(TRI_idx_iid_t iid,
-                                               arangodb::LogicalCollection& collection,
+MMFilesPersistentIndex::MMFilesPersistentIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& info)
     : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true) {}
 

@@ -219,6 +219,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
   Aql/AqlCall.cpp
+  Aql/AqlCallList.cpp
   Aql/AqlCallSet.cpp
   Aql/AqlCallStack.cpp
   Aql/AqlExecuteResult.cpp
@@ -386,12 +387,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
   Utils/SingleCollectionTransaction.cpp
-  VocBase/KeyGenerator.cpp
-  VocBase/KeyLockInfo.cpp
-  VocBase/LogicalCollection.cpp
-  VocBase/LogicalDataSource.cpp
-  VocBase/LogicalView.cpp
-  VocBase/ManagedDocumentResult.cpp
+  VocBase/Identifiers/IndexId.cpp
   VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
@@ -403,6 +399,12 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
+  VocBase/KeyGenerator.cpp
+  VocBase/KeyLockInfo.cpp
+  VocBase/LogicalCollection.cpp
+  VocBase/LogicalDataSource.cpp
+  VocBase/LogicalView.cpp
+  VocBase/ManagedDocumentResult.cpp
   VocBase/ticks.cpp
   VocBase/Validators.cpp
   VocBase/vocbase.cpp
@@ -937,7 +939,9 @@ target_link_libraries(arango_utils arango::validation)
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_iresearch)
 target_link_libraries(arango_v8server arango_replication)
-target_link_libraries(arango_v8server arango_v8 ${V8_LIBS})
+target_link_libraries(arango_v8server arango_v8)
+target_link_libraries(arango_v8server arango_v8_no_deadline)
+target_link_libraries(arango_v8server ${V8_LIBS})
 
 target_link_libraries(arango_vocbase arango_agency)
 target_link_libraries(arango_vocbase arango_cluster_methods)

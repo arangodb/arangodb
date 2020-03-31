@@ -33,7 +33,6 @@ namespace arangodb {
 namespace aql {
 namespace utils {
 
-
 namespace {
 /// @brief sort ORs for the same attribute so they are in ascending value
 /// order. this will only work if the condition is for a single attribute
@@ -279,7 +278,7 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
       try {
         std::string conditionString =
             conditionData->first->toString() + " - " +
-            std::to_string(conditionData->second->id());
+            std::to_string(conditionData->second->id().id());
         isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
         // we already saw the same combination of index & condition
         // don't add it again

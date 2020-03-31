@@ -30,14 +30,34 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
+#include "Aql/Expression.h"
+#include "Aql/RegisterPlan.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/SortCondition.h"
+#include "Aql/TraversalExecutor.h"
+#include "Aql/Variable.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterTraverser.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Graph.h"
+#include "Graph/SingleServerTraverser.h"
+#include "Graph/TraverserOptions.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/SatelliteKShortestPathsNode.h"
+#include "Enterprise/Aql/SatelliteShortestPathNode.h"
+#include "Enterprise/Aql/SatelliteTraversalNode.h"
+#endif
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -77,11 +97,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _defaultDirection(parseDirection(direction)),
       _options(std::move(options)),
       _optionsBuilt(false),
-      _isSmart(false),
-      _defaultDirection(parseDirection(direction)) {
-      
+      _isSmart(false) {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
 
@@ -202,7 +221,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     if (length == 0) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
     }
-      
+
     // First determine whether all edge collections are smart and sharded
     // like a common collection:
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
@@ -272,10 +291,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
       _tmpIdNode(nullptr),
+      _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
+          base.get("defaultDirection")))),
       _optionsBuilt(false),
-      _isSmart(false),
-      _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(base.get("defaultDirection")))) {
-
+      _isSmart(false) {
   // Directions
   VPackSlice dirList = base.get("directions");
   for (VPackSlice it : VPackArrayIterator(dirList)) {
@@ -289,9 +308,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
-    if (base.hasKey("graph") && (base.get("graph").isString())) {
+    if (base.hasKey("graph") && base.get("graph").isString()) {
       graphName = base.get("graph").copyString();
       if (base.hasKey("graphDefinition")) {
+        // load graph and store pointer
         _graphObj = plan->getAst()->query().lookupGraphByName(graphName);
 
         if (_graphObj == nullptr) {
@@ -340,10 +360,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   // translations for one-shard-databases
   currentSlice = base.get("collectionToShard");
   if (!currentSlice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                   "graph needs a translation from collection to shard names");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_BAD_JSON_PLAN,
+        "graph needs a translation from collection to shard names");
   }
-  for(auto const& item : VPackObjectIterator(currentSlice)) {
+  for (auto const& item : VPackObjectIterator(currentSlice)) {
     _collectionToShard.insert({item.key.copyString(), item.value.copyString()});
   }
 
@@ -377,19 +398,18 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                    "graph options have to be a json-object.");
   }
-  
+
   _options = BaseOptions::createOptionsFromSlice(_plan->getAst()->query(), opts);
   // set traversal-translations
-  _options->setCollectionToShard(_collectionToShard); //could be moved as it will only be used here
-  
+  _options->setCollectionToShard(_collectionToShard);  // could be moved as it will only be used here
 }
 
 /// @brief Internal constructor to clone the node.
 GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                     TRI_edge_direction_e defaultDirection,
                      std::vector<std::unique_ptr<Collection>> const& edgeColls,
                      std::vector<std::unique_ptr<Collection>> const& vertexColls,
-                     std::vector<TRI_edge_direction_e> const& directions,
+                     TRI_edge_direction_e defaultDirection,
+                     std::vector<TRI_edge_direction_e> directions,
                      std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
@@ -399,17 +419,22 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
-      _directions(directions),
+      _defaultDirection(defaultDirection),
+      _directions(std::move(directions)),
       _options(std::move(options)),
       _optionsBuilt(false),
-      _isSmart(false),
-      _defaultDirection(defaultDirection) {
+      _isSmart(false) {
+  setGraphInfoAndCopyColls(edgeColls, vertexColls);
+}
+
+void GraphNode::setGraphInfoAndCopyColls(std::vector<std::unique_ptr<Collection>> const& edgeColls,
+                                         std::vector<std::unique_ptr<Collection>> const& vertexColls) {
   _graphInfo.openArray();
   for (auto& it : edgeColls) {
     // Collections cannot be copied. So we need to create new ones to prevent
     // leaks
-    _edgeColls.emplace_back(std::make_unique<aql::Collection>(it->name(), _vocbase,
-                                                              AccessMode::Type::READ));
+    _edgeColls.emplace_back(std::make_unique<Collection>(it->name(), _vocbase,
+                                                         AccessMode::Type::READ));
     _graphInfo.add(VPackValue(it->name()));
   }
   _graphInfo.close();
@@ -418,11 +443,34 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     // Collections cannot be copied. So we need to create new ones to prevent
     // leaks
     _vertexColls.emplace_back(
-        std::make_unique<aql::Collection>(it->name(), _vocbase, AccessMode::Type::READ));
+        std::make_unique<Collection>(it->name(), _vocbase, AccessMode::Type::READ));
   }
 }
 
-GraphNode::~GraphNode() = default;
+GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
+                     std::unique_ptr<graph::BaseOptions> options)
+    : ExecutionNode(plan, other),
+      _vocbase(other._vocbase),
+      _vertexOutVariable(nullptr),
+      _edgeOutVariable(nullptr),
+      _graphObj(other.graph()),
+      _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
+      _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
+      _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _defaultDirection(other._defaultDirection),
+      _directions(other._directions),
+      _options(std::move(options)),
+      _optionsBuilt(false),
+      _isSmart(other.isSmart()),
+      _collectionToShard(other._collectionToShard) {
+  setGraphInfoAndCopyColls(other.edgeColls(), other.vertexColls());
+}
+
+GraphNode::GraphNode(THIS_THROWS_WHEN_CALLED)
+    : ExecutionNode(nullptr, 0), _defaultDirection() {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
 
 std::string const& GraphNode::collectionToShardName(std::string const& collName) const {
   if (_collectionToShard.empty()) {
@@ -619,10 +667,10 @@ std::vector<aql::Collection const*> const GraphNode::collections() const {
   std::vector<aql::Collection const*> rv;
   rv.reserve(_edgeColls.size() + _vertexColls.size());
 
-  for(auto const& collPointer : _edgeColls) {
+  for (auto const& collPointer : _edgeColls) {
     rv.push_back(collPointer.get());
   }
-  for(auto const& collPointer : _vertexColls) {
+  for (auto const& collPointer : _vertexColls) {
     rv.push_back(collPointer.get());
   }
   return rv;
@@ -660,4 +708,25 @@ std::vector<std::unique_ptr<aql::Collection>> const& GraphNode::edgeColls() cons
 
 std::vector<std::unique_ptr<aql::Collection>> const& GraphNode::vertexColls() const {
   return _vertexColls;
+}
+
+graph::Graph const* GraphNode::graph() const noexcept { return _graphObj; }
+
+bool GraphNode::isUsedAsSatellite() const {
+#ifndef USE_ENTERPRISE
+  return false;
+#else
+  auto const* collectionAccessingNode =
+      dynamic_cast<CollectionAccessingNode const*>(this);
+  TRI_ASSERT((collectionAccessingNode != nullptr) ==
+             (nullptr != dynamic_cast<SatelliteTraversalNode const*>(this) ||
+              nullptr != dynamic_cast<SatelliteShortestPathNode const*>(this) ||
+              nullptr != dynamic_cast<SatelliteKShortestPathsNode const*>(this)));
+  return collectionAccessingNode != nullptr &&
+         collectionAccessingNode->isUsedAsSatellite();
+#endif
+}
+
+bool GraphNode::isEligibleAsSatelliteTraversal() const {
+  return graph() != nullptr && graph()->isSatellite();
 }

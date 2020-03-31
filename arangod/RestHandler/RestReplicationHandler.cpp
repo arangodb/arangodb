@@ -1049,7 +1049,9 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     return Result();
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isSuperuser() ||
+      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
 
   auto* col = _vocbase.lookupCollection(name).get();
 
@@ -1218,12 +1220,19 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
-  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+      _vocbase.sharding() == "single") {
+    auto const isSatellite =
+        VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
+                                       velocypack::StringRef{""}) == StaticStrings::Satellite;
+
     // force one shard, and force distributeShardsLike to be "_graphs"
     toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-    if (!_vocbase.IsSystemName(name)) {
+    if (!_vocbase.IsSystemName(name) && !isSatellite) {
       // system-collections will be sharded normally. only user collections will
-      // get the forced sharding
+      // get the forced sharding.
+      // satellite collections must not be sharded like a non-satellite
+      // collection.
       toMerge.add(StaticStrings::DistributeShardsLike,
                   VPackValue(_vocbase.shardingPrototypeName()));
     }
@@ -1241,14 +1250,6 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
     } else {
       numberOfShards = numberOfShardsSlice.getUInt();
-    }
-
-    if (_vocbase.sharding() == "single" &&
-        parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
-        !_vocbase.IsSystemName(name) && numberOfShards <= 1) {
-      // shard like _graphs
-      toMerge.add(StaticStrings::DistributeShardsLike,
-                  VPackValue(_vocbase.shardingPrototypeName()));
     }
   }
 
@@ -1428,7 +1429,9 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   bool generateNewRevisionIds =
       !_request->parsedValue(StaticStrings::PreserveRevisionIds, false);
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isSuperuser() ||
+      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
 
   if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
@@ -1896,7 +1899,10 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 
   Result fres;
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isSuperuser() ||
+      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
   // look up the collection
@@ -2119,7 +2125,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
 void RestReplicationHandler::handleCommandServerId() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId());
+  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId().id());
   result.add("serverId", VPackValue(serverId));
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -2511,8 +2517,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   {  // untrack the (async) replication client, so the WAL may be cleaned
-    TRI_server_id_t const serverId = StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "serverId", ""));
+    arangodb::ServerId const serverId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
         basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
     std::string const clientInfo =

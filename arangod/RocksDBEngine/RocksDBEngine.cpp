@@ -396,6 +396,7 @@ void RocksDBEngine::start() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
 
+  bool createdEngineDir = false;
   if (!basics::FileUtils::isDirectory(_path)) {
     std::string systemErrorStr;
     long errorNo;
@@ -405,6 +406,7 @@ void RocksDBEngine::start() {
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("b2958", TRACE, arangodb::Logger::ENGINES)
           << "created RocksDB data directory '" << _path << "'";
+      createdEngineDir = true;
     } else {
       LOG_TOPIC("a5ae3", FATAL, arangodb::Logger::ENGINES)
           << "unable to create RocksDB data directory '" << _path
@@ -487,8 +489,9 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
 
 #ifdef USE_ENTERPRISE
-  configureEnterpriseRocksDBOptions(_options);
-  startEnterprise();
+  configureEnterpriseRocksDBOptions(_options, createdEngineDir);
+#else
+  ((void)createdEngineDir);
 #endif
 
   _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsHigh),
@@ -1607,7 +1610,7 @@ std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> RocksDBEngine::collectionM
 }
 
 void RocksDBEngine::addIndexMapping(uint64_t objectId, TRI_voc_tick_t did,
-                                    TRI_voc_cid_t cid, TRI_idx_iid_t iid) {
+                                    TRI_voc_cid_t cid, IndexId iid) {
   if (objectId != 0) {
     WRITE_LOCKER(guard, _mapLock);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -2341,7 +2344,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
   // "server" part
   builder.add("server", VPackValue(VPackValueType::Object));  // open
   builder.add("version", VPackValue(ARANGODB_VERSION));
-  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
   builder.add("engine", VPackValue(EngineName));  // "rocksdb"
   builder.close();
 

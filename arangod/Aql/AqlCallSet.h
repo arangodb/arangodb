@@ -23,7 +23,7 @@
 #ifndef ARANGOD_AQL_AQLCALLSET_H
 #define ARANGOD_AQL_AQLCALLSET_H
 
-#include "Aql/AqlCall.h"
+#include "Aql/AqlCallList.h"
 
 #include <iosfwd>
 #include <vector>
@@ -35,7 +35,7 @@ namespace arangodb::aql {
 struct AqlCallSet {
   struct DepCallPair {
     std::size_t dependency{};
-    AqlCall call;
+    AqlCallList call;
   };
   std::vector<DepCallPair> calls;
 

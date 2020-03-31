@@ -1,21 +1,22 @@
+#include <chrono>
+#include <thread>
+
+#include "gtest/gtest.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
-#include "gtest/gtest.h"
-
-#include "Basics/icu-helper.h"
-
-#include <chrono>
-#include <thread>
+#include "VocBase/Identifiers/ServerId.h"
 
 template <class Function>
 class TestThread : public arangodb::Thread {
@@ -108,7 +109,7 @@ int main(int argc, char* argv[]) {
   arangodb::ArangoGlobalContext ctx(1, const_cast<char**>(&ARGV0), ".");
   ctx.exit(0);  // set "good" exit code by default
 
-  arangodb::ServerIdFeature::setId(12345);
+  arangodb::ServerIdFeature::setId(arangodb::ServerId{12345});
   IcuInitializer::setup(ARGV0);
 
   // Run tests in subthread such that it has a larger stack size in libmusl,

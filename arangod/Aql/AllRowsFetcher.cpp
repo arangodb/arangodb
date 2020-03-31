@@ -61,10 +61,6 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
 }
 
 std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack& stack) {
-  if (!stack.isRelevant()) {
-    auto [state, skipped, block] = _dependencyProxy->execute(stack);
-    return {state, skipped, AqlItemBlockInputMatrix{block}};
-  }
   TRI_ASSERT(stack.peek().getOffset() == 0);
   TRI_ASSERT(!stack.peek().needsFullCount());
   // We allow a 0 hardLimit for bypassing

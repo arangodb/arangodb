@@ -152,6 +152,9 @@ class GraphManager {
    */
   Result ensureCollections(Graph const* graph, bool waitForSync) const;
 
+  /// @brief check if only satellite collections are used
+  bool onlySatellitesUsed(Graph const* graph) const;
+
   /**
    * @brief Store the given graph
    *
@@ -179,8 +182,12 @@ class GraphManager {
 
  private:
 #ifdef USE_ENTERPRISE
+  Result ensureEnterpriseCollectionSharding(Graph const* graph, bool waitForSync,
+                                            std::unordered_set<std::string>& documentCollections) const;
   Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync,
                                        std::unordered_set<std::string>& documentCollections) const;
+  Result ensureSatelliteCollectionSharding(Graph const* graph, bool waitForSync,
+                                           std::unordered_set<std::string>& documentCollections) const;
 #endif
 
   /**

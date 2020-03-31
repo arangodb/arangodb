@@ -30,14 +30,10 @@
 
 using namespace arangodb;
 
-MMFilesTtlIndex::MMFilesTtlIndex(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info
-)
+MMFilesTtlIndex::MMFilesTtlIndex(IndexId iid, arangodb::LogicalCollection& collection,
+                                 arangodb::velocypack::Slice const& info)
     : MMFilesSkiplistIndex(iid, collection, info),
       _expireAfter(info.get(StaticStrings::IndexExpireAfter).getNumericValue<double>()) {
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // ttl index must always be non-unique, but sparse
   TRI_ASSERT(!info.get(StaticStrings::IndexUnique).getBool()); 

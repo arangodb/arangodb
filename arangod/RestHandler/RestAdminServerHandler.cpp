@@ -25,6 +25,7 @@
 
 #include "Actions/RestActionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
@@ -58,6 +59,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleTLS();
   } else if (suffixes.size() == 1 && suffixes[0] == "jwt") {
     handleJWTSecretsReload();
+  } else if (suffixes.size() == 1 && suffixes[0] == "encryption") {
+    handleEncryptionKeyRotation();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -157,7 +160,7 @@ void RestAdminServerHandler::handleMode() {
     if (af->isActive() && !_request->user().empty()) {
       auth::Level lvl;
       if (af->userManager() != nullptr) {
-        lvl = af->userManager()->databaseAuthLevel(_request->user(), TRI_VOC_SYSTEM_DATABASE,
+        lvl = af->userManager()->databaseAuthLevel(_request->user(), StaticStrings::SystemDatabase,
                                                    /*configured*/ true);
       } else {
         lvl = auth::Level::RW;
@@ -255,6 +258,10 @@ void RestAdminServerHandler::handleTLS() {
 
 #ifndef USE_ENTERPRISE
 void RestAdminServerHandler::handleJWTSecretsReload() {
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+}
+
+void RestAdminServerHandler::handleEncryptionKeyRotation() {
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
 }
 #endif

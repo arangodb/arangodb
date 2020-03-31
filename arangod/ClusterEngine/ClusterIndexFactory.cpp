@@ -73,7 +73,8 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
   }
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                               arangodb::velocypack::Slice const& definition, TRI_idx_iid_t id,
+                                               arangodb::velocypack::Slice const& definition,
+                                               arangodb::IndexId id,
                                                bool /* isClusterConstructor */) const override {
     auto* clusterEngine =
         static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
@@ -126,7 +127,8 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               arangodb::IndexId id,
+                                               bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create edge index");
@@ -155,7 +157,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               arangodb::IndexId id,
+                                               bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create primary index");
@@ -171,8 +174,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
     auto ct = clusterEngine->engineType();
 
-    return std::make_shared<arangodb::ClusterIndex>(0, collection, ct,
-                                                    arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX,
+    return std::make_shared<arangodb::ClusterIndex>(arangodb::IndexId::primary(), collection,
+                                                    ct, arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX,
                                                     definition);
   }
 };
@@ -247,7 +250,7 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
   VPackBuilder input;
   input.openObject();
   input.add(StaticStrings::IndexType, VPackValue("primary"));
-  input.add(StaticStrings::IndexId, VPackValue("0"));
+  input.add(StaticStrings::IndexId, VPackValue(std::to_string(IndexId::primary().id())));
   input.add(StaticStrings::IndexName, VPackValue(StaticStrings::IndexNamePrimary));
   input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
   input.add(VPackValue(StaticStrings::KeyString));
@@ -260,9 +263,8 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
   ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
   ClusterEngineType ct = ce->engineType();
 
-  systemIndexes.emplace_back(
-      std::make_shared<arangodb::ClusterIndex>(0, col, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX,
-                                               input.slice()));
+  systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
+      IndexId::primary(), col, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, input.slice()));
 
   // create edges indexes
   if (col.type() == TRI_COL_TYPE_EDGE) {
@@ -271,7 +273,8 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
     input.openObject();
     input.add(StaticStrings::IndexType,
               VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
-    input.add(StaticStrings::IndexId, VPackValue("1"));
+    input.add(StaticStrings::IndexId,
+              VPackValue(std::to_string(IndexId::edgeFrom().id())));
 
     input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
     input.add(VPackValue(StaticStrings::FromString));
@@ -289,9 +292,8 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
     input.add(StaticStrings::IndexUnique, VPackValue(false));
     input.add(StaticStrings::IndexSparse, VPackValue(false));
     input.close();
-    systemIndexes.emplace_back(
-        std::make_shared<arangodb::ClusterIndex>(1, col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX,
-                                                 input.slice()));
+    systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
+        IndexId::edgeFrom(), col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
 
     // second edge index
     if (ct == ClusterEngineType::RocksDBEngine) {
@@ -299,7 +301,8 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
       input.openObject();
       input.add(StaticStrings::IndexType,
                 VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
-      input.add(StaticStrings::IndexId, VPackValue("2"));
+      input.add(StaticStrings::IndexId,
+                VPackValue(std::to_string(IndexId::edgeTo().id())));
       input.add(StaticStrings::IndexName, VPackValue(StaticStrings::IndexNameEdgeTo));
       input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
       input.add(VPackValue(StaticStrings::ToString));
@@ -308,7 +311,7 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
       input.add(StaticStrings::IndexSparse, VPackValue(false));
       input.close();
       systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
-          2, col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
+          IndexId::edgeTo(), col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
     }
   }
 }

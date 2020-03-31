@@ -71,12 +71,11 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
 
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId,
-                                                    TRI_server_id_t clientId)
+RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId, ServerId clientId)
     : _id{TRI_NewTickServer()},
       _syncerId{syncerId},
-    // buggy clients may not send the serverId
-      _clientId{clientId != 0 ? clientId : _id},
+      // buggy clients may not send the serverId
+      _clientId{clientId.isSet() ? clientId : ServerId(_id)},
       _snapshotTick{0},
       _snapshot{nullptr},
       _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
@@ -849,7 +848,7 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
     _sortedIterator = sorted;
 
     if (sorted) {
-      auto index = logical->getPhysical()->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
+      auto index = logical->getPhysical()->lookupIndex(IndexId::primary());  // RocksDBCollection->primaryIndex() is private
       TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
       auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
       bounds = RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId());

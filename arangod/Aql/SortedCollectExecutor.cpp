@@ -299,6 +299,29 @@ std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(si
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+[[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (input.finalState() == ExecutorState::DONE) {
+    // Worst case assumption:
+    // For every input row we have a new group.
+    // If we have an open group right now, we need to add 1 to this estimate.
+    // We will never produce more then asked for
+    auto estOnInput = input.countDataRows();
+    if (_currentGroup.isValid()) {
+      // Have one group still to write,
+      // that is not part of this input.
+      estOnInput += 1;
+    }
+    if (estOnInput == 0 && _infos.getGroupRegisters().empty()) {
+      // Special case, on empty input we will produce 1 output
+      estOnInput = 1;
+    }
+    return std::min(call.getLimit(), estOnInput);
+  }
+  // Otherwise we do not know.
+  return call.getLimit();
+}
+
 auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {

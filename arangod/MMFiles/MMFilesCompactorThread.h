@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "VocBase/Identifiers/FileId.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesDatafile;
@@ -56,7 +57,7 @@ class MMFilesCompactorThread final : public Thread {
     transaction::Methods* _trx;
     LogicalCollection* _collection;
     int64_t _targetSize;
-    TRI_voc_fid_t _fid;
+    FileId _fid;
     bool _keepDeletions;
     bool _failed;
 

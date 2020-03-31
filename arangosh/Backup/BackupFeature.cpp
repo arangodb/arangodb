@@ -444,7 +444,7 @@ arangodb::Result executeDelete(arangodb::httpclient::SimpleHttpClient& client,
 }
 
 #ifdef USE_ENTERPRISE
-struct TransfereType {
+struct TransferType {
   enum type {
     UPLOAD,
     DOWNLOAD
@@ -488,14 +488,14 @@ struct TransfereType {
 };
 
 arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& client,
-  arangodb::BackupFeature::Options const& options, TransfereType::type type) {
+  arangodb::BackupFeature::Options const& options, TransferType::type type) {
   arangodb::Result result;
 
-  std::string const url = TransfereType::asAdminPath(type);
+  std::string const url = TransferType::asAdminPath(type);
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder guard(&bodyBuilder);
-    bodyBuilder.add(TransfereType::asJsonId(type), VPackValue(options.statusId));
+    bodyBuilder.add(TransferType::asJsonId(type), VPackValue(options.statusId));
     if (options.abort) {
       bodyBuilder.add("abort", VPackValue(true));
     }
@@ -569,8 +569,8 @@ arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& clie
   return result;
 }
 
-arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient& client,
-  arangodb::BackupFeature::Options const& options, TransfereType::type type) {
+arangodb::Result executeInitiateTransfer(arangodb::httpclient::SimpleHttpClient& client,
+  arangodb::BackupFeature::Options const& options, TransferType::type type) {
   arangodb::Result result;
 
   // Load configuration file
@@ -586,8 +586,8 @@ arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient
     return result;
   }
 
-  // Initiate transfere
-  std::string const url = TransfereType::asAdminPath(type);
+  // Initiate transfer
+  std::string const url = TransferType::asAdminPath(type);
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder guard(&bodyBuilder);
@@ -620,23 +620,23 @@ arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient
   }
   TRI_ASSERT(resultObject.isObject());
 
-  std::string transfereId = resultObject.get(TransfereType::asJsonId(type)).copyString();
+  std::string transferId = resultObject.get(TransferType::asJsonId(type)).copyString();
 
   LOG_TOPIC("a9597", INFO, arangodb::Logger::BACKUP) << "Backup initiated, use ";
-  LOG_TOPIC("4c459", INFO, arangodb::Logger::BACKUP) << "    arangobackup " << TransfereType::asString(type) << " --status-id=" << transfereId;
+  LOG_TOPIC("4c459", INFO, arangodb::Logger::BACKUP) << "    arangobackup " << TransferType::asString(type) << " --status-id=" << transferId;
   LOG_TOPIC("5cd70", INFO, arangodb::Logger::BACKUP) << " to query progress.";
   return result;
 }
 
-arangodb::Result executeTransfere(arangodb::httpclient::SimpleHttpClient& client,
-  arangodb::BackupFeature::Options const& options, TransfereType::type type) {
+arangodb::Result executeTransfer(arangodb::httpclient::SimpleHttpClient& client,
+  arangodb::BackupFeature::Options const& options, TransferType::type type) {
 
   if (!options.statusId.empty()) {
     // This is a status query
     return executeStatusQuery(client, options, type);
   } else {
-    // This is a transfere
-    return executeInitiateTransfere(client, options, type);
+    // This is a transfer
+    return executeInitiateTransfer(client, options, type);
   }
 }
 #endif
@@ -864,9 +864,9 @@ void BackupFeature::start() {
     result = ::executeDelete(*client, _options);
 #ifdef USE_ENTERPRISE
   } else if (_options.operation == OperationUpload) {
-    result = ::executeTransfere(*client, _options, TransfereType::type::UPLOAD);
+    result = ::executeTransfer(*client, _options, TransferType::type::UPLOAD);
   } else if (_options.operation == OperationDownload) {
-    result = ::executeTransfere(*client, _options, TransfereType::type::DOWNLOAD);
+    result = ::executeTransfer(*client, _options, TransferType::type::DOWNLOAD);
 #endif
   }
 

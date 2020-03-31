@@ -145,6 +145,10 @@ bool TRI_vocbase_t::markAsDropped() {
   // been marked as deleted
   return (oldValue % 2 == 0);
 }
+  
+bool TRI_vocbase_t::isSystem() const {
+  return _info.getName() == StaticStrings::SystemDatabase; 
+}
 
 /// @brief signal the cleanup thread to wake up
 void TRI_vocbase_t::signalCleanup() {

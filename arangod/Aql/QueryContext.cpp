@@ -91,6 +91,8 @@ graph::Graph const* QueryContext::lookupGraphByName(std::string const& name) {
   if (it != _graphs.end()) {
     return it->second.get();
   }
+
+#warning SIMON # graph::GraphManager graphManager{_vocbase, _contextOwnedByExterior};
   graph::GraphManager graphManager{_vocbase};
 
   auto g = graphManager.lookupGraphByName(name);

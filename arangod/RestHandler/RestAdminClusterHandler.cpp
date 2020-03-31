@@ -272,10 +272,10 @@ std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 
 RestStatus RestAdminClusterHandler::execute() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
-  }
+  // No more check for admin rights here, since we handle this in every individual
+  // method below. Some of them do no longer require admin access
+  // (e.g. /_admin/cluster/health). If you add a new API below here, please
+  // make sure to check for permissions!
 
   auto const& suffixes = request()->suffixes();
   size_t const len = suffixes.size();
@@ -965,6 +965,11 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
     return RestStatus::DONE;
   }
 
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
@@ -1011,6 +1016,11 @@ RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
   }
 
@@ -1392,7 +1402,8 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
 }
 
 RestStatus RestAdminClusterHandler::handleNumberOfServers() {
-  if (!ServerState::instance()->isCoordinator()) {
+  if (!ServerState::instance()->isCoordinator() ||
+      !ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
     return RestStatus::DONE;
@@ -1410,11 +1421,9 @@ RestStatus RestAdminClusterHandler::handleNumberOfServers() {
 }
 
 RestStatus RestAdminClusterHandler::handleHealth() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
-  }
-
+  // We allow this API whenever one is authenticated in some way. There used
+  // to be a check for isAdminUser here. However, we want that the UI with
+  // the cluster health dashboard works for every authenticated user.
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;

@@ -24,9 +24,13 @@
 #ifndef ARANGOD_AQL_GRAPH_NODE_H
 #define ARANGOD_AQL_GRAPH_NODE_H 1
 
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/GraphNode.h"
+#include "Aql/Graphs.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -52,26 +56,40 @@ namespace aql {
 //        * Smart Graph Handling
 
 class GraphNode : public ExecutionNode {
- public:
+ protected:
   /// @brief constructor with a vocbase and a collection name
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase, AstNode const* direction,
             AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
+ public:
+  bool isUsedAsSatellite() const;
+
+  bool isEligibleAsSatelliteTraversal() const;
+
  protected:
   /// @brief Internal constructor to clone the node.
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-            TRI_edge_direction_e defaultDirection,
             std::vector<std::unique_ptr<Collection>> const& edgeColls,
             std::vector<std::unique_ptr<Collection>> const& vertexColls,
-            std::vector<TRI_edge_direction_e> const& directions,
+            TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> directions,
             std::unique_ptr<graph::BaseOptions> options);
+
+  /// @brief Clone constructor, used for constructors of derived classes.
+  /// Does not clone recursively, does not clone properties (`other.plan()` is
+  /// expected to be the same as `plan)`, and does not register this node in the
+  /// plan.
+  GraphNode(ExecutionPlan& plan, GraphNode const& other,
+            std::unique_ptr<graph::BaseOptions> options);
+
+  struct THIS_THROWS_WHEN_CALLED{};
+  explicit GraphNode(THIS_THROWS_WHEN_CALLED);
 
   std::string const& collectionToShardName(std::string const& collName) const;
 
  public:
-  ~GraphNode() override;
+  ~GraphNode() override = default;
 
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
                           std::unordered_set<ExecutionNode const*>& seen) const override;
@@ -139,11 +157,21 @@ class GraphNode : public ExecutionNode {
   void injectVertexCollection(aql::Collection const* other);
 
   std::vector<aql::Collection const*> const collections() const;
-  void setCollectionToShard(std::map<std::string, std::string> const& map) { _collectionToShard = map; }
-  void addCollectionToShard(std::string const& coll, std::string const& shard) { _collectionToShard.emplace(coll,shard); }
+  void setCollectionToShard(std::map<std::string, std::string> const& map) {
+    _collectionToShard = map;
+  }
+  void addCollectionToShard(std::string const& coll, std::string const& shard) {
+    _collectionToShard.emplace(coll, shard);
+  }
+
+ public:
+  graph::Graph const* graph() const noexcept;
 
  private:
   void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);
+
+  void setGraphInfoAndCopyColls(std::vector<std::unique_ptr<Collection>> const& edgeColls,
+                                std::vector<std::unique_ptr<Collection>> const& vertexColls);
 
  protected:
   /// @brief the database
@@ -177,6 +205,9 @@ class GraphNode : public ExecutionNode {
   /// as an edge can also point to another edge, instead of a vertex).
   std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
 
+  /// @brief The default direction given in the query
+  TRI_edge_direction_e const _defaultDirection;
+
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
 
@@ -186,15 +217,12 @@ class GraphNode : public ExecutionNode {
   /// @brief Flag if the options have been built.
   /// Afterwards this class is not copyable anymore.
   bool _optionsBuilt;
-  
-  /// @brief flag, if graph is smart (enterprise edition only!)
-  bool _isSmart;
-  
-  /// @brief The default direction given in the query
-  TRI_edge_direction_e const _defaultDirection;
 
   /// @brief The list of traverser engines grouped by server.
   std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
+
+  /// @brief flag, if graph is smart (enterprise edition only!)
+  bool _isSmart;
 
   /// @brief list of shards involved, required for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;

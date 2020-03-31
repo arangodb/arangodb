@@ -61,7 +61,14 @@ struct ShortestPathOptions : public BaseOptions {
   ShortestPathOptions(aql::QueryContext& query,
                       arangodb::velocypack::Slice info,
                       arangodb::velocypack::Slice collections);
-  ~ShortestPathOptions();
+  ~ShortestPathOptions() override;
+
+  /// @brief This copy constructor is only working during planning phase.
+  ///        After planning this node should not be copied anywhere.
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
+  ///        the planning phase; however, the options have to be prepared again
+  ///        (see ShortestPathNode / KShortestPathsNode ::prepareOptions())
+  ShortestPathOptions(ShortestPathOptions const& other, bool allowAlreadyBuiltCopy = false);
 
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
