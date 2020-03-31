@@ -856,7 +856,7 @@ Result ExecutionEngine::instantiateFromPlan(QueryContext& query,
     auto retEngine = std::make_unique<ExecutionEngine>(query, mgr, format);
 //    parallelizeQuery(query, plan);
 
-    SingleServerQueryInstanciator inst(*engine);
+    SingleServerQueryInstanciator inst(*retEngine);
     plan.root()->walk(inst);
 
     root = inst.root;
@@ -888,7 +888,7 @@ Result ExecutionEngine::instantiateFromPlan(QueryContext& query,
     }
   }
 
-//  engine->_root = root;
+  engine->_root = root; // simon: otherwise it breaks
 
   return {};
 }

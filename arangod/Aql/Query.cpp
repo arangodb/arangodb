@@ -79,6 +79,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
     : QueryContext(ctx->vocbase()),
       _itemBlockMananger(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
+      _transactionContext(ctx),
       _V8Context(nullptr),
       _bindParameters(bindParameters),
       _options(options),
@@ -685,6 +686,10 @@ ExecutionState Query::execute(QueryResult& queryResult) {
  */
 QueryResult Query::executeSync() {
   std::shared_ptr<SharedQueryState> ss = sharedState();
+  if (!ss) {
+    return QueryResult(Result(TRI_ERROR_INTERNAL, "query is not initalized"));
+  }
+  
   ss->resetWakeupHandler();
 
   QueryResult queryResult;
@@ -704,7 +709,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
                                              << "Query::executeV8"
                                              << " this: " << (uintptr_t)this;
 
-  std::shared_ptr<SharedQueryState> ss = sharedState();
   aql::QueryResultV8 queryResult;
 
   try {
@@ -753,6 +757,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
     // will throw if it fails
     prepareQuery(SerializationFormat::SHADOWROWS);
+    
+    std::shared_ptr<SharedQueryState> ss = sharedState();
+    TRI_ASSERT(ss != nullptr);
 
     log();
 
@@ -1128,6 +1135,9 @@ QueryResult Query::explain() {
 //}
 
 bool Query::isModificationQuery() const {
+  if (!_ast) {  // TODO: this is called pre init()
+    return false;
+  }
   return _ast->containsModificationOp();
 }
 
@@ -1332,7 +1342,7 @@ uint64_t Query::calculateHash() const {
 
 /// @brief whether or not the query cache can be used for the query
 bool Query::canUseQueryCache() const {
-  if (_queryString.size() < 8 || isModificationQuery()  || _queryOptions.silent) {
+  if (_queryString.size() < 8 /*|| isModificationQuery()*/  || _queryOptions.silent) {
     return false;
   }
 
@@ -1367,6 +1377,9 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) noexcept {
   try {
     std::shared_ptr<SharedQueryState> ss = sharedState();
+    if (!ss) {
+      return;
+    }
     ss->resetWakeupHandler();
 
     ExecutionState state = cleanupPlanAndEngine(errorCode, statsBuilder);
