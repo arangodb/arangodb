@@ -159,9 +159,9 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
   AqlCallStack res{*this};
   // We can always overfetch the next subquery here.
   // We gonna need all data anyways.
-  std::replace_if(
-      res._operations.begin(), res._operations.end(),
-      [](auto const&) -> bool { return true; }, AqlCallList{AqlCall{}, AqlCall{}});
+  for (auto& op : res._operations) {
+    op.createEquivalentFetchAllRowsCall();
+  }
   return res;
 }
 
