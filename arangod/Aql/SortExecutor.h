@@ -99,7 +99,6 @@ class SortExecutor {
   SortExecutor(Fetcher&, Infos& infos);
   ~SortExecutor();
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const;
   void initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix);
 
   /**

@@ -72,11 +72,6 @@ class NoResultsExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const
       noexcept -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    // Well nevermind the input, but we will always return 0 rows here.
-    return {ExecutionState::DONE, 0};
-  }
-
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;
 };
