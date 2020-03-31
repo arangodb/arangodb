@@ -1507,7 +1507,7 @@ std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransa
 
 std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager(
     arangodb::transaction::ManagerFeature& feature) {
-  return std::make_unique<arangodb::transaction::Manager>(feature, /*keepData*/ false);
+  return std::make_unique<arangodb::transaction::Manager>(feature);
 }
 
 std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
