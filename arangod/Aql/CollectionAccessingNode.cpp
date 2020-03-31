@@ -41,34 +41,23 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
-    : _collection(collection),
-      _restrictedTo(""),
-      _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr),
-      _usedShard(""),
-      _isSatellite(false) {
+    : _collection(collection) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_usedShard.empty());
 }
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
-                                                 arangodb::velocypack::Slice slice)
-    : _collection(nullptr),
-      _restrictedTo(""),
-      _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr),
-      _usedShard(""),
-      _isSatellite(false) {
+                                                 arangodb::velocypack::Slice slice) {
+  auto query = plan->getAst()->query();
   if (slice.get("prototype").isString()) {
     _prototypeCollection =
-        plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
+        query->collections()->get(slice.get("prototype").copyString());
   }
   auto colName = slice.get("collection").copyString();
   auto typeId = basics::VelocyPackHelper::getNumericValue<int>(slice, "typeID", 0);
   if (typeId == ExecutionNode::DISTRIBUTE) {
     // This is a special case, the distribute node can inject a collection
     // that is NOT yet known to the plan
-    auto query = plan->getAst()->query();
     query->addCollection(colName, AccessMode::Type::NONE);
   }
 
@@ -89,7 +78,15 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
     _restrictedTo = restrictedTo.copyString();
   }
 
-  _isSatellite = basics::VelocyPackHelper::getBooleanValue(slice, "isSatellite", false);
+  if (auto const isSatelliteOfSlice = slice.get("isSatelliteOf"); isSatelliteOfSlice.isString()) {
+    auto const isSatelliteOfName = isSatelliteOfSlice.stringView();
+    _isSatelliteOf = query->collections()->get(isSatelliteOfName);
+    TRI_ASSERT(_isSatelliteOf != nullptr);
+    if (_isSatelliteOf == nullptr) {
+      using namespace std::string_literals;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "Collection not found to be satellite of: "s.append(isSatelliteOfName));
+    }
+  }
 }
 
 TRI_vocbase_t* CollectionAccessingNode::vocbase() const {
@@ -125,8 +122,10 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
     builder.add("restrictedTo", VPackValue(_restrictedTo));
   }
 #ifdef USE_ENTERPRISE
-  // why do we have _isSatellite and _collection->isSatellite()?
-  builder.add("isSatellite", VPackValue(_isSatellite));
+  builder.add("isSatellite", VPackValue(isUsedAsSatellite()));
+  builder.add("isSatelliteOf", isUsedAsSatellite()
+                                   ? VPackValue(_isSatelliteOf->name())
+                                   : VPackValue(VPackValueType::Null));
 #endif
 }
 
@@ -143,11 +142,13 @@ void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypac
                        });
 }
 
-void CollectionAccessingNode::useAsSatellite() {
+bool CollectionAccessingNode::isUsedAsSatellite() const {
+  return _isSatelliteOf != nullptr;
+}
+
+void CollectionAccessingNode::useAsSatelliteOf(aql::Collection const* prototypeCollection) {
   TRI_ASSERT(_collection->isSatellite());
-#ifdef USE_ENTERPRISE
-  _isSatellite = true;
-#endif
+  _isSatelliteOf = prototypeCollection;
 }
 
 aql::Collection const* CollectionAccessingNode::collection() const {

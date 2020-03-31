@@ -400,7 +400,7 @@ auto ShortestPathNode::options() const -> ShortestPathOptions* {
   return opts;
 }
 
-// This constructor is only used from SatelliteTraversalNode, and GraphNode
+// This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
 ShortestPathNode::ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& other)
     : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),

@@ -276,7 +276,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 #endif
 }
 
-// This constructor is only used from SatelliteTraversalNode, and GraphNode
+// This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
 TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
                              bool const allowAlreadyBuiltCopy)

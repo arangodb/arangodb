@@ -37,7 +37,7 @@ Collections::~Collections() {
   }
 }
 
-Collection* Collections::get(std::string const& name) const {
+Collection* Collections::get(std::string_view const name) const {
   auto it = _collections.find(name);
 
   if (it != _collections.end()) {
@@ -89,11 +89,11 @@ std::vector<std::string> Collections::collectionNames() const {
   return result;
 }
 
-std::map<std::string, Collection*>* Collections::collections() {
+AqlCollectionMap* Collections::collections() {
   return &_collections;
 }
 
-std::map<std::string, Collection*> const* Collections::collections() const {
+AqlCollectionMap const* Collections::collections() const {
   return &_collections;
 }
 

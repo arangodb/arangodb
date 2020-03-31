@@ -95,31 +95,32 @@ class CollectionAccessingNode {
   aql::Collection const* prototypeCollection() const;
   aql::Variable const* prototypeOutVariable() const;
 
-  bool isUsedAsSatellite() const { return _isSatellite; }
+  bool isUsedAsSatellite() const;
 
-  void useAsSatellite();
+  void useAsSatelliteOf(arangodb::aql::Collection const* prototypeCollection);
 
   void cloneInto(CollectionAccessingNode& c) const {
     c._prototypeCollection = _prototypeCollection;
     c._prototypeOutVariable = _prototypeOutVariable;
     c._restrictedTo = _restrictedTo;
-    c._isSatellite = _isSatellite;
+    c._isSatelliteOf = _isSatelliteOf;
     c._usedShard = _usedShard;
   }
 
  protected:
-  aql::Collection const* _collection;
+  aql::Collection const* _collection = nullptr;
 
   /// @brief A shard this node is restricted to, may be empty
-  std::string _restrictedTo;
+  std::string _restrictedTo = "";
 
   /// @brief prototype collection when using distributeShardsLike
-  aql::Collection const* _prototypeCollection;
-  aql::Variable const* _prototypeOutVariable;
+  aql::Collection const* _prototypeCollection = nullptr;
+  aql::Variable const* _prototypeOutVariable = nullptr;
 
-  std::string _usedShard;
+  std::string _usedShard = "";
 
-  bool _isSatellite;
+  // is a non-nullptr iff used as a satellite collection.
+  arangodb::aql::Collection const* _isSatelliteOf = nullptr;
 };
 
 }  // namespace aql

@@ -50,9 +50,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Aql/SatelliteKShortestPathsNode.h"
-#include "Enterprise/Aql/SatelliteShortestPathNode.h"
-#include "Enterprise/Aql/SatelliteTraversalNode.h"
+#include "Enterprise/Aql/LocalKShortestPathsNode.h"
+#include "Enterprise/Aql/LocalShortestPathNode.h"
+#include "Enterprise/Aql/LocalTraversalNode.h"
 #endif
 
 #include <velocypack/Iterator.h>
@@ -719,9 +719,9 @@ bool GraphNode::isUsedAsSatellite() const {
   auto const* collectionAccessingNode =
       dynamic_cast<CollectionAccessingNode const*>(this);
   TRI_ASSERT((collectionAccessingNode != nullptr) ==
-             (nullptr != dynamic_cast<SatelliteTraversalNode const*>(this) ||
-              nullptr != dynamic_cast<SatelliteShortestPathNode const*>(this) ||
-              nullptr != dynamic_cast<SatelliteKShortestPathsNode const*>(this)));
+             (nullptr != dynamic_cast<LocalTraversalNode const*>(this) ||
+              nullptr != dynamic_cast<LocalShortestPathNode const*>(this) ||
+              nullptr != dynamic_cast<LocalKShortestPathsNode const*>(this)));
   return collectionAccessingNode != nullptr &&
          collectionAccessingNode->isUsedAsSatellite();
 #endif

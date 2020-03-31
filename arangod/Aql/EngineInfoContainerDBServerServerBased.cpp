@@ -197,8 +197,7 @@ EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Q
 void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* graphNode) {
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
-    std::map<std::string, Collection*> const* allCollections =
-        _query.collections()->collections();
+    auto* allCollections = _query.collections()->collections();
     auto& resolver = _query.resolver();
     for (auto const& it : *allCollections) {
       // If resolver cannot resolve this collection

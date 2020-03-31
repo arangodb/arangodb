@@ -39,9 +39,8 @@ using namespace arangodb::aql;
 
 std::shared_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    std::map<std::string, aql::Collection*> const* collections,
-    transaction::Options const& options, bool isMainTransaction,
-    std::unordered_set<std::string> inaccessibleCollections) {
+    AqlCollectionMap const* collections, transaction::Options const& options,
+    bool isMainTransaction, std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
     return std::make_shared<transaction::IgnoreNoAccessAqlTransaction>(
@@ -53,7 +52,7 @@ std::shared_ptr<AqlTransaction> AqlTransaction::create(
 }
 
 /// @brief add a list of collections to the transaction
-Result AqlTransaction::addCollections(std::map<std::string, aql::Collection*> const& collections) {
+Result AqlTransaction::addCollections(AqlCollectionMap const& collections) {
   Result res;
   for (auto const& it : collections) {
     res = processCollection(it.second);
@@ -117,10 +116,9 @@ AqlTransaction::AqlTransaction(
 }
 
   /// protected so we can create different subclasses
-AqlTransaction::AqlTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
-    std::map<std::string, aql::Collection*> const* collections,
-    transaction::Options const& options, bool isMainTransaction)
+AqlTransaction::AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
+                               AqlCollectionMap const* collections,
+                               transaction::Options const& options, bool isMainTransaction)
     : transaction::Methods(transactionContext, options), _collections(*collections) {
   if (!isMainTransaction) {
     addHint(transaction::Hints::Hint::LOCK_NEVER);
