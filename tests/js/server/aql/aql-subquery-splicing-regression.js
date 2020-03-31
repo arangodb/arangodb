@@ -132,7 +132,7 @@ function traversalResetRegression2Suite() {
 	                 "@contains": containsEdgeCollectionName };
 
       var actual = db._query(query, bindVars);
-      assertEqual(actual.toArray(), expectedResult);
+      assertEqual(actual.toArray().sort(), expectedResult.sort());
     }
   };
 }
