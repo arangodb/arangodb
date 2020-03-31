@@ -96,16 +96,8 @@ class SortExecutor {
   using Infos = SortExecutorInfos;
   using Stats = NoStats;
 
-  SortExecutor(Fetcher& fetcher, Infos&);
+  SortExecutor(Fetcher&, Infos& infos);
   ~SortExecutor();
-
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const;
   void initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix);
@@ -126,13 +118,14 @@ class SortExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputMatrix& inputMatrix, AqlCall& call);
 
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputMatrix const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
  private:
   void doSorting();
 
  private:
   Infos& _infos;
-
-  Fetcher& _fetcher;
 
   AqlItemMatrix const* _input;
   InputAqlItemRow _currentRow;
