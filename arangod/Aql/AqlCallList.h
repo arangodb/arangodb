@@ -117,6 +117,8 @@ class AqlCallList {
    */
   [[nodiscard]] auto modifyNextCall() -> AqlCall&;
 
+  void createEquivalentFetchAllRowsCall();
+
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallList>;
   auto toVelocyPack(velocypack::Builder&) const -> void;
   auto toString() const -> std::string;

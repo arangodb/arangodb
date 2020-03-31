@@ -92,6 +92,15 @@ AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall
   return _specificCalls.back();
 }
 
+void AqlCallList::createEquivalentFetchAllRowsCall() {
+  std::replace_if(
+      _specificCalls.begin(), _specificCalls.end(),
+      [](auto const&) -> bool { return true; }, AqlCall{});
+  if (_defaultCall.has_value()) {
+    _defaultCall = AqlCall{};
+  }
+}
+
 auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
