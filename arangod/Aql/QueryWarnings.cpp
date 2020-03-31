@@ -98,6 +98,11 @@ void QueryWarnings::toVelocyPack(arangodb::velocypack::Builder& b) const {
   }
 }
 
+bool QueryWarnings::empty() const {
+  std::lock_guard<std::mutex> guard(_mutex);
+  return _list.empty();
+}
+
 void QueryWarnings::updateOptions(QueryOptions const& opts) {
   std::lock_guard<std::mutex> guard(_mutex);
   _maxWarningCount = opts.maxWarningCount;

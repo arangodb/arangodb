@@ -129,7 +129,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _cursorHasMore(false),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   _cursor = std::make_unique<OperationCursor>(
-      _infos.getTrx()->indexScan(_infos.getCollection()->name(),
+      _trx.indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
                                          : transaction::Methods::CursorType::ALL)));

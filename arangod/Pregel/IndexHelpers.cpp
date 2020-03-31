@@ -22,6 +22,7 @@
 
 #include "IndexHelpers.h"
 
+#include "Aql/OptimizerUtils.h"
 #include "Cluster/ClusterMethods.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
@@ -50,11 +51,19 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
   /// @brief index used for iteration
   transaction::Methods::IndexHandle indexId;
   
-  auto var = _searchBuilder.getVariable();
-  auto cond = _searchBuilder.getOutboundCondition();
-  bool worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond,
-                                                           var, 1000, aql::IndexHint(), indexId);
-  TRI_ASSERT(worked);  // We always have an edge Index
+  auto doc = _trx->documentCollection(_collectionName);
+  
+  for (std::shared_ptr<arangodb::Index> const& idx : doc->getIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      auto fields = idx->fieldNames();
+      if (fields.size() == 1 && fields[0].size() == 1 &&
+          fields[0][0] == StaticStrings::FromString) {
+        indexId = idx;
+        break;
+      }
+    }
+  }
+  TRI_ASSERT(indexId != nullptr);  // We always have an edge Index
   
   _searchBuilder.setVertexId(vertexId);
   IndexIteratorOptions opts;

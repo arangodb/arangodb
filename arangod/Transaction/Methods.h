@@ -356,34 +356,6 @@ class Methods {
   virtual futures::Future<OperationResult> countAsync(std::string const& collectionName,
                                                       CountType type);
 
-  /// @brief Gets the best fitting index for an AQL condition.
-  /// note: the caller must have read-locked the underlying collection when
-  /// calling this method
-  ENTERPRISE_VIRT std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
-      std::string const&, arangodb::aql::Ast*, arangodb::aql::AstNode*,
-      arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
-      size_t, aql::IndexHint const&, std::vector<IndexHandle>&, bool&);
-
-  /// @brief Gets the best fitting index for one specific condition.
-  ///        Difference to IndexHandles: Condition is only one NARY_AND
-  ///        and the Condition stays unmodified. Also does not care for sorting.
-  ///        Returns false if no index could be found.
-  ///        If it returned true, the AstNode contains the specialized condition
-
-  ENTERPRISE_VIRT bool getBestIndexHandleForFilterCondition(
-      std::string const&, arangodb::aql::AstNode*&,
-      arangodb::aql::Variable const*, size_t, aql::IndexHint const&, IndexHandle&);
-
-  /// @brief Gets the best fitting index for an AQL sort condition
-  /// note: the caller must have read-locked the underlying collection when
-  /// calling this method
-  ENTERPRISE_VIRT bool getIndexForSortCondition(std::string const&,
-                                                arangodb::aql::SortCondition const*,
-                                                arangodb::aql::Variable const*,
-                                                size_t, aql::IndexHint const&,
-                                                std::vector<IndexHandle>&,
-                                                size_t& coveredAttributes);
-
   /// @brief factory for IndexIterator objects from AQL
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method

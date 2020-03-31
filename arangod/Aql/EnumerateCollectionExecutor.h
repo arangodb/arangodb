@@ -78,7 +78,6 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
   QueryContext& getQuery() const;
-  transaction::Methods* getTrx() const;
   Expression* getFilter() const;
   std::vector<std::string> const& getProjections() const noexcept;
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
