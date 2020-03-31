@@ -109,8 +109,6 @@ class ConstrainedSortExecutor {
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
-  ExecutionState _state;
   size_t _returnNext;
   std::vector<size_t> _rows;
   size_t _rowsPushed;

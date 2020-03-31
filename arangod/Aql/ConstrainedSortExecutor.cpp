@@ -134,8 +134,6 @@ bool ConstrainedSortExecutor::compareInput(size_t const& rowPos,
 
 ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
-      _state(ExecutionState::HASMORE),
       _returnNext(0),
       _rowsPushed(0),
       _rowsRead(0),
