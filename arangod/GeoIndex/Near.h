@@ -34,7 +34,7 @@
 
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace arangodb {
 namespace velocypack {

@@ -25,7 +25,7 @@
 #define ARANGOD_MMFILES_MMFILES_INDEX_LOOKUP_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {

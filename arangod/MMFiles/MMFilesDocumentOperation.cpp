@@ -139,7 +139,7 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     try {
       // re-insert the old document
       physical->insertLocalDocumentId(_oldRevision._localDocumentId,
-                                      _oldRevision._vpack, 0, true, true);
+                                      _oldRevision._vpack, FileId::none(), true, true);
     } catch (...) {
     }
 
@@ -163,7 +163,7 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
                                                            oldDoc.begin()));
     }
 
-    physical->updateLocalDocumentId(oldDocumentId, oldDoc.begin(), 0, false);
+    physical->updateLocalDocumentId(oldDocumentId, oldDoc.begin(), FileId::none(), false);
 
     // remove now obsolete new document
     if (oldDocumentId != newDocumentId) {
@@ -179,7 +179,7 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
 
     try {
       physical->insertLocalDocumentId(_oldRevision._localDocumentId,
-                                      _oldRevision._vpack, 0, true, true);
+                                      _oldRevision._vpack, FileId::none(), true, true);
     } catch (...) {
     }
 

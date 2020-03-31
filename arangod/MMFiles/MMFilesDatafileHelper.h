@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/encoding.h"
 #include "MMFiles/MMFilesDatafile.h"
+#include "VocBase/Identifiers/FileId.h"
 
 namespace arangodb {
 namespace MMFilesDatafileHelper {
@@ -259,19 +260,19 @@ static inline void InitMarker(MMFilesMarker* marker, MMFilesMarkerType type, uin
 /// @brief create a header marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline MMFilesDatafileHeaderMarker CreateHeaderMarker(uint32_t maximalSize,
-                                                             TRI_voc_tick_t fid) {
+static inline MMFilesDatafileHeaderMarker CreateHeaderMarker(uint32_t maximalSize, FileId fid) {
   // cppcheck-suppress duplicateExpression
-  static_assert(sizeof(TRI_voc_tick_t) == sizeof(TRI_voc_fid_t),
+  static_assert(sizeof(TRI_voc_tick_t) == sizeof(FileId),
                 "invalid tick/fid sizes");
 
   MMFilesDatafileHeaderMarker header;
   InitMarker(reinterpret_cast<MMFilesMarker*>(&header), TRI_DF_MARKER_HEADER,
-             sizeof(MMFilesDatafileHeaderMarker), fid);
+             sizeof(MMFilesDatafileHeaderMarker),
+             static_cast<TRI_voc_tick_t>(fid.id()));
 
   header._version = TRI_DF_VERSION;
   header._maximalSize = maximalSize;
-  header._fid = fid;
+  header._fid = static_cast<TRI_voc_tick_t>(fid.id());
 
   return header;
 }

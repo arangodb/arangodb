@@ -24,6 +24,9 @@
 #ifndef ARANGOD_MMFILES_MMFILES_EDGE_INDEX_H
 #define ARANGOD_MMFILES_MMFILES_EDGE_INDEX_H 1
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
 #include "Containers/AssocMulti.h"
@@ -32,11 +35,9 @@
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace basics {
@@ -113,7 +114,7 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   MMFilesEdgeIndex() = delete;
 
-  MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
+  MMFilesEdgeIndex(IndexId iid, arangodb::LogicalCollection& collection);
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }

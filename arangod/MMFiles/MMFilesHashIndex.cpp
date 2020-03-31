@@ -312,7 +312,7 @@ MMFilesHashIndex::MultiArray::MultiArray(size_t numPaths, std::unique_ptr<ImplTy
   TRI_ASSERT(_hashArray != nullptr);
 }
 
-MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+MMFilesHashIndex::MMFilesHashIndex(IndexId iid, LogicalCollection& collection,
                                    arangodb::velocypack::Slice const& info)
     : MMFilesPathBasedIndex(iid, collection, info,
                             sizeof(LocalDocumentId) + sizeof(uint32_t), false),
@@ -404,7 +404,7 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
     }
     // Short circuit. If id is correct the index is identical.
     arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid);
+    return idRef == std::to_string(_iid.id());
   }
 
   value = info.get(arangodb::StaticStrings::IndexFields);

@@ -10,37 +10,13 @@ https://www.boost.org/
 (we don't ship the upstream documentation!)
 To remove some unused doc files, you can run something as follows:
 
-    cd 3rdParty/boost/1.69.0
+    cd 3rdParty/boost/1.71.0
     for i in `find -type d -name "doc"`; do git rm -r "$i"; done
 
 
 ## cmake
 
 Custom boost locator
-
-## curl
-
-HTTP client library https://curl.haxx.se/
-
-We apply several build system patches to avoid unneccessary recompiles, bugfixes.
-
-For example, we commented out curl's check for nroff to avoid documentation
-building (and complaining about it on Windows).
-
-We also deactivated some of curl's install CMake commands, as we don't need
-anything installed (apart from that the vanilla curl install commands don't work
-when compiled as part of ArangoDB).
-
-We also disabled adding the OpenSSL libraries via the following command:
-
-   list(APPEND CURL_LIBS OpenSSL::SSL OpenSSL::Crypto)
-
-and instead are using the command
- 
-   list(APPEND CURL_LIBS ${OPENSSL_LIBRARIES})
-
-from the previous version of curl's CMake file. When not applying this change,
-the static builds try to look for libssl.so, which will not work.
 
 ## date
 
@@ -74,7 +50,6 @@ https://github.com/arangodb/linenoise-ng
 We may want to switch to replxx (uniting our & other forks):
 https://github.com/AmokHuginnsson/replxx
 
-
 ## lz4
 
 https://github.com/lz4/lz4
@@ -99,13 +74,6 @@ On Upgrade:
     +#set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
     +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
     +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
-
-- fix timestamp in `./CMakeLists.txt` to avoid recompilation
-
-    -string(TIMESTAMP GIT_DATE_TIME "%Y/%m/%d %H:%M:%S" UTC)
-    +string(TIMESTAMP TS "%Y/%m/%d %H:%M:%S" UTC )
-    +set(GIT_DATE_TIME "${TS}" CACHE STRING "the time we first built rocksdb")
-
 
 ## s2geometry
 

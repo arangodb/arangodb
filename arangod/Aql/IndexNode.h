@@ -35,6 +35,7 @@
 #include "Containers/HashSet.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
@@ -136,13 +137,15 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     Variable const* var;
   };
 
-  using IndexValuesVars = std::pair<TRI_idx_iid_t, std::vector<std::pair<size_t, Variable const*>>>;
+  using IndexValuesVars =
+      std::pair<IndexId, std::vector<std::pair<size_t, Variable const*>>>;
 
-  using IndexValuesRegisters = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, RegisterId>>;
+  using IndexValuesRegisters = std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
 
   using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexVariable>;
 
-  void setLateMaterialized(aql::Variable const* docIdVariable, TRI_idx_iid_t commonIndexId, IndexVarsInfo const& indexVariables);
+  void setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
+                           IndexVarsInfo const& indexVariables);
 
  private:
   void initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,

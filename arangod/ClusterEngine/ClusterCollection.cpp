@@ -45,7 +45,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -375,9 +375,9 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
 }
 
 /// @brief Drop an index with the given iid.
-bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
+bool ClusterCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
-  if (iid == 0) {
+  if (iid.isPrimary() || iid.isNone()) {
     // invalid index id or primary index
     return true;
   }
@@ -387,14 +387,14 @@ bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
     if (iid == it->id()) {
       _indexes.erase(it);
       events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                        std::to_string(iid), TRI_ERROR_NO_ERROR);
+                        std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
       return true;
     }
   }
 
   // We tried to remove an index that does not exist
   events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                    std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+                    std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   return false;
 }
 

@@ -24,6 +24,10 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H 1
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+
 #include "Basics/Common.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Indexes/Index.h"
@@ -32,12 +36,9 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/Slice.h>
 
 namespace arangodb {
 class RocksDBEdgeIndex;
@@ -65,7 +66,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   RocksDBEdgeIndex() = delete;
 
-  RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+  RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& collection,
                    arangodb::velocypack::Slice const& info, std::string const& attr);
 
   ~RocksDBEdgeIndex();

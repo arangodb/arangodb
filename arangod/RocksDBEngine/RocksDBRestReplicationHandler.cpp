@@ -81,7 +81,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     std::string patchCount =
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
-    TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
+    arangodb::ServerId const clientId{
+        StringUtils::uint64(_request->value("serverId"))};
     SyncerId const syncerId = SyncerId::fromRequest(*_request);
     std::string const clientInfo = _request->value("clientInfo");
 
@@ -133,7 +134,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     SyncerId const syncerId = std::get<SyncerId>(res.get());
-    TRI_server_id_t const clientId = std::get<TRI_server_id_t>(res.get());
+    arangodb::ServerId const clientId = std::get<arangodb::ServerId>(res.get());
     std::string const& clientInfo = std::get<std::string>(res.get());
 
     // last tick value in context should not have changed compared to the
@@ -212,7 +213,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   // add client
-  TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
+  arangodb::ServerId const clientId{
+      StringUtils::uint64(_request->value("serverId"))};
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
   std::string const clientInfo = _request->value("clientInfo");
 

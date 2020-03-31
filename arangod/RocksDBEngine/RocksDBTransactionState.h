@@ -35,6 +35,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
@@ -152,12 +153,12 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx committed
-  void trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
+  void trackIndexInsert(TRI_voc_cid_t cid, IndexId idxObjectId, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx committed
-  void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
-  
+  void trackIndexRemove(TRI_voc_cid_t cid, IndexId idxObjectId, uint64_t hash);
+
   bool isOnlyExclusiveTransaction() const;
 
   rocksdb::SequenceNumber beginSeq() const;
