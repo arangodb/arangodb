@@ -99,10 +99,10 @@ class GraphStore final {
                       RangeIterator<Vertex<V,E>>& it);
   
   size_t vertexSegmentSize () const {
-    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Vertex<V,E>));
+    return static_cast<size_t>(std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Vertex<V,E>)));
   }
   size_t edgeSegmentSize() const {
-    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Edge<E>));
+    return static_cast<size_t>(std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Edge<E>)));
   }
   
  private:
