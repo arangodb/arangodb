@@ -24,19 +24,20 @@
 #ifndef ARANGOD_MMFILES_PERSISTENT_INDEX_H
 #define ARANGOD_MMFILES_PERSISTENT_INDEX_H 1
 
-#include "Aql/AstNode.h"
-#include "Basics/Common.h"
-#include "Indexes/IndexIterator.h"
-#include "MMFiles/MMFilesPathBasedIndex.h"
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
-
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
+
+#include "Aql/AstNode.h"
+#include "Basics/Common.h"
+#include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesPathBasedIndex.h"
+#include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 namespace rocksdb {
 class OptimisticTransactionDB;
@@ -97,7 +98,7 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesPersistentIndex() = delete;
 
-  MMFilesPersistentIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  MMFilesPersistentIndex(IndexId iid, LogicalCollection& collection,
                          arangodb::velocypack::Slice const& info);
 
   ~MMFilesPersistentIndex();
@@ -120,7 +121,7 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
   static constexpr size_t keyPrefixSize() {
-    return sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_idx_iid_t);
+    return sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(IndexId);
   }
 
   static std::string buildPrefix(TRI_voc_tick_t databaseId) {
@@ -137,12 +138,12 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   }
 
   static std::string buildPrefix(TRI_voc_tick_t databaseId,
-                                 TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
+                                 TRI_voc_cid_t collectionId, IndexId indexId) {
     std::string value;
     value.reserve(keyPrefixSize());
     value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
     value.append(reinterpret_cast<char const*>(&collectionId), sizeof(TRI_voc_cid_t));
-    value.append(reinterpret_cast<char const*>(&indexId), sizeof(TRI_idx_iid_t));
+    value.append(reinterpret_cast<char const*>(&indexId), sizeof(IndexId));
     return value;
   }
 

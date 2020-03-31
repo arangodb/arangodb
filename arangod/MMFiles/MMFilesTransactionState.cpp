@@ -256,10 +256,10 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     }
   }
 
-  TRI_voc_fid_t fid = 0;
+  FileId fid = FileId::none();
   void const* position = nullptr;
 
-  if (marker->fid() == 0) {
+  if (marker->fid().empty()) {
     // this is a "real" marker that must be written into the logfiles
     // just append it to the WAL:
 
@@ -307,7 +307,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     position = static_cast<MMFilesMarkerEnvelope const*>(marker)->mem();
   }
 
-  TRI_ASSERT(fid > 0);
+  TRI_ASSERT(fid.isSet());
   TRI_ASSERT(position != nullptr);
 
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
@@ -317,7 +317,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     // adjust the data position in the header
     uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) +
                            MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
-    TRI_ASSERT(fid > 0);
+    TRI_ASSERT(fid.isSet());
     operation.setVPack(vpack);
     physical->updateLocalDocumentId(documentId, vpack, fid,
                                     true);  // always in WAL

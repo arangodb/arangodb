@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
@@ -119,7 +120,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, SyncerId syncerId, TRI_server_id_t clientId);
+  RocksDBReplicationContext(double ttl, SyncerId syncerId, ServerId clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -208,9 +209,7 @@ class RocksDBReplicationContext {
     return _syncerId;
   }
 
-  TRI_server_id_t replicationClientServerId() const {
-    return _clientId;
-  }
+  ServerId replicationClientServerId() const { return _clientId; }
 
   std::string const& clientInfo() const {
     return _clientInfo;
@@ -228,7 +227,7 @@ class RocksDBReplicationContext {
   TRI_voc_tick_t const _id;  // batch id
   mutable Mutex _contextLock;
   SyncerId const _syncerId;
-  TRI_server_id_t const _clientId;
+  ServerId const _clientId;
   std::string const _clientInfo;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot

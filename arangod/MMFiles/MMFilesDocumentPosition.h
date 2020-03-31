@@ -26,7 +26,8 @@
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/FileId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -36,11 +37,11 @@ class MMFilesDocumentPosition {
   constexpr MMFilesDocumentPosition()
       : _localDocumentId(), _fid(0), _dataptr(nullptr) {}
 
-  MMFilesDocumentPosition(LocalDocumentId const& documentId, void const* dataptr,
-                          TRI_voc_fid_t fid, bool isWal) noexcept
+  MMFilesDocumentPosition(LocalDocumentId const& documentId,
+                          void const* dataptr, FileId fid, bool isWal) noexcept
       : _localDocumentId(documentId), _fid(fid), _dataptr(dataptr) {
     if (isWal) {
-      _fid |= MMFilesDatafileHelper::WalFileBitmask();
+      _fid = FileId{_fid.id() | MMFilesDatafileHelper::WalFileBitmask()};
     }
   }
 
@@ -72,7 +73,7 @@ class MMFilesDocumentPosition {
 
   inline void clear() noexcept {
     _localDocumentId.clear();
-    _fid = 0;
+    _fid.clear();
     _dataptr = nullptr;
   }
 
@@ -85,9 +86,9 @@ class MMFilesDocumentPosition {
   }
 
   // return the datafile id.
-  inline TRI_voc_fid_t fid() const noexcept {
+  inline FileId fid() const noexcept {
     // unmask the WAL bit
-    return (_fid & ~MMFilesDatafileHelper::WalFileBitmask());
+    return FileId{_fid.id() & ~MMFilesDatafileHelper::WalFileBitmask()};
   }
 
   // sets datafile id. note that the highest bit of the file id must
@@ -95,11 +96,11 @@ class MMFilesDocumentPosition {
   // between WAL files and datafiles. if the highest bit is set, the
   // master pointer points into the WAL, and if not, it points into
   // a datafile
-  inline void fid(TRI_voc_fid_t fid, bool isWal) {
+  inline void fid(FileId fid, bool isWal) {
     // set the WAL bit if required
     _fid = fid;
     if (isWal) {
-      _fid |= MMFilesDatafileHelper::WalFileBitmask();
+      _fid = FileId{_fid.id() | MMFilesDatafileHelper::WalFileBitmask()};
     }
   }
 
@@ -114,7 +115,7 @@ class MMFilesDocumentPosition {
   // the _fid value is set, and to a datafile otherwise
   inline bool pointsToWal() const noexcept {
     // check whether the WAL bit is set
-    return ((_fid & MMFilesDatafileHelper::WalFileBitmask()) != 0);
+    return FileId{_fid.id() & MMFilesDatafileHelper::WalFileBitmask()}.isSet();
   }
 
   inline operator bool() const noexcept {
@@ -129,11 +130,11 @@ class MMFilesDocumentPosition {
  private:
   LocalDocumentId _localDocumentId;
   // this is the datafile identifier
-  TRI_voc_fid_t _fid;
+  FileId _fid;
   // this is the pointer to the beginning of the vpack
   void const* _dataptr;
 
-  static_assert(sizeof(TRI_voc_fid_t) == sizeof(uint64_t), "invalid fid size");
+  static_assert(sizeof(FileId) == sizeof(uint64_t), "invalid fid size");
 };
 
 }  // namespace arangodb

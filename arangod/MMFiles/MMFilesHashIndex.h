@@ -24,6 +24,10 @@
 #ifndef ARANGOD_MMFILES_HASH_INDEX_H
 #define ARANGOD_MMFILES_HASH_INDEX_H 1
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -36,12 +40,9 @@
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 /// @brief hash index query parameter
 namespace arangodb {
@@ -233,7 +234,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesHashIndex() = delete;
 
-  MMFilesHashIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  MMFilesHashIndex(IndexId iid, LogicalCollection& collection,
                    arangodb::velocypack::Slice const& info);
 
   ~MMFilesHashIndex();

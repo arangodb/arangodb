@@ -130,6 +130,7 @@ add_library(arango STATIC
   Basics/ReadWriteSpinLock.cpp
   Basics/Result.cpp
   Basics/FileResult.cpp
+  Basics/Identifier.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp
