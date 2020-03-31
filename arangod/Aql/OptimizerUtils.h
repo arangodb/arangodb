@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace arangodb {
 class Index;

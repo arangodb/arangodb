@@ -92,7 +92,7 @@
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/types.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
