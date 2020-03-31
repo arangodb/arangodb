@@ -133,7 +133,8 @@ class ExecutionEngine {
   /// @brief accessor to the memory recyler for AqlItemBlocks
   TEST_VIRTUAL AqlItemBlockManager& itemBlockManager();
 
-  void collectStats(ExecutionStats&) const noexcept;
+#warning FIXME
+  void collectStats(ExecutionStats&) const noexcept {}
 
  private:
   /// @brief a pointer to the query

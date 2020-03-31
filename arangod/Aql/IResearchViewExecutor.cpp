@@ -703,7 +703,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (!collection.readDocumentWithCallback(infos().trx(), documentId, ctx.callback)) {
+    if (!collection.readDocumentWithCallback(&_trx, documentId, ctx.callback)) {
       return false;
     }
   } else if ((Traits::MaterializeType & MaterializeType::LateMaterialize) ==

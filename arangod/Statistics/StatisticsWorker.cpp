@@ -157,7 +157,7 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString(garbageCollectionQuery),
                              _bindVars, nullptr);
 

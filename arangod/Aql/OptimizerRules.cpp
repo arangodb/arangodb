@@ -990,7 +990,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
         ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
 
     auto outVar = ast->variables()->createTemporaryVariable();
-    auto expression = std::make_unique<Expression>(plan.get(), ast, sorted);
+    auto expression = std::make_unique<Expression>(ast, sorted);
     ExecutionNode* calculationNode =
         new CalculationNode(plan.get(), plan->nextId(), std::move(expression), outVar);
     plan->registerNode(calculationNode);
@@ -3455,7 +3455,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
             } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
-              auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
+              auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
               CalculationNode* cn =
                   new CalculationNode(plan.get(), plan->nextId(), std::move(expr),
                                       calculationNode->outVariable());
@@ -5429,7 +5429,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, std::unique_ptr<Executio
     auto newRoot = simplifier.simplify(root);
 
     if (newRoot != root) {
-      auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newRoot);
+      auto expr = std::make_unique<Expression>(plan->getAst(), newRoot);
 
       TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -5599,7 +5599,7 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
     if (remover.hasRedundantCondition(cn->expression()->node())) {
       auto astNode = remover.createReplacementNode(plan->getAst());
 
-      auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), astNode);
+      auto expr = std::make_unique<Expression>(plan->getAst(), astNode);
       ExecutionNode* newNode =
           new CalculationNode(plan.get(), plan->nextId(), std::move(expr), outVar);
       plan->registerNode(newNode);
@@ -5946,7 +5946,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt,
             } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
-              auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
+              auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
               CalculationNode* cn =
                   new CalculationNode(plan.get(), plan->nextId(), std::move(expr),
                                       calculationNode->outVariable());
@@ -7202,8 +7202,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         // COUNT(FOR doc IN collection RETURN 1)
         Ast* ast = plan->getAst();
         // generate a calculation node that only produces "true"
-        auto expr = std::make_unique<Expression>(plan.get(), ast,
-                                                 Ast::createNodeValueBool(true));
+        auto expr = std::make_unique<Expression>(ast, Ast::createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
         auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
                                             std::move(expr), outVariable);
@@ -7297,7 +7296,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
                                                        existingFilter->node(),
                                                        expr->node());
 
-          en->setFilter(std::make_unique<Expression>(plan.get(), plan->getAst(), merged));
+          en->setFilter(std::make_unique<Expression>(plan->getAst(), merged));
         } else {
           // node did not yet have a filter
           en->setFilter(expr->clone(plan.get(), plan->getAst()));

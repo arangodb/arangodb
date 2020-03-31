@@ -302,7 +302,7 @@ ExecutionPlan::~ExecutionPlan() {
   // we are in the destructor here already. decreasing the memory usage counters
   // will only provide a benefit (in terms of assertions) if we are in
   // maintainer mode, so we can save all these operations in non-maintainer mode
-  _resourceMonitor->decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode)); 
+  _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode));
 #endif
   
   for (auto& x : _ids) {

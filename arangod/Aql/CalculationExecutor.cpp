@@ -106,7 +106,7 @@ CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
     TRI_ASSERT(state == ExecutionState::DONE);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_fetcher.isAtShadowRow() || (!_fetcher.hasRowsLeftInBlock() &&
-                                            !_infos.getQuery().hasEnteredContext()));
+                                            !_infos.getQuery().hasEnteredV8Context()));
 #endif
     return {state, NoStats{}};
   }

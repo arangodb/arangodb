@@ -2657,7 +2657,6 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     outDocumentRegId = it->second.registerId;
   }
-  TRI_ASSERT(engine.getQuery());
 
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(inNmColPtrRegId)>>>(
       &engine, this,
@@ -2735,7 +2734,6 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     outDocumentRegId = it->second.registerId;
   }
-  TRI_ASSERT(engine.getQuery());
   auto const& name = _collection->name();
 
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(
