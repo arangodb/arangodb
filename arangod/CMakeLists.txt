@@ -250,6 +250,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
+  Aql/CollectionAccess.cpp
   Aql/CollectionAccessingNode.cpp
   Aql/Collections.cpp
   Aql/Condition.cpp

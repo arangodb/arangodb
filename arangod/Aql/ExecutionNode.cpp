@@ -1357,13 +1357,13 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
+  auto const produceResult = this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
   EnumerateCollectionExecutorInfos infos(
       variableToRegisterId(_outVariable),
       getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-      &engine, this->_collection, _outVariable,
-      (this->isVarUsedLater(_outVariable) || this->_filter != nullptr),
-      this->_filter.get(), this->projections(), this->coveringIndexAttributePositions(),
+      &engine, collection(), _outVariable, produceResult, this->_filter.get(),
+      this->projections(), this->coveringIndexAttributePositions(),
       EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));
@@ -1378,7 +1378,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
     TRI_ASSERT(outVariable != nullptr);
   }
 
-  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _collection,
+  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, collection(),
                                                      outVariable, _random, _hint);
 
   c->projections(_projections);
@@ -1406,7 +1406,7 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedNrItems *= _collection->count(trx);
+  estimate.estimatedNrItems *= collection()->count(trx);
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
@@ -2535,14 +2535,14 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
   TRI_ASSERT(engine.getQuery());
-  auto const& name = _collection->name();
+  auto const& name = collection()->name();
 
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(
       &engine, this,
       MaterializerExecutorInfos<decltype(name)>(
           getRegisterPlan()->nrRegs[previousNode->getDepth()],
           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-          calcRegsToKeep(), _collection->name(), inNmDocIdRegId,
+          calcRegsToKeep(), collection()->name(), inNmDocIdRegId,
           outDocumentRegId, engine.getQuery()->trx()));
 }
 
@@ -2559,7 +2559,7 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan, bool withDepend
         plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
   }
 
-  auto c = std::make_unique<MaterializeSingleNode>(plan, _id, _collection,
+  auto c = std::make_unique<MaterializeSingleNode>(plan, _id, collection(),
                                                    *inNonMaterializedDocId, *outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);

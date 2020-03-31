@@ -693,7 +693,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
-      _collection, ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      collection(), ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,
       this->hasParent(), this->_replaceIndexNode);

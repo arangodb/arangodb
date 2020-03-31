@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H
 #define ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H 1
 
+#include "Aql/CollectionAccess.h"
 #include "Basics/debugging.h"
 
 #include <string>
@@ -97,30 +98,27 @@ class CollectionAccessingNode {
 
   bool isUsedAsSatellite() const;
 
-  void useAsSatelliteOf(arangodb::aql::Collection const* prototypeCollection);
+  void useAsSatelliteOf(std::shared_ptr<aql::CollectionAccess> prototypeCollection);
 
   void cloneInto(CollectionAccessingNode& c) const {
-    c._prototypeCollection = _prototypeCollection;
-    c._prototypeOutVariable = _prototypeOutVariable;
+    c._collectionAccess = _collectionAccess;
     c._restrictedTo = _restrictedTo;
-    c._isSatelliteOf = _isSatelliteOf;
     c._usedShard = _usedShard;
   }
 
+  /// @brief Get the CollectionAccess of which *this* collection access is a
+  /// satellite of.
+  auto getSatelliteOf() const -> std::shared_ptr<aql::CollectionAccess const> const&;
+
+  auto collectionAccess() const -> std::shared_ptr<aql::CollectionAccess const>;
+
  protected:
-  aql::Collection const* _collection = nullptr;
+  std::shared_ptr<aql::CollectionAccess> _collectionAccess;
 
   /// @brief A shard this node is restricted to, may be empty
-  std::string _restrictedTo = "";
+  std::string _restrictedTo;
 
-  /// @brief prototype collection when using distributeShardsLike
-  aql::Collection const* _prototypeCollection = nullptr;
-  aql::Variable const* _prototypeOutVariable = nullptr;
-
-  std::string _usedShard = "";
-
-  // is a non-nullptr iff used as a satellite collection.
-  arangodb::aql::Collection const* _isSatelliteOf = nullptr;
+  std::string _usedShard;
 };
 
 }  // namespace aql

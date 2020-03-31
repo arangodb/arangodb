@@ -31,7 +31,7 @@
 
 namespace arangodb {
 namespace aql {
-class Collection;
+struct Collection;
 
 /// @brief type for variable ids
 typedef uint32_t VariableId;

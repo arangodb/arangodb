@@ -248,9 +248,10 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(), _collection,
-                                              _variable, _alternativeVariable,
-                                              _createKeys, _allowKeyConversionToObject);
+    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
+                                              collection(), _variable,
+                                              _alternativeVariable, _createKeys,
+                                              _allowKeyConversionToObject);
     c->copyClients(clients());
     CollectionAccessingNode::cloneInto(*c);
 
