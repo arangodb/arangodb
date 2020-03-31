@@ -7515,7 +7515,7 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
 AqlValue Functions::GetSchema(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
-  // GET_VALIDATON("collectionName")
+  // GET_VALIDATON(collectionName)
   static char const* AFN = "GET_SCHEMA";
 
   if (parameters.size() != 1) {

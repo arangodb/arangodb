@@ -303,6 +303,12 @@ function ValidationBasicsSuite () {
       }
 
     },
+
+    testRemoveValidation: () => {
+      testCollection.properties({"validation" : { } });
+      sleepInCluster();
+    },
+
     // json  ////////////////////////////////////////////////////////////////////////////////////////////
     testJson: () => {
       const v =  validatorJson;
@@ -361,7 +367,7 @@ function ValidationBasicsSuite () {
 
     },
     // AQL  ////////////////////////////////////////////////////////////////////////////////////////////
-    testGET_SCHEMA: () => {
+    test_GET_SCHEMA: () => {
       const v =  validatorJson;
       v.level = "strict";
       testCollection.properties({"validation" : v });
@@ -372,7 +378,9 @@ function ValidationBasicsSuite () {
       // get regular schema
       res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
       assertEqual(res[0], v.rule);
+    },
 
+    test_GET_SCHEMA_no_collection: () => {
       // schema on non existing collection
       try {
         db._query(`RETURN GET_SCHEMA("nonExistingTestCollection")`).toArray();
@@ -380,19 +388,19 @@ function ValidationBasicsSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
+    },
 
+    test_GET_SCHEMA_null: () => {
       // no validation available must return `null`
-      testCollection.drop();
-      db._create(testCollectionName);
-      res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
+      testCollection.properties({validation : {}});
+      let res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
       assertEqual(res[0], null);
     },
 
-    testSCHEMA_VALIDATE: () => {
+    test_SCHEMA_VALIDATE: () => {
       const v =  validatorJson;
       // unset validation
-      // FIXME - just pass empty object (PR 11346)
-      testCollection.properties({"validation" : { rule:{} } });
+      testCollection.properties({validation : {}});
       sleepInCluster();
 
       let res;
