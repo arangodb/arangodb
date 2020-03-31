@@ -84,6 +84,7 @@ class Ast {
 
   /// @brief return the variable generator
   VariableGenerator* variables();
+  VariableGenerator const* variables() const;
 
   /// @brief return the root of the AST
   AstNode const* root() const;

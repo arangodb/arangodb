@@ -38,7 +38,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
@@ -248,7 +247,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
 
   // change definition for ALL graphs
   VPackBuilder graphsBuilder;
-  gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
+  gmngr.readGraphs(graphsBuilder);
   VPackSlice graphs = graphsBuilder.slice();
 
   if (!graphs.get("graphs").isArray()) {
@@ -898,7 +897,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
       bindVars->close();
 
       arangodb::aql::Query query(ctx(), queryString, bindVars, nullptr);
-      auto queryResult = query.executeSync(QueryRegistryFeature::registry());
+      auto queryResult = query.executeSync();
 
       if (queryResult.result.fail()) {
         return OperationResult(std::move(queryResult.result));

@@ -124,8 +124,9 @@ class EngineInfoContainerDBServerServerBased {
   //   this methods a shutdown request is send to all DBServers.
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
+  //   simon: in v3.7 we get a global QueryId for all snippets on a server
   Result buildEngines(MapRemoteToSnippet& queryIds,
-                      std::unordered_map<size_t, size_t>& nodeAliases);
+                      std::map<std::string, QueryId>& ServerToQueryId);
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -171,7 +172,8 @@ class EngineInfoContainerDBServerServerBased {
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
                        ServerID const& server, std::string const& serverDest,
-                       std::vector<bool> const& didCreateEngine) const;
+                       std::vector<bool> const& didCreateEngine,
+                       QueryId& globalQueryId) const;
 
   void injectVertexColletions(GraphNode* node);
  private:

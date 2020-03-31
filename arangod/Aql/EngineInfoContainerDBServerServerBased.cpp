@@ -269,7 +269,7 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
-    MapRemoteToSnippet& queryIds, std::unordered_map<size_t, size_t>& nodeAliases) {
+    MapRemoteToSnippet& queryIds, std::map<std::string, QueryId>& serverToQueryId) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
@@ -318,6 +318,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
+    std::unordered_map<size_t, size_t> nodeAliases; // simon: unused now
     addSnippetPart(infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
     auto shardMapping = _shardLocking.getShardMapping();
@@ -375,10 +376,14 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     if (response.isNone()) {
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
-    auto result = parseResponse(response, queryIds, server, serverDest, didCreateEngine);
+    QueryId globalId = 0;
+    auto result = parseResponse(response, queryIds, server, serverDest,
+                                didCreateEngine, globalId);
     if (!result.ok()) {
       return result;
     }
+    auto insert = serverToQueryId.try_emplace(server, globalId);
+    TRI_ASSERT(insert.second);
   }
   cleanupGuard.cancel();
   return TRI_ERROR_NO_ERROR;
@@ -386,7 +391,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(
     VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
-    std::string const& serverDest, std::vector<bool> const& didCreateEngine) const {
+    std::string const& serverDest, std::vector<bool> const& didCreateEngine,
+    QueryId& globalQueryId) const {
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
                                          << server << " : " << response.toJson();
@@ -398,8 +404,16 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   }
 
   VPackSlice result = response.get("result");
+  
+  // simon: in 3.7 we get a queryId for all snippets
+  VPackSlice queryIdSlice = result.get("queryId");
+  if (queryIdSlice.isNumber()) {
+    globalQueryId = queryIdSlice.getNumber<QueryId>();
+  } else {
+    globalQueryId = 0;
+  }
+  
   VPackSlice snippets = result.get("snippets");
-
   // Link Snippets to their sinks
   for (auto const& resEntry : VPackObjectIterator(snippets)) {
     if (!resEntry.value.isString()) {
@@ -470,7 +484,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  */
 void EngineInfoContainerDBServerServerBased::cleanupEngines(
     network::ConnectionPool* pool, int errorCode, std::string const& dbname,
-    MapRemoteToSnippet& queryIds) const {
+    MapRemoteToSnippet& snippetIds) const {
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily
@@ -483,7 +497,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
   builder.openObject();
   builder.add("code", VPackValue(std::to_string(errorCode)));
   builder.close();
-  for (auto const& it : queryIds) {
+  for (auto const& it : snippetIds) {
     // it.first == RemoteNodeId, we don't need this
     // it.second server -> [snippets]
     for (auto const& serToSnippets : it.second) {
@@ -511,7 +525,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
     _query.incHttpRequests(allEngines->size());
   }
 
-  queryIds.clear();
+  snippetIds.clear();
 }
 
 // Insert a GraphNode that needs to generate TraverserEngines on

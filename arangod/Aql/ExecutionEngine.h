@@ -94,9 +94,6 @@ class ExecutionEngine {
     _coordinatorQueryIds = std::move(coordinatorQueryIds);
   }
 
-  /// @brief kill the query
-  void kill();
-
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(SharedAqlItemBlockPtr&& items, size_t pos);
 

@@ -34,10 +34,10 @@ class Optimizer;
 class ExecutionNode;
 class SubqueryNode;
 
-class Query;
+class QueryContext;
 struct Collection;
 /// Helper
-Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert = true);
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, bool assert = true);
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);

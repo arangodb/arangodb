@@ -52,7 +52,7 @@ class RegexCache final {
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression,
-                                       arangodb::transaction::Methods* trx,
+                                       velocypack::Options const* opts,
                                        bool& isEmptyExpression);
 
   /// @brief inspect a LIKE pattern from a string, and remove all

@@ -29,7 +29,7 @@
 
 namespace arangodb {
 namespace aql {
-class Query;
+class QueryContext;
 }
 namespace graph {
 class TraverserCache;
@@ -37,7 +37,8 @@ struct BaseOptions;
 
 namespace CacheFactory {
 TraverserCache* CreateCache(arangodb::aql::QueryContext& query, bool activateDocumentCache,
-                            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const* opts);
+                            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                            BaseOptions* opts);
 
 }  // namespace cacheFactory
 }  // namespace graph

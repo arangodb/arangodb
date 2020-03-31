@@ -22,10 +22,10 @@
 
 #include "Aql/Aggregator.h"
 #include "Aql/AstNode.h"
-#include "Aql/Function.h"
+#include "Aql/Function.h"Conte
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/types.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -433,7 +433,7 @@ optional_with:
       parser->pushStack(node);
      } with_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       auto withNode = parser->ast()->createNodeWithCollections(node, resolver);
       parser->ast()->addOperation(withNode);
      }
@@ -1328,7 +1328,7 @@ function_name:
       std::string temp($1.value, $1.length);
       temp.append("::");
       temp.append($3.value, $3.length);
-      auto p = parser->query()->registerString(temp);
+      auto p = parser->ast()->resources().registerString(temp);
 
       if (p == nullptr) {
         ABORT_OOM
@@ -1769,7 +1769,7 @@ graph_subject:
     graph_collection {
       auto node = parser->ast()->createNodeArray();
       node->addMember($1);
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | graph_collection T_COMMA {
@@ -1778,7 +1778,7 @@ graph_subject:
       node->addMember($1);
     } graph_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | T_GRAPH bind_parameter {
@@ -1839,7 +1839,7 @@ reference:
 
       if (node == nullptr) {
         // variable not found. so it must have been a collection or view
-        auto const& resolver = parser->query()->resolver();
+        auto const& resolver = parser->query().resolver();
         node = ast->createNodeDataSource(resolver, $1.value, $1.length, arangodb::AccessMode::Type::READ, true, false);
       }
 
@@ -2014,11 +2014,11 @@ value_literal:
 
 in_or_into_collection_name:
     T_STRING {
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_QUOTED_STRING {
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_DATA_SOURCE_PARAMETER {

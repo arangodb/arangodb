@@ -125,7 +125,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     }
 
     std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
-    CollectionNameResolver const* resolver = plan->getAst()->query()->trx()->resolver();
+    CollectionNameResolver const& resolver = plan->getAst()->query().resolver();
 
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
@@ -159,7 +159,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         continue;
       }
 
-      auto collection = resolver->getCollection(eColName);
+      auto collection = resolver.getCollection(eColName);
 
       if (!collection || collection->type() != TRI_COL_TYPE_EDGE) {
         std::string msg("collection type invalid for collection '" + std::string(eColName) +
@@ -191,7 +191,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
   } else if (graph->isStringValue()) {
     std::string graphName = graph->getString();
     _graphInfo.add(VPackValue(graphName));
-    _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
+    _graphObj = plan->getAst()->query().lookupGraphByName(graphName);
 
     if (_graphObj == nullptr) {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
@@ -265,7 +265,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
 GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _vocbase(&(plan->getAst()->query().vocbase())),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
       _graphObj(nullptr),
@@ -292,7 +292,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     if (base.hasKey("graph") && (base.get("graph").isString())) {
       graphName = base.get("graph").copyString();
       if (base.hasKey("graphDefinition")) {
-        _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
+        _graphObj = plan->getAst()->query().lookupGraphByName(graphName);
 
         if (_graphObj == nullptr) {
           THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());

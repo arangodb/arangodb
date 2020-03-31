@@ -62,7 +62,6 @@ BaseOptions::LookupInfo::LookupInfo()
 BaseOptions::LookupInfo::~LookupInfo() = default;
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
-                                    arangodb::aql::Ast& ast,
                                     VPackSlice const& info, VPackSlice const& shards) {
   TRI_ASSERT(shards.isArray());
   idxHandles.reserve(shards.length());
@@ -101,7 +100,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
 
   read = info.get("expression");
   if (read.isObject()) {
-    expression = std::make_unique<aql::Expression>(&ast, read);
+    expression = std::make_unique<aql::Expression>(query.ast(), read);
   } else {
     expression.reset();
   }
@@ -112,7 +111,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
         TRI_ERROR_BAD_PARAMETER,
         "Each lookup requires condition to be an object");
   }
-  indexCondition = new aql::AstNode(&ast, read);
+  indexCondition = new aql::AstNode(query.ast(), read);
 }
 
 BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
@@ -167,13 +166,12 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 }
 
 std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::QueryContext& query,
-                                                                 arangodb::aql::Ast& ast,
                                                                  VPackSlice const& definition) {
   VPackSlice type = definition.get("type");
   if (type.isString() && type.isEqualString("shortestPath")) {
-    return std::make_unique<ShortestPathOptions>(query, ast, definition);
+    return std::make_unique<ShortestPathOptions>(query, definition);
   }
-  return std::make_unique<TraverserOptions>(query, ast, definition);
+  return std::make_unique<TraverserOptions>(query, definition);
 }
 
 BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
@@ -198,14 +196,14 @@ BaseOptions::BaseOptions(BaseOptions const& other)
 }
 
 BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
-                         aql::Ast& ast, VPackSlice info, VPackSlice collections)
+                         VPackSlice info, VPackSlice collections)
     : BaseOptions(query) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The options require a tmpVar");
   }
-  _tmpVar = ast.variables()->createVariable(read);
+  _tmpVar = query.ast()->variables()->createVariable(read);
 
   read = info.get("baseLookupInfos");
   if (!read.isArray()) {
@@ -332,7 +330,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
         condition->removeMemberUnchecked(n - 1);
       }
     }
-    info.expression = std::make_unique<aql::Expression>(plan, plan->getAst(), condition);
+    info.expression = std::make_unique<aql::Expression>(plan->getAst(), condition);
   }
   list.emplace_back(std::move(info));
 }

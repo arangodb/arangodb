@@ -263,12 +263,13 @@ std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(DocumentP
 DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
     RegisterId const outputRegister, bool produceResult,
-    transaction::Methods& trx, Expression* filter,
+    aql::QueryContext& query, transaction::Methods& trx, Expression* filter,
     std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool useRawDocumentPointers, bool checkUniqueness)
     : _inputRow(inputRow),
       _outputRow(outputRow),
+      _query(query),
       _trx(trx),
       _filter(filter),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
@@ -376,7 +377,7 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
 }
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
-  DocumentExpressionContext ctx(_trx, _regexCache, slice);
+  DocumentExpressionContext ctx(_trx, _query.warnings(), _regexCache, slice);
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _filter->execute(&ctx, mustDestroy);

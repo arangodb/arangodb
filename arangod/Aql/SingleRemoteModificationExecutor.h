@@ -30,6 +30,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 namespace aql {

@@ -3852,6 +3852,7 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
 }
 
 VariableGenerator* Ast::variables() { return &_variables; }
+VariableGenerator const* Ast::variables() const { return &_variables; }
 
 AstNode const* Ast::root() const { return _root; }
 

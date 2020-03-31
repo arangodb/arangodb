@@ -44,7 +44,7 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions const* opts)
+TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
     : _query(query),
       _trx(opts->trx()),
       _insertedDocuments(0),

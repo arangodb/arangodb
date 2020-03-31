@@ -59,20 +59,20 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
       _prototypeOutVariable(nullptr),
       _usedShard(""),
       _isSatellite(false) {
+  aql::Collections& collections = plan->getAst()->query().collections();
   if (slice.get("prototype").isString()) {
     _prototypeCollection =
-        plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
+    collections.get(slice.get("prototype").copyString());
   }
   auto colName = slice.get("collection").copyString();
   auto typeId = basics::VelocyPackHelper::getNumericValue<int>(slice, "typeID", 0);
   if (typeId == ExecutionNode::DISTRIBUTE) {
     // This is a special case, the distribute node can inject a collection
     // that is NOT yet known to the plan
-    auto query = plan->getAst()->query();
-    query->addCollection(colName, AccessMode::Type::NONE);
+    collections.add(colName, AccessMode::Type::NONE);
   }
 
-  _collection = plan->getAst()->query()->collections()->get(colName);
+  _collection = collections.get(colName);
 
   TRI_ASSERT(_collection != nullptr);
 

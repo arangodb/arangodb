@@ -36,12 +36,14 @@ class Methods;
 
 namespace aql {
 class Expression;
-class Query;
+class QueryContext;
 class InputAqlItemRow;
 
 class PruneExpressionEvaluator {
  public:
-  PruneExpressionEvaluator(transaction::Methods* trx, Query* query,
+  PruneExpressionEvaluator(transaction::Methods& trx,
+                           QueryWarnings& warnings,
+                           RegexCache& cache,
                            std::vector<Variable const*> const&& vars,
                            std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
                            size_t edgeVarIdx, size_t pathVarIdx, Expression* expr);
@@ -60,8 +62,6 @@ class PruneExpressionEvaluator {
   void injectPath(velocypack::Slice p) { _ctx.setPathValue(p); }
 
  private:
-  transaction::Methods* _trx;
-
   /// @brief The condition given in PRUNE (might be empty)
   ///        The Node keeps responsibility
   aql::Expression* _pruneExpression;

@@ -47,7 +47,7 @@ IndexIteratorOptions defaultIndexIteratorOptions;
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions const* opts,
+SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions* opts,
                                                aql::Variable const* tmpVar,
                                                std::vector<size_t> const* mapping,
                                                std::vector<BaseOptions::LookupInfo> const& lookupInfo)

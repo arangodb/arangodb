@@ -27,6 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/SortCondition.h"
 #include "Containers/SmallVector.h"
+#include "Indexes/Index.h"
 
 namespace arangodb {
 namespace aql {
@@ -57,7 +58,7 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
     return false;
   }
 
-  typedef std::pair<arangodb::aql::AstNode*, arangodb::Index> ConditionData;
+  typedef std::pair<arangodb::aql::AstNode*, std::shared_ptr<arangodb::Index>> ConditionData;
   ::arangodb::containers::SmallVector<ConditionData*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ConditionData*> conditionData{a};
 
@@ -76,7 +77,7 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
 
   for (size_t i = 0; i < n; ++i) {
     // sort the conditions of each AND
-    auto sub = root->getMemberUnchecked(i);
+    AstNode* sub = root->getMemberUnchecked(i);
 
     TRI_ASSERT(sub != nullptr && sub->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
     size_t const nAnd = sub->numMembers();

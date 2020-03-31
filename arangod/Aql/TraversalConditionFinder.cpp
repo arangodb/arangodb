@@ -757,15 +757,14 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   TRI_ASSERT(_plan->getAst() != nullptr);
 
   bool mustDestroy = false;
-  Expression tmpExp(_plan, _plan->getAst(), node);
+  Expression tmpExp(_plan->getAst(), node);
 
-  TRI_ASSERT(_plan->getAst()->query() != nullptr);
-  auto trx = _plan->getAst()->query()->trx();
-  TRI_ASSERT(trx != nullptr);
-
-  FixedVarExpressionContext ctxt(_plan->getAst()->query());
+  RegexCache rcache;
+  FixedVarExpressionContext ctxt(_plan->getAst()->query().trxForOptimization(),
+                                 _plan->getAst()->query().warnings(),
+                                 rcache);
   ctxt.setVariableValue(pathVar, {});
-  AqlValue res = tmpExp.execute(trx, &ctxt, mustDestroy);
+  AqlValue res = tmpExp.execute(&ctxt, mustDestroy);
   TRI_ASSERT(res.isBoolean());
 
   if (mustDestroy) {

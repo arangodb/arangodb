@@ -436,7 +436,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _state(ExecutorState::HASMORE),
       _documentProducingFunctionContext(
       _input, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
-      _trx, infos.getFilter(), infos.getProjections(),
+      infos.query(), _trx, infos.getFilter(), infos.getProjections(),
       infos.getCoveringIndexAttributePositions(), false, infos.getUseRawDocumentPointers(),
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
       _infos(infos),

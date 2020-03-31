@@ -57,6 +57,8 @@ class Graph;
 
 namespace aql {
 
+class Ast;
+
 /// @brief an AQL query basic interface
 class QueryContext {
  private:
@@ -69,7 +71,6 @@ class QueryContext {
   explicit QueryContext(TRI_vocbase_t& vocbase);
 
   virtual ~QueryContext();
-
 
   ResourceMonitor& resourceMonitor() { return _resourceMonitor; }
   
@@ -94,6 +95,12 @@ class QueryContext {
   QueryExecutionState::ValueType state() const { return _execState; }
   
   TRI_voc_tick_t id() const { return _queryId; }
+  
+  aql::Ast* ast();
+ 
+  void incHttpRequests(unsigned i) {
+    _numRequests.fetch_add(i, std::memory_order_relaxed);
+  }
       
  public:
   
@@ -152,6 +159,12 @@ public:
   
   /// @brief current state the query is in (used for profiling and error messages)
   QueryExecutionState::ValueType _execState;
+  
+  /// @brief _ast, we need an ast to manage the memory for AstNodes, even
+  /// if we do not have a parser, because AstNodes occur in plans and engines
+  std::unique_ptr<Ast> _ast;
+  
+  std::atomic<unsigned> _numRequests;
 };
 
 }  // namespace aql

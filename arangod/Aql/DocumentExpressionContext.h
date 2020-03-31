@@ -34,8 +34,8 @@ class Query;
 
 class DocumentExpressionContext final : public QueryExpressionContext {
  public:
-  DocumentExpressionContext(transaction::Methods& trx, RegexCache& cache,
-                            arangodb::velocypack::Slice document);
+  DocumentExpressionContext(transaction::Methods& trx, QueryWarnings& warnings,
+                            RegexCache& cache, arangodb::velocypack::Slice document);
 
   ~DocumentExpressionContext() = default;
 

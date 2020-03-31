@@ -32,6 +32,7 @@ namespace aql {
 struct AstNode;
 class QueryContext;
 struct QueryResult;
+class QueryString;
 
 /// @brief the parser
 class Parser {

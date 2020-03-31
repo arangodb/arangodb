@@ -48,27 +48,27 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep,
     std::unordered_set<RegisterId>&& readableInputRegisters,
     std::unordered_set<RegisterId>&& writeableInputRegisters,
-    std::pair<RegisterId, RegisterId> groupRegister, transaction::Methods* trxPtr)
+    std::pair<RegisterId, RegisterId> groupRegister, velocypack::Options const* opts)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
                     std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _groupRegister(groupRegister),
-      _trxPtr(trxPtr) {}
+      _vpackOptions(opts) {}
 
 std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupRegister() const {
   return _groupRegister;
 }
 
-transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
-  return _trxPtr;
+velocypack::Options const* DistinctCollectExecutorInfos::vpackOptions() const {
+  return _vpackOptions;
 }
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _seen(1024, AqlValueGroupHash(_infos.getTransaction(), 1),
-            AqlValueGroupEqual(_infos.getTransaction())) {}
+      _seen(1024, AqlValueGroupHash(1),
+            AqlValueGroupEqual(_infos.vpackOptions())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 

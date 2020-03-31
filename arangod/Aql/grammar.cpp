@@ -2241,7 +2241,7 @@ yyreduce:
 #line 434 "Aql/grammar.y"
     {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       auto withNode = parser->ast()->createNodeWithCollections(node, resolver);
       parser->ast()->addOperation(withNode);
      }
@@ -3547,7 +3547,7 @@ yyreduce:
       std::string temp((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
       temp.append("::");
       temp.append((yyvsp[0].strval).value, (yyvsp[0].strval).length);
-      auto p = parser->query()->registerString(temp);
+      auto p = parser->ast()->resources().registerString(temp);
 
       if (p == nullptr) {
         ABORT_OOM
@@ -4363,7 +4363,7 @@ yyreduce:
     {
       auto node = parser->ast()->createNodeArray();
       node->addMember((yyvsp[0].node));
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollectionList(node, resolver);
     }
 #line 4370 "Aql/grammar.cpp"
@@ -4383,7 +4383,7 @@ yyreduce:
 #line 1779 "Aql/grammar.y"
     {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollectionList(node, resolver);
     }
 #line 4390 "Aql/grammar.cpp"
@@ -4473,7 +4473,7 @@ yyreduce:
 
       if (node == nullptr) {
         // variable not found. so it must have been a collection or view
-        auto const& resolver = parser->query()->resolver();
+        auto const& resolver = parser->query().resolver();
         node = ast->createNodeDataSource(resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length, arangodb::AccessMode::Type::READ, true, false);
       }
 
@@ -4743,7 +4743,7 @@ yyreduce:
   case 237:
 #line 2016 "Aql/grammar.y"
     {
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollection(resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length, arangodb::AccessMode::Type::WRITE);
     }
 #line 4750 "Aql/grammar.cpp"
@@ -4752,7 +4752,7 @@ yyreduce:
   case 238:
 #line 2020 "Aql/grammar.y"
     {
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollection(resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length, arangodb::AccessMode::Type::WRITE);
     }
 #line 4759 "Aql/grammar.cpp"

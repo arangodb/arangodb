@@ -101,8 +101,8 @@ class EngineInfoContainerCoordinator {
   //   Return the first engine which is not added in the Registry
   Result buildEngines(QueryContext& query, AqlItemBlockManager& mgr,
                       std::unordered_set<std::string> const& restrictToShards,
-                      MapRemoteToSnippet const& dbServerQueryIds
-                      SnippetList& snippets) const;
+                      MapRemoteToSnippet const& dbServerQueryIds,
+                      SnippetList& coordSnippets) const;
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster

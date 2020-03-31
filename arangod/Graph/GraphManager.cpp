@@ -46,7 +46,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -184,10 +183,10 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
     builder.close();
 
     try {
-      OperationResult checkDoc =
+      OperationResult opRes =
           trx.update(StaticStrings::GraphCollection, builder.slice(), options);
-      if (checkDoc.fail()) {
-        res = trx.finish(checkDoc.result);
+      if (opRes.fail()) {
+        res = trx.finish(opRes.result);
         if (res.fail()) {
           return false;
         }
@@ -454,9 +453,10 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
-  arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"},
-                             nullptr, nullptr, aql::PART_MAIN);
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
+                             arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"},
+                             nullptr, nullptr);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -613,7 +613,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -857,7 +857,7 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
     const std::string& colName, const std::string& graphName,
     std::unordered_set<std::string>& toBeRemoved) {
   VPackBuilder graphsBuilder;
-  OperationResult result = readGraphs(graphsBuilder, aql::PART_DEPENDENT);
+  OperationResult result = readGraphs(graphsBuilder);
   if (result.fail()) {
     return result;
   }

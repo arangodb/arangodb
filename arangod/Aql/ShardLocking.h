@@ -38,7 +38,7 @@ namespace aql {
 
 struct Collection;
 class ExecutionNode;
-class Query;
+class QueryContext;
 
 /*
  * This class is responsible to ensure all shards that participate in a query

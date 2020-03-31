@@ -21,12 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Parser.h"
+
 #include "Basics/Common.h"
 #include "Basics/ScopeGuard.h"
-#include "Aql/Parser.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/QueryContext.h"
 #include "Aql/QueryResult.h"
+#include "Aql/QueryString.h"
 
 #include <sstream>
 
@@ -120,7 +123,7 @@ QueryResult Parser::parseWithDetails() {
   parse();
 
   QueryResult result;
-  result.collectionNames = _query.collectionNames();
+  result.collectionNames = _query.collections().collectionNames();
   result.bindParameters = _ast.bindParameters();
   result.data = _ast.toVelocyPack(false);
 

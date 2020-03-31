@@ -335,14 +335,13 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::QueryCont
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       bool emplaced = false;
-      std::tie(std::ignore, emplaced) = _vertexExpressions.try_emplace(d, new aql::Expression(query->plan(),
-                                                                  query->ast(), info.value));
+      std::tie(std::ignore, emplaced) = _vertexExpressions.try_emplace(d, new aql::Expression(query.ast(), info.value));
       TRI_ASSERT(emplaced);
 #else
       _vertexExpressions.try_emplace(
         d,
         arangodb::lazyConstruct([&]{
-          return new aql::Expression(query->plan(), query->ast(), info.value);
+          return new aql::Expression(query.ast(), info.value);
         })
       );
 #endif
@@ -356,7 +355,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::QueryCont
           TRI_ERROR_BAD_PARAMETER,
           "The options require vertexExpressions to be an object");
     }
-    _baseVertexExpression.reset(new aql::Expression(query->plan(), query->ast(), read));
+    _baseVertexExpression.reset(new aql::Expression(query.ast(), read));
   }
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
@@ -733,8 +732,9 @@ void TraverserOptions::activatePrune(std::vector<aql::Variable const*> const&& v
                                      std::vector<aql::RegisterId> const&& regs,
                                      size_t vertexVarIdx, size_t edgeVarIdx,
                                      size_t pathVarIdx, aql::Expression* expr) {
+  
   _pruneExpression =
-      std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, std::move(vars),
-                                                      std::move(regs), vertexVarIdx,
-                                                      edgeVarIdx, pathVarIdx, expr);
+  std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query.warnings(), _regexCache, std::move(vars),
+                                                  std::move(regs), vertexVarIdx,
+                                                  edgeVarIdx, pathVarIdx, expr);
 }

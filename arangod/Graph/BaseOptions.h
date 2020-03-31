@@ -75,7 +75,6 @@ struct BaseOptions {
     LookupInfo& operator=(LookupInfo const&) = delete;
 
     LookupInfo(arangodb::aql::QueryContext&,
-               arangodb::aql::Ast&,
                arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
 
@@ -88,7 +87,7 @@ struct BaseOptions {
 
  public:
   static std::unique_ptr<BaseOptions> createOptionsFromSlice(
-      arangodb::aql::QueryContext& query, arangodb::aql::Ast&,
+      arangodb::aql::QueryContext& query,
       arangodb::velocypack::Slice const& definition);
 
   explicit BaseOptions(arangodb::aql::QueryContext& query);
@@ -98,7 +97,7 @@ struct BaseOptions {
   explicit BaseOptions(BaseOptions const&);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
-  BaseOptions(aql::QueryContext&, arangodb::aql::Ast&,
+  BaseOptions(aql::QueryContext&,
               arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
@@ -150,6 +149,8 @@ struct BaseOptions {
                      std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
 
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
+  
+  aql::RegexCache& regexCache() { return _regexCache; }
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -171,7 +172,7 @@ struct BaseOptions {
 
  protected:
   
-  arangodb::transaction::Methods _trx;
+  mutable arangodb::transaction::Methods _trx;
   arangodb::aql::RegexCache _regexCache; // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 

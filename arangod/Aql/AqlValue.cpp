@@ -76,7 +76,7 @@ static inline uint8_t intLength(int64_t value) noexcept {
 }  // namespace
 
 /// @brief hashes the value
-uint64_t AqlValue::hash(transaction::Methods* trx, uint64_t seed) const {
+uint64_t AqlValue::hash(uint64_t seed) const {
   switch (type()) {
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -88,11 +88,21 @@ uint64_t AqlValue::hash(transaction::Methods* trx, uint64_t seed) const {
     }
     case DOCVEC:
     case RANGE: {
-      transaction::BuilderLeaser builder(trx);
-      toVelocyPack(trx, *builder.get(), false);
-      // we must use the slow hash function here, because a value may have
-      // different representations in case its an array/object/number
-      return builder->slice().normalizedHash(seed);
+      size_t const n = _data.range->size();
+      
+      // simon: copied from VPackSlice::normalizedHash()
+      // normalize arrays by hashing array length and iterating
+      // over all array members
+      uint64_t const tmp = n ^ 0xba5bedf00d;
+      uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(int64_t), VPackSlice::defaultSeed);
+
+      for (size_t i = 0; i < n; ++i) {
+        // upcast integer values to double
+        double v = static_cast<double>(_data.range->at(i));
+        value ^= VELOCYPACK_HASH(&v, sizeof(v), seed);
+      }
+      
+      return value;
     }
   }
 
@@ -983,10 +993,10 @@ void AqlValue::toVelocyPack(VPackOptions const* options, arangodb::velocypack::B
   }
 }
 
-void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder,
-                            bool resolveExternals) const {
-  toVelocyPack(trx->transactionContextPtr()->getVPackOptions(), builder, resolveExternals);
-}
+//void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder,
+//                            bool resolveExternals) const {
+//  toVelocyPack(trx->transactionContextPtr()->getVPackOptions(), builder, resolveExternals);
+//}
 
 /// @brief materializes a value into the builder
 AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,

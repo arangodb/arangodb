@@ -70,7 +70,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   std::vector<BaseOptions::LookupInfo> const& _lookupInfo;
 
  public:
-  explicit SingleServerEdgeCursor(BaseOptions const* options, 
+  explicit SingleServerEdgeCursor(BaseOptions* options, 
                                   aql::Variable const* tmpVar,
                                   std::vector<size_t> const* mapping,
                                   std::vector<BaseOptions::LookupInfo> const& lookupInfo);

@@ -43,6 +43,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "V8/v8-globals.h"
@@ -63,14 +64,14 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 /// @brief create the expression
 Expression::Expression(Ast* ast, AstNode* node)
     : _ast(ast), _node(node), _type(UNPROCESSED), _expressionContext(nullptr) {
-  _ast->query()->unPrepareV8Context();
+  _ast->query().unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
 }
 
 /// @brief create an expression from VPack
-Expression::Expression(ExecutionPlan const* plan, Ast* ast, arangodb::velocypack::Slice const& slice)
-    : Expression(plan, ast, new AstNode(ast, slice.get("expression"))) {}
+Expression::Expression(Ast* ast, arangodb::velocypack::Slice const& slice)
+    : Expression(ast, new AstNode(ast, slice.get("expression"))) {}
 
 /// @brief destroy the expression
 Expression::~Expression() { freeInternals(); }
@@ -194,7 +195,7 @@ void Expression::invalidateAfterReplacements() {
 /// multiple V8 contexts, it must be invalidated in between
 void Expression::invalidate() {
   // context may change next time, so "prepare for re-preparation"
-  _ast->query()->unPrepareV8Context();
+  _ast->query().unPrepareV8Context();
 }
 
 /// @brief find a value in an AQL array node
@@ -571,7 +572,7 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
     bool localMustDestroy = false;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, *builder.get(), false);
+    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
   }
 
   builder->close();
@@ -677,7 +678,7 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
     bool localMustDestroy;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, *builder.get(), false);
+    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
   }
 
   builder->close();
@@ -885,7 +886,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
     TRI_ASSERT(isolate != nullptr);
     v8::HandleScope scope(isolate);                                   \
     auto context = TRI_IGETC;
-    _ast->query()->prepareV8Context();
+    _ast->query().prepareV8Context();
 
     std::string jsName;
     size_t const n = static_cast<int>(member->numMembers());
@@ -1495,7 +1496,6 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
 
     if (filterNode != nullptr) {
       // have a filter
-      bool localMustDestroy;
       AqlValue sub = executeSimpleExpression(filterNode, trx, localMustDestroy, false);
 
       takeItem = sub.toBoolean();
@@ -1511,9 +1511,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
     }
 
     if (takeItem) {
-      bool localMustDestroy;
       AqlValue sub = executeSimpleExpression(projectionNode, trx, localMustDestroy, false);
-      sub.toVelocyPack(trx, builder, false);
+      sub.toVelocyPack(&trx->vpackOptions(), builder, false);
       if (localMustDestroy) {
         sub.destroy();
       }
@@ -1669,7 +1668,7 @@ bool Expression::willUseV8() {
 std::unique_ptr<Expression> Expression::clone(ExecutionPlan* plan, Ast* ast) {
   // We do not need to copy the _ast, since it is managed by the
   // query object and the memory management of the ASTs
-  return std::make_unique<Expression>(plan, ast != nullptr ? ast : _ast, _node);
+  return std::make_unique<Expression>(ast != nullptr ? ast : _ast, _node);
 }
 
 void Expression::toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {

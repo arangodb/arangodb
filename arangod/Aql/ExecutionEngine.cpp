@@ -477,26 +477,25 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
     
     // QueryIds are filled by responses of DBServer parts.
-    MapRemoteToSnippet queryIds{};
+    MapRemoteToSnippet snippetIds{};
 
     NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
-    auto cleanupGuard = scopeGuard([this, pool, &queryIds]() {
+    auto cleanupGuard = scopeGuard([this, pool, &snippetIds]() {
       _dbserverParts.cleanupEngines(pool, TRI_ERROR_INTERNAL,
-                                    _query.vocbase().name(), queryIds);
+                                    _query.vocbase().name(), snippetIds);
     });
 
-    std::unordered_map<size_t, size_t> nodeAliases;
-    Result res = _dbserverParts.buildEngines(queryIds, nodeAliases);
+    std::map<std::string, QueryId> serverToQueryId;
+    Result res = _dbserverParts.buildEngines(snippetIds, serverToQueryId);
     if (res.fail()) {
       return res;
     }
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    std::vector<uint64_t> coordinatorQueryIds{};
     res = _coordinatorParts.buildEngines(_query, mgr, _query.queryOptions().restrictToShards,
-                                         queryIds, snippets);
+                                         snippetIds, snippets);
 
     if (res.ok()) {
 //      TRI_ASSERT(_query.engine() != nullptr);
@@ -511,6 +510,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   }
 };
 
+#if 0 // replace with shutdown & error
 void ExecutionEngine::kill() {
   // kill coordinator parts
   // TODO: this doesn't seem to be necessary and sometimes even show adverse
@@ -552,6 +552,7 @@ void ExecutionEngine::kill() {
     futures::collectAll(futures).get();
   }
 }
+#endif
 
 std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlItemBlockPtr&& items,
                                                                     size_t pos) {

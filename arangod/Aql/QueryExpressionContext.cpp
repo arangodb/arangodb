@@ -49,9 +49,9 @@ icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(char const* ptr, siz
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(AqlValue splitExpression,
-                                                             transaction::Methods* trx,
+                                                             velocypack::Options const* opts,
                                                              bool& isEmptyExpression) {
-  return _regexCache.buildSplitMatcher(splitExpression, trx, isEmptyExpression);
+  return _regexCache.buildSplitMatcher(splitExpression, opts, isEmptyExpression);
 }
 
 TRI_vocbase_t& QueryExpressionContext::vocbase() const {

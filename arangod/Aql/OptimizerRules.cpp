@@ -43,6 +43,7 @@
 #include "Aql/KShortestPathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
@@ -825,18 +826,17 @@ namespace arangodb {
 namespace aql {
 
 // TODO cleanup this f-ing aql::Collection(s) mess
-Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert) {
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, bool assert) {
   aql::Collection* coll = nullptr;
 
   if (!cname.empty()) {
-    coll = query->addCollection(cname, AccessMode::Type::READ);
+    coll = query.collections().add(cname, AccessMode::Type::READ);
 
+#warning TODO fixme ?
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      auto cptr = query->trx()->vocbase().lookupCollection(cname);
-
-      coll->setCollection(cptr);
-      query->trx()->addCollectionAtRuntime(cname, AccessMode::Type::READ);
+      coll->setCollection(query.vocbase().lookupCollection(cname));
+      query.trxForOptimization().addCollectionAtRuntime(cname, AccessMode::Type::READ);
     }
   }
 
@@ -3059,11 +3059,14 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto trx = _plan->getAst()->query()->trx();
       size_t coveredAttributes = 0;
-      bool canBeUsed = trx->getIndexForSortCondition(
-          enumerateCollectionNode->collection()->name(), &sortCondition,
-          outVariable, enumerateCollectionNode->collection()->count(trx),
+      
+      Collection const* coll = enumerateCollectionNode->collection();
+      TRI_ASSERT(coll != nullptr);
+      size_t numDocs = coll->count(&_plan->getAst()->query().trxForOptimization());
+      
+      bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(*coll,
+          &sortCondition, outVariable, numDocs,
           enumerateCollectionNode->hint(), usedIndexes, coveredAttributes);
       if (canBeUsed) {
         // If this bit is set, then usedIndexes has length exactly one
@@ -6349,8 +6352,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   }
 
   // we should not access the LogicalCollection directly
-  Query* query = plan->getAst()->query();
-  auto indexes = query->trx()->indexesForCollection(collNode->collection()->name());
+  auto indexes = collNode->collection()->indexes();
   // check for suitiable indexes
   for (std::shared_ptr<Index> idx : indexes) {
     // check if current index is a geo-index
@@ -6427,8 +6429,7 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   }
 
   // we should not access the LogicalCollection directly
-  Query* query = plan->getAst()->query();
-  auto indexes = query->trx()->indexesForCollection(collNode->collection()->name());
+  auto indexes = collNode->collection()->indexes();
   // check for suitiable indexes
   for (std::shared_ptr<arangodb::Index> idx : indexes) {
     // check if current index is a geo-index
@@ -7713,7 +7714,7 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
               plan->createNode<ScatterNode>(plan.get(), plan->nextId(), ScatterNode::SHARD);
           auto const remoteNode =
               plan->createNode<RemoteNode>(plan.get(), plan->nextId(),
-                                           &plan->getAst()->query()->vocbase(),
+                                           &plan->getAst()->query().vocbase(),
                                            "", "", "");
           scatterNode->setIsInSplicedSubquery(true);
           remoteNode->setIsInSplicedSubquery(true);

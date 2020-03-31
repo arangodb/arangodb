@@ -643,7 +643,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto queryBuilder = std::make_shared<VPackBuilder>();
+  queryBuilder->openArray();
   int res = TRI_V8ToVPack(isolate, *queryBuilder, args[0], false);
+  queryBuilder->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
     events::QueryDocument(vocbase.name(), VPackSlice(), res);
@@ -666,7 +668,16 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), queryBuilder, options);
+  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(),
+                             std::make_shared<VPackBuilder>(), options);
+  
+  VPackSlice collections = queryBuilder->slice().get("collections");
+  VPackSlice variables = queryBuilder->slice().get("variables");
+
+  VPackBuilder response;
+  query.prepareQuerySnippets(aql::SerializationFormat::SHADOWROWS, collections, variables,
+                             queryBuilder->slice(), response);
+  
   aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {

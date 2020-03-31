@@ -100,7 +100,6 @@ struct TraverserOptions : public graph::BaseOptions {
                    arangodb::velocypack::Slice definition);
   
   TraverserOptions(arangodb::aql::QueryContext&,
-                   
                    arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);
 

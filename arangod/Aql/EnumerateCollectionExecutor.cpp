@@ -123,7 +123,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                         _infos.getProduceResult(), _infos.getQuery(), _trx,
                                         _infos.getFilter(), _infos.getProjections(),
                                         _infos.getCoveringIndexAttributePositions(),
-                                        true, _infos.getUseRawDocumentPointers(), false),
+                                         true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),

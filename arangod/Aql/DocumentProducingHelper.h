@@ -47,7 +47,7 @@ namespace aql {
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class Query;
+class QueryContext;
 
 enum class ProjectionType : uint32_t {
   IdAttribute,
@@ -63,6 +63,7 @@ struct DocumentProducingFunctionContext {
  public:
   DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
                                    RegisterId outputRegister, bool produceResult,
+                                   aql::QueryContext& query,
                                    transaction::Methods& trx, Expression* filter,
                                    std::vector<std::string> const& projections,
                                    std::vector<size_t> const& coveringIndexAttributePositions,
@@ -119,6 +120,7 @@ struct DocumentProducingFunctionContext {
   aql::RegexCache _regexCache;
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
+  aql::QueryContext& _query;
   transaction::Methods& _trx;
   Expression* _filter;
   std::vector<std::pair<ProjectionType, std::string>> _projections;

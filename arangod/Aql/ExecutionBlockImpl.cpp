@@ -85,7 +85,7 @@ using namespace arangodb::aql;
 
 #define LOG_QUERY(logId, level)            \
   LOG_TOPIC(logId, level, Logger::QUERIES) \
-      << "[query#" << this->_engine->getQuery()->id() << "] "
+    << "[query#" << this->_engine->getQuery().id() << "] "
 
 /*
  * Creates a metafunction `checkName` that tests whether a class has a method
@@ -207,7 +207,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
-      _query(*engine->getQuery()),
+      _query(engine->getQuery()),
       _state(InternalState::FETCH_DATA),
       _lastRange{ExecutorState::HASMORE},
       _execState{ExecState::CHECKCALL},

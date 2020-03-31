@@ -120,7 +120,7 @@ AqlTransaction::AqlTransaction(
 AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
     std::map<std::string, aql::Collection*> const* collections,
-    transaction::Options const& options, bool isMainTransaction)
+    transaction::Options const& options)
     : transaction::Methods(transactionContext, options), _collections(*collections) {
   addHint(transaction::Hints::Hint::LOCK_ENTIRELY); 
   addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);

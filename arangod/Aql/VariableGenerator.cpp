@@ -165,9 +165,12 @@ void VariableGenerator::toVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief import from VelocyPack
-void VariableGenerator::fromVelocyPack(VPackSlice const& query) {
-  VPackSlice allVariablesList = query.get("variables");
-
+void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
+  VPackSlice allVariablesList = slice;
+  if (slice.isObject()) {
+    allVariablesList = slice.get("variables");
+  }
+  
   if (!allVariablesList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "variables needs to be an array");

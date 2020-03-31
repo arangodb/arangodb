@@ -179,7 +179,7 @@ CalculationExecutor<calculationType>::fetchBlockForPassthrough(size_t atMost) {
 template <CalculationType calculationType>
 template <CalculationType U, typename>
 void CalculationExecutor<calculationType>::enterContext() {
-  _infos.getQuery().enterContext();
+  _infos.getQuery().enterV8Context();
   _hasEnteredContext = true;
 }
 
@@ -190,7 +190,7 @@ void CalculationExecutor<calculationType>::exitContext() {
     // must invalidate the expression now as we might be called from
     // different threads
     _infos.getExpression().invalidate();
-    _infos.getQuery().exitContext();
+    _infos.getQuery().exitV8Context();
     _hasEnteredContext = false;
   }
 }
@@ -259,11 +259,11 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
   // execute the expression
-  ExecutorExpressionContext ctx(&_infos.getQuery(), input,
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery().warnings(), _regexCache, input,
                                 _infos.getExpInVars(), _infos.getExpInRegs());
 
   bool mustDestroy;  // will get filled by execution
-  AqlValue a = _infos.getExpression().execute(_infos.getTrx(), &ctx, mustDestroy);
+  AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {

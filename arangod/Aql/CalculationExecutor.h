@@ -30,6 +30,7 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "Transaction/Methods.h"
 
 #include <unordered_set>
 #include <vector>

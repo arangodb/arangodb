@@ -22,6 +22,7 @@
 
 #include "QueryContext.h"
 
+#include "Aql/Ast.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -51,7 +52,8 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
       _resourceMonitor(),
       _collections(&vocbase),
       _vocbase(vocbase),
-      _execState(QueryExecutionState::ValueType::INVALID_STATE) {
+      _execState(QueryExecutionState::ValueType::INVALID_STATE),
+      _ast() {
   if (!AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -108,6 +110,11 @@ void QueryContext::addDataSource(                                  // track Data
 ) {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   _queryDataSources.try_emplace(ds->guid(), ds->name());
+}
+
+aql::Ast* QueryContext::ast() {
+  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
+  return _ast.get();
 }
 
 void QueryContext::prepareV8Context() {

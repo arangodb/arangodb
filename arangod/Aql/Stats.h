@@ -34,7 +34,8 @@ namespace arangodb {
 namespace aql {
 
 // no-op statistics for all Executors that don't have custom stats.
-struct NoStats {
+class NoStats {
+ public:
   void operator+= (NoStats const&) {}
 };
 
@@ -223,7 +224,7 @@ class SingleRemoteModificationStats {
   void incrScannedIndex() noexcept { _scannedIndex++; }
   std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
   
-  SingleRemoteModificationStats& operator+= (SingleRemoteModificationStats const& stats) {
+  void operator+= (SingleRemoteModificationStats const& stats) {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;
     _scannedIndex += stats._scannedIndex;

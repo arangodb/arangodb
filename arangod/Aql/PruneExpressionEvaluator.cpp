@@ -30,12 +30,14 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 PruneExpressionEvaluator::PruneExpressionEvaluator(
-    transaction::Methods* trx, Query* query,
+    transaction::Methods& trx,
+    QueryWarnings& warnings,
+    RegexCache& cache,
     std::vector<Variable const*> const&& vars, std::vector<RegisterId> const&& regs,
     size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx, Expression* expr)
-    : _trx(trx),
-      _pruneExpression(expr),
-      _ctx(query, std::move(vars), std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx) {}
+    : _pruneExpression(expr),
+      _ctx(trx, warnings, cache, std::move(vars),
+           std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx) {}
 
 PruneExpressionEvaluator::~PruneExpressionEvaluator() = default;
 

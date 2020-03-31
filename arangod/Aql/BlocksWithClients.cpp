@@ -121,7 +121,7 @@ auto BlocksWithClientsImpl<Executor>::initializeCursor(InputAqlItemRow const& in
 template <class Executor>
 auto BlocksWithClientsImpl<Executor>::getBlock(size_t atMost)
     -> std::pair<ExecutionState, bool> {
-  if (_engine->getQuery()->killed()) {
+  if (_engine->getQuery().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
@@ -262,7 +262,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
 
 template <class Executor>
 auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> ExecutionState {
-  if (_engine->getQuery()->killed()) {
+  if (_engine->getQuery().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 

@@ -54,7 +54,7 @@ struct AstNode;
 class AttributeAccessor;
 class ExecutionPlan;
 class ExpressionContext;
-class Query;
+class QueryContext;
 struct Variable;
 
 /// @brief AqlExpression, used in execution plans and execution blocks

@@ -134,6 +134,8 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
   // the new cluster wide transactions
   transaction::Options trxOpts;
 
+#warning FIXME
+#if 0
 #ifdef USE_ENTERPRISE
   VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
   if (inaccessSlice.isArray()) {
@@ -146,10 +148,11 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
                                        true, std::move(inaccessible));
   } else {
-    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
+    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
   }
 #else
-  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
+  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
+#endif
 #endif
 
   if (!needToLock) {
@@ -160,8 +163,8 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
   // off collection locking completely!
   auto params = std::make_shared<VPackBuilder>();
   auto opts = std::make_shared<VPackBuilder>();
-  _query = new aql::Query(false, vocbase, aql::QueryString(), params, opts, aql::PART_DEPENDENT);
-  _query->injectTransaction(_trx);
+  _query = new aql::Query(ctx, aql::QueryString(), params, opts);
+//  _query->injectTransaction(_trx);
 
   VPackSlice variablesSlice = info.get(VARIABLES);
   if (!variablesSlice.isNone()) {
@@ -170,7 +173,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
                                      "The optional " + VARIABLES +
                                          " has to be an array.");
     }
-    for (auto v : VPackArrayIterator(variablesSlice)) {
+    for (VPackSlice v : VPackArrayIterator(variablesSlice)) {
       _query->ast()->variables()->createVariable(v);
     }
   }
@@ -435,7 +438,7 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
                                        " attribute.");
   }
   TRI_ASSERT(type.isEqualString("shortestPath"));
-  _opts.reset(new ShortestPathOptions(_query, optsSlice, edgesSlice));
+  _opts.reset(new ShortestPathOptions(*_query, optsSlice, edgesSlice));
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
   
@@ -506,7 +509,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
                                        " attribute.");
   }
   TRI_ASSERT(type.isEqualString("traversal"));
-  _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
+  _opts.reset(new TraverserOptions(*_query, optsSlice, edgesSlice));
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
 }

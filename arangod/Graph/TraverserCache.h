@@ -61,7 +61,7 @@ struct BaseOptions;
 
 class TraverserCache {
  public:
-  explicit TraverserCache(aql::QueryContext& query, BaseOptions const* opts);
+  explicit TraverserCache(aql::QueryContext& query, BaseOptions* opts);
 
   virtual ~TraverserCache();
 

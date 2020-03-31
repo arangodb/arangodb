@@ -159,7 +159,7 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& 
 
   _query = std::make_unique<Query>(std::move(ctx), aql::QueryString(query),
                                    std::move(bindVars), std::move(opts));
-  _query->prepare(SerializationFormat::SHADOWROWS);
+  _query->prepareQuery(SerializationFormat::SHADOWROWS);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
 
   // we replaced the rocksdb export cursor with a stream AQL query
@@ -272,7 +272,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   ss->resetWakeupHandler();
 
   try {
-    aql::ExecutionEngine* engine = _query->engine();
+    aql::ExecutionEngine* engine = _query->rootEngine();
     TRI_ASSERT(engine != nullptr);
 
     SharedAqlItemBlockPtr value;
@@ -334,7 +334,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
     builder.reserve(16 * 1024);
     builder.add("result", VPackValue(VPackValueType::Array, true));
 
-    aql::ExecutionEngine* engine = _query->engine();
+    aql::ExecutionEngine* engine = _query->rootEngine();
     TRI_ASSERT(engine != nullptr);
     // this is the RegisterId our results can be found in
     RegisterId const resultRegister = engine->resultRegister();
@@ -428,7 +428,7 @@ std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
 }
 
 ExecutionState QueryStreamCursor::prepareDump() {
-  aql::ExecutionEngine* engine = _query->engine();
+  aql::ExecutionEngine* engine = _query->rootEngine();
   TRI_ASSERT(engine != nullptr);
 
   size_t numBufferedRows = 0;

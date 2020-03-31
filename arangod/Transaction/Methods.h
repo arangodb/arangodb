@@ -175,7 +175,7 @@ class Methods {
     TRI_ASSERT(_transactionContext != nullptr);
     return _transactionContext.get();
   }
-
+  
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
 
@@ -189,6 +189,9 @@ class Methods {
   char const* statusString() const {
     return transaction::statusString(status());
   }
+  
+  /// @brief options used, not dump options
+  velocypack::Options const& vpackOptions() const;
 
   /// @brief begin the transaction
   Result begin();
@@ -405,10 +408,6 @@ class Methods {
   /// @brief fetch the LogicalCollection by name
   arangodb::LogicalCollection* documentCollection(std::string const& name) const;
 
-  /// @brief get all indexes for a collection name
-  ENTERPRISE_VIRT std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
-      std::string const& collectionName);
-
   /// @brief Lock all collections. Only works for selected sub-classes
   virtual int lockCollections();
   
@@ -487,7 +486,7 @@ class Methods {
 
   OperationResult rotateActiveJournalCoordinator(std::string const& collectionName,
                                                  OperationOptions const& options);
-
+  
  protected:
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(
@@ -516,26 +515,6 @@ class Methods {
 
   /// @brief read- or write-unlock a collection
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
-
- private:
-  
-  /// @brief sort ORs for the same attribute so they are in ascending value
-  /// order. this will only work if the condition is for a single attribute
-  /// the usedIndexes vector may also be re-sorted
-  bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
-               arangodb::aql::Variable const* variable,
-               std::vector<transaction::Methods::IndexHandle>& usedIndexes);
-
-  /// @brief findIndexHandleForAndNode
-  std::pair<bool, bool> findIndexHandleForAndNode(
-      std::vector<std::shared_ptr<Index>> const& indexes,
-      arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
-      arangodb::aql::SortCondition const& sortCondition, size_t itemsInCollection,
-      aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
-      arangodb::aql::AstNode*& specializedCondition, bool& isSparse) const;
-
-  /// @brief Get all indexes for a collection name, coordinator case
-  std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(std::string const&) const;
 
  protected:
   /// @brief the state

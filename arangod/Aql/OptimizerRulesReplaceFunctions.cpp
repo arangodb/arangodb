@@ -22,6 +22,7 @@
 
 #include "OptimizerRules.h"
 
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -186,15 +187,17 @@ bool isGeoIndex(arangodb::Index::IndexType type) {
 
 std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* docRef,
                                                           NearOrWithinParams& params) {
-  auto* trx = ast->query()->trx();
 
   AstNode* accessNodeLat = docRef;
   AstNode* accessNodeLon = docRef;
   bool indexFound = false;
+  
+  aql::Collection* coll = ast->query().collections().get(params.collection);
+  if (!coll) {
+    coll = aql::addCollectionToQuery(ast->query(), params.collection, false);
+  }
 
-  // figure out index to use
-  auto indexes = trx->indexesForCollection(params.collection);
-  for (auto& idx : indexes) {
+  for (auto& idx : coll->indexes()) {
     if (::isGeoIndex(idx->type())) {
       // we take the first index that is found
       bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
@@ -241,7 +244,7 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
 AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
                              ExecutionPlan* plan, bool isNear) {
   auto* ast = plan->getAst();
-  auto* query = ast->query();
+  QueryContext& query = ast->query();
   NearOrWithinParams params(funAstNode, isNear);
 
   if (isNear && (!params.limit || params.limit->isNullValue())) {
@@ -300,7 +303,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
 
   //// create calculation node used in SORT or FILTER
   // Calculation Node will acquire ownership
-  auto calcExpr = std::make_unique<Expression>(plan, ast, expressionAst);
+  auto calcExpr = std::make_unique<Expression>(ast, expressionAst);
 
   // put condition into calculation node
   Variable* calcOutVariable = ast->variables()->createTemporaryVariable();
@@ -355,7 +358,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
         ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("MERGE"), argsArrayMerge);
 
     Variable* calcMergeOutVariable = ast->variables()->createTemporaryVariable();
-    auto calcMergeExpr = std::make_unique<Expression>(plan, ast, funMerge);
+    auto calcMergeExpr = std::make_unique<Expression>(ast, funMerge);
     ExecutionNode* eCalcMerge =
         plan->registerNode(new CalculationNode(plan, plan->nextId(), std::move(calcMergeExpr),
                                                calcMergeOutVariable));
@@ -375,7 +378,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
 /// @brief replace WITHIN_RECTANGLE
 AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
                                 ExecutionPlan* plan) {
-  auto* ast = plan->getAst();
+  aql::Ast* ast = plan->getAst();
 
   TRI_ASSERT(funAstNode->type == AstNodeType::NODE_TYPE_FCALL);
   AstNode* fargs = funAstNode->getMember(0);
@@ -398,9 +401,23 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
 
   // check for suitable indexes
   std::string cname = coll->getString();
+  
+  aql::Collection* collection;
+  if (coll->type != NODE_TYPE_COLLECTION) {
+    collection = aql::addCollectionToQuery(ast->query(), cname, false);
+    auto const& resolver = ast->query().resolver();
+    coll = ast->createNodeCollection(resolver, coll->getStringValue(),
+                                     coll->getStringLength(), AccessMode::Type::READ);
+  } else {
+    collection = aql::addCollectionToQuery(ast->query(), cname, false);
+  }
+  
+  if (!collection) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+  
   std::shared_ptr<arangodb::Index> index;
-  // we should not access the LogicalCollection directly
-  for (auto& idx : ast->query()->trx()->indexesForCollection(cname)) {
+  for (auto& idx : collection->indexes()) {
     if (::isGeoIndex(idx->type())) {
       index = idx;
       break;
@@ -408,13 +425,6 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   }
   if (!index) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING, cname.c_str());
-  }
-
-  if (coll->type != NODE_TYPE_COLLECTION) {
-    aql::addCollectionToQuery(ast->query(), cname, false);
-    auto const& resolver = ast->query()->resolver();
-    coll = ast->createNodeCollection(resolver, coll->getStringValue(),
-                                     coll->getStringLength(), AccessMode::Type::READ);
   }
 
   // FOR part
@@ -497,8 +507,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
 
 AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan) {
   auto* ast = plan->getAst();
-  auto* query = ast->query();
-  auto* trx = query->trx();
+  QueryContext& query = ast->query();
 
   FulltextParams params(funAstNode);  // must be NODE_TYPE_FCALL
 
@@ -510,8 +519,13 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   std::shared_ptr<arangodb::Index> index = nullptr;
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(params.attribute, field, false);
-  auto indexes = trx->indexesForCollection(params.collection);
-  for (auto& idx : indexes) {
+  
+  aql::Collection* coll = query.collections().get(params.collection);
+  if (!coll) {
+    coll = query.collections().add(params.collection, AccessMode::Type::READ);
+  }
+  
+  for (auto& idx : coll->indexes()) {
     if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       if (basics::AttributeName::isIdentical(idx->fields()[0], field,
                                              false /*ignore expansion in last?!*/)) {

@@ -61,7 +61,7 @@ RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(registries->first),
       _traverserRegistry(registries->second),
-      _query(nullptr),
+      _engine(nullptr),
       _qId(0) {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(_traverserRegistry != nullptr);
@@ -121,7 +121,7 @@ void RestAqlHandler::setupClusterQuery() {
   // on the wrong server. So fail during maintanence.
   // On user setup reply gracefully.
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  if (!ServerState::instance()->isDBServer()) {
+  if (ADB_UNLIKELY(!ServerState::instance()->isDBServer())) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
     return;
   }
@@ -243,20 +243,33 @@ void RestAqlHandler::setupClusterQuery() {
 
   // creates a StandaloneContext or a leased context
   auto ctx = createTransactionContext();
-
+  auto query = std::make_unique<Query>(ctx, aql::QueryString(), nullptr, options);
+  
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
-  bool needToLock = true;
-  bool res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
-                              options, ctx, ttl, format, needToLock, answerBuilder);
-  if (!res) {
-    // TODO we need to trigger cleanup here??
-    // Registering the snippets failed.
-    return;
-  }
+
+  answerBuilder.add("queryId", VPackValue(query->id()));
+
+  answerBuilder.add(VPackValue("snippets"));
+  answerBuilder.openObject();
+  query->prepareQuerySnippets(format, collectionBuilder.slice(),
+                              variablesSlice, snippetsSlice, answerBuilder);
+  
+  answerBuilder.close(); // snippets
+
+
+//  bool needToLock = true;
+//  bool res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
+//                              options, ctx, ttl, format, needToLock, answerBuilder);
+//  if (!res) {
+//    // TODO we need to trigger cleanup here??
+//    // Registering the snippets failed.
+//    return;
+//  }
 
   if (!traverserSlice.isNone()) {
-    res = registerTraverserEngines(traverserSlice, ctx, ttl, needToLock, answerBuilder);
+    bool needLocking = false;
+    bool res = registerTraverserEngines(traverserSlice, ctx, ttl, needLocking, answerBuilder);
 
     if (!res) {
       // TODO we need to trigger cleanup here??
@@ -266,10 +279,13 @@ void RestAqlHandler::setupClusterQuery() {
   }
 
   answerBuilder.close();
+  
+  _queryRegistry->insertQuery(std::move(query), ttl);
 
   generateOk(rest::ResponseCode::OK, answerBuilder.slice());
 }
 
+#if 0
 bool RestAqlHandler::registerSnippets(
     VPackSlice const snippetsSlice, VPackSlice const collectionSlice,
     VPackSlice const variablesSlice, std::shared_ptr<VPackBuilder> const& options,
@@ -295,13 +311,14 @@ bool RestAqlHandler::registerSnippets(
 
     // All snippets know all collections.
     // The first snippet will provide proper locking
-    auto query = std::make_unique<Query>(false, _vocbase, planBuilder, options,
-                                         (needToLock ? PART_MAIN : PART_DEPENDENT));
+    auto query = std::make_unique<Query>(ctx, aql::QueryString(), options);
+    
+    try {
+      query->prepareSnippets(format, planBuilder);
 
     // enables the query to get the correct transaction
     query->setTransactionContext(ctx);
 
-    try {
       query->prepare(_queryRegistry, format);
     } catch (std::exception const& ex) {
       LOG_TOPIC("c1ce7", ERR, arangodb::Logger::AQL)
@@ -341,7 +358,7 @@ bool RestAqlHandler::registerSnippets(
         // No need to cleanup...
       }*/
 
-      QueryId qId = query->id();  // not true in general
+      QueryId qId = query->id();
       TRI_ASSERT(qId > 0);
       _queryRegistry->insert(qId, query.get(), ttl, true, false);
       query.release();
@@ -359,6 +376,7 @@ bool RestAqlHandler::registerSnippets(
 
   return true;
 }
+#endif
 
 bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
                                               std::shared_ptr<transaction::Context> const& ctx,
@@ -398,7 +416,7 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
 bool RestAqlHandler::killQuery(std::string const& idString) {
   _qId = arangodb::basics::StringUtils::uint64(idString);
-  return _queryRegistry->kill(&_vocbase, _qId);
+  return _queryRegistry->destroyEngine(_qId, TRI_ERROR_QUERY_KILLED);//(&_vocbase, _qId);
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
@@ -410,23 +428,22 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
     return RestStatus::DONE;
   }
 
-  if (!_query) {  // the PUT verb
+  if (!_engine) {  // the PUT verb
     TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE);
 
-    _query = findQuery(idString);
-    if (!_query) {
+    _engine = findEngine(idString);
+    if (!_engine) {
       return RestStatus::DONE;
     }
-    std::shared_ptr<SharedQueryState> ss = _query->sharedState();
+    std::shared_ptr<SharedQueryState> ss = _engine->sharedState();
     ss->setWakeupHandler(
         [self = shared_from_this()] { return self->wakeupHandler(); });
   }
 
   TRI_ASSERT(_qId > 0);
-  TRI_ASSERT(_query != nullptr);
-  TRI_ASSERT(_query->engine() != nullptr);
+  TRI_ASSERT(_engine != nullptr);
 
-  if (_query->queryOptions().profile >= PROFILE_LEVEL_TRACE_1) {
+  if (_engine->getQuery().queryOptions().profile >= PROFILE_LEVEL_TRACE_1) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
         << "[query#" << _qId << "] remote request received: " << operation
         << " registryId=" << idString;
@@ -497,18 +514,19 @@ RestStatus RestAqlHandler::execute() {
         LOG_TOPIC("f1993", ERR, arangodb::Logger::AQL) << msg;
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                       std::move(msg));
-      } else {
-        if (killQuery(suffixes[1])) {
-          VPackBuilder answerBody;
-          {
-            VPackObjectBuilder guard(&answerBody);
-            answerBody.add(StaticStrings::Error, VPackValue(false));
-          }
-          generateResult(rest::ResponseCode::OK, answerBody.slice());
-        } else {
-          generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
-        }
+        return RestStatus::DONE;
       }
+      if (suffixes[0] == "kill" && killQuery(suffixes[1])) {
+        VPackBuilder answerBody;
+        {
+          VPackObjectBuilder guard(&answerBody);
+          answerBody.add(StaticStrings::Error, VPackValue(false));
+        }
+        generateResult(rest::ResponseCode::OK, answerBody.slice());
+      } else {
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
+      }
+      
       break;
     }
 
@@ -531,7 +549,7 @@ RestStatus RestAqlHandler::continueExecute() {
   if (type == rest::RequestType::PUT) {
     // This cannot be changed!
     TRI_ASSERT(suffixes.size() == 2);
-    TRI_ASSERT(_query != nullptr);
+    TRI_ASSERT(_engine != nullptr);
     return useQuery(suffixes[0], suffixes[1]);
   }
   generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
@@ -543,11 +561,11 @@ RestStatus RestAqlHandler::continueExecute() {
 void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
   try {
     if (isFinalized) {
-      if (_query) {
-        _query->sharedState()->resetWakeupHandler();
+      if (_engine) {
+        _engine->sharedState()->resetWakeupHandler();
       }
       if (_qId != 0) {
-        _queryRegistry->close(&_vocbase, _qId);
+        _queryRegistry->closeEngine(_qId);
       }
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -564,7 +582,7 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 // dig out the query from ID, handle errors
-Query* RestAqlHandler::findQuery(std::string const& idString) {
+ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
   TRI_ASSERT(_qId == 0);
   _qId = arangodb::basics::StringUtils::uint64(idString);
 
@@ -575,11 +593,11 @@ Query* RestAqlHandler::findQuery(std::string const& idString) {
 
   int64_t iterations = 0;
 
-  Query* q = nullptr;
+  ExecutionEngine* q = nullptr;
   // probably need to cycle here until we can get hold of the query
   while (++iterations < MaxIterations) {
     try {
-      q = _queryRegistry->open(&_vocbase, _qId);
+      q = _queryRegistry->openEngine(_qId);
       // we got the query (or it was not found - at least no one else
       // can now have access to the same query)
       break;
@@ -705,11 +723,11 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   // the cursor here but let the case for "initializeCursor" process it.
   // this is because the request may contain additional data
   if ((operation == "getSome" || operation == "skipSome") &&
-      !_query->engine()->initializeCursorCalled()) {
+      !_engine->initializeCursorCalled()) {
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    auto res = _query->engine()->initializeCursor(nullptr, 0);
+    auto res = _engine->initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
       return RestStatus::WAITING;
     }
@@ -721,9 +739,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     }
   }
 
-  auto transactionContext = _query->transactionContext();
-
-  auto const rootNodeType = _query->engine()->root()->getPlanNode()->getType();
+  auto const rootNodeType = _engine->root()->getPlanNode()->getType();
 
   VPackBuffer<uint8_t> answerBuffer;
   VPackBuilder answerBuilder(answerBuffer);
@@ -749,13 +765,13 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                    rootNodeType == ExecutionNode::DISTRIBUTE));
     if (shardId.empty()) {
       std::tie(state, skipped, items) =
-          _query->engine()->execute(executeCall.callStack());
+          _engine->execute(executeCall.callStack());
       if (state == ExecutionState::WAITING) {
         return RestStatus::WAITING;
       }
     } else {
       std::tie(state, skipped, items) =
-          _query->engine()->executeForClient(executeCall.callStack(), shardId);
+          _engine->executeForClient(executeCall.callStack(), shardId);
       if (state == ExecutionState::WAITING) {
         return RestStatus::WAITING;
       }
@@ -763,8 +779,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
     answerBuilder.add(VPackValue(StaticStrings::AqlRemoteResult));
-    result.toVelocyPack(answerBuilder,
-                        _query->trx()->transactionContextPtr()->getVPackOptions());
+    result.toVelocyPack(answerBuilder, &_engine->getQuery().vpackOptions());
     answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   } else if (operation == "getSome") {
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
@@ -779,12 +794,12 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
                                    rootNodeType == ExecutionNode::DISTRIBUTE));
     if (shardId.empty()) {
-      std::tie(state, items) = _query->engine()->getSome(atMost);
+      std::tie(state, items) = _engine->getSome(atMost);
       if (state == ExecutionState::WAITING) {
         return RestStatus::WAITING;
       }
     } else {
-      auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
+      auto block = dynamic_cast<BlocksWithClients*>(_engine->root());
       if (block == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected node type");
@@ -801,14 +816,14 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       // Backwards Compatibility
       answerBuilder.add(StaticStrings::Error, VPackValue(false));
     } else {
-      items->toVelocyPack(transactionContext->getVPackOptions(), answerBuilder);
+      items->toVelocyPack(&_engine->getQuery().vpackOptions(), answerBuilder);
     }
   } else if (operation == "skipSome") {
     auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
                                                             ExecutionBlock::DefaultBatchSize);
     size_t skipped;
     if (shardId.empty()) {
-      auto tmpRes = _query->engine()->skipSome(atMost);
+      auto tmpRes = _engine->skipSome(atMost);
       if (tmpRes.first == ExecutionState::WAITING) {
         return RestStatus::WAITING;
       }
@@ -817,7 +832,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       TRI_ASSERT(rootNodeType == ExecutionNode::SCATTER ||
                  rootNodeType == ExecutionNode::DISTRIBUTE);
 
-      auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
+      auto block = dynamic_cast<BlocksWithClients*>(_engine->root());
       if (block == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected node type");
@@ -835,15 +850,15 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
     Result res;
     if (VelocyPackHelper::getBooleanValue(querySlice, "done", true)) {
-      auto tmpRes = _query->engine()->initializeCursor(nullptr, 0);
+      auto tmpRes = _engine->initializeCursor(nullptr, 0);
       if (tmpRes.first == ExecutionState::WAITING) {
         return RestStatus::WAITING;
       }
       res = tmpRes.second;
     } else {
-      auto items = _query->engine()->itemBlockManager().requestAndInitBlock(
+      auto items = _engine->itemBlockManager().requestAndInitBlock(
           querySlice.get("items"));
-      auto tmpRes = _query->engine()->initializeCursor(std::move(items), pos);
+      auto tmpRes = _engine->initializeCursor(std::move(items), pos);
       if (tmpRes.first == ExecutionState::WAITING) {
         return RestStatus::WAITING;
       }
@@ -851,31 +866,34 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     }
     answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
     answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
-  } else if (operation == "shutdown") {
+  } else if (operation == "shutdown") { // simon: only used in 3.6,
+    // 3.7 uses DELETE /_api/aql/finish
     int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code,
                                                            TRI_ERROR_INTERNAL);
 
     ExecutionState state;
     Result res;
-    std::tie(state, res) = _query->engine()->shutdown(errorCode);
+    std::tie(state, res) = _engine->shutdown(errorCode);
     if (state == ExecutionState::WAITING) {
       return RestStatus::WAITING;
     }
 
     // return statistics
     answerBuilder.add(VPackValue("stats"));
-    _query->getStats(answerBuilder);
+    
+    // simon: only used during rolling upgrade, intentionally half-broken
+    ExecutionStats stats;
+    stats.toVelocyPack(answerBuilder, _engine->getQuery().queryOptions().fullCount);
 
     // return warnings if present
-    _query->warnings().toVelocyPack(answerBuilder);
-    _query->sharedState()->resetWakeupHandler();
-    _query = nullptr;
+    _engine->getQuery().warnings().toVelocyPack(answerBuilder);
+    _engine->sharedState()->resetWakeupHandler();
 
-    // return the query to the registry
-    _queryRegistry->close(&_vocbase, _qId);
+    // return the engine to the registry
+    _queryRegistry->closeEngine(_qId);
 
-    // delete the query from the registry
-    _queryRegistry->destroy(_vocbase.name(), _qId, errorCode, false);
+    // delete the engine from the registry
+    _queryRegistry->destroyEngine(_qId, errorCode); // will destroy the query in the end
     _qId = 0;
     answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
     answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
@@ -885,7 +903,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   }
 
   answerBuilder.close();
-  generateResult(rest::ResponseCode::OK, std::move(answerBuffer), transactionContext);
+  generateResult(rest::ResponseCode::OK, std::move(answerBuffer),
+                 &_engine->getQuery().vpackOptions());
 
   return RestStatus::DONE;
 }

@@ -122,7 +122,13 @@ class Query : public QueryContext {
   /// @brief return the start timestamp of the query
   double startTime() const { return _startTime; }
 
-  void prepare(SerializationFormat format);
+  void prepareQuery(SerializationFormat format);
+  
+  void prepareQuerySnippets(SerializationFormat format,
+                            arangodb::velocypack::Slice collections,
+                            arangodb::velocypack::Slice variables,
+                            arangodb::velocypack::Slice snippets,
+                            velocypack::Builder& answer);
 
   /// @brief execute an AQL query
   aql::ExecutionState execute(QueryResult& res);
@@ -183,9 +189,6 @@ class Query : public QueryContext {
     return (_contextOwnedByExterior || _V8Context != nullptr);
   }
 
-  /// @brief returns statistics for current query.
-  void getStats(arangodb::velocypack::Builder&);
-
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const {
     return _bindParameters.builder();
@@ -193,7 +196,14 @@ class Query : public QueryContext {
 
   /// @brief return the query's shared state
   std::shared_ptr<SharedQueryState> sharedState() const;
-  ExecutionEngine* engine() const;
+  ExecutionEngine* rootEngine() const;
+  SnippetList const& snippets() const {
+    return _snippets;
+  }
+  
+  Ast* ast() {
+    return _ast.get();
+  }
   
 public:
   
@@ -224,7 +234,7 @@ public:
   /// execute calls it internally. The purpose of this separate method is
   /// to be able to only prepare a query from VelocyPack and then store it in
   /// the QueryRegistry.
-  std::unique_ptr<ExecutionPlan> preparePlan();
+  std::unique_ptr<ExecutionPlan> preparePlan();  
 
   /// @brief log a query
   void log();
@@ -259,9 +269,6 @@ public:
   /// @brief the currently used V8 context
   V8Context* _V8Context;
 
-  /// @brief query in a VelocyPack structure
-  std::shared_ptr<arangodb::velocypack::Builder> const _queryBuilder;
-
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
 
@@ -277,10 +284,6 @@ public:
   /// @brief query execution profile
   std::unique_ptr<QueryProfile> _profile;
 
-  /// @brief _ast, we need an ast to manage the memory for AstNodes, even
-  /// if we do not have a parser, because AstNodes occur in plans and engines
-  std::unique_ptr<Ast> _ast;
-  
   /// @brief the ExecutionPlan object, if the query is prepared
   std::vector<std::unique_ptr<ExecutionPlan>> _plans;
 

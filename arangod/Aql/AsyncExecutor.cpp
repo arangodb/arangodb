@@ -145,6 +145,11 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSomeWit
   return {ExecutionState::WAITING, 0};
 }
 
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack stack) {
+  TRI_ASSERT(false);
+  return {ExecutionState::DONE, SkipResult(), nullptr};
+}
+
 std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::initializeCursor(
     InputAqlItemRow const& input) {
 //

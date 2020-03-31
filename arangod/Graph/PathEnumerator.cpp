@@ -39,9 +39,9 @@ using TraverserOptions = arangodb::traverser::TraverserOptions;
 
 PathEnumerator::PathEnumerator(Traverser* traverser, TraverserOptions* opts)
     : _traverser(traverser), 
-      _isFirst(true), 
       _opts(opts),
-      _httpRequests(0) {}
+      _httpRequests(0),
+      _isFirst(true) {}
 
 PathEnumerator::~PathEnumerator() = default;
 

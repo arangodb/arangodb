@@ -78,6 +78,11 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<ParallelStartExecutor>::ski
   return {ExecutionState::DONE, 0};
 }
 
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<ParallelStartExecutor>::execute(AqlCallStack stack) {
+  TRI_ASSERT(false);
+  return {ExecutionState::DONE, SkipResult(), nullptr};
+}
+
 std::pair<ExecutionState, Result> ExecutionBlockImpl<ParallelStartExecutor>::initializeCursor(
     InputAqlItemRow const& input) {
   

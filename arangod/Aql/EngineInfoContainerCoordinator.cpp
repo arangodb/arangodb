@@ -23,7 +23,6 @@
 
 #include "EngineInfoContainerCoordinator.h"
 
-#include "Aql/AqlResult.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
@@ -144,7 +143,7 @@ Result EngineInfoContainerCoordinator::buildEngines(
     AqlItemBlockManager& mgr,
     std::unordered_set<std::string> const& restrictToShards,
     MapRemoteToSnippet const& dbServerQueryIds,
-    aql::SnippetList& snippets) const {
+    aql::SnippetList& coordSnippets) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
@@ -176,7 +175,7 @@ Result EngineInfoContainerCoordinator::buildEngines(
       TRI_ASSERT(!first || info.queryId() == 0);
       first = false;
       
-      snippets.emplace_back(std::make_pair(info.queryId(), std::move(engine)));
+      coordSnippets.emplace_back(std::make_pair(info.queryId(), std::move(engine)));
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.message());

@@ -49,7 +49,8 @@ struct BaseOptions;
 class ClusterTraverserCache : public TraverserCache {
  public:
   ClusterTraverserCache(aql::QueryContext& query,
-                        std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const*);
+                        std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                        BaseOptions*);
 
   ~ClusterTraverserCache() = default;
 

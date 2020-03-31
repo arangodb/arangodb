@@ -263,7 +263,7 @@ auto KShortestPathsExecutor::getVertexId(KShortestPathsExecutorInfos::InputVerte
         id = in.slice();
         // Validation
         if (!::isValidId(id)) {
-          _finder.options().query()->registerWarning(
+          _finder.options().query().warnings().registerWarning(
               TRI_ERROR_BAD_PARAMETER,
               "Invalid input for Shortest Path: "
               "Only id strings or objects with "
@@ -272,7 +272,7 @@ auto KShortestPathsExecutor::getVertexId(KShortestPathsExecutorInfos::InputVerte
         }
         return true;
       } else {
-        _finder.options().query()->registerWarning(
+        _finder.options().query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for Shortest Path: "
             "Only id strings or objects with "
@@ -283,7 +283,7 @@ auto KShortestPathsExecutor::getVertexId(KShortestPathsExecutorInfos::InputVerte
     case KShortestPathsExecutorInfos::InputVertex::Type::CONSTANT: {
       id = builder.slice();
       if (!::isValidId(id)) {
-        _finder.options().query()->registerWarning(
+        _finder.options().query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for Shortest Path: "
             "Only id strings or objects with "

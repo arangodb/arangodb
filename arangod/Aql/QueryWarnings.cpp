@@ -56,7 +56,7 @@ void QueryWarnings::registerWarning(int code, std::string const& details) {
 void QueryWarnings::registerWarning(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   
-  std::lock_guard<std::mutex> guard(other._mutex);
+  std::lock_guard<std::mutex> guard(_mutex);
 
   if (_failOnWarning) {
     // make an error from each warning if requested

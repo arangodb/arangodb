@@ -75,7 +75,7 @@ class AqlTransaction : public transaction::Methods {
   /// protected so we can create different subclasses
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
                  std::map<std::string, aql::Collection*> const* collections,
-                 transaction::Options const& options, bool isMainTransaction);
+                 transaction::Options const& options);
 
   /// @brief add a collection to the transaction
   Result processCollection(aql::Collection*);

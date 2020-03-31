@@ -276,6 +276,9 @@ transaction::Status transaction::Methods::status() const {
   return _state->status();
 }
 
+velocypack::Options const& transaction::Methods::vpackOptions() const {
+  return _transactionContext->getVPackOptions();
+}
 
 /// @brief Find out if any of the given requests has ended in a refusal
 static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
@@ -2019,7 +2022,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
-  auto res = collection->truncate(*this, options);
+  Result res = collection->truncate(*this, options);
 
   if (res.fail()) {
     if (lockResult.is(TRI_ERROR_LOCKED)) {
@@ -2081,7 +2084,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
              responses[i].get().response->statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
-          Result res = followerInfo->remove((*followers)[i]);
+          res = followerInfo->remove((*followers)[i]);
           if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
             LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
@@ -2428,52 +2431,9 @@ Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid, AccessMode::Type
   return Result(trxColl->unlockRecursive(type, _state->nestingLevel()));
 }
 
-/// @brief get list of indexes for a collection
-std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
-    std::string const& collectionName) {
-  if (_state->isCoordinator()) {
-    return indexesForCollectionCoordinator(collectionName);
-  }
-  // For a DBserver we use the local case.
-
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
-  std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
-
-  indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
-                               [](std::shared_ptr<Index> const& x) {
-                                 return x->isHidden();
-                               }),
-                indexes.end());
-  return indexes;
-}
-
 /// @brief Lock all collections. Only works for selected sub-classes
 int transaction::Methods::lockCollections() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-/// @brief Get all indexes for a collection name, coordinator case
-std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCoordinator(
-    std::string const& name) const {
-  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto collection = ci.getCollection(vocbase().name(), name);
-
-  // update selectivity estimates if they were expired
-  if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) {  // hack to fix mmfiles
-    collection->clusterIndexEstimates(true, _state->id() + 1);
-  } else {
-    collection->clusterIndexEstimates(true);
-  }
-
-  std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
-
-  indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
-                               [](std::shared_ptr<Index> const& x) {
-                                 return x->isHidden();
-                               }),
-                indexes.end());
-  return indexes;
 }
 
 Result transaction::Methods::resolveId(char const* handle, size_t length,

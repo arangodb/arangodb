@@ -308,7 +308,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
     if (_infos.usesFixedSource()) {
       auto pos = _infos.getFixedSource().find('/');
       if (pos == std::string::npos) {
-        _traverser.options()->query()->registerWarning(
+        _traverser.options()->query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for traversal: "
             "Only id strings or objects with "
@@ -336,7 +336,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
         return true;
       } else {
         // _id or _key not present we cannot start here, register warning take next
-        _traverser.options()->query()->registerWarning(
+        _traverser.options()->query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for traversal: Only "
             "id strings or objects with _id are "

@@ -354,7 +354,7 @@ void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*
   // instantiate expressions:
   auto instantiateExpression = [&](AstNode* a, std::vector<size_t>&& idxs) -> void {
     // all new AstNodes are registered with the Ast in the Query
-    auto e = std::make_unique<Expression>(_plan, _plan->getAst(), a);
+    auto e = std::make_unique<Expression>(_plan->getAst(), a);
 
     TRI_IF_FAILURE("IndexBlock::initialize") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

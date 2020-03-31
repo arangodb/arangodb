@@ -67,7 +67,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
-    setFilter(std::make_unique<Expression>(plan, ast, new AstNode(ast, p)));
+    setFilter(std::make_unique<Expression>(ast, new AstNode(ast, p)));
   }
 }
   

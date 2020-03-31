@@ -135,13 +135,13 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   void setupClusterQuery();
 
-  bool registerSnippets(arangodb::velocypack::Slice const snippets,
-                        arangodb::velocypack::Slice const collections,
-                        arangodb::velocypack::Slice const variables,
-                        std::shared_ptr<arangodb::velocypack::Builder> const& options,
-                        std::shared_ptr<transaction::Context> const& ctx,
-                        double const ttl, aql::SerializationFormat format,
-                        bool& needToLock, arangodb::velocypack::Builder& answer);
+//  bool registerSnippets(arangodb::velocypack::Slice const snippets,
+//                        arangodb::velocypack::Slice const collections,
+//                        arangodb::velocypack::Slice const variables,
+//                        std::shared_ptr<arangodb::velocypack::Builder> const& options,
+//                        std::shared_ptr<transaction::Context> const& ctx,
+//                        double const ttl, aql::SerializationFormat format,
+//                        bool& needToLock, arangodb::velocypack::Builder& answer);
 
   bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
                                 std::shared_ptr<transaction::Context> const& ctx,
@@ -153,7 +153,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
  private:
   // dig out vocbase from context and query from ID, handle errors
-  Query* findQuery(std::string const& idString);
+  ExecutionEngine* findEngine(std::string const& idString);
 
   // generate patched options with TTL extracted from request
   std::pair<double, std::shared_ptr<VPackBuilder>> getPatchedOptionsWithTTL(VPackSlice const& optionsSlice) const;
@@ -164,7 +164,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // our traversal engine registry
   traverser::TraverserEngineRegistry* _traverserRegistry;
 
-  aql::Query* _query;
+  aql::ExecutionEngine* _engine;
 
   // id of current query
   QueryId _qId;

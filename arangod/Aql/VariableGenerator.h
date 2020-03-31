@@ -77,7 +77,7 @@ class VariableGenerator {
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   /// @brief import from VelocyPack
-  void fromVelocyPack(arangodb::velocypack::Slice const& allVariablesList);
+  void fromVelocyPack(arangodb::velocypack::Slice const allVariablesList);
 
  private:
   /// @brief returns the next variable id

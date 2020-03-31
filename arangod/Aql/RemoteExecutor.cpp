@@ -312,7 +312,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
   builder.openObject(/*unindexed*/ true);
-  input.toVelocyPack(_trxVpackOptions, builder);
+  input.toVelocyPack(&_trxVpackOptions, builder);
   builder.close();
 
   builder.close();
@@ -396,6 +396,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
     // both must be reset before return or throw
     TRI_ASSERT(_lastError.ok() && _lastResponse == nullptr);
 
+#warning FIXME
+#if 0
     VPackSlice slice = response->slice();
     if (slice.isObject()) {
       if (slice.hasKey("stats")) {
@@ -422,6 +424,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
         return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
       }
     }
+#endif
 
     return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
@@ -641,7 +644,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                                                             std::string const& urlPart,
                                                             VPackBuffer<uint8_t>&& body) {
   NetworkFeature const& nf =
-      _engine->getQuery()->vocbase().server().getFeature<NetworkFeature>();
+    _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (!pool) {
     // nullptr only happens on controlled shutdown
@@ -675,7 +678,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   _requestInFlight = true;
   auto ticket = generateRequestTicket();
-  conn->sendRequest(std::move(req), [this, ticket, spec, sqs = _query.sharedState()](
+  conn->sendRequest(std::move(req), [this, ticket, spec, sqs = _engine->sharedState()](
                                         fuerte::Error err, std::unique_ptr<fuerte::Request> req,
                                         std::unique_ptr<fuerte::Response> res) {
     // `this` is only valid as long as sharedState is valid.
@@ -694,8 +697,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
       return false;
     });
   });
-
-  ++_engine->_stats.requests;
+  
+  _engine->getQuery().incHttpRequests(1);
 
   return {TRI_ERROR_NO_ERROR};
 }
@@ -733,7 +736,7 @@ void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
                                                       VPackSlice const slice,
                                                       std::string const& args) {
   if (_profile >= PROFILE_LEVEL_TRACE_1) {
-    auto const queryId = this->_engine->getQuery()->id();
+    auto const queryId = this->_engine->getQuery().id();
     auto const remoteQueryId = _queryId;
     LOG_TOPIC("92c71", INFO, Logger::QUERIES)
         << "[query#" << queryId << "] remote request sent: " << rpc

@@ -744,7 +744,7 @@ void appendAsString(transaction::Methods* trx,
 bool listContainsElement(transaction::Methods* trx, VPackOptions const* options,
                          AqlValue const& list, AqlValue const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
-  AqlValueMaterializer materializer(trx);
+  AqlValueMaterializer materializer(options);
   VPackSlice slice = materializer.slice(list, false);
 
   AqlValueMaterializer testeeMaterializer(trx);
@@ -1124,6 +1124,9 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
     }
   }
 
+#warning FIXME
+  return AqlValue();
+#if 0
   // JavaScript function (this includes user-defined functions)
   {
     v8::Isolate* isolate = v8::Isolate::GetCurrent();
@@ -1164,9 +1167,10 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
     }
 
     bool dummy;
-    return Expression::invokeV8Function(expressionContext, trx, jsName, ucInvokeFN,
+    return Expression::invokeV8Function(expressionContext, jsName, ucInvokeFN,
                                         AFN, false, callArgs, args.get(), dummy);
   }
+#endif
 }
 
 AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
@@ -2835,9 +2839,11 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
   Stringify(trx, adapter, aqlValueToSplit.slice());
   icu::UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   bool isEmptyExpression = false;
+  
   // the matcher is owned by the context!
   icu::RegexMatcher* matcher =
-      expressionContext->buildSplitMatcher(aqlSeparatorExpression, trx, isEmptyExpression);
+      expressionContext->buildSplitMatcher(aqlSeparatorExpression,
+                                           &trx->vpackOptions(), isEmptyExpression);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -4278,9 +4284,10 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext, transaction::Met
   while (now < endTime) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    if (expressionContext->query()->killed()) {
+#warning FIXME
+    /*if (expressionContext->query()->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-    } else if (server.isStopping()) {
+    } else */if (server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
     now = std::chrono::steady_clock::now();
@@ -4455,7 +4462,7 @@ AqlValue Functions::Hash(ExpressionContext*, transaction::Methods* trx,
 
   // throw away the top bytes so the hash value can safely be used
   // without precision loss when storing in JavaScript etc.
-  uint64_t hash = value.hash(trx) & 0x0007ffffffffffffULL;
+  uint64_t hash = value.hash() & 0x0007ffffffffffffULL;
 
   return AqlValue(AqlValueHintUInt(hash));
 }

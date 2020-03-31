@@ -205,7 +205,7 @@ template <typename FetcherType, typename ModifierType>
     upstreamState = input.upstreamState();
   }
   if (_modifier.nrOfOperations() > 0) {
-    _modifier.transact();
+    _modifier.transact(_trx);
 
     if (_infos._doCount) {
       stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
@@ -262,7 +262,7 @@ template <typename FetcherType, typename ModifierType>
     }
 
     if (_modifier.nrOfOperations() > 0) {
-      _modifier.transact();
+      _modifier.transact(_trx);
 
       if (_infos._doCount) {
         stats.addWritesExecuted(_modifier.nrOfWritesExecuted());

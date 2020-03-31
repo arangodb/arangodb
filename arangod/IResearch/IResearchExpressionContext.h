@@ -75,8 +75,8 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 
   virtual size_t numRegisters() const override;
   
-  virtual bool isDataFromCollection(aql::Variable const* variable) const {
-#warning TODO
+  virtual bool isDataFromCollection(aql::Variable const* variable) const override {
+#warning TODO fix optimization
     return false;
   }
 

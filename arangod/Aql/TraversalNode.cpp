@@ -259,7 +259,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
   list = base.get("expression");
   if (!list.isNone()) {
-    _pruneExpression = std::make_unique<aql::Expression>(plan, plan->getAst(), base);
+    _pruneExpression = std::make_unique<aql::Expression>(plan->getAst(), base);
     TRI_ASSERT(base.hasKey("pruneVariables"));
     list = base.get("pruneVariables");
     TRI_ASSERT(list.isArray());
@@ -453,7 +453,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   }
   auto opts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<Traverser> traverser;
-  auto trx = engine.getQuery()->readOnlyTrx();
 
   if (pruneExpression() != nullptr) {
     std::vector<Variable const*> pruneVars;
@@ -489,13 +488,12 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                        trx->vocbase().name(), trx));
     } else {
 #endif
-      traverser.reset(new arangodb::traverser::ClusterTraverser(opts, engines(),
-                                                                trx->vocbase().name(), trx));
+      traverser.reset(new arangodb::traverser::ClusterTraverser(opts, engines(), engine.getQuery().vocbase().name()));
 #ifdef USE_ENTERPRISE
     }
 #endif
   } else {
-    traverser.reset(new arangodb::traverser::SingleServerTraverser(opts, trx));
+    traverser.reset(new arangodb::traverser::SingleServerTraverser(opts));
   }
 
   // Optimized condition
@@ -677,7 +675,7 @@ void TraversalNode::prepareOptions() {
     opts->_vertexExpressions.try_emplace(
       it.first,
       arangodb::lazyConstruct([&]{
-        return new Expression(_plan, ast, it.second);
+        return new Expression(ast, it.second);
       })
     );
   }
@@ -686,7 +684,7 @@ void TraversalNode::prepareOptions() {
     for (auto const& it : _globalVertexConditions) {
       cond->addMember(it);
     }
-    opts->_baseVertexExpression = new Expression(_plan, ast, cond);
+    opts->_baseVertexExpression.reset(new Expression(ast, cond));
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.

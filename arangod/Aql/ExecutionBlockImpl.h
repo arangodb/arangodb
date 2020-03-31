@@ -31,6 +31,7 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/Stats.h"
 
 #include <functional>
 #include <memory>

@@ -46,7 +46,7 @@ class QueryExpressionContext : public ExpressionContext {
                                        bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
                                       bool caseInsensitive) override final;
-  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, transaction::Methods*,
+  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
   TRI_vocbase_t& vocbase() const override final;

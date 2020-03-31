@@ -44,6 +44,7 @@ class Ast;
 struct AstNode;
 class CalculationNode;
 class CollectNode;
+class Collections;
 class ExecutionNode;
 struct OptimizerRule;
 class QueryContext;
@@ -61,10 +62,10 @@ class ExecutionPlan {
   static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*);
 
   /// @brief process the list of collections in a VelocyPack
-  static void getCollectionsFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static void getCollectionsFromVelocyPack(aql::Collections&, arangodb::velocypack::Slice const);
 
   /// @brief create an execution plan from VelocyPack
-  static ExecutionPlan* instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);

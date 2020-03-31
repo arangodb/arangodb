@@ -256,7 +256,7 @@ std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
   if (node->type == NODE_TYPE_NOP) {
     return nullptr;
   }
-  return std::make_unique<Expression>(plan, ast, node);
+  return std::make_unique<Expression>(ast, node);
 }
 
 }  // namespace
@@ -349,21 +349,20 @@ void ExecutionPlan::increaseCounter(ExecutionNode::NodeType type) noexcept {
 }
 
 /// @brief process the list of collections in a VelocyPack
-void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast, VPackSlice const slice) {
-  TRI_ASSERT(ast != nullptr);
-
-  VPackSlice collectionsSlice = slice.get("collections");
-
+void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls, VPackSlice const slice) {
+  VPackSlice collectionsSlice = slice;
+  if (slice.isObject()) {
+    collectionsSlice = slice.get("collections");
+  }
+  
   if (!collectionsSlice.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "json node \"collections\" not found or not an array");
+   THROW_ARANGO_EXCEPTION_MESSAGE(
+       TRI_ERROR_INTERNAL,
+       "json node \"collections\" not found or not an array");
   }
 
   for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
-    ast->query().collections().add(
-        arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
-                                                                   "name"),
+    colls.add(basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
         AccessMode::fromString(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                                           "type")
                                    .c_str()));
@@ -371,14 +370,14 @@ void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast, VPackSlice const slic
 }
 
 /// @brief create an execution plan from VelocyPack
-ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(Ast* ast, VPackSlice const slice) {
+std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(Ast* ast, VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
   plan->_root = plan->fromSlice(slice);
   plan->setVarUsageComputed();
 
-  return plan.release();
+  return plan;
 }
 
 /// @brief clone an existing execution plan
@@ -611,7 +610,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* ex
   }
 
   // generate a temporary calculation node
-  auto expr = std::make_unique<Expression>(this, _ast, node);
+  auto expr = std::make_unique<Expression>(_ast, node);
   CalculationNode* en = new CalculationNode(this, nextId(), std::move(expr), out);
 
   registerNode(reinterpret_cast<ExecutionNode*>(en));

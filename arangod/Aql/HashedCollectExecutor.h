@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
 
+#include "Aql/Aggregator.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
@@ -77,7 +78,7 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
                              std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             transaction::Methods* trxPtr, bool count);
+                             velocypack::Options const*, bool count);
 
   HashedCollectExecutorInfos() = delete;
   HashedCollectExecutorInfos(HashedCollectExecutorInfos&&) = default;
@@ -89,7 +90,7 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
   std::vector<std::string> getAggregateTypes() const;
   bool getCount() const noexcept;
-  transaction::Methods* getTransaction() const;
+  velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
 
  private:
@@ -107,12 +108,12 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
   RegisterId _collectRegister;
+  
+  /// @brief the transaction for this query
+  velocypack::Options const* _vpackOptions;
 
   /// @brief COUNTing node?
   bool _count;
-
-  /// @brief the transaction for this query
-  transaction::Methods* _trxPtr;
 };
 
 /**
@@ -196,8 +197,7 @@ class HashedCollectExecutor {
 
   void destroyAllGroupsAqlValues();
 
-  static std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
-  createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
+  static std::vector<Aggregator::Factory> createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
 
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
@@ -219,7 +219,7 @@ class HashedCollectExecutor {
 
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
-  std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
+  std::vector<Aggregator::Factory> _aggregatorFactories;
 
   GroupKeyType _nextGroupValues;
 };

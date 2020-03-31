@@ -33,6 +33,9 @@ namespace transaction {
 class BufferCache ;
 class Methods;
 }
+namespace velocypack {
+struct Options;
+}
 
 namespace aql {
 struct AqlValue;
@@ -61,7 +64,7 @@ class ExpressionContext {
   virtual icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
                                               bool caseInsensitive) = 0;
   virtual icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
-                                               transaction::Methods*,
+                                               velocypack::Options const* opts,
                                                bool& isEmptyExpression) = 0;
 
   virtual TRI_vocbase_t& vocbase() const = 0;

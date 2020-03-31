@@ -46,7 +46,7 @@ class ClusterTraverser final : public Traverser {
  public:
   ClusterTraverser(TraverserOptions* opts,
                    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-                   std::string const& dbname, transaction::Methods* trx);
+                   std::string const& dbname);
 
   ~ClusterTraverser() = default;
 

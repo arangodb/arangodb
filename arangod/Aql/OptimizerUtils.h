@@ -31,12 +31,14 @@ class Index;
 
 namespace aql {
 
+class Ast;
 struct AstNode;
-class Collection;
-struct IndexHint;
+struct Collection;
+class IndexHint;
 class SortCondition;
 struct Variable;
 
+/// code that used to be in transaction::Methods
 namespace utils {
 
 /// @brief Gets the best fitting index for an AQL condition.

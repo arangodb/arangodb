@@ -104,7 +104,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   ExecutorInfos const& infos() const { return _infos; }
 
-  Query const& getQuery() const { return _query; }
+  QueryContext const& getQuery() const { return _query; }
 
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
@@ -125,7 +125,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   
   ExecutorInfos _infos;
 
-  Query const& _query;
+  QueryContext const& _query;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string const _server;
