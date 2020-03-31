@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix a bug in the agency supervision, which could declare an already FAILED
+  dbserver temporarily as GOOD again after an agency leader change.
+
 * Upgraded bundled RocksDB library to version 6.8.0.
 
 * Added AQL function `IN_RANGE`.
