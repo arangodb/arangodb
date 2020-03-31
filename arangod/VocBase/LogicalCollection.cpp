@@ -277,13 +277,18 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
     return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
   }
 
+  TRI_ASSERT(validatorSlice.isObject());
+
   std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
 
-  try {
-    auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
-    newVec->push_back(std::move(validator));
-  } catch (std::exception const& ex) {
-    return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+  // delete validators if empty object is given
+  if(!validatorSlice.isEmptyObject()) {
+    try {
+      auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
+      newVec->push_back(std::move(validator));
+    } catch (std::exception const& ex) {
+      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+    }
   }
 
   std::atomic_store_explicit(&_validators, newVec, std::memory_order_relaxed);
