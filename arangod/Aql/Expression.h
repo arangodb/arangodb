@@ -179,11 +179,11 @@ class Expression {
   void initExpression();
   
   /// @brief init the accessor specialization
-  void initAccessor();
+  void initAccessor(ExpressionContext* ctx);
 
   /// @brief build the expression (if appropriate, compile it into
   /// executable code)
-  void buildExpression(transaction::Methods*);
+  void buildExpression(transaction::Methods*, ExpressionContext* ctx);
 
   /// @brief execute an expression of type SIMPLE
   AqlValue executeSimpleExpression(AstNode const*, transaction::Methods*,

@@ -67,6 +67,9 @@ Expression::Expression(Ast* ast, AstNode* node)
   _ast->query().unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
+
+  TRI_ASSERT(_data == nullptr);
+  TRI_ASSERT(_accessor == nullptr);
 }
 
 /// @brief create an expression from VPack
@@ -84,7 +87,7 @@ void Expression::variables(::arangodb::containers::HashSet<Variable const*>& res
 /// @brief execute the expression
 AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   auto& trx = ctx->trx();
-  buildExpression(&trx);
+  buildExpression(&trx, ctx);
 
   TRI_ASSERT(_type != UNPROCESSED);
       
@@ -103,9 +106,7 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
     }
 
     case ATTRIBUTE_ACCESS: {
-      if (!_accessor) {
-        initAccessor();
-      }
+      TRI_ASSERT(_accessor != nullptr);
       auto resolver = trx.resolver();
       TRI_ASSERT(resolver != nullptr);
       return _accessor->get(*resolver, ctx, mustDestroy);
@@ -293,18 +294,19 @@ void Expression::initExpression() {
     return;
   }
 
+  TRI_ASSERT(_data == nullptr);
+  TRI_ASSERT(_accessor == nullptr);
+
   // expression is a simple expression
   _type = SIMPLE;
 
-  if (_node->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return;
+  if (_node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // optimization for attribute accesses
+    _type = ATTRIBUTE_ACCESS;
   }
-
-  // optimization for attribute accesses
-  _type = ATTRIBUTE_ACCESS;
 }
 
-void Expression::initAccessor() {
+void Expression::initAccessor(ExpressionContext* ctx) {
   TRI_ASSERT(_type == ATTRIBUTE_ACCESS);
   TRI_ASSERT(_accessor == nullptr);
   
@@ -322,18 +324,28 @@ void Expression::initAccessor() {
   }
   auto v = static_cast<Variable const*>(member->getData());
 
-  TRI_ASSERT(_expressionContext != nullptr);
-  bool const dataIsFromColl = _expressionContext->isDataFromCollection(v);
+  TRI_ASSERT(ctx != nullptr);
+  bool const dataIsFromColl = ctx->isDataFromCollection(v);
   // specialize the simple expression into an attribute accessor
   _accessor = AttributeAccessor::create(std::move(parts), v, dataIsFromColl);
+  TRI_ASSERT(_accessor != nullptr);
 }
 
 /// @brief build the expression
-void Expression::buildExpression(transaction::Methods* trx) {
+void Expression::buildExpression(transaction::Methods* trx, ExpressionContext* ctx) {
   if (_type == UNPROCESSED) {
     initExpression();
   }
-
+  
+  if (_type == ATTRIBUTE_ACCESS && _accessor == nullptr) {
+    initAccessor(ctx);
+    // initAccessor can abort early without having created an accessor.
+    // in this case we need to turn the type back to SIMPLE
+    if (_accessor == nullptr) {
+      _type = SIMPLE;
+    }
+  }
+  
   if (_type == JSON && _data == nullptr) {
     // generate a constant value
     transaction::BuilderLeaser builder(trx);
@@ -1631,8 +1643,6 @@ bool Expression::canRunOnDBServer() {
     return true;
   }
 
-  TRI_ASSERT(_type == SIMPLE || _type == ATTRIBUTE_ACCESS);
-  TRI_ASSERT(_node != nullptr);
   return _node->canRunOnDBServer();
 }
 
@@ -1646,22 +1656,14 @@ bool Expression::isDeterministic() {
     return true;
   }
 
-  TRI_ASSERT(_type == SIMPLE || _type == ATTRIBUTE_ACCESS);
-  TRI_ASSERT(_node != nullptr);
   return _node->isDeterministic();
 }
+
 bool Expression::willUseV8() {
   if (_type == UNPROCESSED) {
     initExpression();
   }
 
-  if (_type != SIMPLE) {
-    return false;
-  }
-
-  // only simple expressions can make use of V8
-  TRI_ASSERT(_type == SIMPLE);
-  TRI_ASSERT(_node != nullptr);
   return _node->willUseV8();
 }
 
@@ -1693,7 +1695,9 @@ std::string Expression::typeString() {
   TRI_ASSERT(false);
   return "unknown";
 }
+
 void Expression::setVariable(Variable const* variable, arangodb::velocypack::Slice value) {
   _variables.emplace(variable, value);
 }
+
 void Expression::clearVariable(Variable const* variable) { _variables.erase(variable); }
