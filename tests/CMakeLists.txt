@@ -276,7 +276,6 @@ endif()
 target_link_libraries(arangodbtests
   arango_agency
   arango_cluster_engine
-  arango_mmfiles
   arango_rocksdb
   arango_v8server
   arangoserver
