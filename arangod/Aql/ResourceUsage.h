@@ -30,6 +30,7 @@
 #include "Basics/system-compiler.h"
 
 #include <algorithm>
+#include <atomic>
 
 namespace arangodb {
 namespace aql {
