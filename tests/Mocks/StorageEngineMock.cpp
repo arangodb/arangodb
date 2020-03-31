@@ -42,9 +42,6 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RestServer/FlushFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
@@ -57,6 +54,8 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+
+#include "Mocks/IResearchLinkMock.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -954,7 +953,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   struct IndexFactory : public arangodb::IndexFactory {
     using arangodb::IndexFactory::validateSlice;
   };
-  auto id = IndexFactory::validateSlice(info, true, false);  // trie+false to ensure id generation if missing
+  auto id = IndexFactory::validateSlice(info, true, false);  // true+false to ensure id generation if missing
 
   auto const type =
       arangodb::basics::VelocyPackHelper::getStringRef(info.get("type"),
@@ -963,20 +962,18 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   std::shared_ptr<arangodb::Index> index;
 
   if (0 == type.compare("edge")) {
-    index = EdgeIndexMock::make(arangodb::IndexId{id}, _logicalCollection, info);
+    index = EdgeIndexMock::make(id, _logicalCollection, info);
   } else if (0 == type.compare("hash")) {
-    index = HashIndexMock::make(arangodb::IndexId{id}, _logicalCollection, info);
+    index = HashIndexMock::make(id, _logicalCollection, info);
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
     try {
       auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {
         auto& factory =
             server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
-        index = factory.instantiate(_logicalCollection, info, arangodb::IndexId{id}, false);
+        index = factory.instantiate(_logicalCollection, info, id, false);
       } else {
-        auto& factory =
-            server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::RocksDBEngine>();
-        index = factory.instantiate(_logicalCollection, info, arangodb::IndexId{id}, false);
+        index = StorageEngineMock::buildLinkMock(id, _logicalCollection, info);
       }
     } catch (std::exception const& ex) {
       // ignore the details of all errors here
@@ -1151,13 +1148,10 @@ arangodb::Result PhysicalCollectionMock::insert(
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
       } else {
-        arangodb::OperationOptions options;
-        options.indexOperationMode = arangodb::Index::OperationMode::normal;
-        arangodb::RocksDBMethods* mthds = arangodb::RocksDBTransactionState::toMethods(trx);
-        auto* l = static_cast<arangodb::iresearch::IResearchRocksDBLink*>(index.get());
-        if (!l->insert(*trx, mthds, ref->second.docId(),
+        auto* l = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
+        if (!l->insert(*trx, ref->second.docId(),
                        arangodb::velocypack::Slice(result.vpack()),
-                       options)
+                       arangodb::Index::OperationMode::normal)
                  .ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
@@ -1774,6 +1768,18 @@ void StorageEngineMock::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& st
 
 int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
   return TRI_ERROR_NO_ERROR;
+}
+
+std::shared_ptr<arangodb::iresearch::IResearchLinkMock> StorageEngineMock::buildLinkMock(
+    arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info) {
+  auto index = std::shared_ptr<arangodb::iresearch::IResearchLinkMock>(
+      new arangodb::iresearch::IResearchLinkMock(id, collection));
+  auto res = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get())->init(info);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  return index;
 }
 
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state,

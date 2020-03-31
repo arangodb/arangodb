@@ -24,8 +24,6 @@
 #ifndef ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H
 #define ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H 1
 
-#include <deque>
-
 #include <velocypack/StringRef.h>
 
 #include "Basics/Result.h"
@@ -44,6 +42,9 @@ class WalAccess;
 
 namespace aql {
 class OptimizerRulesFeature;
+}
+namespace iresearch {
+class IResearchLinkMock;
 }
 
 }  // namespace arangodb
@@ -278,6 +279,10 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
   virtual arangodb::WalAccess const* walAccess() const override;
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
+
+  // public helper function for testing
+  static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
+    arangodb::IndexId id, arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 
  private:
   TRI_voc_tick_t _releasedTick;
