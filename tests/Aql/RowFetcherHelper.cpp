@@ -135,26 +135,6 @@ std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcherHelper<passBlocksThr
 
 template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
-SingleRowFetcherHelper<passBlocksThrough>::fetchBlockForPassthrough(size_t const atMost) {
-  if (wait()) {
-    return {ExecutionState::WAITING, nullptr};
-  }
-
-  size_t const remainingRows = _blockSize - _curIndexInBlock;
-  size_t const from = _curRowIndex;
-  size_t const to = _curRowIndex + remainingRows;
-
-  bool const isLastBlock = _curRowIndex + _blockSize >= _nrItems;
-  bool const askingForMore = _curRowIndex + atMost > _nrItems;
-
-  bool const done = isLastBlock && askingForMore;
-
-  ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
-  return {state, _itemBlock->slice(from, to)};
-}
-
-template <::arangodb::aql::BlockPassthrough passBlocksThrough>
-std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
 SingleRowFetcherHelper<passBlocksThrough>::fetchBlock(size_t const atMost) {
   size_t const remainingRows = _blockSize - _curIndexInBlock;
   size_t const to = _curRowIndex + (std::min)(atMost, remainingRows);

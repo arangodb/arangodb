@@ -125,13 +125,6 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
 }
 
 template <CalculationType calculationType>
-std::tuple<ExecutionState, typename CalculationExecutor<calculationType>::Stats, SharedAqlItemBlockPtr>
-CalculationExecutor<calculationType>::fetchBlockForPassthrough(size_t atMost) {
-  auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-  return {rv.first, {}, std::move(rv.second)};
-}
-
-template <CalculationType calculationType>
 template <CalculationType U, typename>
 void CalculationExecutor<calculationType>::enterContext() {
   _infos.getQuery().enterContext();

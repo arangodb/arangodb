@@ -107,8 +107,6 @@ class CalculationExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
 
-  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
-
  private:
   // specialized implementations
   void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);

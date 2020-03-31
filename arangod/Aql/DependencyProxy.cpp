@@ -222,31 +222,6 @@ DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, si
 }
 
 template <BlockPassthrough blockPassthrough>
-std::pair<ExecutionState, SharedAqlItemBlockPtr> DependencyProxy<blockPassthrough>::fetchBlockForPassthrough(
-    size_t atMost) {
-  TRI_ASSERT(blockPassthrough == BlockPassthrough::Enable);  // TODO check this with enable_if in the header already
-
-  if (_blockPassThroughQueue.empty()) {
-    ExecutionState state = prefetchBlock(atMost);
-    // prefetchBlock returns HASMORE iff it pushed a block onto _blockPassThroughQueue.
-    // If it didn't, it got either WAITING from upstream, or DONE + nullptr.
-    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-      return {state, nullptr};
-    }
-    TRI_ASSERT(state == ExecutionState::HASMORE);
-  }
-
-  TRI_ASSERT(!_blockPassThroughQueue.empty());
-
-  ExecutionState state;
-  SharedAqlItemBlockPtr block;
-  std::tie(state, block) = _blockPassThroughQueue.front();
-  _blockPassThroughQueue.pop_front();
-
-  return {state, std::move(block)};
-}
-
-template <BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
     std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,

@@ -93,9 +93,6 @@ class DependencyProxy {
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
 
-  // TODO enable_if<allowBlockPassthrough>
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
-
   [[nodiscard]] TEST_VIRTUAL RegisterId getNrInputRegisters() const;
 
   // Tries to fetch a block from upstream and push it, wrapped, onto

@@ -127,13 +127,6 @@ auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
-template <class UsedFetcher>
-std::tuple<ExecutionState, typename IdExecutor<UsedFetcher>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;
 // ID can always pass through
 template class ::arangodb::aql::IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>;

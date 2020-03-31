@@ -247,13 +247,6 @@ std::pair<ExecutionState, Result> SubqueryExecutor<isModificationSubquery>::shut
 }
 
 template <bool isModificationSubquery>
-std::tuple<ExecutionState, typename SubqueryExecutor<isModificationSubquery>::Stats, SharedAqlItemBlockPtr>
-SubqueryExecutor<isModificationSubquery>::fetchBlockForPassthrough(size_t atMost) {
-  auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-  return {rv.first, {}, std::move(rv.second)};
-}
-
-template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::translatedReturnType() const
     noexcept -> ExecutionState {
   if (_state == ExecutorState::DONE) {
