@@ -20,70 +20,107 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AgencyCache.cpp"
+#include "AgencyCache.h"
+#include "Agency/AsyncAgencyComm.h"
+#include "GeneralServer/RestHandler.h"
+
+using namespace arangodb;
+using namespace arangodb::consensus;
 
 AgencyCache::AgencyCache(application_features::ApplicationServer& server)
-  : _agency(server), _commitIndex(0),  _readDB(server, nullptr, "raadDB") {}
+  : Thread(server, "AgencyCache"), _commitIndex(0),  _readDB(server, nullptr, "raadDB") {}
 
-// Get Builder from readDB mainly /Plan /Current
-VPackBuider const get(std::string const& path) const {
-  std::shared_lock(_lock);
-
-  // _readDB.toBuilder(path);
+RestStatus AgencyCache::waitForFuture(futures::Future<futures::Unit>&& f) {
+  if (f.isReady()) {             // fast-path out
+    f.result().throwIfFailed();  // just throw the error upwards
+    return RestStatus::DONE;
+  }
+  bool done = false;
+/*  std::move(f).thenFinal(
+    [self = shared_from_this(), &done](futures::Try<T>) -> void {
+      auto thisPtr = self.get();
+      if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
+        done = true;
+      } else {
+        thisPtr->wakeupHandler();
+      }
+    });
+  */
+  return done ? RestStatus::DONE : RestStatus::WAITING;
 }
 
-void run() {
+
+// Get Builder from readDB mainly /Plan /Current
+query_t const AgencyCache::get(std::string const& path) const {
+  std::lock_guard g(_lock);
+  query_t builder;
+  _readDB.toBuilder(*builder);
+  return builder;
+}
+
+void AgencyCache::run() {
 
   _commitIndex = 0;
   _readDB.clear();
   double wait = 0.0;
 
-  using std::chrono;
+  using namespace std::chrono;
 
   TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
 
-  steady_clock::time_point last =
-  auto arangoPath = arangodb::cluster::paths::root()->arango();
   auto sendTransaction =
     [&](VPackBuilder& r) {
-      auto ret = AsyncAgencyComm().getValue(60s, arangoPath);
-      r.add(ret.value());
+      auto ret = AsyncAgencyComm().poll(60s, _commitIndex);
+      //r.add(ret.value());
       return ret;
     };
   auto self(shared_from_this());
   VPackBuilder result;
 
+
+  // Do this until end of time
+  // Long poll agency
+  // if result
+  //   if firstIndex == 0
+  //     overwrite readDB, update commitIndex
+  //   else
+  //     apply logs to local cache
+  // else
+  //   wait ever longer until success
+
   while (!this->isStopping()) {
 
-    builder.clear();
+    result.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
 
     auto ret = waitForFuture(
-      sendTransaction(builder)
+      sendTransaction(result)
       .thenValue(
-        [this, wantToActive](AsyncAgencyCommResult&& result) {
+        [&wait](AsyncAgencyCommResult&& result) {
           if (result.ok() && result.statusCode() == 200) {
-            _readDB.applyTransactions(result.get(logs));
+            //_readDB.applyTransactions(result.slice().get("logs"));
             wait = 0.0;
           } else {
             wait += 0.1;
-            LOG_TOPIC("9a9e3", DEBUG, Logger::Cluster) <<
-              "Failed to get poll result from agency: " << e.what();
+            LOG_TOPIC("9a9e3", DEBUG, Logger::CLUSTER) <<
+              "Failed to get poll result from agency.";
           }
           return futures::makeFuture();
         })
       .thenError<VPackException>(
-        [this](VPackException const& e) {
-          LOG_TOPIC("9a9e3", DEBUG, Logger::Cluster) <<
+        [&wait](VPackException const& e) {
+          LOG_TOPIC("9a9e3", DEBUG, Logger::CLUSTER) <<
             "Failed to parse poll result from agency: " << e.what();
           wait += 0.1;
         })
       .thenError<std::exception>(
-        [this](std::exception const& e) {
-          LOG_TOPIC("9a9e3", DEBUG, Logger::Cluster) <<
+        [&wait](std::exception const& e) {
+          LOG_TOPIC("9a9e3", DEBUG, Logger::CLUSTER) <<
             "Failed to get poll result from agency: " << e.what();
           wait += 0.1;
         }));
+
+    LOG_TOPIC("a4a4a", DEBUG, Logger::CLUSTER) << (int)ret;
 
   }
 
