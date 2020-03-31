@@ -375,8 +375,7 @@ function ValidationBasicsSuite () {
 
       // schema on non existing collection
       try {
-        res = db._query(`RETURN GET_SCHEMA("nonExistingTestCollection")`).toArray();
-        assertEqual(res[0], null);
+        db._query(`RETURN GET_SCHEMA("nonExistingTestCollection")`).toArray();
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
@@ -405,14 +404,13 @@ function ValidationBasicsSuite () {
       res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : "bar"}, { "properties" : { "foo" : { "type" : "string" } } } )`).toArray();
       assertEqual(res[0].valid, true);
 
-      //invalid schema
+      // no schema
       res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : "bar"}, null)`).toArray();
       assertEqual(res[0].valid, true);
 
       // invalid schema
       try {
-        res = db._query(`RETURN SCHEMA_VALIDATE({"foo" : "bar"}, [])`).toArray();
-        assertEqual(res[0].valid, true);
+        db._query(`RETURN SCHEMA_VALIDATE({"foo" : "bar"}, [])`).toArray();
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
