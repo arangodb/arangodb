@@ -119,7 +119,7 @@ void ClusterEngine::start() {
 
 std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
     transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature, /*keepData*/ false);
+  return std::make_unique<transaction::Manager>(feature);
 }
 
 std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(

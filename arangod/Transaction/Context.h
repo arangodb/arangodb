@@ -99,7 +99,7 @@ class Context {
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
-  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations,
+  void storeTransactionResult(TRI_voc_tid_t id, 
                               bool wasRegistered, bool isReadOnlyTransaction) noexcept;
 
  public:
@@ -149,7 +149,6 @@ class Context {
  private:
   struct {
     TRI_voc_tid_t id;
-    bool hasFailedOperations;
     bool isReadOnlyTransaction;
   } _transaction;
 

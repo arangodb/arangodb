@@ -862,7 +862,7 @@ void RocksDBEngine::unprepare() {
 
 std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
     transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature, /*keepData*/ false);
+  return std::make_unique<transaction::Manager>(feature);
 }
 
 std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(

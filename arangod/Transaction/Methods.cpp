@@ -789,7 +789,6 @@ transaction::Methods::~Methods() {
 
     // store result in context
     _transactionContextPtr->storeTransactionResult(_state->id(),
-                                                   _state->hasFailedOperations(),
                                                    _state->wasRegistered(),
                                                    _state->isReadOnlyTransaction());
 
