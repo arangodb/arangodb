@@ -90,7 +90,8 @@ class ConstrainedSortExecutor {
    * @brief This Executor knows how many rows it will produce and most by itself
    *        It also knows that it could produce less if the upstream only has fewer rows.
    */
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   bool compareInput(size_t const& rosPos, InputAqlItemRow const& row) const;
