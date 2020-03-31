@@ -169,10 +169,15 @@ bool FailedFollower::start(bool& aborts) {
   // Get proper replacement
   _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
-    // retry later
+    finish("", _shard, false, "Did not find available alternative server");
     return false;
   }
 
+  // The following is actually obsolete, since a FailedFollower job now always takes
+  // immediate action. We leave this code here to keep the change small. For 3.8,
+  // we plan to remove the FailedFollower job in its entirety and handle all failovers
+  // for followers (and potentially leaders) with `addFollower` and `removeFollower` jobs
+  // (and potentially another job).
   if (std::chrono::system_clock::now() - _created > std::chrono::seconds(4620)) {
     finish("", _shard, false, "Job timed out");
     return false;
