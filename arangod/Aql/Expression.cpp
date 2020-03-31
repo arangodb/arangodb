@@ -1664,6 +1664,10 @@ bool Expression::willUseV8() {
     initExpression();
   }
 
+  if (_type != SIMPLE) {
+    return false;
+  }
+
   return _node->willUseV8();
 }
 
