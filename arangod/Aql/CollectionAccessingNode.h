@@ -98,7 +98,7 @@ class CollectionAccessingNode {
 
   bool isUsedAsSatellite() const;
 
-  void useAsSatelliteOf(std::shared_ptr<aql::CollectionAccess> prototypeCollection);
+  void useAsSatelliteOf(std::shared_ptr<aql::CollectionAccess const> prototypeCollection);
 
   void cloneInto(CollectionAccessingNode& c) const {
     c._collectionAccess = _collectionAccess;
