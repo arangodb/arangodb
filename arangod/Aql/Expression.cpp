@@ -302,6 +302,7 @@ void Expression::initExpression() {
 
   // optimization for attribute accesses
   _type = ATTRIBUTE_ACCESS;
+  _accessor = nullptr;
 }
 
 void Expression::initAccessor() {
