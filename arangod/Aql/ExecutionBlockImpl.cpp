@@ -547,12 +547,18 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // that the upstream is no block using less than batchSize many rows, but returns HASMORE.
       if (inputRange.upstreamState() == ExecutorState::DONE || call.hasSoftLimit()) {
         blockSize = _executor.expectedNumberOfRowsNew(inputRange, call);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // The executor cannot expect to produce more then the limit!
         if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
           // Except the subqueryStartExecutor, it's limit differs
           // from it's output (it needs to count the new ShadowRows in addition)
-          TRI_ASSERT(blockSize <= call.getLimit());
+          // This however is only correct, as long as we are in no subquery context
+          if (inputRange.countShadowRows() == 0) {
+            TRI_ASSERT(blockSize <= call.getLimit());
+          }
         }
+#endif
 
         blockSize += inputRange.countShadowRows();
         // We have an upper bound by DefaultBatchSize;

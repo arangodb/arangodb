@@ -244,5 +244,8 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     // only is bad if we sort few elements within highly nested
     // subqueries.
   }
+  if (input.countShadowRows() == 0) {
+    return std::min(call.getLimit(), rowsAvailable);
+  }
   return rowsAvailable;
 }
