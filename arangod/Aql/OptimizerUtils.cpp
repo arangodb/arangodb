@@ -460,7 +460,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
 bool getBestIndexHandleForFilterCondition(
     aql::Collection const& collection,
-    std::string const& collectionName, arangodb::aql::AstNode*& node,
+    arangodb::aql::AstNode*& node,
     arangodb::aql::Variable const* reference, size_t itemsInCollection,
     aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex) {
   // We can only start after DNF transformation and only a single AND
