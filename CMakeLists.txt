@@ -300,6 +300,10 @@ if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
 
+# we want the following definitions to be in effect for both rocksdb and arangodb
+add_definitions("-DNROCKSDB_THREAD_STATUS")
+add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
+
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")

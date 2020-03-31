@@ -86,7 +86,7 @@
 namespace {
 
 struct TestIndex : public arangodb::Index {
-  TestIndex(TRI_idx_iid_t id, arangodb::LogicalCollection& collection,
+  TestIndex(arangodb::IndexId id, arangodb::LogicalCollection& collection,
             arangodb::velocypack::Slice const& definition)
       : arangodb::Index(id, collection, definition) {}
   bool canBeDropped() const override { return false; }
@@ -1091,7 +1091,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
 
       std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                    arangodb::velocypack::Slice const& definition,
-                                                   TRI_idx_iid_t id,
+                                                   arangodb::IndexId id,
                                                    bool isClusterConstructor) const override {
         auto& ci =
             collection.vocbase().server().getFeature<arangodb::ClusterFeature>().clusterInfo();
