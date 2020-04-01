@@ -481,9 +481,6 @@ class Methods {
   Future<OperationResult> truncateLocal(std::string const& collectionName,
                                         OperationOptions& options);
 
-  OperationResult rotateActiveJournalCoordinator(std::string const& collectionName,
-                                                 OperationOptions const& options);
-
  protected:
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(

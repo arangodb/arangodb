@@ -47,7 +47,7 @@ HotBackup::HotBackup(application_features::ApplicationServer& server)
   } else if (EngineSelectorFeature::isRocksDB()) {
     _engine = BACKUP_ENGINE::ROCKSDB;
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "mmfiles storage engine not available");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");
   }
 }
 
