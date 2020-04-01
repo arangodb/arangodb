@@ -166,7 +166,7 @@ std::vector<FutureRes> sendRequests(ConnectionPool* pool, DestinationId dest,
                                     RestVerb type, std::string path,
                                     velocypack::Buffer<uint8_t> payload,
                                     RequestOptions const& options, Headers headers) {
-  LOG_TOPIC("2713b", DEBUG, Logger::COMMUNICATION)
+  LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
       << "request to '" << dest << "' '" << fuerte::to_string(type) << " "
       << path << "'";
 
@@ -177,7 +177,7 @@ std::vector<FutureRes> sendRequests(ConnectionPool* pool, DestinationId dest,
                             std::move(headers));
 
   if (!pool || !pool->config().clusterInfo) {
-    LOG_TOPIC("59b96", ERR, Logger::COMMUNICATION)
+    LOG_TOPIC("59b97", ERR, Logger::COMMUNICATION)
         << "connection pool unavailable";
     fs.emplace_back(futures::makeFuture(
         Response{std::move(dest), Error::Canceled, nullptr, std::move(req)}));
