@@ -153,7 +153,7 @@ struct Functions {
   static AqlValue NgramSimilarity(ExpressionContext*, transaction::Methods*,
                                   VPackFunctionParameters const&);
   static AqlValue NgramPositionalSimilarity(ExpressionContext* ctx,
-                                            transaction::Methods*, 
+                                            transaction::Methods*,
                                             VPackFunctionParameters const&);
   static AqlValue NgramMatch(ExpressionContext*, transaction::Methods*,
                              VPackFunctionParameters const&);
@@ -426,6 +426,8 @@ struct Functions {
   static AqlValue RemoveNth(arangodb::aql::ExpressionContext*,
                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue ReplaceNth(arangodb::aql::ExpressionContext*,
+                             transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Interleave(arangodb::aql::ExpressionContext*,
                              transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue NotNull(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);

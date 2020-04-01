@@ -7523,3 +7523,54 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
 }
+
+AqlValue Functions::Interleave(arangodb::aql::ExpressionContext* expressionContext,
+                               transaction::Methods* trx,
+                               VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
+  static char const* AFN = "INTERLEAVE";
+
+  struct ArrayIteratorPair {
+    VPackArrayIterator current;
+    VPackArrayIterator end;
+  };
+
+  std::list<ArrayIteratorPair> iters;
+  std::vector<AqlValueMaterializer> materializers;
+  materializers.reserve(parameters.size());
+
+  for (AqlValue const& parameter : parameters) {
+    auto& materializer = materializers.emplace_back(trx);
+    VPackSlice slice = materializer.slice(parameter, true);
+
+    if (!slice.isArray()) {
+      // not an array
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      return AqlValue(AqlValueHintNull());
+    } else if (slice.isEmptyArray()) {
+      continue;  // skip empty array here
+    }
+
+    VPackArrayIterator iter(slice);
+    ArrayIteratorPair pair{iter.begin(), iter.end()};
+    iters.emplace_back(pair);
+  }
+
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+
+  while (!iters.empty()) {  // in this loop we only deal with nonempty arrays
+    for (auto i = iters.begin(); i != iters.end();) {
+      builder->add(i->current.value());  // thus this will always be valid on the first iteration
+      i->current++;
+      if (i->current == i->end) {
+        i = iters.erase(i);
+      } else {
+        i++;
+      }
+    }
+  }
+
+  builder->close();
+  return AqlValue(builder.get());
+}
