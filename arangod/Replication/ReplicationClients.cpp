@@ -46,16 +46,17 @@ struct SyncerInfo {
         clientId(progress.clientId),
         clientInfo(progress.clientInfo) {}
 
-  SyncerInfo(SyncerId syncerId, TRI_server_id_t clientId, std::string const& clientInfo)
+  SyncerInfo(SyncerId syncerId, ServerId clientId, std::string const& clientInfo)
       : syncerId(syncerId), clientId(clientId), clientInfo(clientInfo) {}
 
   SyncerId const syncerId;
-  TRI_server_id_t const clientId;
+  ServerId const clientId;
   std::string const clientInfo;
 };
 
 std::ostream& operator<<(std::ostream& ostream, SyncerInfo const& info) {
-  ostream << "syncer " << info.syncerId.toString() << " from client " << info.clientId;
+  ostream << "syncer " << info.syncerId.toString() << " from client "
+          << info.clientId.id();
   if (!info.clientInfo.empty()) {
     ostream << " (" << info.clientInfo << ")";
   }
@@ -66,7 +67,7 @@ std::ostream& operator<<(std::ostream& ostream, SyncerInfo const& info) {
 
 /// @brief simply extend the lifetime of a specific client, so that its entry
 /// does not expire but does not update the client's lastServedTick value
-void ReplicationClientsProgressTracker::extend(SyncerId syncerId, TRI_server_id_t clientId,
+void ReplicationClientsProgressTracker::extend(SyncerId syncerId, ServerId clientId,
                                                std::string const& clientInfo, double ttl) {
   auto const key = getKey(syncerId, clientId);
   if (key.first == KeyType::INVALID) {
@@ -104,7 +105,7 @@ void ReplicationClientsProgressTracker::extend(SyncerId syncerId, TRI_server_id_
 
 /// @brief simply update the progress of a specific client, so that its entry
 /// does not expire this will update the client's lastServedTick value
-void ReplicationClientsProgressTracker::track(SyncerId syncerId, TRI_server_id_t clientId,
+void ReplicationClientsProgressTracker::track(SyncerId syncerId, ServerId clientId,
                                               std::string const& clientInfo,
                                               TRI_voc_tick_t lastServedTick, double ttl) {
   auto const key = getKey(syncerId, clientId);
@@ -165,7 +166,7 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
     auto const& progress = it.second;
     builder.add(VPackValue(VPackValueType::Object));
     builder.add("syncerId", VPackValue(progress.syncerId.toString()));
-    builder.add("serverId", VPackValue(std::to_string(progress.clientId)));
+    builder.add("serverId", VPackValue(std::to_string(progress.clientId.id())));
     builder.add("clientInfo", VPackValue(progress.clientInfo));
 
     char buffer[21];
@@ -221,8 +222,7 @@ uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
   return value;
 }
 
-void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
-                                                TRI_server_id_t const clientId,
+void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId, ServerId const clientId,
                                                 std::string const& clientInfo) {
   auto const key = getKey(syncerId, clientId);
   if (key.first == KeyType::INVALID) {

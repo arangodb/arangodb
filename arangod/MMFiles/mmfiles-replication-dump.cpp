@@ -519,7 +519,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
       char const* ptr;
       char const* end;
       MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
-  
+
       LOG_TOPIC("68b7b", DEBUG, arangodb::Logger::REPLICATION)
           << "dumping logfile " << logfile->id();
 

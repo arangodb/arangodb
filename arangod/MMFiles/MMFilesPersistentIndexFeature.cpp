@@ -223,8 +223,7 @@ int MMFilesPersistentIndexFeature::dropCollection(TRI_voc_tick_t databaseId,
 }
 
 int MMFilesPersistentIndexFeature::dropIndex(TRI_voc_tick_t databaseId,
-                                             TRI_voc_cid_t collectionId,
-                                             TRI_idx_iid_t indexId) {
+                                             TRI_voc_cid_t collectionId, IndexId indexId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }

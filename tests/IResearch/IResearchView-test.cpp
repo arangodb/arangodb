@@ -750,7 +750,8 @@ TEST_F(IResearchViewTest, test_cleanup) {
   auto& factory =
       server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
   std::shared_ptr<arangodb::Index> index =
-      factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+      factory.instantiate(*logicalCollection, linkJson->slice(),
+                          arangodb::IndexId{42}, false);
   ASSERT_TRUE((false == !index));
   auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_TRUE((false == !link));
@@ -879,7 +880,15 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   arangodb::Result res = view->properties(links->slice(), true);
   EXPECT_TRUE(true == res.ok());
   EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-  dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=(std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_" + std::to_string(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view)->id()))).utf8();
+  dataPath =
+      ((((irs::utf8_path() /= testFilesystemPath) /=
+         std::string("databases")) /=
+        (std::string("database-") + std::to_string(vocbase.id()))) /=
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_" +
+        std::to_string(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view)
+                           ->id()
+                           .id())))
+          .utf8();
   EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
 
   {
@@ -961,7 +970,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -1037,7 +1047,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -1113,7 +1124,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), __LINE__, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{__LINE__}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -1206,7 +1218,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), __LINE__, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{__LINE__}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -1294,7 +1307,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), __LINE__, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{__LINE__}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -1455,7 +1469,8 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -1531,7 +1546,8 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -1609,7 +1625,8 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -1687,8 +1704,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
       struct Link: public arangodb::iresearch::IResearchLink {
-        Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
-      } link(42, *logicalCollection);
+        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
+            : IResearchLink(id, col) {}
+      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
       EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
@@ -1746,8 +1764,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
       struct Link: public arangodb::iresearch::IResearchLink {
-        Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
-      } link(42, *logicalCollection);
+        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
+            : IResearchLink(id, col) {}
+      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
       EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
@@ -1801,8 +1820,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = []()->void { throw std::exception(); };
       struct Link: public arangodb::iresearch::IResearchLink {
-        Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
-      } link(42, *logicalCollection);
+        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
+            : IResearchLink(id, col) {}
+      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
       EXPECT_TRUE((false == view->link(asyncLinkPtr).ok()));
@@ -1859,8 +1879,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
       struct Link: public arangodb::iresearch::IResearchLink {
-        Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
-      } link(42, *logicalCollection);
+        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
+            : IResearchLink(id, col) {}
+      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
       EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
@@ -1921,7 +1942,8 @@ TEST_F(IResearchViewTest, test_insert) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     StorageEngineMock::recoveryTickCallback = []() {};
     auto restore = irs::make_finally([&before]()->void {
       StorageEngineMock::recoveryStateResult = before;
@@ -1993,7 +2015,8 @@ TEST_F(IResearchViewTest, test_insert) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     StorageEngineMock::recoveryTickCallback = []() {};
     auto restore = irs::make_finally([&before]()->void {
       StorageEngineMock::recoveryStateResult = before;
@@ -2056,7 +2079,8 @@ TEST_F(IResearchViewTest, test_insert) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2107,7 +2131,8 @@ TEST_F(IResearchViewTest, test_insert) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2158,7 +2183,8 @@ TEST_F(IResearchViewTest, test_insert) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2206,7 +2232,8 @@ TEST_F(IResearchViewTest, test_insert) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2261,7 +2288,8 @@ TEST_F(IResearchViewTest, test_insert) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2332,7 +2360,8 @@ TEST_F(IResearchViewTest, test_remove) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     StorageEngineMock::recoveryTickCallback = []() {};
     auto restore = irs::make_finally([&before]()->void {
       StorageEngineMock::recoveryStateResult = before;
@@ -2408,7 +2437,8 @@ TEST_F(IResearchViewTest, test_remove) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     StorageEngineMock::recoveryTickCallback = []() {};
     auto restore = irs::make_finally([&before]()->void {
       StorageEngineMock::recoveryStateResult = before;
@@ -2471,7 +2501,8 @@ TEST_F(IResearchViewTest, test_remove) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2522,7 +2553,8 @@ TEST_F(IResearchViewTest, test_remove) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2573,7 +2605,8 @@ TEST_F(IResearchViewTest, test_remove) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2621,7 +2654,8 @@ TEST_F(IResearchViewTest, test_remove) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2676,7 +2710,8 @@ TEST_F(IResearchViewTest, test_remove) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -2780,7 +2815,8 @@ TEST_F(IResearchViewTest, test_query) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -3014,7 +3050,8 @@ TEST_F(IResearchViewTest, test_register_link) {
     persisted = false;
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-    auto link = factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+    auto link = factory.instantiate(*logicalCollection, linkJson->slice(),
+                                    arangodb::IndexId{1}, false);
     EXPECT_TRUE(persisted);
     EXPECT_NE(nullptr, link);
 
@@ -3087,7 +3124,8 @@ TEST_F(IResearchViewTest, test_register_link) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> link =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{1}, false);
     EXPECT_TRUE((true == persisted)); // link instantiation does modify and persist view meta
     EXPECT_TRUE((false == !link));
     std::unordered_set<TRI_voc_cid_t> cids;
@@ -3157,7 +3195,8 @@ TEST_F(IResearchViewTest, test_register_link) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> link0 =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{1}, false);
     EXPECT_TRUE((false == persisted));
     EXPECT_TRUE((false == !link0));
 
@@ -3189,13 +3228,15 @@ TEST_F(IResearchViewTest, test_register_link) {
     persisted = false;
     std::shared_ptr<arangodb::Index> link1;
     try {
-      link1 = factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+      link1 = factory.instantiate(*logicalCollection, linkJson->slice(),
+                                  arangodb::IndexId{1}, false);
       EXPECT_EQ(nullptr, link1);
     } catch (std::exception const&) {
       // ignore any errors here
     }
     link0.reset(); // unload link before creating a new link instance
-    link1 = factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+    link1 = factory.instantiate(*logicalCollection, linkJson->slice(),
+                                arangodb::IndexId{1}, false);
     EXPECT_TRUE((false == persisted));
     EXPECT_TRUE((false == !link1)); // duplicate link creation is allowed
     std::unordered_set<TRI_voc_cid_t> cids;
@@ -3249,7 +3290,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), __LINE__, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{__LINE__}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -3274,7 +3316,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     }
 
     auto links = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": { \"testCollection\": { \"id\": " + std::to_string(link->id()) + " } } }" // same link ID
+        "{ \"links\": { \"testCollection\": { \"id\": " +
+        std::to_string(link->id().id()) + " } } }"  // same link ID
     );
 
     link->unload(); // unload link before creating a new link instance
@@ -3356,7 +3399,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), __LINE__, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{__LINE__}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -3381,7 +3425,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     }
 
     auto links = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": { \"testCollection\": {\"id\": " + std::to_string(link->id()) + " } } }" // same link ID
+        "{ \"links\": { \"testCollection\": {\"id\": " +
+        std::to_string(link->id().id()) + " } } }"  // same link ID
     );
 
     link->unload(); // unload link before creating a new link instance
@@ -3639,7 +3684,8 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   auto& factory =
       server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
   std::shared_ptr<arangodb::Index> index =
-      factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+      factory.instantiate(*logicalCollection, linkJson->slice(),
+                          arangodb::IndexId{42}, false);
   ASSERT_TRUE((false == !index));
   auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_TRUE((false == !link));
@@ -4201,7 +4247,8 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
   auto& factory =
       server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
   std::shared_ptr<arangodb::Index> index =
-      factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+      factory.instantiate(*logicalCollection, linkJson->slice(),
+                          arangodb::IndexId{42}, false);
   ASSERT_TRUE((false == !index));
   auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_TRUE((false == !link));
@@ -6792,7 +6839,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": null, \"testCollection\": {} } }"
       );
-      std::unordered_set<TRI_idx_iid_t> initial;
+      std::unordered_set<arangodb::IndexId> initial;
 
       for (auto& idx: logicalCollection->getIndexes()) {
         initial.emplace(idx->id());
@@ -6839,7 +6886,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_TRUE((false == slice.hasKey("links")));
       }
 
-      std::unordered_set<TRI_idx_iid_t> actual;
+      std::unordered_set<arangodb::IndexId> actual;
 
       for (auto& index: logicalCollection->getIndexes()) {
         actual.emplace(index->id());

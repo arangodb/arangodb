@@ -507,9 +507,6 @@ function printTraversalDetails(traversals) {
       uniqueVertices: options.uniqueVertices,
       uniqueEdges: options.uniqueEdges
     };
-    if (options.vertexCollections !== undefined) {
-      opts.vertexCollections = options.vertexCollections;
-    }
 
     var result = '';
     for (var att in opts) {
@@ -1103,7 +1100,7 @@ function processQuery(query, explain, planIndex) {
   };
 
   var label = function (node) {
-    var rc, v, e, edgeCols, i, d, directions, isLast;
+    var rc, v, vNames, e, eNames, edgeCols, i, d, directions, isLast;
     var parts = [];
     var types = [];
     var filter = '';
@@ -1296,27 +1293,62 @@ function processQuery(query, explain, planIndex) {
         }
 
         e = [];
+        eNames = [];
         if (node.hasOwnProperty('graphDefinition')) {
           v = [];
-          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-            v.push(collection(vcn));
-          });
+          vNames = [];
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          } else {
+            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          }
           node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(', ').length;
+          node.vertexCollectionNameStrLen = vNames.join(', ').length;
 
-          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
         } else {
-          edgeCols = node.graph || [];
-          edgeCols.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            edgeCols = node.graph || [];
+            edgeCols.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
           node.graph = '<anonymous>';
+
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            v = [];
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+            });
+            node.vertexCollectionNameStr = v.join(', ');
+            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
+          }
         }
 
         allIndexes.forEach(function (idx) {
@@ -1374,27 +1406,61 @@ function processQuery(query, explain, planIndex) {
 
         shortestPathDetails.push(node);
         e = [];
+        eNames = [];
         if (node.hasOwnProperty('graphDefinition')) {
           v = [];
-          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-            v.push(collection(vcn));
-          });
+          vNames = [];
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          } else {            
+            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          }
           node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(', ').length;
+          node.vertexCollectionNameStrLen = vNames.join(', ').length;
 
-          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
         } else {
-          edgeCols = node.graph || [];
-          edgeCols.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            edgeCols = node.graph || [];
+            edgeCols.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
           node.graph = '<anonymous>';
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            v = [];
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+            });
+            node.vertexCollectionNameStr = v.join(', ');
+            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
+          }
         }
         return rc;
       }
@@ -1445,27 +1511,61 @@ function processQuery(query, explain, planIndex) {
 
         kShortestPathsDetails.push(node);
         e = [];
+        eNames = [];
         if (node.hasOwnProperty('graphDefinition')) {
           v = [];
-          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-            v.push(collection(vcn));
-          });
+          vNames = [];
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          } else {
+            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          }
           node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(', ').length;
+          node.vertexCollectionNameStrLen = vNames.join(', ').length;
 
-          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
         } else {
-          edgeCols = node.graph || [];
-          edgeCols.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            edgeCols = node.graph || [];
+            edgeCols.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
           node.graph = '<anonymous>';
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            v = [];
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+            });
+            node.vertexCollectionNameStr = v.join(', ');
+            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
+          }
         }
         return rc;
       }

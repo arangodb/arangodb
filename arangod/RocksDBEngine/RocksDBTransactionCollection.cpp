@@ -270,11 +270,11 @@ void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
   }
 }
 
-void RocksDBTransactionCollection::trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexInsert(IndexId iid, uint64_t hash) {
   _trackedIndexOperations[iid].inserts.emplace_back(hash);
 }
 
-void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexRemove(IndexId iid, uint64_t hash) {
   _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 
