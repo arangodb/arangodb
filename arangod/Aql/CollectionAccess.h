@@ -59,10 +59,16 @@ class CollectionAccess {
 
   auto isUsedAsSatellite() const noexcept -> bool;
 
-  void useAsSatelliteOf(std::shared_ptr<CollectionAccess const> prototypeCollection);
+  /// @brief Use this collection access as a satellite of the prototype.
+  /// This will work transitively, even if the prototypeAccess is only
+  /// subsequently marked as a satellite of another access. However, after
+  /// se- and deserialization, this won't work anymore.
+  void useAsSatelliteOf(std::shared_ptr<CollectionAccess const> prototypeAccess);
 
   /// @brief Get the CollectionAccess of which *this* collection access is a
   /// satellite of.
+  /// This will make a recursive lookup, so if A isSatelliteOf B, and B isSatelliteOf C,
+  /// A.getSatelliteOf() will return C.
   auto getSatelliteOf() const -> std::shared_ptr<aql::CollectionAccess const> const&;
 
  private:

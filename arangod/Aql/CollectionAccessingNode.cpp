@@ -124,9 +124,9 @@ bool CollectionAccessingNode::isUsedAsSatellite() const {
   return _collectionAccess->isUsedAsSatellite();
 }
 
-void CollectionAccessingNode::useAsSatelliteOf(std::shared_ptr<aql::CollectionAccess const> prototypeCollection) {
+void CollectionAccessingNode::useAsSatelliteOf(std::shared_ptr<aql::CollectionAccess const> prototypeAccess) {
   TRI_ASSERT(collection()->isSatellite());
-  _collectionAccess->useAsSatelliteOf(std::move(prototypeCollection));
+  _collectionAccess->useAsSatelliteOf(std::move(prototypeAccess));
 }
 
 auto CollectionAccessingNode::getSatelliteOf() const

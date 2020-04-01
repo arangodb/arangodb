@@ -91,8 +91,8 @@ auto CollectionAccess::prototypeOutVariable() const noexcept -> aql::Variable co
   return _prototypeOutVariable;
 }
 
-void CollectionAccess::useAsSatelliteOf(std::shared_ptr<CollectionAccess const> prototypeCollection) {
-  _isSatelliteOf = std::move(prototypeCollection);
+void CollectionAccess::useAsSatelliteOf(std::shared_ptr<CollectionAccess const> prototypeAccess) {
+  _isSatelliteOf = std::move(prototypeAccess);
 }
 
 bool CollectionAccess::isUsedAsSatellite() const noexcept {
