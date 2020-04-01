@@ -7512,11 +7512,11 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintNull());
 }
 
-AqlValue Functions::GetSchema(ExpressionContext* expressionContext,
+AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
   // GET_VALIDATON(collectionName)
-  static char const* AFN = "GET_SCHEMA";
+  static char const* AFN = "SCHEMA_GET";
 
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);

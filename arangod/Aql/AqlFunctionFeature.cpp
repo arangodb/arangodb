@@ -437,7 +437,7 @@ void AqlFunctionFeature::addMiscFunctions() {
                                                                             // C++ implementation
                                                                             //
   auto validationFlags = Function::makeFlags(FF::None);
-  add({"GET_SCHEMA", ".", validationFlags, &Functions::GetSchema});
+  add({"SCHEMA_GET", ".", validationFlags, &Functions::SchemaGet});
   add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::SchemaValidate});
 
   // special flags:

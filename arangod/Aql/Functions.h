@@ -471,7 +471,7 @@ struct Functions {
   static AqlValue CurrentUser(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
 
-  static AqlValue GetSchema(arangodb::aql::ExpressionContext*,
+  static AqlValue SchemaGet(arangodb::aql::ExpressionContext*,
                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue SchemaValidate(arangodb::aql::ExpressionContext*,
                                  transaction::Methods*, VPackFunctionParameters const&);

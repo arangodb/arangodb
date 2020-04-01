@@ -363,30 +363,30 @@ function ValidationBasicsSuite () {
 
     },
     // AQL  ////////////////////////////////////////////////////////////////////////////////////////////
-    test_GET_SCHEMA: () => {
+    test_SCHEMA_GET: () => {
       validatorJson.level = "strict";
       testCollection.properties({"validation" : validatorJson });
       sleepInCluster();
 
       // get regular schema
-      let res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
+      let res = db._query(`RETURN SCHEMA_GET("${testCollectionName}")`).toArray();
       assertEqual(res[0], validatorJson.rule);
     },
 
-    test_GET_SCHEMA_no_collection: () => {
+    test_SCHEMA_GET_no_collection: () => {
       // schema on non existing collection
       try {
-        db._query(`RETURN GET_SCHEMA("nonExistingTestCollection")`).toArray();
+        db._query(`RETURN SCHEMA_GET("nonExistingTestCollection")`).toArray();
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },
 
-    test_GET_SCHEMA_null: () => {
+    test_SCHEMA_GET_null: () => {
       // no validation available must return `null`
       testCollection.properties({validation : {}});
-      let res = db._query(`RETURN GET_SCHEMA("${testCollectionName}")`).toArray();
+      let res = db._query(`RETURN SCHEMA_GET("${testCollectionName}")`).toArray();
       assertEqual(res[0], null);
     },
 
