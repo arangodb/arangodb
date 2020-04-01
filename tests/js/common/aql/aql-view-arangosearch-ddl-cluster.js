@@ -754,6 +754,7 @@ function IResearchFeatureDDLTestSuite () {
         writebufferSizeMax: 44040192,
         locale: "C",
         version: 1,
+        primarySortCompression:"none",
         primarySort: [
           { field: "my.Nested.field", direction: "asc" },
           { field: "another.field", asc: false }
@@ -776,6 +777,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, primarySort[0].asc);
       assertEqual("another.field", primarySort[1].field);
       assertEqual(false, primarySort[1].asc);
+      assertEqual("none", propertis.primarySortCompression);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);
@@ -794,6 +796,7 @@ function IResearchFeatureDDLTestSuite () {
         locale: "en_EN.UTF-8",
         version: 2,
         primarySort: [ { field: "field", asc: false } ],
+        primarySortCompression:"lz4",
         "cleanupIntervalStep": 442
       }, false); // full update
 
@@ -812,6 +815,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, primarySort[0].asc);
       assertEqual("another.field", primarySort[1].field);
       assertEqual(false, primarySort[1].asc);
+      assertEqual("none", propertis.primarySortCompression);
       assertEqual(442, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);

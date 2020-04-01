@@ -1,6 +1,10 @@
 devel
 -----
 
+* added primarySortCompression property to ArangoSearch Views
+
+* added compression property to ArangoSearch View storedValues
+
 * Upgraded bundled RocksDB library to version 6.8.0.
 
 * Added AQL function `IN_RANGE`.

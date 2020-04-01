@@ -272,7 +272,7 @@ irs::compression::type_id const& decodeCompression(
     type = &irs::compression::lz4::type();
     break;
   case arangodb::iresearch::ColumnCompression::NONE:
-    type = &irs::compression::raw::type();
+    type = &irs::compression::none::type();
     break;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   case arangodb::iresearch::ColumnCompression::TEST:
