@@ -224,6 +224,7 @@ class StaticStrings {
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
+  static std::string const SyncByRevision;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Validation;
   static std::string const WriteConcern;
@@ -304,6 +305,8 @@ class StaticStrings {
   static std::string const AqlRemoteState;
   static std::string const AqlRemoteStateDone;
   static std::string const AqlRemoteStateHasmore;
+  static std::string const AqlCallListSpecific;
+  static std::string const AqlCallListDefault;
 
   // validation
   static std::string const ValidatorLevelNone;
@@ -315,10 +318,19 @@ class StaticStrings {
   static std::string const ValidatorParameterLevel;
   static std::string const ValidatorParameterType;
   static std::string const ValidatorParameterRule;
+  static std::string const ValidatorParameterSpecialProperties;
 
   static std::string const ValidatorTypeJsonSchema;
   static std::string const ValidatorTypeAQL;
   static std::string const ValidatorTypeBool;
+
+  static std::string const ValidatorPropertyAll;
+  static std::string const ValidatorPropertyNone;
+  static std::string const ValidatorPropertyKey;
+  static std::string const ValidatorPropertyId;
+  static std::string const ValidatorPropertyRev;
+  static std::string const ValidatorPropertyFrom;
+  static std::string const ValidatorPropertyTo;
 
   // metrics prometheus labels
   static std::string const HeartbeatSendTimeMs;
@@ -364,7 +376,6 @@ class StaticStrings {
   static std::string const SupervisionAccumRuntimeMs;
   static std::string const SupervisionAccumRuntimeWaitForSyncMs;
   static std::string const SupervisionFailedServerCount;
-
 };
 }  // namespace arangodb
 

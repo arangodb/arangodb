@@ -26,7 +26,8 @@
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesSkiplistIndex.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -42,11 +43,8 @@ class MMFilesTtlIndex final : public MMFilesSkiplistIndex {
  public:
   MMFilesTtlIndex() = delete;
 
-  MMFilesTtlIndex(
-    TRI_idx_iid_t iid,
-    LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info
-  );
+  MMFilesTtlIndex(IndexId iid, LogicalCollection& collection,
+                  arangodb::velocypack::Slice const& info);
 
   ~MMFilesTtlIndex();
 

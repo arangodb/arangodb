@@ -90,6 +90,7 @@ class SslServerFeature : public application_features::ApplicationFeature {
   uint64_t _sslProtocol;
   uint64_t _sslOptions;
   std::string _ecdhCurve;
+  bool _preferHttp11InAlpn;
 
  private:
   asio_ns::ssl::context createSslContextInternal(std::string keyfileName,

@@ -96,7 +96,7 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
                                         arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter functions EXISTS, IN_RANGE, PHRASE "
+      "ArangoSearch filter functions EXISTS, PHRASE "
       " are designed to be used only within a corresponding SEARCH statement "
       "of ArangoSearch view."
       " Please ensure function signature is correct.");
@@ -403,7 +403,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "EXISTS", ".|.,.", flags, &dummyFilterFunc });  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
   addFunction(functions, { "STARTS_WITH", ".,.|.", flags, &startsWithFunc });  // (attribute, prefix, scoring-limit)
   addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
-  addFunction(functions, { "IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc });  // (attribute, lower, upper, include lower, include upper)
   addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &minMatchFunc });  // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, { "BOOST", ".,.", flags, &contextFunc });  // (filter expression, boost)
   addFunction(functions, { "ANALYZER", ".,.", flags, &contextFunc });  // (filter expression, analyzer)
@@ -584,7 +583,8 @@ bool isFilter(arangodb::aql::Function const& func) noexcept {
          func.implementation == &startsWithFunc ||
          func.implementation == &aql::Functions::LevenshteinMatch ||
          func.implementation == &aql::Functions::Like ||
-         func.implementation == &aql::Functions::NgramMatch;
+         func.implementation == &aql::Functions::NgramMatch ||
+         func.implementation == &aql::Functions::InRange;
 }
 
 bool isScorer(arangodb::aql::Function const& func) noexcept {
@@ -656,7 +656,7 @@ class IResearchFeature::Async {
 
   arangodb::basics::ConditionVariable _join;  // mutex to join on
   std::vector<Thread> _pool;  // thread pool (size fixed for the entire life of object)
-  std::atomic<bool> _terminate;  // unconditionaly terminate async tasks
+  std::atomic<bool> _terminate;  // unconditionally terminate async tasks
 
   void stop(Thread* redelegate = nullptr);
 };
@@ -671,7 +671,7 @@ void IResearchFeature::Async::Thread::run() {
     auto pendingStart = _tasks.size();
 
     {
-      SCOPED_LOCK_NAMED(_mutex, lock);  // aquire before '_terminate' check so
+      SCOPED_LOCK_NAMED(_mutex, lock);  // acquire before '_terminate' check so
                                         // that don't miss notify()
 
       if (_terminate->load()) {
@@ -680,7 +680,7 @@ void IResearchFeature::Async::Thread::run() {
 
       // transfer any new pending tasks into active tasks
       for (auto& pending : _pending) {
-        _tasks.emplace_back(std::move(pending));  // will aquire resource lock
+        _tasks.emplace_back(std::move(pending));  // will acquire resource lock
 
         auto& task = _tasks.back();
 
@@ -688,7 +688,7 @@ void IResearchFeature::Async::Thread::run() {
           task._lock = std::unique_lock<ReadMutex>(task._mutex->mutex(), std::try_to_lock);
 
           if (!task._lock.owns_lock()) {
-            // if can't lock 'task._mutex' then reasign the task to the next
+            // if can't lock 'task._mutex' then reassign the task to the next
             // worker
             pendingRedelegate.emplace_back(std::move(task));
           } else if (*(task._mutex)) {
@@ -730,7 +730,7 @@ void IResearchFeature::Async::Thread::run() {
         (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1)) {
       SCOPED_LOCK(_next->_mutex);
 
-      // reasign to '_next' tasks that failed resourceMutex aquisition
+      // reassign to '_next' tasks that failed resourceMutex aquisition
       while (!pendingRedelegate.empty()) {
         _next->_pending.emplace_back(std::move(pendingRedelegate.back()));
         pendingRedelegate.pop_back();
@@ -751,7 +751,7 @@ void IResearchFeature::Async::Thread::run() {
 
     for (size_t i = onlyPending ? pendingStart : 0,
                 count = _tasks.size();  // optimization to skip previously run
-                                        // tasks if a notificationw as not raised
+                                        // tasks if a notification was not raised
          i < count;) {
       auto& task = _tasks[i];
       auto exec = std::chrono::system_clock::now() >= task._timeout;
@@ -788,7 +788,7 @@ void IResearchFeature::Async::Thread::run() {
   }
 
   // ...........................................................................
-  // move all tasks back into _pending in case the may neeed to be reasigned
+  // move all tasks back into _pending in case the may need to be reassigned
   // ...........................................................................
   SCOPED_LOCK_NAMED(_mutex, lock);  // '_pending' may be modified asynchronously
 

@@ -164,7 +164,7 @@ static void JS_EstimateCollectionSize(v8::FunctionCallbackInfo<v8::Value> const&
   builder.add("indexes", VPackValue(VPackValueType::Object));
 
   for (auto& i : collection->getIndexes()) {
-    builder.add(std::to_string(i->id()), VPackValue(0));
+    builder.add(std::to_string(i->id().id()), VPackValue(0));
   }
 
   builder.close();

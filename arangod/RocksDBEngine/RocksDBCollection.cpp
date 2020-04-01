@@ -52,13 +52,13 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/Helpers.h"
 #include "Transaction/Context.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
@@ -220,10 +220,10 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     }
 
     if (idx) {
-      TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
+      TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id.id()));
       _indexes.emplace(idx);
       if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-        TRI_ASSERT(idx->id() == 0);
+        TRI_ASSERT(idx->id().isPrimary());
         _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
       }
     }
@@ -451,9 +451,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 }
 
 /// @brief Drop an index with the given iid.
-bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
+bool RocksDBCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
-  if (iid == 0) {
+  if (iid.isPrimary() || iid.isNone()) {
     // invalid index id or primary index
     return true;
   }
@@ -473,7 +473,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   if (!toRemove) {  // index not found
     // We tried to remove an index that does not exist
     events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                      std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+                      std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     return false;
   }
 
@@ -489,7 +489,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   }
 
   events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                    std::to_string(iid), TRI_ERROR_NO_ERROR);
+                    std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
 
   cindex->compact(); // trigger compaction before deleting the object
 
@@ -845,7 +845,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   }
 
   VPackSlice newSlice = builder->slice();
-  if(options.validate) {
+  if(options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(newSlice, trx->transactionContextPtr()->getVPackOptions());
 
     if (res.fail()) {
@@ -993,7 +993,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     }
   }
 
-  if(options.validate) {
+  if(options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(builder->slice(), oldDoc, trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {
       return res;
@@ -1102,7 +1102,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
   VPackSlice const newDoc(builder->slice());
 
-  if(options.validate) {
+  if(options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(newDoc, oldDoc, trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {
       return res;
@@ -1576,17 +1576,17 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
 
   transaction::StringLeaser buffer(trx);
   rocksdb::PinnableSlice ps(buffer.get());
-  
+
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
 
   if (!s.ok()) {
     return false;
   }
-    
+
   TRI_ASSERT(ps.size() > 0);
   cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
-  
+
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
@@ -1606,7 +1606,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
       }
     }
   }
-  
+
   return true;
 }
 

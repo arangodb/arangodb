@@ -64,7 +64,16 @@ struct basic_sort : irs::sort {
   };
 
   struct prepared_sort final : irs::sort::prepared {
-    explicit prepared_sort(size_t idx) : idx(idx) { }
+    explicit prepared_sort(size_t idx) : idx(idx) {
+      merge_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
+                       const irs::byte_type** src_start, const size_t size) {
+        const auto offset = ctx->score_offset;
+        score_cast<size_t>(dst + offset) = 0;
+        for (size_t i = 0; i < size; ++i) {
+          score_cast<size_t>(dst + offset) += score_cast<size_t>(src_start[i]  + offset);
+        }
+      };
+    }
 
     virtual void collect(
       irs::byte_type* filter_attrs,
@@ -107,14 +116,6 @@ struct basic_sort : irs::sort {
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       return nullptr; // do not need to collect stats
-    }
-
-    virtual void merge(irs::byte_type* dst, const irs::byte_type** src_start,
-                       const size_t size, size_t offset) const override {
-      score_cast<size_t>(dst + offset) = 0;
-      for (size_t i = 0; i < size; ++i) {
-        score_cast<size_t>(dst + offset) += score_cast<size_t>(src_start[i]  + offset);
-      }
     }
 
     bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {

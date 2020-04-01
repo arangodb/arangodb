@@ -41,10 +41,11 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -639,7 +640,7 @@ class ClusterInfo final {
   Result dropIndexCoordinator(          // drop index
       std::string const& databaseName,  // database name
       std::string const& collectionID,  // collection identifier
-      TRI_idx_iid_t iid,                // index identifier
+      IndexId iid,                      // index identifier
       double timeout                    // request timeout
   );
 

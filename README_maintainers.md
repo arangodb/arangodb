@@ -161,13 +161,13 @@ cluster on your local machine. `scripts/stopLocalCluster` stops it again.
 
 `scripts/startLocalCluster [numDBServers numCoordinators [mode]]`
 
-Without arguments it starts 2 DBServers and 1 Coordinator in the background,
-running on ports 8629, 8630 and 8530 respectively. The agency runs on port 4001.
+Without arguments it starts 2 DB-Servers and 1 Coordinator in the background,
+running on ports 8629, 8630 and 8530 respectively. The Agency runs on port 4001.
 
 Mode:
 - `C`: Starts the first Coordinator with `--console` in a separate window
   (using an `xterm`).
-- `D`: Starts all DBServers in the GNU debugger in separate windows
+- `D`: Starts all DB-Servers in the GNU debugger in separate windows
   (using `xterm`s). Hit *ENTER* in the original terminal where the script
   runs to continue once all processes have been started up in the debugger.
 

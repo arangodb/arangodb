@@ -108,6 +108,15 @@ namespace tao::json
          return true;
       }
 
+      [[nodiscard]] inline std::size_t unicode_size( const std::string_view v ) noexcept
+      {
+         std::size_t r = 0;
+         for( char c : v ) {
+            r += ( ( c & 0xC0 ) != 0x80 );
+         }
+         return r;
+      }
+
       enum schema_flags
       {
          NONE = 0,
@@ -229,7 +238,7 @@ namespace tao::json
             m_flags = m_flags | v;
          }
 
-         void add_type( const std::string& v )
+         void add_type( const std::string_view v )
          {
             if( !v.empty() ) {
                switch( v[ 0 ] ) {
@@ -268,7 +277,7 @@ namespace tao::json
                      break;
                }
             }
-            throw std::runtime_error( "invalid JSON Schema: invalid primitive type '" + v + '\'' );
+            throw std::runtime_error( "invalid JSON Schema: invalid primitive type '" + std::string( v ) + '\'' );
          }
 
          [[nodiscard]] const basic_value< Traits >* find( const char* s ) const
@@ -307,14 +316,14 @@ namespace tao::json
             if( const auto* p = find( "type" ) ) {
                switch( p->type() ) {
                   case type::STRING:
-                     add_type( p->get_string() );
+                     add_type( p->get_string_type() );
                      break;
                   case type::ARRAY:
                      for( const auto& e : p->get_array() ) {
                         if( !e.is_string() ) {
                            throw std::runtime_error( "invalid JSON Schema: elements in array \"type\" must be of type 'string'" );
                         }
-                        add_type( e.get_string() );
+                        add_type( e.get_string_type() );
                      }
                      break;
                   default:
@@ -1226,10 +1235,10 @@ namespace tao::json
 
          void validate_string( const std::string_view v )
          {
-            if( m_node->m_flags & HAS_MAX_LENGTH && v.size() > m_node->m_max_length ) {
+            if( ( m_node->m_flags & HAS_MAX_LENGTH ) && ( unicode_size( v ) > m_node->m_max_length ) ) {
                m_match = false;
             }
-            if( m_node->m_flags & HAS_MIN_LENGTH && v.size() < m_node->m_min_length ) {
+            if( ( m_node->m_flags & HAS_MIN_LENGTH ) && ( unicode_size( v ) < m_node->m_min_length ) ) {
                m_match = false;
             }
             if( m_match && m_node->m_pattern ) {
@@ -1643,19 +1652,19 @@ namespace tao::json
             m_count.push_back( 0 );
          }
 
-         void key( const std::string& v )
+         void key( const std::string_view sv )
          {
             if( m_match ) {
-               validate_enum( [&]( events_compare< Traits >& c ) { c.key( v ); return ! c.match(); } );
+               validate_enum( [&]( events_compare< Traits >& c ) { c.key( sv ); return ! c.match(); } );
             }
             if( m_match ) {
-               validate_collections( [&]( schema_consumer& c ) { c.key( v ); return ! c.match(); } );
+               validate_collections( [&]( schema_consumer& c ) { c.key( sv ); return ! c.match(); } );
             }
             if( m_match && m_hash ) {
-               m_hash->key( v );
+               m_hash->key( sv );
             }
             if( m_match && ( m_count.size() == 1 ) && ( m_node->m_flags & HAS_DEPENDENCIES || !m_node->m_required.empty() ) ) {
-               if( !m_keys.insert( v ).second ) {
+               if( !m_keys.insert( std::string( sv ) ).second ) {
                   // duplicate keys immediately invalidate!
                   // TODO: throw?
                   m_match = false;
@@ -1664,13 +1673,13 @@ namespace tao::json
             if( m_match && m_properties.empty() && ( m_count.size() == 1 ) ) {
                if( const auto* p = m_node->m_properties ) {
                   const auto& o = p->get_object();
-                  const auto it = o.find( v );
+                  const auto it = o.find( sv );
                   if( it != o.end() ) {
                      m_properties.push_back( m_container->consumer( &it->second.skip_value_ptr() ) );
                   }
                }
                for( const auto& e : m_node->m_pattern_properties ) {
-                  if( std::regex_search( v, e.first ) ) {
+                  if( std::regex_search( sv.begin(), sv.end(), e.first ) ) {
                      m_properties.push_back( m_container->consumer( e.second ) );
                   }
                }
@@ -1687,16 +1696,6 @@ namespace tao::json
                   }
                }
             }
-         }
-
-         void key( const std::string_view sv )
-         {
-            key( std::string( sv ) );
-         }
-
-         void key( const char* v )
-         {
-            key( std::string( v ) );
          }
 
          void member()

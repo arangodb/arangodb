@@ -522,7 +522,8 @@ TEST_F(IndexNodeTest, constructIndexNode) {
 
     // not materialized
     {
-      indNode.setLateMaterialized(nullptr, 0, arangodb::aql::IndexNode::IndexVarsInfo());
+      indNode.setLateMaterialized(nullptr, arangodb::IndexId::primary(),
+                                  arangodb::aql::IndexNode::IndexVarsInfo());
       ASSERT_FALSE(indNode.isLateMaterialized());
     }
   }

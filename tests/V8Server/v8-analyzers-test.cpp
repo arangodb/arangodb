@@ -186,7 +186,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
@@ -456,7 +456,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
@@ -874,7 +874,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
@@ -1258,7 +1258,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
@@ -1576,7 +1576,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();

@@ -360,6 +360,28 @@ std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(si
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+[[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (!_isInitialized) {
+    if (input.finalState() == ExecutorState::DONE) {
+      // Worst case assumption:
+      // For every input row we have a new group.
+      // We will never produce more then asked for
+      auto estOnInput = input.countDataRows();
+      if (estOnInput == 0 && _infos.getGroupRegisters().empty()) {
+        // Special case, on empty input we will produce 1 output
+        estOnInput = 1;
+      }
+      return std::min(call.getLimit(), estOnInput);
+    }
+    // Otherwise we do not know.
+    return call.getLimit();
+  }
+  // We know how many groups we have left
+  return std::min<size_t>(call.getLimit(),
+                          std::distance(_currentGroup, _allGroups.end()));
+}
+
 const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {
   return _infos;
 }

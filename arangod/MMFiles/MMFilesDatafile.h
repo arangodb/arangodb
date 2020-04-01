@@ -26,6 +26,7 @@
 #include <cstddef>
 
 #include "Basics/Common.h"
+#include "VocBase/Identifiers/FileId.h"
 #include "VocBase/vocbase.h"
 
 struct MMFilesMarker;
@@ -197,7 +198,7 @@ struct MMFilesDatafile {
   MMFilesDatafile& operator=(MMFilesDatafile const&) = delete;
 
   MMFilesDatafile(std::string const& filename, int fd, void* mmHandle, uint32_t maximalSize,
-                  uint32_t currentsize, TRI_voc_fid_t fid, char* data);
+                  uint32_t currentsize, arangodb::FileId fid, char* data);
   ~MMFilesDatafile();
 
   /// @brief return whether the datafile is a physical file (true) or an
@@ -217,7 +218,7 @@ struct MMFilesDatafile {
   static int judge(std::string const& filename);
 
   /// @brief creates either an anonymous or a physical datafile
-  static MMFilesDatafile* create(std::string const& filename, TRI_voc_fid_t fid,
+  static MMFilesDatafile* create(std::string const& filename, arangodb::FileId fid,
                                  uint32_t maximalSize, bool withInitialMarkers);
 
   /// @brief close a datafile
@@ -260,7 +261,7 @@ struct MMFilesDatafile {
   int lockInMemory();
   int unlockFromMemory();
 
-  TRI_voc_fid_t fid() const { return _fid; }
+  arangodb::FileId fid() const { return _fid; }
   TRI_df_state_e state() const { return _state; }
   int fd() const { return _fd; }
   char const* data() const { return _data; }
@@ -302,7 +303,7 @@ struct MMFilesDatafile {
   static MMFilesDatafile* openHelper(std::string const& filename, bool ignoreErrors);
 
   /// @brief create the initial datafile header marker
-  int writeInitialHeaderMarker(TRI_voc_fid_t fid, uint32_t maximalSize);
+  int writeInitialHeaderMarker(arangodb::FileId fid, uint32_t maximalSize);
 
   /// @brief tries to repair a datafile
   bool tryRepair();
@@ -312,7 +313,7 @@ struct MMFilesDatafile {
 
  private:
   std::string _filename;     // underlying filename
-  TRI_voc_fid_t const _fid;  // datafile identifier
+  arangodb::FileId const _fid;  // datafile identifier
   TRI_df_state_e _state;     // state of the datafile (READ or WRITE)
   int _fd;                   // underlying file descriptor
 

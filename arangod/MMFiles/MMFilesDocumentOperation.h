@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

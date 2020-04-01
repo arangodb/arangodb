@@ -699,8 +699,7 @@ void MMFilesSkiplistIterator::initNextInterval() {
 }
 
 /// @brief create the skiplist index
-MMFilesSkiplistIndex::MMFilesSkiplistIndex(TRI_idx_iid_t iid,
-                                           arangodb::LogicalCollection& collection,
+MMFilesSkiplistIndex::MMFilesSkiplistIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                            arangodb::velocypack::Slice const& info)
     : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true),
       CmpElmElm(this),

@@ -434,7 +434,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   // Use the old getSome/SkipSome API.
-  auto myCall = stack.popCall();
+  auto myCallList = stack.popCall();
+  auto myCall = myCallList.popNextCall();
 
   TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall) ||
              AqlCall::IsFullCountCall(myCall) || AqlCall::IsFastForwardCall(myCall));

@@ -84,7 +84,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// accessible via the JS_Download (internal.download) function in JavaScript
   /// actions the endpoint is passed in via protocol (e.g. tcp://, ssl://,
   /// unix://) and port number (if applicable)
-  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& endpoint) const;
+  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& endpoint, std::string const& url) const;
 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code

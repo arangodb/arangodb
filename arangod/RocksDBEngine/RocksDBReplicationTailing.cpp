@@ -237,7 +237,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         resetTransientState();  // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
-        TRI_idx_iid_t iid = RocksDBLogValue::indexId(blob);
+        IndexId iid = RocksDBLogValue::indexId(blob);
         // only print markers from this collection if it is set
         if (shouldHandleCollection(dbid, cid)) {
           TRI_ASSERT(_vocbase->id() == dbid);
@@ -251,7 +251,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
           _builder.add("cid", VPackValue(std::to_string(cid)));
           _builder.add("cname", VPackValue(coll->name()));
           _builder.add("data", VPackValue(VPackValueType::Object));
-          _builder.add("id", VPackValue(std::to_string(iid)));
+          _builder.add("id", VPackValue(std::to_string(iid.id())));
           _builder.close();
           _builder.close();
           updateLastEmittedTick(tick);

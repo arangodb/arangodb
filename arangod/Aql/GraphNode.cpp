@@ -730,3 +730,11 @@ bool GraphNode::isUsedAsSatellite() const {
 bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
+
+bool GraphNode::isSatelliteNode() const {
+#ifdef USE_ENTERPRISE
+  return nullptr != dynamic_cast<SatelliteGraphNode const*>(this);
+#else
+  return false;
+#endif
+}

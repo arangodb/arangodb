@@ -1505,16 +1505,6 @@ constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ                            
 /// Will be raised if was erlaube?!
 constexpr int TRI_ERROR_WAS_ERLAUBE                                             = 2019;
 
-/// 2100: ERROR_COMMUNICATOR_REQUEST_ABORTED
-/// "Request aborted"
-/// Request was aborted.
-constexpr int TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED                            = 2100;
-
-/// 2101: ERROR_COMMUNICATOR_DISABLED
-/// "Communication was disabled"
-/// Communication was disabled.
-constexpr int TRI_ERROR_COMMUNICATOR_DISABLED                                   = 2101;
-
 /// 2200: ERROR_INTERNAL_AQL
 /// "General internal AQL error"
 /// Internal error during AQL execution

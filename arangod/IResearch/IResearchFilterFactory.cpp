@@ -2099,6 +2099,25 @@ arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
   return {};
 }
 
+// {<TERM>: [ '[' ] <term> [ ']' ] }
+arangodb::Result fromFuncPhraseTerm(char const* funcName,
+                                    size_t funcArgumentPosition,
+                                    char const* subFuncName,
+                                    irs::by_phrase* filter,
+                                    QueryContext const& ctx,
+                                    arangodb::aql::AstNode const& elem,
+                                    size_t firstOffset) {
+  irs::string_ref term;
+  auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition, subFuncName, filter, ctx, elem, term);
+  if (res.fail()) {
+    return res;
+  }
+  if (filter) {
+    filter->push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(term)}, firstOffset);
+  }
+  return {};
+}
+
 // {<STARTS_WITH>: [ '[' ] <term> [ ']' ] }
 arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
                                           size_t funcArgumentPosition,
@@ -2341,13 +2360,14 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
 constexpr char const* termsFuncName = "TERMS";
 
 std::map<std::string, ConversionPhraseHandler> const FCallSystemConversionPhraseHandlers {
+  {"TERM", fromFuncPhraseTerm},
   {"STARTS_WITH", fromFuncPhraseStartsWith},
   {"WILDCARD", fromFuncPhraseLike}, // 'LIKE' is a key word
   {"LEVENSHTEIN_MATCH", fromFuncPhraseLevenshteinMatch},
   {termsFuncName, fromFuncPhraseTerms}
 };
 
-// {<STARTS_WITH>|<WILDCARD>|<LEVENSHTEIN_MATCH>|<TERMS>: '[' <term> [, ...] ']'}
+// {<TERM>|<STARTS_WITH>|<WILDCARD>|<LEVENSHTEIN_MATCH>|<TERMS>: '[' <term> [, ...] ']'}
 arangodb::Result processPhraseArgObjectType(char const* funcName,
                                             size_t const funcArgumentPosition,
                                             irs::by_phrase* filter,
