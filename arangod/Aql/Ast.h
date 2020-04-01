@@ -114,8 +114,10 @@ class Ast {
   bool containsTraversal() const;
   
   /// @brief whether or not query contains any modification operations
-  bool containsModificationOp() const;
-  void setContainsModificationOp();
+  bool containsModificationNode() const;
+  void setContainsModificationNode();
+  
+  bool containsParallelNode() const;
 
   /// @brief convert the AST into VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
@@ -589,8 +591,11 @@ class Ast {
   /// @brief whether or not the query contains bind parameters
   bool _containsBindParameters;
   
-  /// @brief
-  bool _containsModificationOp;
+  /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
+  bool _containsModificationNode;
+  
+  /// @brief contains PARALLEL_{START, END}
+  bool _containsParrallelNode;
 
   /// @brief a singleton no-op node instance
   static AstNode const NopNode;

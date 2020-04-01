@@ -305,7 +305,7 @@ void Query::prepareQuery(SerializationFormat format) {
   TRI_ASSERT(plan != nullptr);
   plan->findVarUsage();
   
-  _isAsyncQuery = plan->contains(ExecutionNode::ASYNC);
+  _isAsyncQuery |= plan->contains(ExecutionNode::ASYNC);
   TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
 
   TRI_ASSERT(_trx != nullptr);
@@ -426,6 +426,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // put in bind parameters
   parser.ast()->injectBindParameters(_bindParameters, this->resolver());
+  
+  _isAsyncQuery = _ast->containsParallelNode();
     
   TRI_ASSERT(_trx == nullptr);
   // needs to be created after the AST collected all collections
@@ -1072,8 +1074,7 @@ QueryResult Query::explain() {
 
           pln->findVarUsage();
           pln->planRegisters();
-#warning SIMON # do we still need prepareTraversalOptions()?
-          pln->prepareTraversalOptions(); // TODO: do we need this?
+          pln->prepareTraversalOptions();
           pln->toVelocyPack(*result.data.get(), parser.ast(), _queryOptions.verbosePlans);
         }
       }
@@ -1142,11 +1143,11 @@ bool Query::isModificationQuery() const {
   if (!_ast) {  // TODO: this is called pre init()
     return false;
   }
-  return _ast->containsModificationOp();
+  return _ast->containsModificationNode();
 }
 
 /// @brief mark a query as modification query
-void Query::setIsModificationQuery() { return _ast->setContainsModificationOp(); }
+void Query::setIsModificationQuery() { return _ast->setContainsModificationNode(); }
 
 /// @brief prepare a V8 context for execution for this expression
 /// this needs to be called once before executing any V8 function in this
@@ -1472,7 +1473,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   TRI_ASSERT(_transactionContext != nullptr);
   
   if (_isAsyncQuery) {
-    TRI_ASSERT(!_ast->containsModificationOp());
+    TRI_ASSERT(!_ast->containsModificationNode());
     return _transactionContext->clone();
   }
   return _transactionContext;

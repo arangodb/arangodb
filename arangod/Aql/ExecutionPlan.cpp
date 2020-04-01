@@ -460,7 +460,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   // simon: who is reading this ?
   builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
   builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
-  builder.add("isModificationQuery", VPackValue(ast->containsModificationOp()));
+  builder.add("isModificationQuery", VPackValue(ast->containsModificationNode()));
 
   builder.close();
 }

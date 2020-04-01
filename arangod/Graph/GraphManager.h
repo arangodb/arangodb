@@ -43,9 +43,7 @@ namespace graph {
 class GraphManager {
  private:
   TRI_vocbase_t& _vocbase;
-
-  bool _isInTransaction;
-
+  
   std::shared_ptr<transaction::Context> ctx() const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -61,11 +59,7 @@ class GraphManager {
                                    bool waitForSync, VPackSlice options);
 
  public:
-  explicit GraphManager(TRI_vocbase_t& vocbase)
-      : GraphManager(vocbase, false) {}
-
-  GraphManager(TRI_vocbase_t& vocbase, bool isInTransaction)
-      : _vocbase(vocbase), _isInTransaction(isInTransaction) {}
+  explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
 
   OperationResult readGraphs(velocypack::Builder& builder) const;
 

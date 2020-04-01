@@ -74,7 +74,7 @@ bool Parser::configureWriteQuery(AstNode const* collectionNode, AstNode* optionN
   _ast.addWriteCollection(collectionNode, isExclusiveAccess);
 
   // register that we have seen a modification operation
-  _ast.setContainsModificationOp();
+  _ast.setContainsModificationNode();
 
   return true;
 }

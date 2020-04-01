@@ -1820,7 +1820,7 @@ bool SubqueryNode::isConst() {
     return false;
   }
 
-  if (mayAccessCollections() && _plan->getAst()->containsModificationOp()) {
+  if (mayAccessCollections() && _plan->getAst()->containsModificationNode()) {
     // a subquery that accesses data from a collection may not be const,
     // even if itself does not modify any data. it is possible that the
     // subquery is embedded into some outer loop that is modifying data

@@ -59,6 +59,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -3460,6 +3461,8 @@ Result RestReplicationHandler::createBlockingTransaction(
     #warning TODO add callback guard as transaction cookie
 //    if (rGuard) {
 //      transaction::Methods trx{mgr->leaseManagedTrx(id, AccessMode::Type::WRITE)};
+//      
+//      trx.state()->cookie(<#const void *key#>, <#Cookie::ptr &&cookie#>)
 //    }
 
   } catch (...) {
