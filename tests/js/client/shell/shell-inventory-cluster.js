@@ -69,7 +69,7 @@ function clusterInventorySuite () {
       assertEqual("object", typeof storedValue);
       assertTrue(Array.isArray(storedValue.field));
       assertEqual("string", typeof storedValue.compression);
-    }
+    });
     //assertEqual("number", typeof view.version);
     assertEqual("number", typeof view.writebufferActive);
     assertEqual("number", typeof view.writebufferIdle);

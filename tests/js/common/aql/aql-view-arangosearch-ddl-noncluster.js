@@ -775,7 +775,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, primarySort[0].asc);
       assertEqual("another.field", primarySort[1].field);
       assertEqual(false, primarySort[1].asc);
-      assertEqual("none", propertis.primarySortCompression);
+      assertEqual("none", properties.primarySortCompression);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);
@@ -813,7 +813,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, primarySort[0].asc);
       assertEqual("another.field", primarySort[1].field);
       assertEqual(false, primarySort[1].asc);
-      assertEqual("none", propertis.primarySortCompression);
+      assertEqual("none", properties.primarySortCompression);
       assertEqual(442, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);
