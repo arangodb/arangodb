@@ -51,13 +51,16 @@ struct AqlCall {
 
   AqlCall() = default;
   // Replacements for struct initialization
+  // cppcheck-suppress * 
   explicit constexpr AqlCall(size_t offset, Limit softLimit = Infinity{},
                              Limit hardLimit = Infinity{}, bool fullCount = false)
       : offset{offset}, softLimit{softLimit}, hardLimit{hardLimit}, fullCount{fullCount} {}
 
   enum class LimitType { SOFT, HARD };
+  // cppcheck-suppress * 
   constexpr AqlCall(size_t offset, bool fullCount, Infinity)
       : offset{offset}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fullCount} {}
+  // cppcheck-suppress * 
   constexpr AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
       : offset{offset},
         softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},

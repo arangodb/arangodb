@@ -39,10 +39,11 @@ MetricsFeature feature(server);
 
 class MetricsFeatureTest : public ::testing::Test {
 protected:
-  MetricsFeatureTest () {}
+  MetricsFeatureTest() {}
 };
 
-Metric *thisMetric, *thatMetric;
+Metric* thisMetric;
+Metric* thatMetric;
 
 TEST_F(MetricsFeatureTest, test_counter) {
 

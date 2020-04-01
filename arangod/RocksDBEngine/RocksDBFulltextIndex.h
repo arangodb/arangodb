@@ -26,6 +26,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -56,7 +57,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  public:
   RocksDBFulltextIndex() = delete;
 
-  RocksDBFulltextIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  RocksDBFulltextIndex(IndexId iid, LogicalCollection& collection,
                        arangodb::velocypack::Slice const& info);
 
   ~RocksDBFulltextIndex() = default;

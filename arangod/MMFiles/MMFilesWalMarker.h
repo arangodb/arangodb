@@ -28,7 +28,8 @@
 #include "Basics/encoding.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/FileId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -54,7 +55,7 @@ class MMFilesWalMarker {
   /// @brief returns the datafile id the marker comes from
   /// this should be 0 for new markers, but contain the actual
   /// datafile id for an existing marker during recovery
-  virtual TRI_voc_fid_t fid() const = 0;
+  virtual FileId fid() const = 0;
 
   /// @brief return the total size of the marker, including the header
   virtual uint32_t size() const = 0;
@@ -82,10 +83,10 @@ class MMFilesWalMarker {
 /// this type is used during recovery only, to represent existing markers
 class MMFilesMarkerEnvelope : public MMFilesWalMarker {
  public:
-  MMFilesMarkerEnvelope(MMFilesMarker const* other, TRI_voc_fid_t fid)
+  MMFilesMarkerEnvelope(MMFilesMarker const* other, FileId fid)
       : _other(other), _fid(fid), _size(other->getSize()) {
     // we must always have a datafile id, and a reasonable marker size
-    TRI_ASSERT(_fid > 0);
+    TRI_ASSERT(_fid.isSet());
     TRI_ASSERT(_size >= sizeof(MMFilesMarker));
   }
 
@@ -98,7 +99,7 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
   }
 
   /// @brief returns the datafile id the marker comes from
-  TRI_voc_fid_t fid() const override final { return _fid; }
+  FileId fid() const override final { return _fid; }
 
   /// @brief a pointer the beginning of the VPack payload
   uint8_t* vpack() const override final {
@@ -146,7 +147,7 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
 
  private:
   MMFilesMarker const* _other;
-  TRI_voc_fid_t _fid;
+  FileId _fid;
   uint32_t _size;
 };
 
@@ -169,7 +170,7 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
   /// yet in any datafile
-  TRI_voc_fid_t fid() const override final { return 0; }
+  FileId fid() const override final { return FileId::none(); }
 
   /// @brief returns the marker size
   uint32_t size() const override final {
@@ -237,7 +238,7 @@ class MMFilesDatabaseMarker : public MMFilesWalMarker {
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
   /// yet in any datafile
-  TRI_voc_fid_t fid() const override final { return 0; }
+  FileId fid() const override final { return FileId::none(); }
 
   /// @brief returns the marker size
   uint32_t size() const override final {
@@ -281,7 +282,7 @@ class MMFilesCollectionMarker : public MMFilesWalMarker {
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
   /// yet in any datafile
-  TRI_voc_fid_t fid() const override final { return 0; }
+  FileId fid() const override final { return FileId::none(); }
 
   /// @brief returns the marker size
   uint32_t size() const override final {
@@ -329,7 +330,7 @@ class MMFilesViewMarker : public MMFilesWalMarker {
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
   /// yet in any datafile
-  TRI_voc_fid_t fid() const override final { return 0; }
+  FileId fid() const override final { return FileId::none(); }
 
   /// @brief returns the marker size
   uint32_t size() const override final {
@@ -377,7 +378,7 @@ class MMFilesTransactionMarker : public MMFilesWalMarker {
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
   /// yet in any datafile
-  TRI_voc_fid_t fid() const override final { return 0; }
+  FileId fid() const override final { return FileId::none(); }
 
   /// @brief returns the marker size
   uint32_t size() const override final {

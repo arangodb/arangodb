@@ -26,6 +26,8 @@
 
 #include <deque>
 
+#include <velocypack/StringRef.h>
+
 #include "Basics/Result.h"
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -33,9 +35,8 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/ContextData.h"
-#include "VocBase/LocalDocumentId.h"
-
-#include <velocypack/StringRef.h>
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace arangodb {
 
@@ -75,7 +76,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::velocypack::Slice const& info,
                                                        bool restore, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
-  virtual bool dropIndex(TRI_idx_iid_t iid) override;
+  virtual bool dropIndex(arangodb::IndexId iid) override;
   virtual void figuresSpecific(arangodb::velocypack::Builder&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(
       arangodb::transaction::Methods* trx) const override;

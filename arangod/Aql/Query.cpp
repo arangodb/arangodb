@@ -43,7 +43,6 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
-#include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -821,7 +820,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
               if (useQueryCache) {
                 val.toVelocyPack(&vpackOptions(), *builder, true);
               }
-            
+
               if (V8PlatformFeature::isOutOfMemory(isolate)) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
               }
@@ -930,19 +929,21 @@ ExecutionState Query::finalize(QueryResult& result) {
       
       if (ServerState::isCoordinator(role)) {
         std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
-          arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-          arangodb::aql::ExecutionNode::INDEX,
-          arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
-          arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
-          arangodb::aql::ExecutionNode::UPSERT};
+            arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+            arangodb::aql::ExecutionNode::INDEX,
+            arangodb::aql::ExecutionNode::REMOVE,
+            arangodb::aql::ExecutionNode::INSERT,
+            arangodb::aql::ExecutionNode::UPDATE,
+            arangodb::aql::ExecutionNode::REPLACE,
+            arangodb::aql::ExecutionNode::UPSERT};
 
         ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
         ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
         plan->findNodesOfType(nodes, collectionNodeTypes, true);
 
         for (auto& n : nodes) {
-          // clear shards so we get back the full collection name when serializing
-          // the plan
+          // clear shards so we get back the full collection name when
+          // serializing the plan
           auto cn = dynamic_cast<CollectionAccessingNode*>(n);
           if (cn) {
             cn->setUsedShard("");
@@ -1071,6 +1072,8 @@ QueryResult Query::explain() {
 
           pln->findVarUsage();
           pln->planRegisters();
+#warning SIMON # do we still need prepareTraversalOptions()?
+          pln->prepareTraversalOptions(); // TODO: do we need this?
           pln->toVelocyPack(*result.data.get(), parser.ast(), _queryOptions.verbosePlans);
         }
       }
@@ -1083,6 +1086,7 @@ QueryResult Query::explain() {
 
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
+      bestPlan->prepareTraversalOptions();
 
       result.data = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
 

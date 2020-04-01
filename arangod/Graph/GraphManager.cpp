@@ -104,12 +104,9 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
       return OperationResult(res);
     }
 
-    bool forceOneShard =
+    bool const forceOneShard =
         vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-        (vocbase.sharding() == "single" &&
-         options.get(StaticStrings::DistributeShardsLike).isNone() &&
-         arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards,
-                                                                       0) <= 1);
+        vocbase.sharding() == "single";
 
     if (forceOneShard) {
       // force a single shard with shards distributed like "_graph"
@@ -559,7 +556,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
 #ifdef USE_ENTERPRISE
   {
-    Result res = ensureSmartCollectionSharding(graph, waitForSync, documentCollectionsToCreate);
+    Result res = ensureEnterpriseCollectionSharding(graph, waitForSync, documentCollectionsToCreate);
     if (res.fail()) {
       return res;
     }
@@ -593,7 +590,31 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   std::vector<std::shared_ptr<LogicalCollection>> created;
   return methods::Collections::create(
       vocbase, collectionsToCreate, waitForSync, true, false, nullptr, created);
-};
+}
+
+bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
+  bool onlySatellites = true;
+
+  for (auto const& cname : graph->vertexCollections()) {
+    if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
+      onlySatellites = false;
+    }
+    if (!onlySatellites) {
+      break; // quick exit
+    }
+  }
+
+  for (auto const& cname : graph->edgeCollections()) {
+    if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
+      onlySatellites = false;
+    }
+    if (!onlySatellites) {
+      break; // quick exit
+    }
+  }
+
+  return onlySatellites;
+}
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder) const {
   std::string const queryStr{

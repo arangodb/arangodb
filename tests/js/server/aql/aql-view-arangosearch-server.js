@@ -402,7 +402,7 @@ function iResearchFeatureAqlServerSideTestSuite () {
         while (tryCount > 0) {
           let afterLinkCount = getLinksCount();
           if (afterLinkCount === beforeLinkCount) {
-          	break; // all is ok.
+            break; // all is ok.
           }
           if (tryCount > 0) {
             tryCount--;

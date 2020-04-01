@@ -268,7 +268,7 @@ class MMFilesEngine final : public StorageEngine {
   // the WAL entry for the index creation will be written *after* the call
   // to "createIndex" returns
   void createIndex(TRI_vocbase_t& vocbase, TRI_voc_cid_t collectionId,
-                   TRI_idx_iid_t id, arangodb::velocypack::Slice const& data);
+                   IndexId id, arangodb::velocypack::Slice const& data);
 
   // asks the storage engine to drop the specified index and persist the
   // deletion
@@ -280,7 +280,7 @@ class MMFilesEngine final : public StorageEngine {
   // the actual deletion.
   // the WAL entry for index deletion will be written *after* the call
   // to "dropIndex" returns
-  void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId, TRI_idx_iid_t id);
+  void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId, IndexId id);
 
   void dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                           arangodb::velocypack::Slice const& data,
@@ -406,9 +406,9 @@ class MMFilesEngine final : public StorageEngine {
   std::string collectionParametersFilename(TRI_voc_tick_t databaseId,
                                            TRI_voc_cid_t collectionId) const;
   std::string viewParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) const;
-  std::string indexFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                            TRI_idx_iid_t indexId) const;
-  std::string indexFilename(TRI_idx_iid_t indexId) const;
+  std::string indexFilename(TRI_voc_tick_t databaseId,
+                            TRI_voc_cid_t collectionId, IndexId indexId) const;
+  std::string indexFilename(IndexId indexId) const;
 
   /// @brief open an existing database. internal function
   std::unique_ptr<TRI_vocbase_t> openExistingDatabase(arangodb::CreateDatabaseInfo&&,

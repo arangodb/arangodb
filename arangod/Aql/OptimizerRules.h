@@ -25,8 +25,12 @@
 #ifndef ARANGOD_AQL_OPTIMIZER_RULES_H
 #define ARANGOD_AQL_OPTIMIZER_RULES_H 1
 
+#include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Common.h"
+#include "ClusterNodes.h"
+#include "ExecutionNode.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace aql {
@@ -151,6 +155,10 @@ ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, Subque
                                                           bool& wasModified);
 
 /// @brief remove scatter/gather and remote nodes for satellite collections
+void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                               OptimizerRule const&);
+
+/// @brief remove scatter/gather and remote nodes for satellite collections
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
@@ -238,10 +246,6 @@ void removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPl
 void removeTraversalPathVariable(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                  OptimizerRule const&);
 
-/// @brief prepares traversals for execution (hidden rule)
-void prepareTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                           OptimizerRule const&);
-
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
@@ -267,6 +271,14 @@ void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
+void createScatterGatherSnippet(ExecutionPlan& plan, TRI_vocbase_t* vocbase,
+                                ExecutionNode* node, bool isRootNode,
+                                std::vector<ExecutionNode*> const& nodeDependencies,
+                                std::vector<ExecutionNode*> const& nodeParents,
+                                SortElementVector const& elements, size_t numberOfShards,
+                                std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
+                                Collection const* collection);
 
 }  // namespace aql
 }  // namespace arangodb

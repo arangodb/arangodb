@@ -90,6 +90,30 @@ class MultiAqlItemBlockInputRange {
 
   auto reset() -> void;
 
+  /**
+   * @brief Count how many datarows are expected in this range
+   *        Used to estimate amount of produced rows
+   *        Combines output of all included Ranges
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countDataRows() const noexcept -> std::size_t;
+
+  /**
+   * @brief Count how many shadowRows are expected in this range
+   *        Used to estimate amount of produced rows
+   *        Combines output of all included Ranges
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
+
+  /**
+   * @brief The final State of all ranges. Combined
+   *        Will be DONE only if all inputs are DONE
+   *
+   * @return ExecutorState
+   */
+  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+
  private:
   std::vector<AqlItemBlockInputRange> _inputs;
 };

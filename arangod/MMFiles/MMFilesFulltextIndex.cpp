@@ -63,13 +63,12 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
   }
 }
 
-MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
-                                           arangodb::LogicalCollection& collection,
+MMFilesFulltextIndex::MMFilesFulltextIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                            arangodb::velocypack::Slice const& info)
     : MMFilesIndex(iid, collection, info),
       _fulltextIndex(nullptr),
       _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(!iid.isPrimary() && !iid.isNone());
 
   VPackSlice const value = info.get("minLength");
 
@@ -146,7 +145,7 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     }
     // Short circuit. If id is correct the index is identical.
     arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid);
+    return idRef == std::to_string(_iid.id());
   }
 
   value = info.get("minLength");

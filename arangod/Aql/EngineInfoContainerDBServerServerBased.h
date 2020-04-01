@@ -175,7 +175,7 @@ class EngineInfoContainerDBServerServerBased {
                        std::vector<bool> const& didCreateEngine,
                        QueryId& globalQueryId) const;
 
-  void injectVertexColletions(GraphNode* node);
+  void injectVertexCollections(GraphNode* node);
  private:
   std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
 

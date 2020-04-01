@@ -1793,6 +1793,38 @@ function iResearchAqlTestSuite () {
         analyzers.remove(queryAnalyzer, true);
       }
     },
+    testNGramMatchFunction : function() {
+      let queryAnalyzer = "ngram_match_myngram";
+      try {
+        analyzers.save(queryAnalyzer, 
+                       "ngram", 
+                       {
+                         "min":2, 
+                         "max":2, 
+                         "streamType":"utf8", 
+                         "preserveOriginal":false
+                       },
+                       ["frequency", "position", "norm"]);
+        {
+          let res = db._query("RETURN NGRAM_MATCH('Capitan Jack Sparrow', 'Jack Sparow', 1, '" + queryAnalyzer + "') ").toArray();
+          assertEqual(1, res.length);  
+          assertTrue(res[0]);
+        }
+        {
+          let res = db._query("RETURN NGRAM_MATCH('Capitan Jack Sparrow', 'Jack Sparowe', 1, '" + queryAnalyzer + "') ").toArray();
+          assertEqual(1, res.length);  
+          assertFalse(res[0]);
+        }
+        {
+          let res = db._query("RETURN NGRAM_MATCH('Capitan Jack Sparrow', 'Jack Sparowe', 0.9, '" + queryAnalyzer + "') ").toArray();
+          assertEqual(1, res.length);  
+          assertTrue(res[0]);
+        }
+      }
+      finally {
+        analyzers.remove(queryAnalyzer, true);
+      }
+    },
   };
 }
 

@@ -182,17 +182,17 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {}
 
-BaseOptions::BaseOptions(BaseOptions const& other)
-    :
-      _trx(other._query.newTrxContext()),
+BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
+    : _trx(other._query.newTrxContext()),
       _expressionCtx(_trx, other._query.warnings(), _regexCache),
       _query(other._query),
       _tmpVar(nullptr),
       _produceVertices(other._produceVertices),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator())
-       {
-  TRI_ASSERT(other._baseLookupInfos.empty());
-  TRI_ASSERT(other._tmpVar == nullptr);
+      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {
+  if (!allowAlreadyBuiltCopy) {
+    TRI_ASSERT(other._baseLookupInfos.empty());
+    TRI_ASSERT(other._tmpVar == nullptr);
+  }
 }
 
 BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,

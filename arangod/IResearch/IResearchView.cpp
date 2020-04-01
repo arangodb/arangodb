@@ -476,7 +476,8 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
       if (!link->properties(linkBuilder, Serialization::Inventory == context).ok()) { // link definitions are not output if forPersistence
         LOG_TOPIC("713ad", WARN, arangodb::iresearch::TOPIC)
-          << "failed to generate json for arangosearch link '" << link->id() << "' while generating json for arangosearch view '" << name() << "'";
+            << "failed to generate json for arangosearch link '" << link->id()
+            << "' while generating json for arangosearch view '" << name() << "'";
 
         return true; // skip invalid link definitions
       }
@@ -496,9 +497,11 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
       if (!mergeSliceSkipKeys(linksBuilder, linkBuilder.slice(), acceptor)) {
         res = arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          std::string("failed to generate arangosearch link '") + std::to_string(link->id()) + "' definition while generating json for arangosearch view '" + name() + "'"
-        );
+            TRI_ERROR_INTERNAL,
+            std::string("failed to generate arangosearch link '") +
+                std::to_string(link->id().id()) +
+                "' definition while generating json for arangosearch view '" +
+                name() + "'");
 
         return false; // terminate generation
       }
@@ -663,7 +666,7 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
   if (!link->get()) {
     return arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
-      std::string("failed to aquire link while emplacing collection into arangosearch View '") + name() + "'"
+      std::string("failed to acquire link while emplacing collection into arangosearch View '") + name() + "'"
     );
   }
 

@@ -34,6 +34,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -245,7 +246,7 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "aql::Collection object not initialized");
   }
   
-  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(idxId);
+  auto iid = arangodb::IndexId{arangodb::basics::StringUtils::uint64(idxId)};
   auto idx = coll->lookupIndex(iid);
 
   if (!idx) {

@@ -196,7 +196,7 @@ EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Q
   // NOTE: We need to start with _lastSnippetID > 0. 0 is reserved for GraphNodes
 }
 
-void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* graphNode) {
+void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* graphNode) {
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
     std::map<std::string, Collection*> const* allCollections =
@@ -228,7 +228,9 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::K_SHORTEST_PATHS: {
-      injectVertexColletions(static_cast<GraphNode*>(node));
+      auto* const graphNode = ExecutionNode::castTo<GraphNode*>(node);
+      graphNode->prepareOptions();
+      injectVertexCollections(graphNode);
       break;
     }
     default:
@@ -532,7 +534,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
 // the DBServers. The GraphNode itself will retain on the coordinator.
 void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
   node->prepareOptions();
-  injectVertexColletions(node);
+  injectVertexCollections(node);
   // SnippetID does not matter on GraphNodes
   _shardLocking.addNode(node, 0);
   _graphNodes.emplace_back(node);

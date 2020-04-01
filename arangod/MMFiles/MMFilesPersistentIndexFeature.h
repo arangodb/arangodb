@@ -24,11 +24,12 @@
 #ifndef ARANGOD_MMFILES_MMFILES_PERSISTENT_INDEX_FEATURE_H
 #define ARANGOD_MMFILES_MMFILES_PERSISTENT_INDEX_FEATURE_H 1
 
+#include <rocksdb/options.h>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
-
-#include <rocksdb/options.h>
 
 namespace rocksdb {
 class OptimisticTransactionDB;
@@ -54,7 +55,7 @@ class MMFilesPersistentIndexFeature final : public application_features::Applica
   static int syncWal();
   static int dropDatabase(TRI_voc_tick_t);
   static int dropCollection(TRI_voc_tick_t, TRI_voc_cid_t);
-  static int dropIndex(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
+  static int dropIndex(TRI_voc_tick_t, TRI_voc_cid_t, IndexId);
 
   static MMFilesPersistentIndexFeature* instance();
 

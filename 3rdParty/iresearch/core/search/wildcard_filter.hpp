@@ -43,7 +43,7 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
     const order::prepared& order,
     boost_t boost,
     const string_ref& field,
-    const bstring& term,
+    bytes_ref term,
     size_t scored_terms_limit);
 
   explicit by_wildcard() noexcept;

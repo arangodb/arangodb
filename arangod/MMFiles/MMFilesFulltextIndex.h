@@ -26,14 +26,15 @@
 
 #include <set>
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/mmfiles-fulltext-common.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 class LocalDocumentId;
@@ -42,7 +43,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
  public:
   MMFilesFulltextIndex() = delete;
 
-  MMFilesFulltextIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  MMFilesFulltextIndex(IndexId iid, LogicalCollection& collection,
                        arangodb::velocypack::Slice const& info);
 
   ~MMFilesFulltextIndex();

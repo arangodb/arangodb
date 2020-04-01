@@ -31,6 +31,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
@@ -309,12 +310,12 @@ class RocksDBEngine final : public StorageEngine {
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
   std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> collectionMappings() const;
-  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, TRI_voc_cid_t, IndexId);
   void removeIndexMapping(uint64_t);
 
   // Identifies a collection
   typedef std::pair<TRI_voc_tick_t, TRI_voc_cid_t> CollectionPair;
-  typedef std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> IndexTriple;
+  typedef std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, IndexId> IndexTriple;
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 
@@ -347,14 +348,35 @@ class RocksDBEngine final : public StorageEngine {
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
-  void startEnterprise();
-  void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
+  void configureEnterpriseRocksDBOptions(rocksdb::Options& options, bool createdEngineDir);
   void validateJournalFiles() const;
+  
+  Result readUserEncryptionKeys(std::map<std::string, std::string>& outlist) const;
 
   enterprise::RocksDBEngineEEData _eeData;
 
 public:
+  
+  bool isEncryptionEnabled() const;
+  
   std::string const& getEncryptionKey();
+  
+  std::string getEncryptionTypeFile() const;
+  
+  std::string getKeyStoreFolder() const;
+  
+  std::vector<std::string> userEncryptionKeys() const;
+  
+  /// rotate user-provided keys, writes out the internal key files
+  Result rotateUserEncryptionKeys();
+  
+private:
+  
+  /// load encryption at rest key from keystore
+  Result decryptInternalKeystore();
+  /// encrypt the internal keystore with all user keys
+  Result encryptInternalKeystore();
+  
 #endif
 private:
   // activate generation of SHA256 files to parallel .sst files
@@ -404,7 +426,7 @@ public:
   rocksdb::TransactionDB* _db;
   /// default read options
   rocksdb::Options _options;
-  /// arangodb comparator - requried because of vpack in keys
+  /// arangodb comparator - required because of vpack in keys
   std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
   /// path used by rocksdb (inside _basePath)
   std::string _path;

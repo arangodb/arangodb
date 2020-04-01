@@ -551,9 +551,8 @@ function CollectionSuite () {
 
       var p = c1.properties();
 
-      var isRocksDB = db._engine().name === "rocksdb";
       assertEqual(true, p.hasOwnProperty("usesRevisionsAsDocumentIds"));
-      assertEqual(isRocksDB, p.usesRevisionsAsDocumentIds);
+      assertEqual(false, p.usesRevisionsAsDocumentIds);
 
       db._drop(cn);
     },

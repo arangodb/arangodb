@@ -31,7 +31,7 @@
 #include "Aql/types.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <iosfwd>
