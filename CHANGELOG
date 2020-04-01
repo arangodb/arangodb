@@ -1,6 +1,11 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed a rare race condition in SmartGraphs where the graph is unblanced, but a successful
+  result could be found by only on database server, where the other server is still
+  searching. In this race the query could continue on the other server and hit
+  a non-thread save object.
+
 * AQL bugfix for the OneShard database optimizer rule when working with both
   OneShard collections and satellite collections. Previously, queries could not
   be instantiated unless the leader of the satellite collection was, by chance,
