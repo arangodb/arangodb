@@ -427,7 +427,7 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
 }
 
 arangodb::Result byTerm(irs::by_term* filter, std::string name,
-                        ScopedAqlValue const& value, QueryContext const& ctx,
+                        ScopedAqlValue const& value, QueryContext const& /*ctx*/,
                         FilterContext const& filterCtx) {
   switch (value.type()) {
     case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL:
@@ -564,57 +564,9 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
 }
 
 arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode const& attributeNode,
-             arangodb::aql::AstNode const& minValueNode, bool const minInclude,
-             arangodb::aql::AstNode const& maxValueNode, bool const maxInclude,
-             QueryContext const& ctx, FilterContext const& filterCtx) {
-  TRI_ASSERT(attributeNode.isDeterministic());
-  TRI_ASSERT(minValueNode.isDeterministic());
-  TRI_ASSERT(maxValueNode.isDeterministic());
-
-  ScopedAqlValue min(minValueNode);
-
-  if (!min.isConstant()) {
-    if (!filter) {
-      // can't evaluate non constant filter before the execution
-      return {};
-    }
-
-    if (!min.execute(ctx)) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        "Failed to evaluate lower boundary from node '"s
-          .append(arangodb::aql::AstNode::toString(&minValueNode)).append("'")
-      };
-    }
-  }
-
-  ScopedAqlValue max(maxValueNode);
-
-  if (!max.isConstant()) {
-    if (!filter) {
-      // can't evaluate non constant filter before the execution
-      return {};
-    }
-
-    if (!max.execute(ctx)) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        "Failed to evaluate upper boundary from node '"s
-          .append(arangodb::aql::AstNode::toString(&maxValueNode)).append("'")
-      };
-    }
-  }
-
-  if (min.type() != max.type()) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "Failed to build range query, lower boundary '"s
-          .append(arangodb::aql::AstNode::toString(&minValueNode))
-          .append("' mismatches upper boundary '")
-          .append(arangodb::aql::AstNode::toString(&maxValueNode)).append("'")
-    };
-  }
-
+                         ScopedAqlValue const& min, bool const minInclude,
+                         ScopedAqlValue const& max, bool const maxInclude,
+                         QueryContext const& ctx, FilterContext const& filterCtx) {
   std::string name;
 
   if (filter && !nameFromAttributeAccess(name, attributeNode, ctx)) {
@@ -717,7 +669,7 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
 
 template <irs::Bound Bound>
 arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const ScopedAqlValue& value,
-                              bool const incl, QueryContext const& ctx, FilterContext const& filterCtx) {
+                         bool const incl, QueryContext const& /*ctx*/, FilterContext const& filterCtx) {
   switch (value.type()) {
     case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL: {
       if (filter) {
@@ -2139,8 +2091,8 @@ arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
     return res;
   }
   if (filter) {
-    // 128 - FIXME make configurable
-    filter->push_back(irs::by_phrase::prefix_term{128, irs::ref_cast<irs::byte_type>(term)}, firstOffset);
+    filter->push_back(irs::by_phrase::prefix_term{FilterConstants::DefaultScoringTermsLimit,
+                                                  irs::ref_cast<irs::byte_type>(term)}, firstOffset);
   }
   return {};
 }
@@ -2162,8 +2114,8 @@ arangodb::Result fromFuncPhraseLike(char const* funcName,
     return res;
   }
   if (filter) {
-    // 128 - FIXME make configurable
-    filter->push_back(irs::by_phrase::wildcard_term{128, irs::ref_cast<irs::byte_type>(term)}, firstOffset);
+    filter->push_back(irs::by_phrase::wildcard_term{FilterConstants::DefaultScoringTermsLimit,
+                                                    irs::ref_cast<irs::byte_type>(term)}, firstOffset);
   }
   return {};
 }
@@ -2381,6 +2333,204 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
   return {};
 }
 
+template<size_t First>
+arangodb::Result getInRangeArguments(char const* funcName, bool isFilter,
+                                     QueryContext const& ctx,
+                                     arangodb::aql::AstNode const& args,
+                                     arangodb::aql::AstNode const** field,
+                                     ScopedAqlValue& min, bool& minInclude,
+                                     ScopedAqlValue& max, bool& maxInclude,
+                                     bool& ret,
+                                     std::string const& errorSuffix = std::string()) {
+  if (!args.isDeterministic()) {
+    auto res = error::nondeterministicArgs(funcName);
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+  auto const argc = args.numMembers();
+
+  if (5 - First != argc) {
+    auto res = error::invalidArgsCount<error::ExactValue<5 - First>>(funcName);
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+
+  if constexpr (0 == First) {
+    TRI_ASSERT(field);
+    // (0 - First) argument defines a field
+    *field = arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+
+    if (!*field) {
+      return error::invalidAttribute(funcName, 1);
+    }
+    TRI_ASSERT((*field)->isDeterministic());
+  }
+
+  // (1 - First) argument defines a lower boundary
+  auto const* minValueNode = args.getMemberUnchecked(1 - First);
+  if (!minValueNode) {
+    auto res = error::invalidArgument(funcName, 1 - First + 1);
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+  TRI_ASSERT(minValueNode->isDeterministic());
+
+  // (2 - First) argument defines an upper boundary
+  auto const* maxValueNode = args.getMemberUnchecked(2 - First);
+  if (!maxValueNode) {
+    auto res = error::invalidArgument(funcName, 2 - First + 1);
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+  TRI_ASSERT(maxValueNode->isDeterministic());
+
+  // (3 - First) argument defines inclusion of lower boundary
+  ScopedAqlValue includeValue;
+  auto res = evaluateArg(minInclude, includeValue, funcName, args, 3 - First, isFilter, ctx);
+  if (res.fail()) {
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+
+  // (4 - First) argument defines inclusion of upper boundary
+  res = evaluateArg(maxInclude, includeValue, funcName, args, 4 - First, isFilter, ctx);
+  if (res.fail()) {
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+
+  min.reset(*minValueNode);
+  if (!min.isConstant()) {
+    if (!isFilter) {
+      // can't evaluate non constant filter before the execution
+      ret = true;
+      return {};
+    }
+
+    if (!min.execute(ctx)) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to evaluate lower boundary from node '"s
+          .append(arangodb::aql::AstNode::toString(minValueNode)).append("'").append(errorSuffix)
+      };
+    }
+  }
+
+  max.reset(*maxValueNode);
+  if (!max.isConstant()) {
+    if (!isFilter) {
+      // can't evaluate non constant filter before the execution
+      ret = true;
+      return {};
+    }
+
+    if (!max.execute(ctx)) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to evaluate upper boundary from node '"s
+          .append(arangodb::aql::AstNode::toString(maxValueNode)).append("'").append(errorSuffix)
+      };
+    }
+  }
+
+  if (min.type() != max.type()) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Failed to build range query, lower boundary '"s
+        .append(arangodb::aql::AstNode::toString(minValueNode))
+        .append("' mismatches upper boundary '")
+        .append(arangodb::aql::AstNode::toString(maxValueNode)).append("'").append(errorSuffix)
+    };
+  }
+  return {};
+}
+
+// {<IN_RANGE>: '[' <term-low>, <term-high>, <include-low>, <include-high> ']'}
+arangodb::Result fromFuncPhraseInRange(char const* funcName,
+                                       size_t const funcArgumentPosition,
+                                       char const* subFuncName,
+                                       irs::by_phrase* filter,
+                                       QueryContext const& ctx,
+                                       arangodb::aql::AstNode const& array,
+                                       size_t firstOffset,
+                                       irs::analysis::analyzer* /*analyzer*/ = nullptr) {
+  if (!array.isArray()) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function: '")
+          .append(subFuncName)
+          .append("' arguments must be in an array at position '")
+          .append(std::to_string(funcArgumentPosition + 1)).append("'")
+    };
+  }
+
+  std::string const errorSuffix = getSubFuncErrorSuffix(funcName, funcArgumentPosition);
+
+  ScopedAqlValue min, max;
+  auto minInclude = false;
+  auto maxInclude = false;
+  auto ret = false;
+  auto res = getInRangeArguments<1>(subFuncName, filter != nullptr, ctx, array, nullptr,
+                                    min, minInclude, max, maxInclude, ret, errorSuffix);
+  if (res.fail() || ret) {
+    return res;
+  }
+
+  if (min.type() != arangodb::iresearch::SCOPED_VALUE_TYPE_STRING) {
+    res = error::typeMismatch(subFuncName, 1, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING, min.type());
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+  irs::string_ref minStrValue;
+  if (!min.getString(minStrValue)) {
+    res = error::failedToParse(subFuncName, 1, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING);
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+
+  if (max.type() != arangodb::iresearch::SCOPED_VALUE_TYPE_STRING) {
+    res = error::typeMismatch(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING, max.type());
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+  irs::string_ref maxStrValue;
+  if (!max.getString(maxStrValue)) {
+    res = error::failedToParse(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING);
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+
+  if (filter) {
+    irs::by_range::range_t rng;
+    rng.min = irs::ref_cast<irs::byte_type>(minStrValue);
+    rng.max = irs::ref_cast<irs::byte_type>(maxStrValue);
+    rng.min_type = minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
+    rng.max_type = maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
+    filter->push_back(irs::by_phrase::range_term{FilterConstants::DefaultScoringTermsLimit, rng}, firstOffset);
+  }
+  return {};
+}
+
 constexpr char const* termsFuncName = "TERMS";
 
 std::map<std::string, ConversionPhraseHandler> const FCallSystemConversionPhraseHandlers {
@@ -2388,10 +2538,11 @@ std::map<std::string, ConversionPhraseHandler> const FCallSystemConversionPhrase
   {"STARTS_WITH", fromFuncPhraseStartsWith},
   {"WILDCARD", fromFuncPhraseLike}, // 'LIKE' is a key word
   {"LEVENSHTEIN_MATCH", fromFuncPhraseLevenshteinMatch},
-  {termsFuncName, fromFuncPhraseTerms}
+  {termsFuncName, fromFuncPhraseTerms},
+  {"IN_RANGE", fromFuncPhraseInRange}
 };
 
-// {<TERM>|<STARTS_WITH>|<WILDCARD>|<LEVENSHTEIN_MATCH>|<TERMS>: '[' <term> [, ...] ']'}
+// {<TERM>|<STARTS_WITH>|<WILDCARD>|<LEVENSHTEIN_MATCH>|<TERMS>|<IN_RANGE>: '[' <term> [, ...] ']'}
 arangodb::Result processPhraseArgObjectType(char const* funcName,
                                             size_t const funcArgumentPosition,
                                             irs::by_phrase* filter,
@@ -2767,7 +2918,7 @@ arangodb::Result fromFuncNgramMatch(
     kludge::mangleStringField(name, analyzerPool);
 
     auto& ngramFilter = filter->add<irs::by_ngram_similarity>();
-    ngramFilter.field(std::move(name)).threshold(threshold).boost(filterCtx.boost);;
+    ngramFilter.field(std::move(name)).threshold(static_cast<float_t>(threshold)).boost(filterCtx.boost);
 
     analyzer->reset(matchValue);
     irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
@@ -2861,65 +3012,26 @@ arangodb::Result fromFuncInRange(
     FilterContext const& filterCtx,
     arangodb::aql::AstNode const& args) {
   TRI_ASSERT(funcName);
-
-  if (!args.isDeterministic()) {
-    return error::nondeterministicArgs(funcName);
+  arangodb::aql::AstNode const* field = nullptr;
+  ScopedAqlValue min, max;
+  auto minInclude = false;
+  auto maxInclude = false;
+  auto ret = false;
+  auto res = getInRangeArguments<0>(funcName, filter != nullptr, ctx, args, &field,
+                                    min, minInclude, max, maxInclude, ret);
+  if (res.fail() || ret) {
+    return res;
   }
 
-  auto const argc = args.numMembers();
+  TRI_ASSERT(field);
 
-  if (argc != 5) {
-    return error::invalidArgsCount<error::ExactValue<5>>(funcName);
+  res = ::byRange(filter, *field, min, minInclude, max, maxInclude, ctx, filterCtx);
+  if (res.fail()) {
+    return {
+      res.errorNumber(),
+      "error in byRange: " + res.errorMessage()
+    };
   }
-
-  // 1st argument defines a field
-  auto const* field =
-      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
-
-  if (!field) {
-    return error::invalidAttribute(funcName, 1);
-  }
-
-  // 2nd argument defines a lower boundary
-  auto const* lhsArg = args.getMemberUnchecked(1);
-
-  if (!lhsArg) {
-    return error::invalidArgument(funcName, 2);
-  }
-
-  // 3rd argument defines an upper boundary
-  auto const* rhsArg = args.getMemberUnchecked(2);
-
-  if (!rhsArg) {
-    return error::invalidArgument(funcName, 3);
-  }
-
-  ScopedAqlValue includeValue;
-
-  // 4th argument defines inclusion of lower boundary
-  bool lhsInclude = false;
-
-  auto rv = evaluateArg(lhsInclude, includeValue, funcName, args, 3, filter != nullptr, ctx);
-
-  if (rv.fail()) {
-    return rv;
-  }
-
-  // 5th argument defines inclusion of upper boundary
-  bool rhsInclude = false;
-
-  rv = evaluateArg(rhsInclude, includeValue, funcName, args, 4, filter != nullptr, ctx);
-
-  if (rv.fail()) {
-    return rv;
-  }
-
-  rv = ::byRange(filter, *field, *lhsArg, lhsInclude, *rhsArg, rhsInclude, ctx, filterCtx);
-
-  if (rv.fail()) {
-    return {rv.errorNumber(), "error in byRange: " + rv.errorMessage()};
-  }
-
   return {};
 }
 
