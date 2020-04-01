@@ -125,11 +125,11 @@ int resolveDestinations(ClusterInfo& ci, DestinationId const& dest,
         for (std::size_t i = 0; i < resp->size(); ++i) {
           specs[i].shardId = shardId;
           specs[i].serverId = (*resp)[i];
-          LOG_TOPIC("64670", DEBUG, Logger::CLUSTER)
+          LOG_TOPIC("64671", DEBUG, Logger::CLUSTER)
               << "Responsible server: " << specs[i].serverId;
         }
       } else {
-        LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
+        LOG_TOPIC("60ee9", ERR, Logger::CLUSTER)
             << "cannot find responsible server for shard '" << shardId << "'";
         return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
       }
@@ -137,7 +137,7 @@ int resolveDestinations(ClusterInfo& ci, DestinationId const& dest,
   } else {
     std::string errorMessage =
         "did not understand destination '" + dest + "', expecting a shard";
-    LOG_TOPIC("77a84", ERR, Logger::COMMUNICATION)
+    LOG_TOPIC("77a85", ERR, Logger::COMMUNICATION)
         << "did not understand destination '" << dest << "', expecting a shard";
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
@@ -150,7 +150,7 @@ int resolveDestinations(ClusterInfo& ci, DestinationId const& dest,
       }
       std::string errorMessage =
           "did not find endpoint of server '" + spec.serverId + "'";
-      LOG_TOPIC("f29ef", ERR, Logger::COMMUNICATION)
+      LOG_TOPIC("f29e0", ERR, Logger::COMMUNICATION)
           << "did not find endpoint of server '" << spec.serverId << "'";
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
