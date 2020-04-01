@@ -316,6 +316,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REMOVE_VALUES", ".,.", flags, &Functions::RemoveValues});
   add({"REMOVE_NTH", ".,.", flags, &Functions::RemoveNth});
   add({"REPLACE_NTH", ".,.,.|.", flags, &Functions::ReplaceNth});
+  add({"INTERLEAVE", ".,.|+", flags, &Functions::Interleave});
 
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic
@@ -435,6 +436,10 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
   add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only function without a
                                                                             // C++ implementation
+                                                                            //
+  auto validationFlags = Function::makeFlags(FF::None);
+  add({"SCHEMA_GET", ".", validationFlags, &Functions::SchemaGet});
+  add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::SchemaValidate});
 
   // special flags:
   add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  // deterministic, not cacheable. only on
