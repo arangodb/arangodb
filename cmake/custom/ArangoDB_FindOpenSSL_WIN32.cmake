@@ -48,12 +48,16 @@ else()
 endif(OPENSSL_USE_STATIC_LIBS)
 
 # visual studio version
-if (${CMAKE_GENERATOR} MATCHES "2017")
+# see https://cmake.org/cmake/help/latest/variable/MSVC_VERSION.html
+# related: https://cmake.org/cmake/help/latest/variable/MSVC_TOOLSET_VERSION.html
+if (1909 LESS ${MSVC_VERSION} AND ${MSVC_VERSION} LESS 1920)
+# 1910-1919: VS 15.0 (v141 toolset)
     set(VS_VERSION "2017")
-elseif (${CMAKE_GENERATOR} MATCHES "2019")
+elseif (1919 LESS ${MSVC_VERSION} AND ${MSVC_VERSION} LESS 1930)
+# 1920-1929: VS 16.0 (v142 toolset)
     set(VS_VERSION "2019")
 else()
-    message(FATAL_ERROR "Generator not supported: ${CMAKE_GENERATOR}")
+    message(FATAL_ERROR "MSVC version not supported: ${MSVC_VERSION} (supported are 1910-1929)")
 endif()
 
 #store original suffixes
