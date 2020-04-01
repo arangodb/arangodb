@@ -60,6 +60,7 @@ void ensureImmutableProperties(
   dst._writebufferSizeMax = src._writebufferSizeMax;
   dst._primarySort = src._primarySort;
   dst._storedValues = src._storedValues;
+  dst._primarySortCompression = src._primarySortCompression;
 }
 
 }  // namespace
