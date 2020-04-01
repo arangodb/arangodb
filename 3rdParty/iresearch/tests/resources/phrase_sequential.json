@@ -33,5 +33,11 @@
   {"name":"SPWLC0","phrase":"cookies cake pie biscuit meringue cookies cake pie biscuit marshmallows paste bread" },
   {"name":"SPWLC1","phrase":"cookies cake pie biskuit marshmallows cookies pie meringue" },
   {"name":"SPWLC2","phrase":"cookies cake pie biscwit meringue pie biscuit paste" },
-  {"name":"SPWLC3","phrase":"cookies cake pie biscuet marshmallows cake meringue" }
+  {"name":"SPWLC3","phrase":"cookies cake pie biscuet marshmallows cake meringue" },
+  {"name":"X0","phrase":"x0" },
+  {"name":"X1","phrase":"x1" },
+  {"name":"X2","phrase":"x2" },
+  {"name":"X3","phrase":"x2 x1 x2" },
+  {"name":"X4","phrase":"x1 x0 x2" },
+  {"name":"X5","phrase":"x2 x2 x2" }
 ]

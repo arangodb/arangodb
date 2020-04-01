@@ -160,7 +160,7 @@ TEST(sorted_column_test, insert_duplicates) {
 
     writer->prepare(dir, segment);
 
-    irs::sorted_column col({ irs::compression::raw::type(), {}, true });
+    irs::sorted_column col({ irs::compression::none::type(), {}, true });
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_EQ(0, col.memory_active());

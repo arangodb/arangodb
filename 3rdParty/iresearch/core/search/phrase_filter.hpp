@@ -27,6 +27,7 @@
 
 #include "filter_visitor.hpp"
 #include "levenshtein_filter.hpp"
+#include "range_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 
 NS_ROOT
@@ -61,7 +62,7 @@ struct phrase_state {
 class IRESEARCH_API by_phrase : public filter {
  public:
   enum class PhrasePartType {
-    TERM, PREFIX, WILDCARD, LEVENSHTEIN, SET
+    TERM, PREFIX, WILDCARD, LEVENSHTEIN, SET, RANGE
   };
 
   struct simple_term {
@@ -78,7 +79,8 @@ class IRESEARCH_API by_phrase : public filter {
     static constexpr PhrasePartType type = PhrasePartType::PREFIX;
 
     bool operator==(const prefix_term& other) const noexcept {
-      return term == other.term;
+      return scored_terms_limit == other.scored_terms_limit &&
+          term == other.term;
     }
 
     size_t scored_terms_limit{1024};
@@ -89,7 +91,8 @@ class IRESEARCH_API by_phrase : public filter {
     static constexpr PhrasePartType type = PhrasePartType::WILDCARD;
 
     bool operator==(const wildcard_term& other) const noexcept {
-      return term == other.term;
+      return scored_terms_limit == other.scored_terms_limit &&
+          term == other.term;
     }
 
     size_t scored_terms_limit{1024};
@@ -102,6 +105,7 @@ class IRESEARCH_API by_phrase : public filter {
     bool operator==(const levenshtein_term& other) const noexcept {
       return with_transpositions == other.with_transpositions &&
           max_distance == other.max_distance &&
+          scored_terms_limit == other.scored_terms_limit &&
           provider == other.provider &&
           term == other.term;
     }
@@ -123,6 +127,18 @@ class IRESEARCH_API by_phrase : public filter {
     std::vector<bstring> terms;
   };
 
+  struct range_term {
+    static constexpr PhrasePartType type = PhrasePartType::RANGE;
+
+    bool operator==(const range_term& other) const noexcept {
+      return scored_terms_limit == other.scored_terms_limit &&
+          rng == other.rng;
+    }
+
+    size_t scored_terms_limit{1024};
+    by_range::range_t rng;
+  };
+
  private:
   struct IRESEARCH_API phrase_part {
     ~phrase_part() {
@@ -137,6 +153,7 @@ class IRESEARCH_API by_phrase : public filter {
       wildcard_term wt;
       levenshtein_term lt;
       set_term ct;
+      range_term rt;
     };
 
     phrase_part();
@@ -290,7 +307,7 @@ class IRESEARCH_API by_phrase : public filter {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx

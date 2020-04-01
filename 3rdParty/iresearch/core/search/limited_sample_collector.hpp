@@ -74,7 +74,7 @@ inline void fill(bitset& bs, const term_iterator& term, size_t docs_count) {
 struct multiterm_state {
   struct term_state {
     term_state(seek_term_iterator::seek_cookie::ptr&& cookie,
-               size_t stat_offset,
+               uint32_t stat_offset,
                boost_t boost = no_boost()) noexcept
       : cookie(std::move(cookie)),
         stat_offset(stat_offset),
@@ -84,26 +84,13 @@ struct multiterm_state {
     term_state& operator=(term_state&& rhs) = default;
 
     seek_term_iterator::seek_cookie::ptr cookie;
-    size_t stat_offset{};
+    uint32_t stat_offset{};
     float_t boost{ no_boost() };
   };
 
   multiterm_state() = default;
-  multiterm_state(multiterm_state&& rhs) noexcept
-    : reader(rhs.reader),
-      scored_states(std::move(rhs.scored_states)),
-      unscored_docs(std::move(rhs.unscored_docs)) {
-    rhs.reader = nullptr;
-  }
-  multiterm_state& operator=(multiterm_state&& rhs) noexcept {
-    if (this != &rhs) {
-      scored_states = std::move(rhs.scored_states);
-      unscored_docs = std::move(rhs.unscored_docs);
-      reader = rhs.reader;
-      rhs.reader = nullptr;
-    }
-    return *this;
-  }
+  multiterm_state(multiterm_state&& rhs) = default;
+  multiterm_state& operator=(multiterm_state&& rhs) = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if state is empty
@@ -261,7 +248,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     std::unordered_map<hashed_bytes_ref, stats_state> term_stats;
 
     // iterate over all the states from which statistcis should be collected
-    size_t stats_offset = 0;
+    uint32_t stats_offset = 0;
     for (auto& scored_state : scored_states_) {
       assert(scored_state.cookie);
       auto& field = *scored_state.state->reader;
@@ -271,7 +258,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       // find the stats for the current term
       const auto res = map_utils::try_emplace(
         term_stats,
-        make_hashed_ref(bytes_ref(scored_state.term), std::hash<bytes_ref>()),
+        make_hashed_ref(bytes_ref(scored_state.term)),
         index, field, order, stats_offset);
 
       // find term attributes using cached state
@@ -311,7 +298,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
         const irs::index_reader& index,
         const irs::term_reader& field,
         const irs::order::prepared& order,
-        size_t& state_offset)
+        uint32_t& state_offset)
       : collectors(order, 1) { // 1 term per bstring because a range is treated as a disjunction
 
       // once per every 'state' collect field statistics over the entire index
@@ -323,7 +310,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     }
 
     fixed_terms_collectors collectors;
-    size_t stats_offset;
+    uint32_t stats_offset;
   };
 
   //////////////////////////////////////////////////////////////////////////////

@@ -300,6 +300,8 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
       return lt == other.lt;
     case PhrasePartType::SET:
       return ct == other.ct;
+    case PhrasePartType::RANGE:
+      return rt == other.rt;
     default:
       assert(false);
   }
@@ -337,6 +339,10 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
         ptv.reset();
       }
       break;
+    case PhrasePartType::RANGE:
+      by_range::visit(reader, phr_part.rt.rng, ptv);
+      found = ptv.found();
+      break;
     default:
       assert(false);
   }
@@ -361,6 +367,9 @@ void by_phrase::phrase_part::allocate(const phrase_part& other) {
     case PhrasePartType::SET:
       new (&ct) set_term(other.ct);
       break;
+    case PhrasePartType::RANGE:
+      new (&rt) range_term(other.rt);
+      break;
     default:
       assert(false);
   }
@@ -384,6 +393,9 @@ void by_phrase::phrase_part::allocate(phrase_part&& other) noexcept {
     case PhrasePartType::SET:
       new (&ct) set_term(std::move(other.ct));
       break;
+    case PhrasePartType::RANGE:
+      new (&rt) range_term(std::move(other.rt));
+      break;
     default:
       assert(false);
   }
@@ -406,6 +418,9 @@ void by_phrase::phrase_part::destroy() noexcept {
     case PhrasePartType::SET:
       ct.~set_term();
       break;
+    case PhrasePartType::RANGE:
+      rt.~range_term();
+      break;
     default:
       assert(false);
   }
@@ -424,6 +439,8 @@ void by_phrase::phrase_part::recreate(phrase_part&& other) noexcept {
   }
   allocate(std::move(other));
 }
+
+size_t hash_value(const by_range::range_t& rng);
 
 size_t hash_value(const by_phrase::phrase_part& info) {
   auto seed = std::hash<int>()(static_cast<std::underlying_type<by_phrase::PhrasePartType>::type>(info.type));
@@ -453,6 +470,10 @@ size_t hash_value(const by_phrase::phrase_part& info) {
           ::boost::hash_combine(seed, term);
       });
       break;
+    case by_phrase::PhrasePartType::RANGE:
+      ::boost::hash_combine(seed, info.rt.scored_terms_limit);
+      ::boost::hash_combine(seed, info.rt.rng);
+      break;
     default:
       assert(false);
   }
@@ -472,7 +493,7 @@ size_t by_phrase::hash() const noexcept {
 }
 
 filter::prepared::ptr by_phrase::prepare(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& /*ctx*/) const {
@@ -484,33 +505,38 @@ filter::prepared::ptr by_phrase::prepare(
   const auto phrase_size = phrase_.size();
   if (1 == phrase_size) {
     const auto& term_info = phrase_.begin()->second;
+    boost *= this->boost();
     switch (term_info.type) {
       case PhrasePartType::TERM: // similar to `term_query`
-        return term_query::make(rdr, ord, boost*this->boost(), fld_, term_info.st.term);
+        return term_query::make(index, ord, boost, fld_, term_info.st.term);
       case PhrasePartType::PREFIX:
-        return by_prefix::prepare(rdr, ord, boost*this->boost(), fld_, term_info.pt.term,
+        return by_prefix::prepare(index, ord, boost, fld_, term_info.pt.term,
                                   term_info.pt.scored_terms_limit);
       case PhrasePartType::WILDCARD:
-        return by_wildcard::prepare(rdr, ord, boost*this->boost(), fld_,
-                                    term_info.wt.term, term_info.wt.scored_terms_limit);
+        return by_wildcard::prepare(index, ord, boost, fld_, term_info.wt.term,
+                                    term_info.wt.scored_terms_limit);
       case PhrasePartType::LEVENSHTEIN:
-        return by_edit_distance::prepare(rdr, ord, boost*this->boost(), fld_,
-                                         term_info.lt.term, term_info.lt.scored_terms_limit,
+        return by_edit_distance::prepare(index, ord, boost, fld_, term_info.lt.term,
+                                         term_info.lt.scored_terms_limit,
                                          term_info.lt.max_distance, term_info.lt.provider,
                                          term_info.lt.with_transpositions);
       case PhrasePartType::SET:
         // do nothing
         break;
+      case PhrasePartType::RANGE:
+        return by_range::prepare(index, ord, boost, fld_, term_info.rt.rng,
+                                 term_info.rt.scored_terms_limit);
       default:
         assert(false);
+        return filter::prepared::empty();
     }
   }
 
   // prepare phrase stats (collector for each term)
   if (is_simple_term_only_) {
-    return fixed_prepare_collect(rdr, ord, boost, fixed_terms_collectors(ord, phrase_size));
+    return fixed_prepare_collect(index, ord, boost, fixed_terms_collectors(ord, phrase_size));
   }
-  return variadic_prepare_collect(rdr, ord, boost, variadic_terms_collectors(ord, phrase_size));
+  return variadic_prepare_collect(index, ord, boost, variadic_terms_collectors(ord, phrase_size));
 }
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(

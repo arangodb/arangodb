@@ -396,6 +396,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
   check_query(irs::by_wildcard().field("prefix").term("bateradsfsfasdf"), docs_t{24}, costs_t{1}, rdr);
 }
 
+#ifndef IRESEARCH_DLL
 TEST_P(wildcard_filter_test_case, visit) {
   // add segment
   {
@@ -433,6 +434,7 @@ TEST_P(wildcard_filter_test_case, visit) {
     visitor.reset();
   }
 }
+#endif
 
 INSTANTIATE_TEST_CASE_P(
   wildcard_filter_test,

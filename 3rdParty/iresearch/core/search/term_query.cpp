@@ -101,13 +101,6 @@ NS_ROOT
 // --SECTION--                                         term_query implementation
 // -----------------------------------------------------------------------------
 
-/*static*/ void term_query::visit(
-    const term_reader& reader,
-    const bytes_ref& term,
-    filter_visitor& visitor) {
-  ::visit(reader, term, visitor);
-}
-
 /*static*/ term_query::ptr term_query::make(
     const index_reader& index,
     const order::prepared& ord,
@@ -143,6 +136,13 @@ NS_ROOT
   return memory::make_shared<term_query>(
     std::move(states), std::move(stats), boost
   );
+}
+
+/*static*/ void term_query::visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    filter_visitor& visitor) {
+  ::visit(reader, term, visitor);
 }
 
 term_query::term_query(

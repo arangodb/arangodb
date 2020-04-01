@@ -50,13 +50,14 @@ struct filter_visitor {
 /// @class multiterm_visitor
 /// @brief filter visitor for multiterm queries
 //////////////////////////////////////////////////////////////////////////////
+template<typename States>
 class multiterm_visitor final : public filter_visitor {
  public:
   multiterm_visitor(
       const sub_reader& segment,
       const term_reader& reader,
       limited_sample_collector<term_frequency>& collector,
-      multiterm_query::states_t& states)
+      States& states)
     : segment_(segment), reader_(reader),
       collector_(collector), states_(states) {
   }
@@ -72,20 +73,16 @@ class multiterm_visitor final : public filter_visitor {
     docs_count_ = meta ? &meta->docs_count : &no_docs_;
 
     // get state for current segment
-    state_ = &states_.insert(segment_);
-    state_->reader = &reader_;
+    auto& state = states_.insert(segment_);
+    state.reader = &reader_;
 
-    terms_ = &terms;
-
-    collector_.prepare(segment_, terms, *state_);
+    collector_.prepare(segment_, terms, state);
     key_.offset = 0;
   }
 
   virtual void visit() override {
     // fill scoring candidates
-    assert(state_);
     assert(docs_count_);
-    assert(terms_);
     key_.frequency = *docs_count_;
     collector_.collect(key_);
     ++key_.offset;
@@ -96,11 +93,9 @@ class multiterm_visitor final : public filter_visitor {
   const sub_reader& segment_;
   const term_reader& reader_;
   limited_sample_collector<term_frequency>& collector_;
-  multiterm_query::states_t& states_;
+  States& states_;
   term_frequency key_;
-  multiterm_state* state_ = nullptr;
   const decltype(term_meta::docs_count)* docs_count_ = nullptr;
-  const seek_term_iterator* terms_ = nullptr;
 };
 
 NS_END

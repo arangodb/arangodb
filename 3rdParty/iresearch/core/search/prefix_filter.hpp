@@ -34,11 +34,6 @@ class IRESEARCH_API by_prefix : public by_term {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  static void visit(
-    const term_reader& reader,
-    const bytes_ref& prefix,
-    filter_visitor& visitor);
-
   static prepared::ptr prepare(
     const index_reader& index,
     const order::prepared& ord,
@@ -46,6 +41,11 @@ class IRESEARCH_API by_prefix : public by_term {
     const string_ref& field,
     const bytes_ref& prefix,
     size_t scored_terms_limit);
+
+  static void visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor);
 
   by_prefix() noexcept;
 

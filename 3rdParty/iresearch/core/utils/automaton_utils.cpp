@@ -328,19 +328,6 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   a.EmplaceArc(rho_states_[3], fst::fsa::kRho, rho_states_[2]);
 }
 
-void automaton_visit(
-    const term_reader& reader,
-    const automaton& acceptor,
-    filter_visitor& fv) {
-  auto error = false;
-  auto matcher = get_automaton_matcher(acceptor, error);
-
-  if (error) {
-    return;
-  }
-  automaton_visit_with_matcher(reader, matcher, fv);
-}
-
 filter::prepared::ptr prepare_automaton_filter(
     const string_ref& field,
     const automaton& acceptor,
@@ -366,7 +353,7 @@ filter::prepared::ptr prepare_automaton_filter(
       continue;
     }
 
-    multiterm_visitor mtv(segment, *reader, collector, states);
+    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
 
     automaton_visit_with_matcher(*reader, matcher, mtv);
   }
@@ -377,6 +364,19 @@ filter::prepared::ptr prepare_automaton_filter(
   return memory::make_shared<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::AGGREGATE);
+}
+
+void automaton_visit(
+    const term_reader& reader,
+    const automaton& acceptor,
+    filter_visitor& fv) {
+  auto error = false;
+  auto matcher = get_automaton_matcher(acceptor, error);
+
+  if (error) {
+    return;
+  }
+  automaton_visit_with_matcher(reader, matcher, fv);
 }
 
 NS_END

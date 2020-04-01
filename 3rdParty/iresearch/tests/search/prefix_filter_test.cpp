@@ -290,6 +290,7 @@ TEST_P(prefix_filter_test_case, by_prefix) {
   by_prefix_schemas();
 }
 
+#ifndef IRESEARCH_DLL
 TEST_P(prefix_filter_test_case, visit) {
   // add segment
   {
@@ -315,6 +316,7 @@ TEST_P(prefix_filter_test_case, visit) {
     visitor.reset();
   }
 }
+#endif
 
 INSTANTIATE_TEST_CASE_P(
   prefix_filter_test,

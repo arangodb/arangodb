@@ -91,6 +91,25 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
   return res;
 }
 
+/*static*/ void by_edit_distance::visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    byte_type max_distance,
+    by_edit_distance::pdp_f provider,
+    bool with_transpositions,
+    filter_visitor& fv) {
+  executeLevenshtein(
+    max_distance, provider, with_transpositions,
+    []() {},
+    [&reader, &term, &fv]() {
+      term_query::visit(reader, term, fv);
+    },
+    [&reader, &term, &fv](const parametric_description& d) {
+      automaton_visit(reader, make_levenshtein_automaton(d, term), fv);
+    }
+  );
+}
+
 by_edit_distance::by_edit_distance() noexcept
   : by_prefix(by_edit_distance::type()),
     provider_(&default_pdp) {
@@ -119,25 +138,6 @@ bool by_edit_distance::equals(const filter& rhs) const noexcept {
   return by_prefix::equals(rhs) &&
     max_distance_ == impl.max_distance_ &&
     with_transpositions_ == impl.with_transpositions_;
-}
-
-/*static*/ void by_edit_distance::visit(
-    const term_reader& reader,
-    const bytes_ref& term,
-    byte_type max_distance,
-    by_edit_distance::pdp_f provider,
-    bool with_transpositions,
-    filter_visitor& fv) {
-  executeLevenshtein(
-    max_distance, provider, with_transpositions,
-    []() {},
-    [&reader, &term, &fv]() {
-      term_query::visit(reader, term, fv);
-    },
-    [&reader, &term, &fv](const parametric_description& d) {
-      automaton_visit(reader, make_levenshtein_automaton(d, term), fv);
-    }
-  );
 }
 
 NS_END

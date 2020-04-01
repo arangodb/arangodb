@@ -153,10 +153,6 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
   return res;
 }
 
-by_wildcard::by_wildcard() noexcept
-  : by_prefix(by_wildcard::type()) {
-}
-
 /*static*/ void by_wildcard::visit(
     const term_reader& reader,
     bytes_ref term,
@@ -175,6 +171,10 @@ by_wildcard::by_wildcard() noexcept
       ::automaton_visit(reader, term, fv);
     }
   );
+}
+
+by_wildcard::by_wildcard() noexcept
+  : by_prefix(by_wildcard::type()) {
 }
 
 NS_END
