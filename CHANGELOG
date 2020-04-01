@@ -1,6 +1,12 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed a bug in the agency supervision, which ignored the `failoverCandidates`
+  field.
+
+* Fixed a bug in the agency supervision, which could declare an already FAILED
+  dbserver temporarily as GOOD again after an agency leader change.
+
 * AQL bugfix for the OneShard database optimizer rule when working with both
   OneShard collections and satellite collections. Previously, queries could not
   be instantiated unless the leader of the satellite collection was, by chance,
