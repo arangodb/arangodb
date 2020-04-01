@@ -1,5 +1,6 @@
 devel
 -----
+* storedValues property is removed from arngosearch link properties output.
 
 * added primarySortCompression property to ArangoSearch Views
 

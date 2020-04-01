@@ -63,6 +63,13 @@ function clusterInventorySuite () {
       assertEqual("number", typeof view.consolidationPolicy.threshold);
     }
     assertTrue(Array.isArray(view.primarySort));
+    assertEqual("string", typeof view.primarySortCompression);
+    assertTrue(Array.isArray(view.storedValues));
+    view.storedValues.forEach(function(storedValue) {
+      assertEqual("object", typeof storedValue);
+      assertTrue(Array.isArray(storedValue.field));
+      assertEqual("string", typeof storedValue.compression);
+    }
     //assertEqual("number", typeof view.version);
     assertEqual("number", typeof view.writebufferActive);
     assertEqual("number", typeof view.writebufferIdle);
