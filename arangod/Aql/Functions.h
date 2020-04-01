@@ -427,6 +427,8 @@ struct Functions {
                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue ReplaceNth(arangodb::aql::ExpressionContext*,
                              transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Interleave(arangodb::aql::ExpressionContext*,
+                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue NotNull(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue CurrentDatabase(arangodb::aql::ExpressionContext*,
