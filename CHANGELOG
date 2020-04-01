@@ -1,6 +1,14 @@
 devel
 -----
 
+* Removed deprecated MMFiles storage engine and also the `arango-dfdb`
+  (datafile debugger) executable that could be used to validate MMFiles
+  datafiles.
+
+  This change also obsoletes all MMFiles-specific startup options in the
+  `--wal.*` section. Using these startup options is not an error, but has
+  no effect anymore.
+
 * Added INTERLEAVE AQL function.
 
 * Upgraded bundled RocksDB library to version 6.8.0.
