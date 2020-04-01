@@ -610,7 +610,6 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       return false;
     }
   }
-  if(mask->_primarySort)
   {
     // optional string (only if primarySort present)
     static VPackStringRef const fieldName("primarySortCompression");
@@ -701,8 +700,7 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
     }
   }
 
-  if (!_primarySort.empty() &&
-      (!ignoreEqual || _primarySortCompression != ignoreEqual->_primarySortCompression) && 
+  if ((!ignoreEqual || _primarySortCompression != ignoreEqual->_primarySortCompression) && 
       (!mask || mask->_primarySortCompression)) {
     auto compression = columnCompressionToString(_primarySortCompression);
     addStringRef(builder, "primarySortCompression", compression);

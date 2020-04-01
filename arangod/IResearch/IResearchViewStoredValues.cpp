@@ -21,9 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/AttributeNameParser.h"
-#include "IResearchCommon.h"
 #include "IResearchViewStoredValues.h"
-#include <unordered_map>
 
 namespace {
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,

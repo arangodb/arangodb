@@ -268,22 +268,22 @@ irs::compression::type_id const& decodeCompression(
     arangodb::iresearch::ColumnCompression compression) {
   irs::compression::type_id const* type{ nullptr };
   switch (compression) {
-  case arangodb::iresearch::ColumnCompression::LZ4:
-    type = &irs::compression::lz4::type();
-    break;
-  case arangodb::iresearch::ColumnCompression::NONE:
-    type = &irs::compression::none::type();
-    break;
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  case arangodb::iresearch::ColumnCompression::TEST:
-    type = &irs::compression::mock::test_compressor::type();
-    break;
-#endif
-  default:
-    TRI_ASSERT(false);
-    // fallback to default on runtime
-    type = &irs::compression::lz4::type();
-    break;
+    case arangodb::iresearch::ColumnCompression::LZ4:
+      type = &irs::compression::lz4::type();
+      break;
+    case arangodb::iresearch::ColumnCompression::NONE:
+      type = &irs::compression::none::type();
+      break;
+  #ifdef ARANGODB_USE_GOOGLE_TESTS
+    case arangodb::iresearch::ColumnCompression::TEST:
+      type = &irs::compression::mock::test_compressor::type();
+      break;
+  #endif
+    default:
+      TRI_ASSERT(false);
+      // fallback to default on runtime
+      type = &irs::compression::lz4::type();
+      break;
   }
   TRI_ASSERT(type != nullptr);
   return *type;
