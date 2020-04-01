@@ -334,12 +334,12 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
   _trxCallback = [key](transaction::Methods& trx, transaction::Status status)->void {
     auto* state = trx.state();
     TRI_ASSERT(state != nullptr);
-    
+
     // check state of the top-most transaction only
     if (!state || !state->isTopLevelTransaction()) {
       return;  // NOOP
     }
-    
+
     auto prev = state->cookie(key, nullptr);  // get existing cookie
 
     if (prev) {
@@ -941,7 +941,7 @@ Result IResearchLink::init(
         // missing links will be populated when they are created in the
         // per-shard collection
         if (shardIds) {
-          for (auto& entry: *shardIds) {
+          for (auto& entry : *shardIds) {
             auto collection = vocbase.lookupCollection(entry.first); // per-shard collections are always in 'vocbase'
 
             if (!collection) {
@@ -1029,7 +1029,7 @@ Result IResearchLink::initDataStore(
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushSubscription.reset() ; // reset together with '_asyncSelf'
+  _flushSubscription.reset(); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   auto& server = _collection.vocbase().server();
@@ -1127,7 +1127,6 @@ Result IResearchLink::initDataStore(
           << "link '" << id() << "', docs count '" << _dataStore._reader->docs_count()
           << "', live docs count '" << _dataStore._reader->live_docs_count()
           << "', recovery tick '" << _dataStore._recoveryTick << "'";
-
     } catch (irs::index_not_found const&) {
       // NOOP
     }
@@ -1152,7 +1151,7 @@ Result IResearchLink::initDataStore(
       }
     }
   }
-  if (nonDefaultCompressions) { 
+  if (nonDefaultCompressions) {
     // we will need compression map to handle compressions
     // on insert
     for (auto c : storedColumns) {
@@ -1168,8 +1167,8 @@ Result IResearchLink::initDataStore(
   if (encrypt) {
     if (nonDefaultCompressions) {
       options.column_info = [compressionMap](const irs::string_ref& name) -> irs::column_info {
-         auto compress = name.null() ? 
-                           compressionMap.find(iresearch::kludge::primarySortColumnName) : 
+         auto compress = name.null() ?
+                           compressionMap.find(iresearch::kludge::primarySortColumnName):
                            compressionMap.find(name);
          if (compress != compressionMap.end()) {
             // do not waste resources to encrypt primary key column
@@ -1193,8 +1192,7 @@ Result IResearchLink::initDataStore(
         if (compress != compressionMap.end()) {
           // do not waste resources to encrypt primary key column
           return { compress->second, {}, false };
-        }
-        else {
+        } else {
           return { irs::compression::lz4::type(), {}, false };
         }
       };
@@ -1806,7 +1804,7 @@ Result IResearchLink::unload() {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushSubscription.reset() ; // reset together with '_asyncSelf'
+  _flushSubscription.reset(); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {

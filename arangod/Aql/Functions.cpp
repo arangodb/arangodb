@@ -5066,7 +5066,7 @@ AqlValue Functions::Jaccard(ExpressionContext* ctx, transaction::Methods* trx,
     count = 0;
   }
 
-  auto const jaccard = values.empty() ? 0.0 : double_t(cardinality) / values.size();
+  auto const jaccard = values.empty() ? 1.0 : double_t(cardinality) / values.size();
 
   return AqlValue{AqlValueHintDouble{jaccard}};
 }
