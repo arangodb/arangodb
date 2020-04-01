@@ -94,12 +94,8 @@ ClusterEngineType ClusterEngine::engineType() const {
   }
   TRI_ASSERT(_actualEngine != nullptr);
 
-  if (isRocksDB()) {
-    return ClusterEngineType::RocksDBEngine;
-  }
-
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid engine type");
+  TRI_ASSERT(isRocksDB());
+  return ClusterEngineType::RocksDBEngine;
 }
 
 // inherited from ApplicationFeature
