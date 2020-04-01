@@ -1159,8 +1159,9 @@ Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) co
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(s, VPackSlice::noneSlice(), true, options)) {
-      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
+    auto rv = validator->validate(s, VPackSlice::noneSlice(), true, options);
+    if(rv.fail()) {
+      return rv;
     }
   }
   return {};
@@ -1170,8 +1171,9 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VP
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(modifiedDoc, oldDoc, false, options)) {
-      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
+    auto rv = validator->validate(modifiedDoc, oldDoc, false, options);
+    if(rv.fail()) {
+      return rv;
     }
   }
   return {};
