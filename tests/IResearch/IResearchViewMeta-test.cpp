@@ -531,7 +531,7 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
 
   auto slice = builder.slice();
 
-  EXPECT_EQ(11, slice.length());
+  EXPECT_EQ(12, slice.length());
   tmpSlice = slice.get("collections");
   EXPECT_TRUE((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("cleanupIntervalStep");
@@ -568,6 +568,9 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
   tmpSlice = slice.get("primarySort");
   EXPECT_TRUE(true == tmpSlice.isArray());
   EXPECT_TRUE(0 == tmpSlice.length());
+  tmpSlice = slice.get("primarySortCompression");
+  EXPECT_TRUE(tmpSlice.isString());
+  EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
   tmpSlice = slice.get("storedValues");
   EXPECT_TRUE(tmpSlice.isArray());
   EXPECT_EQ(0, tmpSlice.length());
@@ -807,7 +810,7 @@ TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
 
   auto slice = builder.slice();
 
-  EXPECT_EQ(11, slice.length());
+  EXPECT_EQ(12, slice.length());
   EXPECT_TRUE(slice.hasKey("collections"));
   EXPECT_TRUE(slice.hasKey("cleanupIntervalStep"));
   EXPECT_TRUE(slice.hasKey("commitIntervalMsec"));
@@ -820,6 +823,7 @@ TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
   EXPECT_TRUE(slice.hasKey("writebufferSizeMax"));
   EXPECT_TRUE(slice.hasKey("primarySort"));
   EXPECT_TRUE(slice.hasKey("storedValues"));
+  EXPECT_TRUE(slice.hasKey("primarySortCompression"));
 }
 
 TEST_F(IResearchViewMetaTest, test_writeMaskNone) {
