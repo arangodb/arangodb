@@ -57,7 +57,7 @@ OptimizerRulesFeature::OptimizerRulesFeature(arangodb::application_features::App
 
   startsAfter<AqlFeature>();
 }
-  
+
 void OptimizerRulesFeature::collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
   options->addOption("--query.optimizer-rules",
                      "enable or disable specific optimizer rules (use rule name prefixed with '-' for disabling, '+' for enabling)",
@@ -71,8 +71,8 @@ void OptimizerRulesFeature::collectOptions(std::shared_ptr<arangodb::options::Pr
                      .setIntroducedIn(30600);
 }
 
-void OptimizerRulesFeature::prepare() { 
-  addRules(); 
+void OptimizerRulesFeature::prepare() {
+  addRules();
   enableOrDisableRules();
 }
 
@@ -397,11 +397,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
-  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, 
+  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule,
                OptimizerRule::moveFiltersIntoEnumerateRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
-  registerRule("parallelize-gather", parallelizeGatherRule, 
+
+  registerRule("parallelize-gather", parallelizeGatherRule,
                OptimizerRule::parallelizeGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
@@ -418,7 +418,7 @@ void OptimizerRulesFeature::addRules() {
 
   // add the storage-engine specific rules
   addStorageEngineRules();
-  
+
   // Splice subqueries
   //
   // ***CAUTION***
@@ -495,7 +495,7 @@ void OptimizerRulesFeature::enableOrDisableRules() {
       // strip initial + sign
       n = n.substr(1);
     }
-    
+
     if (n.empty()) {
       continue;
     }

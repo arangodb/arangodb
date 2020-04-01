@@ -493,6 +493,8 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());
+  nodes.add("isSatelliteNode", VPackValue(isSatelliteNode()));
+  nodes.add("isUsedAsSatellite", VPackValue(isUsedAsSatellite()));
 
   // Graph Definition
   if (_graphObj != nullptr) {
