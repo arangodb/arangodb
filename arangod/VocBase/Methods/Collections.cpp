@@ -292,12 +292,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
+    bool isSystem = vocbase.IsSystemName(info.name);
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
       bool isSmartChild =
           Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-      TRI_voc_rid_t minRev = isSmartChild ? 0 : TRI_HybridLogicalClock();
+      TRI_voc_rid_t minRev = (isSystem || isSmartChild) ? 0 : TRI_HybridLogicalClock();
       helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
     }
 
@@ -305,14 +306,14 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
-        if (factor > 0 && vocbase.IsSystemName(info.name)) {
+        if (factor > 0 && isSystem) {
           auto& cl = vocbase.server().getFeature<ClusterFeature>();
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       }
 
-      if (!vocbase.IsSystemName(info.name)) {
+      if (!isSystem) {
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
@@ -899,15 +900,10 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
     return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
   }
 
-  if (coll.system()) {
+  if (!ServerState::instance()->isSingleServer()) {
     return futures::makeFuture(
-        Result(TRI_ERROR_BAD_PARAMETER, "no upgrading system collections"));
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    auto cid = std::to_string(coll.id());
-    auto& feature = vocbase.server().getFeature<ClusterFeature>();
-    return upgradeOnCoordinator(feature, vocbase.name(), cid);
+        Result(TRI_ERROR_NOT_IMPLEMENTED,
+               "collection upgrade in cluster not supported yet"));
   }
 
   Result res;

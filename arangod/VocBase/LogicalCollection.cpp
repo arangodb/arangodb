@@ -157,7 +157,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 #endif
       _usesRevisionsAsDocumentIds(
           Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
-      _minRevision(isSmartChild()
+      _minRevision((system() || isSmartChild())
                        ? 0
                        : Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision,
                                                                 0)),
@@ -486,7 +486,7 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 bool LogicalCollection::syncByRevision() const { return _syncByRevision; }
 
 bool LogicalCollection::determineSyncByRevision() const {
-  if (!system() && version() >= LogicalCollection::Version::v37) {
+  if (version() >= LogicalCollection::Version::v37) {
     auto& server = vocbase().server();
     if (server.hasFeature<EngineSelectorFeature>() &&
         server.hasFeature<ReplicationFeature>()) {
@@ -944,9 +944,14 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern, replicationFactor);
-  _usesRevisionsAsDocumentIds =
-      Helper::getBooleanValue(slice, StaticStrings::UsesRevisionsAsDocumentIds,
-                              _usesRevisionsAsDocumentIds);
+  bool useRevs = Helper::getBooleanValue(slice, StaticStrings::UsesRevisionsAsDocumentIds,
+                                         _usesRevisionsAsDocumentIds);
+  if (!useRevs && _usesRevisionsAsDocumentIds) {
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "collection uses revisions as document IDs, cannot set this to false");
+  }
+  _usesRevisionsAsDocumentIds = useRevs;
   _syncByRevision =
       Helper::getBooleanValue(slice, StaticStrings::SyncByRevision, _syncByRevision);
 
