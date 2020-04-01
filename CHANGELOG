@@ -1,10 +1,12 @@
 devel
 -----
+* Added JACCARD AQL function
+
 * storedValues property is removed from arngosearch link properties output.
 
-* added primarySortCompression property to ArangoSearch Views
+* Added primarySortCompression property to ArangoSearch Views
 
-* added compression property to ArangoSearch View storedValues
+* Added compression property to ArangoSearch View storedValues
 
 * Added INTERLEAVE AQL function.
 
