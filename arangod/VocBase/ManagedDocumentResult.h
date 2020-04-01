@@ -25,7 +25,7 @@
 #define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

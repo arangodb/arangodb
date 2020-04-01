@@ -550,23 +550,28 @@ static void JS_TransactionsWal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // lastCollectedId
   {
     auto value = std::get<1>(info);
-    if (value == UINT64_MAX) {
+    if (value.id() == std::numeric_limits<MMFilesWalLogfile::IdType::BaseType>::max()) {
       result->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastCollected"), v8::Null(isolate)).FromMaybe(false);
     } else {
-      result->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastCollected"),
-                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value))).FromMaybe(false);
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastCollected"),
+                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(
+                                                                value.id())))
+          .FromMaybe(false);
     }
   }
 
   // lastSealedId
   {
     auto value = std::get<2>(info);
-    if (value == UINT64_MAX) {
+    if (value.id() == std::numeric_limits<MMFilesWalLogfile::IdType::BaseType>::max()) {
       result->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastSealed"), v8::Null(isolate)).FromMaybe(false);
     } else {
-      result->Set(context,
-                  TRI_V8_ASCII_STRING(isolate, "minLastSealed"),
-                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value))).FromMaybe(false);
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastSealed"),
+                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(
+                                                                value.id())))
+          .FromMaybe(false);
     }
   }
 

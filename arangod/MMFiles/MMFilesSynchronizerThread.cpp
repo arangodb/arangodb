@@ -52,7 +52,7 @@ MMFilesSynchronizerThread::MMFilesSynchronizerThread(MMFilesLogfileManager& logf
       _logfileManager(logfileManager),
       _condition(),
       _syncInterval(syncInterval),
-      _logfileCache({0, -1}),
+      _logfileCache({FileId::none(), -1}),
       _waiting(0) {}
 
 /// @brief begin shutdown sequence
@@ -150,7 +150,7 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
   MMFilesWalLogfile::IdType const id = region.logfileId;
 
   // an id of 0 means an empty region...
-  if (id == 0) {
+  if (id.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -167,13 +167,13 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
   int result = TRI_MSync(fd, region.mem, region.mem + region.size);
   if (TRI_microtime() - startTime > 1.0) {
     LOG_TOPIC("c42eb", DEBUG, arangodb::Logger::DATAFILES)
-        << "Long sync logfile " << id << ", region " << (void*)region.mem
+        << "Long sync logfile " << id.id() << ", region " << (void*)region.mem
         << ", size " << region.size;
   }
 
   LOG_TOPIC("41878", DEBUG, arangodb::Logger::DATAFILES)
-      << "syncing logfile " << id << ", region " << (void*)region.mem << " - "
-      << (void*)(region.mem + region.size) << ", length: " << region.size
+      << "syncing logfile " << id.id() << ", region " << (void*)region.mem
+      << " - " << (void*)(region.mem + region.size) << ", length: " << region.size
       << ", wfs: " << (region.waitForSync ? "true" : "false");
 
   if (result != TRI_ERROR_NO_ERROR) {
@@ -222,7 +222,7 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
 
 /// @brief get a logfile descriptor (it caches the descriptor for performance)
 int MMFilesSynchronizerThread::getLogfileDescriptor(MMFilesWalLogfile::IdType id) {
-  if (id != _logfileCache.id || _logfileCache.id == 0) {
+  if (id != _logfileCache.id || _logfileCache.id.empty()) {
     _logfileCache.id = id;
     _logfileCache.fd = _logfileManager.getLogfileDescriptor(id);
   }

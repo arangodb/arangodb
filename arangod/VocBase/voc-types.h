@@ -33,26 +33,19 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
+#include "Basics/Identifier.h"
+
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;
 
 /// @brief collection identifier type
 typedef uint64_t TRI_voc_cid_t;
 
-/// @brief datafile identifier type
-typedef uint64_t TRI_voc_fid_t;
-
 /// @brief revision identifier type
 typedef uint64_t TRI_voc_rid_t;
 
 /// @brief transaction identifier type
 typedef uint64_t TRI_voc_tid_t;
-
-/// @brief index identifier
-typedef TRI_voc_tick_t TRI_idx_iid_t;
-
-/// @brief server id type
-typedef uint64_t TRI_server_id_t;
 
 /// @brief Convert a revision ID to a string
 std::string TRI_RidToString(TRI_voc_rid_t rid);

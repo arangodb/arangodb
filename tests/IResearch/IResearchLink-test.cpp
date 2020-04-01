@@ -128,7 +128,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     try {
       auto& factory =
           server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-      factory.instantiate(*logicalCollection, json->slice(), 1, false);
+      factory.instantiate(*logicalCollection, json->slice(), arangodb::IndexId{1}, false);
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& ex) {
       EXPECT_EQ(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, ex.code());
@@ -148,7 +148,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-    EXPECT_NE(nullptr, factory.instantiate(*logicalCollection, json->slice(), 1, false));
+    EXPECT_NE(nullptr, factory.instantiate(*logicalCollection, json->slice(),
+                                           arangodb::IndexId{1}, false));
   }
 
   // valid link creation
@@ -359,7 +360,8 @@ TEST_F(IResearchLinkTest, test_init) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> link =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{1}, false);
     EXPECT_TRUE((false == !link));
 
     // collection in view after
@@ -434,7 +436,8 @@ TEST_F(IResearchLinkTest, test_init) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> link =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{1}, false);
     EXPECT_TRUE((false == !link));
 
     // collection in view after
@@ -499,7 +502,8 @@ TEST_F(IResearchLinkTest, test_self_token) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 42, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{42}, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -530,7 +534,8 @@ TEST_F(IResearchLinkTest, test_drop) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> link0 =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{1}, false);
     EXPECT_TRUE((false == !link0));
 
     // collection in view before
@@ -574,7 +579,8 @@ TEST_F(IResearchLinkTest, test_drop) {
     }
 
     std::shared_ptr<arangodb::Index> link1 =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{1}, false);
     EXPECT_TRUE((false == !link1));
 
     // collection in view before (new link)
@@ -633,7 +639,8 @@ TEST_F(IResearchLinkTest, test_unload) {
     auto& factory =
         server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
     std::shared_ptr<arangodb::Index> link =
-        factory.instantiate(*logicalCollection, linkJson->slice(), 1, false);
+        factory.instantiate(*logicalCollection, linkJson->slice(),
+                            arangodb::IndexId{1}, false);
     EXPECT_TRUE((false == !link));
 
     // collection in view before

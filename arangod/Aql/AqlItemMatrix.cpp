@@ -151,7 +151,7 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
     TRI_ASSERT(blockPtr->size() >= _startIndexInFirstBlock);
     _size = blockPtr->size() - _startIndexInFirstBlock;
   }
-  // Remove all but the last
+  // Remove all but the last block
   _blocks.erase(_blocks.begin(), _blocks.end() - 1);
   TRI_ASSERT(_blocks.size() == 1);
   return shadowRow;

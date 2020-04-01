@@ -395,7 +395,8 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
   try {
     int res = collect(logfile);
     LOG_TOPIC("917e7", TRACE, Logger::COLLECTOR)
-        << "collected logfile: " << logfile->id() << ". result: " << TRI_errno_string(res);
+        << "collected logfile: " << logfile->id().id()
+        << ". result: " << TRI_errno_string(res);
 
     if (res == TRI_ERROR_NO_ERROR) {
       // reset collector status
@@ -418,14 +419,15 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
     int res = ex.code();
 
-    LOG_TOPIC("9d55c", DEBUG, Logger::COLLECTOR) << "collecting logfile " << logfile->id()
-                                        << " failed: " << ex.what();
+    LOG_TOPIC("9d55c", DEBUG, Logger::COLLECTOR)
+        << "collecting logfile " << logfile->id() << " failed: " << ex.what();
 
     return res;
   } catch (...) {
     _logfileManager.forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
 
-    LOG_TOPIC("56d6f", DEBUG, Logger::COLLECTOR) << "collecting logfile " << logfile->id() << " failed";
+    LOG_TOPIC("56d6f", DEBUG, Logger::COLLECTOR)
+        << "collecting logfile " << logfile->id() << " failed";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -634,7 +636,7 @@ void MMFilesCollectorThread::processCollectionMarker(
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition));
   uint32_t const datafileMarkerSize = operation.datafileMarkerSize;
-  TRI_voc_fid_t const fid = operation.datafileId;
+  FileId const fid = operation.datafileId;
 
   MMFilesMarkerType const type = walMarker->getType();
 
@@ -808,7 +810,8 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
-  LOG_TOPIC("7a7f2", DEBUG, Logger::COLLECTOR) << "collecting wal logfile " << logfile->id();
+  LOG_TOPIC("7a7f2", DEBUG, Logger::COLLECTOR)
+      << "collecting wal logfile " << logfile->id().id();
 
   MMFilesDatafile* df = logfile->df();
 

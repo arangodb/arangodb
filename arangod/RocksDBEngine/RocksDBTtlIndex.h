@@ -24,7 +24,8 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H
 #define ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H 1
 
-#include "RocksDBSkiplistIndex.h"
+#include "RocksDBEngine/RocksDBSkiplistIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -37,11 +38,8 @@ class Slice;
 
 class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
  public:
-  RocksDBTtlIndex(
-      TRI_idx_iid_t iid,
-      LogicalCollection& coll,
-      arangodb::velocypack::Slice const& info
-  );
+  RocksDBTtlIndex(IndexId iid, LogicalCollection& coll,
+                  arangodb::velocypack::Slice const& info);
 
   IndexType type() const override { return Index::TRI_IDX_TYPE_TTL_INDEX; }
 
