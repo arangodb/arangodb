@@ -552,7 +552,7 @@ function CollectionSuite () {
       var p = c1.properties();
 
       assertEqual(true, p.hasOwnProperty("syncByRevision"));
-      assertEqual(false, p.syncByRevision);
+      assertEqual(true, p.syncByRevision);
 
       db._drop(cn);
     },
