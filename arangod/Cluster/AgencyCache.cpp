@@ -70,36 +70,60 @@ void AgencyCache::run() {
 
   auto sendTransaction =
     [&](VPackBuilder& r) {
-      auto ret = AsyncAgencyComm().poll(60s, _commitIndex);
+      index_t commitIndex = 0;
+      {
+        std::lock_guard g(_lock);
+        commitIndex = _commitIndex;
+      }
+      auto ret = AsyncAgencyComm().poll(60s, commitIndex);
       //r.add(ret.value());
       return ret;
     };
-  auto self(shared_from_this());
-  VPackBuilder result;
+  //auto self(shared_from_this());
+  VPackBuilder rb;
 
 
-  // Do this until end of time
-  // Long poll agency
-  // if result
-  //   if firstIndex == 0
-  //     overwrite readDB, update commitIndex
+  // while not stopping
+  //   poll agency
+  //   if result
+  //     if firstIndex == 0
+  //       overwrite readDB, update commitIndex
+  //     else
+  //       apply logs to local cache
   //   else
-  //     apply logs to local cache
-  // else
-  //   wait ever longer until success
+  //     wait ever longer until success
 
   while (!this->isStopping()) {
 
-    result.clear();
+    rb.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
 
     auto ret = waitForFuture(
-      sendTransaction(result)
+      sendTransaction(rb)
       .thenValue(
-        [&wait](AsyncAgencyCommResult&& result) {
-          if (result.ok() && result.statusCode() == 200) {
-            //_readDB.applyTransactions(result.slice().get("logs"));
+        [&](AsyncAgencyCommResult&& rb) {
+          if (rb.ok() && rb.statusCode() == 200) {
             wait = 0.0;
+            TRI_ASSERT(rb.slice().hasKey("result"));
+            VPackSlice rs = rb.slice().get("result");
+            TRI_ASSERT(rs.hasKey("commitIndex"));
+            TRI_ASSERT(rs.get("commitIndex").isNumber());
+            TRI_ASSERT(rs.hasKey("firstIndex"));
+            TRI_ASSERT(rs.get("firstIndex").isNumber());
+            consensus::index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
+            consensus::index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
+            std::lock_guard g(_lock);
+            if (firstIndex > 0) {
+              TRI_ASSERT(rs.hasKey("log"));
+              TRI_ASSERT(rs.get("log").isArray());
+              for (auto const& i : VPackArrayIterator(rs.get("log"))) {
+                _readDB.applyTransaction(i); // apply logs
+              }
+              _commitIndex = commitIndex; 
+            } else {
+              TRI_ASSERT(rs.hasKey("readDB"));
+              _readDB = rs;                  // overwrite
+            }
           } else {
             wait += 0.1;
             LOG_TOPIC("9a9e3", DEBUG, Logger::CLUSTER) <<
