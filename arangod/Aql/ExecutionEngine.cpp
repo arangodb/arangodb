@@ -823,3 +823,9 @@ AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
 auto ExecutionEngine::getStats() const noexcept -> ExecutionStats const& {
   return _stats;
 }
+
+#ifndef USE_ENTERPRISE
+bool ExecutionEngine::waitForSatellites(Collection const* collection) const {
+  return true;
+}
+#endif

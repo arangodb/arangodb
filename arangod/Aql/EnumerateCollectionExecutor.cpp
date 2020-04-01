@@ -141,7 +141,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                          ? transaction::Methods::CursorType::ANY
                                          : transaction::Methods::CursorType::ALL)));
 
-  if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
+  if (!_infos.getEngine()->waitForSatellites(_infos.getCollection())) {
     double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
                                    "collection " + _infos.getCollection()->name() +
