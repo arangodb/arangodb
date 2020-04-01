@@ -124,6 +124,10 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
     TRI_TerminateDebugging("crashing before syncing min tick");
   }
 
+  // WAL tick has to be synced prior to releasing it, if the storage
+  // engine supports it
+  //   engine->waitForSyncTick(minTick);
+  
   TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
     TRI_TerminateDebugging("crashing after syncing min tick");
   }

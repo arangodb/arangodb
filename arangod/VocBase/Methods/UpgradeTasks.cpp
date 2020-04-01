@@ -34,6 +34,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -546,6 +547,8 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
 
 bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
                                                       arangodb::velocypack::Slice const& slice) {
+  TRI_ASSERT(EngineSelectorFeature::engineName() == RocksDBEngine::EngineName);
+  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   std::string const path = engine->databasePath(&vocbase);
 
