@@ -2627,7 +2627,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   temp.add(StaticStrings::ReplicationFactor, VPackValue(info->replicationFactor()));
   temp.add(StaticStrings::MinReplicationFactor, VPackValue(info->writeConcern())); // deprecated in 3.6
   temp.add(StaticStrings::WriteConcern, VPackValue(info->writeConcern()));
-  temp.add(VPackValue(StaticStrings::Validation));
+  temp.add(VPackValue(StaticStrings::Schema));
   info->validatorsToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();

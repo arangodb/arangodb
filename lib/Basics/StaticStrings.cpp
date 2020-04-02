@@ -244,7 +244,7 @@ std::string const StaticStrings::Satellite("satellite");
 std::string const StaticStrings::SyncByRevision("syncByRevision");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
-std::string const StaticStrings::Validation("validation");
+std::string const StaticStrings::Schema("schema");
 std::string const StaticStrings::WriteConcern("writeConcern");
 
 // graph attribute names
@@ -334,29 +334,14 @@ std::string const StaticStrings::AqlCallListSpecific("specifics");
 std::string const StaticStrings::AqlCallListDefault("default");
 
 // validation
-std::string const StaticStrings::ValidatorLevelNone("none");
-std::string const StaticStrings::ValidatorLevelNew("new");
-std::string const StaticStrings::ValidatorLevelModerate("moderate");
-std::string const StaticStrings::ValidatorLevelStrict("strict");
+std::string const StaticStrings::ValidationLevelNone("none");
+std::string const StaticStrings::ValidationLevelNew("new");
+std::string const StaticStrings::ValidationLevelModerate("moderate");
+std::string const StaticStrings::ValidationLevelStrict("strict");
 
-std::string const StaticStrings::ValidatorParameterMessage("message");
-std::string const StaticStrings::ValidatorParameterLevel("level");
-std::string const StaticStrings::ValidatorParameterType("type");
-std::string const StaticStrings::ValidatorParameterRule("rule");
-std::string const StaticStrings::ValidatorParameterSpecialProperties("special");
-
-std::string const StaticStrings::ValidatorTypeAQL("aql");
-std::string const StaticStrings::ValidatorTypeJsonSchema("json");
-std::string const StaticStrings::ValidatorTypeBool("bool");
-
-
-std::string const StaticStrings::ValidatorPropertyNone("none");
-std::string const StaticStrings::ValidatorPropertyId("id");
-std::string const StaticStrings::ValidatorPropertyKey("key");
-std::string const StaticStrings::ValidatorPropertyRev("rev");
-std::string const StaticStrings::ValidatorPropertyFrom("from");
-std::string const StaticStrings::ValidatorPropertyTo("to");
-std::string const StaticStrings::ValidatorPropertyAll("all");
+std::string const StaticStrings::ValidationParameterMessage("message");
+std::string const StaticStrings::ValidationParameterLevel("level");
+std::string const StaticStrings::ValidationParameterRule("rule");
 
 // metrics prometheus labels
 std::string const StaticStrings::HeartbeatSendTimeMs("arangodb_heartbeat_send_time_msec");

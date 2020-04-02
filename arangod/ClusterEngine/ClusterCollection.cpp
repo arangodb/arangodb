@@ -115,9 +115,9 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     merge.add(StaticStrings::CacheEnabled,
               VPackValue(Helper::getBooleanValue(slice, StaticStrings::CacheEnabled, def)));
 
-    auto validators = slice.get(StaticStrings::Validation);
+    auto validators = slice.get(StaticStrings::Schema);
     if(!validators.isNone()) {
-      merge.add(StaticStrings::Validation, validators);
+      merge.add(StaticStrings::Schema, validators);
     }
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);

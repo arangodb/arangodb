@@ -355,7 +355,7 @@ void RestCollectionHandler::handleCommandPost() {
                                             StaticStrings::ReplicationFactor,
                                             StaticStrings::MinReplicationFactor, // deprecated
                                             StaticStrings::WriteConcern,
-                                            StaticStrings::Validation,
+                                            StaticStrings::Schema,
                                             "servers"
                                           });
   VPackSlice const parameters = filtered.slice();
@@ -559,7 +559,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     std::vector<std::string> keep = {StaticStrings::DoCompact,
                                      StaticStrings::JournalSize,
                                      StaticStrings::WaitForSyncString,
-                                     StaticStrings::Validation,
+                                     StaticStrings::Schema,
                                      StaticStrings::IndexBuckets,
                                      StaticStrings::ReplicationFactor,
                                      StaticStrings::MinReplicationFactor,  // deprecated
