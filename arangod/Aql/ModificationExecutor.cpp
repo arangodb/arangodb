@@ -90,7 +90,7 @@ AqlValue const& ModifierOutput::getNewValue() const {
 template <typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
                                                                       Infos& infos)
-    : _lastState(ExecutionState::HASMORE), _infos(infos), _fetcher(fetcher), _modifier(infos) {}
+    : _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
 
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier
