@@ -1275,10 +1275,10 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
            .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"))
            .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"));
-    if(options.overwriteModeUpdate) {
-      reqOpts.parameters.insert_or_assign(StaticStrings::OverWriteMode,  "update" );
+    if (options.overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+      reqOpts.parameters.insert_or_assign(StaticStrings::OverWriteMode, 
+                                          OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
-
 
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();

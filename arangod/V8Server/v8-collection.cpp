@@ -67,6 +67,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
@@ -1915,21 +1916,23 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(OverwriteModeKey);
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
       auto mode = TRI_ObjectToString(isolate, optionsObject->Get(context, OverwriteModeKey).FromMaybe(v8::Local<v8::Value>()));
-      if (mode == "update" ) {
-        options.overwriteModeUpdate = true;
+      
+      auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
+      if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
         options.overwrite = true;
+        options.overwriteMode = overwriteMode;
 
-        TRI_GET_GLOBAL_STRING(KeepNullKey);
-        if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
-          options.keepNull = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, KeepNullKey).FromMaybe(v8::Local<v8::Value>()));
+        if (overwriteMode == OperationOptions::OverwriteMode::Update) {
+          TRI_GET_GLOBAL_STRING(KeepNullKey);
+          if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
+            options.keepNull = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, KeepNullKey).FromMaybe(v8::Local<v8::Value>()));
+          }
+          TRI_GET_GLOBAL_STRING(MergeObjectsKey);
+          if (TRI_HasProperty(context, isolate, optionsObject, MergeObjectsKey)) {
+            options.mergeObjects =
+              TRI_ObjectToBoolean(isolate, optionsObject->Get(context, MergeObjectsKey).FromMaybe(v8::Local<v8::Value>()));
+          }
         }
-        TRI_GET_GLOBAL_STRING(MergeObjectsKey);
-        if (TRI_HasProperty(context, isolate, optionsObject, MergeObjectsKey)) {
-          options.mergeObjects =
-            TRI_ObjectToBoolean(isolate, optionsObject->Get(context, MergeObjectsKey).FromMaybe(v8::Local<v8::Value>()));
-        }
-      } else if (mode == "replace") {
-        options.overwrite = true;
       }
     }
 

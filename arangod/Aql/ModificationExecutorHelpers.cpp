@@ -205,8 +205,8 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
   // in.consultAqlWriteFilter;
   // in.exclusive;
   out.overwrite = in.overwrite;
+  out.overwriteMode = in.overwriteMode;
   out.ignoreRevs = in.ignoreRevs;
-  out.overwriteModeUpdate = in.overwriteModeUpdate;
 
   out.returnNew = (outVariableNew != nullptr);
   out.returnOld = (outVariableOld != nullptr);

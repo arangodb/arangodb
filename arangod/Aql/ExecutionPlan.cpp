@@ -56,6 +56,7 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
 
 using namespace arangodb;
@@ -745,32 +746,31 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 
         TRI_ASSERT(value->isConstant());
 
-        if (name == "waitForSync") {
+        if (name == StaticStrings::WaitForSyncString) {
           options.waitForSync = value->isTrue();
         } else if (name == StaticStrings::SkipDocumentValidation) {
           options.validate = ! value->isTrue();
         } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
-        } else if (name == "keepNull") {
+        } else if (name == StaticStrings::KeepNullString) {
           // nullMeansRemove is the opposite of keepNull
           options.nullMeansRemove = value->isFalse();
-        } else if (name == "mergeObjects") {
+        } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
-        } else if (name == "overwrite") {
-          if(value->isTrue()) {
+        } else if (name == StaticStrings::OverWrite) {
+          if (value->isTrue()) {
             options.overwrite = true;
           }
-        } else if (name == "overwriteMode" && value->isStringValue()) {
-          auto ref = value->getStringRef();
-          if(ref == "update") {
+        } else if (name == StaticStrings::OverWriteMode && value->isStringValue()) {
+          auto overwriteMode = OperationOptions::determineOverwriteMode(value->getStringRef());
+
+          if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
             options.overwrite = true;
-            options.overwriteModeUpdate = true;
-          } else if(ref == "replace") {
-            options.overwrite = true;
+            options.overwriteMode = overwriteMode;
           }
-        } else if (name == "ignoreRevs") {
+        } else if (name == StaticStrings::IgnoreRevsString) {
           options.ignoreRevs = value->isTrue();
         }
       }

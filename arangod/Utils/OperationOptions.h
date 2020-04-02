@@ -27,11 +27,28 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 
+#include <string>
+
 namespace arangodb {
+namespace velocypack {
+class StringRef;
+}
+
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
+
+  /// @brief behavior when inserting a document by _key using INSERT with overwrite
+  /// when the target document already exists
+  enum class OverwriteMode {
+    Unknown,  // undefined
+    Replace,  // replace the target document
+    Update,   // (partially) update the target document
+    Ignore    // keep the target document unmodified (no writes)
+  };
+  
   OperationOptions()
       : indexOperationMode(Index::OperationMode::normal),
+        overwriteMode(OverwriteMode::Replace), // replace is the default behavior
         waitForSync(false),
         validate(true),
         keepNull(true),
@@ -42,9 +59,7 @@ struct OperationOptions {
         returnNew(false),
         isRestore(false),
         overwrite(false),
-        ignoreUniqueConstraints(false),
-        overwriteModeUpdate(false)
-        {}
+        ignoreUniqueConstraints(false) {}
 
 // The following code does not work with VisualStudi 2019's `cl`
 // Lets keep it for debugging on linux.
@@ -63,14 +78,24 @@ struct OperationOptions {
        << ", returnNew : "  << ops.returnNew
        << ", isRestore : " << ops.isRestore
        << ", overwrite : " << ops.overwrite
-       << ", overwriteModeUpdate : " << ops.overwriteModeUpdate
+       << ", overwriteMode : " << stringifyOverwriteMode(ops.overwriteMode)
        << " }" << std::endl;
     // clang-format on
     return os;
   }
 #endif
+  
+  /// @brief stringifies the overwrite mode
+  static char const* stringifyOverwriteMode(OperationOptions::OverwriteMode mode);
 
+  /// @brief determine the overwrite mode from the string value
+  static OverwriteMode determineOverwriteMode(velocypack::StringRef value);
+  
   Index::OperationMode indexOperationMode;
+
+  // INSERT ... OPTIONS { overwrite: true } behavior: 
+  // - replace an existing document, update an existing document, or do nothing
+  OverwriteMode overwriteMode;
 
   // wait until the operation has been synced
   bool waitForSync;
@@ -109,16 +134,12 @@ struct OperationOptions {
   // already been removed, and are simply not reflected in the transaction read
   bool ignoreUniqueConstraints;
   
-  // above replace becomes an update
-  bool overwriteModeUpdate;
-
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
   // operation if we are merely a follower. Finally, we must deny replications
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
 };
-
 
 }  // namespace arangodb
 

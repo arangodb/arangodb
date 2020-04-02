@@ -172,14 +172,18 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
 
   std::string const& mode = _request->value(StaticStrings::OverWriteMode);
-  using namespace std::literals::string_literals;
-  if (mode == "update"s) {
-    opOptions.overwrite = true;
-    opOptions.overwriteModeUpdate = true;
-    opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
-    opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
-  } else if (mode == "replace"s) {
-    opOptions.overwrite = true;
+  if (!mode.empty()) {
+    auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
+
+    if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+      opOptions.overwrite = true;
+      opOptions.overwriteMode = overwriteMode;
+
+      if (opOptions.overwriteMode == OperationOptions::OverwriteMode::Update) {
+        opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
+        opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
+      }
+    }
   }
   if (!opOptions.overwrite) {
     opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
@@ -195,7 +199,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   bool const isMultiple = body.isArray();
 
   if (!isMultiple && !opOptions.overwrite) {
-     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   Result res = _activeTrx->begin();
