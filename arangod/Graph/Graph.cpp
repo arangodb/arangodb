@@ -151,7 +151,8 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
     _numberOfShards =
         Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
     if (Helper::getStringRef(options.get(StaticStrings::ReplicationFactor),
-                             velocypack::StringRef("")) == StaticStrings::Satellite && arangodb::ServerState::instance()->isRunningInCluster()) {
+                             velocypack::StringRef("")) == StaticStrings::Satellite &&
+        arangodb::ServerState::instance()->isRunningInCluster()) {
       _isSatellite = true;
       setReplicationFactor(0);
     } else {
@@ -684,6 +685,9 @@ Result Graph::validateCollection(LogicalCollection& col) const {
   return {TRI_ERROR_NO_ERROR};
 }
 
+void Graph::ensureInitial(const LogicalCollection& col) {
+}
+
 void Graph::edgesToVpack(VPackBuilder& builder) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("collections", VPackValue(VPackValueType::Array));
@@ -710,9 +714,7 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 
 bool Graph::isSmart() const { return false; }
 
-bool Graph::isSatellite() const {
-  return _isSatellite;
-}
+bool Graph::isSatellite() const { return _isSatellite; }
 
 void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
   TRI_ASSERT(builder.isOpenObject());

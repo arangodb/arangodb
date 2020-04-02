@@ -25,8 +25,8 @@
 
 #include <velocypack/Buffer.h>
 #include <chrono>
-#include <utility>
 #include <set>
+#include <utility>
 
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
@@ -134,8 +134,8 @@ class Graph {
         velocypack::Slice const& options);
 
   /**
-  * @brief virtual copy constructor
-  */
+   * @brief virtual copy constructor
+   */
   virtual auto clone() const -> std::unique_ptr<Graph>;
 
  public:
@@ -164,10 +164,10 @@ class Graph {
   bool hasEdgeCollection(std::string const& collectionName) const;
   bool hasVertexCollection(std::string const& collectionName) const;
   bool hasOrphanCollection(std::string const& collectionName) const;
-
   bool renameCollections(std::string const& oldName, std::string const& newName);
 
-  std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(std::string const& collectionName) const;
+  std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(
+      std::string const& collectionName) const;
 
   virtual bool isSmart() const;
   virtual bool isSatellite() const;
@@ -210,6 +210,7 @@ class Graph {
    * @return TRUE if we are safe to use it.
    */
   virtual Result validateCollection(LogicalCollection& col) const;
+  virtual void ensureInitial(const LogicalCollection& col);
 
   void edgesToVpack(VPackBuilder& builder) const;
   void verticesToVpack(VPackBuilder& builder) const;
