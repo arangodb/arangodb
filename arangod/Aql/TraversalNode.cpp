@@ -164,9 +164,11 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
                              std::vector<std::unique_ptr<Collection>> const& edgeColls,
                              std::vector<std::unique_ptr<Collection>> const& vertexColls,
                              Variable const* inVariable, std::string const& vertexId,
+                             TRI_edge_direction_e defaultDirection,
                              std::vector<TRI_edge_direction_e> const& directions,
                              std::unique_ptr<BaseOptions> options)
-    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, std::move(options)),
+    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
+        directions, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(vertexId),
@@ -529,7 +531,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto oldOpts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts);
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls,
-                                           _vertexColls, _inVariable, _vertexId,
+                                           _vertexColls, _inVariable, _vertexId, _defaultDirection,
                                            _directions, std::move(tmp));
 
   if (usesVertexOutVariable()) {

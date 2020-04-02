@@ -64,6 +64,7 @@ class GraphNode : public ExecutionNode {
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             std::vector<std::unique_ptr<Collection>> const& edgeColls,
             std::vector<std::unique_ptr<Collection>> const& vertexColls,
+            TRI_edge_direction_e defaultDirection,
             std::vector<TRI_edge_direction_e> const& directions,
             std::unique_ptr<graph::BaseOptions> options);
 

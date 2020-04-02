@@ -1,10 +1,14 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
-* Fixed a rare race condition in SmartGraphs where the graph is unblanced, but a successful
-  result could be found by only on database server, where the other server is still
-  searching. In this race the query could continue on the other server and hit
-  a non-thread save object.
+* Fixed internal issue ES-544: Instantiation of AQL queries with graph
+  traversals in a OneShard setting failed with 'direction can only be INBOUND,
+  OUTBOUND or ANY'.
+
+* Fixed a rare race condition in SmartGraphs where the graph is unblanced, but a
+  successful result could be found by only on database server, where the other
+  server is still searching. In this race the query could continue on the other
+  server and hit a non-thread save object.
 
 * Fixed a bug in the agency supervision, which ignored the `failoverCandidates`
   field.
