@@ -646,16 +646,6 @@ bool IndexExecutor::advanceCursor() {
   return false;
 }
 
-std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows(size_t toSkip) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 IndexExecutor::CursorReader& IndexExecutor::getCursor() {
   TRI_ASSERT(_currentIndex < _cursors.size());
   return _cursors[_currentIndex];

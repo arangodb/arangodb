@@ -151,14 +151,6 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
 }
 
 template <typename FetcherType, typename ModifierType>
-std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
-ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-
-  return {ExecutionState::DONE, ModificationStats{}};
-}
-
-template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
     typename FetcherType::DataRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, ModificationStats, AqlCall> {

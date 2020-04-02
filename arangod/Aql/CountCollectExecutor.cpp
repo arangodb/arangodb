@@ -103,14 +103,17 @@ auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aql
           AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 }
 
-std::pair<ExecutionState, size_t> CountCollectExecutor::expectedNumberOfRows(size_t) const {
-  TRI_ASSERT(false);
-  return {ExecutionState::HASMORE, 1};
-}
-
 auto CountCollectExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                                    AqlCall const& call) const
     noexcept -> size_t {
+  auto subqueries = input.countShadowRows();
+  if (subqueries > 0) {
+    // We will return 1 row for every subquery execution.
+    // We do overallocate here if we have nested subqueries
+    return subqueries;
+  }
+  // No subqueries, we are at the end of the execution.
+  // We either return 1, or the callLimit.
   return std::min<size_t>(1, call.getLimit());
 }
 

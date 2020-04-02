@@ -130,8 +130,6 @@ class MultiDependencySingleRowFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRowForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
 
-  std::pair<ExecutionState, size_t> skipRowsForDependency(size_t dependency, size_t atMost);
-
   std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   //@deprecated
@@ -139,9 +137,6 @@ class MultiDependencySingleRowFetcher {
 
   [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
       -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
-
-  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
-      -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
   [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
@@ -162,6 +157,9 @@ class MultiDependencySingleRowFetcher {
   bool _didReturnSubquerySkips{false};
 
  private:
+  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
+      -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
+
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */

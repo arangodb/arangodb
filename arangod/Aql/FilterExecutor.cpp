@@ -55,50 +55,9 @@ RegisterId FilterExecutorInfos::getInputRegister() const noexcept {
 }
 
 FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher) {}
+    : _infos(infos) {}
 
 FilterExecutor::~FilterExecutor() = default;
-
-std::pair<ExecutionState, FilterStats> FilterExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("FilterExecutor::produceRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  ExecutionState state;
-  FilterStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-
-  while (true) {
-    std::tie(state, input) = _fetcher.fetchRow();
-
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
-    }
-
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
-    }
-    TRI_ASSERT(input.isInitialized());
-
-    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
-      output.copyRow(input);
-      return {state, stats};
-    } else {
-      stats.incrFiltered();
-    }
-
-    if (state == ExecutionState::DONE) {
-      return {state, stats};
-    }
-    TRI_ASSERT(state == ExecutionState::HASMORE);
-  }
-}
-
-std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t atMost) const {
-  // This block cannot know how many elements will be returned exactly.
-  // but it is upper bounded by the input.
-  return _fetcher.preFetchNumberOfRows(atMost);
-}
 
 auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
