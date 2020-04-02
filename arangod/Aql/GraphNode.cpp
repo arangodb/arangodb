@@ -75,18 +75,18 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _defaultDirection(parseDirection(direction)),
       _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(false) {
+  // Direction is already the correct Integer.
+  // Is not inserted by user but by enum.
+
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_options != nullptr);
 
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(graph != nullptr);
-
-  // Direction is already the correct Integer.
-  // Is not inserted by user but by enum.
-  _defaultDirection = parseDirection(direction);
 
   std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
 
@@ -265,12 +265,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
       _tmpIdNode(nullptr),
+      _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
+              base.get("defaultDirection")))),
       _options(nullptr),
       _optionsBuilt(false),
       _isSmart(false) {
-  uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(
-      base.get("defaultDirection"));
-  _defaultDirection = uint64ToDirection(dir);
 
   // Directions
   VPackSlice dirList = base.get("directions");
@@ -383,6 +382,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                      std::vector<std::unique_ptr<Collection>> const& edgeColls,
                      std::vector<std::unique_ptr<Collection>> const& vertexColls,
+                     TRI_edge_direction_e defaultDirection,
                      std::vector<TRI_edge_direction_e> const& directions,
                      std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
@@ -393,6 +393,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _defaultDirection(defaultDirection),
       _directions(directions),
       _options(std::move(options)),
       _optionsBuilt(false),
