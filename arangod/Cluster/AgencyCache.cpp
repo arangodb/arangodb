@@ -30,44 +30,33 @@ using namespace arangodb::consensus;
 AgencyCache::AgencyCache(application_features::ApplicationServer& server)
   : Thread(server, "AgencyCache"), _commitIndex(0),  _readDB(server, nullptr, "raadDB") {}
 
-RestStatus AgencyCache::waitForFuture(futures::Future<futures::Unit>&& f) {
-  if (f.isReady()) {             // fast-path out
-    f.result().throwIfFailed();  // just throw the error upwards
-    return RestStatus::DONE;
-  }
-  bool done = false;
-/*  std::move(f).thenFinal(
-    [self = shared_from_this(), &done](futures::Try<T>) -> void {
-      auto thisPtr = self.get();
-      if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
-        done = true;
-      } else {
-        thisPtr->wakeupHandler();
-      }
-    });
-  */
-  return done ? RestStatus::DONE : RestStatus::WAITING;
-}
-
-
 // Get Builder from readDB mainly /Plan /Current
-query_t const AgencyCache::get(std::string const& path) const {
+std::tuple <consensus::query_t, consensus::index_t> const AgencyCache::get(
+  std::string const& path) const {
+  
   std::lock_guard g(_lock);
   query_t builder;
   _readDB.toBuilder(*builder);
-  return builder;
+  
+  return std::tuple(builder,_commitIndex);
+}
+
+index_t AgencyCache::index() const {
+  std::lock_guard g(_lock);
+  return _commitIndex;
 }
 
 void AgencyCache::run() {
 
+  using namespace std::chrono;
+  TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
+
   _commitIndex = 0;
   _readDB.clear();
   double wait = 0.0;
+  VPackBuilder rb;
 
-  using namespace std::chrono;
-
-  TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
-
+  // Long poll to agency
   auto sendTransaction =
     [&](VPackBuilder& r) {
       index_t commitIndex = 0;
@@ -79,9 +68,6 @@ void AgencyCache::run() {
       //r.add(ret.value());
       return ret;
     };
-  //auto self(shared_from_this());
-  VPackBuilder rb;
-
 
   // while not stopping
   //   poll agency
@@ -98,8 +84,7 @@ void AgencyCache::run() {
     rb.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
 
-    auto ret = waitForFuture(
-      sendTransaction(rb)
+    auto ret = sendTransaction(rb)
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
           if (rb.ok() && rb.statusCode() == 200) {
@@ -119,10 +104,11 @@ void AgencyCache::run() {
               for (auto const& i : VPackArrayIterator(rs.get("log"))) {
                 _readDB.applyTransaction(i); // apply logs
               }
-              _commitIndex = commitIndex; 
+              _commitIndex = commitIndex;
             } else {
               TRI_ASSERT(rs.hasKey("readDB"));
               _readDB = rs;                  // overwrite
+              _commitIndex = commitIndex;
             }
           } else {
             wait += 0.1;
@@ -142,9 +128,7 @@ void AgencyCache::run() {
           LOG_TOPIC("9a9e3", DEBUG, Logger::CLUSTER) <<
             "Failed to get poll result from agency: " << e.what();
           wait += 0.1;
-        }));
-
-    LOG_TOPIC("a4a4a", DEBUG, Logger::CLUSTER) << (int)ret;
+        });
 
   }
 

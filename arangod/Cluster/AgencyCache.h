@@ -51,11 +51,14 @@ public:
   arangodb::consensus::Node const& read(std::string const& path) const;
 
   /// @brief Get velocypack from node downward
-  consensus::query_t const get(std::string const& path) const;
+  std::tuple <consensus::query_t, consensus::index_t> const get(
+    std::string const& path = std::string("/")) const;
+
+  /// @brief Get current commit index
+  consensus::index_t index() const;
 
 private:
 
-  RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
 
   /// @brief Guard for _readDB
   mutable std::shared_mutex _lock;
