@@ -23,11 +23,16 @@
 #ifndef ARANGOD_CLUSTER_MAINTENANCE_FEATURE
 #define ARANGOD_CLUSTER_MAINTENANCE_FEATURE 1
 
+#include "Agency/Store.h"
+#include "Cluster/ClusterFeature.h"
+#include "GeneralServer/RestHandler.h"
+
 namespace arangodb {
 
-class AgencyCache : public arangodb::Thread {
+class AgencyCache : public arangodb::Thread,
+                    public std::enable_shared_from_this<AgencyCache> {
 
-public: 
+public:
   /// @brief start off with our server
   explicit AgencyCache(application_features::ApplicationServer& server);
 
@@ -46,16 +51,26 @@ public:
   arangodb::consensus::Node const& read(std::string const& path) const;
 
   /// @brief Get velocypack from node downward
-  VPackBuider const get(std::string const& path) const;
+  std::tuple <consensus::query_t, consensus::index_t> const get(
+    std::string const& path = std::string("/")) const;
+
+  /// @brief Get current commit index
+  consensus::index_t index() const;
 
 private:
-  
+
+
+  /// @brief Guard for _readDB
+  mutable std::shared_mutex _lock;
+
+  /// @brief Commit index
+  consensus::index_t _commitIndex;
+
   /// @brief Local copy of the read DB from the agency
   arangodb::consensus::Store _readDB;
 
-  /// @brief Guard for _readDB
-  std::shared_mutex _lock;
-  
 };
 
 } // namespace
+
+#endif

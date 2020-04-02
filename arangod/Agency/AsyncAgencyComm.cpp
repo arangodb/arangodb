@@ -284,6 +284,18 @@ namespace arangodb {
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
+    RequestType type, uint64_t index) const {
+  std::vector<ClientId> clientIds;
+  VPackBuffer<uint8_t> body;
+  {
+    VPackBuilder builder(body);
+    builder.add(VPackValue(index));
+  }
+  return sendWithFailover(method, url, timeout, type, clientIds, std::move(body));
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
+    arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
     RequestType type, velocypack::Buffer<uint8_t>&& body) const {
   std::vector<ClientId> clientIds;
   return sendWithFailover(method, url, timeout, type, clientIds, std::move(body));
@@ -362,9 +374,15 @@ AsyncAgencyCommManager::AsyncAgencyCommManager(application_features::Application
 
 const char* AGENCY_URL_READ = "/_api/agency/read";
 const char* AGENCY_URL_WRITE = "/_api/agency/write";
+const char* AGENCY_URL_POLL = "/_api/agency/poll";
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(std::string const& path) const {
   return sendTransaction(120s, AgencyReadTransaction(path));
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::poll(
+  network::Timeout timeout, uint64_t index) const {
+  return sendPollTransaction(timeout, index);
 }
 
 AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(
@@ -418,6 +436,13 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendReadTransaction(
   std::vector<ClientId> clientIds;
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout,
                           RequestType::READ, clientIds, std::move(body));
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendPollTransaction(
+  network::Timeout timeout, uint64_t index) const {
+  std::vector<ClientId> clientIds;
+  return sendWithFailover(
+    fuerte::RestVerb::Get, AGENCY_URL_POLL, timeout, RequestType::READ, index);
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(

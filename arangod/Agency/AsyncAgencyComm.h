@@ -125,6 +125,7 @@ class AsyncAgencyComm final {
   [[nodiscard]] FutureResult getValues(std::string const& path) const;
   [[nodiscard]] FutureReadResult getValues(
       std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
+  [[nodiscard]] FutureResult poll(network::Timeout timeout, uint64_t index) const;
 
   template <typename T>
   [[nodiscard]] FutureResult setValue(network::Timeout timeout,
@@ -168,13 +169,14 @@ class AsyncAgencyComm final {
                                                   velocypack::Buffer<uint8_t>&& body) const;
   [[nodiscard]] FutureResult sendReadTransaction(network::Timeout timeout,
                                                  velocypack::Buffer<uint8_t>&& body) const;
+  [[nodiscard]] FutureResult sendPollTransaction(network::Timeout timeout, uint64_t index) const;
 
+  [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout) const;
   [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
                                              AgencyReadTransaction const&) const;
   [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
                                              AgencyWriteTransaction const&) const;
 
- public:
   enum class RequestType {
     READ,   // send the transaction again in the case of no response
     WRITE,  // does not send the transaction again but instead tries to do inquiry with the given ids
@@ -200,7 +202,10 @@ class AsyncAgencyComm final {
                                               network::Timeout timeout, RequestType type,
                                               velocypack::Buffer<uint8_t>&& body) const;
 
- public:
+  [[nodiscard]] FutureResult sendWithFailover(
+    arangodb::fuerte::RestVerb method, std::string const& url,
+    network::Timeout timeout, RequestType type, uint64_t index) const;
+
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
       : _manager(manager) {}
