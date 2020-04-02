@@ -188,7 +188,7 @@ size_t SubqueryEndExecutor::Accumulator::numValues() const noexcept {
 }
 
 // We do not write any output for inbound dataRows
-// We will onyl write output for shadowRows. This is accounted in ExecutionBlockImpl
+// We will only write output for shadowRows. This is accounted for in ExecutionBlockImpl
 [[nodiscard]] auto SubqueryEndExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const&,
                                                                 AqlCall const&) const
     noexcept -> size_t {

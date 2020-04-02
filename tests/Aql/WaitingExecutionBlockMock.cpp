@@ -53,7 +53,10 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Ex
       break;
     }
   }
-  // if non found Sorry blind guess here.
+  // if non found sorry blind guess the number of registers here.
+  // This can happen if you insert the data later into this Mock.
+  // If you do so this register planning is of
+  // for the rime being no test is showing this behavior.
   // Consider adding data first if the test fails
 
   for (RegisterId r = 0; r < regs; ++r) {
