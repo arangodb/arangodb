@@ -53,7 +53,7 @@ const testPaths = {
 function runArangodRecovery (params) {
   let useEncryption = false;
 
-  if (params && params.options.storageEngine === 'rocksdb' && global.ARANGODB_CLIENT_VERSION) {
+  if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
     if (version.hasOwnProperty('enterprise-version')) {
       useEncryption = true;

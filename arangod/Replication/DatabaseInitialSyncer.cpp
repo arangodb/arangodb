@@ -113,8 +113,8 @@ arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
 
   for (std::size_t rid : toRemove) {
     double t = TRI_microtime();
-    auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr, options,
-                              /*lock*/ false, nullptr, nullptr);
+    auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr, options);
+
     stats.waitedForRemovals += TRI_microtime() - t;
     if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // ignore not found, we remove conflicting docs ahead of time
@@ -173,8 +173,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
     keyBuilder->clear();
     keyBuilder->add(VPackValue(conflictingKey));
 
-    auto res = physical->remove(trx, keyBuilder->slice(), mdr, options,
-                                /*lock*/ false, nullptr, nullptr);
+    auto res = physical->remove(trx, keyBuilder->slice(), mdr, options);
 
     if (res.ok()) {
       ++stats.numDocsRemoved;
@@ -253,8 +252,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
 
       TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
 
-      Result res = physical->insert(&trx, masterDoc, mdr, options,
-                                    /*lock*/ false, nullptr, nullptr);
+      Result res = physical->insert(&trx, masterDoc, mdr, options);
+      
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
@@ -265,8 +264,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
             return res;
           }
           options.indexOperationMode = arangodb::Index::OperationMode::normal;
-          res = physical->insert(&trx, masterDoc, mdr, options,
-                                 /*lock*/ false, nullptr, nullptr);
+          res = physical->insert(&trx, masterDoc, mdr, options);
+          
           options.indexOperationMode = arangodb::Index::OperationMode::internal;
           if (res.fail()) {
             return res;
@@ -378,8 +377,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
       // enable patching of collection count for ShardSynchronization Job
       std::string patchCount = StaticStrings::Empty;
-      std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-      if (incremental && engineName == "rocksdb" && _config.applier._skipCreateDrop &&
+      if (incremental && _config.applier._skipCreateDrop &&
           _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
           _config.applier._restrictCollections.size() == 1) {
         patchCount = *_config.applier._restrictCollections.begin();
@@ -502,8 +500,7 @@ Result DatabaseInitialSyncer::sendFlush() {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
-  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-  if (engineName == "rocksdb" && _state.master.engine == engineName) {
+  if (_state.master.engine == "rocksdb") {
     // no WAL flush required for RocksDB. this is only relevant for MMFiles
     return Result();
   }
@@ -692,7 +689,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
   // not yet in memory
   std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
   bool const useAsync =
-      (batch == 1 && (engineName != "rocksdb" || _state.master.engine != engineName));
+      (batch == 1 && _state.master.engine != engineName);
 
   try {
     std::string const typeString = (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
@@ -953,8 +950,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
                                     *coll, AccessMode::Type::EXCLUSIVE);
 
-    // to turn off waitForSync!
-    trx.addHint(transaction::Hints::Hint::RECOVERY);
     // do not index the operations in our own transaction
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
@@ -970,8 +965,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       return Result(res.errorNumber(),
                     std::string("unable to start transaction: ") + res.errorMessage());
     }
-
-    trx.pinData(coll->id());  // will throw when it fails
 
     double t = TRI_microtime();
     TRI_ASSERT(!trx.isSingleOperationTransaction());
@@ -1354,7 +1347,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     }
     return Result(ex.code());
   }
-  trx->addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
   trx->addHint(Hints::Hint::NO_INDEXING);
   // turn on intermediate commits as the number of keys to delete can be huge
   // here

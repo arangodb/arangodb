@@ -58,7 +58,6 @@ add_library(arango_iresearch
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
   IResearch/IResearchLinkHelper.cpp IResearch/IResearchLinkHelper.h
   IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
-  IResearch/IResearchMMFilesLink.cpp IResearch/IResearchMMFilesLink.h
   IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
   IResearch/IResearchRocksDBRecoveryHelper.cpp
   IResearch/IResearchRocksDBRecoveryHelper.h
@@ -398,7 +397,6 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
   VocBase/KeyGenerator.cpp
-  VocBase/KeyLockInfo.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalDataSource.cpp
   VocBase/LogicalView.cpp
@@ -742,7 +740,6 @@ endif()
 
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
-include(MMFiles/CMakeLists.txt)
 
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
@@ -775,7 +772,7 @@ add_library(arango_storage_engine STATIC
   ${LIB_ARANGO_STORAGE_ENGINE_SOURCES}
 )
 
-# arango_storage_engine uses arango_mmfiles and arango_rocksdb.
+# arango_storage_engine uses arango_rocksdb.
 # In turn, arango_storage_engine_common provides something for both.
 add_library(arango_storage_engine_common STATIC
   ${LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES}
@@ -808,10 +805,6 @@ add_library(arangoserver STATIC
 
 add_library(arango_network STATIC
   ${LIB_ARANGO_NETWORK_SOURCES}
-)
-
-add_library(arango_mmfiles STATIC
-  ${MMFILES_SOURCES}
 )
 
 add_library(arango_rocksdb STATIC
@@ -887,14 +880,6 @@ target_link_libraries(arango_iresearch arango_cluster_engine)
 
 target_link_libraries(arango_metrics arango)
 
-target_link_libraries(arango_mmfiles arango_geo)
-target_link_libraries(arango_mmfiles arango_indexes)
-target_link_libraries(arango_mmfiles arango_storage_engine_common)
-target_link_libraries(arango_mmfiles arango_utils)
-target_link_libraries(arango_mmfiles boost_boost)
-target_link_libraries(arango_mmfiles boost_system)
-target_link_libraries(arango_mmfiles llhttp)
-
 target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)
 target_link_libraries(arango_network llhttp)
@@ -927,7 +912,6 @@ endif()
 
 target_link_libraries(arango_storage_engine arango_cluster_engine)
 target_link_libraries(arango_storage_engine arango_cluster_methods)
-target_link_libraries(arango_storage_engine arango_mmfiles)
 target_link_libraries(arango_storage_engine arango_rocksdb)
 target_link_libraries(arango_storage_engine arango::validation)
 
@@ -1040,7 +1024,6 @@ foreach(TARGET
   arango_graph
   arango_indexes
   arango_metrics
-  arango_mmfiles
   arango_pregel
   arango_replication
   arango_rocksdb
@@ -1062,17 +1045,6 @@ foreach(TARGET
     endif ()
   endif ()
 endforeach()
-
-################################################################################
-## arango-dfdb
-################################################################################
-
-install_command_alias(${BIN_ARANGOD}
-  ${CMAKE_INSTALL_SBINDIR}
-  arango-dfdb
-)
-
-install_config(arango-dfdb)
 
 ################################################################################
 ## arango-secure-installation

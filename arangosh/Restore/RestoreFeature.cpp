@@ -1181,22 +1181,13 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   } else {
-    if (jobData.options.indexesFirst && jobData.options.importStructure) {
-      // restore indexes first if we are using rocksdb
-      result = ::restoreIndexes(httpClient, jobData);
-      if (result.fail()) {
-        return result;
-      }
+    // restore indexes first 
+    result = ::restoreIndexes(httpClient, jobData);
+    if (result.fail()) {
+      return result;
     }
     if (jobData.options.importData) {
       result = ::restoreData(httpClient, jobData);
-      if (result.fail()) {
-        return result;
-      }
-    }
-    if (!jobData.options.indexesFirst && jobData.options.importStructure) {
-      // restore indexes second if we are using mmfiles
-      result = ::restoreIndexes(httpClient, jobData);
       if (result.fail()) {
         return result;
       }
@@ -1595,7 +1586,8 @@ void RestoreFeature::start() {
     LOG_TOPIC("1fc99", WARN, arangodb::Logger::RESTORE) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
   }
 
-  std::tie(result, _options.indexesFirst) =
+  bool isRocksDB;
+  std::tie(result, isRocksDB) =
       _clientManager.getArangoIsUsingEngine(*httpClient, "rocksdb");
   if (result.fail()) {
     LOG_TOPIC("b90ec", FATAL, arangodb::Logger::RESTORE)
@@ -1608,6 +1600,10 @@ void RestoreFeature::start() {
   if (_options.progress) {
     LOG_TOPIC("05c30", INFO, Logger::RESTORE)
         << "Connected to ArangoDB '" << httpClient->getEndpointSpecification() << "'";
+  }
+  
+  if (!isRocksDB) {
+    LOG_TOPIC("ae10c", WARN, arangodb::Logger::RESTORE) << "You connected to a server with a potentially incompatible storage engine.";
   }
 
   // set up threads and workers

@@ -122,8 +122,6 @@ AqlTransaction::AqlTransaction(std::shared_ptr<transaction::Context> const& tran
     : transaction::Methods(transactionContext, options), _collections(*collections) {
   if (!isMainTransaction) {
     addHint(transaction::Hints::Hint::LOCK_NEVER);
-  } else {
-    addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
   }
   addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
