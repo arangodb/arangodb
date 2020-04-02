@@ -35,10 +35,6 @@
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesDatafile.h"
-#include "MMFiles/MMFilesEngine.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesWalMarker.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
@@ -65,7 +61,6 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
   startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<StorageEngineFeature>();
-  startsAfter<MMFilesLogfileManager>();
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -129,8 +124,10 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
     TRI_TerminateDebugging("crashing before syncing min tick");
   }
 
-  engine->waitForSyncTick(minTick);
-
+  // WAL tick has to be synced prior to releasing it, if the storage
+  // engine supports it
+  //   engine->waitForSyncTick(minTick);
+  
   TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
     TRI_TerminateDebugging("crashing after syncing min tick");
   }

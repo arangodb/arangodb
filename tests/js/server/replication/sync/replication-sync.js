@@ -41,11 +41,6 @@ const internal = require('internal');
 const masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[0];
 
-var mmfilesEngine = false;
-if (db._engine().name === 'mmfiles') {
-  mmfilesEngine = true;
-}
-
 const cn = 'UnitTestsReplication';
 const sysCn = '_UnitTestsReplication';
 
@@ -104,11 +99,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testExistingPatchBrokenSlaveCounters1: function () {
-      // can only use this with failure tests enabled and RocksDB engine
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-          
+      // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
       if (String(r) === "false") {
         return;
@@ -159,11 +150,7 @@ function BaseTestConfig () {
     },
     
     testExistingPatchBrokenSlaveCounters2: function () {
-      // can only use this with failure tests enabled and RocksDB engine
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-          
+      // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
       if (String(r) === "false") {
         return;
@@ -733,10 +720,6 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
-          if (mmfilesEngine) {
-            assertEqual(32, p.indexBuckets);
-            assertEqual(16 * 1024 * 1024, p.journalSize);
-          }
         },
         true
       );
@@ -767,10 +750,6 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
-          if (mmfilesEngine) {
-            assertEqual(32, p.indexBuckets);
-            assertEqual(16 * 1024 * 1024, p.journalSize);
-          }
         },
         true
       );

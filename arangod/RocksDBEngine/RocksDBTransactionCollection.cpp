@@ -305,10 +305,6 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   TRI_ASSERT(physical != nullptr);
 
   double timeout = _transaction->timeout();
-  if (_transaction->hasHint(transaction::Hints::Hint::TRY_LOCK)) {
-    // give up early if we cannot acquire the lock instantly
-    timeout = 0.00000001;
-  }
 
   LOG_TRX("f1246", TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
   int res;

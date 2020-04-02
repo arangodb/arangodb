@@ -30,6 +30,7 @@
 #include <velocypack/Parser.h>
 
 #include "IResearch/common.h"
+#include "Mocks/IResearchLinkMock.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
@@ -42,11 +43,9 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
-#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -123,12 +122,10 @@ TEST_F(IResearchLinkTest, test_defaults) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection));
+    ASSERT_NE(nullptr, logicalCollection);
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     try {
-      auto& factory =
-          server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-      factory.instantiate(*logicalCollection, json->slice(), arangodb::IndexId{1}, false);
+      StorageEngineMock::buildLinkMock(arangodb::IndexId{1}, *logicalCollection, json->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& ex) {
       EXPECT_EQ(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, ex.code());
@@ -146,10 +143,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
-    auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-    EXPECT_NE(nullptr, factory.instantiate(*logicalCollection, json->slice(),
-                                           arangodb::IndexId{1}, false));
+    auto link = StorageEngineMock::buildLinkMock(arangodb::IndexId{1}, *logicalCollection, json->slice());
+    EXPECT_NE(nullptr, link.get());
   }
 
   // valid link creation
@@ -357,12 +352,9 @@ TEST_F(IResearchLinkTest, test_init) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-    std::shared_ptr<arangodb::Index> link =
-        factory.instantiate(*logicalCollection, linkJson->slice(),
-                            arangodb::IndexId{1}, false);
-    EXPECT_TRUE((false == !link));
+    auto link = StorageEngineMock::buildLinkMock(arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link.get());
+    //EXPECT_TRUE((false == !link));
 
     // collection in view after
     {
@@ -433,12 +425,8 @@ TEST_F(IResearchLinkTest, test_init) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-    std::shared_ptr<arangodb::Index> link =
-        factory.instantiate(*logicalCollection, linkJson->slice(),
-                            arangodb::IndexId{1}, false);
-    EXPECT_TRUE((false == !link));
+    auto link = StorageEngineMock::buildLinkMock(arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link.get());
 
     // collection in view after
     {
@@ -499,12 +487,9 @@ TEST_F(IResearchLinkTest, test_self_token) {
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice());
     EXPECT_TRUE((false == !logicalView));
-    auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-    std::shared_ptr<arangodb::Index> index =
-        factory.instantiate(*logicalCollection, linkJson->slice(),
-                            arangodb::IndexId{42}, false);
-    ASSERT_TRUE((false == !index));
+    auto index = StorageEngineMock::buildLinkMock(arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
+    ASSERT_NE(nullptr, index.get());
+    //ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
     self = link->self();
@@ -531,12 +516,8 @@ TEST_F(IResearchLinkTest, test_drop) {
     auto logicalView = vocbase.createView(viewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
-    auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-    std::shared_ptr<arangodb::Index> link0 =
-        factory.instantiate(*logicalCollection, linkJson->slice(),
-                            arangodb::IndexId{1}, false);
-    EXPECT_TRUE((false == !link0));
+    auto link0 = StorageEngineMock::buildLinkMock(arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link0.get());
 
     // collection in view before
     {
@@ -578,10 +559,8 @@ TEST_F(IResearchLinkTest, test_drop) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    std::shared_ptr<arangodb::Index> link1 =
-        factory.instantiate(*logicalCollection, linkJson->slice(),
-                            arangodb::IndexId{1}, false);
-    EXPECT_TRUE((false == !link1));
+    auto link1 = StorageEngineMock::buildLinkMock(arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link1);
 
     // collection in view before (new link)
     {
@@ -636,12 +615,8 @@ TEST_F(IResearchLinkTest, test_unload) {
     auto logicalView = vocbase.createView(viewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
-    auto& factory =
-        server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-    std::shared_ptr<arangodb::Index> link =
-        factory.instantiate(*logicalCollection, linkJson->slice(),
-                            arangodb::IndexId{1}, false);
-    EXPECT_TRUE((false == !link));
+    auto link = StorageEngineMock::buildLinkMock(arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link.get());
 
     // collection in view before
     {
