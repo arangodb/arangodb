@@ -108,9 +108,7 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 bool ClusterIndex::isPersistent() const {
-  if (_engineType == ClusterEngineType::MMFilesEngine) {
-    return _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
-  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
     return true;
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -121,11 +119,7 @@ bool ClusterIndex::isPersistent() const {
 }
 
 bool ClusterIndex::hasSelectivityEstimate() const {
-  if (_engineType == ClusterEngineType::MMFilesEngine) {
-    return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_HASH_INDEX;
-  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
     return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
@@ -157,11 +151,7 @@ void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
 }
 
 bool ClusterIndex::isSorted() const {
-  if (_engineType == ClusterEngineType::MMFilesEngine) {
-    return _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
-  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
     return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
@@ -181,9 +171,7 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
   VPackBuilder merge;
   merge.openObject();
 
-  if (_engineType == ClusterEngineType::MMFilesEngine) {
-    // nothing to update here
-  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
     merge.add(StaticStrings::CacheEnabled,
               VPackValue(Helper::getBooleanValue(slice, StaticStrings::CacheEnabled, false)));
 
@@ -228,7 +216,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
       }
-      // MMFiles et al
+      // other...
       SimpleAttributeEqualityMatcher matcher(PrimaryIndexAttributes);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
@@ -236,15 +224,12 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
       }
-      // MMFiles et al
+      // other...
       SimpleAttributeEqualityMatcher matcher(this->_fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_HASH_INDEX: {
-      if (_engineType == ClusterEngineType::MMFilesEngine) {
-        SimpleAttributeEqualityMatcher matcher(this->_fields);
-        return matcher.matchAll(this, node, reference, itemsInIndex);
-      } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsFilterCondition(
             allIndexes, this, node, reference, itemsInIndex);
       }
@@ -282,9 +267,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditio
   switch (_indexType) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
     case TRI_IDX_TYPE_HASH_INDEX: {
-      if (_engineType == ClusterEngineType::MMFilesEngine) {
-        return Index::supportsSortCondition(sortCondition, reference, itemsInIndex);
-      } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
       }
       break;
@@ -302,8 +285,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditio
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
-      if (_engineType == ClusterEngineType::MMFilesEngine ||
-          _engineType == ClusterEngineType::RocksDBEngine) {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
       }
       break;
@@ -322,10 +304,7 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
                                                 aql::Variable const* reference) const {
   switch (_indexType) {
     case TRI_IDX_TYPE_PRIMARY_INDEX: {
-      if (_engineType == ClusterEngineType::MMFilesEngine) {
-        SimpleAttributeEqualityMatcher matcher(PrimaryIndexAttributes);
-        return matcher.specializeOne(this, node, reference);
-      } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
       }
       return node;
@@ -340,10 +319,7 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
       return Index::specializeCondition(node, reference);  // unsupported
     }
     case TRI_IDX_TYPE_HASH_INDEX:
-      if (_engineType == ClusterEngineType::MMFilesEngine) {
-        SimpleAttributeEqualityMatcher matcher(this->_fields);
-        return matcher.specializeAll(this, node, reference);
-      } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
       }
       break;

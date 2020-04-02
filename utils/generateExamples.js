@@ -189,7 +189,7 @@ function main(argv) {
   args = args.concat(['--arangoshSetup']);
   args = args.concat(documentationSourceDirs);
 
-  let storageEngines = [['mmfiles', false, false], ['rocksdb', true, false], ['rocksdb', true, true]];
+  let storageEngines = [['rocksdb', true, false], ['rocksdb', true, true]];
   let res;
 
   storageEngines.forEach(function (engine) {

@@ -354,15 +354,11 @@ function iResearchFeatureAqlServerSideTestSuite () {
         let linksCount = 0;
         if (!isCluster) {
           let dbPath = internal.db._path();
-          if (db._engine().name === "rocksdb") {
-            dbPath = fs.safeJoin(internal.db._path(), 'databases');
-            let databases = fs.list(dbPath);
-            assertTrue(databases.length >= 1, databases);
-            dbPath = fs.safeJoin(dbPath, 'database-' + db._id());
-            assertTrue(fs.isDirectory(dbPath));
-          } else if (db._engine().name !== "mmfiles") {
-            fail("Unknown storage engine"); // if new engine is introduced, test should be updated
-          }          
+          dbPath = fs.safeJoin(internal.db._path(), 'databases');
+          let databases = fs.list(dbPath);
+          assertTrue(databases.length >= 1, databases);
+          dbPath = fs.safeJoin(dbPath, 'database-' + db._id());
+          assertTrue(fs.isDirectory(dbPath));
           let directories = fs.list(dbPath);
           // check only arangosearch-XXXX
           directories.forEach(function(candidate) {

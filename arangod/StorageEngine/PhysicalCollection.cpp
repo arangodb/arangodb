@@ -630,9 +630,7 @@ std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
 void PhysicalCollection::adjustNumberDocuments(transaction::Methods&, int64_t) {}
 
 Result PhysicalCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
-                                  ManagedDocumentResult& previous, OperationOptions& options,
-                                  bool lock, KeyLockInfo* keyLockInfo,
-                                  std::function<void()> const& cbDuringLock) {
+                                  ManagedDocumentResult& previous, OperationOptions& options) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

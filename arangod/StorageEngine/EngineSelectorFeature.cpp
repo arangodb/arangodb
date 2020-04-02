@@ -32,7 +32,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -52,9 +51,6 @@ struct EngineInfo {
 
 std::unordered_map<std::string, EngineInfo> createEngineMap() {
   std::unordered_map<std::string, EngineInfo> map;
-  // mmfiles is deprecated since v3.6.0
-  map.try_emplace(arangodb::MMFilesEngine::EngineName,
-                  EngineInfo{ std::type_index(typeid(arangodb::MMFilesEngine)), true, false });
   // rocksdb is not deprecated and the engine of choice
   map.try_emplace(arangodb::RocksDBEngine::EngineName,
                   EngineInfo{ std::type_index(typeid(arangodb::RocksDBEngine)), false, true });
@@ -79,16 +75,8 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addSection("server", "Server features");
 
   options->addOption("--server.storage-engine", "storage engine type "
-                     "(the mmfiles engine is deprecated and can only be used for existing deployments)",
+                     "(note that the mmfiles engine is unavailable since v3.7.0 and cannot be used anymore)",
                      new DiscreteValuesParameter<StringParameter>(&_engine, availableEngineNames()));
- 
-  // whether or not we want to allow deprecated storage engines for _new_ deployments
-  // this is a hidden option that is there only for running tests for deprecated engines
-  options->addOption("--server.allow-deprecated-storage-engine", "allow deprecated storage engines for new deployments "
-                     "(only useful for testing - do not use in production)",
-                     new BooleanParameter(&_allowDeprecatedDeployments),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30700);
 }
 
 void EngineSelectorFeature::prepare() {
@@ -142,9 +130,14 @@ void EngineSelectorFeature::prepare() {
 
   auto selected = engines.find(_engine);
   if (selected == engines.end()) {
-    // should not happen
-    LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
-        << "unable to determine storage engine";
+    if (_engine == "mmfiles") {
+      LOG_TOPIC("10eb6", FATAL, Logger::STARTUP)
+          << "the mmfiles storage engine is unavailable from version v3.7.0 onwards";
+    } else {
+      // should not happen
+      LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
+          << "unable to determine storage engine '" << _engine << "'";
+    }
     FATAL_ERROR_EXIT();
   }
 
@@ -268,7 +261,6 @@ As& EngineSelectorFeature::engine() {
   return *static_cast<As*>(ENGINE);
 }
 template ClusterEngine& EngineSelectorFeature::engine<ClusterEngine>();
-template MMFilesEngine& EngineSelectorFeature::engine<MMFilesEngine>();
 template RocksDBEngine& EngineSelectorFeature::engine<RocksDBEngine>();
 
 std::string const& EngineSelectorFeature::engineName() {
@@ -277,10 +269,6 @@ std::string const& EngineSelectorFeature::engineName() {
 
 std::string const& EngineSelectorFeature::defaultEngine() {
   return RocksDBEngine::EngineName;
-}
-
-bool EngineSelectorFeature::isMMFiles() {
-  return engineName() == MMFilesEngine::EngineName;
 }
 
 bool EngineSelectorFeature::isRocksDB() {

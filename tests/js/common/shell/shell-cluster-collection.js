@@ -763,9 +763,6 @@ function ClusterCollectionSuite () {
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "_key" ], c.properties().shardKeys);
       assertFalse(c.properties().waitForSync);
-      if (db._engine().name === "mmfiles") {
-        assertEqual(1048576, c.properties().journalSize);
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

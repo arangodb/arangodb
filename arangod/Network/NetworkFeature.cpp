@@ -143,11 +143,6 @@ void NetworkFeature::prepare() {
     config.protocol = fuerte::ProtocolType::Http;
   }
   
-  // simon: mmfiles replication is hardcoded for http
-  if (EngineSelectorFeature::isMMFiles()) {
-    config.protocol = fuerte::ProtocolType::Http;
-  }
-
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_relaxed);
   
