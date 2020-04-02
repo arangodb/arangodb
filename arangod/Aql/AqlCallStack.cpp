@@ -198,6 +198,11 @@ auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
   return callList.modifyNextCall();
 }
 
+auto AqlCallStack::modifyCallListAtDepth(size_t depth) -> AqlCallList& {
+  TRI_ASSERT(_operations.size() > depth);
+  return *(_operations.rbegin() + depth);
+}
+
 auto AqlCallStack::modifyTopCall() -> AqlCall& {
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
   if (is36Compatible() && _operations.empty()) {
