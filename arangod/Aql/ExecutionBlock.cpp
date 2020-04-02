@@ -306,12 +306,12 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string co
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto const node = getPlanNode();
       auto const queryId = this->_engine->getQuery()->id();
-      auto const& call = stack.peek();
+
       LOG_TOPIC("1e717", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
-          << "execute type=" << node->getTypeString() << " call= " << call
-          << " this=" << (uintptr_t)this << " id=" << node->id()
-          << (clientId.empty() ? "" : " clientId=" + clientId);
+          << "execute type=" << node->getTypeString()
+          << " callStack= " << stack.toString() << " this=" << (uintptr_t)this
+          << " id=" << node->id() << (clientId.empty() ? "" : " clientId=" + clientId);
     }
   }
 }
@@ -339,10 +339,17 @@ auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      size_t rows = 0;
+      size_t shadowRows = 0;
+      if (block != nullptr) {
+        shadowRows = block->getShadowRowIndexes().size();
+        rows = block->size() - shadowRows;
+      }
       ExecutionNode const* node = getPlanNode();
       LOG_QUERY("60bbc", INFO)
           << "execute done " << printBlockInfo() << " state=" << stateToString(state)
-          << " skipped=" << skipped.getSkipCount() << " produced=" << items
+          << " skipped=" << skipped.getSkipCount() << " produced=" << rows
+          << " shadowRows=" << shadowRows
           << (clientId.empty() ? "" : " clientId=" + clientId);
       ;
 

@@ -666,6 +666,7 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery_with_outer_skip) {
 }
 
 TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery_with_inner_skip) {
+  Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
   std::string query = R"aql(
     FOR x IN 1..2
     LET updated = (
