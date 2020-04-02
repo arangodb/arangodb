@@ -2491,16 +2491,49 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
       --indent;
     }
 
-    auto logLn{LoggerStream()};
+    LoggerStream logLn{};
     logLn << LogLevel::INFO << Logger::AQL;
 
     for (int i = 0; i < 2 * indent; i++) {
       logLn << ' ';
     }
-    logLn << "[" << en->id() << "]" << en->getTypeString();
+    logNode(logLn, *en);
 
     if (en->getType() == ExecutionNode::SUBQUERY_START) {
       ++indent;
+    }
+  }
+
+  static LoggerStream& logNode(LoggerStream& log, ExecutionNode const& node) {
+    return log << "[" << node.id() << "]" << detailedNodeType(node);
+  }
+
+  static std::string detailedNodeType(ExecutionNode const& node) {
+    switch (node.getType()) {
+      case ExecutionNode::TRAVERSAL:
+      case ExecutionNode::SHORTEST_PATH:
+      case ExecutionNode::K_SHORTEST_PATHS: {
+        auto const& graphNode = *ExecutionNode::castTo<GraphNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        if (graphNode.isUsedAsSatellite()) {
+          type += " used as satellite";
+        }
+        return type;
+      }
+      case ExecutionNode::INDEX:
+      case ExecutionNode::ENUMERATE_COLLECTION: {
+        auto const& colAccess = *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        type += " (";
+        type += colAccess.collection()->name();
+        type += ")";
+        if (colAccess.isUsedAsSatellite()) {
+          type += " used as satellite";
+        }
+        return type;
+      }
+      default:
+        return {node.getTypeString()};
     }
   }
 };

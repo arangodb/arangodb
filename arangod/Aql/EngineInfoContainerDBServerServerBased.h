@@ -103,7 +103,7 @@ class EngineInfoContainerDBServerServerBased {
   // Insert a new node into the last engine on the stack
   // If this Node contains Collections, they will be added into the map
   // for ShardLocking
-  void addNode(ExecutionNode* node);
+  void addNode(ExecutionNode* node, bool pushToSingleServer);
 
   // Open a new snippet, this snippt will be used to produce data
   // for the given sinkNode (RemoteNode only for now)

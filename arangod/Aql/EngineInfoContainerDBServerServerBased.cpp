@@ -214,7 +214,7 @@ void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* 
 // Insert a new node into the last engine on the stack
 // If this Node contains Collections, they will be added into the map
 // for ShardLocking
-void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
+void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node, bool pushToSingleServer) {
   TRI_ASSERT(node);
   TRI_ASSERT(!_snippetStack.empty());
 
@@ -235,7 +235,7 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
   }
 
   // Upgrade CollectionLocks if necessary
-  _shardLocking.addNode(node, _snippetStack.top()->id());
+  _shardLocking.addNode(node, _snippetStack.top()->id(), pushToSingleServer);
 }
 
 // Open a new snippet, which provides data for the given sink node (for now only RemoteNode allowed)
@@ -519,7 +519,7 @@ void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
   node->prepareOptions();
   injectVertexCollections(node);
   // SnippetID does not matter on GraphNodes
-  _shardLocking.addNode(node, 0);
+  _shardLocking.addNode(node, 0, false);
   _graphNodes.emplace_back(node);
 }
 

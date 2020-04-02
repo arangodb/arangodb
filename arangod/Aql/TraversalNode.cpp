@@ -163,8 +163,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
 
 /// @brief Internal constructor to clone the node.
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                             std::vector<std::unique_ptr<Collection>> const& edgeColls,
-                             std::vector<std::unique_ptr<Collection>> const& vertexColls,
+                             std::vector<Collection*> const& edgeColls,
+                             std::vector<Collection*> const& vertexColls,
                              Variable const* inVariable, std::string const& vertexId,
                              TRI_edge_direction_e defaultDirection,
                              std::vector<TRI_edge_direction_e> const& directions,

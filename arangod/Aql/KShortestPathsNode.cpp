@@ -145,8 +145,8 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocba
 /// @brief Internal constructor to clone the node.
 KShortestPathsNode::KShortestPathsNode(
     ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-    std::vector<std::unique_ptr<Collection>> const& edgeColls,
-    std::vector<std::unique_ptr<Collection>> const& vertexColls,
+    std::vector<Collection*> const& edgeColls,
+    std::vector<Collection*> const& vertexColls,
     TRI_edge_direction_e defaultDirection,
     std::vector<TRI_edge_direction_e> const& directions, Variable const* inStartVariable,
     std::string const& startVertexId, Variable const* inTargetVariable,
