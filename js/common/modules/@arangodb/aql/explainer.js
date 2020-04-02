@@ -821,7 +821,8 @@ function processQuery(query, explain, planIndex) {
         return variable('#' + node.name);
       }
     } catch (x) {
-      print(node);
+      require('console').warn("got unexpected invalid variable struct in explainer");
+      require("console").trace();
       throw x;
     }
 
@@ -1619,7 +1620,11 @@ function processQuery(query, explain, planIndex) {
       case 'SubqueryStartNode':
         return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
       case 'SubqueryEndNode':
-        return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
+        if (node.inVariable) {
+          return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
+        }
+        // special hack for spliced subqueries that do not return any data
+        return `) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1828,6 +1833,10 @@ function processQuery(query, explain, planIndex) {
     isConst = true;
     if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
+    }
+    if (node.type === 'SubqueryEndNode' && !node.inVariable && subqueries.length > 0) {
+      // special hack for spliced subqueries that do not return any data
+      --level;
     }
   };
 
