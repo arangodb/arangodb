@@ -205,6 +205,7 @@ describe ArangoDB do
         doc = ArangoDB.log_put("#{prefix}-schema", cmd, :body => body)
         doc.code.should eq(200)
 
+        sleep 2
         body = "{ \"name\": { \"first\": \"test\", \"last\": \"test\" }, \"status\": \"active\" }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc", "/_api/document/?collection=" + @cn, :body => body)
         doc.code.should eq(202)
@@ -218,6 +219,8 @@ describe ArangoDB do
         cmd = api + "/" + @cn + "/properties"
         body = "{ \"validation\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }"
         doc = ArangoDB.log_put("#{prefix}-schema", cmd, :body => body)
+        
+        sleep 2
 
         body = "{ \"name\": { \"first\" : \"\", \"last\": \"test\" }, \"status\": \"active\" }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc-invalid", "/_api/document/?collection=" + @cn, :body => body)

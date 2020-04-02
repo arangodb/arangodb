@@ -146,23 +146,23 @@ class SourcePosition final {
 
   // The two below are only used if IsExternal() is true.
   using ExternalLineField = BitField64<int, 1, 20>;
-#ifdef DEBUG
+//#ifdef DEBUG
 // looks like debug build uses more external files
 // so extend bits for this field, but play safe for release builds 
   using ExternalFileIdField = BitField64<int, 21, 16>;
-#else
-  using ExternalFileIdField = BitField64<int, 21, 10>;
-#endif
+//#else
+//  using ExternalFileIdField = BitField64<int, 21, 10>;
+//#endif
   // ScriptOffsetField is only used if IsExternal() is false.
   using ScriptOffsetField = BitField64<int, 1, 30>;
 
   // InliningId is in the high bits for better compression in
   // SourcePositionTable.
-#ifdef DEBUG // also shift this field for above change  for ExternalFileIdField
+//#ifdef DEBUG // also shift this field for above change  for ExternalFileIdField
   using InliningIdField = BitField64<int, 37, 16>;
-#else
-  using InliningIdField = BitField64<int, 31, 16>;
-#endif
+//#else
+//  using InliningIdField = BitField64<int, 31, 16>;
+//#endif
   // Leaving the highest bit untouched to allow for signed conversion.
   uint64_t value_;
 };
