@@ -37,7 +37,7 @@ NS_ROOT
 /// @class boost
 /// @brief represents a boost related to the particular query
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API boost : basic_stored_attribute<float_t> {
+struct IRESEARCH_API boost : public basic_stored_attribute<float_t> {
   typedef float_t boost_t;
 
   static CONSTEXPR boost_t no_boost() NOEXCEPT { return 1.f; }
@@ -379,9 +379,9 @@ class IRESEARCH_API order final {
   /// @class sort
   /// @brief base class for all compiled sort entries
   ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared final : private util::noncopyable {
+  class IRESEARCH_API prepared final : public util::noncopyable {
    public:
-    struct prepared_sort : private util::noncopyable {
+    struct prepared_sort : public util::noncopyable {
       explicit prepared_sort(sort::prepared::ptr&& bucket, bool reverse)
         : bucket(std::move(bucket)), offset(0), reverse(reverse) {
       }
@@ -408,7 +408,7 @@ class IRESEARCH_API order final {
       bool reverse;
     }; // prepared_sort
 
-    class IRESEARCH_API stats final : private util::noncopyable {
+    class IRESEARCH_API stats final : public util::noncopyable {
      public:
       typedef std::vector<sort::collector::ptr> collectors_t;
 
@@ -442,7 +442,7 @@ class IRESEARCH_API order final {
       IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // collectors
 
-    class IRESEARCH_API scorers final : private util::noncopyable {
+    class IRESEARCH_API scorers final : public util::noncopyable {
      public:
       typedef std::vector<sort::scorer::ptr> scorers_t;
 

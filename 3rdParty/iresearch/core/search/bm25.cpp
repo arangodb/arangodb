@@ -337,7 +337,7 @@ class collector final : public iresearch::sort::collector {
   float_t b_;
 }; // collector
 
-class sort final : iresearch::sort::prepared_basic<bm25::score_t> {
+class sort final : public iresearch::sort::prepared_basic<bm25::score_t> {
  public:
   DEFINE_FACTORY_INLINE(prepared);
 

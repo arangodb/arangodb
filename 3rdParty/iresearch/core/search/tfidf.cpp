@@ -257,7 +257,7 @@ class norm_scorer final : public scorer {
   const iresearch::norm* norm_;
 }; // norm_scorer
 
-class sort final: iresearch::sort::prepared_basic<tfidf::score_t> {
+class sort final: public iresearch::sort::prepared_basic<tfidf::score_t> {
  public:
   DEFINE_FACTORY_INLINE(prepared);
 

@@ -316,7 +316,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
 
     if (result.ok()) {
       TRI_ASSERT(numOps > 0);  // simon: should hold unless we're being stupid
-      rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetCommitedSeqNumber();
+      rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetId();
+      TRI_ASSERT(postCommitSeq != 0);
       if (ADB_LIKELY(numOps > 0)) {
         postCommitSeq += numOps - 1;  // add to get to the next batch
       }
@@ -334,7 +335,6 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         coll->commitCounts(id(), postCommitSeq);
         committed = true;
       }
-
 #ifndef _WIN32
       // wait for sync if required, for all other platforms but Windows
       if (waitForSync()) {
