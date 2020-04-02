@@ -48,9 +48,7 @@ CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collecti
 }
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
-                                                 arangodb::velocypack::Slice slice)
-    : _collectionAccess(
-          std::make_shared<CollectionAccess>(plan->getAst()->query()->collections(), slice)) {
+                                                 arangodb::velocypack::Slice slice) {
   auto query = plan->getAst()->query();
   auto colName = slice.get("collection").copyString();
   auto typeId = basics::VelocyPackHelper::getNumericValue<int>(slice, "typeID", 0);
@@ -59,6 +57,10 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
     // that is NOT yet known to the plan
     query->addCollection(colName, AccessMode::Type::NONE);
   }
+  // After we optionally added the collection for distribute we can create
+  // the CollectionAccess:
+  _collectionAccess =
+      std::make_shared<CollectionAccess>(plan->getAst()->query()->collections(), slice);
 
   VPackSlice restrictedTo = slice.get("restrictedTo");
 
