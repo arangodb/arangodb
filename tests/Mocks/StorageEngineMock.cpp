@@ -890,7 +890,6 @@ class HashIndexMock final : public arangodb::Index {
   /// @brief the hash table for data
   HashIndexMap _hashData;
 };  // HashIndexMock
-
 }  // namespace
 
 PhysicalCollectionMock::DocElement::DocElement(
@@ -972,9 +971,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
             server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
         index = factory.instantiate(_logicalCollection, info, arangodb::IndexId{id}, false);
       } else {
-        auto& factory =
-            server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::MMFilesEngine>();
-        index = factory.instantiate(_logicalCollection, info, arangodb::IndexId{id}, false);
+        index = IResearchDBServerLinkMock::make(id, _logicalCollection, info);
       }
     } catch (std::exception const& ex) {
       // ignore the details of all errors here
@@ -1018,7 +1015,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
     TRI_ASSERT(l != nullptr);
-    ;
     l->batchInsert(trx, docs, taskQueuePtr);
   } else {
     TRI_ASSERT(false);
@@ -1412,6 +1408,41 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
   before();
 
   return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock collection updated OK
+}
+
+std::function<void(irs::directory&)> IResearchDBServerLinkMock::InitCallback;
+
+void IResearchDBServerLinkMock::toVelocyPack(
+  arangodb::velocypack::Builder& builder,
+  std::underlying_type<arangodb::Index::Serialize>::type flags) const {
+  if (builder.isOpenObject()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+      TRI_ERROR_BAD_PARAMETER,              // code
+      std::string("failed to generate link definition for arangosearch view "
+        "Mock link '") +
+      std::to_string(arangodb::Index::id().id()) + "'"));
+  }
+
+  auto forPersistence = // definition for persistence
+    arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
+
+  builder.openObject();
+
+  if (!properties(builder, forPersistence).ok()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+      TRI_ERROR_INTERNAL,                   // code
+      std::string("failed to generate link definition for arangosearch view "
+        "Mock link '") +
+      std::to_string(arangodb::Index::id().id()) + "'"));
+  }
+
+  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
+
+  builder.close();
 }
 
 std::function<void()> StorageEngineMock::before = []() -> void {};

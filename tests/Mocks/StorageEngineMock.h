@@ -35,8 +35,10 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/ContextData.h"
+#include "IResearch/IResearchLink.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "IResearch/IResearchLinkHelper.h"
 
 namespace arangodb {
 
@@ -180,6 +182,105 @@ class TransactionStateMock : public arangodb::TransactionState {
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;
   virtual bool hasFailedOperations() const override;
+};
+
+
+class IResearchDBServerLinkMock : public arangodb::Index, public arangodb::iresearch::IResearchLink {
+ public:
+  IResearchDBServerLinkMock(arangodb::IndexId iid, arangodb::LogicalCollection& collection) :
+    IResearchLink(iid, collection), Index(iid, collection, arangodb::iresearch::IResearchLinkHelper::emptyIndexSlice()) {
+    _unique = false;  // cannot be unique since multiple fields are indexed
+    _sparse = true;   // always sparse
+  }
+
+  static std::shared_ptr<arangodb::Index> make(arangodb::IndexId iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& definition) {
+    auto link = std::make_shared<IResearchDBServerLinkMock>(iid, collection);
+    link->init(definition, [](irs::directory& dir) {
+      if (InitCallback != nullptr) {
+        InitCallback(dir);
+      }
+      });
+    return link;
+  }
+
+  [[nodiscard]] static auto setCallbakForScope(std::function<void(irs::directory&)> callback) {
+    InitCallback = callback;
+    return irs::make_finally([]() {InitCallback = nullptr; });
+  }
+
+  IndexType type() const override { return IResearchLink::type(); }
+
+  char const* typeName() const override {
+    return IResearchLink::typeName();
+  }
+
+  void unload() override {
+    auto res = IResearchLink::unload();
+
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+
+  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
+    IResearchLink::afterTruncate();
+  };
+
+  void batchInsert(
+    arangodb::transaction::Methods& trx,
+    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override {
+    IResearchLink::batchInsert(trx, documents, queue);
+  }
+
+  bool canBeDropped() const override {
+    return IResearchLink::canBeDropped();
+  }
+
+  arangodb::Result drop() override { return IResearchLink::drop(); }
+
+  bool hasSelectivityEstimate() const override {
+    return IResearchLink::hasSelectivityEstimate();
+  }
+
+  arangodb::Result insert(arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode) {
+    return IResearchLink::insert(trx, documentId, doc, mode);
+  }
+
+  bool isPersistent() const override { return true; }
+
+  bool isSorted() const override { return IResearchLink::isSorted(); }
+
+  bool isHidden() const override { return IResearchLink::isHidden(); }
+
+  bool needsReversal() const override { return true; }
+
+  void load() override { IResearchLink::load(); }
+
+  bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {
+    return IResearchLink::matchesDefinition(slice);
+  }
+
+  size_t memory() const override {
+    // FIXME return in memory size
+    return stats().indexSize;
+  }
+
+  using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+    std::underlying_type<arangodb::Index::Serialize>::type) const override;
+
+  void toVelocyPackFigures(arangodb::velocypack::Builder& builder) const override {
+    IResearchLink::toVelocyPackStats(builder);
+  }
+
+ private:
+  static  std::function<void(irs::directory&)> InitCallback;
 };
 
 class StorageEngineMock : public arangodb::StorageEngine {

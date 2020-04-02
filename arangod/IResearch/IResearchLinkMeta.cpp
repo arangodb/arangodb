@@ -604,7 +604,6 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
       return false;
     }
   }
-  if(mask->_sort)
   {
     // optional sort compression
     static VPackStringRef const fieldName("primarySortCompression");
@@ -612,7 +611,7 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
     mask->_sortCompression = field.isString();
 
     if (readAnalyzerDefinition && mask->_sortCompression &&
-      (_sortCompression = columnCompressionFromString(getStringRef(field))) == ColumnCompression::INVALID) {
+      (_sortCompression = columnCompressionFromString(getStringRef(field))) == nullptr) {
       return false;
     }
   }
@@ -797,7 +796,7 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
     }
   }
 
-  if (writeAnalyzerDefinition && (!mask || mask->_sortCompression)
+  if (writeAnalyzerDefinition && (!mask || mask->_sortCompression) && _sortCompression
       && (!ignoreEqual || _sortCompression != ignoreEqual->_sortCompression)) {
     addStringRef(builder, "primarySortCompression", columnCompressionToString(_sortCompression));
   }

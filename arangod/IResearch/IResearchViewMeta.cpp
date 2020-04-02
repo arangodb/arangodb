@@ -220,7 +220,7 @@ IResearchViewMeta::IResearchViewMeta()
       _writebufferActive(0),
       _writebufferIdle(64),
       _writebufferSizeMax(32 * (size_t(1) << 20)),  // 32MB
-      _primarySortCompression{ColumnCompression::LZ4} {
+      _primarySortCompression{&getDefaultCompression()} {
   std::string errorField;
 
   // cppcheck-suppress useInitializationList
@@ -616,11 +616,11 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     auto const field = slice.get(fieldName);
     mask->_primarySortCompression = !field.isNone();
     if (mask->_primarySortCompression) {
-      _primarySortCompression = ColumnCompression::INVALID;
+      _primarySortCompression = nullptr;
       if (field.isString()) {
         _primarySortCompression = columnCompressionFromString(field.copyString());
       }
-      if (ADB_UNLIKELY(ColumnCompression::INVALID == _primarySortCompression)) {
+      if (ADB_UNLIKELY(nullptr == _primarySortCompression)) {
         errorField += ".primarySortCompression";
         return false;
       }

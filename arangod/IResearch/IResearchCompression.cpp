@@ -22,41 +22,47 @@
 
 #include "IResearchCompression.h"
 #include "Basics/debugging.h"
-#include <unordered_map>
-
-namespace {
-const std::unordered_map<
-  std::string,
-  arangodb::iresearch::ColumnCompression> COMPRESSION_CONVERT_MAP = {
-{ "lz4", arangodb::iresearch::ColumnCompression::LZ4 },
-{ "none", arangodb::iresearch::ColumnCompression::NONE },
+#include <utils/lz4compression.hpp>
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-{ "test", arangodb::iresearch::ColumnCompression::TEST },
+#include "../tests/IResearch/IResearchTestCompressor.h"
 #endif
-};
-}
-
 
 namespace arangodb {
 namespace iresearch {
 
-irs::string_ref columnCompressionToString(ColumnCompression c) {
-  for (auto const&it : COMPRESSION_CONVERT_MAP) {
-    if (it.second == c) {
-      return it.first;
-    }
+irs::string_ref columnCompressionToString(irs::compression::type_id const* type) {
+  if (ADB_UNLIKELY(type == nullptr)) {
+    TRI_ASSERT(false);
+    return irs::string_ref::EMPTY;
   }
-  TRI_ASSERT(false);
-  return irs::string_ref::NIL;
+  auto const& mangled_name = type->name();
+  TRI_ASSERT(!mangled_name.empty());
+  auto demandled_start = mangled_name.end() - 1;
+  while (demandled_start != mangled_name.begin() && *(demandled_start-1) != ':') {
+    demandled_start--;
+  }
+  return irs::string_ref(demandled_start, std::distance(demandled_start, mangled_name.end()));
 }
 
-ColumnCompression columnCompressionFromString(irs::string_ref const& c) {
+irs::compression::type_id const*  columnCompressionFromString(irs::string_ref const& c) {
   TRI_ASSERT(!c.null());
-  auto it = COMPRESSION_CONVERT_MAP.find(c);
-  if (it != COMPRESSION_CONVERT_MAP.end()) {
-    return it->second;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (c == "test") {
+    return &irs::compression::mock::test_compressor::type();
   }
-  return ColumnCompression::INVALID;
+#endif
+  if (c == "lz4") {
+    return &irs::compression::lz4::type();
+  }
+  if (c == "none") {
+    return &irs::compression::none::type();
+  } 
+  return nullptr;
+}
+
+irs::compression::type_id const& getDefaultCompression()
+{
+  return irs::compression::lz4::type();
 }
 
 }  // namespace iresearch

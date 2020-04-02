@@ -87,6 +87,7 @@ class IResearchLinkTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::FATAL> {
  protected:
+  static constexpr size_t enc_block_size{ 13 };
   arangodb::tests::mocks::MockAqlServer server;
   std::string testFilesystemPath;
 
@@ -896,6 +897,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     compressed_values.emplace(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()),  size);
   };
+  auto compressorRemover = irs::make_finally([]() {irs::compression::mock::test_compressor::functions().compress_mock = nullptr; });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -990,6 +992,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
     compressed_values.emplace(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
   };
+  auto compressorRemover = irs::make_finally([]() {irs::compression::mock::test_compressor::functions().compress_mock = nullptr; });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1091,6 +1094,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     compressed_values.emplace(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
   };
+  auto compressorRemover = irs::make_finally([]() {irs::compression::mock::test_compressor::functions().compress_mock = nullptr; });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1190,6 +1194,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     compressed_values.emplace(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
   };
+  auto compressorRemover = irs::make_finally([]() {irs::compression::mock::test_compressor::functions().compress_mock = nullptr; });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1256,8 +1261,11 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   EXPECT_EQ(expected, compressed_values);
 }
 
-// FIXME: add actual encription
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_with_sort_encrypted) {
+  
+  auto linkCallbackRemover = IResearchDBServerLinkMock::setCallbakForScope([](irs::directory& dir) {
+    dir.attributes().emplace<iresearch::mock::test_encryption>(enc_block_size);
+    });
   static std::vector<std::string> const EMPTY;
   auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\", \"abc2\":\"aaa\", \"sort\":\"ps\" }");
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\", \"sort\":\"pp\" }");
@@ -1295,6 +1303,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     compressed_values.emplace(reinterpret_cast<const char*>(src), size);
     return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
   };
+  auto compressorRemover = irs::make_finally([]() {irs::compression::mock::test_compressor::functions().compress_mock = nullptr; });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1310,6 +1319,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
       (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42"))
     .utf8();
   irs::fs_directory directory(dataPath);
+  directory.attributes().emplace<iresearch::mock::test_encryption>(enc_block_size);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));

@@ -25,7 +25,6 @@
 #include <store/mmap_directory.hpp>
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
-#include <utils/lz4compression.hpp>
 #include <utils/singleton.hpp>
 
 #include "IResearchLink.h"
@@ -37,6 +36,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
@@ -54,9 +54,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-#include "../tests/IResearch/IResearchTestCompressor.h"
-#endif
+
 using namespace std::literals;
 
 namespace {
@@ -251,8 +249,7 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
   static_assert(
     // cppcheck-suppress duplicateExpression
     sizeof(uint64_t) == sizeof(TRI_voc_tick_t),
-    "sizeof(uint64_t) != sizeof(TRI_voc_tick_t)"
-  );
+    "sizeof(uint64_t) != sizeof(TRI_voc_tick_t)");
 
   if (payload.size() != sizeof(uint64_t)) {
     return false;
@@ -263,32 +260,6 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
 
   return true;
 }
-
-irs::compression::type_id const& decodeCompression(
-    arangodb::iresearch::ColumnCompression compression) {
-  irs::compression::type_id const* type{ nullptr };
-  switch (compression) {
-    case arangodb::iresearch::ColumnCompression::LZ4:
-      type = &irs::compression::lz4::type();
-      break;
-    case arangodb::iresearch::ColumnCompression::NONE:
-      type = &irs::compression::none::type();
-      break;
-  #ifdef ARANGODB_USE_GOOGLE_TESTS
-    case arangodb::iresearch::ColumnCompression::TEST:
-      type = &irs::compression::mock::test_compressor::type();
-      break;
-  #endif
-    default:
-      TRI_ASSERT(false);
-      // fallback to default on runtime
-      type = &irs::compression::lz4::type();
-      break;
-  }
-  TRI_ASSERT(type != nullptr);
-  return *type;
-}
-
 }  // namespace
 
 namespace arangodb {
@@ -849,7 +820,8 @@ Result IResearchLink::init(
   auto& vocbase = _collection.vocbase();
   bool const sorted = !meta._sort.empty();
   auto const& storedValuesColumns = meta._storedValues.columns();
-  auto primarySortCompression = meta._sortCompression;
+  TRI_ASSERT(meta._sortCompression);
+  auto const primarySortCompression = meta._sortCompression? meta._sortCompression : &getDefaultCompression();
   if (ServerState::instance()->isCoordinator()) { // coordinator link
     if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
@@ -904,7 +876,7 @@ Result IResearchLink::init(
     if (!clusterWideLink) {
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
-      auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+      auto const res = initDataStore(initCallback, sorted, storedValuesColumns, *primarySortCompression);
 
       if (!res.ok()) {
         return res;
@@ -972,7 +944,7 @@ Result IResearchLink::init(
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+    auto const res = initDataStore(initCallback, sorted, storedValuesColumns, *primarySortCompression);
 
     if (!res.ok()) {
       return res;
@@ -1022,7 +994,7 @@ Result IResearchLink::init(
 Result IResearchLink::initDataStore(
     InitCallback const& initCallback, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    ColumnCompression primarySortCompression) {
+    irs::compression::type_id const& primarySortCompression) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
@@ -1140,68 +1112,33 @@ Result IResearchLink::initDataStore(
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
 
-  bool nonDefaultCompressions = primarySortCompression != ColumnCompression::LZ4; // storedValues uses no default compression method
-  std::map<std::string, // we must store string as storedColumns could be temporary
-    const irs::compression::type_id&> compressionMap;
-  if (!nonDefaultCompressions && !storedColumns.empty()) {
-    for (auto c : storedColumns) {
-      if (ColumnCompression::LZ4 != c.compression) {
-        nonDefaultCompressions = true;
-        break;
-      }
+  // as meta is still not filled at this moment
+  // we need to store all compression mapping there
+  // as values provided may be temporary
+  std::map<std::string, irs::compression::type_id const&> compressionMap;
+  for (auto c : storedColumns) {
+    if (ADB_LIKELY(c.compression != nullptr)) {
+      compressionMap.emplace(c.name, *c.compression);
+    } else {
+      TRI_ASSERT(false);
+      compressionMap.emplace(c.name, getDefaultCompression());
     }
-  }
-  if (nonDefaultCompressions) {
-    // we will need compression map to handle compressions
-    // on insert
-    for (auto c : storedColumns) {
-      irs::compression::type_id const& compression =
-        decodeCompression(c.compression);
-      compressionMap.emplace(c.name, compression);
-    }
-    compressionMap.emplace(iresearch::kludge::primarySortColumnName,
-                           decodeCompression(primarySortCompression));
   }
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
-  if (encrypt) {
-    if (nonDefaultCompressions) {
-      options.column_info = [compressionMap](const irs::string_ref& name) -> irs::column_info {
-         auto compress = name.null() ?
-                           compressionMap.find(iresearch::kludge::primarySortColumnName):
-                           compressionMap.find(name);
-         if (compress != compressionMap.end()) {
-            // do not waste resources to encrypt primary key column
-            return { compress->second, {}, DocumentPrimaryKey::PK() != name };
-         } else {
-            return { irs::compression::lz4::type(), {}, DocumentPrimaryKey::PK() != name };
-         }
-      };
-    } else {
-      options.column_info = [](const irs::string_ref& name) -> irs::column_info {
+  options.column_info =
+    [encrypt, compressionMap, &primarySortCompression](const irs::string_ref& name) -> irs::column_info {
+      if (name.null()) {
+        return { primarySortCompression, {}, encrypt };
+      }
+      auto compress = compressionMap.find(name);
+      if (compress != compressionMap.end()) {
         // do not waste resources to encrypt primary key column
-        return { irs::compression::lz4::type(), {}, DocumentPrimaryKey::PK() != name };
-      };
-    }
-  } else {
-    if (nonDefaultCompressions) {
-      options.column_info = [compressionMap](const irs::string_ref& name) -> irs::column_info {
-        auto compress = name.null() ?
-          compressionMap.find(iresearch::kludge::primarySortColumnName) :
-          compressionMap.find(name);
-        if (compress != compressionMap.end()) {
-          // do not waste resources to encrypt primary key column
-          return { compress->second, {}, false };
-        } else {
-          return { irs::compression::lz4::type(), {}, false };
-        }
-      };
-    } else {
-      options.column_info = [](const irs::string_ref&) -> irs::column_info {
-        return { irs::compression::lz4::type(), {}, false };
-      };
-    }
-  }
+        return { compress->second, {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+      } else {
+        return { getDefaultCompression(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+      }
+    };
 
   auto openFlags = irs::OM_APPEND;
   if (!_dataStore._reader) {

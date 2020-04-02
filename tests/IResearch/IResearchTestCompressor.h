@@ -74,7 +74,7 @@ struct test_compressor {
     return holder;
   }
 
-  static iresearch::compression::type_id& type() {
+  static const iresearch::compression::type_id& type() {
     static iresearch::compression::type_id type("iresearch::compression::mock::test_compressor");
     return type;
   }

@@ -23,21 +23,14 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H 1
 
 #include "utils/string.hpp"
+#include <utils/compression.hpp>
 
 namespace arangodb {
 namespace iresearch {
 
-enum class ColumnCompression {
-  INVALID = 0,
-  NONE = 1,
-  LZ4
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  , TEST = 999
-#endif
-};
-
-irs::string_ref columnCompressionToString(ColumnCompression c);
-ColumnCompression columnCompressionFromString(irs::string_ref const& c);
+irs::string_ref columnCompressionToString(irs::compression::type_id const* type);
+irs::compression::type_id const* columnCompressionFromString(irs::string_ref const& c);
+irs::compression::type_id const& getDefaultCompression();
 } // iresearch
 } // arangodb
 
