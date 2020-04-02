@@ -321,7 +321,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
     return res.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  std::string iid = StringUtils::itoa(idx->id());
+  std::string iid = StringUtils::itoa(idx->id().id());
   VPackBuilder b;
   b.openObject();
   b.add("isNewlyCreated", VPackValue(created));
@@ -506,13 +506,13 @@ arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType 
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ExtractIndexHandle(VPackSlice const& arg,
-                               std::string& collectionName, TRI_idx_iid_t& iid) {
+                               std::string& collectionName, IndexId& iid) {
   TRI_ASSERT(collectionName.empty());
-  TRI_ASSERT(iid == 0);
+  TRI_ASSERT(iid.isNone());
 
   if (arg.isNumber()) {
     // numeric index id
-    iid = (TRI_idx_iid_t)arg.getUInt();
+    iid = (IndexId)arg.getUInt();
     return true;
   }
 
@@ -524,12 +524,12 @@ static bool ExtractIndexHandle(VPackSlice const& arg,
   size_t split;
   if (arangodb::Index::validateHandle(str.data(), &split)) {
     collectionName = std::string(str.data(), split);
-    iid = StringUtils::uint64(str.data() + split + 1, str.length() - split - 1);
+    iid = IndexId{StringUtils::uint64(str.data() + split + 1, str.length() - split - 1)};
     return true;
   }
 
   if (arangodb::Index::validateId(str.data())) {
-    iid = StringUtils::uint64(str);
+    iid = IndexId{StringUtils::uint64(str)};
     return true;
   }
   return false;
@@ -569,8 +569,7 @@ static bool ExtractIndexName(VPackSlice const& arg, std::string& collectionName,
 
 Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
                               arangodb::CollectionNameResolver const* resolver,
-                              VPackSlice const& val, TRI_idx_iid_t& iid,
-                              std::string& name) {
+                              VPackSlice const& val, IndexId& iid, std::string& name) {
   // reset the collection identifier
   std::string collectionName;
 
@@ -617,7 +616,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     }
   }
 
-  TRI_idx_iid_t iid = 0;
+  IndexId iid = IndexId::none();
   std::string name;
   auto getHandle = [collection, &indexArg, &iid,
                     &name](CollectionNameResolver const* resolver,
@@ -630,7 +629,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
       return res;
     }
 
-    if (iid == 0 && !name.empty()) {
+    if (iid.isNone() && !name.empty()) {
       VPackBuilder builder;
       res = methods::Indexes::getIndex(collection, indexArg, builder, trx);
       if (!res.ok()) {
@@ -670,7 +669,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     );
 #endif
     events::DropIndex(collection->vocbase().name(), collection->name(),
-                      std::to_string(iid), res.errorNumber());
+                      std::to_string(iid.id()), res.errorNumber());
     return res;
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
@@ -693,21 +692,21 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     }
 
     std::shared_ptr<Index> idx = collection->lookupIndex(iid);
-    if (!idx || idx->id() == 0) {
+    if (!idx || idx->id().isNone() || idx->id().isPrimary()) {
       events::DropIndex(collection->vocbase().name(), collection->name(),
-                        std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+                        std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
       return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
     if (!idx->canBeDropped()) {
       events::DropIndex(collection->vocbase().name(), collection->name(),
-                        std::to_string(iid), TRI_ERROR_FORBIDDEN);
+                        std::to_string(iid.id()), TRI_ERROR_FORBIDDEN);
       return Result(TRI_ERROR_FORBIDDEN);
     }
 
     bool ok = col->dropIndex(idx->id());
     int code = ok ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
     events::DropIndex(collection->vocbase().name(), collection->name(),
-                      std::to_string(iid), code);
+                      std::to_string(iid.id()), code);
     return Result(code);
   }
 }

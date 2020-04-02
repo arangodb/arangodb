@@ -277,13 +277,18 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
     return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
   }
 
+  TRI_ASSERT(validatorSlice.isObject());
+
   std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
 
-  try {
-    auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
-    newVec->push_back(std::move(validator));
-  } catch (std::exception const& ex) {
-    return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+  // delete validators if empty object is given
+  if(!validatorSlice.isEmptyObject()) {
+    try {
+      auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
+      newVec->push_back(std::move(validator));
+    } catch (std::exception const& ex) {
+      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+    }
   }
 
   std::atomic_store_explicit(&_validators, newVec, std::memory_order_relaxed);
@@ -964,7 +969,7 @@ void LogicalCollection::open(bool ignoreErrors) {
 
 /// SECTION Indexes
 
-std::shared_ptr<Index> LogicalCollection::lookupIndex(TRI_idx_iid_t idxId) const {
+std::shared_ptr<Index> LogicalCollection::lookupIndex(IndexId idxId) const {
   return getPhysical()->lookupIndex(idxId);
 }
 
@@ -992,7 +997,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice const& info, bo
 }
 
 /// @brief drops an index, including index file removal and replication
-bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
+bool LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 #if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
@@ -1157,8 +1162,9 @@ Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) co
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(s, VPackSlice::noneSlice(), true, options)) {
-      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
+    auto rv = validator->validate(s, VPackSlice::noneSlice(), true, options);
+    if(rv.fail()) {
+      return rv;
     }
   }
   return {};
@@ -1168,8 +1174,9 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VP
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(modifiedDoc, oldDoc, false, options)) {
-      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
+    auto rv = validator->validate(modifiedDoc, oldDoc, false, options);
+    if(rv.fail()) {
+      return rv;
     }
   }
   return {};

@@ -25,7 +25,7 @@
 #define ARANGOD_MMFILES_INDEX_ELEMENT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

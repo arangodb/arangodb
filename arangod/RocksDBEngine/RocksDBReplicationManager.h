@@ -28,6 +28,7 @@
 #include "Cluster/ResultT.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "VocBase/Identifiers/ServerId.h"
 
 struct TRI_vocbase_t;
 
@@ -56,8 +57,7 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl, SyncerId syncerId,
-                                           TRI_server_id_t clientId);
+  RocksDBReplicationContext* createContext(double ttl, SyncerId syncerId, ServerId clientId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -81,7 +81,7 @@ class RocksDBReplicationManager {
   /// may be used concurrently on used contexts
   /// populates clientId
   //////////////////////////////////////////////////////////////////////////////
-  ResultT<std::tuple<SyncerId, TRI_server_id_t, std::string>> extendLifetime(
+  ResultT<std::tuple<SyncerId, ServerId, std::string>> extendLifetime(
       RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////

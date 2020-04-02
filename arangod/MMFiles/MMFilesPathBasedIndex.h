@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -40,7 +41,7 @@ class MMFilesPathBasedIndex : public MMFilesIndex {
  public:
   MMFilesPathBasedIndex() = delete;
 
-  MMFilesPathBasedIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+  MMFilesPathBasedIndex(IndexId iid, arangodb::LogicalCollection& collection,
                         arangodb::velocypack::Slice const& info,
                         size_t baseSize, bool allowPartialIndex);
 

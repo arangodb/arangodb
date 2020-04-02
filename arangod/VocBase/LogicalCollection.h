@@ -33,9 +33,10 @@
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalDataSource.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/Validators.h"
+#include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -260,12 +261,12 @@ class LogicalCollection : public LogicalDataSource {
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
 
   /// @brief Find index by iid
-  std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
+  std::shared_ptr<Index> lookupIndex(IndexId) const;
 
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string const&) const;
 
-  bool dropIndex(TRI_idx_iid_t iid);
+  bool dropIndex(IndexId iid);
 
   // SECTION: Index access (local only)
 

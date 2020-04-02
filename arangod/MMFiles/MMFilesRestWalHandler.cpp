@@ -236,20 +236,20 @@ void MMFilesRestWalHandler::transactions() {
   // lastCollectedId
   {
     auto value = std::get<1>(info);
-    if (value == UINT64_MAX) {
+    if (value.id() == std::numeric_limits<MMFilesWalLogfile::IdType::BaseType>::max()) {
       builder.add("minLastCollected", VPackValue(VPackValueType::Null));
     } else {
-      builder.add("minLastCollected", VPackValue(value));
+      builder.add("minLastCollected", VPackValue(value.id()));
     }
   }
 
   // lastSealedId
   {
     auto value = std::get<2>(info);
-    if (value == UINT64_MAX) {
+    if (value.id() == std::numeric_limits<MMFilesWalLogfile::IdType::BaseType>::max()) {
       builder.add("minLastSealed", VPackValue(VPackValueType::Null));
     } else {
-      builder.add("minLastSealed", VPackValue(value));
+      builder.add("minLastSealed", VPackValue(value.id()));
     }
   }
 
