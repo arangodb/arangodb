@@ -39,20 +39,14 @@ class Hints {
     SINGLE_OPERATION = 1,
     LOCK_ENTIRELY = 2,
     LOCK_NEVER = 4,
-    NO_BEGIN_MARKER = 8,   // not supported in RocksDB
-    NO_ABORT_MARKER = 16,  // not supported in RocksDB
-    NO_THROTTLING = 32,    // not supported in RocksDB
-    TRY_LOCK = 64,
-    NO_COMPACTION_LOCK = 128,  // not supported in RocksDB
-    NO_USAGE_LOCK = 256,       // not supported in RocksDB
-    RECOVERY = 512,
-    NO_DLD = 1024,       // disable deadlock detection, unsupported in RocksDB
-    NO_INDEXING = 2048,  // use DisableIndexing for RocksDB
-    INTERMEDIATE_COMMITS = 4096,  // enable intermediate commits in rocksdb
-    ALLOW_RANGE_DELETE = 8192,    // enable range-delete in rocksdb
-    FROM_TOPLEVEL_AQL = 16384,    // transaction is only runnning one AQL query
-    GLOBAL_MANAGED = 32768,  // transaction with externally managed lifetime
-    INDEX_CREATION = 65536, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
+    NO_USAGE_LOCK = 8, 
+    NO_DLD = 16,       // disable deadlock detection, unsupported in RocksDB
+    NO_INDEXING = 32,  // use DisableIndexing for RocksDB
+    INTERMEDIATE_COMMITS = 64,  // enable intermediate commits in rocksdb
+    ALLOW_RANGE_DELETE = 128,    // enable range-delete in rocksdb
+    FROM_TOPLEVEL_AQL = 256,    // transaction is only runnning one AQL query
+    GLOBAL_MANAGED = 512,  // transaction with externally managed lifetime
+    INDEX_CREATION = 1024, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
   };
 
   Hints() : _value(0) {}

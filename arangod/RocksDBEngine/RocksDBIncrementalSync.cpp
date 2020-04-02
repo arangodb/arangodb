@@ -63,7 +63,6 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
   SingleCollectionTransaction trx(transaction::StandaloneContext::Create(coll->vocbase()),
                                   *coll, AccessMode::Type::EXCLUSIVE);
 
-  trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
   trx.addHint(transaction::Hints::Hint::NO_INDEXING);
   // turn on intermediate commits as the number of keys to delete can be huge
   // here
@@ -652,7 +651,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                                         syncer.vocbase()),
                                     *col, AccessMode::Type::EXCLUSIVE);
 
-    trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
     // turn on intermediate commits as the number of operations can be huge here
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);

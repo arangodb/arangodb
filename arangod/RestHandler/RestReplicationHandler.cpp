@@ -1067,8 +1067,6 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
 
-        // to turn off waitForSync!
-        trx.addHint(transaction::Hints::Hint::RECOVERY);
         trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
         trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
         res = trx.begin();
@@ -1440,8 +1438,6 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
-
-  trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
   Result res = trx.begin();
 

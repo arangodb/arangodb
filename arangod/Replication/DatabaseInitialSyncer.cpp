@@ -950,8 +950,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
                                     *coll, AccessMode::Type::EXCLUSIVE);
 
-    // to turn off waitForSync!
-    trx.addHint(transaction::Hints::Hint::RECOVERY);
     // do not index the operations in our own transaction
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
@@ -1349,7 +1347,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     }
     return Result(ex.code());
   }
-  trx->addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
   trx->addHint(Hints::Hint::NO_INDEXING);
   // turn on intermediate commits as the number of keys to delete can be huge
   // here
