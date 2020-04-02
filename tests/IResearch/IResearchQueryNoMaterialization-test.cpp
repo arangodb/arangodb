@@ -534,7 +534,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompressio
       arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     auto const res =
-      logicalCollection->insert(&trx, doc->slice(), insertedDoc, opt, false);
+      logicalCollection->insert(&trx, doc->slice(), insertedDoc, opt);
     EXPECT_TRUE(res.ok());
 
     EXPECT_TRUE(trx.commit().ok());

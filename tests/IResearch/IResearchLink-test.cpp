@@ -1239,7 +1239,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_with_sort_encrypted) {
   
-  auto linkCallbackRemover = IResearchLinkMock::setCallbakForScope([](irs::directory& dir) {
+  auto linkCallbackRemover = arangodb::iresearch::IResearchLinkMock::setCallbakForScope([](irs::directory& dir) {
     dir.attributes().emplace<iresearch::mock::test_encryption>(enc_block_size);
     });
   static std::vector<std::string> const EMPTY;

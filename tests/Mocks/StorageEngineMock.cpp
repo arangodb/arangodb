@@ -972,7 +972,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
             server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
         index = factory.instantiate(_logicalCollection, info, id, false);
       } else {
-        index = buildLinkMock(id, _logicalCollection, info);
+        index = StorageEngineMock::buildLinkMock(id, _logicalCollection, info);
       }
     } catch (std::exception const& ex) {
       // ignore the details of all errors here
