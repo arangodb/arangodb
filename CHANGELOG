@@ -1,7 +1,7 @@
 devel
 -----
 
-* Improve continuation behaviour of AQL queries. We post the continuation
+* Improve continuation behavior of AQL queries. We post the continuation
   handler on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM
   prio instead of LOW.
 
