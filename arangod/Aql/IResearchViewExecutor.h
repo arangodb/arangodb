@@ -151,14 +151,6 @@ class IResearchViewExecutorBase {
   using Stats = IResearchViewStats;
 
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  /**
    * @brief produce the next Rows of Aql Values.
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream

@@ -422,13 +422,6 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
 }
 
 template <typename Impl, typename Traits>
-std::pair<ExecutionState, typename IResearchViewExecutorBase<Impl, Traits>::Stats>
-IResearchViewExecutorBase<Impl, Traits>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-template <typename Impl, typename Traits>
 std::tuple<ExecutorState, typename IResearchViewExecutorBase<Impl, Traits>::Stats, AqlCall>
 IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inputRange,
                                                      OutputAqlItemRow& output) {
@@ -466,13 +459,6 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
   }
 
   return {inputRange.upstreamState(), stats, upstreamCall};
-}
-
-template <typename Impl, typename Traits>
-std::tuple<ExecutionState, typename IResearchViewExecutorBase<Impl, Traits>::Stats, size_t>
-IResearchViewExecutorBase<Impl, Traits>::skipRows(size_t toSkip) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template <typename Impl, typename Traits>

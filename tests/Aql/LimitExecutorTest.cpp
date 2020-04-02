@@ -323,7 +323,6 @@ TEST_P(LimitExecutorTest, testSuite) {
   auto expectedStats = ExecutionStats{};
   expectedStats += expectedLimitStats;
 
-  // fakedQuery->queryOptions().profile = PROFILE_LEVEL_TRACE_2;
   makeExecutorTestHelper<1, 1>()
       .addConsumer<LimitExecutor>(std::move(infos), ExecutionNode::LIMIT)
       .setInputFromRowNum(numInputRows)

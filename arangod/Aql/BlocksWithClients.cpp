@@ -118,32 +118,6 @@ auto BlocksWithClientsImpl<Executor>::initializeCursor(InputAqlItemRow const& in
   return ExecutionBlock::initializeCursor(input);
 }
 
-template <class Executor>
-auto BlocksWithClientsImpl<Executor>::getBlock(size_t atMost)
-    -> std::pair<ExecutionState, bool> {
-  if (_engine->getQuery()->killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-
-  auto res = _dependencies[0]->getSome(atMost);
-  if (res.first == ExecutionState::WAITING) {
-    return {res.first, false};
-  }
-
-  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  _upstreamState = res.first;
-
-  if (res.second != nullptr) {
-    _buffer.emplace_back(std::move(res.second));
-    return {res.first, true};
-  }
-
-  return {res.first, false};
-}
-
 /// @brief shutdown
 template <class Executor>
 auto BlocksWithClientsImpl<Executor>::shutdown(int errorCode)
@@ -174,18 +148,6 @@ size_t BlocksWithClientsImpl<Executor>::getClientId(std::string const& shardId) 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
   return it->second;
-}
-
-template <class Executor>
-std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>::getSome(size_t) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-template <class Executor>
-std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSome(size_t) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template <class Executor>

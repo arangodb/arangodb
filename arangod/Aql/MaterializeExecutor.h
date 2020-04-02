@@ -108,11 +108,8 @@ class MaterializeExecutor {
 
   MaterializeExecutor(MaterializeExecutor&&) = default;
   MaterializeExecutor(MaterializeExecutor const&) = delete;
-  MaterializeExecutor(Fetcher& fetcher, Infos& infos)
-      : _readDocumentContext(infos), _infos(infos), _fetcher(fetcher) {}
-
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
+  MaterializeExecutor(Fetcher&, Infos& infos)
+      : _readDocumentContext(infos), _infos(infos) {}
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -151,7 +148,6 @@ class MaterializeExecutor {
   };
   ReadContext _readDocumentContext;
   Infos const& _infos;
-  Fetcher& _fetcher;
 
   // for single collection case
   LogicalCollection const* _collection = nullptr;

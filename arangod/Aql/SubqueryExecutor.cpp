@@ -68,19 +68,6 @@ SubqueryExecutor<isModificationSubquery>::SubqueryExecutor(Fetcher& fetcher,
 template <bool isModificationSubquery>
 SubqueryExecutor<isModificationSubquery>::~SubqueryExecutor() = default;
 
-/**
- * This follows the following state machine:
- * If we have a subquery ongoing we need to ask it for hasMore, until it is DONE.
- * In the case of DONE we write the result, and remove it from ongoing.
- * If we do not have a subquery ongoing, we fetch a row and we start a new Subquery and ask it for hasMore.
- */
-
-template <bool isModificationSubquery>
-std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::initializeSubquery(AqlItemBlockInputRange& input)
     -> std::tuple<ExecutionState, bool> {
@@ -115,6 +102,12 @@ auto SubqueryExecutor<isModificationSubquery>::initializeSubquery(AqlItemBlockIn
   return {translatedReturnType(), true};
 }
 
+/**
+ * This follows the following state machine:
+ * If we have a subquery ongoing we need to ask it for hasMore, until it is DONE.
+ * In the case of DONE we write the result, and remove it from ongoing.
+ * If we do not have a subquery ongoing, we fetch a row and we start a new Subquery and ask it for hasMore.
+ */
 template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRange& input,
                                                            OutputAqlItemRow& output)
@@ -254,13 +247,6 @@ std::pair<ExecutionState, Result> SubqueryExecutor<isModificationSubquery>::shut
 }
 
 template <bool isModificationSubquery>
-std::tuple<ExecutionState, typename SubqueryExecutor<isModificationSubquery>::Stats, SharedAqlItemBlockPtr>
-SubqueryExecutor<isModificationSubquery>::fetchBlockForPassthrough(size_t atMost) {
-  auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-  return {rv.first, {}, std::move(rv.second)};
-}
-
-template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::translatedReturnType() const
     noexcept -> ExecutionState {
   if (_state == ExecutorState::DONE) {
@@ -343,6 +329,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
   _skipped = 0;
   return {translatedReturnType(), NoStats{}, call.getSkipCount(), getUpstreamCall()};
 }
+
 template <bool isModificationSubquery>
 [[nodiscard]] auto SubqueryExecutor<isModificationSubquery>::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
