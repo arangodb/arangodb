@@ -211,14 +211,16 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
   const functionsDocumentation = {};
   const configurations = fs.list('upgrade-data-tests/data').map(
     (filename) => {
-      const re = /upgrade-data-(\d+(?:\.\d+)*(-\d)?)-(mmfiles|rocksdb)\.tar\.gz/;
+      const re = /upgrade-data-(\d+(?:\.\d+)*(-\d)?)-(rocksdb|mmfiles)\.tar\.gz/;
       const matches = re.exec(filename);
       return {
         engine: matches[3],
         version: matches[1]
       };
     }
-  ).sort((a, b) => {
+  ).filter((f) => {
+    return f.engine === 'rocksdb';
+  }).sort((a, b) => {
     const versionDiff = compareSemVer(a.version, b.version);
     if (versionDiff !== 0) {
       return versionDiff;
@@ -234,6 +236,7 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
       version
     } = configurations[i];
     const testName = `upgrade_data_${version}_${engine}`;
+      
     testFns[testName] = upgradeData(engine, version);
     defaultFns.push(testName);
     functionsDocumentation[testName] =

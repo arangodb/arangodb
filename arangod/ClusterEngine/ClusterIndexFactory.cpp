@@ -278,14 +278,9 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
 
     input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
     input.add(VPackValue(StaticStrings::FromString));
-    if (ct == ClusterEngineType::MMFilesEngine) {
-      input.add(VPackValue(StaticStrings::ToString));
-    }
     input.close();
 
-    if (ct == ClusterEngineType::MMFilesEngine) {
-      input.add(StaticStrings::IndexName, VPackValue(StaticStrings::IndexNameEdge));
-    } else if (ct == ClusterEngineType::RocksDBEngine) {
+    if (ct == ClusterEngineType::RocksDBEngine) {
       input.add(StaticStrings::IndexName, VPackValue(StaticStrings::IndexNameEdgeFrom));
     }
 

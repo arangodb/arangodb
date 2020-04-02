@@ -31,7 +31,6 @@
 var db = require("@arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
-var isMMFiles = db._engine().name === "mmfiles";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -409,10 +408,8 @@ function optimizerRuleTestSuite () {
                             ]
                           ];
 
-      if (db._engine().name !== 'mmfiles') {
-        expectedRules[0].push("patch-update-statements");
-        expectedRules[1].push("patch-update-statements");
-      }
+      expectedRules[0].push("patch-update-statements");
+      expectedRules[1].push("patch-update-statements");
 
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
@@ -508,10 +505,8 @@ function optimizerRuleTestSuite () {
                             ]
                           ];
       
-      if (db._engine().name !== 'mmfiles') {
-        expectedRules[0].push("patch-update-statements");
-        expectedRules[1].push("patch-update-statements");
-      }
+      expectedRules[0].push("patch-update-statements");
+      expectedRules[1].push("patch-update-statements");
 
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
@@ -707,7 +702,7 @@ function interactionOtherRulesTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     
     testRule1AndRule2 : function () {
-      const projectionNode = isMMFiles ? "EnumerateCollectionNode" : "IndexNode";
+      const projectionNode = "IndexNode";
       
       var queries = [ 
         // collection sharded by _key

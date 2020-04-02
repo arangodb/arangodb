@@ -150,32 +150,6 @@
         url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/truncate'),
         success: function () {
           arangoHelper.arangoNotification('Collection truncated.');
-
-          // after we are done with the truncation, we flush the WAL to move out all
-          // remove operations
-          $.ajax({
-            cache: false,
-            type: 'PUT',
-            url: arangoHelper.databaseUrl('/_admin/wal/flush?waitForSync=true&waitForCollector=true'),
-            success: function () {
-              // after the WAL flush, we rotate the collection's active journals, so they can be
-              // compacted
-              $.ajax({
-                cache: false,
-                type: 'PUT',
-                url: arangoHelper.databaseUrl('/_api/collection/' + self.get('id') + '/rotate'),
-                success: function () {},
-                error: function () {
-                  // we dispatched the operation as an invisible background action, so we will
-                  // intentionally ignore all errors here
-                }
-              });
-            },
-            error: function () {
-              // we dispatched the operation as an invisible background action, so we will
-              // intentionally ignore all errors here
-            }
-          });
         },
         error: function (err) {
           arangoHelper.arangoError('Collection error: ' + err.responseJSON.errorMessage);
@@ -247,7 +221,7 @@
       });
     },
 
-    changeCollection: function (wfs, journalSize, indexBuckets, replicationFactor, writeConcern, callback) {
+    changeCollection: function (wfs, replicationFactor, writeConcern, callback) {
       var result = false;
       if (wfs === 'true') {
         wfs = true;
@@ -255,9 +229,7 @@
         wfs = false;
       }
       var data = {
-        waitForSync: wfs,
-        journalSize: parseInt(journalSize, 10),
-        indexBuckets: parseInt(indexBuckets, 10)
+        waitForSync: wfs
       };
 
       if (replicationFactor) {

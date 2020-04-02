@@ -60,7 +60,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions,
-    bool useRawDocumentPointers, bool random)
+    bool random)
     : ExecutorInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
@@ -72,7 +72,6 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _outputRegisterId(outputRegister),
-      _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _random(random) {}
 
@@ -113,10 +112,6 @@ bool EnumerateCollectionExecutorInfos::getProduceResult() const {
   return _produceResult;
 }
 
-bool EnumerateCollectionExecutorInfos::getUseRawDocumentPointers() const {
-  return _useRawDocumentPointers;
-}
-
 bool EnumerateCollectionExecutorInfos::getRandom() const { return _random; }
 RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
   return _outputRegisterId;
@@ -130,7 +125,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                         _infos.getProduceResult(), _infos.getQuery(),
                                         _infos.getFilter(), _infos.getProjections(),
                                         _infos.getCoveringIndexAttributePositions(),
-                                        true, _infos.getUseRawDocumentPointers(), false),
+                                        true, false),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),

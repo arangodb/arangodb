@@ -296,12 +296,6 @@ arangodb::Result applyDBServerMatchesToPlan(VPackSlice const plan,
                                             std::map<ServerID, ServerID> const& matches,
                                             VPackBuilder& newPlan);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rotate the active journals for the collection on all DBservers
-////////////////////////////////////////////////////////////////////////////////
-
-int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string const& collname);
-
 class ClusterMethods {
  public:
   // wrapper Class for static functions.
