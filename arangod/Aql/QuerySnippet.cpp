@@ -424,7 +424,8 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
                  exp.node->getType() == ExecutionNode::UPDATE ||
                  exp.node->getType() == ExecutionNode::REMOVE ||
                  exp.node->getType() == ExecutionNode::REPLACE ||
-                 exp.node->getType() == ExecutionNode::UPSERT);
+                 exp.node->getType() == ExecutionNode::UPSERT ||
+                 exp.node->getType() == ExecutionNode::MATERIALIZE);
 
       // It is of utmost importance that this is an ordered set of Shards.
       // We can only join identical indexes of shards for each collection
