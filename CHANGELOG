@@ -1,6 +1,8 @@
 v3.4.10 (XXXX-XX-XX)
 --------------------
 
+* Switched RocksDB versions
+
 * Honor `cacheEnabled` attribute when updating the properties of a collection
   in case of the cluster. Previously, this attribute was ignored in the cluster,
   but it shouldn't have been.
