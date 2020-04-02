@@ -972,7 +972,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
             server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
         index = factory.instantiate(_logicalCollection, info, id, false);
       } else {
-        index = IResearchLinkMock::buildLinkMock(id, _logicalCollection, info);
+        index = buildLinkMock(id, _logicalCollection, info);
       }
     } catch (std::exception const& ex) {
       // ignore the details of all errors here
@@ -1405,39 +1405,20 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
   return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock collection updated OK
 }
 
-std::function<void(irs::directory&)> IResearchDBServerLinkMock::InitCallback;
+std::shared_ptr<arangodb::iresearch::IResearchLinkMock> StorageEngineMock::buildLinkMock(
+  arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info) {
+  auto index = std::shared_ptr<arangodb::iresearch::IResearchLinkMock>(
+    new arangodb::iresearch::IResearchLinkMock(id, collection));
+  auto res = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get())->init(info, [](irs::directory& dir) {
+    if (arangodb::iresearch::IResearchLinkMock::InitCallback != nullptr) {
+      arangodb::iresearch::IResearchLinkMock::InitCallback(dir);
+    }
+    });
 
-void IResearchDBServerLinkMock::toVelocyPack(
-  arangodb::velocypack::Builder& builder,
-  std::underlying_type<arangodb::Index::Serialize>::type flags) const {
-  if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
-      TRI_ERROR_BAD_PARAMETER,              // code
-      std::string("failed to generate link definition for arangosearch view "
-        "Mock link '") +
-      std::to_string(arangodb::Index::id().id()) + "'"));
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-
-  auto forPersistence = // definition for persistence
-    arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
-
-  builder.openObject();
-
-  if (!properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
-      TRI_ERROR_INTERNAL,                   // code
-      std::string("failed to generate link definition for arangosearch view "
-        "Mock link '") +
-      std::to_string(arangodb::Index::id().id()) + "'"));
-  }
-
-  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
-    builder.add("figures", VPackValue(VPackValueType::Object));
-    toVelocyPackFigures(builder);
-    builder.close();
-  }
-
-  builder.close();
+  return index;
 }
 
 std::function<void()> StorageEngineMock::before = []() -> void {};

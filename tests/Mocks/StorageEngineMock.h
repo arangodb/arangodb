@@ -32,8 +32,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/ContextData.h"
-#include "IResearch/IResearchLinkMock.h"
+#include "IResearchLinkMock.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -278,6 +277,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
   virtual arangodb::WalAccess const* walAccess() const override;
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
+
+  static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
+    arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info);
 
  private:
   TRI_voc_tick_t _releasedTick;
