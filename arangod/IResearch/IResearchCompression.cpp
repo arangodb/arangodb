@@ -60,8 +60,7 @@ irs::compression::type_id const*  columnCompressionFromString(irs::string_ref co
   return nullptr;
 }
 
-irs::compression::type_id const& getDefaultCompression()
-{
+irs::compression::type_id const& getDefaultCompression() {
   return irs::compression::lz4::type();
 }
 
