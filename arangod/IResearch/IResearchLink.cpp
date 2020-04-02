@@ -819,7 +819,7 @@ Result IResearchLink::init(
   bool const sorted = !meta._sort.empty();
   auto const& storedValuesColumns = meta._storedValues.columns();
   TRI_ASSERT(meta._sortCompression);
-  auto const primarySortCompression = meta._sortCompression? meta._sortCompression : &getDefaultCompression();
+  auto const& primarySortCompression = meta._sortCompression? *meta._sortCompression : getDefaultCompression();
   if (ServerState::instance()->isCoordinator()) { // coordinator link
     if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
@@ -874,7 +874,7 @@ Result IResearchLink::init(
     if (!clusterWideLink) {
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
-      auto const res = initDataStore(initCallback, sorted, storedValuesColumns, *primarySortCompression);
+      auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
 
       if (!res.ok()) {
         return res;
@@ -942,7 +942,7 @@ Result IResearchLink::init(
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, sorted, storedValuesColumns, *primarySortCompression);
+    auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
 
     if (!res.ok()) {
       return res;
@@ -1125,12 +1125,12 @@ Result IResearchLink::initDataStore(
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
   options.column_info =
-    [encrypt, compressionMap, &primarySortCompression](const irs::string_ref& name) -> irs::column_info {
+    [encrypt, comprMap = std::move(compressionMap), &primarySortCompression](const irs::string_ref& name) -> irs::column_info {
       if (name.null()) {
         return { primarySortCompression, {}, encrypt };
       }
-      auto compress = compressionMap.find(name);
-      if (compress != compressionMap.end()) {
+      auto compress = comprMap.find(name);
+      if (compress != comprMap.end()) {
         // do not waste resources to encrypt primary key column
         return { compress->second, {}, encrypt && (DocumentPrimaryKey::PK() != name) };
       } else {
