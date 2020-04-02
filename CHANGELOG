@@ -8,6 +8,12 @@ devel
 
 * Added compression property to ArangoSearch View storedValues
 
+* Fixed a bug in the agency supervision, which ignored the `failoverCandidates`
+  field.
+
+* Fixed a bug in the agency supervision, which could declare an already FAILED
+  dbserver temporarily as GOOD again after an agency leader change.
+
 * Added INTERLEAVE AQL function.
 
 * Upgraded bundled RocksDB library to version 6.8.0.
