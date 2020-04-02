@@ -745,7 +745,6 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                               std::vector<std::string> const& exclusiveCollections,
                               transaction::Options const& options)
     : transaction::Methods(ctx, options) {
-  addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   Result res;
   for (auto const& it : exclusiveCollections) {

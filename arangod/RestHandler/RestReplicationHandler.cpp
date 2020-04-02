@@ -3429,7 +3429,6 @@ Result RestReplicationHandler::createBlockingTransaction(
   }
   auto trx = query->trx();
   TRI_ASSERT(trx != nullptr);
-  trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 

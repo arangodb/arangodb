@@ -373,7 +373,6 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 
   // start the transaction
   transaction::Hints hints;
-  hints.set(transaction::Hints::Hint::LOCK_ENTIRELY);
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
   res = state->beginTransaction(hints);  // registers with transaction manager
   if (res.fail()) {

@@ -37,16 +37,15 @@ class Hints {
   enum class Hint : ValueType {
     NONE = 0,
     SINGLE_OPERATION = 1,
-    LOCK_ENTIRELY = 2,
-    LOCK_NEVER = 4,
-    NO_USAGE_LOCK = 8, 
-    NO_DLD = 16,       // disable deadlock detection, unsupported in RocksDB
-    NO_INDEXING = 32,  // use DisableIndexing for RocksDB
-    INTERMEDIATE_COMMITS = 64,  // enable intermediate commits in rocksdb
-    ALLOW_RANGE_DELETE = 128,    // enable range-delete in rocksdb
-    FROM_TOPLEVEL_AQL = 256,    // transaction is only runnning one AQL query
-    GLOBAL_MANAGED = 512,  // transaction with externally managed lifetime
-    INDEX_CREATION = 1024, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
+    LOCK_NEVER = 2,
+    NO_USAGE_LOCK = 4, 
+    NO_DLD = 8,       // disable deadlock detection, unsupported in RocksDB
+    NO_INDEXING = 16,  // use DisableIndexing for RocksDB
+    INTERMEDIATE_COMMITS = 32,  // enable intermediate commits in rocksdb
+    ALLOW_RANGE_DELETE = 64,    // enable range-delete in rocksdb
+    FROM_TOPLEVEL_AQL = 128,    // transaction is only runnning one AQL query
+    GLOBAL_MANAGED = 256,  // transaction with externally managed lifetime
+    INDEX_CREATION = 512, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
   };
 
   Hints() : _value(0) {}
