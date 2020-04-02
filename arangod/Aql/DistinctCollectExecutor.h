@@ -101,13 +101,6 @@ class DistinctCollectExecutor {
   void initializeCursor();
 
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  /**
    * @brief produce the next Rows of Aql Values.
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
@@ -118,8 +111,6 @@ class DistinctCollectExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
-
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;
 
@@ -129,7 +120,6 @@ class DistinctCollectExecutor {
 
  private:
   Infos const& _infos;
-  Fetcher& _fetcher;
   std::unordered_set<AqlValue, AqlValueGroupHash, AqlValueGroupEqual> _seen;
 };
 

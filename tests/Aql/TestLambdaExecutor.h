@@ -140,24 +140,6 @@ class TestLambdaExecutor {
   ~TestLambdaExecutor();
 
   /**
-   * @brief NOT IMPLEMENTED. JUST FOR COMPILER
-   * TODO: REMOVE ME after we have switch everything over to produceRow.
-   *
-   * @param atMost
-   * @return std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>
-   */
-  auto fetchBlockForPassthrough(size_t atMost)
-      -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>;
-  /**
-   * @brief NOT IMPLEMENTED. JUST FOR COMPILER
-   * TODO: REMOVE ME after we have switch everything over to produceRow.
-   *
-   * @param output
-   * @return std::tuple<ExecutionState, Stats>
-   */
-  auto produceRows(OutputAqlItemRow& output) -> std::tuple<ExecutionState, Stats>;
-
-  /**
    * @brief produceRows API. Just calls the ProduceCall in the Infos.
    *
    * @param input The input data range (might be empty)
@@ -195,25 +177,6 @@ class TestLambdaSkipExecutor {
   TestLambdaSkipExecutor(TestLambdaSkipExecutor const&) = delete;
   TestLambdaSkipExecutor(Fetcher&, Infos&);
   ~TestLambdaSkipExecutor();
-
-  /**
-   * @brief NOT IMPLEMENTED. JUST FOR COMPILER
-   * TODO: REMOVE ME after we have switch everything over to produceRow.
-   *
-   * @param atMost
-   * @return std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>
-   */
-  auto fetchBlockForPassthrough(size_t atMost)
-      -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>;
-
-  /**
-   * @brief NOT IMPLEMENTED. JUST FOR COMPILER
-   * TODO: REMOVE ME after we have switch everything over to produceRow.
-   *
-   * @param output
-   * @return std::tuple<ExecutionState, Stats>
-   */
-  auto produceRows(OutputAqlItemRow& output) -> std::tuple<ExecutionState, Stats>;
 
   /**
    * @brief skipRows API. Just calls the SkipCall in the infos

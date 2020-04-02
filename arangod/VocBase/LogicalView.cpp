@@ -459,8 +459,6 @@ Result LogicalView::rename(std::string&& newName) {
                         view.vocbase().name() + "'");
     }
 
-    engine->getViewProperties(view.vocbase(), view, builder);
-
     return Result();
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor

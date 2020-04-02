@@ -70,7 +70,6 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
-#include "VocBase/KeyLockInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
@@ -746,7 +745,6 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                               std::vector<std::string> const& exclusiveCollections,
                               transaction::Options const& options)
     : transaction::Methods(ctx, options) {
-  addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   Result res;
   for (auto const& it : exclusiveCollections) {
@@ -790,7 +788,6 @@ transaction::Methods::~Methods() {
 
     // store result in context
     _transactionContextPtr->storeTransactionResult(_state->id(),
-                                                   _state->hasFailedOperations(),
                                                    _state->wasRegistered(),
                                                    _state->isReadOnlyTransaction());
 
@@ -822,27 +819,6 @@ TransactionCollection* transaction::Methods::trxCollection(std::string const& na
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
              _state->status() == transaction::Status::CREATED);
   return _state->collection(name, type);
-}
-
-/// @brief order a ditch for a collection
-void transaction::Methods::pinData(TRI_voc_cid_t cid) {
-  TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
-             _state->status() == transaction::Status::CREATED);
-
-  TransactionCollection* trxColl = trxCollection(cid, AccessMode::Type::READ);
-  if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "unable to determine transaction collection");
-  }
-
-  TRI_ASSERT(trxColl->collection() != nullptr);
-  _transactionContextPtr->pinData(trxColl->collection().get());
-}
-
-/// @brief whether or not a ditch has been created for the collection
-bool transaction::Methods::isPinned(TRI_voc_cid_t cid) const {
-  return _transactionContextPtr->isPinned(cid);
 }
 
 /// @brief extract the _id attribute from a slice, and convert it into a
@@ -896,12 +872,12 @@ void transaction::Methods::buildDocumentIdentity(
     builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));
   }
   if (oldDoc != nullptr) {
-    builder.add(VPackValue("old"));
-    oldDoc->addToBuilder(builder, true);
+    builder.add(VPackValue(StaticStrings::Old));
+    oldDoc->addToBuilder(builder);
   }
   if (newDoc != nullptr) {
-    builder.add(VPackValue("new"));
-    newDoc->addToBuilder(builder, true);
+    builder.add(VPackValue(StaticStrings::New));
+    newDoc->addToBuilder(builder);
   }
   builder.close();
 }
@@ -1048,8 +1024,6 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     throwCollectionNotFound(collectionName.c_str());
   }
 
-  pinData(cid);  // will throw when it fails
-
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
@@ -1170,7 +1144,7 @@ TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collec
 Result transaction::Methods::documentFastPath(std::string const& collectionName,
                                               ManagedDocumentResult* mmdr,
                                               VPackSlice const value,
-                                              VPackBuilder& result, bool shouldLock) {
+                                              VPackBuilder& result) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   if (!value.isObject() && !value.isString()) {
     // must provide a document object or string
@@ -1191,8 +1165,6 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
-  pinData(cid);  // will throw when it fails
-
   arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1206,17 +1178,13 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   TRI_ASSERT(mmdr != nullptr);
 
-  Result res =
-      collection->read(this, key, *mmdr,
-                       shouldLock && !isLocked(collection.get(), AccessMode::Type::READ));
+  Result res = collection->read(this, key, *mmdr);
 
   if (res.fail()) {
     return res;
   }
 
-  TRI_ASSERT(isPinned(cid));
-
-  mmdr->addToBuilder(result, true);
+  mmdr->addToBuilder(result);
   return Result(TRI_ERROR_NO_ERROR);
 }
 
@@ -1229,8 +1197,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(std::string const& collectionName,
                                                    arangodb::velocypack::StringRef const& key,
-                                                   ManagedDocumentResult& result,
-                                                   bool shouldLock) {
+                                                   ManagedDocumentResult& result) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
@@ -1239,16 +1206,12 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
   TRI_ASSERT(trxColl != nullptr);
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   TRI_ASSERT(collection != nullptr);
-  _transactionContextPtr->pinData(collection.get());  // will throw when it fails
 
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  bool isLocked = trxColl->isLocked(AccessMode::Type::READ, _state->nestingLevel());
-  Result res = collection->read(this, key, result, shouldLock && !isLocked);
-  TRI_ASSERT(res.fail() || isPinned(cid));
-  return res;
+  return collection->read(this, key, result);
 }
 
 namespace {
@@ -1318,10 +1281,6 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
-  if (!options.silent) {
-    pinData(cid);  // will throw when it fails
-  }
-
   VPackBuilder resultBuilder;
   ManagedDocumentResult result;
 
@@ -1338,14 +1297,11 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
 
     result.clear();
 
-    Result res = collection->read(this, key, result,
-                                  !isLocked(collection.get(), AccessMode::Type::READ));
+    Result res = collection->read(this, key, result);
 
     if (res.fail()) {
       return res;
     }
-
-    TRI_ASSERT(isPinned(cid));
 
     if (expectedRevision != 0) {
       TRI_voc_rid_t foundRevision =
@@ -1361,7 +1317,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     }
 
     if (!options.silent) {
-      result.addToBuilder(resultBuilder, true);
+      result.addToBuilder(resultBuilder);
     } else if (isMultiple) {
       resultBuilder.add(VPackSlice::nullSlice());
     }
@@ -1469,72 +1425,12 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   TRI_voc_cid_t cid = addCollectionAtRuntime(cname, AccessMode::Type::WRITE);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
-  bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
-
-  // If we maybe will overwrite, we cannot do single document operations, thus:
-  // options.overwrite => !needsLock
-  TRI_ASSERT(!options.overwrite || !needsLock);
-
-  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
-
-  // Assert my assumption that we don't have a lock only with mmfiles single
-  // document operations.
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (!isMock) {
-      // needsLock => isMMFiles
-      // needsLock => !value.isArray()
-      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
-      // However, due to nested transactions, there are mmfiles single
-      // operations that already have a lock.
-      TRI_ASSERT(!needsLock || isMMFiles);
-      TRI_ASSERT(!needsLock || !value.isArray());
-      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
-    }
-  }
-#endif
-
-  // If we are
-  // - not on a single server (i.e. maybe replicating),
-  // - using the MMFiles storage engine, and
-  // - doing a single document operation,
-  // we have to:
-  // - Get the list of followers during the time span we actually do hold a
-  //   collection level lock. This is to avoid races with the replication where
-  //   a follower may otherwise be added between the actual document operation
-  //   and the point where we get our copy of the followers, regardless of the
-  //   latter happens before or after the document operation.
-
-  // Note that getting the followers this way also doesn't do any harm in other
-  // cases, except for babies because it would be done multiple times. Thus this
-  // bool.
-  // I suppose alternatively we could also do it via the updateFollowers
-  // callback and set updateFollowers to nullptr afterwards, so we only do it
-  // once.
-  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
-
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  std::function<void()> updateFollowers;
-
-  if (needsToGetFollowersUnderLock) {
-    FollowerInfo const& followerInfo = *collection->followers();
-
-    updateFollowers = [&followerInfo, &followers]() {
-      TRI_ASSERT(followers == nullptr);
-      followers = followerInfo.get();
-    };
-  } else if (_state->isDBServer()) {
+  if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
   }
-
-  // we may need to lock individual keys here so we can ensure that even with
-  // concurrent operations on the same keys we have the same order of data
-  // application on leader and followers
-  KeyLockInfo keyLockInfo;
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
@@ -1557,16 +1453,13 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
 
       replicationType = ReplicationType::LEADER;
-      if (isMMFiles && needsLock) {
-        keyLockInfo.shouldLock = true;
-      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || keyLockInfo.shouldLock || !followers->empty()) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1579,9 +1472,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
     }
   }  // isDBServer - early block
-  if (options.returnOld || options.returnNew) {
-    pinData(cid);  // will throw when it fails
-  }
 
   VPackBuilder resultBuilder;
   ManagedDocumentResult docResult;
@@ -1601,28 +1491,17 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     docResult.clear();
     prevDocResult.clear();
 
-    // insert with overwrite may NOT be a single document operation, as we
-    // possibly need to do two separate operations (insert and replace).
-    TRI_ASSERT(!(options.overwrite && needsLock));
-
-    TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
-    Result res = collection->insert(this, value, docResult, options, needsLock,
-                                    &keyLockInfo, updateFollowers);
+    Result res = collection->insert(this, value, docResult, options);
 
     bool didReplace = false;
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // RepSert Case - unique_constraint violated ->  try replace
       // If we're overwriting, we already have a lock. Therefore we also don't
       // need to get the followers under the lock.
-      TRI_ASSERT(!needsLock);
-      TRI_ASSERT(!needsToGetFollowersUnderLock);
-      TRI_ASSERT(updateFollowers == nullptr);
       if (options.overwriteModeUpdate) {
-        res = collection->update(this, value, docResult, options,
-                                 /*lock*/ false, prevDocResult);
+        res = collection->update(this, value, docResult, options, prevDocResult);
       } else {
-        res = collection->replace(this, value, docResult, options,
-                                  /*lock*/ false, prevDocResult);
+        res = collection->replace(this, value, docResult, options, prevDocResult);
       }
       TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
       didReplace = true;
@@ -1811,41 +1690,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
 
-  bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
-
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (!isMock) {
-      // needsLock => isMMFiles
-      // needsLock => !newValue.isArray()
-      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
-      // However, due to nested transactions, there are mmfiles single
-      // operations that already have a lock.
-      TRI_ASSERT(!needsLock || isMMFiles);
-      TRI_ASSERT(!needsLock || !newValue.isArray());
-      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
-    }
-  }
-#endif
-
-  // If we are
-  // - not on a single server (i.e. maybe replicating),
-  // - using the MMFiles storage engine, and
-  // - doing a single document operation,
-  // we have to:
-  // - Get the list of followers during the time span we actually do hold a
-  //   collection level lock. This is to avoid races with the replication where
-  //   a follower may otherwise be added between the actual document operation
-  //   and the point where we get our copy of the followers, regardless of the
-  //   latter happens before or after the document operation.
-  // In update/replace we do NOT have to get document level locks as in insert
-  // or remove, as we still hold a lock during the replication in this case.
-  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -1881,7 +1727,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || !followers->empty()) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1895,10 +1741,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     }
   }  // isDBServer - early block
 
-  if (options.returnOld || options.returnNew) {
-    pinData(cid);  // will throw when it fails
-  }
-
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
   Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
@@ -1906,8 +1748,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  // Iff we didn't have a lock before, we got one now.
-  TRI_ASSERT(needsLock == lockResult.is(TRI_ERROR_LOCKED));
 
   VPackBuilder resultBuilder;  // building the complete result
   ManagedDocumentResult previous;
@@ -1931,11 +1771,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      res = collection->replace(this, newVal, result, options,
-                                /*lock*/ false, previous);
+      res = collection->replace(this, newVal, result, options, previous);
     } else {
-      res = collection->update(this, newVal, result, options,
-                               /*lock*/ false, previous);
+      res = collection->update(this, newVal, result, options, previous);
     }
 
     if (res.fail()) {
@@ -1991,10 +1829,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // therefore not doing single document operations. But if we didn't hold it
     // at the beginning of the method the followers may not be up-to-date.
     TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
-    if (needsToGetFollowersUnderLock) {
-      followers = collection->followers()->get();
-    }
-
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
 
@@ -2031,8 +1865,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::removeAsync(std::string const& cname,
-                                                  VPackSlice const value,
-                                                  OperationOptions const& options) {
+                                                          VPackSlice const value,
+                                                          OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
@@ -2085,60 +1919,12 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
 
-  bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
-  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
-
-  // Assert my assumption that we don't have a lock only with mmfiles single
-  // document operations.
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (!isMock) {
-      // needsLock => isMMFiles
-      // needsLock => !value.isArray()
-      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
-      // However, due to nested transactions, there are mmfiles single
-      // operations that already have a lock.
-      TRI_ASSERT(!needsLock || isMMFiles);
-      TRI_ASSERT(!needsLock || !value.isArray());
-      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
-    }
-  }
-#endif
-
-  // If we are
-  // - not on a single server (i.e. maybe replicating),
-  // - using the MMFiles storage engine, and
-  // - doing a single document operation,
-  // we have to:
-  // - Get the list of followers during the time span we actually do hold a
-  //   collection level lock. This is to avoid races with the replication where
-  //   a follower may otherwise be added between the actual document operation
-  //   and the point where we get our copy of the followers, regardless of the
-  //   latter happens before or after the document operation.
-  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
-
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  std::function<void()> updateFollowers = nullptr;
-
-  if (needsToGetFollowersUnderLock) {
-    auto const& followerInfo = *collection->followers();
-
-    updateFollowers = [&followerInfo, &followers]() {
-      TRI_ASSERT(followers == nullptr);
-      followers = followerInfo.get();
-    };
-  } else if (_state->isDBServer()) {
+  if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
   }
-
-  // we may need to lock individual keys here so we can ensure that even with
-  // concurrent operations on the same keys we have the same order of data
-  // application on leader and followers
-  KeyLockInfo keyLockInfo;
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
@@ -2161,16 +1947,13 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
 
       replicationType = ReplicationType::LEADER;
-      if (isMMFiles && needsLock) {
-        keyLockInfo.shouldLock = true;
-      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || !followers->empty()) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -2183,10 +1966,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
     }
   }  // isDBServer - early block
-
-  if (options.returnOld) {
-    pinData(cid);  // will throw when it fails
-  }
 
   VPackBuilder resultBuilder;
   ManagedDocumentResult previous;
@@ -2214,10 +1993,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     previous.clear();
 
-    TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
-
-    auto res = collection->remove(*this, value, options, needsLock, previous,
-                                  &keyLockInfo, updateFollowers);
+    auto res = collection->remove(*this, value, options, previous);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
@@ -2317,8 +2093,6 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
                                                uint64_t skip, uint64_t limit,
                                                OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-
-  pinData(cid);  // will throw when it fails
 
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
@@ -2422,8 +2196,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       }
     }
   }  // isDBServer - early block
-
-  pinData(cid);  // will throw when it fails
 
   Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
 
@@ -2843,9 +2615,6 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
   }
   std::shared_ptr<LogicalCollection> const& logical = trxColl->collection();
   TRI_ASSERT(logical != nullptr);
-
-  // will throw when it fails
-  _transactionContextPtr->pinData(logical.get());
 
   std::unique_ptr<IndexIterator> iterator;
   switch (cursorType) {

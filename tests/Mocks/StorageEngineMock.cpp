@@ -36,12 +36,11 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
-#include "IResearch/IResearchMMFilesLink.h"
+#include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
@@ -55,6 +54,8 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+
+#include "Mocks/IResearchLinkMock.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -951,7 +952,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   struct IndexFactory : public arangodb::IndexFactory {
     using arangodb::IndexFactory::validateSlice;
   };
-  auto id = IndexFactory::validateSlice(info, true, false);  // trie+false to ensure id generation if missing
+  auto id = IndexFactory::validateSlice(info, true, false);  // true+false to ensure id generation if missing
 
   auto const type =
       arangodb::basics::VelocyPackHelper::getStringRef(info.get("type"),
@@ -960,18 +961,18 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   std::shared_ptr<arangodb::Index> index;
 
   if (0 == type.compare("edge")) {
-    index = EdgeIndexMock::make(arangodb::IndexId{id}, _logicalCollection, info);
+    index = EdgeIndexMock::make(id, _logicalCollection, info);
   } else if (0 == type.compare("hash")) {
-    index = HashIndexMock::make(arangodb::IndexId{id}, _logicalCollection, info);
+    index = HashIndexMock::make(id, _logicalCollection, info);
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
     try {
       auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {
         auto& factory =
             server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
-        index = factory.instantiate(_logicalCollection, info, arangodb::IndexId{id}, false);
+        index = factory.instantiate(_logicalCollection, info, id, false);
       } else {
-        index = IResearchDBServerLinkMock::make(id, _logicalCollection, info);
+        index = IResearchLinkMock::buildLinkMock(id, _logicalCollection, info);
       }
     } catch (std::exception const& ex) {
       // ignore the details of all errors here
@@ -1083,11 +1084,8 @@ void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) 
 }
 
 arangodb::Result PhysicalCollectionMock::insert(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
-    arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
-    bool lock, arangodb::KeyLockInfo* /*keyLockInfo*/,
-    std::function<void()> const& callbackDuringLock) {
-  TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+    arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options) {
   before();
 
   TRI_ASSERT(newSlice.isObject());
@@ -1115,7 +1113,7 @@ arangodb::Result PhysicalCollectionMock::insert(
       _documents.emplace(key, DocElement{builder.steal(), ++_lastDocumentId});
   TRI_ASSERT(didInsert);
 
-  result.setUnmanaged(ref->second.vptr());
+  result.setManaged(ref->second.vptr());
   TRI_ASSERT(result.revisionId() == revisionId);
 
   for (auto& index : _indexes) {
@@ -1148,7 +1146,7 @@ arangodb::Result PhysicalCollectionMock::insert(
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
       } else {
-        auto* l = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(index.get());
+        auto* l = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
         if (!l->insert(*trx, ref->second.docId(),
                        arangodb::velocypack::Slice(result.vpack()),
                        arangodb::Index::OperationMode::normal)
@@ -1245,11 +1243,11 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
 
 arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
                                               arangodb::velocypack::StringRef const& key,
-                                              arangodb::ManagedDocumentResult& result, bool) {
+                                              arangodb::ManagedDocumentResult& result) {
   before();
   auto it = _documents.find(key);
   if (it != _documents.end()) {
-    result.setUnmanaged(it->second.vptr());
+    result.setManaged(it->second.vptr());
     return arangodb::Result(TRI_ERROR_NO_ERROR);
   }
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -1262,7 +1260,7 @@ bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,
   for (auto const& entry : _documents) {
     auto& doc = entry.second;
     if (doc.docId() == token) {
-      result.setUnmanaged(doc.vptr());
+      result.setManaged(doc.vptr());
       return true;
     }
   }
@@ -1285,10 +1283,7 @@ bool PhysicalCollectionMock::readDocumentWithCallback(
 
 arangodb::Result PhysicalCollectionMock::remove(
     arangodb::transaction::Methods& trx, arangodb::velocypack::Slice slice,
-    arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options,
-    bool lock, arangodb::KeyLockInfo* /*keyLockInfo*/,
-    std::function<void()> const& callbackDuringLock) {
-  TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
+    arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options) {
   before();
 
   auto key = slice.get(arangodb::StaticStrings::KeyString);
@@ -1296,7 +1291,7 @@ arangodb::Result PhysicalCollectionMock::remove(
   arangodb::velocypack::StringRef keyRef{key};
   auto old = _documents.find(keyRef);
   if (old != _documents.end()) {
-    previous.setUnmanaged(old->second.vptr());
+    previous.setManaged(old->second.vptr());
     _graveyard.emplace_back(old->second.rawData());
     TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(old->second.data()));
     _documents.erase(keyRef);
@@ -1306,17 +1301,17 @@ arangodb::Result PhysicalCollectionMock::remove(
 }
 
 arangodb::Result PhysicalCollectionMock::update(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
-    bool lock, arangodb::ManagedDocumentResult& previous) {
-  return updateInternal(trx, newSlice, result, options, lock, previous, true);
+    arangodb::ManagedDocumentResult& previous) {
+  return updateInternal(trx, newSlice, result, options, previous, true);
 }
 
 arangodb::Result PhysicalCollectionMock::replace(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
-    bool lock, arangodb::ManagedDocumentResult& previous) {
-  return updateInternal(trx, newSlice, result, options, lock, previous, false);
+    arangodb::ManagedDocumentResult& previous) {
+  return updateInternal(trx, newSlice, result, options, previous, false);
 }
 
 TRI_voc_rid_t PhysicalCollectionMock::revision(arangodb::transaction::Methods*) const {
@@ -1342,9 +1337,9 @@ arangodb::Result PhysicalCollectionMock::compact() {
 }
 
 arangodb::Result PhysicalCollectionMock::updateInternal(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
-    bool lock, arangodb::ManagedDocumentResult& previous, bool isUpdate) {
+    arangodb::ManagedDocumentResult& previous, bool isUpdate) {
   auto key = newSlice.get(arangodb::StaticStrings::KeyString);
   if (!key.isString()) {
     return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1387,7 +1382,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     }
     auto nextBuffer = builder.steal();
     // Set previous
-    previous.setUnmanaged(it->second.vptr());
+    previous.setManaged(it->second.vptr());
     TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc));
 
     // swap with new data
@@ -1396,7 +1391,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     // Put the now old buffer into the graveyour for previous to stay valid
     _graveyard.emplace_back(nextBuffer);
 
-    result.setUnmanaged(it->second.vptr());
+    result.setManaged(it->second.vptr());
     TRI_ASSERT(result.revisionId() != previous.revisionId());
     return TRI_ERROR_NO_ERROR;
   }
@@ -1543,13 +1538,9 @@ std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransa
       new TransactionCollectionMock(&state, cid, accessType));
 }
 
-std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTransactionContextData() {
-  return std::unique_ptr<arangodb::transaction::ContextData>();
-}
-
 std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager(
     arangodb::transaction::ManagerFeature& feature) {
-  return std::make_unique<arangodb::transaction::Manager>(feature, /*keepData*/ false);
+  return std::make_unique<arangodb::transaction::Manager>(feature);
 }
 
 std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
@@ -1573,13 +1564,6 @@ arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_c
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 
   return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock view persisted OK
-}
-
-void StorageEngineMock::getViewProperties(TRI_vocbase_t& vocbase,
-                                          arangodb::LogicalView const& view,
-                                          VPackBuilder& builder) {
-  before();
-  // NOOP
 }
 
 TRI_voc_tick_t StorageEngineMock::currentTick() const {
@@ -1733,12 +1717,6 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(arangodb::CreateD
                                          std::move(new_info));
 }
 
-arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t& vocbase,
-                                                      arangodb::LogicalCollection const& collection) {
-  before();
-  return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock collection persisted OK
-}
-
 void StorageEngineMock::prepareDropDatabase(TRI_vocbase_t& vocbase,
                                             bool useWriteMarker, int& status) {
   // NOOP
@@ -1793,11 +1771,6 @@ void StorageEngineMock::signalCleanup(TRI_vocbase_t& vocbase) {
   // NOOP, assume cleanup thread signaled OK
 }
 
-bool StorageEngineMock::supportsDfdb() const {
-  TRI_ASSERT(false);
-  return false;
-}
-
 void StorageEngineMock::unloadCollection(TRI_vocbase_t& vocbase,
                                          arangodb::LogicalCollection& collection) {
   before();
@@ -1810,10 +1783,6 @@ std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
 
 void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
   TRI_ASSERT(false);
-}
-
-void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
-  // NOOP
 }
 
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {
@@ -1833,6 +1802,7 @@ void StorageEngineMock::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& st
 int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
   return TRI_ERROR_NO_ERROR;
 }
+
 
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state,
                                                      TRI_voc_cid_t cid,

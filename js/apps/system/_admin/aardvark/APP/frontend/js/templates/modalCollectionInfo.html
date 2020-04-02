@@ -8,22 +8,6 @@
 %>
 
         <table id="collectionInfoTable" class="arango-table">
-          <% if (figuresData.journalSize) { %>
-            <tr id="collectionSizeBox">
-              <th class="collectionInfoTh2">Journal size:</th>
-              <th class="collectionInfoTh">
-                <div id="show-collection-size" class="modal-text">
-                  <%=prettyBytes(figuresData.journalSize)%>
-                </div>
-              </th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <span class="modalTooltips arangoicon icon_arangodb_info" title="The maximal size of a journal or datafile (in MB). Must be at least 1.">
-                  </span>
-                </div>
-              </th>
-            </tr>
-          <% } %>
           <tr id="collectionSyncBox">
             <th class="collectionInfoTh2">Wait for sync:</th>
             <th class="collectionInfoTh">
@@ -142,16 +126,6 @@
             </tr>
           <% } %>
           
-          <% if (figuresData.indexBuckets) { %>
-            <tr>
-              <th class="collectionInfoTh2">Index buckets:</th>
-              <th class="collectionInfoTh">
-                <div class="modal-text"><%=figuresData.indexBuckets%></div>
-              </th>
-              <th class="collectionInfoTh">
-              </th>
-            </tr>
-          <% } %> 
           <% if (!frontendConfig.isCluster) { %>
             <% if (figuresData.figures.compactionStatus) { %>
               <tr>

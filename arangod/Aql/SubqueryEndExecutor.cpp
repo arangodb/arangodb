@@ -76,15 +76,10 @@ bool SubqueryEndExecutorInfos::isModificationSubquery() const noexcept {
   return _isModificationSubquery;
 }
 
-SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
-    : _fetcher(fetcher), _infos(infos), _accumulator(_infos.vpackOptions()) {}
+SubqueryEndExecutor::SubqueryEndExecutor(Fetcher&, SubqueryEndExecutorInfos& infos)
+    : _infos(infos), _accumulator(_infos.vpackOptions()) {}
 
 SubqueryEndExecutor::~SubqueryEndExecutor() = default;
-
-std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
@@ -192,10 +187,10 @@ size_t SubqueryEndExecutor::Accumulator::numValues() const noexcept {
   return _numValues;
 }
 
-// We write at most the number of rows that we get from above (potentially much less if we accumulate a lot)
-std::pair<ExecutionState, size_t> SubqueryEndExecutor::expectedNumberOfRows(size_t atMost) const {
-  ExecutionState state{ExecutionState::HASMORE};
-  size_t expected = 0;
-  std::tie(state, expected) = _fetcher.preFetchNumberOfRows(atMost);
-  return {state, expected};
+// We do not write any output for inbound dataRows
+// We will only write output for shadowRows. This is accounted for in ExecutionBlockImpl
+[[nodiscard]] auto SubqueryEndExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const&,
+                                                                AqlCall const&) const
+    noexcept -> size_t {
+  return 0;
 }
