@@ -43,6 +43,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "V8/v8-globals.h"
@@ -261,18 +262,40 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     }
     // fall-through to linear search
   }
-
+  
   // use linear search
-  for (size_t i = 0; i < n; ++i) {
-    bool mustDestroy;
-    AqlValue a = right.at(i, mustDestroy, false);
-    AqlValueGuard guard(a, mustDestroy);
 
-    int compareResult = AqlValue::Compare(trx, left, a, false);
+  if (!right.isDocvec() && !right.isRange() &&
+      !left.isDocvec() && !left.isRange()) {
+    // optimization for the case in which rhs is a Velocypack array, and we 
+    // can simply use a VelocyPack iterator to walk through it. this will
+    // be a lot more efficient than using right.at(i) in case the array is
+    // of type Compact (without any index tables)
+    VPackSlice const lhs(left.slice());
 
-    if (compareResult == 0) {
-      // item found in the list
-      return true;
+    VPackOptions const* options = trx->transactionContextPtr()->getVPackOptions();
+    VPackArrayIterator it(right.slice());
+    while (it.valid()) {
+      int compareResult = arangodb::basics::VelocyPackHelper::compare(lhs, it.value(), false, options);
+    
+      if (compareResult == 0) {
+        // item found in the list
+        return true;
+      }
+      it.next();
+    }
+  } else {
+    for (size_t i = 0; i < n; ++i) {
+      bool mustDestroy;
+      AqlValue a = right.at(i, mustDestroy, false);
+      AqlValueGuard guard(a, mustDestroy);
+
+      int compareResult = AqlValue::Compare(trx, left, a, false);
+
+      if (compareResult == 0) {
+        // item found in the list
+        return true;
+      }
     }
   }
 

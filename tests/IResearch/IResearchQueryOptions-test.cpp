@@ -150,13 +150,13 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
         {
           insertedDocs.emplace_back();
           auto const res =
-              collections[0]->insert(&trx, doc, insertedDocs.back(), opt, false);
+              collections[0]->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
         {
           insertedDocs.emplace_back();
           auto const res =
-              collections[1]->insert(&trx, doc, insertedDocs.back(), opt, false);
+              collections[1]->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
         ++i;
@@ -751,7 +751,7 @@ TEST_F(IResearchQueryOptionsTest, WaitForSync) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, false);
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -965,7 +965,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-            logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt, false);
+            logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -986,7 +986,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-            logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt, false);
+            logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }

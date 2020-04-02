@@ -89,7 +89,6 @@ function config (options) {
     'arangorestore',
     'arangoexport',
     'arangosh',
-    'arango-dfdb',
     'foxx-manager'
   ];
 

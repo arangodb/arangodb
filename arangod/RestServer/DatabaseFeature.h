@@ -38,15 +38,12 @@ namespace application_features {
 class ApplicationServer;
 }
 class LogicalCollection;
-
 }
 
 namespace arangodb {
 namespace velocypack {
-
-  class Builder; // forward declaration
-  class Slice; // forward declaration
-
+class Builder; // forward declaration
+class Slice; // forward declaration
 } // velocypack
 } //arangodb
 
@@ -151,6 +148,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
     _throwCollectionNotLoadedError.store(value);
   }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
+  
+  struct DatabasesLists {
+    std::unordered_map<std::string, TRI_vocbase_t*> _databases;
+    std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
+  };
 
  private:
   void stopAppliers();

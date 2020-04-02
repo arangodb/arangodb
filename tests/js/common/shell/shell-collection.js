@@ -168,6 +168,121 @@ function CollectionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creating with properties (isVolatile is only a valid mmfiles attr)
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreatingVolatile: function () {
+      var cn = "example";
+
+      db._drop(cn);
+      try {
+        db._create(cn, {isVolatile: true});
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creating with properties (journalSize is only a valid mmfiles attr)
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreatingJournalSize: function () {
+      var cn = "example";
+
+      db._drop(cn);
+      let c1 = db._create(cn, {journalSize: 4 * 1024 * 1024});
+      assertUndefined(c1.journalSize);
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creating with properties (journalSize is only a valid mmfiles attr)
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreatingIndexBuckets: function () {
+      var cn = "example";
+
+      db._drop(cn);
+      let c1 = db._create(cn, {indexBuckets: 4});
+      assertUndefined(c1.indexBuckets);
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test revision id
+////////////////////////////////////////////////////////////////////////////////
+
+    testRevision2: function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      var r1 = c1.revision();
+      c1.save({_key: "abc"});
+      var r2 = c1.revision();
+      assertEqual(1, testHelper.compareStringIds(r2, r1));
+
+      c1.save({_key: "123"});
+      c1.save({_key: "456"});
+      c1.save({_key: "789"});
+
+      var r3 = c1.revision();
+      assertEqual(1, testHelper.compareStringIds(r3, r2));
+
+      c1.remove("123");
+      var r4 = c1.revision();
+      assertEqual(1, testHelper.compareStringIds(r4, r3));
+
+      c1.truncate();
+      var r5 = c1.revision();
+      assertEqual(-1, testHelper.compareStringIds(r5, r4));
+
+      // unload
+      c1.unload();
+      c1 = null;
+      internal.wait(5);
+
+      // compare rev
+      c1 = db._collection(cn);
+      var r6 = c1.revision();
+      assertEqual(0, testHelper.compareStringIds(r6, r5));
+
+      for (var i = 0; i < 10; ++i) {
+        c1.save({_key: "test" + i});
+        assertEqual(1, testHelper.compareStringIds(c1.revision(), r6));
+        r6 = c1.revision();
+      }
+
+      // unload
+      c1.unload();
+      c1 = null;
+      internal.wait(5);
+
+      // compare rev
+      c1 = db._collection(cn);
+      var r7 = c1.revision();
+      assertEqual(0, testHelper.compareStringIds(r7, r6));
+
+      c1.truncate();
+      var r8 = c1.revision();
+
+      // unload
+      c1.unload();
+      c1 = null;
+      internal.wait(5);
+
+      // compare rev
+      c1 = db._collection(cn);
+      var r9 = c1.revision();
+      assertEqual(0, testHelper.compareStringIds(r9, r8));
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create with id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -982,6 +1097,47 @@ function CollectionDbSuite () {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: collection caches
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionCacheSuite () {
+  const cn = "UnitTestsClusterCache";
+  return {
+
+    tearDown : function () {
+      try {
+        db._drop(cn);
+      }
+      catch (err) {
+      }
+    },
+    
+    testCollectionCache : function () {
+      let c = db._create(cn, {cacheEnabled:true});
+      let p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+    },
+
+    testCollectionCacheModifyProperties : function () {
+      // create collection without cache
+      let c = db._create(cn, {cacheEnabled:false});
+      let p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+
+      // enable caches
+      c.properties({cacheEnabled:true});
+      p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+
+      // disable caches again
+      c.properties({cacheEnabled:false});
+      p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+    }
+  };
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -990,5 +1146,6 @@ function CollectionDbSuite () {
 jsunity.run(CollectionSuiteErrorHandling);
 jsunity.run(CollectionSuite);
 jsunity.run(CollectionDbSuite);
+jsunity.run(CollectionCacheSuite);
 
 return jsunity.done();

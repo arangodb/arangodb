@@ -158,7 +158,7 @@ TEST_F(IResearchQueryScorerTest, test) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsView.emplace_back();
         auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, false);
+            collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -180,7 +180,7 @@ TEST_F(IResearchQueryScorerTest, test) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsCollection.emplace_back();
         auto const res =
-            logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt, false);
+            logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
