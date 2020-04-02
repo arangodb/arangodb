@@ -130,7 +130,7 @@ void DatabaseManagerThread::run() {
           auto oldLists = databaseFeature._databasesLists.load();
           decltype(oldLists) newLists = nullptr;
           try {
-            newLists = new DatabasesLists();
+            newLists = new DatabaseFeature::DatabasesLists();
             newLists->_databases = oldLists->_databases;
             for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
               if (vocbase != database) {
@@ -574,9 +574,6 @@ void DatabaseFeature::recoveryDone() {
       continue;
     }
 
-    // execute the engine-specific callbacks on successful recovery
-    engine->recoveryDone(*vocbase);
-
     if (vocbase->replicationApplier()) {
       if (server().hasFeature<ReplicationFeature>()) {
         server().getFeature<ReplicationFeature>().startApplier(vocbase);
@@ -686,9 +683,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
     }
 
     if (!engine->inRecovery()) {
-      // starts compactor etc.
-      engine->recoveryDone(*vocbase);
-
       if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
         if (server().hasFeature<ReplicationFeature>()) {
           server().getFeature<ReplicationFeature>().startApplier(vocbase.get());

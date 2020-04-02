@@ -34,12 +34,9 @@ using namespace arangodb::aql;
 template <typename T>
 arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::copyDocumentCallback(
     ReadContext& ctx) {
-  auto* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
   typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
-  static CallbackFactory const callbackFactories[]{
+  static CallbackFactory const callbackFactory{
       [](ReadContext& ctx) {
-        // capture only one reference to potentially avoid heap allocation
         return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
           TRI_ASSERT(ctx._outputRow);
           TRI_ASSERT(ctx._inputRow);
@@ -52,25 +49,10 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::c
                                         *ctx._inputRow, guard);
           return true;
         };
-      },
+      }
+    };
 
-      [](ReadContext& ctx) {
-        // capture only one reference to potentially avoid heap allocation
-        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-          TRI_ASSERT(ctx._outputRow);
-          TRI_ASSERT(ctx._inputRow);
-          TRI_ASSERT(ctx._inputRow->isInitialized());
-          TRI_ASSERT(ctx._infos);
-          arangodb::aql::AqlValue a{arangodb::aql::AqlValueHintDocumentNoCopy(doc.begin())};
-          bool mustDestroy = true;
-          arangodb::aql::AqlValueGuard guard{a, mustDestroy};
-          ctx._outputRow->moveValueInto(ctx._infos->outputMaterializedDocumentRegId(),
-                                        *ctx._inputRow, guard);
-          return true;
-        };
-      }};
-
-  return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
+  return callbackFactory(ctx);
 }
 
 template <typename T>

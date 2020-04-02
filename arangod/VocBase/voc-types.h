@@ -89,7 +89,7 @@ enum class ShardingPrototype : uint32_t {
   Graphs = 2
 };
 
-/// @brief Hash and Equal comparison for a vector of VPackSlice
+/// @brief Hash function for a vector of VPackSlice
 namespace std {
 
 template <>
@@ -108,10 +108,5 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
 
 /// @brief databases list structure
 struct TRI_vocbase_t;
-
-struct DatabasesLists {
-  std::unordered_map<std::string, TRI_vocbase_t*> _databases;
-  std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
-};
 
 #endif

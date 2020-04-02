@@ -209,7 +209,6 @@ bool BaseEngine::lockCollection(std::string const& shard) {
   if (cid == 0) {
     return false;
   }
-  _trx->pinData(cid);  // will throw when it fails
 
   Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
 
@@ -260,11 +259,11 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
     if (shouldProduceVertices) {
       arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
       for (std::string const& shard : shards->second) {
-        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
+        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
         if (res.ok()) {
           // FOUND short circuit.
           builder.add(v);
-          mmdr.addToBuilder(builder, true);
+          mmdr.addToBuilder(builder);
           break;
         } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // We are in a very bad condition here...
@@ -379,12 +378,12 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     if (_opts->produceVertices()) {
       arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
       for (std::string const& shard : shards->second) {
-        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
+        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
         if (res.ok()) {
           // FOUND short circuit.
           read++;
           builder.add(v);
-          mmdr.addToBuilder(builder, true);
+          mmdr.addToBuilder(builder);
           break;
         } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // We are in a very bad condition here...
