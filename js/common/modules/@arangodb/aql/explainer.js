@@ -2227,6 +2227,9 @@ function inspectDump(filename, outfile) {
   }
 
   let data = JSON.parse(require('fs').read(filename));
+  if (data.version && data.version) {
+    print("/* original data is from " + data.version["server-version"] + ", " + data.version.license + " */");
+  }
   if (data.database) {
     print("/* original data gathered from database '" + data.database + "' */");
   }
@@ -2290,7 +2293,7 @@ function inspectDump(filename, outfile) {
     let details = data.collections[collection];
     if (details.examples) {
       details.examples.forEach(function (example) {
-        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ");");
+        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ", {isRestore: true});");
       });
     }
     let missing = details.count;
