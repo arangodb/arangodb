@@ -178,9 +178,6 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       assertTrue(state.running);
 
-      if (db._engine().name !== "rocksdb") {
-        assertEqual(tick, state.lastLogTick);
-      }
       assertTrue(typeof state.lastLogTick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
       assertTrue(state.totalEvents >= 0);
@@ -367,10 +364,6 @@ function ReplicationLoggerSuite () {
       assertEqual(cn, entry.data.name);
       assertEqual(2, entry.data.type);
       assertEqual(false, entry.data.deleted);
-      if (db._engine().name === "mmfiles") {
-        assertEqual(2097152, entry.data.journalSize);
-        assertEqual(true, entry.data.waitForSync);
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -518,10 +511,6 @@ function ReplicationLoggerSuite () {
     },
     
     testLoggerTruncateCollectionRocksDB : function () {
-      if (db._engine().name !== 'rocksdb') {
-        return;
-      }
-
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < 32769; ++i) {
@@ -544,10 +533,6 @@ function ReplicationLoggerSuite () {
     },
     
     testLoggerTruncateCollectionAndThenSomeRocksDB : function () {
-      if (db._engine().name !== 'rocksdb') {
-        return;
-      }
-
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < 32769; ++i) {
@@ -1459,49 +1444,6 @@ function ReplicationLoggerSuite () {
       assertEqual("abc", entry[1].data._key);
       assertEqual(c._id, entry[1].cid);
       assertEqual(2, entry[1].data.test);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerTransactionWrite3 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
-      db._create(cn);
-
-      var tick = getLastLogTick();
-
-      try {
-        db._executeTransaction({
-          collections: {
-            write: cn
-          },
-          action: function (params) {
-            var c = require("internal").db._collection(params.cn);
-
-            c.save({ "test" : 2, "_key": "abc" });
-            throw "fail";
-          },
-          params: {
-            cn: cn
-          }
-        });
-        fail();
-      }
-      catch (err) {
-      }
-
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
-      assertEqual(3, entry.length);
-
-      assertEqual(2200, entry[0].type);
-      assertEqual(2300, entry[1].type);
-      assertEqual(2202, entry[2].type);
-
-      assertEqual(entry[0].tid, entry[1].tid);
-      assertEqual(entry[1].tid, entry[2].tid);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

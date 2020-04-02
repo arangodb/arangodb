@@ -1,6 +1,20 @@
 devel
 -----
 
+* Removed deprecated MMFiles storage engine and also the `arango-dfdb`
+  (datafile debugger) executable that could be used to validate MMFiles
+  datafiles.
+
+  This change also obsoletes all MMFiles-specific startup options in the
+  `--wal.*` section. Using these startup options is not an error, but has
+  no effect anymore.
+
+* Fixed a bug in the agency supervision, which ignored the `failoverCandidates`
+  field.
+
+* Fixed a bug in the agency supervision, which could declare an already FAILED
+  dbserver temporarily as GOOD again after an agency leader change.
+
 * Added INTERLEAVE AQL function.
 
 * Upgraded bundled RocksDB library to version 6.8.0.

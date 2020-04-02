@@ -171,12 +171,9 @@ function optimizerRuleTestSuite() {
         [ "FOR v IN " + colName + " FILTER v.c == 1 SORT v.c RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.c == 1 SORT v.z RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.c == 1 SORT v.f RETURN 1", false, true ],
-        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.z RETURN 1",
-          db._engine().name === "rocksdb", db._engine().name !== "rocksdb" ],
-        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.y RETURN 1",
-          db._engine().name === "rocksdb", db._engine().name !== "rocksdb" ],
-        [ "FOR v IN " + colName + " FILTER v.z == 1 SORT v.y RETURN 1",
-          db._engine().name === "rocksdb", db._engine().name !== "rocksdb" ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.z RETURN 1", true, false ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.y RETURN 1", true, false ],
+        [ "FOR v IN " + colName + " FILTER v.z == 1 SORT v.y RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.z == 1 SORT v.z RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.y == 1 && v.z == 1 SORT v.y RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.y == 1 && v.z == 1 SORT v.z RETURN 1", true, false ],
@@ -238,7 +235,7 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         
         var result = AQL_EXPLAIN(query[0], { }, paramIndexFromSort);
-          if (db._engine().name === "rocksdb" && query.length === 3 && query[2]) {
+          if (query.length === 3 && query[2]) {
             assertEqual(["use-index-for-sort"], removeAlwaysOnClusterRules(result.plan.rules), query);
           } else {
             assertEqual([], removeAlwaysOnClusterRules(result.plan.rules), query);

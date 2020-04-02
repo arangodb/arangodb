@@ -1046,9 +1046,9 @@ void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection
 /// @brief reads an element from the document collection
 Result LogicalCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result, bool lock) {
+                               ManagedDocumentResult& result) {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
-  return getPhysical()->read(trx, key, result, lock);
+  return getPhysical()->read(trx, key, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1072,19 +1072,17 @@ Result LogicalCollection::compact() { return getPhysical()->compact(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
-                                 ManagedDocumentResult& result, OperationOptions& options,
-                                 bool lock, KeyLockInfo* keyLockInfo,
-                                 std::function<void()> const& cbDuringLock) {
+                                 ManagedDocumentResult& result, OperationOptions& options) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
   }
-  return getPhysical()->insert(trx, slice, result, options, lock, keyLockInfo, cbDuringLock);
+  return getPhysical()->insert(trx, slice, result, options);
 }
 
 /// @brief updates a document or edge in a collection
-Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const newSlice,
+Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
                                  ManagedDocumentResult& result, OperationOptions& options,
-                                 bool lock, ManagedDocumentResult& previous) {
+                                 ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::update") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -1093,13 +1091,13 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const new
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  return getPhysical()->update(trx, newSlice, result, options, lock, previous);
+  return getPhysical()->update(trx, newSlice, result, options, previous);
 }
 
 /// @brief replaces a document or edge in a collection
-Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
+Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice newSlice,
                                   ManagedDocumentResult& result, OperationOptions& options,
-                                  bool lock, ManagedDocumentResult& previous) {
+                                  ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::replace") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -1107,18 +1105,17 @@ Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const ne
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  return getPhysical()->replace(trx, newSlice, result, options, lock, previous);
+  return getPhysical()->replace(trx, newSlice, result, options, previous);
 }
 
 /// @brief removes a document or edge
 Result LogicalCollection::remove(transaction::Methods& trx, velocypack::Slice const slice,
-                                 OperationOptions& options, bool lock,
-                                 ManagedDocumentResult& previous, KeyLockInfo* keyLockInfo,
-                                 std::function<void()> const& cbDuringLock) {
+                                 OperationOptions& options,
+                                 ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
   }
-  return getPhysical()->remove(trx, slice, previous, options, lock, keyLockInfo, cbDuringLock);
+  return getPhysical()->remove(trx, slice, previous, options);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx, LocalDocumentId const& token,

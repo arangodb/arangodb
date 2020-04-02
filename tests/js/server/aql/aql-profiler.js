@@ -53,10 +53,6 @@ const _ = require('lodash');
 // abort after iterating over the collection once and return the items fetched
 // so far instead of filling up the result. (see aql-profiler-noncluster*.js)
 
-// NOTE EnumerateCollectionBlock is suboptimal on mmfiles, is it returns HASMORE
-// instead of DONE when asked for exactly all documents in the collection.
-// (low impact) (see aql-profiler-noncluster*.js)
-
 // TODO IndexBlock is still suboptimal, as it can return HASMORE when there are no
 // items left. (low impact) (see aql-profiler-noncluster*.js)
 

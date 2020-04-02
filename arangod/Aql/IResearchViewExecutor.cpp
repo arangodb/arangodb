@@ -65,9 +65,6 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find c
     Query& query) {
   TRI_ASSERT(trx.state());
 
-  // this is necessary for MMFiles
-  trx.pinData(cid);
-
   // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
   auto* collection = trx.state()->collection(cid, arangodb::AccessMode::Type::READ);
 
@@ -236,14 +233,11 @@ ExecutionStats& aql::operator+=(ExecutionStats& executionStats,
 template <typename Impl, typename Traits>
 IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadContext::copyDocumentCallback(
     ReadContext& ctx) {
-  auto* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
 
   typedef std::function<IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
 
-  static CallbackFactory const callbackFactories[]{
+  static CallbackFactory const callbackFactory{
       [](ReadContext& ctx) {
-        // capture only one reference to potentially avoid heap allocation
         return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
           AqlValue a{AqlValueHintCopy(doc.begin())};
           bool mustDestroy = true;
@@ -251,20 +245,10 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
           ctx.outputRow.moveValueInto(ctx.docOutReg, ctx.inputRow, guard);
           return true;
         };
-      },
+      }
+    };
 
-      [](ReadContext& ctx) {
-        // capture only one reference to potentially avoid heap allocation
-        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-          AqlValue a{AqlValueHintDocumentNoCopy(doc.begin())};
-          bool mustDestroy = true;
-          AqlValueGuard guard{a, mustDestroy};
-          ctx.outputRow.moveValueInto(ctx.docOutReg, ctx.inputRow, guard);
-          return true;
-        };
-      }};
-
-  return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
+  return callbackFactory(ctx);
 }
 template <typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(

@@ -46,15 +46,12 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
-#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
-#include "MMFiles/MMFilesCollection.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -436,9 +433,6 @@ void registerIndexFactory(std::map<std::type_index, std::shared_ptr<arangodb::In
   m.emplace(std::type_index(typeid(arangodb::ClusterEngine)),
             arangodb::iresearch::IResearchLinkCoordinator::createFactory(server));
   registerSingleFactory<arangodb::ClusterEngine>(m, server);
-  m.emplace(std::type_index(typeid(arangodb::MMFilesEngine)),
-            arangodb::iresearch::IResearchMMFilesLink::createFactory(server));
-  registerSingleFactory<arangodb::MMFilesEngine>(m, server);
   m.emplace(std::type_index(typeid(arangodb::RocksDBEngine)),
             arangodb::iresearch::IResearchRocksDBLink::createFactory(server));
   registerSingleFactory<arangodb::RocksDBEngine>(m, server);
@@ -1018,7 +1012,6 @@ IndexTypeFactory& IResearchFeature::factory() {
   return *_factories.find(std::type_index(typeid(Engine)))->second;
 }
 template IndexTypeFactory& IResearchFeature::factory<arangodb::ClusterEngine>();
-template IndexTypeFactory& IResearchFeature::factory<arangodb::MMFilesEngine>();
 template IndexTypeFactory& IResearchFeature::factory<arangodb::RocksDBEngine>();
 
 }  // namespace iresearch

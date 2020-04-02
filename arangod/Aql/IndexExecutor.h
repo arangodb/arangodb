@@ -65,7 +65,7 @@ class IndexExecutorInfos : public ExecutorInfos {
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
       Expression* filter, std::vector<std::string> const& projections,
-      std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
+      std::vector<size_t> const& coveringIndexAttributePositions, 
       std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
       std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
       bool hasV8Expression, AstNode const* condition,
@@ -87,7 +87,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   Expression* getFilter() const noexcept;
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
   bool getProduceResult() const noexcept;
-  bool getUseRawDocumentPointers() const noexcept;
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const noexcept;
   AstNode const* getCondition() const noexcept;
   bool getV8Expression() const noexcept;
@@ -157,7 +156,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   /// e.g. the index is on values[*].name and values[*].type
   bool _hasMultipleExpansions;
 
-  bool _useRawDocumentPointers;
   bool _produceResult;
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.

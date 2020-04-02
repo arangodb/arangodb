@@ -103,7 +103,6 @@ set(ARANGODB_TESTS_SOURCES
   Basics/string-test.cpp
   Basics/string-utf8-normalize-test.cpp
   Basics/string-utf8-test.cpp
-  Basics/structure-size-test.cpp
   Basics/vector-test.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
@@ -134,12 +133,9 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
-  Containers/associative-multi-pointer-test.cpp
-  Containers/associative-multi-pointer-nohashcache-test.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
-  Containers/skiplist-test.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp
@@ -218,6 +214,7 @@ set(ARANGODB_TESTS_SOURCES
   ${RCFILE}
   Metrics/MetricsTest.cpp
   Metrics/MetricsFeatureTest.cpp
+  Mocks/IResearchLinkMock.cpp
   Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
@@ -278,7 +275,6 @@ endif()
 target_link_libraries(arangodbtests
   arango_agency
   arango_cluster_engine
-  arango_mmfiles
   arango_rocksdb
   arango_v8server
   arangoserver

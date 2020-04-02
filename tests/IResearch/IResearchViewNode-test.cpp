@@ -30,6 +30,7 @@
 
 #include "Aql/TestExecutorHelper.h"
 #include "IResearch/common.h"
+#include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -54,7 +55,6 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
-#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -2509,7 +2509,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     EXPECT_TRUE(trx.begin().ok());
 
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt, false);
+    auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt);
     EXPECT_TRUE(res.ok());
 
     EXPECT_TRUE(trx.commit().ok());
@@ -2927,7 +2927,7 @@ class IResearchViewBlockTest
       auto indexes = collection0->getIndexes();
       EXPECT_FALSE(indexes.empty());
       auto* l =
-          static_cast<arangodb::iresearch::IResearchMMFilesLink*>(indexes[0].get());
+          static_cast<arangodb::iresearch::IResearchLinkMock*>(indexes[0].get());
       for (size_t i = 2; i < 10; ++i) {
         l->insert(*trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::normal);
       }
@@ -2937,7 +2937,7 @@ class IResearchViewBlockTest
     arangodb::ManagedDocumentResult insertResult;
     arangodb::OperationOptions options;
     EXPECT_TRUE(collection0
-                    ->insert(trx.get(), aliveDoc->slice(), insertResult, options, false)
+                    ->insert(trx.get(), aliveDoc->slice(), insertResult, options)
                     .ok());
     EXPECT_TRUE(trx->commit().ok());
   }

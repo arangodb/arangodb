@@ -39,15 +39,12 @@
 #include "ClusterEngine/ClusterV8Functions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesEngine.h"
-#include "MMFiles/MMFilesOptimizerRules.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
-#include "Transaction/ContextData.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "VocBase/LogicalView.h"
@@ -79,22 +76,11 @@ ClusterEngine::~ClusterEngine() = default;
 
 void ClusterEngine::setActualEngine(StorageEngine* e) {
   _actualEngine = e;
-  if (isMMFiles()) {
-    LOG_TOPIC("6ab73", WARN, arangodb::Logger::STARTUP)
-        << "The MMFiles storage engine is deprecated starting with ArangoDB "
-           "v3.6.0 and will be removed in a future version. "
-        << "Please plan for a migration to the RocksDB engine.";
-  }
 }
 
 bool ClusterEngine::isRocksDB() const {
   return !ClusterEngine::Mocking && _actualEngine &&
          _actualEngine->name() == RocksDBEngine::FeatureName;
-}
-
-bool ClusterEngine::isMMFiles() const {
-  return !ClusterEngine::Mocking && _actualEngine &&
-         _actualEngine->name() == MMFilesEngine::FeatureName;
 }
 
 bool ClusterEngine::isMock() const {
@@ -108,14 +94,8 @@ ClusterEngineType ClusterEngine::engineType() const {
   }
   TRI_ASSERT(_actualEngine != nullptr);
 
-  if (isMMFiles()) {
-    return ClusterEngineType::MMFilesEngine;
-  } else if (isRocksDB()) {
-    return ClusterEngineType::RocksDBEngine;
-  }
-
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid engine type");
+  TRI_ASSERT(isRocksDB());
+  return ClusterEngineType::RocksDBEngine;
 }
 
 // inherited from ApplicationFeature
@@ -135,11 +115,7 @@ void ClusterEngine::start() {
 
 std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
     transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature, /*keepData*/ false);
-}
-
-std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>();  // not used by coordinator
+  return std::make_unique<transaction::Manager>(feature);
 }
 
 std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
@@ -256,20 +232,11 @@ TRI_voc_tick_t ClusterEngine::recoveryTick() {
   return 0;  // never in recovery
 }
 
-void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {
-  // nothing to do here
-}
-
 std::string ClusterEngine::createCollection(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& collection) {
   TRI_ASSERT(collection.id() != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(collection.id()));
   return std::string();  // no need to return a path
-}
-
-arangodb::Result ClusterEngine::persistCollection(TRI_vocbase_t& vocbase,
-                                                  LogicalCollection const& collection) {
-  return {};
 }
 
 arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
@@ -333,9 +300,7 @@ int ClusterEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
 
 /// @brief Add engine-specific optimizer rules
 void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  if (engineType() == ClusterEngineType::MMFilesEngine) {
-    MMFilesOptimizerRules::registerResources(feature);
-  } else if (engineType() == ClusterEngineType::RocksDBEngine) {
+  if (engineType() == ClusterEngineType::RocksDBEngine) {
     RocksDBOptimizerRules::registerResources(feature);
   } else if (engineType() != ClusterEngineType::MockEngine) {
     // invalid engine type...

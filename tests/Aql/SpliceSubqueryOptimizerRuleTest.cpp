@@ -524,7 +524,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
                                                               noCollections, opts);
   ASSERT_EQ(1, collection->numberDocuments(trx.get(), transaction::CountType::Normal));
   auto mdr = ManagedDocumentResult{};
-  auto result = collection->read(trx.get(), VPackStringRef{"myKey"}, mdr, false);
+  auto result = collection->read(trx.get(), VPackStringRef{"myKey"}, mdr);
   ASSERT_TRUE(result.ok());
   ASSERT_NE(nullptr, mdr.vpack());
   auto const document = VPackSlice{mdr.vpack()};

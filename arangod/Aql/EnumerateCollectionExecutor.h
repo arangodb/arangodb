@@ -65,8 +65,7 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
       Expression* filter, std::vector<std::string> const& projections,
-      std::vector<size_t> const& coveringIndexAttributePositions,
-      bool useRawDocumentPointers, bool random);
+      std::vector<size_t> const& coveringIndexAttributePositions, bool random);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
@@ -82,7 +81,6 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   std::vector<std::string> const& getProjections() const noexcept;
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
   bool getProduceResult() const;
-  bool getUseRawDocumentPointers() const;
   bool getRandom() const;
   RegisterId getOutputRegisterId() const;
 
@@ -94,7 +92,6 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
   RegisterId _outputRegisterId;
-  bool _useRawDocumentPointers;
   bool _produceResult;
   bool _random;
 };

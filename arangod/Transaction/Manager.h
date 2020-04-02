@@ -33,8 +33,7 @@
 
 #include <atomic>
 #include <functional>
-#include <map>
-#include <set>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -93,32 +92,17 @@ class Manager final {
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 
-  explicit Manager(ManagerFeature& feature, bool keepData)
+  explicit Manager(ManagerFeature& feature)
       : _feature(feature),
-        _keepTransactionData(keepData),
         _nrRunning(0),
         _disallowInserts(false),
         _writeLockHeld(false) {}
 
-  // register a list of failed transactions
-  void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
-
-  // unregister a list of failed transactions
-  void unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
-
-  // return the set of failed transactions
-  std::unordered_set<TRI_voc_tid_t> getFailedTransactions() const;
-
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data,
-                           bool isReadOnlyTransaction);
+  void registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction);
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
-                             bool isReadOnlyTransaction);
-
-  // iterate all the active transactions
-  void iterateActiveTransactions(TrxCallback const&);
+  void unregisterTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction);
 
   uint64_t getActiveTransactionCount();
 
@@ -211,21 +195,12 @@ class Manager final {
 
   ManagerFeature& _feature;
 
-  /// @brief will be true only for MMFiles
-  bool const _keepTransactionData;
-
   // a lock protecting ALL buckets in _transactions
   mutable basics::ReadWriteLock _allTransactionsLock;
 
   struct {
-    // a lock protecting _activeTransactions and _failedTransactions
+    // a lock protecting _managed
     mutable basics::ReadWriteLock _lock;
-
-    // currently ongoing transactions
-    std::unordered_map<TRI_voc_tid_t, std::unique_ptr<TransactionData>> _activeTransactions;
-
-    // set of failed transactions
-    std::unordered_set<TRI_voc_tid_t> _failedTransactions;
 
     // managed transactions, seperate lifetime from above
     std::unordered_map<TRI_voc_tid_t, ManagedTrx> _managed;
