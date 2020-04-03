@@ -63,6 +63,7 @@ namespace aql {
 struct AstNode;
 class Ast;
 class ExecutionEngine;
+struct ExecutionStats;
 class Query;
 struct QueryCacheResultEntry;
 struct QueryProfile;
@@ -81,11 +82,6 @@ class Query : public QueryContext {
   Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
         std::shared_ptr<arangodb::velocypack::Builder> const& options);
-
-  /// Used to put together query snippets in RestAqlHandler
-//  Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
-//        std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
-//        std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
   virtual ~Query();
 
@@ -109,9 +105,13 @@ class Query : public QueryContext {
   /// @brief set the query to killed
   void kill();
 
-  void setExecutionTime();
-
   QueryString const& queryString() const { return _queryString; }
+  
+  /// @brief Inject a transaction from outside. Use with care!
+  void injectTransaction(std::unique_ptr<transaction::Methods> trx) {
+    _trx = std::move(trx);
+    init();
+  }
 
   QueryProfile* profile() const { return _profile.get(); }
 
@@ -145,22 +145,14 @@ class Query : public QueryContext {
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
   ExecutionState finalize(QueryResult&);
+  
+  Result finalizeSnippets(ExecutionStats& stats);
 
   /// @brief parse an AQL query
   QueryResult parse();
 
   /// @brief explain an AQL query
   QueryResult explain();
-
-  /// @brief return the engine, if prepared
-//  TEST_VIRTUAL ExecutionEngine* engine() const { return _engine.get(); }
-
-  /// @brief inject the engine
-//  TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
-//  TEST_VIRTUAL void setEngine(std::unique_ptr<ExecutionEngine>&& engine);
-
-  /// @brief get the plan for the query
-//  ExecutionPlan* plan() const { return _plan.get(); }
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const;

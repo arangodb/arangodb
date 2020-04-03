@@ -26,6 +26,7 @@
 
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutionNodeStats.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Result.h"
 
@@ -44,6 +45,7 @@ class AqlCallStack;
 class InputAqlItemRow;
 class ExecutionEngine;
 class ExecutionNode;
+struct ExecutionStats;
 class SharedAqlItemBlockPtr;
 
 class ExecutionBlock {
@@ -105,20 +107,6 @@ class ExecutionBlock {
   /// in getOrSkipSome() implementations.
   [[nodiscard]] virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) = 0;
 
-  // Trace the start of a getSome call
-  void traceGetSomeBegin(size_t atMost);
-
-  // Trace the end of a getSome call, potentially with result
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(
-      ExecutionState state, SharedAqlItemBlockPtr result);
-
-  void traceSkipSomeBegin(size_t atMost);
-
-  [[nodiscard]] std::pair<ExecutionState, size_t> traceSkipSomeEnd(std::pair<ExecutionState, size_t> res);
-
-  [[nodiscard]] std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state,
-                                                                   size_t skipped);
-
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
   /// skip a block of at most atMost items, however, it may skip
@@ -130,8 +118,6 @@ class ExecutionBlock {
 
   // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
   [[nodiscard]] ExecutionNode const* getPlanNode() const;
-
-  [[nodiscard]] velocypack::Options const* trxVpackOptions() const noexcept;
 
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep);
@@ -148,18 +134,29 @@ class ExecutionBlock {
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
   virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) = 0;
-
+  
+  virtual void collectExecStats(ExecutionStats&) const;
   [[nodiscard]] bool isInSplicedSubquery() const noexcept;
-
+  
  protected:
+  
+  // Trace the start of a getSome call
+   void traceGetSomeBegin(size_t atMost);
+
+   // Trace the end of a getSome call, potentially with result
+   void traceGetSomeEnd(ExecutionState state, SharedAqlItemBlockPtr const& result);
+
+   void traceSkipSomeBegin(size_t atMost);
+
+   void traceSkipSomeEnd(ExecutionState state, size_t skipped);
+  
   // Trace the start of a execute call
   void traceExecuteBegin(AqlCallStack const& stack,
                          std::string const& clientId = "");
 
   // Trace the end of a execute call, potentially with result
-  auto traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
-                       std::string const& clientId = "")
-      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+  void traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
+                       std::string const& clientId = "");
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;
@@ -167,8 +164,6 @@ class ExecutionBlock {
  protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
-
-  velocypack::Options const& _trxVpackOptions;
 
   /// @brief the Result returned during the shutdown phase. Is kept for multiple
   ///        waiting phases.
@@ -189,12 +184,11 @@ class ExecutionBlock {
   ///        used in initializeCursor and shutdown.
   ///        Needs to be set to .end() everytime we modify _dependencies
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
+  
+  ExecutionNodeStats _execNodeStats;
 
   /// @brief profiling level
   uint32_t _profile;
-
-  /// @brief getSome begin point in time
-  double _getSomeBegin;
 
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
@@ -209,6 +203,7 @@ class ExecutionBlock {
   /// true if and only if we have no more data ourselves (i.e.
   /// _buffer.size()==0)
   /// and we have unsuccessfully tried to get another block from our dependency.
+#warning TODO is this used somewhere
   std::deque<SharedAqlItemBlockPtr> _buffer;
 
   /// @brief current working position in the first entry of _buffer

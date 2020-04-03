@@ -48,7 +48,7 @@ using namespace arangodb::aql;
 
 #define LOG_QUERY(logId, level)            \
   LOG_TOPIC(logId, level, Logger::QUERIES) \
-      << "[query#" << this->_engine->getQuery()->id() << "] "
+  << "[query#" << this->_engine->getQuery().id() << "] "
 
 namespace {
 
@@ -79,7 +79,6 @@ size_t ExecutionBlock::DefaultBatchSize = ExecutionBlock::ProductionDefaultBatch
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
-      _trxVpackOptions(engine->getQuery().vpackOptions()),
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _done(false),
       _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
@@ -87,7 +86,6 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _dependencies(),
       _dependencyPos(_dependencies.end()),
       _profile(engine->getQuery().queryOptions().getProfileLevel()),
-      _getSomeBegin(0.0),
       _upstreamState(ExecutionState::HASMORE),
       _pos(0),
       _collector(&engine->itemBlockManager()) {}
@@ -149,9 +147,11 @@ std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
 
 void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
+    if (_execNodeStats.runtime >= 0.0) {
+      _execNodeStats.runtime -= TRI_microtime();
+      TRI_ASSERT(_execNodeStats.runtime < 0.0);
     }
+    
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto const node = getPlanNode();
       auto const queryId = this->_engine->getQuery().id();
@@ -163,31 +163,23 @@ void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
   }
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd(
-    ExecutionState state, SharedAqlItemBlockPtr result) {
+void ExecutionBlock::traceGetSomeEnd(
+    ExecutionState state, SharedAqlItemBlockPtr const& result) {
   TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
-#if 0
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    ExecutionNode const* en = getPlanNode();
-    ExecutionStats::Node stats;
+    
     auto const items = result != nullptr ? result->size() : 0;
-    stats.calls = 1;
-    stats.items = items;
+    _execNodeStats.calls += 1;
+    _execNodeStats.items += items;
     if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
-
-    auto it = _engine->_stats.nodes.find(en->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.try_emplace(en->id(), stats);
+      TRI_ASSERT(_execNodeStats.runtime < 0.0);
+      _execNodeStats.runtime += TRI_microtime();
+      TRI_ASSERT(_execNodeStats.runtime > 0.0);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
+      auto const queryId = this->_engine->getQuery().id();
       LOG_TOPIC("07a60", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
           << "getSome done type=" << node->getTypeString()
@@ -201,26 +193,26 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
               << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
-          auto const options = trxVpackOptions();
-          result->toSimpleVPack(options, builder);
+          auto const& options = _engine->getQuery().vpackOptions();
+          result->toSimpleVPack(&options, builder);
           LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
               << "[query#" << queryId << "] "
               << "getSome type=" << node->getTypeString()
-              << " result: " << VPackDumper::toString(builder.slice(), options);
+              << " result: " << VPackDumper::toString(builder.slice(), &options);
         }
       }
     }
   }
-#endif
   
-  return {state, std::move(result)};
 }
 
 void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
+    if (_execNodeStats.runtime >= 0.0) {
+      _execNodeStats.runtime -= TRI_microtime();
+      TRI_ASSERT(_execNodeStats.runtime < 0.0);
     }
+    
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto node = getPlanNode();
       auto const queryId = this->_engine->getQuery().id();
@@ -232,33 +224,20 @@ void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
   }
 }
 
-std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
-    std::pair<ExecutionState, size_t> const res) {
-#warning FIXME
-#if 0
-  ExecutionState const state = res.first;
-  size_t const skipped = res.second;
+void ExecutionBlock::traceSkipSomeEnd(ExecutionState state, size_t skipped) {
 
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    ExecutionNode const* en = getPlanNode();
-    ExecutionStats::Node stats;
-    stats.calls = 1;
-    stats.items = skipped;
+    _execNodeStats.calls += 1;
+    _execNodeStats.items += skipped;
     if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
-
-    auto it = _engine->_stats.nodes.find(en->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.try_emplace(en->id(), stats);
+      TRI_ASSERT(_execNodeStats.runtime < 0.0);
+      _execNodeStats.runtime += TRI_microtime();
+      TRI_ASSERT(_execNodeStats.runtime > 0.0);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
+      auto const queryId = this->_engine->getQuery().id();
       LOG_TOPIC("d1950", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
           << "skipSome done type=" << node->getTypeString()
@@ -266,13 +245,6 @@ std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
           << " state=" << stateToString(state) << " skipped=" << skipped;
     }
   }
-#endif
-  return res;
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(ExecutionState state,
-                                                                   size_t skipped) {
-  return traceSkipSomeEnd({state, skipped});
 }
 
 ExecutionState ExecutionBlock::getHasMoreState() {
@@ -288,10 +260,6 @@ ExecutionState ExecutionBlock::getHasMoreState() {
 
 ExecutionNode const* ExecutionBlock::getPlanNode() const { return _exeNode; }
 
-velocypack::Options const* ExecutionBlock::trxVpackOptions() const noexcept {
-  return &_trxVpackOptions;
-}
-
 void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   TRI_ASSERT(ep != nullptr);
   // We can never have the same dependency twice
@@ -301,15 +269,21 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   _dependencyPos = _dependencies.end();
 }
 
+void ExecutionBlock::collectExecStats(ExecutionStats& stats) const {
+  stats.add(getPlanNode()->id(), _execNodeStats);
+}
+
 bool ExecutionBlock::isInSplicedSubquery() const noexcept {
   return _isInSplicedSubquery;
 }
 
 void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string const& clientId) {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
+    if (_execNodeStats.runtime >= 0.0) {
+      _execNodeStats.runtime -= TRI_microtime();
+      TRI_ASSERT(_execNodeStats.runtime < 0.0);
     }
+    
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto const node = getPlanNode();
       auto const queryId = this->_engine->getQuery().id();
@@ -324,29 +298,19 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string co
   }
 }
 
-auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
-                                     std::string const& clientId)
-    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
+                                     std::string const& clientId)  {
 
-#warning FIXME
-#if 0
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     auto const& [state, skipped, block] = result;
     auto const items = block != nullptr ? block->size() : 0;
-    ExecutionNode const* en = getPlanNode();
-    ExecutionStats::Node stats;
-    stats.calls = 1;
-    stats.items = skipped.getSkipCount() + items;
-    if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
 
-    auto it = _engine->_stats.nodes.find(en->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
+    _execNodeStats.calls += 1;
+    _execNodeStats.items += skipped.getSkipCount() + items;
+    if (state != ExecutionState::WAITING) {
+      TRI_ASSERT(_execNodeStats.runtime < 0.0);
+      _execNodeStats.runtime += TRI_microtime();
+      TRI_ASSERT(_execNodeStats.runtime > 0.0);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -363,8 +327,7 @@ auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
               << "execute type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
-          auto const options = trxVpackOptions();
-          block->toSimpleVPack(options, builder);
+          block->toSimpleVPack(&_engine->getQuery().vpackOptions(), builder);
           LOG_QUERY("f12f9", INFO)
               << "execute type=" << node->getTypeString()
               << " result: " << VPackDumper::toString(builder.slice(), options);
@@ -372,9 +335,6 @@ auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
       }
     }
   }
-#endif
-
-  return result;
 }
 
 auto ExecutionBlock::printTypeInfo() const -> std::string const {

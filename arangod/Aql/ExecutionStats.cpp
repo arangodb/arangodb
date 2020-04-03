@@ -49,9 +49,9 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
 
   builder.add("peakMemoryUsage", VPackValue(peakMemoryUsage));
 
-  if (!nodes.empty()) {
+  if (!_nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
-    for (std::pair<size_t const, ExecutionStats::Node> const& pair : nodes) {
+    for (std::pair<size_t const, ExecutionNodeStats> const& pair : _nodes) {
       builder.openObject();
       builder.add("id", VPackValue(pair.first));
       builder.add("calls", VPackValue(pair.second.calls));
@@ -80,7 +80,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   // intentionally no modification of executionTime, as the overall
   // time is calculated in the end
 
-  for (auto const& pair : summand.nodes) {
+  for (auto const& pair : summand._nodes) {
     size_t nid = pair.first;
     auto const& alias = _nodeAliases.find(nid);
     if (alias != _nodeAliases.end()) {
@@ -90,10 +90,19 @@ void ExecutionStats::add(ExecutionStats const& summand) {
         continue;
       }
     }
-    auto result = nodes.insert({nid, pair.second});
+    auto result = _nodes.insert({nid, pair.second});
     if (!result.second) {
       result.first->second += pair.second;
     }
+  }
+}
+
+void ExecutionStats::add(size_t id, ExecutionNodeStats const& stats) {
+  auto it = _nodes.find(id);
+  if (it != _nodes.end()) {
+    it->second += stats;
+  } else {
+    _nodes.emplace(id, stats);
   }
 }
 
@@ -134,7 +143,7 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
 
   // note: node stats are optional
   if (slice.hasKey("nodes")) {
-    ExecutionStats::Node node;
+    ExecutionNodeStats node;
     for (VPackSlice val : VPackArrayIterator(slice.get("nodes"))) {
       size_t nid = val.get("id").getNumber<size_t>();
       node.calls = val.get("calls").getNumber<size_t>();
@@ -144,7 +153,7 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
       if (alias != _nodeAliases.end()) {
         nid = alias->second;
       }
-      nodes.try_emplace(nid, node);
+      _nodes.try_emplace(nid, node);
     }
   }
 }
@@ -166,11 +175,6 @@ void ExecutionStats::clear() {
   count = 0;
   executionTime = 0.0;
   peakMemoryUsage = 0;
+  _nodes.clear();
 }
 
-ExecutionStats::Node& ExecutionStats::Node::operator+=(ExecutionStats::Node const& other) {
-  calls += other.calls;
-  items += other.items;
-  runtime += other.runtime;
-  return *this;
-}

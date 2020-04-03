@@ -150,6 +150,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
+  
+  // handle query finalization for all engines
+  void handleFinishQuery(std::string const& idString);
 
  private:
   // dig out vocbase from context and query from ID, handle errors

@@ -93,7 +93,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
 }
 
 void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& shardLocking,
-                                        std::unordered_map<size_t, size_t>& nodeAliases,
+                                        std::map<size_t, size_t>& nodeAliases,
                                         VPackBuilder& infoBuilder) {
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(!_expansions.empty());

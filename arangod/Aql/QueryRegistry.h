@@ -85,8 +85,8 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  TEST_VIRTUAL void destroyQuery(std::string const& vocbase, QueryId qId,
-                                 int errorCode, bool ignoreOpened);
+  std::unique_ptr<Query> destroyQuery(std::string const& vocbase, QueryId qId,
+                                      int errorCode, bool ignoreOpened);
   
   /// used for a legacy shutdown
   bool destroyEngine(QueryId qId, int errorCode);
@@ -118,12 +118,12 @@ class QueryRegistry {
 
  private:
   /// @brief a struct for all information regarding one query in the registry
-  struct QueryInfo {
+  struct QueryInfo final {
     QueryInfo(std::unique_ptr<Query> query, double ttl);
-    ~QueryInfo();
+    ~QueryInfo() = default;
 
     TRI_vocbase_t* _vocbase;  // the vocbase
-    Query* _query;            // the actual query pointer
+    std::unique_ptr<Query> _query;  // the actual query pointer
     
     const double _timeToLive;  // in seconds
     double _expires;     // UNIX UTC timestamp of expiration

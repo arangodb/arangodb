@@ -50,7 +50,8 @@ ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
-  return traceGetSomeEnd(result.first, std::move(result.second));
+  traceGetSomeEnd(result.first, result.second);
+  return result;
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::getSomeWithoutTrace(size_t atMost) {
@@ -107,7 +108,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecuto
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   auto result = skipSomeWithoutTrace(atMost);
-  return traceSkipSomeEnd(result.first, result.second);
+  traceSkipSomeEnd(result.first, result.second);
+  return result;
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSomeWithoutTrace(size_t atMost) {
@@ -178,4 +180,3 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::shutdown(in
   _internalState = AsyncState::Empty;
   return res;
 }
-

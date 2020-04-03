@@ -250,6 +250,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  
+  virtual void collectExecStats(ExecutionStats& stats) const override {
+    ExecutionBlock::collectExecStats(stats);
+    stats += _blockStats; // additional stats;
+  }
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
   [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;

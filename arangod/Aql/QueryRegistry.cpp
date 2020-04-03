@@ -203,8 +203,8 @@ void QueryRegistry::closeEngine(QueryId id) {
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
-void QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
-                                 int errorCode, bool ignoreOpened) {
+std::unique_ptr<Query> QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
+                                                   int errorCode, bool ignoreOpened) {
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -228,7 +228,7 @@ void QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
       // query in use by another thread/request
       q->second->_query->kill();
       q->second->_expires = 0.0;
-      return;
+      return nullptr;
     }
 
     // move query into our unique ptr, so we can process it outside
@@ -270,6 +270,8 @@ void QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
   }
   LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL)
       << "query with id " << id << " is now destroyed";
+  
+  return std::move(queryInfo->_query);
 }
 
 
@@ -471,7 +473,8 @@ void QueryRegistry::unregisterEngines(SnippetList const& snippets) {
     auto it = _engines.find(pair.first);
     if (it != _engines.end()) {
       if (it->second._isOpen) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "this snippet is still in use");
       }
       _engines.erase(it);
     }
@@ -480,9 +483,8 @@ void QueryRegistry::unregisterEngines(SnippetList const& snippets) {
 
 QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<Query> query, double ttl)
     : _vocbase(&(query->vocbase())),
-      _query(query.release()),
+      _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
       _numEngines(0) {}
 
-QueryRegistry::QueryInfo::~QueryInfo() { delete _query; }

@@ -89,10 +89,13 @@ class ExecutionEngine {
 
   /// @brief server to snippet mapping
   void snippetMapping(MapRemoteToSnippet&& dbServerMapping,
-                      std::vector<uint64_t>&& coordinatorQueryIds) {
+                      std::map<std::string, QueryId>&& serverToQueryId) {
     _dbServerMapping = std::move(dbServerMapping);
-    _coordinatorQueryIds = std::move(coordinatorQueryIds);
+    _serverToQueryId = std::move(serverToQueryId);
   }
+  
+  /// @brief kill the query
+  void kill();
 
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(SharedAqlItemBlockPtr&& items, size_t pos);
@@ -131,10 +134,20 @@ class ExecutionEngine {
   RegisterId resultRegister() const;
 
   /// @brief accessor to the memory recyler for AqlItemBlocks
-  TEST_VIRTUAL AqlItemBlockManager& itemBlockManager();
+  AqlItemBlockManager& itemBlockManager();
 
-#warning FIXME
-  void collectStats(ExecutionStats&) const noexcept {}
+  ///  @brief collected execution stats
+  void collectExecutionStats(ExecutionStats& other);
+  /// should only be used by the RemoteExecutor and intenally
+  ExecutionStats& execStats() { return _execStats; }
+  
+  void setShutdown() {
+    _wasShutdown = true;
+  }
+  
+ private:
+  
+  ExecutionState shutdownDBServerQueries(int errorCode);
 
  private:
   /// @brief a pointer to the query
@@ -153,18 +166,20 @@ class ExecutionEngine {
 
   /// @brief the register the final result of the query is stored in
   RegisterId _resultRegister;
+  
+  /// @brief server to snippet mapping
+  MapRemoteToSnippet _dbServerMapping;
+
+  /// @brief map of server to server-global query id
+  std::map<std::string, QueryId> _serverToQueryId;
+  
+  ExecutionStats _execStats;
 
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
 
   /// @brief whether or not shutdown() was executed
   bool _wasShutdown;
-
-  /// @brief server to snippet mapping
-  MapRemoteToSnippet _dbServerMapping;
-
-  /// @brief ids of all coordinator query snippets
-  std::vector<uint64_t> _coordinatorQueryIds;
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -94,11 +94,9 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
     auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
-#warning FIXME
-//#ifdef USE_ENTERPRISE
-#if 0
+#ifdef USE_ENTERPRISE
     for (auto const& s : shards) {
-      if (query.trx()->isInaccessibleCollectionId(col->getPlanId())) {
+      if (query.trxForOptimization().isInaccessibleCollectionId(col->getPlanId())) {
         _inaccessibleShards.insert(s);
         _inaccessibleShards.insert(std::to_string(col->id()));
       }
@@ -271,7 +269,8 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
-    MapRemoteToSnippet& queryIds, std::map<std::string, QueryId>& serverToQueryId) {
+    MapRemoteToSnippet& snippetIds, std::map<std::string, QueryId>& serverToQueryId,
+    std::map<size_t, size_t> nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
@@ -290,8 +289,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  auto cleanupGuard = scopeGuard([this, pool, &queryIds]() {
-    cleanupEngines(pool, TRI_ERROR_INTERNAL, _query.vocbase().name(), queryIds);
+  auto cleanupGuard = scopeGuard([this, pool, &snippetIds]() {
+    cleanupEngines(pool, TRI_ERROR_INTERNAL, _query.vocbase().name(), snippetIds);
   });
 
   // Build Lookup Infos
@@ -320,7 +319,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
-    std::unordered_map<size_t, size_t> nodeAliases; // simon: unused now
     addSnippetPart(infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
     auto shardMapping = _shardLocking.getShardMapping();
@@ -379,12 +377,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
     QueryId globalId = 0;
-    auto result = parseResponse(response, queryIds, server, serverDest,
+    auto result = parseResponse(response, snippetIds, server, serverDest,
                                 didCreateEngine, globalId);
     if (!result.ok()) {
       return result;
     }
-    auto insert = serverToQueryId.try_emplace(server, globalId);
+    auto insert = serverToQueryId.try_emplace(serverDest, globalId);
     TRI_ASSERT(insert.second);
   }
   cleanupGuard.cancel();
@@ -590,7 +588,7 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
 // Insert the Snippets information into the message to be send to DBServers
 void EngineInfoContainerDBServerServerBased::addSnippetPart(
     arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
-    std::unordered_map<size_t, size_t>& nodeAliases, ServerID const& server) const {
+    std::map<size_t, size_t>& nodeAliases, ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("snippets"));
   builder.openObject();

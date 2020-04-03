@@ -49,7 +49,8 @@ ExecutionBlockImpl<ParallelStartExecutor>::ExecutionBlockImpl(
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ParallelStartExecutor>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
-  return traceGetSomeEnd(result.first, std::move(result.second));
+  traceGetSomeEnd(result.first, result.second);
+  return result;
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ParallelStartExecutor>::getSomeWithoutTrace(size_t atMost) {
@@ -67,7 +68,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ParallelStar
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ParallelStartExecutor>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   auto result = skipSomeWithoutTrace(atMost);
-  return traceSkipSomeEnd(result.first, result.second);
+  traceSkipSomeEnd(result.first, result.second);
+  return result;
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ParallelStartExecutor>::skipSomeWithoutTrace(size_t atMost) {

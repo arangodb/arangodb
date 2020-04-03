@@ -134,8 +134,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
   // the new cluster wide transactions
   transaction::Options trxOpts;
 
-#warning FIXME
-#if 0
+  std::unique_ptr<transaction::Methods> trx;
 #ifdef USE_ENTERPRISE
   VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
   if (inaccessSlice.isArray()) {
@@ -145,18 +144,17 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
       TRI_ASSERT(shard.isString());
       inaccessible.insert(shard.copyString());
     }
-    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
+    trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
                                        true, std::move(inaccessible));
   } else {
-    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
+    trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
   }
 #else
-  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
+  trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
 #endif
-#endif
-
+      
   if (!needToLock) {
-    _trx->addHint(transaction::Hints::Hint::LOCK_NEVER);
+    trx->addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
   // true here as last argument is crucial: it leads to the fact that the
   // created transaction is considered a "MAIN" part and will not switch
@@ -164,7 +162,8 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
   auto params = std::make_shared<VPackBuilder>();
   auto opts = std::make_shared<VPackBuilder>();
   _query = new aql::Query(ctx, aql::QueryString(), params, opts);
-//  _query->injectTransaction(_trx);
+  _trx = trx.get();
+  _query->injectTransaction(std::move(trx));
 
   VPackSlice variablesSlice = info.get(VARIABLES);
   if (!variablesSlice.isNone()) {
@@ -187,41 +186,41 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
 }
 
 BaseEngine::~BaseEngine() {
-  if (_trx) {
-    try {
-      if (_trx->status() == transaction::Status::RUNNING) {
-        Result res = _trx->commit();
-        if (res.fail()) {
-          LOG_TOPIC("315cf", ERR, Logger::CLUSTER)
-            << "BaseEngine could not commit: " 
-            << res.errorMessage() 
-            << ", current status: " << transaction::statusString(_trx->status());
-        }
-      }
-    } catch (...) {
-      // If we could not abort
-      // we are in a bad state.
-    }
-  }
+//  if (_trx) {
+//    try {
+//      if (_trx->status() == transaction::Status::RUNNING) {
+//        Result res = _trx->commit();
+//        if (res.fail()) {
+//          LOG_TOPIC("315cf", ERR, Logger::CLUSTER)
+//            << "BaseEngine could not commit: "
+//            << res.errorMessage()
+//            << ", current status: " << transaction::statusString(_trx->status());
+//        }
+//      }
+//    } catch (...) {
+//      // If we could not abort
+//      // we are in a bad state.
+//    }
+//  }
   delete _query;
 }
 
 bool BaseEngine::lockCollection(std::string const& shard) {
-  auto resolver = _trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(shard);
-  if (cid == 0) {
-    return false;
-  }
-  _trx->pinData(cid);  // will throw when it fails
-
-  Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
-
-  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    LOG_TOPIC("d7485", ERR, arangodb::Logger::CLUSTER)
-        << "Locking shard " << shard << " lead to exception '"
-        << lockResult.errorNumber() << "' (" << lockResult.errorMessage() << ")";
-    return false;
-  }
+//  auto resolver = _trx->resolver();
+//  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(shard);
+//  if (cid == 0) {
+//    return false;
+//  }
+//  _trx->pinData(cid);  // will throw when it fails
+//
+//  Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
+//
+//  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+//    LOG_TOPIC("d7485", ERR, arangodb::Logger::CLUSTER)
+//        << "Locking shard " << shard << " lead to exception '"
+//        << lockResult.errorNumber() << "' (" << lockResult.errorMessage() << ")";
+//    return false;
+//  }
 
   return true;
 }

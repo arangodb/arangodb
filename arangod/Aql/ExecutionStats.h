@@ -26,7 +26,8 @@
 
 #include <cstdint>
 #include <map>
-#include <unordered_map>
+
+#include "Aql/ExecutionNodeStats.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -40,15 +41,7 @@ struct ExecutionStats {
 
   /// @brief instantiate the statistics from VelocyPack
   explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
-
-  /// @brief statistics per ExecutionNode
-  struct Node {
-    size_t calls = 0;
-    size_t items = 0;
-    double runtime = 0.0;
-    ExecutionStats::Node& operator+=(ExecutionStats::Node const& other);
-  };
-
+ 
  public:
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
@@ -61,12 +54,12 @@ struct ExecutionStats {
 
   /// @brief sumarize two sets of ExecutionStats
   void add(ExecutionStats const& summand);
-
-  void clear();
-
-  void addAliases(std::unordered_map<size_t, size_t>&& aliases) {
+  void add(size_t id, ExecutionNodeStats const&);
+  void addAliases(std::map<size_t, size_t>&& aliases) {
     _nodeAliases = std::move(aliases);
   }
+
+  void clear();
 
   /// @brief number of successfully executed write operations
   int64_t writesExecuted;
@@ -99,15 +92,15 @@ struct ExecutionStats {
   /// @brief peak memory usage of the query
   size_t peakMemoryUsage;
 
-  ///  @brief statistics per ExecutionNodes
-  std::map<size_t, ExecutionStats::Node> nodes;
-
  private:
   /// @brief Node aliases, source => target.
   ///        Every source node in the this aliases list
   ///        will be counted as the target instead
   ///        within nodes.
-  std::unordered_map<size_t, size_t> _nodeAliases;
+  std::map<size_t, size_t> _nodeAliases;
+  
+  ///  @brief statistics per ExecutionNodes
+  std::map<size_t, ExecutionNodeStats> _nodes;
 };
 }  // namespace aql
 }  // namespace arangodb

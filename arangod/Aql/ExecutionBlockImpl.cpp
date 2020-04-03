@@ -203,7 +203,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
     : ExecutionBlock(engine, node),
       _dependencyProxy(_dependencies, engine->itemBlockManager(),
                        infos.getInputRegisters(),
-                       infos.numberOfInputRegisters(), trxVpackOptions()),
+                       infos.numberOfInputRegisters(), &engine->getQuery().vpackOptions()),
       _rowFetcher(_dependencyProxy),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
@@ -228,7 +228,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   } else {
     traceGetSomeBegin(atMost);
     auto result = getSomeWithoutTrace(atMost);
-    return traceGetSomeEnd(result.first, std::move(result.second));
+    traceGetSomeEnd(result.first, result.second);
+    return result;
   }
 }
 
@@ -654,7 +655,8 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
     initOnce();
 
     auto res = executeWithoutTrace(stack);
-    return traceExecuteEnd(res);
+    traceExecuteEnd(res);
+    return res;
   }
 
   // Fall back to getSome/skipSome

@@ -25,12 +25,14 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RestAqlHandler.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
@@ -84,7 +86,8 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
-  return traceGetSomeEnd(result.first, std::move(result.second));
+  traceGetSomeEnd(result.first, result.second);
+  return result;
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
@@ -166,7 +169,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   auto result = skipSomeWithoutTrace(atMost);
-  return traceSkipSomeEnd(result.first, result.second);
+  traceSkipSomeEnd(result.first, result.second);
+  return result;
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWithoutTrace(size_t atMost) {
@@ -312,7 +316,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
   builder.openObject(/*unindexed*/ true);
-  input.toVelocyPack(&_trxVpackOptions, builder);
+  input.toVelocyPack(&_engine->getQuery().vpackOptions(), builder);
   builder.close();
 
   builder.close();
@@ -396,26 +400,25 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
     // both must be reset before return or throw
     TRI_ASSERT(_lastError.ok() && _lastResponse == nullptr);
 
-#warning FIXME
-#if 0
     VPackSlice slice = response->slice();
     if (slice.isObject()) {
+      
       if (slice.hasKey("stats")) {
         ExecutionStats newStats(slice.get("stats"));
-        _engine->_stats.add(newStats);
+        _engine->execStats().add(newStats);
       }
 
       // read "warnings" attribute if present and add it to our query
       VPackSlice warnings = slice.get("warnings");
       if (warnings.isArray()) {
-        auto query = _engine->getQuery();
+        aql::QueryContext& query = _engine->getQuery();
         for (VPackSlice it : VPackArrayIterator(warnings)) {
           if (it.isObject()) {
             VPackSlice code = it.get("code");
             VPackSlice message = it.get("message");
             if (code.isNumber() && message.isString()) {
-              query->registerWarning(code.getNumericValue<int>(),
-                                     message.copyString().c_str());
+              query.warnings().registerWarning(code.getNumericValue<int>(),
+                                               message.copyString().c_str());
             }
           }
         }
@@ -424,7 +427,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
         return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
       }
     }
-#endif
 
     return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
@@ -483,7 +485,8 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
-  return traceExecuteEnd(res);
+  traceExecuteEnd(res);
+  return res;
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)

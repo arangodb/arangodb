@@ -412,7 +412,7 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::st
     for (auto const& cname : collectionsToBeRemoved) {
       
       std::shared_ptr<LogicalCollection> coll;
-      Result res = methods::Collections::lookup(_vocbase, cname, coll);
+      res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
         TRI_ASSERT(coll);
         res = methods::Collections::drop(*coll, false, -1.0);

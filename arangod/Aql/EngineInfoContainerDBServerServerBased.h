@@ -125,8 +125,9 @@ class EngineInfoContainerDBServerServerBased {
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
-  Result buildEngines(MapRemoteToSnippet& queryIds,
-                      std::map<std::string, QueryId>& ServerToQueryId);
+  Result buildEngines(MapRemoteToSnippet& snippetIds,
+                      std::map<std::string, QueryId>& ServerToQueryId,
+                      std::map<size_t, size_t> nodeAliases);
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -161,7 +162,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // Insert the Snippets information into the message to be send to DBServers
   void addSnippetPart(arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
-                      std::unordered_map<size_t, size_t>& nodeAliases,
+                      std::map<size_t, size_t>& nodeAliases,
                       ServerID const& server) const;
 
   // Insert the TraversalEngine information into the message to be send to DBServers

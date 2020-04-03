@@ -270,18 +270,18 @@ void Query::kill() {
     if (engine != nullptr) {
       // killing is best effort...
       // intentionally ignoring the result of this call here
-      engine->shutdownSync(TRI_ERROR_QUERY_KILLED);
+      engine->kill();
     }
   }
 }
 
-void Query::setExecutionTime() {
-#warning fix
-//  if (_engine != nullptr) {
-//    _engine->_stats.setPeakMemoryUsage(_resourceMonitor.currentResources.peakMemoryUsage);
-//    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-//  }
-}
+//void Query::setExecutionTime() {
+//#warning fix
+////  if (_engine != nullptr) {
+////    _engine->_stats.setPeakMemoryUsage(_resourceMonitor.currentResources.peakMemoryUsage);
+////    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+////  }
+//}
 
 /// @brief increase number of HTTP requests. this is normally
 /// called during the setup of a query
@@ -648,26 +648,26 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     TRI_ASSERT(false);
     return ExecutionState::DONE;
   } catch (arangodb::basics::Exception const& ex) {
-    setExecutionTime();
+//    setExecutionTime();
     cleanupPlanAndEngineSync(ex.code());
     queryResult.reset(Result(ex.code(), "AQL: " + ex.message() +
                                             QueryExecutionState::toStringWithPrefix(_execState)));
     return ExecutionState::DONE;
   } catch (std::bad_alloc const&) {
-    setExecutionTime();
+//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
     queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY,
                              TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
                                  QueryExecutionState::toStringWithPrefix(_execState)));
     return ExecutionState::DONE;
   } catch (std::exception const& ex) {
-    setExecutionTime();
+//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
     return ExecutionState::DONE;
   } catch (...) {
-    setExecutionTime();
+//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              TRI_errno_string(TRI_ERROR_INTERNAL) +
@@ -872,23 +872,23 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       state = finalize(queryResult);
     }
   } catch (arangodb::basics::Exception const& ex) {
-    setExecutionTime();
+//    setExecutionTime();
     cleanupPlanAndEngineSync(ex.code());
     queryResult.reset(Result(ex.code(), "AQL: " + ex.message() +
                                             QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (std::bad_alloc const&) {
-    setExecutionTime();
+//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
     queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY,
                              TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
                                  QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (std::exception const& ex) {
-    setExecutionTime();
+//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (...) {
-    setExecutionTime();
+//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              TRI_errno_string(TRI_ERROR_INTERNAL) +
@@ -916,7 +916,6 @@ ExecutionState Query::finalize(QueryResult& result) {
         << "Query::finalize: before cleanupPlanAndEngine"
         << " this: " << (uintptr_t)this;
 
-    setExecutionTime();
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
     result.extra = std::make_shared<VPackBuilder>();
@@ -989,6 +988,37 @@ ExecutionState Query::finalize(QueryResult& result) {
                                              << "Query::finalize:returning"
                                              << " this: " << (uintptr_t)this;
   return ExecutionState::DONE;
+}
+
+Result Query::finalizeSnippets(ExecutionStats& stats) {
+  TRI_ASSERT(_trx);
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+  
+  LOG_TOPIC("fc33c", DEBUG, Logger::QUERIES)
+       << TRI_microtime() - _startTime << " "
+       << "Query::finalizeSnippets: before _trx->commit"
+       << " this: " << (uintptr_t)this;
+
+   Result commitResult = _trx->commit();
+   if (commitResult.fail()) {
+     return commitResult;
+   }
+
+   LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
+       << TRI_microtime() - _startTime << " "
+       << "Query::finalizeSnippets: before cleanupPlanAndEngine"
+       << " this: " << (uintptr_t)this;
+
+  enterState(QueryExecutionState::ValueType::FINALIZATION);
+  
+  stats.requests += _numRequests.load(std::memory_order_relaxed);
+  stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
+  stats.setExecutionTime(TRI_microtime() - _startTime);
+  
+  for (auto& [eId, engine] : _snippets) {
+    engine->collectExecutionStats(stats);
+    engine->setShutdown(); // no need to pass through shutdown
+  }
 }
 
 /// @brief parse an AQL query
@@ -1129,17 +1159,8 @@ QueryResult Query::explain() {
   }
 }
 
-//void Query::setEngine(ExecutionEngine* engine) {
-//  TRI_ASSERT(engine != nullptr);
-//  _engine.reset(engine);
-//}
-//
-//void Query::setEngine(std::unique_ptr<ExecutionEngine>&& engine) {
-//  TRI_ASSERT(engine != nullptr);
-//  _engine = std::move(engine);
-//}
-
 bool Query::isModificationQuery() const {
+  TRI_ASSERT(_ast != nullptr);
   if (!_ast) {  // TODO: this is called pre init()
     return false;
   }
@@ -1238,40 +1259,6 @@ void Query::exitV8Context() {
     _preparedV8Context = false;
   }
 }
-//
-///// @brief returns statistics for current query.
-//void Query::getStats(VPackBuilder& builder) {
-//
-//  ExecutionStats stats;
-//
-//  auto* engine = this->rootEngine();
-//  if (engine != nullptr) {
-//    setExecutionTime();
-//    engine->collectStats(stats);
-//  }
-//  stats.toVelocyPack(builder, _queryOptions.fullCount);
-//}
-
-/// @brief convert the list of warnings to VelocyPack.
-///        Will add a new entry { ..., warnings: <warnings>, } if there are
-///        warnings. If there are none it will not modify the builder
-//void Query::addWarningsToVelocyPack(VPackBuilder& builder) const {
-//  TRI_ASSERT(builder.isOpenObject());
-//  builder.add(VPackValue("warnings"));
-//  {
-//    VPackArrayBuilder guard(&builder);
-//    QueryWarnings warnings(0, /*failOnWarning*/false);
-//    if (_ast) {
-//      warnings += _ast->warnings();
-//    }
-//
-//    for (size_t i = 0; i < n; ++i) {
-//      VPackObjectBuilder objGuard(&builder);
-//      builder.add("code", VPackValue(_warnings[i].first));
-//      builder.add("message", VPackValue(_warnings[i].second));
-//    }
-//  }
-//}
 
 /// @brief initializes the query
 void Query::init() {
@@ -1402,33 +1389,33 @@ void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
   
-  for (auto& pair : _snippets) {
+  auto* engine = rootEngine();
+  if (engine) {
     try {
-      ExecutionEngine* engine = pair.second.get();
-      
-      ExecutionState state;
-      std::tie(state, std::ignore) = engine->shutdown(errorCode);
+      auto [state, res] = engine->shutdown(errorCode);
       if (state == ExecutionState::WAITING) {
         return state;
       }
-      if (statsBuilder != nullptr) {
-        TRI_ASSERT(statsBuilder->isOpenObject());
-        statsBuilder->add(VPackValue("stats"));
-        ExecutionStats stats;
-        engine->collectStats(stats);
-        stats.requests += _numRequests.load(std::memory_order_relaxed);
-        
-        stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
-        stats.setExecutionTime(TRI_microtime() - _startTime);
-        
-        stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
-      }
-
       engine->sharedState()->invalidate();
     } catch (...) {
       // shutdown may fail but we must not throw here
       // (we're also called from the destructor)
     }
+  }
+ 
+  if (statsBuilder != nullptr) {
+    TRI_ASSERT(statsBuilder->isOpenObject());
+    ExecutionStats stats;
+    stats.requests += _numRequests.load(std::memory_order_relaxed);
+    stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
+    stats.setExecutionTime(TRI_microtime() - _startTime);
+    
+    for (auto& [eId, engine] : _snippets) {
+      engine->collectExecutionStats(stats);
+    }
+
+    statsBuilder->add(VPackValue("stats"));
+    stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
   }
   
   if (_trx->state()->isCoordinator()) {
@@ -1490,7 +1477,14 @@ transaction::Methods& Query::trxForOptimization() {
 
 Result Query::commitOperations() {
   if (_trx->status() == transaction::Status::RUNNING) {
-    return _trx->commit();
+    Result res = _trx->commit();
+    // simon: do not pass-through shutdown request
+    if (ServerState::instance()->isDBServer()) {
+      for (auto& [eId, engine] : _snippets) {
+        engine->setShutdown();
+      }
+    }
+    return res;
   }
   return Result();
 }

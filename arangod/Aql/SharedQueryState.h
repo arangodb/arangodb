@@ -40,6 +40,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
 
   ~SharedQueryState() = default;
 
+  bool valid();
   void invalidate();
 
   /// @brief executeAndWakeup is to be called on the query object to

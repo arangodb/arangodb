@@ -487,7 +487,8 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     });
 
     std::map<std::string, QueryId> serverToQueryId;
-    Result res = _dbserverParts.buildEngines(snippetIds, serverToQueryId);
+    std::map<size_t, size_t> nodeAliases;
+    Result res = _dbserverParts.buildEngines(snippetIds, serverToQueryId, nodeAliases);
     if (res.fail()) {
       return res;
     }
@@ -498,19 +499,18 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
                                          snippetIds, snippets);
 
     if (res.ok()) {
-//      TRI_ASSERT(_query.engine() != nullptr);
-//      _query.engine()->_stats.addAliases(std::move(nodeAliases));
       cleanupGuard.cancel();
+      
+      TRI_ASSERT(snippets.size() > 0);
+      TRI_ASSERT(snippets[0].first == 0);
+      snippets[0].second->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));
+      snippets[0].second->execStats().addAliases(std::move(nodeAliases));
     }
-
-#warning TODO we probably need to store these anyway?
-//    _query.engine()->snippetMapping(std::move(queryIds), std::move(coordinatorQueryIds));
-
+    
     return res;
   }
 };
 
-#if 0 // replace with shutdown & error
 void ExecutionEngine::kill() {
   // kill coordinator parts
   // TODO: this doesn't seem to be necessary and sometimes even show adverse
@@ -552,7 +552,6 @@ void ExecutionEngine::kill() {
     futures::collectAll(futures).get();
   }
 }
-#endif
 
 std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlItemBlockPtr&& items,
                                                                     size_t pos) {
@@ -705,17 +704,31 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
-  ExecutionState state = ExecutionState::DONE;
-  Result res;
-  if (_root != nullptr && !_wasShutdown) {
-    std::tie(state, res) = _root->shutdown(errorCode);
-    if (state == ExecutionState::WAITING) {
-      return {state, res};
-    }
-
-    // prevent a duplicate shutdown
-    _wasShutdown = true;
+  if (_root == nullptr || _wasShutdown) {
+    return {ExecutionState::DONE, Result()};
   }
+  
+  if (ServerState::instance()->isCoordinator()) {
+    bool knowsAllQueryIds = !_serverToQueryId.empty();
+    for (auto const& [serverDst, queryId] : _serverToQueryId) {
+      if (queryId == 0) {
+        knowsAllQueryIds = false;
+        break;
+      }
+    }
+    
+    if (knowsAllQueryIds) {
+      return {this->shutdownDBServerQueries(errorCode), Result()};
+    }
+  }
+  
+  auto [state, res] = _root->shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, res};
+  }
+
+  // prevent a duplicate shutdown
+  _wasShutdown = true;
 
   return {state, res};
 }
@@ -926,4 +939,58 @@ RegisterId ExecutionEngine::resultRegister() const { return _resultRegister; }
 
 AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
   return _itemBlockManager;
+}
+
+///  @brief collected execution stats
+void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
+  for (ExecutionBlock* block : _blocks) {
+    block->collectExecStats(stats);
+  }
+  stats.add(_execStats);
+  _execStats.clear();
+}
+
+ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
+  TRI_ASSERT(!_wasShutdown);
+  NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
+   network::ConnectionPool* pool = nf.pool();
+   if (pool == nullptr) {
+     return ExecutionState::DONE;
+   }
+  
+
+  VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.openObject(true);
+  builder.add(StaticStrings::Code, VPackValue(errorCode));
+  builder.close();
+   
+  std::vector<futures::Future<futures::Unit>> futures;
+  futures.reserve(_serverToQueryId.size());
+  auto ss = sharedState();
+   for (auto const& [serverDst, queryId] : _serverToQueryId) {
+     
+     TRI_ASSERT(serverDst.substr(0, 7) == "server:");
+     auto f = network::sendRequest(pool, serverDst, fuerte::RestVerb::Delete,
+                          "/_api/aql/finish/" + std::to_string(queryId), body)
+     .thenValue([ss, this](network::Response&& res) {
+       if (res.ok() && ss->valid()) {
+         VPackSlice stats = res.slice().get("stats");
+         if (stats.isObject()) {
+           _execStats.add(ExecutionStats(stats));
+         }
+       }
+     });
+     
+     futures.emplace_back(std::move(f));
+     futures::collectAll(futures).thenFinal([ss, this](auto&& vals) {
+       ss->executeAndWakeup([&] {
+         // prevent a duplicate shutdown
+         _wasShutdown = true;
+         return true;
+       });
+     });
+   }
+  
+  return ExecutionState::WAITING;
 }
