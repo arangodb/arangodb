@@ -106,58 +106,6 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
   return TRI_ERROR_NO_ERROR;
 }
 
-int resolveDestinations(ClusterInfo& ci, DestinationId const& dest,
-                        std::vector<network::EndpointSpec>& specs) {
-  using namespace arangodb;
-
-  // This sets result.shardId, result.serverId and result.endpoint,
-  // depending on what dest is. Note that if a shardID is given, the
-  // responsible server is looked up, if a serverID is given, the endpoint
-  // is looked up, both can fail and immediately lead to a CL_COMM_ERROR
-  // state.
-
-  if (dest.compare(0, 6, "shard:", 6) == 0) {
-    std::string shardId = dest.substr(6);
-    {
-      std::shared_ptr<std::vector<ServerID>> resp = ci.getResponsibleServer(shardId);
-      if (!resp->empty()) {
-        specs.resize(resp->size());
-        for (std::size_t i = 0; i < resp->size(); ++i) {
-          specs[i].shardId = shardId;
-          specs[i].serverId = (*resp)[i];
-          LOG_TOPIC("64671", DEBUG, Logger::CLUSTER)
-              << "Responsible server: " << specs[i].serverId;
-        }
-      } else {
-        LOG_TOPIC("60ee9", ERR, Logger::CLUSTER)
-            << "cannot find responsible server for shard '" << shardId << "'";
-        return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-      }
-    }
-  } else {
-    std::string errorMessage =
-        "did not understand destination '" + dest + "', expecting a shard";
-    LOG_TOPIC("77a85", ERR, Logger::COMMUNICATION)
-        << "did not understand destination '" << dest << "', expecting a shard";
-    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-  }
-
-  for (auto& spec : specs) {
-    spec.endpoint = ci.getServerEndpoint(spec.serverId);
-    if (spec.endpoint.empty()) {
-      if (spec.serverId.find(',') != std::string::npos) {
-        TRI_ASSERT(false);
-      }
-      std::string errorMessage =
-          "did not find endpoint of server '" + spec.serverId + "'";
-      LOG_TOPIC("f29e0", ERR, Logger::COMMUNICATION)
-          << "did not find endpoint of server '" << spec.serverId << "'";
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief extract the error code form the body
 int errorCodeFromBody(arangodb::velocypack::Slice body, int defaultErrorCode) {
   if (body.isObject()) {

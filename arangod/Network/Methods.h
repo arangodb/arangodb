@@ -96,14 +96,6 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId destination,
                       RequestOptions const& options = {},
                       Headers headers = {});
 
-/// @brief send a request to all responsible servers for a given shard; use this
-/// method to send a message to followers as well as leader
-std::vector<FutureRes> sendRequests(ConnectionPool* pool, DestinationId destination,
-                                    arangodb::fuerte::RestVerb type, std::string path,
-                                    velocypack::Buffer<uint8_t> payload = {},
-                                    RequestOptions const& options = {},
-                                    Headers headers = {});
-
 /// @brief send a request to a given destination, retry under certain conditions
 /// a retry will be triggered if the connection was lost our could not be established
 /// optionally a retry will be performed in the case of until timeout is exceeded
