@@ -619,6 +619,9 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
 Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
                                            std::uint64_t plannedTempObjectId) {
   Result res;
+  auto& server = _logicalCollection.vocbase().server();
+  auto& selector = server.getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
 
   if (plannedObjectId == _objectId && plannedTempObjectId != _tempObjectId) {
     // just temp id has changed
@@ -626,9 +629,6 @@ Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
     _tempObjectId = plannedTempObjectId;
     if (oldId != 0) {  // need to clean up the old range
       RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(oldId);
-      auto& server = _logicalCollection.vocbase().server();
-      auto& selector = server.getFeature<EngineSelectorFeature>();
-      auto& engine = selector.engine<RocksDBEngine>();
       res = rocksutils::removeLargeRange(engine.db(), bounds, true, true);
     }
   } else if (plannedTempObjectId != _tempObjectId) {
@@ -638,6 +638,8 @@ Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
     // swapping in new range
     _tempObjectId = plannedTempObjectId;
     _objectId = plannedObjectId;
+    engine.addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
+                                _logicalCollection.id());
   }
 
   return res;

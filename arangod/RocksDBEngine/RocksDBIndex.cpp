@@ -336,6 +336,9 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectI
 Result RocksDBIndex::setObjectIds(std::uint64_t plannedObjectId,
                                   std::uint64_t plannedTempObjectId) {
   Result res;
+  auto& server = _collection.vocbase().server();
+  auto& selector = server.getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
 
   if (plannedObjectId == _objectId && plannedTempObjectId != _tempObjectId) {
     TRI_ASSERT(_tempObjectId == 0 || plannedTempObjectId == 0);
@@ -344,9 +347,6 @@ Result RocksDBIndex::setObjectIds(std::uint64_t plannedObjectId,
     _tempObjectId = plannedTempObjectId;
     if (oldId != 0) {
       try {
-        auto& server = _collection.vocbase().server();
-        auto& selector = server.getFeature<EngineSelectorFeature>();
-        auto& engine = selector.engine<RocksDBEngine>();
         RocksDBKeyBounds bounds = getBounds(type(), oldId, unique());
         return rocksutils::removeLargeRange(engine.db(), bounds, true, true);
       } catch (arangodb::basics::Exception& ex) {
@@ -362,6 +362,7 @@ Result RocksDBIndex::setObjectIds(std::uint64_t plannedObjectId,
     // swapping in new range
     _tempObjectId = plannedTempObjectId;
     _objectId = plannedObjectId;
+    engine.addIndexMapping(_objectId, _collection.vocbase().id(), _collection.id(), id());
   }
 
   return res;
