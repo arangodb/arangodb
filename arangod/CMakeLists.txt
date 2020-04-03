@@ -592,6 +592,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
+  Cluster/ServerDefaults.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
   Cluster/TakeoverShardLeadership.cpp
