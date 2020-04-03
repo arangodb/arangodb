@@ -30,6 +30,16 @@ using namespace arangodb::consensus;
 AgencyCache::AgencyCache(application_features::ApplicationServer& server)
   : Thread(server, "AgencyCache"), _commitIndex(0),  _readDB(server, nullptr, "raadDB") {}
 
+
+AgencyCache::~AgencyCache() {}
+
+/// Start all agent thread
+bool AgencyCache::start() {
+  LOG_TOPIC("9a90f", DEBUG, Logger::AGENCY) << "Starting agency cache worker.";
+  Thread::start();
+  return true;
+}
+
 // Get Builder from readDB mainly /Plan /Current
 std::tuple <consensus::query_t, consensus::index_t> const AgencyCache::get(
   std::string const& path) const {
@@ -64,7 +74,7 @@ void AgencyCache::run() {
         std::lock_guard g(_lock);
         commitIndex = _commitIndex;
       }
-      auto ret = AsyncAgencyComm().poll(60s, commitIndex);
+      auto ret = AsyncAgencyComm().poll(60s, commitIndex+1);
       //r.add(ret.value());
       return ret;
     };
@@ -87,10 +97,13 @@ void AgencyCache::run() {
     auto ret = sendTransaction(rb)
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
-          if (rb.ok() && rb.statusCode() == 200) {
-            wait = 0.0;
-            TRI_ASSERT(rb.slice().hasKey("result"));
-            VPackSlice rs = rb.slice().get("result");
+
+          auto tmp = VPackParser::fromJson(rb.payloadAsString());
+          auto slc = tmp->slice();
+          if (rb.ok() && rb.statusCode() == 202) {
+            wait = 0.;
+            TRI_ASSERT(slc.hasKey("result"));
+            VPackSlice rs = slc.get("result");
             TRI_ASSERT(rs.hasKey("commitIndex"));
             TRI_ASSERT(rs.get("commitIndex").isNumber());
             TRI_ASSERT(rs.hasKey("firstIndex"));
@@ -111,7 +124,9 @@ void AgencyCache::run() {
               _commitIndex = commitIndex;
             }
           } else {
-            wait += 0.1;
+            if (wait <= 1.9) {
+              wait += 0.1;
+            }
             LOG_TOPIC("9a9e3", DEBUG, Logger::CLUSTER) <<
               "Failed to get poll result from agency.";
           }
@@ -119,17 +134,30 @@ void AgencyCache::run() {
         })
       .thenError<VPackException>(
         [&wait](VPackException const& e) {
-          LOG_TOPIC("9a9e3", DEBUG, Logger::CLUSTER) <<
+          LOG_TOPIC("9a9e3", ERR, Logger::CLUSTER) <<
             "Failed to parse poll result from agency: " << e.what();
-          wait += 0.1;
+          if (wait <= 1.9) {
+            wait += 0.1;
+          }
         })
       .thenError<std::exception>(
         [&wait](std::exception const& e) {
-          LOG_TOPIC("9a9e3", DEBUG, Logger::CLUSTER) <<
+          LOG_TOPIC("9a9e3", ERR, Logger::CLUSTER) <<
             "Failed to get poll result from agency: " << e.what();
-          wait += 0.1;
+          if (wait <= 1.9) {
+            wait += 0.1;
+          }
         });
+    ret.wait();
 
   }
 
 }
+
+
+/// Orderly shutdown
+void AgencyCache::beginShutdown() {
+  Thread::beginShutdown();
+}
+
+

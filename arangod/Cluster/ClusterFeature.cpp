@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
@@ -48,7 +49,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Cluster") {
+  : ApplicationFeature(server, "Cluster") {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -605,6 +606,8 @@ void ClusterFeature::start() {
 
   comm.increment("Current/Version");
 
+  
+
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
 
@@ -710,6 +713,13 @@ void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
 void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                           uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                                           std::string const& endpoints) {
+
+  if (AsyncAgencyCommManager::INSTANCE != nullptr) {
+    _agencyCache =
+      std::make_unique<AgencyCache>(server());
+    _agencyCache->start();
+  }
+  
   _heartbeatThread =
       std::make_shared<HeartbeatThread>(server(), agencyCallbackRegistry,
                                         std::chrono::microseconds(interval_ms * 1000),
@@ -734,6 +744,7 @@ void ClusterFeature::shutdownHeartbeatThread() {
   }
 
   _heartbeatThread->beginShutdown();
+  _agencyCache->beginShutdown();
 
   int counter = 0;
   while (_heartbeatThread->isRunning()) {
@@ -742,6 +753,14 @@ void ClusterFeature::shutdownHeartbeatThread() {
     if (++counter == 10 * 5) {
       LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
           << "waiting for heartbeat thread to finish";
+    }
+  }
+  while (_agencyCache->isRunning()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC("acab0", WARN, arangodb::Logger::CLUSTER)
+          << "waiting for agency cache thread to finish";
     }
   }
 }

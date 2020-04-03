@@ -20,28 +20,32 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_MAINTENANCE_FEATURE
-#define ARANGOD_CLUSTER_MAINTENANCE_FEATURE 1
+#ifndef ARANGOD_CLUSTER_AGENCY_CACHE
+#define ARANGOD_CLUSTER_AGENCY_CACHE 1
 
 #include "Agency/Store.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
 
+#include <mutex>
+
 namespace arangodb {
 
-class AgencyCache : public arangodb::Thread,
-                    public std::enable_shared_from_this<AgencyCache> {
+class AgencyCache : public arangodb::Thread {
 
 public:
   /// @brief start off with our server
   explicit AgencyCache(application_features::ApplicationServer& server);
 
   /// @brief Clean up
-  ~AgencyCache();
+  virtual ~AgencyCache();
 
   /// @brief 1. Long poll from agency's Raft log
   ///        2. Entertain local cache of agency's read db
   void run() override final;
+
+  /// @brief Start thread
+  bool start();
 
   /// @brief Start orderly shutdown of threads
   // cppcheck-suppress virtualCallInConstructor
@@ -61,7 +65,7 @@ private:
 
 
   /// @brief Guard for _readDB
-  mutable std::shared_mutex _lock;
+  mutable std::mutex _lock;
 
   /// @brief Commit index
   consensus::index_t _commitIndex;

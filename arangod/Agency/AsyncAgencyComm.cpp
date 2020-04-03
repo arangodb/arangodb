@@ -291,7 +291,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     VPackBuilder builder(body);
     builder.add(VPackValue(index));
   }
-  return sendWithFailover(method, url, timeout, type, clientIds, std::move(body));
+  return sendWithFailover(method, url + "?index=" + std::to_string(index), timeout, type, clientIds, std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
@@ -441,6 +441,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendReadTransaction(
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendPollTransaction(
   network::Timeout timeout, uint64_t index) const {
   std::vector<ClientId> clientIds;
+
   return sendWithFailover(
     fuerte::RestVerb::Get, AGENCY_URL_POLL, timeout, RequestType::READ, index);
 }

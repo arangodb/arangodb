@@ -47,7 +47,16 @@ struct AsyncAgencyCommResult {
   [[nodiscard]] bool fail() const { return !ok(); }
 
   VPackSlice slice() { return response->slice(); }
-
+  std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const {
+    return response->copyPayload();
+  }
+  std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload() const {
+    return response->stealPayload();
+  }
+  std::string payloadAsString() const {
+    return response->payloadAsString();
+  }
+  std::size_t payloadSize() const { return response->payloadSize(); }
   arangodb::fuerte::StatusCode statusCode() { return response->statusCode(); }
 
   Result asResult() {
