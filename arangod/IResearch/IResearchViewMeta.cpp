@@ -207,7 +207,8 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _writebufferIdle(mask),
       _writebufferSizeMax(mask),
       _primarySort(mask),
-      _storedValues(mask) {
+      _storedValues(mask),
+      _primarySortCompression(mask){
 }
 
 IResearchViewMeta::IResearchViewMeta()
@@ -218,7 +219,8 @@ IResearchViewMeta::IResearchViewMeta()
       _version(LATEST_VERSION),
       _writebufferActive(0),
       _writebufferIdle(64),
-      _writebufferSizeMax(32 * (size_t(1) << 20)) {  // 32MB
+      _writebufferSizeMax(32 * (size_t(1) << 20)),  // 32MB
+      _primarySortCompression{&getDefaultCompression()} {
   std::string errorField;
 
   // cppcheck-suppress useInitializationList
@@ -254,6 +256,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _writebufferSizeMax = std::move(other._writebufferSizeMax);
     _primarySort = std::move(other._primarySort);
     _storedValues = std::move(other._storedValues);
+    _primarySortCompression = std::move(other._primarySortCompression);
   }
 
   return *this;
@@ -272,6 +275,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _writebufferSizeMax = other._writebufferSizeMax;
     _primarySort = other._primarySort;
     _storedValues = other._storedValues;
+    _primarySortCompression = other._primarySortCompression;
   }
 
   return *this;
@@ -593,7 +597,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
-    mask->_storedValues = field.isArray();
+    mask->_storedValues = !field.isNone();
 
     if (!mask->_storedValues) {
       _storedValues = defaults._storedValues;
@@ -606,7 +610,22 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       return false;
     }
   }
-
+  {
+    // optional string (only if primarySort present)
+    static VPackStringRef const fieldName("primarySortCompression");
+    auto const field = slice.get(fieldName);
+    mask->_primarySortCompression = !field.isNone();
+    if (mask->_primarySortCompression) {
+      _primarySortCompression = nullptr;
+      if (field.isString()) {
+        _primarySortCompression = columnCompressionFromString(field.copyString());
+      }
+      if (ADB_UNLIKELY(nullptr == _primarySortCompression)) {
+        errorField += ".primarySortCompression";
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -679,6 +698,12 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
     if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
+  }
+
+  if ((!ignoreEqual || _primarySortCompression != ignoreEqual->_primarySortCompression) && 
+      (!mask || mask->_primarySortCompression)) {
+    auto compression = columnCompressionToString(_primarySortCompression);
+    addStringRef(builder, "primarySortCompression", compression);
   }
 
   return true;

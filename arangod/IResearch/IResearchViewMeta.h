@@ -88,6 +88,7 @@ struct IResearchViewMeta {
     bool _writebufferSizeMax;
     bool _primarySort;
     bool _storedValues;
+    bool _primarySortCompression;
     explicit Mask(bool mask = false) noexcept;
   };
 
@@ -102,6 +103,7 @@ struct IResearchViewMeta {
   size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
+  irs::compression::type_id const* _primarySortCompression;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!

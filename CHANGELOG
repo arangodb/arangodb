@@ -1,5 +1,12 @@
 devel
 -----
+* Added JACCARD AQL function
+
+* storedValues property is removed from arngosearch link properties output.
+
+* Added primarySortCompression property to ArangoSearch Views
+
+* Added compression property to ArangoSearch View storedValues
 
 * Added overwrite mode "ignore" for document inserts. This mode allows 
   ignoring primary key conflicts on insert when the target document already

@@ -53,6 +53,7 @@ add_library(arango_iresearch
   IResearch/Containers.cpp IResearch/Containers.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
+  IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h

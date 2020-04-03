@@ -891,7 +891,6 @@ class HashIndexMock final : public arangodb::Index {
   /// @brief the hash table for data
   HashIndexMap _hashData;
 };  // HashIndexMock
-
 }  // namespace
 
 PhysicalCollectionMock::DocElement::DocElement(
@@ -1017,7 +1016,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
     TRI_ASSERT(l != nullptr);
-    ;
     l->batchInsert(trx, docs, taskQueuePtr);
   } else {
     TRI_ASSERT(false);
@@ -1408,6 +1406,22 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
   return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock collection updated OK
 }
 
+std::shared_ptr<arangodb::iresearch::IResearchLinkMock> StorageEngineMock::buildLinkMock(
+  arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info) {
+  auto index = std::shared_ptr<arangodb::iresearch::IResearchLinkMock>(
+    new arangodb::iresearch::IResearchLinkMock(id, collection));
+  auto res = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get())->init(info, [](irs::directory& dir) {
+    if (arangodb::iresearch::IResearchLinkMock::InitCallback != nullptr) {
+      arangodb::iresearch::IResearchLinkMock::InitCallback(dir);
+    }
+    });
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  return index;
+}
+
 std::function<void()> StorageEngineMock::before = []() -> void {};
 arangodb::RecoveryState StorageEngineMock::recoveryStateResult =
     arangodb::RecoveryState::DONE;
@@ -1771,17 +1785,6 @@ int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice c
   return TRI_ERROR_NO_ERROR;
 }
 
-std::shared_ptr<arangodb::iresearch::IResearchLinkMock> StorageEngineMock::buildLinkMock(
-    arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info) {
-  auto index = std::shared_ptr<arangodb::iresearch::IResearchLinkMock>(
-      new arangodb::iresearch::IResearchLinkMock(id, collection));
-  auto res = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get())->init(info);
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  return index;
-}
 
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state,
                                                      TRI_voc_cid_t cid,
