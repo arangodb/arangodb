@@ -686,6 +686,7 @@ Result Graph::validateCollection(LogicalCollection& col) const {
 }
 
 void Graph::ensureInitial(const LogicalCollection& col) {
+  // known to be empty
 }
 
 void Graph::edgesToVpack(VPackBuilder& builder) const {

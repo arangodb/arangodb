@@ -8,6 +8,24 @@ devel
 
 * Added compression property to ArangoSearch View storedValues
 
+* Added feature: SatelliteGraphs
+
+  SatelliteGraphs are a new type of graph, added in addition to the existing
+	ones, GeneralGrapsh and SmartGraphs.
+
+	When doing joins involving graph traversals, shortest path or k-shortest paths
+	computation in an ArangoDB cluster, data has to be exchanged between different
+	servers. In particular graph traversals are usually executed on a Coordinator,
+	because they need global information. This results in a lot of network traffic
+	and potentially slow query execution.
+
+  SatelliteGraphs are the natural extension of the concept of Satellite
+	collections to graphs. All of the usual benefits and caveats apply.
+	SatelliteGraphs are synchronously replicated to all DB-Servers that are part of
+	a cluster, which enables DB-Servers to execute graph traversals locally. This
+	includes (k-)shortest path(s) computation and possibly joins with traversals
+	and greatly improves performance for such queries.
+
 * Removed deprecated MMFiles storage engine and also the `arango-dfdb`
   (datafile debugger) executable that could be used to validate MMFiles
   datafiles.
@@ -22,7 +40,6 @@ devel
 * Fixed a bug in the agency supervision, which could declare an already FAILED
   dbserver temporarily as GOOD again after an agency leader change.
 
-* Added satellite graphs.
 
 * Added INTERLEAVE AQL function.
 
@@ -77,7 +94,6 @@ devel
 
 * Fix premature access to temporary path before a user-specified path was
   read from the config options.
->>>>>>> origin/devel
 
 * Rebuild UI and update swagger.
 
