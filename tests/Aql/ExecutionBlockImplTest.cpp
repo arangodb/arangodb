@@ -31,7 +31,6 @@
 #include "TestExecutorHelper.h"
 #include "TestLambdaExecutor.h"
 #include "WaitingExecutionBlockMock.h"
-#include "fakeit.hpp"
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
@@ -58,349 +57,6 @@ using LambdaExe = TestLambdaSkipExecutor;
 
 // This test is supposed to only test getSome return values,
 // it is not supposed to test the fetch logic!
-#if 0
-class ExecutionBlockImplTest : public ::testing::Test {
- protected:
-  // ExecutionState state
-  SharedAqlItemBlockPtr result;
-
-  // Mock of the ExecutionEngine
-  fakeit::Mock<ExecutionEngine> mockEngine;
-  ExecutionEngine& engine;
-
-  // Mock of the AqlItemBlockManager
-  fakeit::Mock<AqlItemBlockManager> mockBlockManager;
-  AqlItemBlockManager& itemBlockManager;
-
-  // Mock of the transaction
-  fakeit::Mock<transaction::Methods> mockTrx;
-  transaction::Methods& trx;
-
-  // Mock of the transaction context
-  fakeit::Mock<transaction::Context> mockContext;
-  transaction::Context& context;
-
-  // Mock of the Query
-  fakeit::Mock<Query> mockQuery;
-  Query& query;
-
-  ExecutionState state;
-  ResourceMonitor monitor;
-
-  // Mock of the QueryOptions
-  fakeit::Mock<QueryOptions> mockQueryOptions;
-  QueryOptions& lqueryOptions;
-  ProfileLevel profile;
-
-  // This is not used thus far in Base-Clase
-  ExecutionNode const* node = nullptr;
-
-  // Executor Infos
-  TestExecutorHelperInfos infos;
-  TestEmptyExecutorHelperInfos emptyInfos;
-
-  SharedAqlItemBlockPtr block;
-
-  ExecutionBlockImplTest()
-      : engine(mockEngine.get()),
-        itemBlockManager(mockBlockManager.get()),
-        trx(mockTrx.get()),
-        context(mockContext.get()),
-        query(mockQuery.get()),
-        lqueryOptions(mockQueryOptions.get()),
-        profile(ProfileLevel(PROFILE_LEVEL_NONE)),
-        node(nullptr),
-        infos(0, 1, 1, {}, {0}),
-        emptyInfos(0, 1, 1, {}, {0}),
-        block(nullptr) {
-    fakeit::When(Method(mockBlockManager, requestBlock)).AlwaysDo([&](size_t nrItems, RegisterId nrRegs) -> SharedAqlItemBlockPtr {
-      return SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
-    });
-
-    fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(itemBlockManager);
-    fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
-    fakeit::When(OverloadedMethod(mockBlockManager, returnBlock, void(AqlItemBlock*&)))
-        .AlwaysDo([&](AqlItemBlock*& block) -> void {
-          AqlItemBlockManager::deleteBlock(block);
-          block = nullptr;
-        });
-    fakeit::When(Method(mockBlockManager, resourceMonitor)).AlwaysReturn(&monitor);
-    fakeit::When(ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
-        .AlwaysDo([&]() -> QueryOptions const& { return lqueryOptions; });
-    fakeit::When(OverloadedMethod(mockQuery, queryOptions, QueryOptions & ()))
-        .AlwaysDo([&]() -> QueryOptions& { return lqueryOptions; });
-    fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&trx);
-
-    fakeit::When(Method(mockQueryOptions, getProfileLevel)).AlwaysReturn(profile);
-
-    fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&context);
-    fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
-  }
-};
-
-TEST_F(ExecutionBlockImplTest,
-       there_is_a_block_in_the_upstream_with_no_rows_inside_the_executor_waits_using_getsome) {
-  std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
-  blockDeque.push_back(std::move(block));
-
-  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
-
-  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-  testee.addDependency(&dependency);
-
-  size_t atMost = 1000;
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_NE(block, nullptr);
-  ASSERT_EQ(block->size(), 1);
-  ASSERT_EQ(state, ExecutionState::DONE);
-
-  // done should stay done!
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(block, nullptr);
-  ASSERT_EQ(state, ExecutionState::DONE);
-}
-
-TEST_F(ExecutionBlockImplTest,
-       there_is_a_block_in_the_upstream_with_no_rows_inside_the_executor_waits_using_skipsome) {
-  std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
-  blockDeque.push_back(std::move(block));
-
-  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
-
-  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-  testee.addDependency(&dependency);
-
-  size_t atMost = 1;
-  size_t skipped = 0;
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_EQ(skipped, 0);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(skipped, 1);
-
-  // done should stay done!
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(skipped, 0);
-}
-
-TEST_F(ExecutionBlockImplTest,
-       there_are_multiple_blocks_in_the_upstream_with_no_rows_inside_the_executor_waits_using_getsome_one_block) {
-  // we are checking multiple input blocks
-  // we are only fetching 1 row each (atMost = 1)
-  // after a DONE is returned, it must stay done!
-
-  std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
-  blockDeque.push_back(std::move(blocka));
-  blockDeque.push_back(std::move(blockb));
-  blockDeque.push_back(std::move(blockc));
-  blockDeque.push_back(std::move(blockd));
-  blockDeque.push_back(std::move(blocke));
-
-  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
-
-  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-  testee.addDependency(&dependency);
-  size_t atMost = 1;
-  size_t total = 0;
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  total = total + block->size();
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  total = total + block->size();
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  total = total + block->size();
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  total = total + block->size();
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  total = total + block->size();
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::DONE);
-
-  ASSERT_EQ(total, 5);
-}
-
-TEST_F(ExecutionBlockImplTest,
-       there_are_multiple_blocks_in_the_upstream_with_no_rows_inside_the_executor_waits_using_getsome_multiple_blocks) {
-  // as test above, BUT with a higher atMost value.
-
-  std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
-  blockDeque.push_back(std::move(blocka));
-  blockDeque.push_back(std::move(blockb));
-  blockDeque.push_back(std::move(blockc));
-  blockDeque.push_back(std::move(blockd));
-  blockDeque.push_back(std::move(blocke));
-
-  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
-
-  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-  testee.addDependency(&dependency);
-  size_t atMost = 2;
-  size_t total = 0;
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  total = total + block->size();
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  total = total + block->size();
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  total = total + block->size();
-
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(block, nullptr);
-
-  ASSERT_EQ(total, 5);
-}
-
-TEST_F(ExecutionBlockImplTest,
-       there_are_multiple_blocks_in_the_upstream_with_no_rows_inside_the_executor_waits_using_skipsome) {
-  // we are checking multiple input blocks
-  // we are only fetching 1 row each (atMost = 1)
-  // after a DONE is returned, it must stay done!
-
-  std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
-  blockDeque.push_back(std::move(blocka));
-  blockDeque.push_back(std::move(blockb));
-  blockDeque.push_back(std::move(blockc));
-  blockDeque.push_back(std::move(blockd));
-  blockDeque.push_back(std::move(blocke));
-
-  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
-
-  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-  testee.addDependency(&dependency);
-  size_t atMost = 1;
-  size_t skipped = 0;
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_EQ(skipped, 0);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(skipped, 1);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_EQ(skipped, 0);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(skipped, 1);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_EQ(skipped, 0);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(skipped, 1);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_EQ(skipped, 0);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(skipped, 1);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_EQ(skipped, 0);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(skipped, 1);
-
-  std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(skipped, 0);
-}
-
-TEST_F(ExecutionBlockImplTest,
-       there_is_an_invalid_empty_block_in_the_upstream_the_executor_waits_using_getsome) {
-  std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
-  blockDeque.push_back(std::move(block));
-
-  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
-
-  ExecutionBlockImpl<TestEmptyExecutorHelper> testee(&engine, node, std::move(emptyInfos));
-  testee.addDependency(&dependency);
-
-  size_t atMost = 1000;
-  std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(block, nullptr);
-}
-#endif
 
 /**
  * @brief Shared Test case initializer to test the execute API
@@ -2033,6 +1689,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
       ++it;
     }
     for (size_t i = 0; i < limit && it.valid(); ++i) {
+      call.skippedRows = 0;
       auto stack = buildStack(call);
       auto [state, skipped, block] = testee->execute(stack);
       if (doesWaiting()) {
@@ -2459,14 +2116,14 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     AssertValueEquals(block, row, outReg, 4);
     if (skip) {
       // wo do not have empty input, we can skip
-      EXPECT_EQ(skipAsserter.getNumberCalls(), 1);
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 2);
       // we need to call getSome never
       EXPECT_EQ(getAsserter.getNumberCalls(), 0);
     } else {
       // we do not skip
       EXPECT_EQ(skipAsserter.getNumberCalls(), 0);
       // wo do not have empty input, we can produce
-      EXPECT_EQ(getAsserter.getNumberCalls(), 1);
+      EXPECT_EQ(getAsserter.getNumberCalls(), 2);
     }
     getAsserter.reset();
     skipAsserter.reset();
@@ -2487,15 +2144,15 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     AssertIsShadowRowOfDepth(block, row, 1);
     AssertValueEquals(block, row, outReg, 6);
     if (skip) {
-      // wo do not have empty input, we can skip
-      EXPECT_EQ(skipAsserter.getNumberCalls(), 1);
+      // wo do have empty input, we can skip
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 2);
       // we need to call getSome never
       EXPECT_EQ(getAsserter.getNumberCalls(), 0);
     } else {
       // we do not skip
       EXPECT_EQ(skipAsserter.getNumberCalls(), 0);
-      // wo do not have empty input, we can produce
-      EXPECT_EQ(getAsserter.getNumberCalls(), 1);
+      // wo do have empty input, we can produce
+      EXPECT_EQ(getAsserter.getNumberCalls(), 2);
     }
 
     getAsserter.reset();
@@ -2572,7 +2229,6 @@ INSTANTIATE_TEST_CASE_P(
                                          skipAndHardLimit(), skipAndHardLimitAndFullCount(),
                                          onlyFullCount(), onlySkipAndCount()),
                        ::testing::Bool()));
-
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

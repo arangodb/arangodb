@@ -32,6 +32,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "IResearchLinkMock.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -42,9 +43,6 @@ class WalAccess;
 
 namespace aql {
 class OptimizerRulesFeature;
-}
-namespace iresearch {
-class IResearchLinkMock;
 }
 
 }  // namespace arangodb
@@ -280,9 +278,8 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual arangodb::WalAccess const* walAccess() const override;
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
 
-  // public helper function for testing
   static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
-    arangodb::IndexId id, arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info);
+    arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info);
 
  private:
   TRI_voc_tick_t _releasedTick;
