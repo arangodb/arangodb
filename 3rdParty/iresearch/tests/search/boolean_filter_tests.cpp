@@ -7325,6 +7325,24 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     );
   }
 
+  // name=A OR false
+  {
+    irs::Or root;
+    root.add<irs::by_term>().field("name").term("A"); // 1
+    root.add<irs::empty>();
+
+    check_query(root, docs_t{ 1 }, rdr);
+  }
+
+  // name!=A OR false
+  {
+    irs::Or root;
+    root.add<irs::Not>().filter<irs::by_term>().field("name").term("A"); // 1
+    root.add<irs::empty>();
+
+    check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+  }
+
   // search : empty result
   check_query(
     irs::by_term().field( "same" ).term( "invalid_term" ),
