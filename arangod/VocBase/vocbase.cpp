@@ -1149,8 +1149,6 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-
-  auto res2 = engine->persistCollection(*this, *collection); //MMFiles Only
   // API compatibility, we always return the collection,
   // even if creation failed.
 

@@ -89,14 +89,6 @@ class ReturnExecutor {
   ~ReturnExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
-  auto produceRows(OutputAqlItemRow& output) -> std::pair<ExecutionState, Stats>;
-
-  /**
    * @brief skip the next Rows of Aql Values.
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
@@ -112,15 +104,11 @@ class ReturnExecutor {
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const
-      -> std::pair<ExecutionState, size_t>;
-
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;
 
  private:
   ReturnExecutorInfos& _infos;
-  Fetcher& _fetcher;
 };
 }  // namespace aql
 }  // namespace arangodb

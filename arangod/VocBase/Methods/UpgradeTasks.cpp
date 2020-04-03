@@ -32,9 +32,9 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -545,24 +545,10 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   return true;
 }
 
-bool UpgradeTasks::persistLocalDocumentIds(TRI_vocbase_t& vocbase,
-                                           arangodb::velocypack::Slice const& slice) {
-  if (EngineSelectorFeature::engineName() != MMFilesEngine::EngineName) {
-    return true;
-  }
-  Result res = basics::catchToResult([&vocbase]() -> Result {
-    MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-    return engine->persistLocalDocumentIds(vocbase);
-  });
-  return res.ok();
-}
-
 bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
                                                       arangodb::velocypack::Slice const& slice) {
-  if (EngineSelectorFeature::engineName() == MMFilesEngine::EngineName) {
-    return true;
-  }
-
+  TRI_ASSERT(EngineSelectorFeature::engineName() == RocksDBEngine::EngineName);
+  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   std::string const path = engine->databasePath(&vocbase);
 

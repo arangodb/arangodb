@@ -27,7 +27,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/ContextData.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -72,8 +71,7 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _strings{_strArena},
       _options(arangodb::velocypack::Options::Defaults),
       _dumpOptions(arangodb::velocypack::Options::Defaults),
-      _contextData(EngineSelectorFeature::ENGINE->createTransactionContextData()),
-      _transaction{0, false, false},
+      _transaction{0, false},
       _ownsResolver(false) {
   /// dump options contain have the escapeUnicode attribute set to true
   /// this allows dumping of string values as plain 7-bit ASCII values.
@@ -89,8 +87,7 @@ transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
     transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                _transaction.hasFailedOperations,
-                                                                _transaction.isReadOnlyTransaction);
+                                                                  _transaction.isReadOnlyTransaction);
   }
 
   // free all VPackBuilders we handed out
@@ -112,21 +109,6 @@ transaction::Context::~Context() {
 VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(
     TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver) {
   return new CustomTypeHandler(vocbase, resolver);
-}
-
-/// @brief pin data for the collection
-void transaction::Context::pinData(LogicalCollection* collection) {
-  if (_contextData) {
-    _contextData->pinData(collection);
-  }
-}
-
-/// @brief whether or not the data for the collection is pinned
-bool transaction::Context::isPinned(TRI_voc_cid_t cid) {
-  if (_contextData) {
-    return _contextData->isPinned(cid);
-  }
-  return true;  // storage engine does not need pinning
 }
 
 /// @brief temporarily lease a StringBuffer object
@@ -233,14 +215,12 @@ CollectionNameResolver const* transaction::Context::createResolver() {
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
 void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
-                                                  bool hasFailedOperations,
                                                   bool wasRegistered,
                                                   bool isReadOnlyTransaction) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
   if (wasRegistered) {
     _transaction.id = id;
-    _transaction.hasFailedOperations = hasFailedOperations;
     _transaction.isReadOnlyTransaction = isReadOnlyTransaction;
   }
 }

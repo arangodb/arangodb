@@ -89,59 +89,17 @@ struct MGMethods final : arangodb::transaction::Methods {
 };
 }  // namespace
 
-// register a list of failed transactions
-void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  TRI_ASSERT(_keepTransactionData);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  for (auto const& it : failedTransactions) {
-    const size_t bucket = getBucket(it);
-    WRITE_LOCKER(locker, _transactions[bucket]._lock);
-    _transactions[bucket]._failedTransactions.emplace(it);
-  }
-}
-
-// unregister a list of failed transactions
-void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  TRI_ASSERT(_keepTransactionData);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    WRITE_LOCKER(locker, _transactions[bucket]._lock);
-    std::for_each(failedTransactions.begin(), failedTransactions.end(), [&](TRI_voc_tid_t id) {
-      _transactions[bucket]._failedTransactions.erase(id);
-    });
-  }
-}
-
-void Manager::registerTransaction(TRI_voc_tid_t transactionId,
-                                  std::unique_ptr<TransactionData> data,
+void Manager::registerTransaction(TRI_voc_tid_t /*transactionId*/,
                                   bool isReadOnlyTransaction) {
   if (!isReadOnlyTransaction) {
     _rwLock.lockRead();
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
-
-  if (_keepTransactionData) {
-    TRI_ASSERT(data != nullptr);
-    const size_t bucket = getBucket(transactionId);
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-    try {
-      // insert into currently running list of transactions
-      _transactions[bucket]._activeTransactions.try_emplace(transactionId, std::move(data));
-    } catch (...) {
-      _nrRunning.fetch_sub(1, std::memory_order_relaxed);
-      if (!isReadOnlyTransaction) {
-        _rwLock.unlockRead();
-      }
-      throw;
-    }
-  }
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
+void Manager::unregisterTransaction(TRI_voc_tid_t transactionId,
                                     bool isReadOnlyTransaction) {
   // always perform an unlock when we leave this function
   auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
@@ -152,55 +110,6 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
 
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
-
-  if (_keepTransactionData) {
-    const size_t bucket = getBucket(transactionId);
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-    _transactions[bucket]._activeTransactions.erase(transactionId);
-    if (markAsFailed) {
-      _transactions[bucket]._failedTransactions.emplace(transactionId);
-    }
-  }
-}
-
-// return the set of failed transactions
-std::unordered_set<TRI_voc_tid_t> Manager::getFailedTransactions() const {
-  std::unordered_set<TRI_voc_tid_t> failedTransactions;
-
-  {
-    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
-    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-      READ_LOCKER(locker, _transactions[bucket]._lock);
-
-      for (auto const& it : _transactions[bucket]._failedTransactions) {
-        failedTransactions.emplace(it);
-      }
-    }
-  }
-
-  return failedTransactions;
-}
-
-void Manager::iterateActiveTransactions(
-    std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) {
-  if (!_keepTransactionData) {
-    return;
-  }
-  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
-  // iterate over all active transactions
-  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
-
-    for (auto const& it : _transactions[bucket]._activeTransactions) {
-      TRI_ASSERT(it.second != nullptr);
-      callback(it.first, it.second.get());
-    }
-  }
 }
 
 uint64_t Manager::getActiveTransactionCount() {
@@ -378,6 +287,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   {  // quick check whether ID exists
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
@@ -463,7 +373,6 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 
   // start the transaction
   transaction::Hints hints;
-  hints.set(transaction::Hints::Hint::LOCK_ENTIRELY);
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
   res = state->beginTransaction(hints);  // registers with transaction manager
   if (res.fail()) {
@@ -474,6 +383,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   {  // add transaction to bucket
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+
     auto it = _transactions[bucket]._managed.find(tid);
     if (it != _transactions[bucket]._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,

@@ -569,13 +569,6 @@ function dumpMaskings (options) {
 
 function hotBackup (options) {
   let c = getClusterStrings(options);
-  if (options.storageEngine === "mmfiles") {
-    return {
-      'hotbackup for mmfiles not yet implemented': {
-        status: true,
-      }
-    };
-  }
   if (!require("internal").isEnterprise()) {
     return {
       'hotbackup is only enterprise': {

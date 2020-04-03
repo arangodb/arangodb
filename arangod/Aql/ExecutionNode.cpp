@@ -502,8 +502,9 @@ ExecutionNode* ExecutionNode::cloneHelper(std::unique_ptr<ExecutionNode> other,
   return registeredNode;
 }
 
-void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan, ExecutionNode& other, bool withProperties) const {
-
+void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
+                                                           ExecutionNode& other,
+                                                           bool withProperties) const {
   if (&plan == _plan) {
     // same execution plan for source and target
     // now assign a new id to the cloned node, otherwise it will fail
@@ -1364,7 +1365,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
       &engine, this->_collection, _outVariable,
       (this->isVarUsedLater(_outVariable) || this->_filter != nullptr),
       this->_filter.get(), this->projections(), this->coveringIndexAttributePositions(),
-      EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
+      this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));
 }

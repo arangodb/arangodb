@@ -95,9 +95,6 @@ class ConstFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t);
   void injectBlock(SharedAqlItemBlockPtr block);
 
-  // Argument will be ignored!
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t);
-
   void setDistributeId(std::string const&) {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);

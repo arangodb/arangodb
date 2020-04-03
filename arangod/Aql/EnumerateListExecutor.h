@@ -91,13 +91,6 @@ class EnumerateListExecutor {
   ~EnumerateListExecutor() = default;
 
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  /**
    * @brief Will fetch a new InputRow if necessary and store their local state
    *
    * @return bool done in case we do not have any input and upstreamState is done

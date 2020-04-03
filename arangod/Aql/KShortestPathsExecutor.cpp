@@ -158,12 +158,6 @@ auto KShortestPathsExecutor::shutdown(int errorCode) -> std::pair<ExecutionState
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-auto KShortestPathsExecutor::produceRows(OutputAqlItemRow& output)
-    -> std::pair<ExecutionState, NoStats> {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 auto KShortestPathsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   while (!output.isFull()) {

@@ -106,7 +106,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
   if (nestingLevel() == 0) { // result is valid
     // register with manager
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
+    transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction());
     updateStatus(transaction::Status::RUNNING);
     _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
 
