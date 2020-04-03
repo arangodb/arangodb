@@ -75,18 +75,6 @@ TestLambdaExecutor::TestLambdaExecutor(Fetcher&, Infos& infos) : _infos(infos) {
 
 TestLambdaExecutor::~TestLambdaExecutor() {}
 
-auto TestLambdaExecutor::fetchBlockForPassthrough(size_t atMost)
-    -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-auto TestLambdaExecutor::produceRows(OutputAqlItemRow& output)
-    -> std::tuple<ExecutionState, Stats> {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 auto TestLambdaExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   return _infos.getProduceLambda()(input, output);
@@ -98,18 +86,6 @@ TestLambdaSkipExecutor::TestLambdaSkipExecutor(Fetcher&, Infos& infos)
 }
 
 TestLambdaSkipExecutor::~TestLambdaSkipExecutor() {}
-
-auto TestLambdaSkipExecutor::fetchBlockForPassthrough(size_t atMost)
-    -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-auto TestLambdaSkipExecutor::produceRows(OutputAqlItemRow& output)
-    -> std::tuple<ExecutionState, Stats> {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 auto TestLambdaSkipExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {

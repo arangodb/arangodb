@@ -469,7 +469,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(8, slice.length());
+    EXPECT_EQ(9, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -540,7 +540,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(8, slice.length());
+    EXPECT_EQ(9, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -566,6 +566,8 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
     EXPECT_EQUAL_SLICES(tmpSlice.at(0).get("properties"), VPackSlice::emptyObjectSlice());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString() && tmpSlice.copyString() == "lz4");
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
   }
@@ -758,7 +760,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(8, slice.length());
+    EXPECT_EQ(9, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
@@ -1012,7 +1014,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(8, slice.length());
+    EXPECT_EQ(9, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
@@ -1220,7 +1222,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(8, slice.length());
+    EXPECT_EQ(9, slice.length());
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1229,6 +1231,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
     EXPECT_TRUE(slice.hasKey("analyzerDefinitions"));
     EXPECT_TRUE(slice.hasKey("primarySort"));
     EXPECT_TRUE(slice.hasKey("storedValues"));
+    EXPECT_TRUE(slice.hasKey("primarySortCompression"));
   }
 }
 
