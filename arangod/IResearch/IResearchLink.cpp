@@ -25,7 +25,6 @@
 #include <store/mmap_directory.hpp>
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
-#include <utils/lz4compression.hpp>
 #include <utils/singleton.hpp>
 
 #include "IResearchLink.h"
@@ -37,13 +36,13 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -248,8 +247,7 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
   static_assert(
     // cppcheck-suppress duplicateExpression
     sizeof(uint64_t) == sizeof(TRI_voc_tick_t),
-    "sizeof(uint64_t) != sizeof(TRI_voc_tick_t)"
-  );
+    "sizeof(uint64_t) != sizeof(TRI_voc_tick_t)");
 
   if (payload.size() != sizeof(uint64_t)) {
     return false;
@@ -260,7 +258,6 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
 
   return true;
 }
-
 }  // namespace
 
 namespace arangodb {
@@ -306,12 +303,12 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
   _trxCallback = [key](transaction::Methods& trx, transaction::Status status)->void {
     auto* state = trx.state();
     TRI_ASSERT(state != nullptr);
-    
+
     // check state of the top-most transaction only
     if (!state || !state->isTopLevelTransaction()) {
       return;  // NOOP
     }
-    
+
     auto prev = state->cookie(key, nullptr);  // get existing cookie
 
     if (prev) {
@@ -820,7 +817,9 @@ Result IResearchLink::init(
   auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
   bool const sorted = !meta._sort.empty();
-
+  auto const& storedValuesColumns = meta._storedValues.columns();
+  TRI_ASSERT(meta._sortCompression);
+  auto const& primarySortCompression = meta._sortCompression? *meta._sortCompression : getDefaultCompression();
   if (ServerState::instance()->isCoordinator()) { // coordinator link
     if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
@@ -875,7 +874,7 @@ Result IResearchLink::init(
     if (!clusterWideLink) {
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
-      auto const res = initDataStore(initCallback, sorted);
+      auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
 
       if (!res.ok()) {
         return res;
@@ -912,7 +911,7 @@ Result IResearchLink::init(
         // missing links will be populated when they are created in the
         // per-shard collection
         if (shardIds) {
-          for (auto& entry: *shardIds) {
+          for (auto& entry : *shardIds) {
             auto collection = vocbase.lookupCollection(entry.first); // per-shard collections are always in 'vocbase'
 
             if (!collection) {
@@ -943,7 +942,7 @@ Result IResearchLink::init(
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, sorted);
+    auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
 
     if (!res.ok()) {
       return res;
@@ -990,14 +989,17 @@ Result IResearchLink::init(
   return {};
 }
 
-Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorted) {
+Result IResearchLink::initDataStore(
+    InitCallback const& initCallback, bool sorted,
+    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
+    irs::compression::type_id const& primarySortCompression) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushSubscription.reset() ; // reset together with '_asyncSelf'
+  _flushSubscription.reset(); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   auto& server = _collection.vocbase().server();
@@ -1095,7 +1097,6 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
           << "link '" << id() << "', docs count '" << _dataStore._reader->docs_count()
           << "', live docs count '" << _dataStore._reader->live_docs_count()
           << "', recovery tick '" << _dataStore._recoveryTick << "'";
-
     } catch (irs::index_not_found const&) {
       // NOOP
     }
@@ -1109,18 +1110,33 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
 
+  // as meta is still not filled at this moment
+  // we need to store all compression mapping there
+  // as values provided may be temporary
+  std::map<std::string, irs::compression::type_id const&> compressionMap;
+  for (auto c : storedColumns) {
+    if (ADB_LIKELY(c.compression != nullptr)) {
+      compressionMap.emplace(c.name, *c.compression);
+    } else {
+      TRI_ASSERT(false);
+      compressionMap.emplace(c.name, getDefaultCompression());
+    }
+  }
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
-  if (encrypt) {
-    options.column_info = [](const irs::string_ref& name) -> irs::column_info {
-      // do not waste resources to encrypt primary key column
-      return { irs::compression::lz4::type(), {}, DocumentPrimaryKey::PK() != name };
+  options.column_info =
+    [encrypt, comprMap = std::move(compressionMap), &primarySortCompression](const irs::string_ref& name) -> irs::column_info {
+      if (name.null()) {
+        return { primarySortCompression, {}, encrypt };
+      }
+      auto compress = comprMap.find(name);
+      if (compress != comprMap.end()) {
+        // do not waste resources to encrypt primary key column
+        return { compress->second, {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+      } else {
+        return { getDefaultCompression(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+      }
     };
-  } else {
-    options.column_info = [](const irs::string_ref& /*name*/) -> irs::column_info {
-      return { irs::compression::lz4::type(), {}, false };
-    };
-  }
 
   auto openFlags = irs::OM_APPEND;
   if (!_dataStore._reader) {
@@ -1723,7 +1739,7 @@ Result IResearchLink::unload() {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushSubscription.reset() ; // reset together with '_asyncSelf'
+  _flushSubscription.reset(); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {

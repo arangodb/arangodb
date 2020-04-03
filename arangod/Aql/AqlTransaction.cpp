@@ -122,7 +122,6 @@ AqlTransaction::AqlTransaction(
     std::map<std::string, aql::Collection*> const* collections,
     transaction::Options const& options)
     : transaction::Methods(transactionContext, options), _collections(*collections) {
-  addHint(transaction::Hints::Hint::LOCK_ENTIRELY); 
   addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
   Result res = addCollections(*collections);

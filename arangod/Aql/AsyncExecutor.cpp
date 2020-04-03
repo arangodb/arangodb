@@ -46,106 +46,106 @@ ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
     : ExecutionBlock(engine, node),
       _infos(std::move(infos)),
       _sharedState(engine->sharedState()) {}
-
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::getSome(size_t atMost) {
-  traceGetSomeBegin(atMost);
-  auto result = getSomeWithoutTrace(atMost);
-  traceGetSomeEnd(result.first, result.second);
-  return result;
-}
-
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::getSomeWithoutTrace(size_t atMost) {
-  // silence tests -- we need to introduce new failure tests for fetchers
-//  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-//    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+//
+//std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::getSome(size_t atMost) {
+//  traceGetSomeBegin(atMost);
+//  auto result = getSomeWithoutTrace(atMost);
+//  traceGetSomeEnd(result.first, result.second);
+//  return result;
+//}
+//
+//std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::getSomeWithoutTrace(size_t atMost) {
+//  // silence tests -- we need to introduce new failure tests for fetchers
+////  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+////    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+////  }
+////  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+////    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+////  }
+////  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+////    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+////  }
+//
+////  if (getQuery().killed()) {
+////    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+////  }
+//
+//  std::lock_guard<std::mutex> guard(_mutex);
+//
+//  TRI_ASSERT(_dependencies.size() == 1);
+//
+//  if (_internalState == AsyncState::InProgress) {
+//    return {ExecutionState::WAITING, SharedAqlItemBlockPtr()};
+//  } else if (_internalState == AsyncState::GotResult) {
+//    _internalState = AsyncState::Empty;
+//    return {_returnState, std::move(_returnBlock)};
 //  }
-//  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-//    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+//  TRI_ASSERT(_internalState == AsyncState::Empty);
+//
+//  _internalState = AsyncState::InProgress;
+//  bool queued = _sharedState->asyncExecuteAndWakeup([this, atMost](bool isAsync) {
+//    std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
+//    if (isAsync) {
+//      guard.lock();
+//    }
+//    std::tie(_returnState, _returnBlock) = _dependencies[0]->getSome(atMost);
+//    if (_returnBlock.get()) {
+//      LOG_DEVEL << "getSome rows " << _returnBlock->size();
+//    } else {
+//      LOG_DEVEL << "getSome rows " << 0;
+//    }
+//
+//    _internalState = AsyncState::GotResult;
+//  });
+//
+//  if (!queued) {
+//    _internalState = AsyncState::Empty;
+//    return {_returnState, std::move(_returnBlock)};
 //  }
-//  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
-//    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+//  return {ExecutionState::WAITING, SharedAqlItemBlockPtr()};
+//}
+//
+//std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSome(size_t atMost) {
+//  traceSkipSomeBegin(atMost);
+//  auto result = skipSomeWithoutTrace(atMost);
+//  traceSkipSomeEnd(result.first, result.second);
+//  return result;
+//}
+//
+//std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSomeWithoutTrace(size_t atMost) {
+//
+////  if (getQuery().killed()) {
+////    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+////  }
+//
+//  std::lock_guard<std::mutex> guard(_mutex);
+//
+//  if (_internalState == AsyncState::InProgress) {
+//    return {ExecutionState::WAITING, 0};
+//  } else if (_internalState == AsyncState::GotResult) {
+//    _internalState = AsyncState::Empty;
+//    return {_returnState, std::move(_returnSkipped)};
 //  }
-
-//  if (getQuery().killed()) {
-//    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+//  TRI_ASSERT(_internalState == AsyncState::Empty);
+//
+//  _internalState = AsyncState::InProgress;
+//  bool queued = _sharedState->asyncExecuteAndWakeup([this, atMost](bool isAsync) {
+//    std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
+//    if (isAsync) {
+//      guard.lock();
+//    }
+//
+//    std::tie(_returnState, _returnSkipped) = _dependencies[0]->skipSome(atMost);
+//
+//    _internalState = AsyncState::GotResult;
+//  });
+//
+//  if (!queued) {
+//    _internalState = AsyncState::Empty;
+//    return {_returnState, _returnSkipped};
 //  }
-  
-  std::lock_guard<std::mutex> guard(_mutex);
-  
-  TRI_ASSERT(_dependencies.size() == 1);
-  
-  if (_internalState == AsyncState::InProgress) {
-    return {ExecutionState::WAITING, SharedAqlItemBlockPtr()};
-  } else if (_internalState == AsyncState::GotResult) {
-    _internalState = AsyncState::Empty;
-    return {_returnState, std::move(_returnBlock)};
-  }
-  TRI_ASSERT(_internalState == AsyncState::Empty);
-  
-  _internalState = AsyncState::InProgress;
-  bool queued = _sharedState->asyncExecuteAndWakeup([this, atMost](bool isAsync) {
-    std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
-    if (isAsync) {
-      guard.lock();
-    }
-    std::tie(_returnState, _returnBlock) = _dependencies[0]->getSome(atMost);
-    if (_returnBlock.get()) {
-      LOG_DEVEL << "getSome rows " << _returnBlock->size();
-    } else {
-      LOG_DEVEL << "getSome rows " << 0;
-    }
-    
-    _internalState = AsyncState::GotResult;
-  });
-
-  if (!queued) {
-    _internalState = AsyncState::Empty;
-    return {_returnState, std::move(_returnBlock)};
-  }
-  return {ExecutionState::WAITING, SharedAqlItemBlockPtr()};
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSome(size_t atMost) {
-  traceSkipSomeBegin(atMost);
-  auto result = skipSomeWithoutTrace(atMost);
-  traceSkipSomeEnd(result.first, result.second);
-  return result;
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<AsyncExecutor>::skipSomeWithoutTrace(size_t atMost) {
-
-//  if (getQuery().killed()) {
-//    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-//  }
-
-  std::lock_guard<std::mutex> guard(_mutex);
-
-  if (_internalState == AsyncState::InProgress) {
-    return {ExecutionState::WAITING, 0};
-  } else if (_internalState == AsyncState::GotResult) {
-    _internalState = AsyncState::Empty;
-    return {_returnState, std::move(_returnSkipped)};
-  }
-  TRI_ASSERT(_internalState == AsyncState::Empty);
-
-  _internalState = AsyncState::InProgress;
-  bool queued = _sharedState->asyncExecuteAndWakeup([this, atMost](bool isAsync) {
-    std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
-    if (isAsync) {
-      guard.lock();
-    }
-    
-    std::tie(_returnState, _returnSkipped) = _dependencies[0]->skipSome(atMost);
-    
-    _internalState = AsyncState::GotResult;
-  });
-
-  if (!queued) {
-    _internalState = AsyncState::Empty;
-    return {_returnState, _returnSkipped};
-  }
-  return {ExecutionState::WAITING, 0};
-}
+//  return {ExecutionState::WAITING, 0};
+//}
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack stack) {
   TRI_ASSERT(false);

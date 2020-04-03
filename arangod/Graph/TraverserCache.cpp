@@ -111,7 +111,7 @@ VPackSlice TraverserCache::lookupVertexInCollection(arangodb::velocypack::String
   }
 
   Result res = _trx->documentFastPathLocal(collectionName,
-                                           id.substr(pos + 1), _mmdr, true);
+                                           id.substr(pos + 1), _mmdr);
   if (res.ok()) {
     ++_insertedDocuments;
     return VPackSlice(_mmdr.vpack());

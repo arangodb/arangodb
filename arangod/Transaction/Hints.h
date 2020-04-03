@@ -37,22 +37,15 @@ class Hints {
   enum class Hint : ValueType {
     NONE = 0,
     SINGLE_OPERATION = 1,
-    LOCK_ENTIRELY = 1 << 1,
-    LOCK_NEVER = 1 << 2,
-    NO_BEGIN_MARKER = 1 << 3,  // not supported in RocksDB
-    NO_ABORT_MARKER = 1 << 4,      // not supported in RocksDB
-    NO_THROTTLING = 1 << 5,        // not supported in RocksDB
-    TRY_LOCK = 1 << 6,
-    NO_COMPACTION_LOCK = 1 << 7,  // not supported in RocksDB
-    NO_USAGE_LOCK = 1 << 8,       // not supported in RocksDB
-    RECOVERY = 1 << 9,
-    NO_DLD = 1 << 10,       // disable deadlock detection, unsupported in RocksDB
-    NO_INDEXING = 1 << 11,  // use DisableIndexing for RocksDB
-    INTERMEDIATE_COMMITS = 1 << 12,  // enable intermediate commits in rocksdb
-    ALLOW_RANGE_DELETE = 1 << 13,    // enable range-delete in rocksdb
-    FROM_TOPLEVEL_AQL = 1 << 14,    // transaction is only runnning one AQL query
-    GLOBAL_MANAGED = 1 << 15,  // transaction with externally managed lifetime
-    INDEX_CREATION = 1 << 16, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
+    LOCK_NEVER = 2,
+    NO_USAGE_LOCK = 4, 
+    NO_DLD = 8,       // disable deadlock detection, unsupported in RocksDB
+    NO_INDEXING = 16,  // use DisableIndexing for RocksDB
+    INTERMEDIATE_COMMITS = 32,  // enable intermediate commits in rocksdb
+    ALLOW_RANGE_DELETE = 64,    // enable range-delete in rocksdb
+    FROM_TOPLEVEL_AQL = 128,    // transaction is only runnning one AQL query
+    GLOBAL_MANAGED = 256,  // transaction with externally managed lifetime
+    INDEX_CREATION = 512, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
   };
 
   Hints() : _value(0) {}

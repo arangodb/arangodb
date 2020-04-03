@@ -56,10 +56,6 @@ class ExecutionBlockImpl<ParallelStartExecutor> : public ExecutionBlock {
                      ExecutorInfos&& infos);
 
   ~ExecutionBlockImpl() override = default;
-
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
-
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
   
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 

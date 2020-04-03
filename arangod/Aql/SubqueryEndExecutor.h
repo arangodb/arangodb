@@ -85,9 +85,6 @@ class SubqueryEndExecutor {
   SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos);
   ~SubqueryEndExecutor();
 
-  [[deprecated]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
-
   // produceRows accumulates all input rows it can get into _accumulator, which
   // will then be read out by ExecutionBlockImpl
   // TODO: can the production of output be moved to produceRows again?
@@ -99,6 +96,9 @@ class SubqueryEndExecutor {
   // where we have to execute the subquery)
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
   /**
    * @brief Consume the given shadow row and write the aggregated value to it
@@ -138,7 +138,6 @@ class SubqueryEndExecutor {
   };
 
  private:
-  Fetcher& _fetcher;
   SubqueryEndExecutorInfos& _infos;
 
   Accumulator _accumulator;

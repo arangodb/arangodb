@@ -153,7 +153,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep, QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
+    std::vector<size_t> const& coveringIndexAttributePositions, 
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
@@ -178,7 +178,6 @@ IndexExecutorInfos::IndexExecutorInfos(
       _outputRegisterId(outputRegister),
       _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
       _hasMultipleExpansions(false),
-      _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _hasV8Expression(hasV8Expression) {
   if (_condition != nullptr) {
@@ -257,10 +256,6 @@ std::vector<size_t> const& IndexExecutorInfos::getCoveringIndexAttributePosition
 
 bool IndexExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
-}
-
-bool IndexExecutorInfos::getUseRawDocumentPointers() const noexcept {
-  return _useRawDocumentPointers;
 }
 
 std::vector<transaction::Methods::IndexHandle> const& IndexExecutorInfos::getIndexes() const
@@ -437,7 +432,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _documentProducingFunctionContext(
       _input, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
       infos.query(), _trx, infos.getFilter(), infos.getProjections(),
-      infos.getCoveringIndexAttributePositions(), false, infos.getUseRawDocumentPointers(),
+      infos.getCoveringIndexAttributePositions(), false,
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
       _infos(infos),
       _currentIndex(_infos.getIndexes().size()),
@@ -645,16 +640,6 @@ bool IndexExecutor::advanceCursor() {
   // If we get here we were unable to
   TRI_ASSERT(_currentIndex >= numTotal);
   return false;
-}
-
-std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows(size_t toSkip) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 IndexExecutor::CursorReader& IndexExecutor::getCursor() {

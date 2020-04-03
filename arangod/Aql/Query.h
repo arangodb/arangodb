@@ -108,10 +108,7 @@ class Query : public QueryContext {
   QueryString const& queryString() const { return _queryString; }
   
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction(std::unique_ptr<transaction::Methods> trx) {
-    _trx = std::move(trx);
-    init();
-  }
+  void injectTransaction(std::unique_ptr<transaction::Methods> trx);
 
   QueryProfile* profile() const { return _profile.get(); }
 

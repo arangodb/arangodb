@@ -488,3 +488,4 @@ QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<Query> query, double ttl)
       _expires(TRI_microtime() + ttl),
       _numEngines(0) {}
 
+QueryRegistry::QueryInfo::~QueryInfo() = default;

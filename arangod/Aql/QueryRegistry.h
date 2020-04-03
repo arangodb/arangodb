@@ -120,7 +120,7 @@ class QueryRegistry {
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
     QueryInfo(std::unique_ptr<Query> query, double ttl);
-    ~QueryInfo() = default;
+    ~QueryInfo();
 
     TRI_vocbase_t* _vocbase;  // the vocbase
     std::unique_ptr<Query> _query;  // the actual query pointer

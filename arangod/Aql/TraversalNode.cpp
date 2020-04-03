@@ -57,6 +57,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::graph;
@@ -168,9 +169,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
                              Variable const* inVariable, std::string const& vertexId,
                              TRI_edge_direction_e defaultDirection,
                              std::vector<TRI_edge_direction_e> const& directions,
-                             std::unique_ptr<BaseOptions> options)
+                             std::unique_ptr<graph::BaseOptions> options,
+                             graph::Graph const* graph)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
-                directions, std::move(options)),
+                directions, std::move(options), graph),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(vertexId),
@@ -546,7 +548,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts, true);
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
-                                           _directions, std::move(tmp));
+                                           _directions, std::move(tmp), _graphObj);
 
   traversalCloneHelper(*plan, *c, withProperties);
 

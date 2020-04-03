@@ -29,7 +29,6 @@ if [ "x$@" = "x" ] ; then
     ${WD}/js/client/inspector.js \
     ${WD}/js/server/server.js \
     ${WD}/js/server/initialize.js \
-    ${WD}/js/server/arango-dfdb.js \
     \
   "
   if [ -d "${WD}/enterprise" ] ; then

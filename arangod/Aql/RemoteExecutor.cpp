@@ -83,13 +83,6 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
              (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSome(size_t atMost) {
-  traceGetSomeBegin(atMost);
-  auto result = getSomeWithoutTrace(atMost);
-  traceGetSomeEnd(result.first, result.second);
-  return result;
-}
-
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
@@ -164,13 +157,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
   }
 
   return {ExecutionState::WAITING, nullptr};
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSome(size_t atMost) {
-  traceSkipSomeBegin(atMost);
-  auto result = skipSomeWithoutTrace(atMost);
-  traceSkipSomeEnd(result.first, result.second);
-  return result;
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWithoutTrace(size_t atMost) {
@@ -465,7 +451,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
 
     return {state, SkipResult{}, block};
   } else if (AqlCall::IsFullCountCall(myCall)) {
-    auto const [state, skipped] = skipSome(ExecutionBlock::SkipAllSize());
+    auto const [state, skipped] = skipSomeWithoutTrace(ExecutionBlock::SkipAllSize());
     if (state != ExecutionState::WAITING) {
       myCall.didSkip(skipped);
     }

@@ -179,13 +179,6 @@ class SortedCollectExecutor {
   SortedCollectExecutor(Fetcher& fetcher, Infos&);
 
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  auto produceRows(OutputAqlItemRow& output) -> std::pair<ExecutionState, Stats>;
-
-  /**
    * @brief produce the next Rows of Aql Values.
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
@@ -206,9 +199,6 @@ class SortedCollectExecutor {
    * it will produce exactly. It can however only
    * overestimate never underestimate.
    */
-  [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const
-      -> std::pair<ExecutionState, size_t>;
-
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;
 

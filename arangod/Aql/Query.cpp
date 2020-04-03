@@ -275,6 +275,11 @@ void Query::kill() {
   }
 }
 
+void Query::injectTransaction(std::unique_ptr<transaction::Methods> trx) {
+   _trx = std::move(trx);
+   init();
+ }
+
 //void Query::setExecutionTime() {
 //#warning fix
 ////  if (_engine != nullptr) {

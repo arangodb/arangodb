@@ -98,8 +98,6 @@ struct SingleRemoteModificationExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
@@ -112,7 +110,6 @@ struct SingleRemoteModificationExecutor {
   
   transaction::Methods _trx;
   Infos& _info;
-  Fetcher& _fetcher;
   ExecutionState _upstreamState;
 };
 

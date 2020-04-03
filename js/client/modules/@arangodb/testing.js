@@ -76,7 +76,7 @@ let optionsDocumentation = [
   '   - `loopSleepSec`: sleep seconds between iterations',
   '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '',
-  '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `rocksdb`',
+  '   - `storageEngine`: set to `rocksdb` - defaults to `rocksdb`',
   '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `serverRoot`: directory where data/ points into the db server. Use in',
