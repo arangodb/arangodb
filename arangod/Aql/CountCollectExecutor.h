@@ -103,8 +103,6 @@ class CountCollectExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
-
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;
 
