@@ -192,7 +192,7 @@ class OutputAqlItemRow {
   // Increase the depth of the given shadowRow. This needs to be called
   // whenever you start a nested subquery on every outer subquery shadowrow
   // The data of this row will be copied.
-  size_t increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
+  void increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
 
   // Decrease the depth of the given shadowRow. This needs to be called
   // whenever you finish a nested subquery on every outer subquery shadowrow
