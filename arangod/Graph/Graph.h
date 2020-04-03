@@ -33,6 +33,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ResultT.h"
+#include "Cluster/ServerDefaults.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
@@ -108,20 +109,22 @@ class Graph {
    */
   static std::unique_ptr<Graph> fromUserInput(std::string&& name,
                                               velocypack::Slice collectionInformation,
-                                              velocypack::Slice options);
+                                              velocypack::Slice options,
+                                              TRI_vocbase_t& vocbase);
 
   // Wrapper for Move constructor
   static std::unique_ptr<Graph> fromUserInput(std::string const& name,
                                               velocypack::Slice collectionInformation,
-                                              velocypack::Slice options);
+                                              velocypack::Slice options,
+                                              TRI_vocbase_t& vocbase);
 
  protected:
   /**
    * @brief Create graph from persistence.
    *
-   * @param info The stored document
+   * @param slice The stored document
    */
-  explicit Graph(velocypack::Slice const& info);
+  explicit Graph(velocypack::Slice const& slice, struct ServerDefaults serverDefaults);
 
   /**
    * @brief Create graph from user input.
@@ -131,7 +134,7 @@ class Graph {
    * @param options The options to be used for collections
    */
   Graph(std::string&& graphName, velocypack::Slice const& info,
-        velocypack::Slice const& options);
+        velocypack::Slice const& options, TRI_vocbase_t& vocbase);
 
   /**
    * @brief virtual copy constructor
