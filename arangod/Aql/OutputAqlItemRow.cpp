@@ -323,14 +323,13 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   doCopyRow(sourceRow, true);
 }
 
-size_t OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
+void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
   size_t newDepth = sourceRow.getDepth() + 1;
   doCopyRow(sourceRow, false);
   block().setShadowRowDepth(_baseIndex, AqlValue{AqlValueHintUInt{newDepth}});
   // We need to fake produced state
   _numValuesWritten = numRegistersToWrite();
   TRI_ASSERT(produced());
-  return newDepth;
 }
 
 void OutputAqlItemRow::decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {

@@ -105,6 +105,8 @@ class AqlCallList {
    */
   [[nodiscard]] auto hasMoreCalls() const noexcept -> bool;
 
+  [[nodiscard]] auto hasDefaultCalls() const noexcept -> bool;
+
   /**
    * @brief Get a reference to the next call.
    *        This is modifiable, but caller will not take

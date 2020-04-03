@@ -915,7 +915,7 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
     // Need to forward the ShadowRows
     auto const& [state, shadowRow] = _lastRange.nextShadowRow();
     TRI_ASSERT(shadowRow.isInitialized());
-    size_t newDepth = _outputItemRow->increaseShadowRowDepth(shadowRow);
+    _outputItemRow->increaseShadowRowDepth(shadowRow);
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
 
@@ -925,15 +925,19 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
     // If we do not have more shadowRows
     // we need to return.
 
-    auto& subqueryCallList = stack.modifyCallListAtDepth(newDepth);
-    auto& subqueryCall = subqueryCallList.modifyNextCall();
-    LOG_DEVEL << "callList (at depth): " << newDepth << " " << subqueryCallList;
-    if (subqueryCall.getLimit() == 0 && !subqueryCall.needSkipMore()) {
-      LOG_DEVEL << "deciding we're done";
+    auto& subqueryCallList = stack.modifyCallListAtDepth(shadowRow.getDepth());
+
+    if (!subqueryCallList.hasDefaultCalls()) {
       return ExecState::DONE;
     }
+
+    auto& subqueryCall = subqueryCallList.modifyNextCall();
+    if (subqueryCall.getLimit() == 0 && !subqueryCall.needSkipMore()) {
+      return ExecState::DONE;
+    }
+
     _executorReturnedDone = false;
-    LOG_DEVEL << "dciding we're nextsubquery";
+
     return ExecState::NEXTSUBQUERY;
   }
 }
@@ -1122,6 +1126,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack&) -> ExecSta
     auto const& lookAheadRow = _lastRange.peekShadowRow();
     if (lookAheadRow.isRelevant()) {
       // We are starting the NextSubquery here.
+      if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+        // TODO: Check if this works with skip forwarding
+        return ExecState::SHADOWROWS;
+      }
       return ExecState::NEXTSUBQUERY;
     }
     // we need to forward them
