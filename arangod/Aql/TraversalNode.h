@@ -92,7 +92,7 @@ class TraversalNode : public virtual GraphNode {
                 Variable const* inVariable, std::string const& vertexId,
                 TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
-                std::unique_ptr<graph::BaseOptions> options);
+                std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
 
  protected:
   /// @brief Clone constructor, used for constructors of derived classes.

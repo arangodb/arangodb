@@ -56,7 +56,7 @@ namespace aql {
 /**
  * @brief Mock for SingleRowFetcher
  */
-template<::arangodb::aql::BlockPassthrough passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class SingleRowFetcherHelper
     : public arangodb::aql::SingleRowFetcher<passBlocksThrough> {
  public:
@@ -84,11 +84,6 @@ class SingleRowFetcherHelper
   uint64_t nrItems() { return _nrItems; }
 
   size_t totalSkipped() const { return _totalSkipped; }
-
-  std::pair<arangodb::aql::ExecutionState, size_t> skipRows(size_t atMost) override;
-
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlockForPassthrough(
-      size_t atMost) override;
 
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(size_t atMost) override;
 

@@ -1,5 +1,12 @@
 devel
 -----
+* Added JACCARD AQL function
+
+* storedValues property is removed from arngosearch link properties output.
+
+* Added primarySortCompression property to ArangoSearch Views
+
+* Added compression property to ArangoSearch View storedValues
 
 * Added feature: SatelliteGraphs
 
@@ -32,6 +39,7 @@ devel
 
 * Fixed a bug in the agency supervision, which could declare an already FAILED
   dbserver temporarily as GOOD again after an agency leader change.
+
 
 * Added INTERLEAVE AQL function.
 

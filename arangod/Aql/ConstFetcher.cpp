@@ -153,7 +153,6 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     _rowIndex = 0;
     SkipResult skipped{};
     skipped.didSkip(call.getSkipCount());
-
     return {ExecutionState::DONE, skipped,
             DataRange{ExecutorState::DONE, call.getSkipCount(), resultBlock, 0}};
   }
@@ -171,28 +170,23 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     // Remove the indexes from the slice list
     sliceIndexes.erase(sliceIndexes.begin());
   }
-  // NOTE: The above if may have invalidated from and to memory.
-  // Do not use them below this point!
 
-  if (sliceIndexes.empty()) {
-    // No data to be returned
-    // Block is dropped.
-    resultBlock = nullptr;
-    SkipResult skipped{};
-    skipped.didSkip(call.getSkipCount());
-    return {ExecutionState::DONE, skipped,
-            DataRange{ExecutorState::DONE, call.getSkipCount()}};
-  }
-
-  // Slowest path need to slice, this unfortunately requires copy of data
   ExecutionState resState =
       _blockForPassThrough == nullptr ? ExecutionState::DONE : ExecutionState::HASMORE;
   ExecutorState rangeState =
       _blockForPassThrough == nullptr ? ExecutorState::DONE : ExecutorState::HASMORE;
 
-  resultBlock = resultBlock->slice(sliceIndexes);
   SkipResult skipped{};
   skipped.didSkip(call.getSkipCount());
+
+  if (sliceIndexes.empty()) {
+    // No data to be returned
+    resultBlock = nullptr;
+    return {resState, skipped, DataRange{rangeState, call.getSkipCount()}};
+  }
+
+  // Slowest path need to slice, this unfortunately requires copy of data
+  resultBlock = resultBlock->slice(sliceIndexes);
   return {resState, skipped, DataRange{rangeState, call.getSkipCount(), resultBlock, 0}};
 }
 
@@ -276,15 +270,6 @@ auto ConstFetcher::canUseFullBlock(std::vector<std::pair<size_t, size_t>> const&
   }
   // If we get here, the ranges covers the full block
   return true;
-}
-
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ConstFetcher::fetchBlockForPassthrough(size_t) {
-  // Should only be called once, and then _blockForPassThrough should be
-  // initialized. However, there are still some blocks left that ask their
-  // parent even after they got DONE the last time, and I don't currently have
-  // time to track them down. Thus the following assert is commented out.
-  // TRI_ASSERT(_blockForPassThrough != nullptr);
-  return {ExecutionState::DONE, std::move(_blockForPassThrough)};
 }
 
 std::pair<ExecutionState, ShadowAqlItemRow> ConstFetcher::fetchShadowRow(size_t) const {

@@ -203,11 +203,6 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
   }
 }
 
-std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 auto HashedCollectExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool {
   TRI_ASSERT(!_isInitialized);
   do {
@@ -354,11 +349,6 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
 
   return result;
 };
-
-std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 [[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {

@@ -117,9 +117,8 @@ RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
   return _outputRegisterId;
 }
 
-EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
+EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
       _documentProducer(nullptr),
       _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(), _infos.getQuery(),
@@ -151,18 +150,6 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
-
-std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRows(
-    OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollectionExecutor::skipRows(
-    size_t const toSkip) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
                                                   EnumerateCollectionStats& stats) {
