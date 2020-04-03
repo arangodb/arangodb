@@ -49,8 +49,8 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice) {
   consultAqlWriteFilter =
       basics::VelocyPackHelper::getBooleanValue(obj, "consultAqlWriteFilter", false);
   exclusive = basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
-  overwrite = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::OverWrite, false);
-  overwriteMode = OperationOptions::determineOverwriteMode(VPackStringRef(basics::VelocyPackHelper::getStringValue(obj, StaticStrings::OverWriteMode, "")));
+  overwrite = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::Overwrite, false);
+  overwriteMode = OperationOptions::determineOverwriteMode(VPackStringRef(basics::VelocyPackHelper::getStringValue(obj, StaticStrings::OverwriteMode, "")));
   ignoreRevs = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IgnoreRevsString , true);
 }
 
@@ -66,7 +66,7 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("useIsRestore", VPackValue(useIsRestore));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
-  builder.add(StaticStrings::OverWrite, VPackValue(overwrite));
-  builder.add(StaticStrings::OverWriteMode, VPackValue(OperationOptions::stringifyOverwriteMode(overwriteMode)));
+  builder.add(StaticStrings::Overwrite, VPackValue(overwrite));
+  builder.add(StaticStrings::OverwriteMode, VPackValue(OperationOptions::stringifyOverwriteMode(overwriteMode)));
   builder.add(StaticStrings::IgnoreRevsString, VPackValue(ignoreRevs));
 }

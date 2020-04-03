@@ -1496,16 +1496,21 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     bool didReplace = false;
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // RepSert Case - unique_constraint violated ->  try replace
-      if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
-        // in case of unique constraint violation: (partially) update existing document
-        res = collection->update(this, value, docResult, options, prevDocResult);
-      } else if (options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
-        // in case of unique constraint violation: replace existing document
-        res = collection->replace(this, value, docResult, options, prevDocResult);
-      } else if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
+      if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no write!)
         return Result();
       }
+      if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+        // in case of unique constraint violation: (partially) update existing document
+        res = collection->update(this, value, docResult, options, prevDocResult);
+      } else {
+        // in case of unique constraint violation: replace existing document
+        // this is also the default behavior
+        TRI_ASSERT(options.overwriteMode == OperationOptions::OverwriteMode::Replace ||
+                   options.overwriteMode == OperationOptions::OverwriteMode::Unknown);
+        res = collection->replace(this, value, docResult, options, prevDocResult);
+      }
+
       TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
       didReplace = true;
     }
@@ -2941,9 +2946,9 @@ Future<Result> Methods::replicateOperations(
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
-      reqOpts.param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
+      reqOpts.param(StaticStrings::Overwrite, (options.overwrite ? "true" : "false"));
       if (options.overwrite) {
-        reqOpts.param(StaticStrings::OverWriteMode, OperationOptions::stringifyOverwriteMode(options.overwriteMode));
+        reqOpts.param(StaticStrings::OverwriteMode, OperationOptions::stringifyOverwriteMode(options.overwriteMode));
         if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
           // extra parameters only required for update
           reqOpts.param(StaticStrings::KeepNullString, options.keepNull ? "true" : "false");

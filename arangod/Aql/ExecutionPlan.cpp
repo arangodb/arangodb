@@ -696,7 +696,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(CalculationNode const* previo
                             nullptr, nullptr, std::vector<Variable const*>(),
                             _ast->variables()->variables(false), false, true);
 
-  registerNode(reinterpret_cast<ExecutionNode*>(en));
+  registerNode(en);
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
   en->specialized();
 
@@ -738,7 +738,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -759,11 +759,9 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
           options.mergeObjects = value->isTrue();
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
-        } else if (name == StaticStrings::OverWrite) {
-          if (value->isTrue()) {
-            options.overwrite = true;
-          }
-        } else if (name == StaticStrings::OverWriteMode && value->isStringValue()) {
+        } else if (name == StaticStrings::Overwrite && value->isTrue()) {
+          options.overwrite = true;
+        } else if (name == StaticStrings::OverwriteMode && value->isStringValue()) {
           auto overwriteMode = OperationOptions::determineOverwriteMode(value->getStringRef());
 
           if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {

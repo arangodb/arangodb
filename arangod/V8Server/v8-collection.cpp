@@ -1909,7 +1909,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     }
 
     TRI_GET_GLOBAL_STRING(OverwriteKey);
-    if (!options.overwrite && TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
+    if (TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
       options.overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, OverwriteKey).FromMaybe(v8::Local<v8::Value>()));
     }
 
@@ -2311,6 +2311,7 @@ static void JS_CollectionVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionDatabaseNameAll
 ////////////////////////////////////////////////////////////////////////////////
+
 static void JS_CollectionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2332,7 +2333,6 @@ static void JS_CollectionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   bool error = false;
 
-  // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   size_t const n = colls.size();
   size_t x = 0;

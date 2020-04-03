@@ -48,7 +48,7 @@ struct OperationOptions {
   
   OperationOptions()
       : indexOperationMode(Index::OperationMode::normal),
-        overwriteMode(OverwriteMode::Replace), // replace is the default behavior
+        overwriteMode(OverwriteMode::Unknown),
         waitForSync(false),
         validate(true),
         keepNull(true),

@@ -171,7 +171,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
 
-  std::string const& mode = _request->value(StaticStrings::OverWriteMode);
+  std::string const& mode = _request->value(StaticStrings::OverwriteMode);
   if (!mode.empty()) {
     auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
 
@@ -186,7 +186,7 @@ RestStatus RestDocumentHandler::insertDocument() {
     }
   }
   if (!opOptions.overwrite) {
-    opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
+    opOptions.overwrite = _request->parsedValue(StaticStrings::Overwrite, false);
   }
 
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) &&

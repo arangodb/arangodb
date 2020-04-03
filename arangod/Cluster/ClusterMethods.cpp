@@ -1273,10 +1273,10 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
            .param(StaticStrings::KeepNullString, (options.keepNull ? "true" : "false"))
            .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
-           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"))
+           .param(StaticStrings::Overwrite, (options.overwrite ? "true" : "false"))
            .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"));
     if (options.overwriteMode != OperationOptions::OverwriteMode::Unknown) {
-      reqOpts.parameters.insert_or_assign(StaticStrings::OverWriteMode, 
+      reqOpts.parameters.insert_or_assign(StaticStrings::OverwriteMode, 
                                           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
 
