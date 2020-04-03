@@ -1,6 +1,9 @@
 v3.7.0-preview.1 (2020-03-27)
 -----------------------------
 
+* Fix a bug in the agency supervision, which could declare an already FAILED
+  dbserver temporarily as GOOD again after an agency leader change.
+
 * Added AQL function `IN_RANGE`.
 
 * Added startup option `--ssl.prefer-http1-in-alpn` to optionally let the server
