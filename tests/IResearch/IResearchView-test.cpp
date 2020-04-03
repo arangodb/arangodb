@@ -29,7 +29,7 @@
 #include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
-#include "Utils/lz4compression.hpp"
+#include "utils/lz4compression.hpp"
 
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
