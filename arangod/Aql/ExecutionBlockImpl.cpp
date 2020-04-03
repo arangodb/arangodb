@@ -547,6 +547,10 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // that the upstream is no block using less than batchSize many rows, but returns HASMORE.
       if (inputRange.upstreamState() == ExecutorState::DONE || call.hasSoftLimit()) {
         blockSize = _executor.expectedNumberOfRowsNew(inputRange, call);
+        if (inputRange.upstreamState() == ExecutorState::HASMORE) {
+          // There might be more from above!
+          blockSize = std::max(call.getLimit(), blockSize);
+        }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // The executor cannot expect to produce more then the limit!
@@ -996,7 +1000,7 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
     }
     // End of input, we are done for now
     // Need to call again
-    return ExecState::DONE;
+    return ExecState::NEXTSUBQUERY;
   }
 }
 
@@ -1135,9 +1139,11 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack&) -> ExecSta
     // we need to forward them
     return ExecState::SHADOWROWS;
   } else {
-    // End of input, we are done for now
-    // Need to call again
-    return ExecState::DONE;
+    // End of input, need to fetch new!
+    // Just start with the next subquery.
+    // If in doubt the next row will be a shadowRow again,
+    // this will be forwarded than.
+    return ExecState::NEXTSUBQUERY;
   }
 }
 
