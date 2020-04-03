@@ -1166,6 +1166,21 @@ arangodb::Result PhysicalCollectionMock::insert(
 
   return arangodb::Result();
 }
+  
+arangodb::Result PhysicalCollectionMock::lookupKey(
+    arangodb::transaction::Methods* trx, arangodb::velocypack::StringRef key,
+    std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t>& result) const {
+  before();
+  TRI_ASSERT(false);
+  return arangodb::Result();
+}
+
+arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(
+    arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {
+  before();
+  TRI_ASSERT(false);
+  return arangodb::LocalDocumentId();
+}
 
 arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(
     arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {

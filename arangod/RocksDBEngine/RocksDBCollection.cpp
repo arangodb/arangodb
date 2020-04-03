@@ -742,6 +742,26 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   }
   return Result{};
 }
+  
+Result RocksDBCollection::lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const {
+  result.first.clear();
+  result.second = 0;
+  
+  // lookup the revision id in the primary index
+  if (!primaryIndex()->lookupRevision(trx, key, result.first, result.second)) {
+    // document not found
+    TRI_ASSERT(!result.first.isSet());
+    TRI_ASSERT(result.second == 0);
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  }
+
+  // document found, but revisionId may not have been present in the primary
+  // index. this can happen for "older" collections
+  TRI_ASSERT(result.first.isSet());
+  TRI_ASSERT(result.second != 0);
+  return Result();
+}
 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
                                              VPackSlice const& key) const {

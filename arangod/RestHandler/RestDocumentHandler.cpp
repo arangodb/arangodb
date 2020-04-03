@@ -175,14 +175,21 @@ RestStatus RestDocumentHandler::insertDocument() {
   using namespace std::literals::string_literals;
   if (mode == "update"s) {
     opOptions.overwrite = true;
-    opOptions.overwriteModeUpdate = true;
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::Update;
     opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
     opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
   } else if (mode == "replace"s) {
     opOptions.overwrite = true;
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  } else if (mode == "ignore"s) {
+    opOptions.overwrite = true;
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::Ignore;
   }
   if (!opOptions.overwrite) {
     opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
+    if (opOptions.overwrite) {
+      opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
+    }
   }
 
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) &&
