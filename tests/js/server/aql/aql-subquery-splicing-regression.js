@@ -122,6 +122,7 @@ function traversalResetRegression2Suite() {
     ////////////////////////////////////////////////////////////////////////////////
     testTraversalResetCrashes: function() {
       const query = `
+	      WITH @@customer, @@owns, @@contains, @@product, @@material
               FOR e IN @@customer
                  FILTER (FOR e1 IN 1..1 ANY e._id @@owns
                    FILTER (FOR e2 IN 1..1 ANY e1._id @@contains
@@ -129,7 +130,9 @@ function traversalResetRegression2Suite() {
                  RETURN {name: e.name, lastname: e.lastname, number: e.number}`;
       const bindVars = { "@customer": customerCollectionName,
 	                 "@owns": ownsEdgeCollectionName,
-	                 "@contains": containsEdgeCollectionName };
+	                 "@contains": containsEdgeCollectionName,
+                         "@product": productCollectionName,
+                         "@material": materialCollectionName };
 
       var actual = db._query(query, bindVars);
       assertEqual(actual.toArray().sort(), expectedResult.sort());
