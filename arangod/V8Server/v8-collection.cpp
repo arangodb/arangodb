@@ -1910,7 +1910,12 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
 
     TRI_GET_GLOBAL_STRING(OverwriteKey);
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
-      options.overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, OverwriteKey).FromMaybe(v8::Local<v8::Value>()));
+      bool overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, OverwriteKey).FromMaybe(v8::Local<v8::Value>()));
+      if (overwrite) {
+        // this is the default mode in case only "overwrite" is set.
+        TRI_ASSERT(!options.isOverwriteModeSet());
+        options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+      }
     }
 
     TRI_GET_GLOBAL_STRING(OverwriteModeKey);
@@ -1919,7 +1924,6 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
       
       auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
       if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
-        options.overwrite = true;
         options.overwriteMode = overwriteMode;
 
         if (overwriteMode == OperationOptions::OverwriteMode::Update) {
@@ -1947,7 +1951,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(ReturnOldKey);
     if (TRI_HasProperty(context, isolate, optionsObject, ReturnOldKey)) {
       options.returnOld = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, ReturnOldKey).FromMaybe(v8::Local<v8::Value>())) &&
-                          options.overwrite;
+                          options.isOverwriteModeUpdateReplace();
     }
     TRI_GET_GLOBAL_STRING(IsRestoreKey);
     if (TRI_HasProperty(context, isolate, optionsObject, IsRestoreKey)) {
@@ -2020,7 +2024,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
       std::make_shared<transaction::V8Context>(collection->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, *collection, AccessMode::Type::WRITE);
 
-  if (!payloadIsArray && !options.overwrite) {
+  if (!payloadIsArray && !options.isOverwriteModeUpdateReplace()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 

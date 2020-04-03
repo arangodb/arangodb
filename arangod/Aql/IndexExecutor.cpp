@@ -53,8 +53,7 @@
 #include <utility>
 
 // Set this to true to activate devel logging
-#define LOG_DEVEL_INDEX_ENABLED false
-#define LOG_DEVEL_IDX LOG_DEVEL_IF(LOG_DEVEL_INDEX_ENABLED)
+#define CRAP_LOG_IDX LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -667,7 +666,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
   _documentProducingFunctionContext.setOutputRow(&output);
 
   AqlCall clientCall = output.getClientCall();
-  LOG_DEVEL_IDX << "IndexExecutor::produceRows " << clientCall;
+  CRAP_LOG_IDX << "IndexExecutor::produceRows " << clientCall;
 
   /*
    * Logic of this executor is as follows:
@@ -677,19 +676,19 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
    */
 
   while (!output.isFull()) {
-    LOG_DEVEL_IDX << "IndexExecutor::produceRows output.numRowsLeft() == "
+    CRAP_LOG_IDX << "IndexExecutor::produceRows output.numRowsLeft() == "
                   << output.numRowsLeft();
     if (!_input.isInitialized()) {
       std::tie(_state, _input) = inputRange.peekDataRow();
-      LOG_DEVEL_IDX
+      CRAP_LOG_IDX
           << "IndexExecutor::produceRows input not initialized, peek next row: " << _state
           << " " << std::boolalpha << _input.isInitialized();
 
       if (_input.isInitialized()) {
-        LOG_DEVEL_IDX << "IndexExecutor::produceRows initIndexes";
+        CRAP_LOG_IDX << "IndexExecutor::produceRows initIndexes";
         initIndexes(_input);
         if (!advanceCursor()) {
-          LOG_DEVEL_IDX << "IndexExecutor::produceRows failed to advanceCursor "
+          CRAP_LOG_IDX << "IndexExecutor::produceRows failed to advanceCursor "
                            "after init";
           std::ignore = inputRange.nextDataRow();
           _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -705,11 +704,11 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
     TRI_ASSERT(_input.isInitialized());
     // Short Loop over the output block here for performance!
     while (!output.isFull()) {
-      LOG_DEVEL_IDX << "IndexExecutor::produceRows::innerLoop hasMore = " << std::boolalpha
+      CRAP_LOG_IDX << "IndexExecutor::produceRows::innerLoop hasMore = " << std::boolalpha
                     << getCursor().hasMore() << " " << output.numRowsLeft();
 
       if (!getCursor().hasMore() && !advanceCursor()) {
-        LOG_DEVEL_IDX << "IndexExecutor::produceRows::innerLoop cursor does "
+        CRAP_LOG_IDX << "IndexExecutor::produceRows::innerLoop cursor does "
                          "not have more and advancing failed";
         std::ignore = inputRange.nextDataRow();
         _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -722,7 +721,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
       bool more = getCursor().readIndex(output);
       TRI_ASSERT(more == getCursor().hasMore());
 
-      LOG_DEVEL_IDX
+      CRAP_LOG_IDX
           << "IndexExecutor::produceRows::innerLoop output.numRowsWritten() == "
           << output.numRowsWritten();
       // NOTE: more => output.isFull() does not hold, if we do uniqness checks.
@@ -739,7 +738,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
 
   AqlCall upstreamCall;
 
-  LOG_DEVEL_IDX << "IndexExecutor::produceRows reporting state " << returnState();
+  CRAP_LOG_IDX << "IndexExecutor::produceRows reporting state " << returnState();
   return {returnState(), stats, upstreamCall};
 }
 
@@ -754,25 +753,25 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange " << clientCall;
+  CRAP_LOG_IDX << "IndexExecutor::skipRowsRange " << clientCall;
 
   IndexStats stats{};
 
   while (clientCall.needSkipMore()) {
-    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipped " << _skipped << " "
+    CRAP_LOG_IDX << "IndexExecutor::skipRowsRange skipped " << _skipped << " "
                   << clientCall.getOffset();
     // get an input row first, if necessary
     if (!_input.isInitialized()) {
       std::tie(_state, _input) = inputRange.peekDataRow();
-      LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange input not initialized, "
+      CRAP_LOG_IDX << "IndexExecutor::skipRowsRange input not initialized, "
                        "peek next row: "
                     << _state << " " << std::boolalpha << _input.isInitialized();
 
       if (_input.isInitialized()) {
-        LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange initIndexes";
+        CRAP_LOG_IDX << "IndexExecutor::skipRowsRange initIndexes";
         initIndexes(_input);
         if (!advanceCursor()) {
-          LOG_DEVEL_IDX
+          CRAP_LOG_IDX
               << "IndexExecutor::skipRowsRange failed to advanceCursor "
                  "after init";
           std::ignore = inputRange.nextDataRow();
@@ -787,7 +786,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     }
 
     if (!getCursor().hasMore() && !advanceCursor()) {
-      LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange cursor does not "
+      CRAP_LOG_IDX << "IndexExecutor::skipRowsRange cursor does not "
                        "have more and advancing failed";
       std::ignore = inputRange.nextDataRow();
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -800,9 +799,9 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
       toSkip = ExecutionBlock::SkipAllSize();
     }
     TRI_ASSERT(toSkip > 0);
-    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipIndex(" << toSkip << ")";
+    CRAP_LOG_IDX << "IndexExecutor::skipRowsRange skipIndex(" << toSkip << ")";
     size_t skippedNow = getCursor().skipIndex(toSkip);
-    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipIndex(...) == " << skippedNow;
+    CRAP_LOG_IDX << "IndexExecutor::skipRowsRange skipIndex(...) == " << skippedNow;
 
     stats.incrScanned(skippedNow);
     _skipped += skippedNow;
@@ -814,7 +813,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
 
   AqlCall upstreamCall;
 
-  LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange returning " << returnState()
+  CRAP_LOG_IDX << "IndexExecutor::skipRowsRange returning " << returnState()
                 << " " << skipped << " " << upstreamCall;
   return {returnState(), stats, skipped, upstreamCall};
 }

@@ -197,14 +197,13 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
   // in.ignoreErrors;
   out.waitForSync = in.waitForSync;
   out.validate = in.validate;
-  out.keepNull = !in.nullMeansRemove;
+  out.keepNull = in.keepNull;
   out.mergeObjects = in.mergeObjects;
   // in.ignoreDocumentNotFound;
   // in.readCompleteInput;
-  out.isRestore = in.useIsRestore;
+  out.isRestore = in.isRestore;
   // in.consultAqlWriteFilter;
   // in.exclusive;
-  out.overwrite = in.overwrite;
   out.overwriteMode = in.overwriteMode;
   out.ignoreRevs = in.ignoreRevs;
 

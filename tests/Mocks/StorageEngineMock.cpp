@@ -1164,11 +1164,12 @@ arangodb::Result PhysicalCollectionMock::insert(
   return arangodb::Result();
 }
 
-arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(
-    arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {
+arangodb::Result PhysicalCollectionMock::lookupKey(
+    arangodb::transaction::Methods*, arangodb::velocypack::StringRef,
+    std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t>&) const {
   before();
   TRI_ASSERT(false);
-  return arangodb::LocalDocumentId();
+  return arangodb::Result();
 }
 
 size_t PhysicalCollectionMock::memory() const {

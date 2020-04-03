@@ -36,42 +36,25 @@ class Slice;
 namespace aql {
 
 /// @brief ModificationOptions
-struct ModificationOptions {
+struct ModificationOptions : OperationOptions {
   /// @brief constructor, using default values
   explicit ModificationOptions(arangodb::velocypack::Slice const&);
 
-  ModificationOptions()
-      : overwriteMode(OperationOptions::OverwriteMode::Replace),
+  ModificationOptions() 
+      : OperationOptions(),
         ignoreErrors(false),
-        waitForSync(false),
-        validate(true),
-        nullMeansRemove(false),
-        mergeObjects(true),
         ignoreDocumentNotFound(false),
         readCompleteInput(true),
-        useIsRestore(false),
         consultAqlWriteFilter(false),
-        exclusive(false),
-        overwrite(false),
-        ignoreRevs(true) {}
+        exclusive(false) {}
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
-  OperationOptions::OverwriteMode overwriteMode;
-
   bool ignoreErrors;
-  bool waitForSync;
-  bool validate;
-  bool nullMeansRemove;
-  bool mergeObjects;
   bool ignoreDocumentNotFound;
   bool readCompleteInput;
-  bool useIsRestore;
   bool consultAqlWriteFilter;
   bool exclusive;
-  bool overwrite;
-  bool overwriteModeUpdate;
-  bool ignoreRevs;
 };
 
 }  // namespace aql

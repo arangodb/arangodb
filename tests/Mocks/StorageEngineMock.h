@@ -89,8 +89,9 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                   arangodb::ManagedDocumentResult& result,
                                   arangodb::OperationOptions& options) override;
 
-  virtual arangodb::LocalDocumentId lookupKey(arangodb::transaction::Methods*,
-                                              arangodb::velocypack::Slice const&) const override;
+  virtual arangodb::Result lookupKey(arangodb::transaction::Methods*,
+                                     arangodb::velocypack::StringRef,
+                                     std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t>&) const override;
   virtual size_t memory() const override;
   virtual uint64_t numberDocuments(arangodb::transaction::Methods* trx) const override;
   virtual void open(bool ignoreErrors) override;

@@ -40,8 +40,7 @@
 #include <utility>
 
 // Set this to true to activate devel logging
-#define LOG_DEVEL_SORTED_COLLECT_ENABLED false
-#define LOG_DEVEL_SC LOG_DEVEL_IF(LOG_DEVEL_SORTED_COLLECT_ENABLED)
+#define CRAP_LOG_SC LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -330,12 +329,12 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   while (!output.isFull()) {
     auto [state, input] = inputRange.peekDataRow();
 
-    LOG_DEVEL_SC << "SortedCollectExecutor::produceRows " << state << " "
+    CRAP_LOG_SC << "SortedCollectExecutor::produceRows " << state << " "
                  << input.isInitialized();
 
     if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
       // we have never been called with data
-      LOG_DEVEL_SC << "never called with data";
+      CRAP_LOG_SC << "never called with data";
       if (_infos.getGroupRegisters().empty()) {
         // by definition we need to emit one collect row
         _currentGroup.writeToOutput(output, InputAqlItemRow{CreateInvalidInputRowHint{}});
@@ -347,7 +346,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     // either state != DONE or we have an input row
     TRI_ASSERT(state == ExecutorState::HASMORE || state == ExecutorState::DONE);
     if (!input.isInitialized() && state != ExecutorState::DONE) {
-      LOG_DEVEL_SC << "need more input rows";
+      CRAP_LOG_SC << "need more input rows";
       break;
     }
 
@@ -364,18 +363,18 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       // if we are in the same group, we need to add lines to the current group
       if (_currentGroup.isSameGroup(input)) {
-        LOG_DEVEL_SC << "input is same group";
+        CRAP_LOG_SC << "input is same group";
         _currentGroup.addLine(input);
 
       } else if (_currentGroup.isValid()) {
-        LOG_DEVEL_SC << "input is new group, writing old group";
+        CRAP_LOG_SC << "input is new group, writing old group";
         // Write the current group.
         // Start a new group from input
         rowsProduces += 1;
         _currentGroup.writeToOutput(output, input);
 
         if (output.isFull()) {
-          LOG_DEVEL_SC << "now output is full, exit early";
+          CRAP_LOG_SC << "now output is full, exit early";
           pendingGroup = true;
           _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
           break;
@@ -383,7 +382,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         _currentGroup.reset(input);  // reset and recreate new group
 
       } else {
-        LOG_DEVEL_SC << "generating new group";
+        CRAP_LOG_SC << "generating new group";
         // old group was not valid, do not write it
         _currentGroup.reset(input);  // reset and recreate new group
       }
@@ -407,7 +406,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
   auto newState = pendingGroup ? ExecutorState::HASMORE : inputRange.upstreamState();
 
-  LOG_DEVEL_SC << "reporting state: " << newState;
+  CRAP_LOG_SC << "reporting state: " << newState;
   return {newState, Stats{}, AqlCall{}};
 }
 
@@ -419,13 +418,13 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
 
   TRI_ASSERT(clientCall.needSkipMore());
   while (clientCall.needSkipMore()) {
-    LOG_DEVEL_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
-    LOG_DEVEL_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
+    CRAP_LOG_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
+    CRAP_LOG_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
 
     {
       auto [state, input] = inputRange.peekDataRow();
 
-      LOG_DEVEL_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
+      CRAP_LOG_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
                    << std::boolalpha << input.isInitialized();
 
       if (input.isInitialized()) {
@@ -434,40 +433,40 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
 
         // if we are in the same group, we can skip this line
         if (_currentGroup.isSameGroup(input)) {
-          LOG_DEVEL_SC << "input is same group";
+          CRAP_LOG_SC << "input is same group";
           std::ignore = inputRange.nextDataRow();
           /* do nothing */
         } else {
           if (_currentGroup.isValid()) {
-            LOG_DEVEL_SC << "input is new group, skipping current group";
+            CRAP_LOG_SC << "input is new group, skipping current group";
             // The current group is completed, skip it and create a new one
             clientCall.didSkip(1);
             _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
             continue;
           }
 
-          LOG_DEVEL_SC << "group is invalid, creating new group";
+          CRAP_LOG_SC << "group is invalid, creating new group";
           _currentGroup.reset(input);
           std::ignore = inputRange.nextDataRow();
         }
       }
 
       if (!clientCall.needSkipMore()) {
-        LOG_DEVEL_SC << "stop skipping early, there could be a pending group";
+        CRAP_LOG_SC << "stop skipping early, there could be a pending group";
         break;
       }
 
       if (state == ExecutorState::DONE) {
         if (!_haveSeenData) {
           // we have never been called with data
-          LOG_DEVEL_SC << "never called with data";
+          CRAP_LOG_SC << "never called with data";
           if (_infos.getGroupRegisters().empty()) {
             // by definition we need to emit one collect row
             clientCall.didSkip(1);
           }
         } else {
           if (_currentGroup.isValid()) {
-            LOG_DEVEL_SC << "skipping final group";
+            CRAP_LOG_SC << "skipping final group";
             clientCall.didSkip(1);
             _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
           }
@@ -475,14 +474,14 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
         break;
       } else if (!input.isInitialized()) {
         TRI_ASSERT(state == ExecutorState::HASMORE);
-        LOG_DEVEL_SC << "waiting for more data to skip";
+        CRAP_LOG_SC << "waiting for more data to skip";
         break;
       }
     }
   }
 
-  LOG_DEVEL_SC << " skipped rows: " << clientCall.getSkipCount();
-  LOG_DEVEL_SC << "reporting state: " << inputRange.upstreamState();
+  CRAP_LOG_SC << " skipped rows: " << clientCall.getSkipCount();
+  CRAP_LOG_SC << "reporting state: " << inputRange.upstreamState();
 
   return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(), AqlCall{}};
 }

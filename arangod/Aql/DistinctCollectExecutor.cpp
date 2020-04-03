@@ -35,9 +35,7 @@
 
 #include <utility>
 
-#define LOG_DEVEL_DISTINCT_COLLECT_ENABLED false
-#define LOG_DEVEL_DC \
-  LOG_DEVEL_IF(LOG_DEVEL_DISTINCT_COLLECT_ENABLED) << __FUNCTION__ << " "
+#define CRAP_LOG_DC LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -107,20 +105,20 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutorState state = ExecutorState::HASMORE;
 
-  LOG_DEVEL_DC << output.getClientCall();
+  CRAP_LOG_DC << output.getClientCall();
 
   AqlValue groupValue;
 
   while (inputRange.hasDataRow()) {
-    LOG_DEVEL_DC << "output.isFull() = " << std::boolalpha << output.isFull();
+    CRAP_LOG_DC << "output.isFull() = " << std::boolalpha << output.isFull();
 
     if (output.isFull()) {
-      LOG_DEVEL_DC << "output is full";
+      CRAP_LOG_DC << "output is full";
       break;
     }
 
     std::tie(state, input) = inputRange.nextDataRow();
-    LOG_DEVEL_DC << "inputRange.nextDataRow() = " << state;
+    CRAP_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
     // for hashing simply re-use the aggregate registers, without cloning
@@ -137,7 +135,7 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  LOG_DEVEL_DC << "returning state " << state;
+  CRAP_LOG_DC << "returning state " << state;
   return {inputRange.upstreamState(), {}, {}};
 }
 
@@ -153,17 +151,17 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   AqlValue groupValue;
   size_t skipped = 0;
 
-  LOG_DEVEL_DC << call;
+  CRAP_LOG_DC << call;
 
   while (inputRange.hasDataRow()) {
-    LOG_DEVEL_DC << "call.needSkipMore() = " << std::boolalpha << call.needSkipMore();
+    CRAP_LOG_DC << "call.needSkipMore() = " << std::boolalpha << call.needSkipMore();
 
     if (!call.needSkipMore()) {
       return {ExecutorState::HASMORE, {}, skipped, {}};
     }
 
     std::tie(state, input) = inputRange.nextDataRow();
-    LOG_DEVEL_DC << "inputRange.nextDataRow() = " << state;
+    CRAP_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
     // for hashing simply re-use the aggregate registers, without cloning

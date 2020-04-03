@@ -750,26 +750,28 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
           options.waitForSync = value->isTrue();
         } else if (name == StaticStrings::SkipDocumentValidation) {
           options.validate = ! value->isTrue();
-        } else if (name == "ignoreErrors") {
-          options.ignoreErrors = value->isTrue();
         } else if (name == StaticStrings::KeepNullString) {
-          // nullMeansRemove is the opposite of keepNull
-          options.nullMeansRemove = value->isFalse();
+          options.keepNull = value->isTrue();
         } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
-        } else if (name == "exclusive") {
-          options.exclusive = value->isTrue();
         } else if (name == StaticStrings::Overwrite && value->isTrue()) {
-          options.overwrite = true;
+          // legacy: overwrite is set, superseded by overwriteMode
+          // default behavior if only "overwrite" is specified
+          if (!options.isOverwriteModeSet()) {
+            options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+          }
         } else if (name == StaticStrings::OverwriteMode && value->isStringValue()) {
           auto overwriteMode = OperationOptions::determineOverwriteMode(value->getStringRef());
 
           if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
-            options.overwrite = true;
             options.overwriteMode = overwriteMode;
           }
         } else if (name == StaticStrings::IgnoreRevsString) {
           options.ignoreRevs = value->isTrue();
+        } else if (name == "exclusive") {
+          options.exclusive = value->isTrue();
+        } else if (name == "ignoreErrors") {
+          options.ignoreErrors = value->isTrue();
         }
       }
     }
