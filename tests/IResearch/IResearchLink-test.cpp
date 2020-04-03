@@ -65,7 +65,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "IResearchTestCompressor.h"
-#include "Mocks\IResearchLinkMock.h"
+#include "Mocks/IResearchLinkMock.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
