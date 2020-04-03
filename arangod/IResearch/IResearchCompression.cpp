@@ -37,11 +37,11 @@ irs::string_ref columnCompressionToString(irs::compression::type_id const* type)
   }
   auto const& mangled_name = type->name();
   TRI_ASSERT(!mangled_name.empty());
-  auto demandled_start = mangled_name.end() - 1;
-  while (demandled_start != mangled_name.begin() && *(demandled_start-1) != ':') {
-    demandled_start--;
+  auto demangled_start = mangled_name.end() - 1;
+  while (demangled_start != mangled_name.begin() && *(demangled_start-1) != ':') {
+    demangled_start--;
   }
-  return irs::string_ref(demandled_start, std::distance(demandled_start, mangled_name.end()));
+  return irs::string_ref(demangled_start, std::distance(demangled_start, mangled_name.end()));
 }
 
 irs::compression::type_id const*  columnCompressionFromString(irs::string_ref const& c) {
