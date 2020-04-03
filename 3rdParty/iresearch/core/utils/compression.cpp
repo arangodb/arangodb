@@ -172,7 +172,7 @@ void init() {
 #ifndef IRESEARCH_DLL
   lz4::init();
   delta::init();
-  raw::init();
+  none::init();
 #endif
 }
 
@@ -192,16 +192,16 @@ bool visit(const std::function<bool(const string_ref&)>& visitor) {
 // --SECTION--                                                raw implementation
 // -----------------------------------------------------------------------------
 
-/*static*/ void raw::init() {
+/*static*/ void none::init() {
 #ifndef IRESEARCH_DLL
   // match registration below
-  REGISTER_COMPRESSION(raw, &raw::compressor, &raw::decompressor);
+  REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 #endif
 }
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::raw);
+DEFINE_COMPRESSION_TYPE(iresearch::compression::none);
 
-REGISTER_COMPRESSION(raw, &raw::compressor, &raw::decompressor);
+REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 
 NS_END // compression
 NS_END

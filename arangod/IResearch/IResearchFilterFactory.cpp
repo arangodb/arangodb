@@ -2742,7 +2742,7 @@ arangodb::Result fromFuncNgramMatch(
     kludge::mangleStringField(name, analyzerPool);
 
     auto& ngramFilter = filter->add<irs::by_ngram_similarity>();
-    ngramFilter.field(std::move(name)).threshold(threshold).boost(filterCtx.boost);;
+    ngramFilter.field(std::move(name)).threshold((float_t)threshold).boost(filterCtx.boost);;
 
     analyzer->reset(matchValue);
     irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
