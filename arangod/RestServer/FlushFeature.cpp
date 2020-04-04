@@ -21,14 +21,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rocksdb/utilities/transaction_db.h>
-
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/RocksDBUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/encoding.h"
@@ -38,10 +35,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBFormat.h"
-#include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/FlushThread.h"
 
