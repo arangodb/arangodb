@@ -3607,6 +3607,7 @@ void arangodb::aql::createScatterGatherSnippet(
   ExecutionNode* remoteNode =
       new RemoteNode(&plan, plan.nextId(), vocbase, "", "", "");
   plan.registerNode(remoteNode);
+  TRI_ASSERT(scatterNode);
   remoteNode->addDependency(scatterNode);
 
   // re-link with the remote node
@@ -3688,7 +3689,6 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
   for (auto& node : nodes) {
     // found a node we need to replace in the plan
-    bool scatterOnly = false;
 
     // intentional copy of the parents and dependencies, as we will be modifying
     // them later on
@@ -3701,62 +3701,15 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
         deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
       continue;
     }
-    
-    auto const nodeType = node->getType();
 
     if (plan->shouldExcludeFromScatterGather(node)) {
-      // this must be a node that is supposed to be executed on a DB server
-      TRI_ASSERT(nodeType == ExecutionNode::ENUMERATE_COLLECTION || nodeType == ExecutionNode::INDEX ||
-                 nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::UPDATE ||
-                 nodeType == ExecutionNode::REPLACE || nodeType == ExecutionNode::REMOVE ||
-                 nodeType == ExecutionNode::UPSERT);
-
-      // look for other nodes north of us, to check if any of them require running
-      // on a coordinator
-      bool eligible = true;
-      auto current = deps[0];
-      while (current != nullptr) {
-        if (current->getType() == ExecutionNode::ENUMERATE_COLLECTION || 
-            current->getType() == ExecutionNode::INDEX ||
-            current->getType() == ExecutionNode::INSERT || 
-            current->getType() == ExecutionNode::UPDATE ||
-            current->getType() == ExecutionNode::REPLACE || 
-            current->getType() == ExecutionNode::REMOVE ||
-            current->getType() == ExecutionNode::UPSERT) {
-          // these nodes are definitely run on a DB server too.
-          // and we did not see anything in between that needs to run on a coordinator.
-          TRI_ASSERT(eligible);
-          break;
-        }
-        
-        if (current->getType() == ExecutionNode::TRAVERSAL || 
-            current->getType() == ExecutionNode::SHORTEST_PATH ||
-            current->getType() == ExecutionNode::K_SHORTEST_PATHS || 
-            current->getType() == ExecutionNode::REMOTESINGLE) {
-          // these nodes must be executed on coordinators
-          eligible = false;
-          break;
-        } else if (current->getType() == ExecutionNode::CALCULATION) {
-          auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
-          auto expr = calculationNode->expression();
-          if (!expr->canRunOnDBServer()) {
-            // a calculation that must be run on a coordinator
-            eligible = false;
-            break;
-          }
-        }
-        current = current->getFirstDependency();
-      }
-
-      if (eligible) {
-        // no need to insert scatter..gather at all! 
-        continue;
-      } 
-      // we need to insert at least the scatter part here.
-      scatterOnly = true;
+      continue;
     }
 
     auto const isRootNode = plan->isRoot(node);
+    plan->unlinkNode(node, true);
+
+    auto const nodeType = node->getType();
 
     // extract database and collection from plan node
     TRI_vocbase_t* vocbase = nullptr;
@@ -3810,29 +3763,10 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
     TRI_ASSERT(collection != nullptr);
 
-    if (scatterOnly) {
-      ExecutionNode* remoteNode =
-        new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
-      plan->registerNode(remoteNode);
-      plan->insertBefore(node, remoteNode);
-
-      auto* scatterNode =
-        new ScatterNode(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD);
-      plan->registerNode(scatterNode);
-      plan->insertBefore(remoteNode, scatterNode);
-/*
-      deps[0]->removeDependencies();
-      scatterNode->addDependency(deps[0]);
-*/
-      wasModified = true;
-      continue;
-    }
-    
-    plan->unlinkNode(node, true);
-
     size_t numberOfShards = collection->numberOfShards();
     createScatterGatherSnippet(*plan, vocbase, node, isRootNode, deps, parents,
                                elements, numberOfShards, subqueries, collection);
+
     wasModified = true;
   }
 
