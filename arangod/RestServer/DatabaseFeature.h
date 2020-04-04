@@ -115,8 +115,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   Result createDatabase(arangodb::CreateDatabaseInfo&& , TRI_vocbase_t*& result);
 
-  int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
-  int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
+  int dropDatabase(std::string const& name, bool removeAppsDirectory);
+  int dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
@@ -136,7 +136,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
-  uint64_t maximalJournalSize() const { return _maximalJournalSize; }
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
@@ -178,7 +177,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
 
-  uint64_t _maximalJournalSize;
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;

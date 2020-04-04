@@ -1,12 +1,18 @@
 devel
 -----
-* Added JACCARD AQL function
+
+* Obsoleted startup option `--database.maximal-journal-size`. This option was
+  useful for the MMFiles storage engine only, but did not have an effect with
+  the RocksDB engine. Using this startup option is not an error, but has
+  no effect anymore.
+
+* Added `JACCARD` AQL function.
 
 * storedValues property is removed from arngosearch link properties output.
 
-* Added primarySortCompression property to ArangoSearch Views
+* Added primarySortCompression property to ArangoSearch Views.
 
-* Added compression property to ArangoSearch View storedValues
+* Added compression property to ArangoSearch View storedValues.
 
 * Removed deprecated MMFiles storage engine and also the `arango-dfdb`
   (datafile debugger) executable that could be used to validate MMFiles

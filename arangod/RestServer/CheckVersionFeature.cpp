@@ -141,16 +141,7 @@ void CheckVersionFeature::checkVersion() {
   // can do this without a lock as this is the startup
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
-  bool ignoreDatafileErrors = false;
-  {
-    VPackBuilder options = server().options([](std::string const& name) {
-      return (name.find("database.ignore-datafile-errors") != std::string::npos);
-    });
-    VPackSlice s = options.slice();
-    if (s.get("database.ignore-datafile-errors").isBoolean()) {
-      ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
-    }
-  }
+  bool ignoreDatafileErrors = databaseFeature.ignoreDatafileErrors();
 
   // iterate over all databases
   for (auto& name : databaseFeature.getDatabaseNames()) {

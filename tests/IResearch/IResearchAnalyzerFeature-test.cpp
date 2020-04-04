@@ -856,7 +856,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
   void TearDown() override {
     // Not allowed to assert here
     if (server.server().hasFeature<arangodb::DatabaseFeature>()) {
-      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(dbName, true, true);
+      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(dbName, true);
       _vocbase = nullptr;
     }
     analyzerFeature.unprepare();
@@ -1055,7 +1055,7 @@ class IResearchAnalyzerFeatureCoordinatorTest
   void TearDown() override {
     // Not allowed to assert here
     if (server.server().hasFeature<arangodb::DatabaseFeature>()) {
-      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(_dbName, true, true);
+      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(_dbName, true);
       _vocbase = nullptr;
     }
   }

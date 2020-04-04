@@ -59,11 +59,9 @@ class PhysicalCollection {
 
   // path to logical collection
   virtual std::string const& path() const = 0;
-  virtual void setPath(std::string const&) = 0;  // should be set during collection creation
   // creation happens atm in engine->createCollection
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
                                             bool doSync) = 0;
-  virtual arangodb::Result persistProperties() = 0;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
@@ -78,9 +76,6 @@ class PhysicalCollection {
 
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
-
-  /// @brief opens an existing collection
-  virtual void open(bool ignoreErrors) = 0;
 
   void drop();
 

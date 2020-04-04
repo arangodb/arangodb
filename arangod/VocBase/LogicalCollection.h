@@ -149,8 +149,6 @@ class LogicalCollection : public LogicalDataSource {
   TRI_voc_rid_t minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
-  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
-  bool isClusterGlobal() const { return _isAStub; }
 
   bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
 
@@ -244,9 +242,6 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief return the figures for a collection
   virtual futures::Future<OperationResult> figures() const;
-
-  /// @brief opens an existing collection
-  void open(bool ignoreErrors);
 
   /// @brief closes an open collection
   int close();
@@ -376,14 +371,14 @@ class LogicalCollection : public LogicalDataSource {
 
   bool const _usesRevisionsAsDocumentIds;
 
-  TRI_voc_rid_t const _minRevision;
-
   // SECTION: Properties
   bool _waitForSync;
 
   bool const _allowUserKeys;
 
   bool _syncByRevision;
+  
+  TRI_voc_rid_t const _minRevision;
 
   std::string _smartJoinAttribute;
 

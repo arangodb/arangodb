@@ -405,27 +405,7 @@ Result LogicalView::rename(std::string&& newName) {
     return Result();  // NOOP
   }
 
-  try {
-    auto* engine = EngineSelectorFeature::ENGINE;
-
-    if (!engine) {
-      return Result(
-          TRI_ERROR_INTERNAL,
-          std::string(
-              "failed to find a storage engine while destructing view '") +
-              view.name() + "' in database '" + view.vocbase().name() + "'");
-    }
-
-    engine->destroyView(view.vocbase(), view);
-
-    return Result();
-  } catch (basics::Exception const& e) {
-    return Result(e.code());  // noexcept constructor
-  } catch (...) {
-    // NOOP
-  }
-
-  return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
+  return Result();
 }
 
 /*static*/ Result LogicalViewHelperStorageEngine::drop(LogicalView const& view) noexcept {

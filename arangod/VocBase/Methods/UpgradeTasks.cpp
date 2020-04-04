@@ -283,7 +283,6 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
         options.openObject();
         options.add("isSystem", VPackSlice::trueSlice());
         options.add("waitForSync", VPackSlice::falseSlice());
-        options.add("journalSize", VPackValue(1024 * 1024));
         options.close();
 
         systemCollectionsToCreate.emplace_back(
