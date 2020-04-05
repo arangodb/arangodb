@@ -272,6 +272,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief compact-data operation
   Result compact() override;
+  
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

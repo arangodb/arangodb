@@ -418,6 +418,11 @@ Result ClusterCollection::truncate(transaction::Methods& trx, OperationOptions& 
 Result ClusterCollection::compact() {
   return {};
 }
+  
+Result ClusterCollection::lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
 
 LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,
                                              VPackSlice const& key) const {

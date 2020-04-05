@@ -278,6 +278,9 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief compact-data operation
   Result compact();
+  
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const;
 
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,

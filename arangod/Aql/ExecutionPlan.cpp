@@ -731,7 +731,6 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node) {
   ModificationOptions options;
 
-
   // parse the modification options we got
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -759,16 +758,23 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
         } else if (name == "overwrite") {
-          if(value->isTrue()) {
+          if (value->isTrue()) {
             options.overwrite = true;
+            if (options.overwriteMode == OperationOptions::OverwriteMode::Unknown) {
+              options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+            }
           }
         } else if (name == "overwriteMode" && value->isStringValue()) {
           auto ref = value->getStringRef();
-          if(ref == "update") {
+          if (ref == "update") {
             options.overwrite = true;
-            options.overwriteModeUpdate = true;
-          } else if(ref == "replace") {
+            options.overwriteMode = OperationOptions::OverwriteMode::Update;
+          } else if (ref == "replace") {
             options.overwrite = true;
+            options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+          } else if (ref == "ignore") {
+            options.overwrite = true;
+            options.overwriteMode = OperationOptions::OverwriteMode::Ignore;
           }
         } else if (name == "ignoreRevs") {
           options.ignoreRevs = value->isTrue();
