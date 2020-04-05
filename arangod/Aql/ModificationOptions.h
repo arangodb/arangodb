@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_MODIFICATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Utils/OperationOptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -38,7 +39,8 @@ struct ModificationOptions {
   explicit ModificationOptions(arangodb::velocypack::Slice const&);
 
   ModificationOptions()
-      : ignoreErrors(false),
+      : overwriteMode(OperationOptions::OverwriteMode::Replace),
+        ignoreErrors(false),
         waitForSync(false),
         validate(true),
         nullMeansRemove(false),
@@ -49,11 +51,11 @@ struct ModificationOptions {
         consultAqlWriteFilter(false),
         exclusive(false),
         overwrite(false),
-        overwriteModeUpdate(false),
         ignoreRevs(true) {}
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
+  OperationOptions::OverwriteMode overwriteMode;
   bool ignoreErrors;
   bool waitForSync;
   bool validate;
@@ -65,7 +67,6 @@ struct ModificationOptions {
   bool consultAqlWriteFilter;
   bool exclusive;
   bool overwrite;
-  bool overwriteModeUpdate;
   bool ignoreRevs;
 };
 

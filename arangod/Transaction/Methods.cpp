@@ -1607,23 +1607,45 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     TRI_ASSERT(!(options.overwrite && needsLock));
 
     TRI_ASSERT(needsLock == !isLocked(collection.get(), AccessMode::Type::WRITE));
+        
+    if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
+      VPackSlice key = value.get(StaticStrings::KeyString);
+      if (key.isString()) {
+        std::pair<LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        if (collection->lookupKey(this, key.stringRef(), lookupResult).ok()) {
+          TRI_ASSERT(lookupResult.first.isSet());
+          TRI_ASSERT(lookupResult.second != 0);
+          TRI_voc_rid_t oldRevisionId = lookupResult.second;
+        
+          buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(), oldRevisionId,
+                                0, nullptr, nullptr);
+          return Result();
+        }
+      }
+    }
+      
     Result res = collection->insert(this, value, docResult, options, needsLock,
                                     &keyLockInfo, updateFollowers);
 
     bool didReplace = false;
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+      TRI_ASSERT(options.overwriteMode != OperationOptions::OverwriteMode::Unknown);
+
       // RepSert Case - unique_constraint violated ->  try replace
       // If we're overwriting, we already have a lock. Therefore we also don't
       // need to get the followers under the lock.
       TRI_ASSERT(!needsLock);
       TRI_ASSERT(!needsToGetFollowersUnderLock);
       TRI_ASSERT(updateFollowers == nullptr);
-      if (options.overwriteModeUpdate) {
+      if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
         res = collection->update(this, value, docResult, options,
                                  /*lock*/ false, prevDocResult);
-      } else {
+      } else if (options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
         res = collection->replace(this, value, docResult, options,
                                   /*lock*/ false, prevDocResult);
+      } else {
+        TRI_ASSERT(options.overwriteMode == OperationOptions::OverwriteMode::Ignore);
+        return Result();
       }
       TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
       didReplace = true;
@@ -3172,9 +3194,10 @@ Future<Result> Methods::replicateOperations(
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
       reqOpts.param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
-      if(options.overwrite) {
-        reqOpts.param(StaticStrings::OverWriteMode, (options.overwriteModeUpdate ? "update" : "replace"));
-        if(options.overwriteModeUpdate) {
+      if (options.overwrite) {
+        reqOpts.param(StaticStrings::OverWriteMode, OperationOptions::stringifyOverwriteMode(options.overwriteMode));
+        if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+          // extra parameters only require for update
           reqOpts.param(StaticStrings::KeepNullString, options.keepNull ? "true" : "false");
           reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects ? "true" : "false");
         }

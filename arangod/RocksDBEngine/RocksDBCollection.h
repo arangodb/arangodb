@@ -93,6 +93,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   ///////////////////////////////////
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
+  
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
 

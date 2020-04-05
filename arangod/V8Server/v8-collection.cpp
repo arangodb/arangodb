@@ -1910,14 +1910,15 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(OverwriteKey);
     if (!options.overwrite && TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
       options.overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, OverwriteKey).FromMaybe(v8::Local<v8::Value>()));
+      options.overwriteMode = OperationOptions::OverwriteMode::Replace;
     }
 
     TRI_GET_GLOBAL_STRING(OverwriteModeKey);
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
       auto mode = TRI_ObjectToString(isolate, optionsObject->Get(context, OverwriteModeKey).FromMaybe(v8::Local<v8::Value>()));
       if (mode == "update" ) {
-        options.overwriteModeUpdate = true;
         options.overwrite = true;
+        options.overwriteMode = OperationOptions::OverwriteMode::Update;
 
         TRI_GET_GLOBAL_STRING(KeepNullKey);
         if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
@@ -1930,6 +1931,10 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
         }
       } else if (mode == "replace") {
         options.overwrite = true;
+        options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+      } else if (mode == "ignore") {
+        options.overwrite = true;
+        options.overwriteMode = OperationOptions::OverwriteMode::Ignore;
       }
     }
 
