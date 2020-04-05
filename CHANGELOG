@@ -1,3 +1,45 @@
+v3.7.0-preview.2 (XXXX-XX-XX)
+-----------------------------
+
+* Fix a bug in the agency supervision, which could declare an already FAILED
+  dbserver temporarily as GOOD again after an agency leader change.
+
+* Added overwrite mode "ignore" for document inserts. This mode allows ignoring
+  primary key conflicts on insert when the target document already exists.
+
+  The following overwrite modes now exist:
+
+  - "ignore": if a document with the specified `_key` value already exists,
+    nothing will be done, and no write operation will be carried out. The
+    insert operation will return success in this case. This mode does not
+    support returning the old or new document versions using the `returnOld`
+    and `returnNew` attributes.
+  - "replace": if a document with the specified `_key` value already exists,
+    it will be overwritten with the specified document value. This mode will
+    also be used when no overwrite mode is specified but the `overwrite`
+    flag is set to `true`.
+  - "update": if a document with the specified `_key` value already exists,
+    it will be patched (partially updated) with the specified document value.
+
+  The overwrite mode "ignore" can also be used from AQL INSERT operations by
+  specifying it in the INSERT's `OPTIONS`, e.g.
+
+  INSERT { _key: ..., .... } INTO collection OPTIONS { overwriteMode: "ignore" }
+
+  Again, when the overwrite mode "ignore" is used from AQL, it does not support
+  returning the old or new document versions. Using "RETURN OLD" in an INSERT
+  operation that uses the "ignore" overwrite mode will trigger a parse error, as
+  there will be no old version returned, and "RETURN NEW" will only return the
+  document in case it was inserted. In case the document already existed,
+  "RETURN NEW" will return "null".
+
+  The main use case of inserting documents with overwrite mode "ignore" is to
+  make sure that certain documents exist in the cheapest possible way.
+  In case the target document already exists, the "ignore" mode is most
+  efficient, as it will not retrieve the existing document from storage and not
+  write any updates to it.
+
+
 v3.7.0-preview.1 (2020-03-27)
 -----------------------------
 

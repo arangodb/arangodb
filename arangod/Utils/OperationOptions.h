@@ -30,9 +30,41 @@
 namespace arangodb {
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
+  enum class OverwriteMode {
+    Unknown,
+    Update,
+    Replace,
+    Ignore
+  };
+
+  static char const* stringifyOverwriteMode(OperationOptions::OverwriteMode mode) {
+    switch (mode) {
+      case OverwriteMode::Unknown: return "unknown";
+      case OverwriteMode::Update: return "update";
+      case OverwriteMode::Replace: return "replace";
+      case OverwriteMode::Ignore: return "ignore";
+    }
+    TRI_ASSERT(false);
+    return "undefined";
+  }
+
+  static OverwriteMode determineOverwriteMode(velocypack::StringRef value) {
+    if (value == "ignore") {
+      return OverwriteMode::Ignore;
+    }
+    if (value == "update") {
+      return OverwriteMode::Update;
+    }
+    if (value == "replace") {
+      return OverwriteMode::Replace;
+    }
+    return OverwriteMode::Unknown;
+  }
+  
   OperationOptions()
       : recoveryData(nullptr),
         indexOperationMode(Index::OperationMode::normal),
+        overwriteMode(OverwriteMode::Unknown),
         waitForSync(false),
         validate(true),
         keepNull(true),
@@ -43,9 +75,7 @@ struct OperationOptions {
         returnNew(false),
         isRestore(false),
         overwrite(false),
-        ignoreUniqueConstraints(false),
-        overwriteModeUpdate(false)
-        {}
+        ignoreUniqueConstraints(false) {}
 
 // The following code does not work with VisualStudi 2019's `cl`
 // Lets keep it for debugging on linux.
@@ -65,7 +95,7 @@ struct OperationOptions {
        << ", returnNew : "  << ops.returnNew
        << ", isRestore : " << ops.isRestore
        << ", overwrite : " << ops.overwrite
-       << ", overwriteModeUpdate : " << ops.overwriteModeUpdate
+       << ", overwriteMode : " << stringifyOverwriteMode(ops.overwriteMode)
        << " }" << std::endl;
     // clang-format on
     return os;
@@ -76,6 +106,10 @@ struct OperationOptions {
   void* recoveryData;
 
   Index::OperationMode indexOperationMode;
+  
+  // INSERT ... OPTIONS { overwrite: true } behavior: 
+  // - replace an existing document, update an existing document, or do nothing
+  OverwriteMode overwriteMode;
 
   // wait until the operation has been synced
   bool waitForSync;
@@ -114,9 +148,6 @@ struct OperationOptions {
   // already been removed, and are simply not reflected in the transaction read
   bool ignoreUniqueConstraints;
   
-  // above replace becomes an update
-  bool overwriteModeUpdate;
-
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
   // operation if we are merely a follower. Finally, we must deny replications

@@ -2827,6 +2827,11 @@ Result MMFilesCollection::compact() {
 
   return {};
 }
+  
+Result MMFilesCollection::lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "not implemented for this storage engine");
+}
 
 LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions const& options) const {
   if (options.recoveryData != nullptr) {

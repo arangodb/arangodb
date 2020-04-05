@@ -159,6 +159,9 @@ class PhysicalCollection {
 
   /// @brief compact-data operation
   virtual Result compact() = 0;
+  
+  virtual Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                           std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const = 0;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

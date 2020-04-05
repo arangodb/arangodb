@@ -206,7 +206,7 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
   // in.exclusive;
   out.overwrite = in.overwrite;
   out.ignoreRevs = in.ignoreRevs;
-  out.overwriteModeUpdate = in.overwriteModeUpdate;
+  out.overwriteMode = in.overwriteMode;
 
   out.returnNew = (outVariableNew != nullptr);
   out.returnOld = (outVariableOld != nullptr);

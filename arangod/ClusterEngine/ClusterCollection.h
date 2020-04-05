@@ -120,6 +120,9 @@ class ClusterCollection final : public PhysicalCollection {
   
   /// @brief compact-data operation
   Result compact() override;
+  
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
