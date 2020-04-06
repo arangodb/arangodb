@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -1052,6 +1052,11 @@ function iResearchAqlTestSuite () {
       });
 
       docs.forEach(function(element, i) { assertEqual(res[i].length, 1); });
+    },
+
+    testAnalyzerNotOrFalse : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.a != 'foo' OR FALSE, 'identity') OPTIONS { waitForSync : true } RETURN doc").toArray();
+      assertNotEqual(0, result.length);
     }
   };
 }
