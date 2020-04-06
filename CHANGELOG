@@ -1,6 +1,12 @@
 devel
 -----
 
+* When relaying requests to other coordinators in a load-balanced setup, don't
+  forward the "http/1.1" HTTP header from the remote response. Forwarding that
+  header in the same way as any other header is not required, as each response
+  will store and set its status separately anyway. Adding it to the headers
+  again will only cause confusion and some client applications to choke.
+
 * Obsoleted startup option `--database.maximal-journal-size`. This option was
   useful for the MMFiles storage engine only, but did not have an effect with
   the RocksDB engine. Using this startup option is not an error, but has
