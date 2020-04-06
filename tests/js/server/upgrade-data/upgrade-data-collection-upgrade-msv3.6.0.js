@@ -118,7 +118,7 @@ function UpgradeData () {
     assertEqual(geoResults[1].num, 2);
     assertEqual(geoResults[2].num, 3);
 
-    // non-unique skiplist
+    // fulltext index
     assertEqual(indices[4].type, "fulltext");
     assertEqual(indices[4].fields, ["name"]);
 
