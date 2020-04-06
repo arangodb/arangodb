@@ -226,27 +226,15 @@ void IndexNode::initIndexCoversProjections() {
   _options.forceProjection = true;
 }
 
-void IndexNode::planNodeRegisters(
-    std::vector<aql::RegisterId>& nrRegsHere, std::vector<aql::RegisterId>& nrRegs,
-    std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
-    unsigned int& totalNrRegs, unsigned int depth) const {
-  // create a copy of the last value here
-  // this is required because back returns a reference and emplace/push_back
-  // may invalidate all references
-  auto regsCount = nrRegs.back();
-  nrRegs.emplace_back(regsCount + 1);
-  nrRegsHere.emplace_back(1);
-
+void IndexNode::planNodeRegisters(RegisterPlan& registerPlan) const {
   if (isLateMaterialized()) {
-    varInfo.emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
+    registerPlan.registerVariable(_outNonMaterializedDocId);
     // plan registers for index references
     for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
-      ++nrRegsHere[depth];
-      ++nrRegs[depth];
-      varInfo.emplace(fieldVar.second->id, aql::VarInfo(depth, totalNrRegs++));
+      registerPlan.registerVariable(fieldVar.second);
     }
   } else {
-    varInfo.emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
+    registerPlan.registerVariable(_outVariable);
   }
 }
 
