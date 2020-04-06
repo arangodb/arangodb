@@ -1094,7 +1094,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack&) -> ExecState {
+auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack) -> ExecState {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1108,6 +1108,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack&) -> ExecSta
   TRI_ASSERT(shadowRow.isInitialized());
 
   _outputItemRow->copyRow(shadowRow);
+  countShadowRowProduced(stack, shadowRow.getDepth());
 
   if (shadowRow.isRelevant()) {
     LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
@@ -1271,6 +1272,8 @@ template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   if constexpr (isNewStyleExecutor<Executor>) {
+    // We can only work on a Stack that has valid calls for all levels.
+    TRI_ASSERT(stack.hasAllValidCalls());
     AqlCallList clientCallList = stack.popCall();
     AqlCall clientCall;
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
@@ -1695,6 +1698,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             }
             // Otherwise just check like the other blocks
           }
+          if (!stack.hasAllValidCalls()) {
+            // We can only continue if we still have a valid call
+            // on all levels
+            _execState = ExecState::DONE;
+            break;
+          }
+
           if (clientCallList.hasMoreCalls()) {
             // Update to next call and start all over.
             clientCall = clientCallList.popNextCall();
@@ -1734,7 +1744,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       }
     }
 #endif
-
     _skipped.reset();
     if (localExecutorState == ExecutorState::HASMORE ||
         _lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
@@ -1886,6 +1895,22 @@ auto ExecutionBlockImpl<Executor>::createUpstreamCall(AqlCall const& call, bool 
     }
   }
   return AqlCallList{call};
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack, size_t depth)
+    -> void {
+  auto& subList = stack.modifyCallListAtDepth(depth);
+  auto& subCall = subList.modifyNextCall();
+  subCall.didProduce(1);
+  if (subCall.getLimit() == 0) {
+    // This call has produced everything.
+    // Remove it from the Stack to not reuse it
+    // If it has a softLimit and we cannot
+    // continue there will be no additional
+    // call available.
+    std::ignore = subList.popNextCall();
+  }
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
