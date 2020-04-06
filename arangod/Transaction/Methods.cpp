@@ -1071,27 +1071,61 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
 
-    int r = validateSmartJoinAttribute(*collection, value);
-
-    if (r != TRI_ERROR_NO_ERROR) {
-      return Result(r);
-    }
-
     docResult.clear();
     prevDocResult.clear();
+    
+    LocalDocumentId oldDocumentId;
+    TRI_voc_rid_t oldRevisionId = 0;
+    VPackSlice key;
+    
+    Result res;
 
-    Result res = collection->insert(this, value, docResult, options);
+    if (options.isOverwriteModeSet() && 
+        options.overwriteMode != OperationOptions::OverwriteMode::Conflict) {
+      key = value.get(StaticStrings::KeyString);
+      if (key.isString()) {
+        std::pair<LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        res = collection->lookupKey(this, key.stringRef(), lookupResult);
+        if (res.ok()) {
+          TRI_ASSERT(lookupResult.first.isSet());
+          TRI_ASSERT(lookupResult.second != 0);
+          oldDocumentId = lookupResult.first;
+          oldRevisionId = lookupResult.second;
+        }
+      }
+    }
+        
+    bool const isPrimaryKeyConstraintViolation = oldDocumentId.isSet();
+    TRI_ASSERT(!isPrimaryKeyConstraintViolation || !key.isNone());
 
     bool didReplace = false;
-    if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-      // RepSert Case - unique_constraint violated ->  try replace
-      // If we're overwriting, we already have a lock. Therefore we also don't
-      // need to get the followers under the lock.
-      if (options.overwriteModeUpdate) {
-        res = collection->update(this, value, docResult, options, prevDocResult);
-      } else {
-        res = collection->replace(this, value, docResult, options, prevDocResult);
+    if (!isPrimaryKeyConstraintViolation) {
+      // regular insert without overwrite option. the insert itself will check if the
+      // primary key already exists
+      res = collection->insert(this, value, docResult, options);
+    } else {
+      // RepSert Case - unique_constraint violated ->  try update, replace or ignore!
+      TRI_ASSERT(options.isOverwriteModeSet());
+      TRI_ASSERT(options.overwriteMode != OperationOptions::OverwriteMode::Conflict);
+
+      if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
+        // in case of unique constraint violation: ignore and do nothing (no write!)
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(), oldRevisionId,
+                              0, nullptr, nullptr);
+        return res;
       }
+      if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+        // in case of unique constraint violation: (partially) update existing document
+        res = collection->update(this, value, docResult, options, prevDocResult);
+      } else if (options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
+        // in case of unique constraint violation: replace existing document
+        // this is also the default behavior
+        res = collection->replace(this, value, docResult, options, prevDocResult);
+      } else {
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "internal overwriteMode state");
+      }
+
       TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
       didReplace = true;
     }
@@ -1273,9 +1307,9 @@ Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cn
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::modifyLocal(std::string const& collectionName,
-                                                  VPackSlice const newValue,
-                                                  OperationOptions& options,
-                                                  TRI_voc_document_operation_e operation) {
+                                                          VPackSlice const newValue,
+                                                          OperationOptions& options,
+                                                          TRI_voc_document_operation_e operation) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
 
@@ -2264,10 +2298,12 @@ Future<Result> Methods::replicateOperations(
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
-      reqOpts.param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
-      if(options.overwrite) {
-        reqOpts.param(StaticStrings::OverWriteMode, (options.overwriteModeUpdate ? "update" : "replace"));
-        if(options.overwriteModeUpdate) {
+      if (options.isOverwriteModeSet()) {
+        if (options.overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+          reqOpts.param(StaticStrings::OverwriteMode, OperationOptions::stringifyOverwriteMode(options.overwriteMode));
+        }
+        if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+          // extra parameters only required for update
           reqOpts.param(StaticStrings::KeepNullString, options.keepNull ? "true" : "false");
           reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects ? "true" : "false");
         }

@@ -217,11 +217,6 @@ Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-void ClusterEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */, int& status) {
-  // can delete databases instantly
-  status = TRI_ERROR_NO_ERROR;
-}
-
 // current recovery state
 RecoveryState ClusterEngine::recoveryState() {
   return RecoveryState::DONE;  // never in recovery
@@ -232,21 +227,15 @@ TRI_voc_tick_t ClusterEngine::recoveryTick() {
   return 0;  // never in recovery
 }
 
-std::string ClusterEngine::createCollection(TRI_vocbase_t& vocbase,
-                                            LogicalCollection const& collection) {
+void ClusterEngine::createCollection(TRI_vocbase_t& vocbase,
+                                     LogicalCollection const& collection) {
   TRI_ASSERT(collection.id() != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(collection.id()));
-  return std::string();  // no need to return a path
 }
 
 arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
                                                LogicalCollection& collection) {
   return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
-void ClusterEngine::destroyCollection(TRI_vocbase_t& /*vocbase*/, LogicalCollection& /*collection*/
-) {
-  // not required
 }
 
 void ClusterEngine::changeCollection(TRI_vocbase_t& vocbase,
@@ -260,10 +249,6 @@ arangodb::Result ClusterEngine::renameCollection(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-void ClusterEngine::unloadCollection(TRI_vocbase_t& /*vocbase*/, LogicalCollection& collection) {
-  collection.setStatus(TRI_VOC_COL_STATUS_UNLOADED);
-}
-
 Result ClusterEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
                                  arangodb::LogicalView const& /*view*/
 ) {
@@ -275,11 +260,6 @@ arangodb::Result ClusterEngine::dropView(TRI_vocbase_t const& vocbase,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-void ClusterEngine::destroyView(TRI_vocbase_t const& /*vocbase*/, LogicalView const& /*view*/
-                                ) noexcept {
-  // nothing to do here
-}
-
 Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
                                  arangodb::LogicalView const& view, bool /*doSync*/
 ) {
@@ -288,14 +268,6 @@ Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
     return {};
   }
   return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
-void ClusterEngine::signalCleanup(TRI_vocbase_t&) {
-  // nothing to do here
-}
-
-int ClusterEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Add engine-specific optimizer rules

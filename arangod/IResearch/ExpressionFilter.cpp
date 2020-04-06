@@ -48,7 +48,7 @@ inline irs::filter::prepared::ptr compileQuery(
   irs::bstring stats(order.stats_size(), 0);
 
   // skip filed-level/term-level statistics because there are no fields/terms
-  order.fixed_prepare_collectors().finish(&stats[0], index);
+  irs::fixed_terms_collectors(order, 0).finish(&stats[0], index);
 
   return irs::filter::prepared::make<type_t>(ctx, std::move(stats), boost);
 }

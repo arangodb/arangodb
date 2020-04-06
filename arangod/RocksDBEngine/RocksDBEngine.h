@@ -179,11 +179,6 @@ class RocksDBEngine final : public StorageEngine {
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
-  std::string collectionPath(TRI_vocbase_t const& /*vocbase*/, TRI_voc_cid_t /*id*/
-                             ) const override {
-    return std::string();  // no path to be returned here
-  }
-
   void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
@@ -222,7 +217,6 @@ class RocksDBEngine final : public StorageEngine {
   int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
-  void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery
   RecoveryState recoveryState() noexcept override;
@@ -239,20 +233,16 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not purging of WAL files is currently allowed
   RocksDBFilePurgeEnabler startPurging() noexcept;
 
-  std::string createCollection(TRI_vocbase_t& vocbase,
-                               LogicalCollection const& collection) override;
+  void createCollection(TRI_vocbase_t& vocbase,
+                        LogicalCollection const& collection) override;
 
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
-
-  void destroyCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection, bool doSync) override;
 
   arangodb::Result renameCollection(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
                                     std::string const& oldName) override;
-
-  void unloadCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
   arangodb::Result changeView(TRI_vocbase_t& vocbase,
                               arangodb::LogicalView const& view, bool doSync) override;
@@ -261,12 +251,6 @@ class RocksDBEngine final : public StorageEngine {
                               arangodb::LogicalView const& view) override;
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
-
-  void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept override;
-
-  void signalCleanup(TRI_vocbase_t& vocbase) override;
-
-  int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;

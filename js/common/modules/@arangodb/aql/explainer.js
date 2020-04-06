@@ -821,7 +821,8 @@ function processQuery(query, explain, planIndex) {
         return variable('#' + node.name);
       }
     } catch (x) {
-      print(node);
+      require('console').warn("got unexpected invalid variable struct in explainer");
+      require("console").trace();
       throw x;
     }
 
@@ -1619,12 +1620,11 @@ function processQuery(query, explain, planIndex) {
       case 'SubqueryStartNode':
         return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
       case 'SubqueryEndNode':
-        return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
-      case 'ParallelStartNode':
-        return keyword('PARALLEL');
-      case 'ParallelEndNode':
-        // nothing to print - line will be skipped
-        return '';
+        if (node.inVariable) {
+          return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
+        }
+        // special hack for spliced subqueries that do not return any data
+        return `) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1834,6 +1834,10 @@ function processQuery(query, explain, planIndex) {
     if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
     }
+    if (node.type === 'SubqueryEndNode' && !node.inVariable && subqueries.length > 0) {
+      // special hack for spliced subqueries that do not return any data
+      --level;
+    }
   };
 
   var postHandle = function (node) {
@@ -1848,7 +1852,6 @@ function processQuery(query, explain, planIndex) {
       'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
-      'ParallelStartNode',
       'SubqueryStartNode',
       'SubqueryNode'].indexOf(node.type) !== -1) {
       level++;
@@ -1856,8 +1859,6 @@ function processQuery(query, explain, planIndex) {
       level = subqueries.pop();
     } else if (node.type === 'SingletonNode') {
       level++;
-    } else if (node.type === 'ParallelEndNode') {
-      --level;
     }
   };
 
@@ -1890,8 +1891,6 @@ function processQuery(query, explain, planIndex) {
     if (isCoordinator) {
       line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
     }
-        
-    let nodeLabel = label(node);
 
     if (profileMode) {
       if (node.calls === undefined) {
@@ -1909,20 +1908,17 @@ function processQuery(query, explain, planIndex) {
   
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ';
+        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
+        indent(level, node.type === 'SingletonNode') + label(node);
     } else {
-      line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ';
+      line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
+        indent(level, node.type === 'SingletonNode') + label(node);
     }
-        
-    line += indent(level, node.type === 'SingletonNode') + nodeLabel;
 
     if (node.type === 'CalculationNode') {
       line += variablesUsed() + constNess();
     }
-    if (nodeLabel !== '') {
-      // don't print lines for ParallelEndNodes, as they are empty anyway
-      stringBuilder.appendLine(line);
-    }
+    stringBuilder.appendLine(line);
     postHandle(node);
   };
 
@@ -2240,6 +2236,9 @@ function inspectDump(filename, outfile) {
   }
 
   let data = JSON.parse(require('fs').read(filename));
+  if (data.version && data.version) {
+    print("/* original data is from " + data.version["server-version"] + ", " + data.version.license + " */");
+  }
   if (data.database) {
     print("/* original data gathered from database '" + data.database + "' */");
   }
@@ -2303,7 +2302,7 @@ function inspectDump(filename, outfile) {
     let details = data.collections[collection];
     if (details.examples) {
       details.examples.forEach(function (example) {
-        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ");");
+        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ", {isRestore: true});");
       });
     }
     let missing = details.count;

@@ -2358,9 +2358,8 @@ void field_reader::prepare(
 
     const auto& name = field.meta().name;
     const auto res = name_to_field_.emplace(
-      make_hashed_ref(string_ref(name), std::hash<irs::string_ref>()),
-      &field
-    );
+      make_hashed_ref(string_ref(name)),
+      &field);
 
     if (!res.second) {
       throw irs::index_error(string_utils::to_string(
@@ -2425,7 +2424,7 @@ void field_reader::prepare(
 }
 
 const irs::term_reader* field_reader::field(const string_ref& field) const {
-  auto it = name_to_field_.find(make_hashed_ref(field, std::hash<irs::string_ref>()));
+  auto it = name_to_field_.find(make_hashed_ref(field));
   return it == name_to_field_.end() ? nullptr : it->second;
 }
 

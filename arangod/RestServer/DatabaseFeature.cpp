@@ -60,7 +60,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -255,7 +254,6 @@ void DatabaseManagerThread::run() {
 
 DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Database"),
-      _maximalJournalSize(TRI_JOURNAL_DEFAULT_SIZE),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
@@ -287,11 +285,9 @@ DatabaseFeature::~DatabaseFeature() {
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
 
-  options->addOption("--database.maximal-journal-size",
-                     "default maximal journal size, can be overwritten when "
-                     "creating a collection",
-                     new UInt64Parameter(&_maximalJournalSize))
-                    .setDeprecatedIn(30700);
+  options->addObsoleteOption("--database.maximal-journal-size",
+                             "default maximal journal size, can be overwritten when "
+                             "creating a collection", true);
 
   options->addOption("--database.wait-for-sync",
                      "default wait-for-sync behavior, can be overwritten "
@@ -340,14 +336,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_maximalJournalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    LOG_TOPIC("04874", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--database.maximal-journal-size'. "
-           "expected at least "
-        << TRI_JOURNAL_MINIMAL_SIZE;
-    FATAL_ERROR_EXIT();
-  }
-
   // sanity check
   if (_checkVersion && _upgrade) {
     LOG_TOPIC("a25b0", FATAL, arangodb::Logger::FIXME)
@@ -466,13 +454,11 @@ void DatabaseFeature::stop() {
     currentVocbase = vocbase;
     CURRENT_VOCBASE = vocbase;
     static size_t currentCursorCount = currentVocbase->cursorRepository()->count();
-    static size_t currentKeysCount = currentVocbase->collectionKeys()->count();
     static size_t currentQueriesCount = currentVocbase->queryList()->count();
 
     LOG_TOPIC("840a4", DEBUG, Logger::FIXME)
         << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase
         << ", cursors: " << currentCursorCount
-        << ", keys: " << currentKeysCount
         << ", queries: " << currentQueriesCount;
 #endif
     vocbase->stop();
@@ -733,7 +719,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
 }
 
 /// @brief drop database
-int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
+int DatabaseFeature::dropDatabase(std::string const& name,
                                   bool removeAppsDirectory) {
   if (name == StaticStrings::SystemDatabase) {
     // prevent deletion of system database
@@ -832,10 +818,6 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
 
-  if (res == TRI_ERROR_NO_ERROR && waitForDeletion) {
-    engine->waitUntilDeletion(id, true, res);
-  }
-
   events::DropDatabase(name, res);
 
   if (DatabaseFeature::DATABASE != nullptr &&
@@ -847,7 +829,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 }
 
 /// @brief drops an existing database
-int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
+int DatabaseFeature::dropDatabase(TRI_voc_tick_t id,
                                   bool removeAppsDirectory) {
   std::string name;
 
@@ -871,7 +853,7 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
   // and call the regular drop function
-  return dropDatabase(name, waitForDeletion, removeAppsDirectory);
+  return dropDatabase(name, removeAppsDirectory);
 }
 
 std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(bool includeSystem) {

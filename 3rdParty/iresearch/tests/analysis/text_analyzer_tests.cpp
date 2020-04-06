@@ -376,7 +376,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(L"\u0432\u0435\u0447\u0435\u0440", utf_to_utf(value->value()));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ(L"\u0451\u0436\u0438\u043A", utf_to_utf(value->value()));
+      ASSERT_EQ(L"\u0435\u0436\u0438\u043A", utf_to_utf(value->value()));
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(L"\u0445\u043E\u0434", utf_to_utf(value->value()));
       ASSERT_TRUE(pStream->next());
@@ -386,7 +386,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(L"\u0441\u0447\u0438\u0442\u0430", utf_to_utf(value->value()));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ(L"\u0437\u0432\u0451\u0437\u0434\u044B", utf_to_utf(value->value())); // for some reason snowball doesn't remove the last letter if accents were not removed
+      ASSERT_EQ(L"\u0437\u0432\u0435\u0437\u0434", utf_to_utf(value->value()));
       ASSERT_FALSE(pStream->next());
     };
 

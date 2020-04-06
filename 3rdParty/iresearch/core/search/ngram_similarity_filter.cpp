@@ -169,10 +169,12 @@ class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, sc
             if (found != search_buf_.end()) {
               if (last_found_pos != found->first) {
                 last_found_pos = found->first;
+                const auto* found_state = found->second.get();
+                assert(found_state);
                 auto current_sequence = found;
                 // if we hit same position - set length to 0 to force checking candidates to the left
                 size_t current_found_len = (found->first == current_pos ||
-                                            found->second->scr == pos_iterator.scr) ? 0 : found->second->len + 1;
+                                            found_state->scr == pos_iterator.scr) ? 0 : found_state->len + 1;
                 auto initial_found = found;
                 if (current_found_len > longest_sequence_len) {
                   longest_sequence_len = current_found_len;
@@ -181,11 +183,13 @@ class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, sc
                   // lets go leftward and check if there are any candidates which could became longer
                   // if we stick this ngram to them rather than the closest one found
                   for (++found; found != search_buf_.end(); ++found) {
-                    if (found->second->scr != pos_iterator.scr &&
-                        found->second->len + 1 > current_found_len) {
+                    found_state = found->second.get();
+                    assert(found_state);
+                    if (found_state->scr != pos_iterator.scr &&
+                        found_state->len + 1 > current_found_len) {
                       // we have better option. Replace this match!
                       current_sequence = found;
-                      current_found_len = found->second->len + 1;
+                      current_found_len = found_state->len + 1;
                       if (current_found_len > longest_sequence_len) {
                         longest_sequence_len = current_found_len;
                         break; // this match is the best - nothing to search further
@@ -267,26 +271,27 @@ class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, sc
         pos_sequence_.reserve(longest_sequence_len);
         for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end;) {
           pos_sequence_.clear();
-          assert(i->second->len <= longest_sequence_len);
-          if (i->second->len == longest_sequence_len) {
+          const auto* state = i->second.get();
+          assert(state && state->len <= longest_sequence_len);
+          if (state->len == longest_sequence_len) {
             bool delete_candidate = false;
             // only first longest sequence will contribute to frequency
             if (longest_sequence_.empty()) {
-              longest_sequence_.push_back(i->second->scr);
-              pos_sequence_.push_back(i->second->pos);
-              auto cur_parent = i->second->parent;
+              longest_sequence_.push_back(state->scr);
+              pos_sequence_.push_back(state->pos);
+              auto cur_parent = state->parent;
               while (cur_parent) {
                 longest_sequence_.push_back(cur_parent->scr);
                 pos_sequence_.push_back(cur_parent->pos);
                 cur_parent = cur_parent->parent;
               }
             } else {
-              if (used_pos_.find(i->second->pos) != used_pos_.end() ||
-                  i->second->scr != longest_sequence_[0]) {
+              if (used_pos_.find(state->pos) != used_pos_.end() ||
+                  state->scr != longest_sequence_[0]) {
                 delete_candidate = true;
               } else {
-                pos_sequence_.push_back(i->second->pos);
-                auto cur_parent = i->second->parent;
+                pos_sequence_.push_back(state->pos);
+                auto cur_parent = state->parent;
                 size_t j = 1;
                 while (cur_parent) {
                   assert(j < longest_sequence_.size());
@@ -490,7 +495,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   term_states.terms.reserve(ngrams_.size());
 
   // prepare ngrams stats
-  auto collectors = ord.fixed_prepare_collectors(ngrams_.size());
+  fixed_terms_collectors collectors(ord, ngrams_.size());
 
   for (const auto& segment : rdr) {
     // get term dictionary for field

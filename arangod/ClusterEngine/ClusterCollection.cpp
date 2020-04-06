@@ -106,10 +106,6 @@ std::string const& ClusterCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
 }
 
-void ClusterCollection::setPath(std::string const&) {
-  // we do not have any path
-}
-
 Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   VPackBuilder merge;
   merge.openObject();
@@ -147,12 +143,6 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
 
   // nothing else to do
   return TRI_ERROR_NO_ERROR;
-}
-
-arangodb::Result ClusterCollection::persistProperties() {
-  // only code path calling this causes these properties to be
-  // already written in RocksDBEngine::changeCollection()
-  return Result();
 }
 
 PhysicalCollection* ClusterCollection::clone(LogicalCollection& logical) const {
@@ -218,8 +208,6 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
 
 /// @brief report extra memory used by indexes etc.
 size_t ClusterCollection::memory() const { return 0; }
-
-void ClusterCollection::open(bool ignoreErrors) {}
 
 void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
   WRITE_LOCKER(guard, _indexesLock);
@@ -316,19 +304,15 @@ bool ClusterCollection::dropIndex(IndexId iid) {
   return false;
 }
 
-std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* trx) const {
+std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Methods* trx) const {
+std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Methods* /*trx*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-////////////////////////////////////
-// -- SECTION DML Operations --
-///////////////////////////////////
-
-Result ClusterCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
+Result ClusterCollection::truncate(transaction::Methods& /*trx*/, OperationOptions& /*options*/) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -337,28 +321,28 @@ Result ClusterCollection::compact() {
   return {};
 }
 
-LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,
-                                             VPackSlice const& key) const {
+Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result) {
+Result ClusterCollection::read(transaction::Methods* /*trx*/,
+                               arangodb::velocypack::StringRef const& /*key*/,
+                               ManagedDocumentResult& /*result*/) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
-bool ClusterCollection::readDocument(transaction::Methods* trx,
-                                     LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result) const {
+bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
+                                     LocalDocumentId const& /*documentId*/,
+                                     ManagedDocumentResult& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
-bool ClusterCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 LocalDocumentId const& documentId,
-                                                 IndexIterator::DocumentCallback const& cb) const {
+bool ClusterCollection::readDocumentWithCallback(transaction::Methods* /*trx*/,
+                                                 LocalDocumentId const& /*documentId*/,
+                                                 IndexIterator::DocumentCallback const& /*cb*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

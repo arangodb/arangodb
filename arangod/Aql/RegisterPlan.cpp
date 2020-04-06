@@ -33,6 +33,11 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -41,11 +46,18 @@ VarInfo::VarInfo(int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
   TRI_ASSERT(registerId < RegisterPlan::MaxRegisterId);
 }
+  
+RegisterPlan::RegisterPlan()
+    : depth(0), 
+      totalNrRegs(0), 
+      me(nullptr) {
+  nrRegs.reserve(8);
+  nrRegs.emplace_back(0);
+}
 
 // Copy constructor used for a subquery:
 RegisterPlan::RegisterPlan(RegisterPlan const& v, unsigned int newdepth)
     : varInfo(v.varInfo),
-      nrRegsHere(v.nrRegsHere),
       nrRegs(v.nrRegs),
       subQueryNodes(),
       depth(newdepth + 1),
@@ -53,11 +65,8 @@ RegisterPlan::RegisterPlan(RegisterPlan const& v, unsigned int newdepth)
       me(nullptr) {
   if (depth + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
-    nrRegsHere.reserve(8);
     nrRegs.reserve(8);
   }
-  nrRegsHere.resize(depth + 1);
-  nrRegsHere.back() = 0;
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back may
   // invalidate all references
@@ -66,19 +75,48 @@ RegisterPlan::RegisterPlan(RegisterPlan const& v, unsigned int newdepth)
   nrRegs.emplace_back(registerId);
 }
 
-void RegisterPlan::clear() {
-  varInfo.clear();
-  nrRegsHere.clear();
-  nrRegs.clear();
-  subQueryNodes.clear();
-  depth = 0;
-  totalNrRegs = 0;
+RegisterPlan::RegisterPlan(VPackSlice slice, unsigned int depth) 
+    : depth(depth),
+      totalNrRegs(slice.get("totalNrRegs").getNumericValue<unsigned int>()),
+      me(nullptr) {
+  
+  VPackSlice varInfoList = slice.get("varInfoList");
+  if (!varInfoList.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "\"varInfoList\" attribute needs to be an array");
+  }
+
+  varInfo.reserve(varInfoList.length());
+
+  for (VPackSlice it : VPackArrayIterator(varInfoList)) {
+    if (!it.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "\"varInfoList\" item needs to be an object");
+    }
+    VariableId variableId = it.get("VariableId").getNumericValue<VariableId>();
+    RegisterId registerId = it.get("RegisterId").getNumericValue<RegisterId>();
+    unsigned int depth = it.get("depth").getNumericValue<unsigned int>();
+
+    varInfo.try_emplace(variableId, VarInfo(depth, registerId));
+  }
+
+  VPackSlice nrRegsList = slice.get("nrRegs");
+  if (!nrRegsList.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "\"nrRegs\" attribute needs to be an array");
+  }
+
+  nrRegs.reserve(nrRegsList.length());
+  for (VPackSlice it : VPackArrayIterator(nrRegsList)) {
+    nrRegs.emplace_back(it.getNumericValue<RegisterId>());
+  }
 }
 
-RegisterPlan* RegisterPlan::clone(ExecutionPlan* otherPlan, ExecutionPlan* plan) {
-  auto other = std::make_unique<RegisterPlan>();
+std::shared_ptr<RegisterPlan> RegisterPlan::clone() {
+  auto other = std::make_shared<RegisterPlan>();
 
-  other->nrRegsHere = nrRegsHere;
   other->nrRegs = nrRegs;
   other->depth = depth;
   other->totalNrRegs = totalNrRegs;
@@ -88,12 +126,11 @@ RegisterPlan* RegisterPlan::clone(ExecutionPlan* otherPlan, ExecutionPlan* plan)
   // No need to clone subQueryNodes because this was only used during
   // the buildup.
 
-  return other.release();
+  return other;
 }
 
 void RegisterPlan::increaseDepth() {
   depth++;
-  nrRegsHere.emplace_back(0);
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
@@ -101,11 +138,61 @@ void RegisterPlan::increaseDepth() {
   nrRegs.emplace_back(registerId);
 }
 
-void RegisterPlan::registerVariable(Variable const* v) {
-  nrRegsHere[depth]++;
+void RegisterPlan::addRegister() {
   nrRegs[depth]++;
-  varInfo.try_emplace(v->id, VarInfo(depth, totalNrRegs));
   totalNrRegs++;
+}
+
+void RegisterPlan::registerVariable(Variable const* v) {
+  TRI_ASSERT(v != nullptr);
+
+  auto total = totalNrRegs;
+  addRegister();
+  varInfo.try_emplace(v->id, VarInfo(depth, total));
+}
+
+void RegisterPlan::toVelocyPackEmpty(VPackBuilder& builder) {
+  builder.add(VPackValue("varInfoList"));
+  { VPackArrayBuilder guard(&builder); }
+  builder.add(VPackValue("nrRegs"));
+  { VPackArrayBuilder guard(&builder); }
+  // nrRegsHere is not used anymore and is intentionally left empty
+  // can be removed in ArangoDB 3.8
+  builder.add(VPackValue("nrRegsHere"));
+  { VPackArrayBuilder guard(&builder); }
+  builder.add("totalNrRegs", VPackValue(0));
+}
+
+void RegisterPlan::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+      
+  builder.add(VPackValue("varInfoList"));
+  {
+    VPackArrayBuilder guard(&builder);
+    for (auto const& oneVarInfo : varInfo) {
+      VPackObjectBuilder guardInner(&builder);
+      builder.add("VariableId", VPackValue(oneVarInfo.first));
+      builder.add("depth", VPackValue(oneVarInfo.second.depth));
+      builder.add("RegisterId", VPackValue(oneVarInfo.second.registerId));
+    }
+  }
+
+  builder.add(VPackValue("nrRegs"));
+  {
+    VPackArrayBuilder guard(&builder);
+    for (auto const& oneRegisterID : nrRegs) {
+      builder.add(VPackValue(oneRegisterID));
+    }
+  }
+
+  // nrRegsHere is not used anymore and is intentionally left empty
+  // can be removed in ArangoDB 3.8
+  builder.add(VPackValue("nrRegsHere"));
+  {
+    VPackArrayBuilder guard(&builder);
+  }
+
+  builder.add("totalNrRegs", VPackValue(totalNrRegs));
 }
 
 void RegisterPlan::after(ExecutionNode* en) {
@@ -125,8 +212,9 @@ void RegisterPlan::after(ExecutionNode* en) {
     }
 
     case ExecutionNode::INDEX: {
+      increaseDepth();
       auto ep = ExecutionNode::castTo<IndexNode const*>(en);
-      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+      ep->planNodeRegisters(*this);
       break;
     }
 
@@ -178,13 +266,7 @@ void RegisterPlan::after(ExecutionNode* en) {
     case ExecutionNode::REPLACE:
     case ExecutionNode::REMOVE:
     case ExecutionNode::UPSERT: {
-      increaseDepth();
-
-      auto ep = dynamic_cast<ModificationNode const*>(en);
-      if (ep == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, "unexpected cast result for ModificationNode");
-      }
+      auto ep = ExecutionNode::castTo<ModificationNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
         registerVariable(ep->getOutVariableOld());
       }
@@ -246,8 +328,9 @@ void RegisterPlan::after(ExecutionNode* en) {
     }
 
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      increaseDepth();
       auto ep = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(en);
-      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+      ep->planNodeRegisters(*this);
       break;
     }
 
@@ -280,7 +363,7 @@ void RegisterPlan::after(ExecutionNode* en) {
   // Now find out which registers ought to be erased after this node:
   if (en->getType() != ExecutionNode::RETURN) {
     // ReturnNodes are special, since they return a single column anyway
-    ::arangodb::containers::HashSet<Variable const*> varsUsedLater =
+    ::arangodb::containers::HashSet<Variable const*> const& varsUsedLater =
         en->getVarsUsedLater();
     ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);

@@ -93,8 +93,6 @@ class TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   virtual bool hasOperations() const = 0;
 
-  virtual void freeOperations(transaction::Methods* activeTrx, bool mustRollback) = 0;
-
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
 
   virtual int use(int nestingLevel) = 0;
