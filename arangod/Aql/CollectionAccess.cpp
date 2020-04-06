@@ -23,9 +23,14 @@
 #include "CollectionAccess.h"
 
 #include "Aql/Collections.h"
+#include "Aql/CollectionAccessingNode.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Basics/debugging.h"
 
 #include <velocypack/Slice.h>
+
+#include <optional>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -54,21 +59,11 @@ CollectionAccess::CollectionAccess(aql::Collections const* const collections, ve
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
   }
 
-  if (auto const isSatelliteOfSlice = slice.get("isSatelliteOf"); isSatelliteOfSlice.isString()) {
-    auto const isSatelliteOfName = isSatelliteOfSlice.stringView();
-    // Note that because this will get newly created, different CollectionAccess
-    // instances are no longer related if isSatelliteOf, because each gets its
-    // own parent instance.
-    // This is fine because changes to it can only happen during planning/optimization.
-    // It can never happen after instantiation.
-    // If this is needed for some reason in the future, CollectionAccesses would
-    // need to get some ID and be deserialized monolithically.
-    _isSatelliteOf = std::make_shared<CollectionAccess>(collections->get(isSatelliteOfName));
-    TRI_ASSERT(_isSatelliteOf != nullptr);
-    if (_isSatelliteOf == nullptr) {
-      using namespace std::string_literals;
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "Collection not found to be satellite of: "s.append(isSatelliteOfName));
-    }
+  if (auto const isSatelliteOfSlice = slice.get("isSatelliteOf"); isSatelliteOfSlice.isInteger()) {
+    auto const isSatelliteOfId = isSatelliteOfSlice.getUInt();
+    _isSatelliteOf = ExecutionNodeId{isSatelliteOfId};
+  } else {
+    _isSatelliteOf = std::nullopt;
   }
 }
 
@@ -91,20 +86,32 @@ auto CollectionAccess::prototypeOutVariable() const noexcept -> aql::Variable co
   return _prototypeOutVariable;
 }
 
-void CollectionAccess::useAsSatelliteOf(std::shared_ptr<CollectionAccess const> prototypeAccess) {
-  _isSatelliteOf = std::move(prototypeAccess);
+void CollectionAccess::useAsSatelliteOf(ExecutionNodeId prototypeAccessId) {
+  _isSatelliteOf = prototypeAccessId;
 }
 
 bool CollectionAccess::isUsedAsSatellite() const noexcept {
-  return _isSatelliteOf != nullptr;
+  return _isSatelliteOf != std::nullopt;
 }
 
-auto CollectionAccess::getSatelliteOf() const
-    -> std::shared_ptr<aql::CollectionAccess const> const& {
-  if (_isSatelliteOf->isUsedAsSatellite()) {
-    // recursive path compression if our prototype has a prototype itself
-    // this is why we want _isSatelliteOf to be mutable
-    _isSatelliteOf = _isSatelliteOf->getSatelliteOf();
+auto CollectionAccess::getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
+    -> ExecutionNode* {
+  if (_isSatelliteOf.has_value()) {
+    auto* parentNode = nodesById.at(_isSatelliteOf.value());
+    auto* parentColAccess = ExecutionNode::castTo<CollectionAccessingNode*>(parentNode);
+    if (parentColAccess->isUsedAsSatellite()) {
+      parentNode = parentColAccess->getSatelliteOf(nodesById);
+      // recursive path compression if our prototype has a prototype itself
+      // this is why we want _isSatelliteOf to be mutable
+      _isSatelliteOf = parentNode->id();
+    }
+    return parentNode;
+  } else {
+    return nullptr;
   }
+}
+
+
+auto CollectionAccess::getRawSatelliteOf() const -> std::optional<ExecutionNodeId> {
   return _isSatelliteOf;
 }

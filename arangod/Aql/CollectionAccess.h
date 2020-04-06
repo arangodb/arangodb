@@ -24,6 +24,10 @@
 #define ARANGOD_AQL_COLLECTIONACCESS_H
 
 #include <memory>
+#include <optional>
+#include <unordered_map>
+
+#include "Aql/ExecutionNodeId.h"
 
 namespace arangodb::velocypack {
 class Slice;
@@ -31,6 +35,7 @@ class Slice;
 
 namespace arangodb::aql {
 class Collections;
+class ExecutionNode;
 struct Collection;
 struct Variable;
 
@@ -63,13 +68,16 @@ class CollectionAccess {
   /// This will work transitively, even if the prototypeAccess is only
   /// subsequently marked as a satellite of another access. However, after
   /// se- and deserialization, this won't work anymore.
-  void useAsSatelliteOf(std::shared_ptr<CollectionAccess const> prototypeAccess);
+  void useAsSatelliteOf(ExecutionNodeId prototypeAccessId);
 
   /// @brief Get the CollectionAccess of which *this* collection access is a
-  /// satellite of.
+  /// satellite of, if any.
   /// This will make a recursive lookup, so if A isSatelliteOf B, and B isSatelliteOf C,
   /// A.getSatelliteOf() will return C.
-  auto getSatelliteOf() const -> std::shared_ptr<aql::CollectionAccess const> const&;
+  auto getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
+      -> ExecutionNode*;
+
+  auto getRawSatelliteOf() const -> std::optional<ExecutionNodeId>;
 
  private:
   aql::Collection const* _collection = nullptr;
@@ -80,7 +88,7 @@ class CollectionAccess {
 
   // is a non-nullptr iff used as a satellite collection.
   // mutable to allow path compression of chains of `isSatelliteOf`.
-  mutable std::shared_ptr<CollectionAccess const> _isSatelliteOf = nullptr;
+  mutable std::optional<ExecutionNodeId> _isSatelliteOf{std::nullopt};
 };
 
 }  // namespace arangodb::aql

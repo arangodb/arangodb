@@ -25,6 +25,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
@@ -104,7 +105,7 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
 #ifdef USE_ENTERPRISE
   builder.add("isSatellite", VPackValue(isUsedAsSatellite()));
   builder.add("isSatelliteOf", isUsedAsSatellite()
-                                   ? VPackValue(getSatelliteOf()->collection()->name())
+                                   ? VPackValue(getRawSatelliteOf().value().id(), VPackValueType::UInt)
                                    : VPackValue(VPackValueType::Null));
 #endif
 }
@@ -126,14 +127,19 @@ bool CollectionAccessingNode::isUsedAsSatellite() const {
   return _collectionAccess->isUsedAsSatellite();
 }
 
-void CollectionAccessingNode::useAsSatelliteOf(std::shared_ptr<aql::CollectionAccess const> prototypeAccess) {
+void CollectionAccessingNode::useAsSatelliteOf(ExecutionNodeId prototypeAccessId) {
   TRI_ASSERT(collection()->isSatellite());
-  _collectionAccess->useAsSatelliteOf(std::move(prototypeAccess));
+  _collectionAccess->useAsSatelliteOf(prototypeAccessId);
 }
 
-auto CollectionAccessingNode::getSatelliteOf() const
-    -> std::shared_ptr<aql::CollectionAccess const> const& {
-  return _collectionAccess->getSatelliteOf();
+auto CollectionAccessingNode::getSatelliteOf(
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
+    -> ExecutionNode* {
+  return _collectionAccess->getSatelliteOf(nodesById);
+}
+
+auto CollectionAccessingNode::getRawSatelliteOf() const -> std::optional<aql::ExecutionNodeId> {
+  return _collectionAccess->getRawSatelliteOf();
 }
 
 aql::Collection const* CollectionAccessingNode::collection() const {

@@ -475,8 +475,13 @@ bool ExecutionPlan::isDisabledRule(int rule) const {
   return (_disabledRules.find(rule) != _disabledRules.end());
 }
 
+ExecutionNodeId ExecutionPlan::nextId() {
+  _nextId = ExecutionNodeId{_nextId.id() + 1};
+  return _nextId;
+}
+
 /// @brief get a node by its id
-ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
+ExecutionNode* ExecutionPlan::getNodeById(ExecutionNodeId id) const {
   auto it = _ids.find(id);
 
   if (it != _ids.end()) {
@@ -484,10 +489,14 @@ ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
     return (*it).second;
   }
 
-  std::string msg = std::string("node [") + std::to_string(id) +
+  std::string msg = std::string("node [") + std::to_string(id.id()) +
                     std::string("] wasn't found");
   // node unknown
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+}
+
+std::unordered_map<ExecutionNodeId, ExecutionNode*> const& ExecutionPlan::getNodesById() const {
+  return _ids;
 }
 
 /// @brief creates a calculation node for an arbitrary expression
@@ -849,7 +858,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->plan() == this);
-  TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(node->id() > ExecutionNodeId{0});
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
   auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
   TRI_ASSERT(emplaced);
@@ -860,7 +869,7 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->plan() == this);
-  TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(node->id() > ExecutionNodeId{0});
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
@@ -2371,7 +2380,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     // We need to adjust nextId here, otherwise we cannot add new nodes to this
     // plan anymore
     if (_nextId <= ret->id()) {
-      _nextId = ret->id() + 1;
+      _nextId = ExecutionNodeId{ret->id().id() + 1};
     }
     registerNode(ret);
 
@@ -2396,7 +2405,8 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   // all nodes have been created. now add the dependencies
   for (VPackSlice it : VPackArrayIterator(nodes)) {
     // read the node's own id
-    auto thisId = it.get("id").getNumericValue<size_t>();
+    auto thisId =
+        ExecutionNodeId{it.get("id").getNumericValue<ExecutionNodeId::BaseType>()};
     auto thisNode = getNodeById(thisId);
 
     // now re-link the dependencies
@@ -2404,7 +2414,8 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     if (dependencies.isArray()) {
       for (auto const& it2 : VPackArrayIterator(dependencies)) {
         if (it2.isNumber()) {
-          auto depId = it2.getNumericValue<size_t>();
+          auto depId =
+              ExecutionNodeId{it2.getNumericValue<ExecutionNodeId::BaseType>()};
           thisNode->addDependency(getNodeById(depId));
         }
       }
@@ -2521,7 +2532,13 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
         return type;
       }
       case ExecutionNode::INDEX:
-      case ExecutionNode::ENUMERATE_COLLECTION: {
+      case ExecutionNode::ENUMERATE_COLLECTION:
+      case ExecutionNode::UPDATE:
+      case ExecutionNode::INSERT:
+      case ExecutionNode::REMOVE:
+      case ExecutionNode::REPLACE:
+      case ExecutionNode::UPSERT:
+      case ExecutionNode::MATERIALIZE: {
         auto const& colAccess = *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
         auto type = std::string{node.getTypeString()};
         type += " (";

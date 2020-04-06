@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 
+#include "Aql/QuerySnippet.h"
 #include "Aql/ShardLocking.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
@@ -107,7 +108,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // Open a new snippet, this snippt will be used to produce data
   // for the given sinkNode (RemoteNode only for now)
-  void openSnippet(GatherNode const* sinkGatherNode, size_t idOfSinkNode);
+  void openSnippet(GatherNode const* sinkGatherNode, ExecutionNodeId idOfSinkNode);
 
   // Closes the given snippet and let it use
   // the given queryid of the coordinator as data provider.
@@ -124,8 +125,9 @@ class EngineInfoContainerDBServerServerBased {
   //   this methods a shutdown request is send to all DBServers.
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
-  Result buildEngines(MapRemoteToSnippet& queryIds,
-                      std::unordered_map<size_t, size_t>& nodeAliases);
+  Result buildEngines(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                      MapRemoteToSnippet& queryIds,
+                      std::unordered_map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -159,8 +161,9 @@ class EngineInfoContainerDBServerServerBased {
   void addVariablesPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the Snippets information into the message to be send to DBServers
-  void addSnippetPart(arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
-                      std::unordered_map<size_t, size_t>& nodeAliases,
+  void addSnippetPart(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                      arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
+                      std::unordered_map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
                       ServerID const& server) const;
 
   // Insert the TraversalEngine information into the message to be send to DBServers
@@ -189,7 +192,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // @brief A local counter for snippet IDs within this Engine.
   // used to make collection locking clear.
-  size_t _lastSnippetId;
+  QuerySnippet::Id _lastSnippetId;
 };
 
 }  // namespace aql

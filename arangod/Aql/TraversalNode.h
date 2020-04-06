@@ -76,7 +76,7 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
                 AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
                 std::unique_ptr<graph::BaseOptions> options);
@@ -86,7 +86,7 @@ class TraversalNode : public virtual GraphNode {
   ~TraversalNode();
 
   /// @brief Internal constructor to clone the node.
-  TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 std::vector<Collection*> const& edgeColls,
                 std::vector<Collection*> const& vertexColls,
                 Variable const* inVariable, std::string const& vertexId,

@@ -97,7 +97,7 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& bu
   _modCondition->toVelocyPack(builder, verbose);
 }
 
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                              AstNode const* direction, AstNode const* start,
                              AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
                              std::unique_ptr<BaseOptions> options)
@@ -162,7 +162,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
 }
 
 /// @brief Internal constructor to clone the node.
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                              std::vector<Collection*> const& edgeColls,
                              std::vector<Collection*> const& vertexColls,
                              Variable const* inVariable, std::string const& vertexId,

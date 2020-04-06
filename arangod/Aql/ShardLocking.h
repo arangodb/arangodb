@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_SHARD_LOCKING_H
 #define ARANGOD_AQL_SHARD_LOCKING_H 1
 
+#include "Aql/ExecutionNodeId.h"
+#include "Aql/QuerySnippet.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
@@ -128,7 +130,7 @@ class ShardLocking {
   // Get the shards of the given collection within the given snippet.
   // This will honor shard restrictions on the given snippet.
   // All shards will be returned, there will be no filtering on the server.
-  std::unordered_set<ShardID> const& shardsForSnippet(size_t snippetId,
+  std::unordered_set<ShardID> const& shardsForSnippet(aql::QuerySnippet::Id snippetId,
                                                       Collection const* col);
 
  private:

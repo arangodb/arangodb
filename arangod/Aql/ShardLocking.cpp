@@ -314,7 +314,7 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
   return _shardMapping;
 }
 
-std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(size_t snippetId,
+std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(QuerySnippet::Id snippetId,
                                                                   Collection const* col) {
   auto const& lockInfo = _collectionLocking.find(col);
 

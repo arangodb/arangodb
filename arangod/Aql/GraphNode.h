@@ -26,6 +26,7 @@
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "Cluster/ClusterTypes.h"
@@ -58,7 +59,7 @@ namespace aql {
 class GraphNode : public ExecutionNode {
  protected:
   /// @brief constructor with a vocbase and a collection name
-  GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase, AstNode const* direction,
+  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase, AstNode const* direction,
             AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -70,7 +71,7 @@ class GraphNode : public ExecutionNode {
 
  protected:
   /// @brief Internal constructor to clone the node.
-  GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
             std::vector<Collection*> const& edgeColls,
             std::vector<Collection*> const& vertexColls,
             TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> directions,

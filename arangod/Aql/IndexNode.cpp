@@ -28,6 +28,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
@@ -49,7 +50,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief constructor
-IndexNode::IndexNode(ExecutionPlan* plan, size_t id,
+IndexNode::IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
                      Collection const* collection, Variable const* outVariable,
                      std::vector<transaction::Methods::IndexHandle> const& indexes,
                      std::unique_ptr<Condition> condition, IndexIteratorOptions const& opts)

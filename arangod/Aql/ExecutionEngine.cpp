@@ -380,15 +380,19 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   // <- before` Therefore we will always assert that this is NULLPTR with the
   // only exception of this case.
   GatherNode const* _lastGatherNode;
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> const& _nodesById;
 
  public:
-  DistributedQueryInstanciator(Query& query, bool pushToSingleServer)
+  DistributedQueryInstanciator(Query& query,
+                               std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                               bool pushToSingleServer)
       : _dbserverParts(query),
         _isCoordinator(true),
         _pushToSingleServer(pushToSingleServer),
         _lastClosed(0),
         _query(query),
-        _lastGatherNode(nullptr) {}
+        _lastGatherNode(nullptr),
+        _nodesById(nodesById) {}
 
   /// @brief before method for collection of pieces phase
   ///        Collects all nodes on the path and divides them
@@ -478,8 +482,9 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
                                     _query.vocbase().name(), queryIds);
     });
 
-    std::unordered_map<size_t, size_t> nodeAliases;
-    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, nodeAliases);
+    std::unordered_map<ExecutionNodeId, ExecutionNodeId> nodeAliases;
+    ExecutionEngineResult res =
+        _dbserverParts.buildEngines(_nodesById, queryIds, nodeAliases);
     if (res.fail()) {
       return res;
     }
@@ -732,7 +737,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
 
   if (arangodb::ServerState::isCoordinator(role)) {
     // distributed query
-    DistributedQueryInstanciator inst(query, pushToSingleServer);
+    DistributedQueryInstanciator inst(query, plan.getNodesById(), pushToSingleServer);
     plan.root()->walk(inst);
 
     auto result = inst.buildEngines(&queryRegistry);

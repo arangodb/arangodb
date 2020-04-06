@@ -31,6 +31,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/RegisterPlan.h"
@@ -86,7 +87,7 @@ static TRI_edge_direction_e parseDirection(AstNode const* node) {
   return uint64ToDirection(dirNum);
 }
 
-GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                      AstNode const* direction, AstNode const* graph,
                      std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
@@ -438,7 +439,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 }
 
 /// @brief Internal constructor to clone the node.
-GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                      std::vector<Collection*> const& edgeColls,
                      std::vector<Collection*> const& vertexColls,
                      TRI_edge_direction_e defaultDirection,
@@ -494,7 +495,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
 }
 
 GraphNode::GraphNode(THIS_THROWS_WHEN_CALLED)
-    : ExecutionNode(nullptr, 0), _defaultDirection() {
+    : ExecutionNode(nullptr, ExecutionNodeId{0}), _defaultDirection() {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }

@@ -98,7 +98,7 @@ static KShortestPathsExecutorInfos::InputVertex prepareVertexInput(KShortestPath
 }
 }  // namespace
 
-KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                                        AstNode const* direction, AstNode const* start,
                                        AstNode const* target, AstNode const* graph,
                                        std::unique_ptr<BaseOptions> options)
@@ -144,7 +144,7 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocba
 
 /// @brief Internal constructor to clone the node.
 KShortestPathsNode::KShortestPathsNode(
-    ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+    ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls,
     TRI_edge_direction_e defaultDirection,

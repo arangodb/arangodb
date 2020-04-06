@@ -96,12 +96,15 @@ void QuerySnippet::addNode(ExecutionNode* node) {
   }
 }
 
-void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& shardLocking,
-                                        std::unordered_map<size_t, size_t>& nodeAliases,
-                                        VPackBuilder& infoBuilder) {
+void QuerySnippet::serializeIntoBuilder(
+    ServerID const& server,
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+    ShardLocking& shardLocking,
+    std::unordered_map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+    VPackBuilder& infoBuilder) {
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(!_expansions.empty());
-  auto firstBranchRes = prepareFirstBranch(server, shardLocking);
+  auto firstBranchRes = prepareFirstBranch(server, nodesById, shardLocking);
   if (!firstBranchRes.ok()) {
     // We have at least one expansion that has no shard on this server.
     // we do not need to write this snippet here.
@@ -164,7 +167,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
 
   // The Key is required to build up the queryId mapping later
   infoBuilder.add(VPackValue(
-      arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode) + ":" + server));
+      arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode.id()) + ":" + server));
   if (!localExpansions.empty()) {
     // We have Expansions to permutate, guaranteed they have
     // all identical lengths.
@@ -178,7 +181,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
     TRI_ASSERT(plan == _sinkNode->plan());
     // Clone the sink node, we do not need dependencies (second bool)
     // And we do not need variables
-    GatherNode* internalGather =
+    auto* internalGather =
         ExecutionNode::castTo<GatherNode*>(_sinkNode->clone(plan, false, false));
     // Use the same elements for sorting
     internalGather->elements(_sinkNode->elements());
@@ -187,7 +190,8 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
     // it needs to expose it's input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLater());
     internalGather->setRegsToClear({});
-    nodeAliases.try_emplace(internalGather->id(), std::numeric_limits<size_t>::max());
+    auto const reservedId = ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
+    nodeAliases.try_emplace(internalGather->id(), reservedId);
 
     ScatterNode* internalScatter = nullptr;
     if (lastIsRemote) {
@@ -199,7 +203,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
       internalScatter->addDependency(lastNode);
       // Let the local Scatter node distribute data by SHARD
       internalScatter->setScatterType(ScatterNode::ScatterType::SHARD);
-      nodeAliases.try_emplace(internalScatter->id(), std::numeric_limits<size_t>::max());
+      nodeAliases.try_emplace(internalScatter->id(), reservedId);
 
       if (_globalScatter->getType() == ExecutionNode::DISTRIBUTE) {
         {
@@ -310,7 +314,9 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
 }
 
 ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::prepareFirstBranch(
-    ServerID const& server, ShardLocking& shardLocking) {
+    ServerID const& server,
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+    ShardLocking& shardLocking) {
   size_t numberOfShardsToPermutate = 0;
   std::unordered_map<ExecutionNode*, std::set<ShardID>> localExpansions;
   std::unordered_map<ShardID, ServerID> const& shardMapping =
@@ -361,8 +367,10 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       // We want to instantiate this snippet here exactly iff this is the case.
       auto needInstanceHere = std::invoke([&]() {
         auto const* const protoCol = localGraphNode->isUsedAsSatellite()
-                                         ? localGraphNode->getSatelliteOf()->collection()
-                                         : localGraphNode->collection();
+                ? ExecutionNode::castTo<CollectionAccessingNode*>(
+                      localGraphNode->getSatelliteOf(nodesById))
+                      ->collection()
+                : localGraphNode->collection();
 
         auto const& shards = shardLocking.shardsForSnippet(id(), protoCol);
 

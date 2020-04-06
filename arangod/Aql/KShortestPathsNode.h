@@ -54,7 +54,7 @@ class KShortestPathsNode : public virtual GraphNode {
   KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode const& node);
 
  public:
-  KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                      AstNode const* direction, AstNode const* start,
                      AstNode const* target, AstNode const* graph,
                      std::unique_ptr<graph::BaseOptions> options);
@@ -64,7 +64,7 @@ class KShortestPathsNode : public virtual GraphNode {
   ~KShortestPathsNode();
 
   /// @brief Internal constructor to clone the node.
-  KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                      std::vector<Collection*> const& edgeColls,
                      std::vector<Collection*> const& vertexColls,
                      TRI_edge_direction_e defaultDirection,
