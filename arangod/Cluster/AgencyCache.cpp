@@ -45,8 +45,26 @@ std::tuple <query_t, index_t> const AgencyCache::get(
   std::string const& path) const {
   std::lock_guard g(_storeLock);
   auto ret = std::make_shared<VPackBuilder>();
-  _readDB.get(path).toBuilder(*ret);
+  _readDB.get("/arango/" + path).toBuilder(*ret);
   return std::tuple(ret, _commitIndex);
+}
+
+// Get Builder from readDB mainly /Plan /Current
+std::tuple <query_t, index_t> const AgencyCache::get(
+  std::vector<std::string> const& paths) const {
+  std::lock_guard g(_storeLock);
+
+  auto result = std::make_shared<arangodb::velocypack::Builder>();
+  auto query = std::make_shared<arangodb::velocypack::Builder>();
+  {
+    VPackArrayBuilder outer(query.get());
+    VPackArrayBuilder inner(query.get());
+    for (auto const& i : paths) {
+      query->add(VPackValue(i));
+    }
+  }
+  _readDB.read(query, result);
+  return std::tuple(result, _commitIndex);
 }
 
 index_t AgencyCache::index() const {

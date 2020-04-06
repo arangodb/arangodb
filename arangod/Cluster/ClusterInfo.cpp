@@ -457,16 +457,16 @@ std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
 /// @brief Load cluster ID
 void ClusterInfo::loadClusterId() {
   // Contact agency for /<prefix>/Cluster
-  AgencyCommResult result = _agency.getValues("Cluster");
+
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get("Cluster");
 
   // Parse
-  if (result.successful()) {
-    VPackSlice slice = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), "Cluster"}));
-    if (slice.isString()) {
-      _clusterId = slice.copyString();
-    }
+  VPackSlice slice = acb->slice();
+  if (slice.isString()) {
+    _clusterId = slice.copyString();
   }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -529,7 +529,7 @@ void ClusterInfo::loadPlan() {
   }
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [planBuilder, index] = agencyCache.get("/arango/Plan");
+  auto [planBuilder, index] = agencyCache.get(prefixPlan);
   auto planSlice = planBuilder->slice();
 
   if (!planSlice.isObject()) {
@@ -1069,7 +1069,7 @@ void ClusterInfo::loadCurrent() {
       << "loadCurrent: wantedVersion: " << _currentProt.wantedVersion;
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [currentBuilder, index] = agencyCache.get("/arango/Current");
+  auto [currentBuilder, index] = agencyCache.get(prefixCurrent);
   auto currentSlice = currentBuilder->slice();
 
   if (!currentSlice.isObject()) {
@@ -2437,37 +2437,41 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   });
 
   size_t numberOfShards = 0;
-  res = ac.getValues("Plan/Collections/" + dbName + "/" + collectionID +
-                     "/shards");
 
-  if (res.successful()) {
-    velocypack::Slice databaseSlice = res.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Plan", "Collections", dbName}));
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(
+    std::vector<std::string>{
+      AgencyCommManager::path(
+        "Plan/Collections/" + dbName + "/" + collectionID + "/shards")});
 
-    if (!databaseSlice.isObject()) {
-      // database dropped in the meantime
-      events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-    }
+  velocypack::Slice databaseSlice =
+    acb->slice()[0].get(std::vector<std::string>(
+                          {AgencyCommManager::path(), "Plan", "Collections", dbName}));
 
-    velocypack::Slice collectionSlice = databaseSlice.get(collectionID);
-    if (!collectionSlice.isObject()) {
-      // collection dropped in the meantime
-      events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-    }
-
-    velocypack::Slice shardsSlice = collectionSlice.get("shards");
-    if (shardsSlice.isObject()) {
-      numberOfShards = shardsSlice.length();
-    } else {
-      LOG_TOPIC("d340d", ERR, Logger::CLUSTER)
-          << "Missing shards information on dropping " << dbName << "/" << collectionID;
-
-      events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
+  if (!databaseSlice.isObject()) {
+    // database dropped in the meantime
+    events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
+
+  velocypack::Slice collectionSlice = databaseSlice.get(collectionID);
+  if (!collectionSlice.isObject()) {
+    // collection dropped in the meantime
+    events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  velocypack::Slice shardsSlice = collectionSlice.get("shards");
+  if (shardsSlice.isObject()) {
+    numberOfShards = shardsSlice.length();
+  } else {
+    LOG_TOPIC("d340d", ERR, Logger::CLUSTER)
+      << "Missing shards information on dropping " << dbName << "/" << collectionID;
+
+    events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
 
   // Transact to agency
   AgencyOperation delPlanCollection("Plan/Collections/" + dbName + "/" + collectionID,
@@ -2548,19 +2552,17 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
                                                        LogicalCollection const* info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac(_server);
-  AgencyCommResult res;
 
   AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
                                     AgencyPrecondition::Type::EMPTY, false);
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID);
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(
+    std::vector<std::string>{
+      AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)});
 
-  if (!res.successful()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
-  velocypack::Slice collection = res.slice()[0].get(std::vector<std::string>(
+  velocypack::Slice collection = acb->slice()[0].get(std::vector<std::string>(
       {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
 
   if (!collection.isObject()) {
@@ -2580,14 +2582,11 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
 
   VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);
 
-  res.clear();
-
   AgencyOperation setColl("Plan/Collections/" + databaseName + "/" + collectionID,
                           AgencyValueOperationType::SET, builder.slice());
 
   AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
-
-  res = ac.sendTransactionWithFailover(trans);
+  AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (res.successful()) {
     loadPlan();
@@ -2771,24 +2770,24 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
                                                  std::string const& viewID,
                                                  VPackSlice const& json) {
   // TRI_ASSERT(ServerState::instance()->isCoordinator());
-  AgencyComm ac(_server);
-
-  auto res = ac.getValues("Plan/Views/" + databaseName + "/" + viewID);
-
-  if (!res.successful()) {
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(
+    std::vector<std::string>{
+      AgencyCommManager::path("Plan/Views/" + databaseName + "/" + viewID)});
+  
+  if (acb->slice()[0].hasKey(
+        {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID})) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
-  auto const view = res.slice()[0].get<std::string>(
-      {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID});
-
+  auto const view = acb->slice()[0].get<std::string>(
+    {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID});
+  
   if (!view.isObject()) {
     logAgencyDump();
-
+    
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
-
-  res.clear();
 
   AgencyWriteTransaction const trans{
       // operations
@@ -2797,7 +2796,8 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
       // preconditions
       {"Plan/Databases/" + databaseName, AgencyPrecondition::Type::EMPTY, false}};
 
-  res = ac.sendTransactionWithFailover(trans);
+  AgencyComm ac(_server);
+  AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (!res.successful()) {
     return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage()};
@@ -3163,34 +3163,28 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         // index has not shown up in Current yet,  follow up check to
         // ensure it is still in plan (not dropped between iterations)
 
-        AgencyCommResult result = _agency.sendTransactionWithFailover(
-            AgencyReadTransaction(AgencyCommManager::path(planIndexesKey)));
-
-        if (result.successful()) {
-          auto indexes = result.slice()[0].get(
-              std::vector<std::string>{AgencyCommManager::path(), "Plan",
-                                       "Collections", databaseName,
-                                       collectionID, "indexes"});
-
-          bool found = false;
-          if (indexes.isArray()) {
-            for (VPackSlice v : VPackArrayIterator(indexes)) {
-              VPackSlice const k = v.get(StaticStrings::IndexId);
-              if (k.isString() && k.isEqualString(idString)) {
-                // index is still here
-                found = true;
-                break;
-              }
+        auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+        auto [acb, index] = agencyCache.get(planIndexesKey);
+        auto indexes = acb->slice();
+                
+        bool found = false;
+        if (indexes.isArray()) {
+          for (VPackSlice v : VPackArrayIterator(indexes)) {
+            VPackSlice const k = v.get(StaticStrings::IndexId);
+            if (k.isString() && k.isEqualString(idString)) {
+              // index is still here
+              found = true;
+              break;
             }
           }
-
-          if (!found) {
-            return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
-                          "index was dropped during creation");
-          }
+        }
+        
+        if (!found) {
+          return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
+                        "index was dropped during creation");
         }
       }
-
+    
       if (tmpRes == 0) {
         // Finally, in case all is good, remove the `isBuilding` flag
         // check that the index has appeared. Note that we have to have
@@ -3534,85 +3528,85 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  AgencyCommResult result = _agency.sendTransactionWithFailover(AgencyReadTransaction(
-      std::vector<std::string>({AgencyCommManager::path(prefixServersRegistered),
-                                AgencyCommManager::path(mapUniqueToShortId),
-                                AgencyCommManager::path(prefixServersKnown)})));
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(
+    std::vector<std::string>({AgencyCommManager::path(prefixServersRegistered),
+                              AgencyCommManager::path(mapUniqueToShortId),
+                              AgencyCommManager::path(prefixServersKnown)}));
+  auto result = acb->slice();
 
-  if (result.successful()) {
-    velocypack::Slice serversRegistered = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Current", "ServersRegistered"}));
+  velocypack::Slice serversRegistered = result[0].get(std::vector<std::string>(
+                                                        {AgencyCommManager::path(), "Current", "ServersRegistered"}));
 
-    velocypack::Slice serversAliases = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
+  velocypack::Slice serversAliases = result[0].get(std::vector<std::string>(
+                                                     {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
 
-    velocypack::Slice serversKnownSlice = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Current", "ServersKnown"}));
+  velocypack::Slice serversKnownSlice = result[0].get(std::vector<std::string>(
+                                                        {AgencyCommManager::path(), "Current", "ServersKnown"}));
 
-    if (serversRegistered.isObject()) {
-      decltype(_servers) newServers;
-      decltype(_serverAliases) newAliases;
-      decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
-      decltype(_serverTimestamps) newTimestamps;
+  if (serversRegistered.isObject()) {
+    decltype(_servers) newServers;
+    decltype(_serverAliases) newAliases;
+    decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
+    decltype(_serverTimestamps) newTimestamps;
 
-      std::unordered_set<ServerID> serverIds;
+    std::unordered_set<ServerID> serverIds;
 
-      for (auto const& res : VPackObjectIterator(serversRegistered)) {
-        velocypack::Slice slice = res.value;
+    for (auto const& res : VPackObjectIterator(serversRegistered)) {
+      velocypack::Slice slice = res.value;
 
-        if (slice.isObject() && slice.hasKey("endpoint")) {
-          std::string server =
-              arangodb::basics::VelocyPackHelper::getStringValue(slice,
-                                                                 "endpoint", "");
-          std::string advertised = arangodb::basics::VelocyPackHelper::getStringValue(
-              slice, "advertisedEndpoint", "");
+      if (slice.isObject() && slice.hasKey("endpoint")) {
+        std::string server =
+          arangodb::basics::VelocyPackHelper::getStringValue(slice,
+                                                             "endpoint", "");
+        std::string advertised = arangodb::basics::VelocyPackHelper::getStringValue(
+          slice, "advertisedEndpoint", "");
 
-          std::string serverId = res.key.copyString();
-          try {
-            velocypack::Slice serverSlice;
-            serverSlice = serversAliases.get(serverId);
-            if (serverSlice.isObject()) {
-              std::string alias = arangodb::basics::VelocyPackHelper::getStringValue(
-                  serverSlice, "ShortName", "");
-              newAliases.try_emplace(std::move(alias), serverId);
-            }
-          } catch (...) {
+        std::string serverId = res.key.copyString();
+        try {
+          velocypack::Slice serverSlice;
+          serverSlice = serversAliases.get(serverId);
+          if (serverSlice.isObject()) {
+            std::string alias = arangodb::basics::VelocyPackHelper::getStringValue(
+              serverSlice, "ShortName", "");
+            newAliases.try_emplace(std::move(alias), serverId);
           }
-          std::string serverTimestamp =
-              arangodb::basics::VelocyPackHelper::getStringValue(slice,
-                                                                 "timestamp",
-                                                                 "");
-          newServers.try_emplace(serverId, server);
-          newAdvertisedEndpoints.try_emplace(serverId, advertised);
-          serverIds.emplace(serverId);
-          newTimestamps.try_emplace(serverId, serverTimestamp);
+        } catch (...) {
         }
+        std::string serverTimestamp =
+          arangodb::basics::VelocyPackHelper::getStringValue(slice,
+                                                             "timestamp",
+                                                             "");
+        newServers.try_emplace(serverId, server);
+        newAdvertisedEndpoints.try_emplace(serverId, advertised);
+        serverIds.emplace(serverId);
+        newTimestamps.try_emplace(serverId, serverTimestamp);
       }
-
-      decltype(_serversKnown) newServersKnown(serversKnownSlice, serverIds);
-
-      // Now set the new value:
-      {
-        WRITE_LOCKER(writeLocker, _serversProt.lock);
-        _servers.swap(newServers);
-        _serverAliases.swap(newAliases);
-        _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
-        _serversKnown = std::move(newServersKnown);
-        _serverTimestamps.swap(newTimestamps);
-        _serversProt.doneVersion = storedVersion;
-        _serversProt.isValid = true;
-      }
-      // RebootTracker has its own mutex, and doesn't strictly need to be in
-      // sync with the other members.
-      rebootTracker().updateServerState(_serversKnown.rebootIds());
-      return;
     }
+
+    decltype(_serversKnown) newServersKnown(serversKnownSlice, serverIds);
+
+    // Now set the new value:
+    {
+      WRITE_LOCKER(writeLocker, _serversProt.lock);
+      _servers.swap(newServers);
+      _serverAliases.swap(newAliases);
+      _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
+      _serversKnown = std::move(newServersKnown);
+      _serverTimestamps.swap(newTimestamps);
+      _serversProt.doneVersion = storedVersion;
+      _serversProt.isValid = true;
+    }
+    // RebootTracker has its own mutex, and doesn't strictly need to be in
+    // sync with the other members.
+    rebootTracker().updateServerState(_serversKnown.rebootIds());
+    return;
   }
 
   LOG_TOPIC("449e0", DEBUG, Logger::CLUSTER)
-      << "Error while loading " << prefixServersRegistered
-      << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+    << "Error while loading " << prefixServersRegistered
+    << ", result was " << result.toJson();
+
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -4341,15 +4335,9 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 }
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
-  AgencyCommResult dump = _agency.getValues("Plan");
-
-  if (!dump.successful()) {
-    LOG_TOPIC("ce937", ERR, Logger::CLUSTER)
-        << "failed to acquire agency dump: " << dump.errorMessage();
-    return Result(dump.errorCode(), dump.errorMessage());
-  }
-
-  body->add(dump.slice());
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(std::vector<std::string>{"Plan"});
+  body->add(acb->slice());
   return Result();
 }
 
@@ -4386,7 +4374,6 @@ std::string const supervisionMode = "/arango/Supervision/State/Mode";
 std::string const toDoKey = "/arango/Target/ToDo";
 std::string const pendingKey = "/arango/Target/Pending";
 std::string const writeURL = "_api/agency/write";
-std::vector<std::string> modepv = {"arango", "Supervision", "State", "Mode"};
 
 arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
                                                   double const& timeout,
@@ -4544,26 +4531,19 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
 
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    result = _agency.getValues("Supervision/State/Mode");
-    if (result.successful()) {
-      if (!result.slice().isArray() || result.slice().length() != 1) {
-        return arangodb::Result(
-            TRI_ERROR_HOT_BACKUP_INTERNAL,
-            std::string(
-                "invalid JSON from agency, when acquiring supervision mode: ") +
-                result.slice().toJson());
-      }
-      if (result.slice()[0].hasKey(modepv) && result.slice()[0].get(modepv).isString()) {
-        if (result.slice()[0].get(modepv).isEqualString("Maintenance")) {
-          LOG_TOPIC("76a2c", DEBUG, Logger::BACKUP)
-              << "agency hot backup lock acquired";
-          return arangodb::Result();
-        }
+    auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+    auto [result, index] = agencyCache.get("Supervision/State/Mode");
+
+    if (result->slice().isString()) {
+      if (result->slice().isEqualString("Maintenance")) {
+        LOG_TOPIC("76a2c", DEBUG, Logger::BACKUP)
+          << "agency hot backup lock acquired";
+        return arangodb::Result();
       }
     }
 
     LOG_TOPIC("ede54", DEBUG, Logger::BACKUP)
-        << "agency hot backup lock waiting: " << result.slice().toJson();
+        << "agency hot backup lock waiting: " << result->slice().toJson();
 
     if (wait < 2.0) {
       wait *= 1.1;
@@ -4643,20 +4623,23 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
 
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    result = _agency.getValues("Supervision/State/Mode");
-    if (result.successful()) {
-      if (!result.slice().isArray() || result.slice().length() != 1 ||
-          !result.slice()[0].hasKey(modepv) || !result.slice()[0].get(modepv).isString()) {
-        return arangodb::Result(
-          TRI_ERROR_HOT_BACKUP_INTERNAL,
-          std::string("invalid JSON from agency, when deactivating supervision mode:") +
-          result.slice().toJson());
-      }
 
-      if (result.slice()[0].get(modepv).isEqualString("Normal")) {
-        return arangodb::Result();
-      }
+    auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+    auto [res, index] = agencyCache.get("Supervision/State/Mode");
+    
+    if(!res->slice().isString()) {
+      return arangodb::Result(
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        std::string("invalid JSON from agency, when deactivating supervision mode:") +
+        res->slice().toJson());
     }
+
+    if (res->slice().isEqualString("Normal")) {
+      return arangodb::Result();
+    }
+
+    LOG_TOPIC("ede54", DEBUG, Logger::BACKUP)
+      << "agency hot backup lock waiting: " << res->slice().toJson();
 
     if (wait < 2.0) {
       wait *= 1.1;

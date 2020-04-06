@@ -58,6 +58,10 @@ public:
   std::tuple <consensus::query_t, consensus::index_t> const get(
     std::string const& path = std::string("/")) const;
 
+  /// @brief Get velocypack from node downward
+  std::tuple <consensus::query_t, consensus::index_t> const get(
+    std::vector<std::string> const& paths) const;
+
   /// @brief Get current commit index
   consensus::index_t index() const;
 
