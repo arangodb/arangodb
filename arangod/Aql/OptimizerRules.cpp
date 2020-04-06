@@ -3607,7 +3607,6 @@ void arangodb::aql::createScatterGatherSnippet(
   ExecutionNode* remoteNode =
       new RemoteNode(&plan, plan.nextId(), vocbase, "", "", "");
   plan.registerNode(remoteNode);
-  TRI_ASSERT(scatterNode);
   remoteNode->addDependency(scatterNode);
 
   // re-link with the remote node
@@ -3701,15 +3700,70 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
         deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
       continue;
     }
-
-    if (plan->shouldExcludeFromScatterGather(node)) {
-      continue;
-    }
-
-    auto const isRootNode = plan->isRoot(node);
-    plan->unlinkNode(node, true);
-
+    
     auto const nodeType = node->getType();
+    bool scatterOnly = false;
+
+    // check if the smart-joins rule marked this node as not requiring a full scatter..gather setup.
+    // in case of local joins we want to avoid inserting scatter..gather of course.
+    if (plan->shouldExcludeFromScatterGather(node)) {
+      // this must be a node that is supposed to be executed on a DB server
+      TRI_ASSERT(nodeType == ExecutionNode::ENUMERATE_COLLECTION || nodeType == ExecutionNode::INDEX ||
+                 nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::UPDATE ||
+                 nodeType == ExecutionNode::REPLACE || nodeType == ExecutionNode::REMOVE ||
+                 nodeType == ExecutionNode::UPSERT);
+
+      // look for other nodes north of us, to check if any of them require running
+      // on a coordinator
+      bool eligible = true;
+      auto current = deps[0];
+      while (current != nullptr) {
+        if (current->getType() == ExecutionNode::ENUMERATE_COLLECTION || 
+            current->getType() == ExecutionNode::INDEX ||
+            current->getType() == ExecutionNode::INSERT || 
+            current->getType() == ExecutionNode::UPDATE ||
+            current->getType() == ExecutionNode::REPLACE || 
+            current->getType() == ExecutionNode::REMOVE ||
+            current->getType() == ExecutionNode::UPSERT) {
+          // these nodes are definitely run on a DB server too.
+          // and we did not see anything in between that needs to run on a coordinator.
+          TRI_ASSERT(eligible);
+          break;
+        }
+        
+        if (current->getType() == ExecutionNode::TRAVERSAL || 
+            current->getType() == ExecutionNode::SHORTEST_PATH ||
+            current->getType() == ExecutionNode::K_SHORTEST_PATHS || 
+            current->getType() == ExecutionNode::REMOTESINGLE) {
+          // these nodes must be executed on coordinators
+          eligible = false;
+          break;
+        } else if (current->getType() == ExecutionNode::CALCULATION) {
+          auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
+          auto expr = calculationNode->expression();
+          if (!expr->canRunOnDBServer()) {
+            // a calculation that must be run on a coordinator
+            eligible = false;
+            break;
+          }
+        }
+        current = current->getFirstDependency();
+      }
+
+      if (eligible) {
+        // no need to insert scatter..gather at all! 
+        // move on to the next node
+        continue;
+      } 
+
+      // smart-joins rule has marked this node as being part of a local join, but
+      // there is still a coordinator-based node north of us. so we need to be careful 
+      // to insert at least the scatter part here (though there is no need to insert
+      // the gather part).
+      scatterOnly = true;
+    }
+      
+    auto const isRootNode = plan->isRoot(node);
 
     // extract database and collection from plan node
     TRI_vocbase_t* vocbase = nullptr;
@@ -3763,10 +3817,39 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
     TRI_ASSERT(collection != nullptr);
 
-    size_t numberOfShards = collection->numberOfShards();
-    createScatterGatherSnippet(*plan, vocbase, node, isRootNode, deps, parents,
-                               elements, numberOfShards, subqueries, collection);
+    if (scatterOnly) {
+      // we can get away with inserting just the scatter part
+      TRI_ASSERT(plan->shouldExcludeFromScatterGather(node));
 
+      ExecutionNode* remoteNode =
+        new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
+      plan->registerNode(remoteNode);
+      plan->insertBefore(node, remoteNode);
+
+      auto* scatterNode =
+        new ScatterNode(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD);
+      plan->registerNode(scatterNode);
+      plan->insertBefore(remoteNode, scatterNode);
+
+      // check if south of us we see a scatter..remote combination
+      // if yes, we must remove it in order to get a valid plan
+      auto* directParent = node->getFirstParent();
+      if (directParent != nullptr && directParent->getType() == ExecutionNode::SCATTER) {
+        auto* indirectParent = directParent->getFirstParent();
+        if (indirectParent != nullptr && indirectParent->getType() == ExecutionNode::REMOTE) {
+          plan->unlinkNode(directParent, true);
+          plan->unlinkNode(indirectParent, true);
+        }
+      }
+      
+    } else {
+      // we need to insert the full scatter...gather thing
+      plan->unlinkNode(node, true);
+
+      size_t numberOfShards = collection->numberOfShards();
+      createScatterGatherSnippet(*plan, vocbase, node, isRootNode, deps, parents,
+                                 elements, numberOfShards, subqueries, collection);
+    }
     wasModified = true;
   }
 
