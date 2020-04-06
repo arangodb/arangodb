@@ -33,12 +33,11 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
-  
-SmartContext::SmartContext(TRI_vocbase_t& vocbase,
-                           TRI_voc_tid_t globalId,
+
+SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
                            TransactionState* state)
-  : Context(vocbase), _globalId(globalId), _state(state) {
-  TRI_ASSERT(_globalId != 0);
+    : Context(vocbase), _globalId(globalId), _state(state) {
+  TRI_ASSERT(_globalId.isSet());
 }
   
 SmartContext::~SmartContext() {
@@ -72,17 +71,16 @@ CollectionNameResolver const& transaction::SmartContext::resolver() {
   return *_resolver;
 }
 
-TRI_voc_tid_t transaction::SmartContext::generateId() const {
+TransactionId transaction::SmartContext::generateId() const {
   return _globalId;
 }
   
 //  ============= ManagedContext =============
-  
-ManagedContext::ManagedContext(TRI_voc_tid_t globalId,
-                               TransactionState* state,
+
+ManagedContext::ManagedContext(TransactionId globalId, TransactionState* state,
                                AccessMode::Type mode)
-  : SmartContext(state->vocbase(), globalId, state), _mode(mode) {}
-  
+    : SmartContext(state->vocbase(), globalId, state), _mode(mode) {}
+
 ManagedContext::~ManagedContext() {
   if (_state != nullptr) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();

@@ -55,7 +55,7 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   void executeBegin();
   void executeCommit();
   void executeAbort();
-  void generateTransactionResult(rest::ResponseCode code, TRI_voc_tid_t tid,
+  void generateTransactionResult(rest::ResponseCode code, TransactionId tid,
                                  transaction::Status status);
 
   /// start a legacy JS transaction

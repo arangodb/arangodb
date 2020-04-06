@@ -866,7 +866,7 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 }
 
 std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
+    TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
   return std::make_unique<RocksDBTransactionState>(vocbase, tid, options);
 }
 

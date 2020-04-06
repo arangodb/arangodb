@@ -43,10 +43,8 @@ namespace transaction {
 /// same TransactionState instance will be used across shards on the same server.
 class SmartContext : public Context {
  public:
+  SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId, TransactionState* state);
 
-  SmartContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId,
-               TransactionState* state);
-    
   /// @brief destroy the context
   ~SmartContext();
 
@@ -62,20 +60,18 @@ class SmartContext : public Context {
   }
   
   /// @brief locally persisted transaction ID
-  TRI_voc_tid_t generateId() const override final;
-  
+  TransactionId generateId() const override final;
+
  protected:
   /// @brief ID of the transaction to use
-  TRI_voc_tid_t const _globalId;
+  TransactionId const _globalId;
   arangodb::TransactionState* _state;
 };
   
 /// @brief Acquire a transaction from the Manager
 struct ManagedContext final : public SmartContext {
-  
-  ManagedContext(TRI_voc_tid_t globalId, TransactionState* state,
-                 AccessMode::Type mode);
-  
+  ManagedContext(TransactionId globalId, TransactionState* state, AccessMode::Type mode);
+
   ~ManagedContext();
   
   /// @brief get parent transaction (if any)
@@ -96,9 +92,8 @@ private:
 /// Used for a standalone AQL query. Always creates the state first.
 /// Registers the TransactionState with the manager
 struct AQLStandaloneContext final : public SmartContext {
-  
-  AQLStandaloneContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId)
-    : SmartContext(vocbase, globalId, nullptr) {}
+  AQLStandaloneContext(TRI_vocbase_t& vocbase, TransactionId globalId)
+      : SmartContext(vocbase, globalId, nullptr) {}
 
   /// @brief get parent transaction (if any)
   TransactionState* getParentTransaction() const override;

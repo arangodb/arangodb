@@ -42,11 +42,12 @@ class TransactionManager {
   virtual ~TransactionManager() = default;
 
   // register a transaction
-  virtual void registerTransaction(TRI_voc_tid_t transactionId,
+  virtual void registerTransaction(TransactionId transactionId,
                                    bool isReadOnlyTransaction) = 0;
 
   // unregister a transaction
-  virtual void unregisterTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction) = 0;
+  virtual void unregisterTransaction(TransactionId transactionId,
+                                     bool isReadOnlyTransaction) = 0;
 
   virtual uint64_t getActiveTransactionCount() = 0;
 

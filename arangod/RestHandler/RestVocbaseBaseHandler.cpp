@@ -565,13 +565,13 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
-    TRI_voc_tid_t tid = 0;
+    TransactionId tid = TransactionId::none();
     std::size_t pos = 0;
     try {
-      tid = std::stoull(value, &pos, 10);
+      tid = TransactionId{std::stoull(value, &pos, 10)};
     } catch (...) {}
-    if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
-                     ServerState::instance()->isRunningInCluster())) {
+    if (tid.empty() || (tid.isLegacyTransactionId() &&
+                        ServerState::instance()->isRunningInCluster())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
     }
 
@@ -596,7 +596,10 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     auto ctx = mgr->leaseManagedTrx(tid, type);
     if (!ctx) {
       LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                                     std::string("transaction '") +
+                                         std::to_string(tid.id()) +
+                                         "' not found");
     }
     return std::make_unique<SimpleTransaction>(std::move(ctx));
   } else {
@@ -613,13 +616,13 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
     return std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   }
 
-  TRI_voc_tid_t tid = 0;
+  TransactionId tid = TransactionId::none();
   std::size_t pos = 0;
   try {
-    tid = std::stoull(value, &pos, 10);
+    tid = TransactionId{std::stoull(value, &pos, 10)};
   } catch (...) {}
-  if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
-                   ServerState::instance()->isRunningInCluster())) {
+  if (tid.empty() || (tid.isLegacyTransactionId() &&
+                      ServerState::instance()->isRunningInCluster())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
   }
 
@@ -627,8 +630,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   TRI_ASSERT(mgr != nullptr);
 
   if (pos > 0 && pos < value.size()) {
-    if (!transaction::isLeaderTransactionId(tid) ||
-        !ServerState::instance()->isDBServer()) {
+    if (!tid.isLeaderTransactionId() || !ServerState::instance()->isDBServer()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
@@ -649,7 +651,9 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                                   std::string("transaction '") +
+                                       std::to_string(tid.id()) + "' not found");
   }
   return ctx;
 }

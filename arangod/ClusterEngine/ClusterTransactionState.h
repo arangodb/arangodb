@@ -30,7 +30,7 @@ namespace arangodb {
 /// @brief transaction type
 class ClusterTransactionState final : public TransactionState {
  public:
-  ClusterTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options);
   ~ClusterTransactionState() = default;
 

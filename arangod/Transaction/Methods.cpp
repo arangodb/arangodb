@@ -988,7 +988,7 @@ Future<Result> transaction::Methods::finishAsync(Result const& res) {
 }
 
 /// @brief return the transaction id
-TRI_voc_tid_t transaction::Methods::tid() const {
+TransactionId transaction::Methods::tid() const {
   TRI_ASSERT(_state != nullptr);
   return _state->id();
 }
@@ -2820,7 +2820,7 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCo
 
   // update selectivity estimates if they were expired
   if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) {  // hack to fix mmfiles
-    collection->clusterIndexEstimates(true, _state->id() + 1);
+    collection->clusterIndexEstimates(true, _state->id().child());
   } else {
     collection->clusterIndexEstimates(true);
   }

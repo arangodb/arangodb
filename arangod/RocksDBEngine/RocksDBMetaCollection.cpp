@@ -562,13 +562,13 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
   obj->add(StaticStrings::RevisionTreeHash, VPackValue(_revisionTree->rootValue()));
 }
 
-void RocksDBMetaCollection::placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {
+void RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transactionId) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
   _meta.placeBlocker(transactionId, preSeq);
 }
 
-void RocksDBMetaCollection::removeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {
+void RocksDBMetaCollection::removeRevisionTreeBlocker(TransactionId transactionId) {
   _meta.removeBlocker(transactionId);
 }
 

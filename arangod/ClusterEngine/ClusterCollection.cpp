@@ -88,7 +88,7 @@ ClusterCollection::~ClusterCollection() = default;
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) {
+IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdating, TransactionId tid) {
   return _selectivityEstimates.get(allowUpdating, tid);
 }
 

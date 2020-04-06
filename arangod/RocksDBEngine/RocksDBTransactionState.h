@@ -67,7 +67,7 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBBatchedWithIndexMethods;
 
  public:
-  RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options);
   ~RocksDBTransactionState();
 
