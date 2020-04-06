@@ -137,7 +137,6 @@ function UpgradeData () {
 
     // verify indexes
     const indices = c.getIndexes();
-    require('internal').print(JSON.stringify(indices))
     assertEqual(indices.length, 2);
 
     // primary
