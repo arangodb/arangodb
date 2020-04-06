@@ -152,8 +152,9 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   basic_disjunction(
       doc_iterator_t&& lhs,
       doc_iterator_t&& rhs,
-      const order::prepared& ord = order::prepared::unordered())
-    : basic_disjunction(std::move(lhs), std::move(rhs), ord, resolve_overload_tag()) {
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+    : basic_disjunction(std::move(lhs), std::move(rhs), ord, merge_type, resolve_overload_tag()) {
     // estimate disjunction
     this->estimate([this](){
       cost::cost_t est = 0;
@@ -167,8 +168,9 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       doc_iterator_t&& lhs,
       doc_iterator_t&& rhs,
       const order::prepared& ord,
+      sort::MergeType merge_type,
       cost::cost_t est)
-    : basic_disjunction(std::move(lhs), std::move(rhs), ord, resolve_overload_tag()) {
+    : basic_disjunction(std::move(lhs), std::move(rhs), ord, merge_type, resolve_overload_tag()) {
     // estimate disjunction
     this->estimate(est);
   }
@@ -214,11 +216,12 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       doc_iterator_t&& lhs,
       doc_iterator_t&& rhs,
       const order::prepared& ord,
+      sort::MergeType merge_type,
       resolve_overload_tag)
     : lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
       doc_(doc_limits::invalid()),
-      merger_(ord.prepare_merger()) {
+      merger_(ord.prepare_merger(merge_type)) {
     // make 'document' attribute accessible from outside
     this->attrs_.emplace(doc_);
     // prepare score
@@ -310,16 +313,18 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   small_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
+      sort::MergeType merge_type,
       cost::cost_t est)
-    : small_disjunction(std::move(itrs), ord, resolve_overload_tag()) {
+    : small_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
     // estimate disjunction
     this->estimate(est);
   }
 
   explicit small_disjunction(
       doc_iterators_t&& itrs,
-      const order::prepared& ord = order::prepared::unordered())
-    : small_disjunction(std::move(itrs), ord, resolve_overload_tag()) {
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+    : small_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
     // estimate disjunction
     this->estimate([this](){
       return std::accumulate(
@@ -426,12 +431,13 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   small_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
+      sort::MergeType merge_type,
       resolve_overload_tag)
     : itrs_(std::move(itrs)),
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
-      merger_(ord.prepare_merger()) {
+      merger_(ord.prepare_merger(merge_type)) {
     // copy iterators with scores into separate container
     // to avoid extra checks
     scored_itrs_.reserve(itrs_.size());
@@ -529,16 +535,18 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
   disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
+      sort::MergeType merge_type,
       cost::cost_t est)
-    : disjunction(std::move(itrs), ord, resolve_overload_tag()) {
+    : disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
     // estimate disjunction
     this->estimate(est);
   }
 
   explicit disjunction(
       doc_iterators_t&& itrs,
-      const order::prepared& ord = order::prepared::unordered())
-    : disjunction(std::move(itrs), ord, resolve_overload_tag()) {
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+    : disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
     // estimate disjunction
     this->estimate([this](){
       return std::accumulate(
@@ -622,12 +630,13 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
   disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
+      sort::MergeType merge_type,
       resolve_overload_tag)
     : itrs_(std::move(itrs)),
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
-      merger_(ord.prepare_merger()) {
+      merger_(ord.prepare_merger(merge_type)) {
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */

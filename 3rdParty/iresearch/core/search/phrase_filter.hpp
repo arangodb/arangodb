@@ -25,12 +25,35 @@
 
 #include <map>
 
-#include "filter.hpp"
+#include "filter_visitor.hpp"
 #include "levenshtein_filter.hpp"
+#include "range_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
-#include "utils/string.hpp"
 
 NS_ROOT
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class phrase_state
+/// @brief cached per reader phrase state
+//////////////////////////////////////////////////////////////////////////////
+template<template<typename...> class T>
+struct phrase_state {
+  typedef seek_term_iterator::cookie_ptr term_state_t;
+  typedef T<term_state_t> terms_states_t;
+
+  phrase_state() = default;
+
+  phrase_state(phrase_state&& rhs) noexcept
+    : terms(std::move(rhs.terms)),
+      reader(rhs.reader) {
+    rhs.reader = nullptr;
+  }
+
+  phrase_state& operator=(const phrase_state&) = delete;
+
+  terms_states_t terms;
+  const term_reader* reader{};
+}; // phrase_state
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_phrase
@@ -39,7 +62,7 @@ NS_ROOT
 class IRESEARCH_API by_phrase : public filter {
  public:
   enum class PhrasePartType {
-    TERM, PREFIX, WILDCARD, LEVENSHTEIN, SET
+    TERM, PREFIX, WILDCARD, LEVENSHTEIN, SET, RANGE
   };
 
   struct simple_term {
@@ -56,7 +79,8 @@ class IRESEARCH_API by_phrase : public filter {
     static constexpr PhrasePartType type = PhrasePartType::PREFIX;
 
     bool operator==(const prefix_term& other) const noexcept {
-      return term == other.term;
+      return scored_terms_limit == other.scored_terms_limit &&
+          term == other.term;
     }
 
     size_t scored_terms_limit{1024};
@@ -67,7 +91,8 @@ class IRESEARCH_API by_phrase : public filter {
     static constexpr PhrasePartType type = PhrasePartType::WILDCARD;
 
     bool operator==(const wildcard_term& other) const noexcept {
-      return term == other.term;
+      return scored_terms_limit == other.scored_terms_limit &&
+          term == other.term;
     }
 
     size_t scored_terms_limit{1024};
@@ -80,6 +105,7 @@ class IRESEARCH_API by_phrase : public filter {
     bool operator==(const levenshtein_term& other) const noexcept {
       return with_transpositions == other.with_transpositions &&
           max_distance == other.max_distance &&
+          scored_terms_limit == other.scored_terms_limit &&
           provider == other.provider &&
           term == other.term;
     }
@@ -101,6 +127,18 @@ class IRESEARCH_API by_phrase : public filter {
     std::vector<bstring> terms;
   };
 
+  struct range_term {
+    static constexpr PhrasePartType type = PhrasePartType::RANGE;
+
+    bool operator==(const range_term& other) const noexcept {
+      return scored_terms_limit == other.scored_terms_limit &&
+          rng == other.rng;
+    }
+
+    size_t scored_terms_limit{1024};
+    by_range::range_t rng;
+  };
+
  private:
   struct IRESEARCH_API phrase_part {
     ~phrase_part() {
@@ -115,31 +153,108 @@ class IRESEARCH_API by_phrase : public filter {
       wildcard_term wt;
       levenshtein_term lt;
       set_term ct;
+      range_term rt;
     };
 
     phrase_part();
     phrase_part(const phrase_part& other);
     phrase_part(phrase_part&& other) noexcept;
-    phrase_part(const simple_term& st);
-    phrase_part(simple_term&& st) noexcept;
-    phrase_part(const prefix_term& pt);
-    phrase_part(prefix_term&& pt) noexcept;
-    phrase_part(const wildcard_term& wt);
-    phrase_part(wildcard_term&& wt) noexcept;
-    phrase_part(const levenshtein_term& lt);
-    phrase_part(levenshtein_term&& lt) noexcept;
-    phrase_part(const set_term& lt);
-    phrase_part(set_term&& lt) noexcept;
 
-    phrase_part& operator=(const phrase_part& other) noexcept;
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wplacement-new="
+#endif
+
+    template<typename PhrasePart>
+    phrase_part(PhrasePart&& other) noexcept(std::is_rvalue_reference<PhrasePart>::value) {
+      type = std::remove_reference<PhrasePart>::type::type;
+      new (reinterpret_cast<typename std::remove_reference<PhrasePart>::type*>(&st))
+        typename std::remove_reference<PhrasePart>::type(std::forward<PhrasePart>(other));
+    }
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
+    phrase_part& operator=(const phrase_part& other);
     phrase_part& operator=(phrase_part&& other) noexcept;
 
     bool operator==(const phrase_part& other) const noexcept;
 
+    //////////////////////////////////////////////////////////////////////////////
+    /// @class phrase_term_visitor
+    /// @brief filter visitor for phrase queries
+    //////////////////////////////////////////////////////////////////////////////
+    template<typename Collectors>
+    class phrase_term_visitor final : public filter_visitor {
+     public:
+      phrase_term_visitor(
+        const sub_reader& segment,
+        const term_reader& reader,
+        const Collectors& collectors
+      ) : segment_(segment), reader_(reader), collectors_(collectors) {}
+
+      phrase_term_visitor(
+        const sub_reader& segment,
+        const term_reader& reader,
+        const Collectors& collectors,
+        phrase_state<FixedContainer>::terms_states_t& phrase_terms
+      ) : phrase_term_visitor(segment, reader, collectors) {
+        phrase_terms_ = &phrase_terms;
+      }
+
+      virtual void prepare(const seek_term_iterator& terms) noexcept override {
+        terms_ = &terms;
+        found_ = true;
+      }
+
+      virtual void visit() override {
+        assert(terms_);
+        collectors_.collect(segment_, reader_, term_offset_, terms_->attributes()); // collect statistics
+
+        // estimate phrase & term
+        assert(phrase_terms_);
+        phrase_terms_->emplace_back(terms_->cookie());
+      }
+
+      void reset() noexcept {
+        found_ = false;
+        terms_ = nullptr;
+      }
+
+      void reset(size_t term_offset) noexcept {
+        reset();
+        term_offset_ = term_offset;
+      }
+
+      void reset(phrase_state<FixedContainer>::terms_states_t& phrase_terms, size_t term_offset) noexcept {
+        reset(term_offset);
+        phrase_terms_ = &phrase_terms;
+      }
+
+      bool found() const noexcept { return found_; }
+
+     private:
+      bool found_ = false;
+      size_t term_offset_ = 0;
+      const sub_reader& segment_;
+      const term_reader& reader_;
+      const Collectors& collectors_;
+      phrase_state<FixedContainer>::terms_states_t* phrase_terms_ = nullptr;
+      const seek_term_iterator* terms_ = nullptr;
+    };
+
+    static bool variadic_type_collect(
+      const term_reader& reader,
+      const phrase_part& phr_part,
+      phrase_term_visitor<variadic_terms_collectors>& ptv);
+
    private:
-    void allocate() noexcept;
+    void allocate(const phrase_part& other);
+    void allocate(phrase_part&& other) noexcept;
     void destroy() noexcept;
-    void recreate(PhrasePartType new_type) noexcept;
+    void recreate(const phrase_part& other);
+    void recreate(phrase_part&& other) noexcept;
   };
 
   // positions and terms
@@ -192,7 +307,7 @@ class IRESEARCH_API by_phrase : public filter {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx
@@ -213,16 +328,16 @@ class IRESEARCH_API by_phrase : public filter {
   }
 
   filter::prepared::ptr fixed_prepare_collect(
-      const index_reader& rdr,
-      const order::prepared& ord,
-      boost_t boost,
-      order::prepared::fixed_terms_collectors collectors) const;
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    fixed_terms_collectors collectors) const;
 
   filter::prepared::ptr variadic_prepare_collect(
-      const index_reader& rdr,
-      const order::prepared& ord,
-      boost_t boost,
-      order::prepared::variadic_terms_collectors collectors) const;
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    variadic_terms_collectors collectors) const;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string fld_;

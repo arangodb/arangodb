@@ -91,16 +91,18 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     reset(bits);
   }
 
-  dynamic_bitset(dynamic_bitset&& rhs) noexcept
-    : bits_(rhs.bits_),
+  dynamic_bitset(dynamic_bitset&& rhs) noexcept(std::is_nothrow_move_constructible<base_t>::value)
+    : base_t(std::move(rhs)),
+      bits_(rhs.bits_),
       words_(rhs.words_),
       data_(std::move(rhs.data_)) {
     rhs.bits_ = 0;
     rhs.words_ = 0;
   }
 
-  dynamic_bitset& operator=(dynamic_bitset&& rhs) noexcept {
+  dynamic_bitset& operator=(dynamic_bitset&& rhs) noexcept(std::is_nothrow_move_assignable<base_t>::value) {
     if (this != &rhs) {
+      base_t::operator=(std::move(rhs));
       bits_ = rhs.bits_;
       words_ = rhs.words_;
       data_ = std::move(rhs.data_);
