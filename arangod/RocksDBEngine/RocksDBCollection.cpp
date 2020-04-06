@@ -1767,7 +1767,7 @@ Result RocksDBCollection::upgrade() {
     }
 
     std::vector<std::shared_ptr<Index>> indices = getIndexes();
-    for (auto& index : indices) {
+    for (auto const& index : indices) {
       res = ::copyIndexToNewObjectIdSpace(*engine.db(), _logicalCollection, *index);
       if (res.fail()) {
         return res;
