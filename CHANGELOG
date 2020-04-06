@@ -1,5 +1,12 @@
 devel
 -----
+* Added JACCARD AQL function
+
+* storedValues property is removed from arngosearch link properties output.
+
+* Added primarySortCompression property to ArangoSearch Views
+
+* Added compression property to ArangoSearch View storedValues
 
 * Removed deprecated MMFiles storage engine and also the `arango-dfdb`
   (datafile debugger) executable that could be used to validate MMFiles

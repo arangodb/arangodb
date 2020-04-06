@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,26 +17,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+#ifndef ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H
+#define ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H 1
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_EXPORT_HANDLER_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_EXPORT_HANDLER_H 1
-
-#include "Basics/Common.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "utils/string.hpp"
+#include <utils/compression.hpp>
 
 namespace arangodb {
-class ClusterRestExportHandler : public RestVocbaseBaseHandler {
- public:
-  ClusterRestExportHandler(application_features::ApplicationServer&,
-                           GeneralRequest*, GeneralResponse*);
+namespace iresearch {
 
- public:
-  char const* name() const override final { return "ClusterRestExportHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
-};
-}  // namespace arangodb
+irs::string_ref columnCompressionToString(irs::compression::type_id const* type);
+irs::compression::type_id const* columnCompressionFromString(irs::string_ref const& c);
+irs::compression::type_id const& getDefaultCompression();
+} // iresearch
+} // arangodb
 
-#endif
+#endif // ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H

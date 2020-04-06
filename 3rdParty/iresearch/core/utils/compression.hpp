@@ -210,7 +210,7 @@ IRESEARCH_API bool visit(const std::function<bool(const string_ref&)>& visitor);
 /// @class raw
 /// @brief no compression
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API raw {
+struct IRESEARCH_API none {
   DECLARE_COMPRESSION_TYPE();
 
   static void init();

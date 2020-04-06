@@ -88,5 +88,7 @@ bool IResearchLinkMock::isPersistent() const {
   return true;
 }
 
+
+std::function<void(irs::directory&)> IResearchLinkMock::InitCallback;
 }  // namespace iresearch
 }  // namespace arangodb
