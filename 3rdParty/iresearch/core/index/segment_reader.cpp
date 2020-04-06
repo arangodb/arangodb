@@ -190,9 +190,8 @@ bool read_columns_meta(
 
     auto& column = columns.back();
     const auto res = name_to_column.emplace(
-      irs::make_hashed_ref(irs::string_ref(column.name), std::hash<irs::string_ref>()),
-      &column
-    );
+      irs::make_hashed_ref(irs::string_ref(column.name)),
+      &column);
 
     assert(column.id < id_to_column.size());
 
@@ -398,7 +397,7 @@ segment_reader_impl::segment_reader_impl(
 
 const column_meta* segment_reader_impl::column(
     const string_ref& name) const {
-  auto it = name_to_column_.find(make_hashed_ref(name, std::hash<irs::string_ref>()));
+  auto it = name_to_column_.find(make_hashed_ref(name));
   return it == name_to_column_.end() ? nullptr : it->second;
 }
 
