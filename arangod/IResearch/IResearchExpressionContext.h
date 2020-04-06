@@ -49,9 +49,9 @@ class IResearchViewNode;
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContextBase : public aql::QueryExpressionContext {
   explicit ViewExpressionContextBase(arangodb::transaction::Methods& trx,
-                                     aql::QueryWarnings& warnings,
+                                     aql::QueryContext& query,
                                      aql::RegexCache& cache)
-      : aql::QueryExpressionContext(trx, warnings, cache) {}
+      : aql::QueryExpressionContext(trx, query, cache) {}
 
   aql::AstNode const* _expr{};  // for troubleshooting
 };                              // ViewExpressionContextBase
@@ -63,11 +63,11 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
   ViewExpressionContext(arangodb::transaction::Methods& trx,
-                        aql::QueryWarnings& warnings,
+                        aql::QueryContext& query,
                         aql::RegexCache& cache, aql::RegisterId numRegs,
                         aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
-      : ViewExpressionContextBase(trx, warnings, cache),
+      : ViewExpressionContextBase(trx, query, cache),
         _numRegs(numRegs),
         _outVar(outVar),
         _varInfoMap(varInfoMap),

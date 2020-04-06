@@ -761,7 +761,7 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
 
   RegexCache rcache;
   FixedVarExpressionContext ctxt(_plan->getAst()->query().trxForOptimization(),
-                                 _plan->getAst()->query().warnings(),
+                                 _plan->getAst()->query(),
                                  rcache);
   ctxt.setVariableValue(pathVar, {});
   AqlValue res = tmpExp.execute(&ctxt, mustDestroy);

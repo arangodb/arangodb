@@ -557,7 +557,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
 
     auto& regex = _documentProducingFunctionContext.regexCache();
 
-    ExecutorExpressionContext ctx(_trx, query.warnings(), regex,
+    ExecutorExpressionContext ctx(_trx, query, regex,
                                   input, _infos.getExpInVars(),
                                   _infos.getExpInRegs());
 

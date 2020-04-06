@@ -30,11 +30,10 @@
 
 namespace arangodb {
 namespace aql {
-class Query;
 
 class DocumentExpressionContext final : public QueryExpressionContext {
  public:
-  DocumentExpressionContext(transaction::Methods& trx, QueryWarnings& warnings,
+  DocumentExpressionContext(transaction::Methods& trx, QueryContext& query,
                             RegexCache& cache, arangodb::velocypack::Slice document);
 
   ~DocumentExpressionContext() = default;

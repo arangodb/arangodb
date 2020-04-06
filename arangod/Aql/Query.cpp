@@ -145,50 +145,6 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
   _warnings.updateOptions(_queryOptions);
 }
 
-/// @brief creates a query from VelocyPack
-//Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
-//             std::shared_ptr<VPackBuilder> const& queryStruct,
-//             std::shared_ptr<VPackBuilder> const& options, QueryPart part)
-//    : QueryContext(vocbase),
-//      _V8Context(nullptr),
-//      _queryString(),
-//      _queryBuilder(queryStruct),
-//      _options(options),
-//      _queryOptions(vocbase.server().getFeature<QueryRegistryFeature>()),
-//      _trx(nullptr),
-//      _startTime(TRI_microtime()),
-//      _queryHash(DontCache),
-//      _contextOwnedByExterior(contextOwnedByExterior),
-//      _isAsyncQuery(false),
-//      _preparedV8Context(false),
-//      _queryHashCalculated(false),
-//      _part(part),
-//      _executionPhase(ExecutionPhase::INITIALIZE),
-//      _sharedState(std::make_shared<SharedQueryState>()) {
-//  // populate query options
-//  if (_options != nullptr) {
-//    _queryOptions.fromVelocyPack(_options->slice());
-//  }
-//
-//  LOG_TOPIC("8b0ff", DEBUG, Logger::QUERIES)
-//      << TRI_microtime() - _startTime << " "
-//      << "Query::Query queryStruct: " << queryStruct->slice().toJson()
-//      << " this: " << (uintptr_t)this;
-//  if (options != nullptr && !options->isEmpty() && !options->slice().isNone()) {
-//    LOG_TOPIC("92c10", DEBUG, Logger::QUERIES)
-//        << "options: " << options->slice().toJson();
-//  }
-//
-//  // adjust the _isModificationQuery value from the slice we got
-//  auto s = _queryBuilder->slice().get("isModificationQuery");
-//  if (s.isBoolean()) {
-//    _isModificationQuery = s.getBoolean();
-//  }
-//
-//  _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
-//  _warnings.updateOptions(_queryOptions);
-//}
-
 /// @brief destroys a query
 Query::~Query() {
   if (_queryOptions.profile >= PROFILE_LEVEL_TRACE_1) {
@@ -208,51 +164,6 @@ Query::~Query() {
       << TRI_microtime() - _startTime << " "
       << "Query::~Query this: " << (uintptr_t)this;
 }
-
-/// @brief clone a query, used on the coordinator for query snippets
-/// note: as a side-effect, this will also create and start a transaction for
-/// the query
-//Query* Query::clone(QueryPart part, bool withPlan) {
-//  auto clone = std::make_unique<Query>(false, _vocbase, _queryString,
-//                                       std::shared_ptr<VPackBuilder>(), _options, part);
-//
-//  clone->_resourceMonitor = _resourceMonitor;
-//  clone->_resourceMonitor.clear();
-//
-//  if (_isModificationQuery) {
-//    clone->setIsModificationQuery();
-//  }
-//
-//  if (_plan != nullptr) {
-//    if (withPlan) {
-//      // clone the existing plan
-//      clone->_plan.reset(_plan->clone(*clone));
-//    }
-//
-//    // clone all variables
-//    for (auto& it : _ast->variables()->variables(true)) {
-//      auto var = _ast->variables()->getVariable(it.first);
-//      TRI_ASSERT(var != nullptr);
-//      clone->ast()->variables()->createVariable(var);
-//    }
-//  }
-//
-//  if (clone->_plan == nullptr) {
-//    // initialize an empty plan
-//    clone->_plan.reset(new ExecutionPlan(ast()));
-//  }
-//
-//  TRI_ASSERT(clone->_trx == nullptr);
-//
-//  // A daughter transaction which does not
-//  // actually lock the collections
-//  clone->_trx = _trx;
-//  TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
-//  // hack ensure only the first query commits
-//  clone->_isClonedQuery = true;
-//
-//  return clone.release();
-//}
 
 bool Query::killed() const {
   if (_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon() &&
@@ -350,6 +261,7 @@ void Query::prepareQuerySnippets(SerializationFormat format,
                                              << "Query::prepareQuerySnippets"
                                              << " this: " << (uintptr_t)this;
   
+  init();
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
   
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
@@ -379,19 +291,16 @@ void Query::prepareQuerySnippets(SerializationFormat format,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  init();
   enterState(QueryExecutionState::ValueType::PARSING);
   
-  for (auto pair : VPackObjectIterator(snippets)) {
-    
-    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), pair.value);
+  auto instantiateSnippet = [&](VPackSlice snippet) {
+    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     if (plan == nullptr) {  // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "could not create plan from vpack");
     }
 
     plan->findVarUsage();
-    
 
     _isAsyncQuery = _isAsyncQuery || plan->contains(ExecutionNode::ASYNC);
     TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
@@ -403,11 +312,15 @@ void Query::prepareQuerySnippets(SerializationFormat format,
       THROW_ARANGO_EXCEPTION(res);
     }
     _plans.push_back(std::move(plan));
-
-    TRI_ASSERT(_snippets.back().first == 0);
-    QueryId qId = TRI_NewTickServer();
-    _snippets.back().first = TRI_NewTickServer();
+  };
+  
+  for (auto pair : VPackObjectIterator(snippets, /*sequential*/true)) {
+    instantiateSnippet(pair.value);
     
+    TRI_ASSERT(_snippets.back().first == 0);
+    const QueryId qId = _trx->state()->isRunningInCluster() ? TRI_NewTickServer() : 0;
+    _snippets.back().first = qId;
+
     answerBuilder.add(pair.key);
     answerBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(qId)));
   }
@@ -545,7 +458,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         }
 
         // will throw if it fails
-        prepareQuery(SerializationFormat::SHADOWROWS);
+        if (!_ast) { // simon: hack for EXECUTE_JSON
+          prepareQuery(SerializationFormat::SHADOWROWS);
+        }
 
         log();
 
@@ -1375,6 +1290,10 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 }
 
 void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) noexcept {
+  if (_snippets.empty()) {
+    return;
+  }
+  
   try {
     std::shared_ptr<SharedQueryState> ss = sharedState();
     if (!ss) {

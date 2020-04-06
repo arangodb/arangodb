@@ -2963,13 +2963,9 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
   }
 
   TRI_ASSERT(lhs->isConstant() && rhs->isConstant());
-  
-//  QueryWarnings& warnings,
-//  RegexCache& cache,
-//  transaction::Methods& trx
 
   Expression exp(this, node);
-  FixedVarExpressionContext context(trx, _query.warnings(), regex);
+  FixedVarExpressionContext context(trx, _query, regex);
   bool mustDestroy;
 
   AqlValue a = exp.execute(&context, mustDestroy);
@@ -3311,7 +3307,7 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
   }
 
   Expression exp(this, node);
-  FixedVarExpressionContext context(trx, _query.warnings(), regex);
+  FixedVarExpressionContext context(trx, _query, regex);
   bool mustDestroy;
 
   AqlValue a = exp.execute(&context, mustDestroy);

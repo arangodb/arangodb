@@ -175,7 +175,7 @@ template <>
 void CalculationExecutor<CalculationType::Condition>::doEvaluation(InputAqlItemRow& input,
                                                                    OutputAqlItemRow& output) {
   // execute the expression
-  ExecutorExpressionContext ctx(_trx, _infos.getQuery().warnings(), _regexCache, input,
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _regexCache, input,
                                 _infos.getExpInVars(), _infos.getExpInRegs());
 
   bool mustDestroy;  // will get filled by execution
@@ -208,7 +208,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
   // execute the expression
-  ExecutorExpressionContext ctx(_trx, _infos.getQuery().warnings(), _regexCache, input,
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _regexCache, input,
                                 _infos.getExpInVars(), _infos.getExpInRegs());
 
   bool mustDestroy;  // will get filled by execution

@@ -3396,6 +3396,14 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   }
 }
 
+namespace {
+struct RebootCookie : public arangodb::TransactionState::Cookie {
+  RebootCookie(CallbackGuard&& g) : guard(std::move(g)) {}
+  ~RebootCookie() = default;
+  CallbackGuard guard;
+};
+}
+
 Result RestReplicationHandler::createBlockingTransaction(
     TRI_voc_tick_t id, LogicalCollection& col, double ttl, AccessMode::Type access,
     RebootId const& rebootId, std::string const& serverId) {
@@ -3447,19 +3455,13 @@ Result RestReplicationHandler::createBlockingTransaction(
                           " for " + col.name() + " access mode " +
                           AccessMode::typeString(access);
     
-    std::unique_ptr<CallbackGuard> rGuard = nullptr;
     if (!serverId.empty()) {
-      rGuard = std::make_unique<CallbackGuard>(
+      auto rGuard = std::make_unique<RebootCookie>(
         ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
                                           f, comment));
+      transaction::Methods trx{mgr->leaseManagedTrx(id, AccessMode::Type::WRITE)};
+      trx.state()->cookie(this, std::move(rGuard));
     }
-    
-    #warning TODO add callback guard as transaction cookie
-//    if (rGuard) {
-//      transaction::Methods trx{mgr->leaseManagedTrx(id, AccessMode::Type::WRITE)};
-//      
-//      trx.state()->cookie(<#const void *key#>, <#Cookie::ptr &&cookie#>)
-//    }
 
   } catch (...) {
     // For compatibility we only return this error

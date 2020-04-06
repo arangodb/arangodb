@@ -1127,18 +1127,13 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
     }
   }
 
-#warning FIXME
-  return AqlValue();
-#if 0
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
     v8::HandleScope scope(isolate);
     auto context = TRI_IGETC;
 
-    Query* query = expressionContext->query();
-    TRI_ASSERT(query != nullptr);
-    query->prepareV8Context();
+    expressionContext->prepareV8Context();
 
     std::string jsName;
     int const n = static_cast<int>(invokeParams.size());
@@ -1173,7 +1168,6 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
     return Expression::invokeV8Function(expressionContext, jsName, ucInvokeFN,
                                         AFN, false, callArgs, args.get(), dummy);
   }
-#endif
 }
 
 AqlValue geoContainsIntersect(ExpressionContext* expressionContext,

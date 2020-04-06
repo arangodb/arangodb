@@ -33,12 +33,12 @@ using namespace arangodb::aql;
 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(
     transaction::Methods& trx,
-    QueryWarnings& warnings,
+    QueryContext& context,
     RegexCache& cache,
     std::vector<Variable const*> const&& vars,
     std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
     size_t edgeVarIdx, size_t pathVarIdx)
-    : QueryExpressionContext(trx, warnings, cache),
+    : QueryExpressionContext(trx, context, cache),
       _input{CreateInvalidInputRowHint()},
       _vars(std::move(vars)),
       _regs(std::move(regs)),

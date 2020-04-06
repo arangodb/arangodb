@@ -32,40 +32,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
 class TransactionState;
 
 namespace transaction {
-
-//class StandaloneContext : public Context {
-// public:
-//  /// @brief create the context
-//  explicit StandaloneContext(TRI_vocbase_t& vocbase);
-//
-//  /// @brief destroy the context
-//  ~StandaloneContext() = default;
-//
-//  /// @brief order a custom type handler
-//  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
-//
-//  /// @brief return the parent transaction (none in our case)
-//  std::shared_ptr<TransactionState> getParentTransaction() const override final { return nullptr; }
-//
-//  /// @brief register the transaction, does nothing
-//  void registerTransaction(std::shared_ptr<TransactionState> const&) override {}
-//
-//  /// @brief return the resolver
-//  CollectionNameResolver const& resolver() override final;
-//
-//  /// @brief unregister the transaction
-//  void unregisterTransaction() noexcept override final {}
-//
-//  /// @brief whether or not the transaction is embeddable
-//  bool isEmbeddable() const override final { return false; }
-//
-//  /// @brief create a context, returned in a shared ptr
-//  static std::shared_ptr<transaction::Context> Create(TRI_vocbase_t& vocbase);
-//};
 
 /// Can be used to reuse transaction state between multiple
 /// transaction::Methods instances.

@@ -42,7 +42,7 @@ class InputAqlItemRow;
 class PruneExpressionEvaluator {
  public:
   PruneExpressionEvaluator(transaction::Methods& trx,
-                           QueryWarnings& warnings,
+                           QueryContext& query,
                            RegexCache& cache,
                            std::vector<Variable const*> const&& vars,
                            std::vector<RegisterId> const&& regs, size_t vertexVarIdx,

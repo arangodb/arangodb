@@ -70,6 +70,6 @@ void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const&
 }
 
 FixedVarExpressionContext::FixedVarExpressionContext(transaction::Methods& trx,
-                                                     QueryWarnings& warnings,
+                                                     QueryContext& context,
                                                      RegexCache& cache)
-    : QueryExpressionContext(trx, warnings, cache) {}
+    : QueryExpressionContext(trx, context, cache) {}

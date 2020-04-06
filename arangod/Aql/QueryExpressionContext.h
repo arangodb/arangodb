@@ -28,19 +28,21 @@
 
 namespace arangodb {
 namespace aql {
-class QueryWarnings;
+class QueryContext;
 class RegexCache;
 
 class QueryExpressionContext : public ExpressionContext {
  public:
   explicit QueryExpressionContext(transaction::Methods& trx,
-                                  QueryWarnings& warnings,
+                                  QueryContext& query,
                                   RegexCache& cache)
       : ExpressionContext(),
-        _trx(trx), _warnings(warnings), _regexCache(cache){}
+        _trx(trx), _query(query), _regexCache(cache){}
 
   void registerWarning(int errorCode, char const* msg) override final;
   void registerError(int errorCode, char const* msg) override final;
+  
+  void prepareV8Context() override final;
 
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                        bool caseInsensitive) override final;
@@ -55,7 +57,7 @@ class QueryExpressionContext : public ExpressionContext {
   
  private:
   transaction::Methods& _trx;
-  QueryWarnings& _warnings;
+  QueryContext& _query;
   RegexCache& _regexCache;
 };
 }  // namespace aql

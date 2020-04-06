@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryExpressionContext.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Aql/RegexCache.h"
@@ -31,11 +32,15 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 void QueryExpressionContext::registerWarning(int errorCode, char const* msg) {
-  _warnings.registerWarning(errorCode, msg);
+  _query.warnings().registerWarning(errorCode, msg);
 }
 
 void QueryExpressionContext::registerError(int errorCode, char const* msg) {
-  _warnings.registerError(errorCode, msg);
+  _query.warnings().registerError(errorCode, msg);
+}
+
+void QueryExpressionContext::prepareV8Context() {
+  _query.prepareV8Context();
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(char const* ptr, size_t length,

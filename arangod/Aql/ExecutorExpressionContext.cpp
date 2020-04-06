@@ -60,10 +60,10 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, b
 }
 
 ExecutorExpressionContext::ExecutorExpressionContext(transaction::Methods& trx,
-                                                     QueryWarnings& warnings,
+                                                     QueryContext& context,
                                                      RegexCache& cache,
                                                      InputAqlItemRow const& inputRow,
                                                      std::vector<Variable const*> const& vars,
                                                      std::vector<RegisterId> const& regs)
-    : QueryExpressionContext(trx, warnings, cache),
+    : QueryExpressionContext(trx, context, cache),
       _inputRow(inputRow), _vars(vars), _regs(regs) {}

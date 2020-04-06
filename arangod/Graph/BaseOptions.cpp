@@ -176,7 +176,7 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::
 
 BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
     : _trx(query.newTrxContext()),
-      _expressionCtx(_trx, query.warnings(), _regexCache),
+      _expressionCtx(_trx, query, _regexCache),
       _query(query),
       _tmpVar(nullptr),
       _produceVertices(true),
@@ -184,7 +184,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
-      _expressionCtx(_trx, other._query.warnings(), _regexCache),
+      _expressionCtx(_trx, other._query, _regexCache),
       _query(other._query),
       _tmpVar(nullptr),
       _produceVertices(other._produceVertices),

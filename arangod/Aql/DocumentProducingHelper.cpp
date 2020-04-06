@@ -357,7 +357,7 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
 }
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
-  DocumentExpressionContext ctx(_trx, _query.warnings(), _regexCache, slice);
+  DocumentExpressionContext ctx(_trx, _query, _regexCache, slice);
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _filter->execute(&ctx, mustDestroy);

@@ -40,7 +40,7 @@ class AqlItemBlock;
 class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
   explicit FixedVarExpressionContext(transaction::Methods& trx,
-                                     QueryWarnings& warnings,
+                                     QueryContext& query,
                                      RegexCache& cache);
 
   ~FixedVarExpressionContext() override = default;

@@ -644,9 +644,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto queryBuilder = std::make_shared<VPackBuilder>();
-  queryBuilder->openArray();
   int res = TRI_V8ToVPack(isolate, *queryBuilder, args[0], false);
-  queryBuilder->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
     events::QueryDocument(vocbase.name(), VPackSlice(), res);
@@ -674,10 +672,17 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   VPackSlice collections = queryBuilder->slice().get("collections");
   VPackSlice variables = queryBuilder->slice().get("variables");
+  
+  VPackBuilder snippetBuilder; // simon: hack to make format conform
+  snippetBuilder.openObject();
+  snippetBuilder.add("0", VPackValue(VPackValueType::Object));
+  snippetBuilder.add("nodes", queryBuilder->slice().get("nodes"));
+  snippetBuilder.close();
+  snippetBuilder.close();
 
-  VPackBuilder response;
+  VPackBuilder ignoreResponse;
   query.prepareQuerySnippets(aql::SerializationFormat::SHADOWROWS, collections, variables,
-                             queryBuilder->slice(), response);
+                             snippetBuilder.slice(), ignoreResponse);
   
   aql::QueryResult queryResult = query.executeSync();
 

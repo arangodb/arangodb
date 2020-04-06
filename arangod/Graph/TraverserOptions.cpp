@@ -737,7 +737,7 @@ void TraverserOptions::activatePrune(std::vector<aql::Variable const*> const&& v
                                      size_t pathVarIdx, aql::Expression* expr) {
   
   _pruneExpression =
-  std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query.warnings(), _regexCache, std::move(vars),
+  std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, _regexCache, std::move(vars),
                                                   std::move(regs), vertexVarIdx,
                                                   edgeVarIdx, pathVarIdx, expr);
 }
