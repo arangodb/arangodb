@@ -351,6 +351,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] auto createUpstreamCall(AqlCall const& call, bool wasCalledWithContinueCall)
       -> AqlCallList;
 
+  auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this

@@ -219,3 +219,8 @@ auto AqlCallStack::modifyTopCall() -> AqlCall& {
   TRI_ASSERT(!_operations.empty());
   return modifyCallAtDepth(0);
 }
+
+auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
+  return std::all_of(_operations.begin(), _operations.end(),
+                     [](AqlCallList const& list) { return list.hasMoreCalls(); });
+}
