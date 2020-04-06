@@ -297,11 +297,6 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperClusterInfo::destruct(LogicalView const& view) noexcept {
-  return Result();  // nothing to clean up since the Plan is managed by the
-                    // Agency
-}
-
 /*static*/ Result LogicalViewHelperClusterInfo::drop(LogicalView const& view) noexcept {
   try {
     if (!view.vocbase().server().hasFeature<ClusterFeature>()) {
