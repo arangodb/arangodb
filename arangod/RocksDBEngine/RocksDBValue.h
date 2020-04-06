@@ -129,6 +129,7 @@ class RocksDBValue {
       : _type(other._type), _buffer(std::move(other._buffer)) {}
 
   RocksDBValue& operator=(RocksDBValue&& other) noexcept {
+    TRI_ASSERT(_type == other._type || _type == RocksDBEntryType::Placeholder);
     _type = other._type;
     _buffer = std::move(other._buffer);
     return *this;

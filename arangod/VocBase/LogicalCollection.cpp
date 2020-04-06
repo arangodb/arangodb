@@ -949,16 +949,6 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern, replicationFactor);
-  bool useRevs = Helper::getBooleanValue(slice, StaticStrings::UsesRevisionsAsDocumentIds,
-                                         _usesRevisionsAsDocumentIds);
-  if (!useRevs && _usesRevisionsAsDocumentIds) {
-    return Result(
-        TRI_ERROR_BAD_PARAMETER,
-        "collection uses revisions as document IDs, cannot set this to false");
-  }
-  _usesRevisionsAsDocumentIds = useRevs;
-  _syncByRevision =
-      Helper::getBooleanValue(slice, StaticStrings::SyncByRevision, _syncByRevision);
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well

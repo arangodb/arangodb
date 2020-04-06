@@ -896,7 +896,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
 futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
                                              LogicalCollection const& coll) {
   ExecContext const& exec = ExecContext::current();  // disallow expensive ops
-  if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
+  if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
     return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
   }
 

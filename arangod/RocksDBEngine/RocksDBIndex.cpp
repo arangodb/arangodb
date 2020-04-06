@@ -348,9 +348,12 @@ Result RocksDBIndex::setObjectIds(std::uint64_t plannedObjectId,
     if (oldId != 0) {
       try {
         RocksDBKeyBounds bounds = getBounds(type(), oldId, unique());
-        return rocksutils::removeLargeRange(engine.db(), bounds, this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX, true);
+        return rocksutils::removeLargeRange(engine.db(), bounds,
+                                            this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX,
+                                            true);
       } catch (arangodb::basics::Exception& ex) {
-        if (ex.code() != TRI_ERROR_NOT_IMPLEMENTED) {
+        if (ex.code() != TRI_ERROR_NOT_IMPLEMENTED) {  // in case we hit an
+                                                       // IResearchLink, etc.
           throw ex;
         }
       }

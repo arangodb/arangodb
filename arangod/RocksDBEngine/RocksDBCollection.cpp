@@ -506,7 +506,7 @@ arangodb::Result copyIndexToNewObjectIdSpace(rocksdb::DB& db,
 
   rocksdb::ReadOptions ro;
   auto bounds = ridx.getBounds();
-  ro.prefix_same_as_start = true;
+  ro.prefix_same_as_start = index.type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX;
   auto iterateBound = bounds.end();
   ro.iterate_upper_bound = &iterateBound;
 
@@ -1759,7 +1759,6 @@ Result RocksDBCollection::upgrade() {
     if (res.fail()) {
       return res;
     }
-    auto trxGuard = scopeGuard([&trx]() -> void { trx.abort(); });
 
     res = ::copyCollectionToNewObjectIdSpace(*engine.db(), _logicalCollection);
     if (res.fail()) {
