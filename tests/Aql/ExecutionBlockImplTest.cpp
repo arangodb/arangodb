@@ -42,6 +42,7 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/SubqueryStartExecutor.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -343,6 +344,25 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     return res;
   }
 
+  std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
+                                                      RegisterId nrRegs) {
+    auto readableIn = make_shared_unordered_set({});
+    auto writeableOut = make_shared_unordered_set({});
+    std::unordered_set<RegisterId> registersToClear{};
+    std::unordered_set<RegisterId> registersToKeep{};
+    for (RegisterId r = 1; r <= nrRegs; ++r) {
+      // NrReg and usedRegs are off-by-one...
+      readableIn->emplace(r - 1);
+      registersToKeep.emplace(r - 1);
+    }
+
+    auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
+        fakedQuery->engine(), generateNodeDummy(),
+        ExecutorInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
+    res->addDependency(dependency);
+    return res;
+  }
+
   /**
    * @brief Generic test runner. Creates Lambda Executors, and returns ExecutionBlockImpl.execute(call),
    *
@@ -548,17 +568,19 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_relevant_shadowrow_does_not_f
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}, {}}, {{1, 0}});
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+  auto subqueryStart = createSubqueryStart(singleton.get(), 0);
   // Produce one full block. The shadowRow has no space left
-  auto testee = onceLinesProducer(singleton.get(), ExecutionBlock::DefaultBatchSize);
+  auto testee = onceLinesProducer(subqueryStart.get(), ExecutionBlock::DefaultBatchSize);
 
   AqlCall fullCall{};
   auto stack = buildStack(fullCall);
+  stack.pushCall(AqlCallList{fullCall});
   {
     // First call. Fetch all rows (data only)
     auto const& [state, skipped, block] = testee->execute(stack);
@@ -590,18 +612,24 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_in_
   }
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
-    SharedAqlItemBlockPtr block = buildBlock<0>(fakedQuery->engine()->itemBlockManager(),
-                                                {{}, {}, {}}, {{1, 0}, {2, 1}});
+    SharedAqlItemBlockPtr block =
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-  // Produce one full block. The shadowRow has no space left
-  auto testee = onceLinesProducer(singleton.get(), ExecutionBlock::DefaultBatchSize);
+
+  auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
+  auto subqueryInnerStart = createSubqueryStart(subqueryOuterStart.get(), 0);
+  // Produce one full block. The shadowRows have no space left
+  auto testee = onceLinesProducer(subqueryInnerStart.get(), ExecutionBlock::DefaultBatchSize);
 
   AqlCall fullCall{};
   auto stack = buildStack(fullCall);
+  stack.pushCall(AqlCallList{fullCall});
+  stack.pushCall(AqlCallList{fullCall});
+
   {
     // First call. Fetch all rows (data only)
     auto const& [state, skipped, block] = testee->execute(stack);
@@ -640,18 +668,25 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
   }
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
-    SharedAqlItemBlockPtr block = buildBlock<0>(fakedQuery->engine()->itemBlockManager(),
-                                                {{}, {}, {}}, {{1, 0}, {2, 1}});
+    SharedAqlItemBlockPtr block =
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-  // Produce one full block. The shadowRow has no space left
-  auto testee = onceLinesProducer(singleton.get(), ExecutionBlock::DefaultBatchSize - 1);
+
+  auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
+  auto subqueryInnerStart = createSubqueryStart(subqueryOuterStart.get(), 0);
+  // Produce one full block. The second shadowRow have no space left
+  auto testee = onceLinesProducer(subqueryInnerStart.get(),
+                                  ExecutionBlock::DefaultBatchSize - 1);
 
   AqlCall fullCall{};
   auto stack = buildStack(fullCall);
+  stack.pushCall(AqlCallList{fullCall});
+  stack.pushCall(AqlCallList{fullCall});
+
   {
     // First call. Fetch all rows (data + relevant shadow row)
     auto const& [state, skipped, block] = testee->execute(stack);
