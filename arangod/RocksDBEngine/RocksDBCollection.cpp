@@ -721,13 +721,8 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   // document found, but revisionId may not have been present in the primary
   // index. this can happen for "older" collections
   TRI_ASSERT(documentId.isSet());
-
-  // now look up the revision id in the actual document data
-
-  return readDocumentWithCallback(trx, documentId, [&revisionId](LocalDocumentId const&, VPackSlice doc) {
-    revisionId = transaction::helpers::extractRevFromDocument(doc);
-    return true;
-  });
+  TRI_ASSERT(revisionId != 0);
+  return true;
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx,
