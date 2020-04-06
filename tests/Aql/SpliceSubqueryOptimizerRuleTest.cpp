@@ -64,7 +64,7 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* en) final {
-    std::set<size_t> depids, otherdepids;
+    std::set<ExecutionNodeId> depids, otherdepids;
 
     if (!isSubqueryRelated(en)) {
       try {
