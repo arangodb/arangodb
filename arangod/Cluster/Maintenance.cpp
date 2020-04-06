@@ -878,12 +878,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
         if (!pdbs.hasKey(planPath)) {
           LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
-              << "Ooops, we have a shard for which we believe to be the "
-                 "leader,"
-                 " but the Plan does not have it any more, we do not report "
-                 "in "
-                 "Current about this, database: "
-              << dbName << ", shard: " << shName;
+            << "Ooops, we have a shard for which we believe to be the "
+               "leader, but the Plan does not have it any more, we do not "
+               "report in Current about this, database: "
+            << dbName << ", shard: " << shName;
           continue;
         }
 

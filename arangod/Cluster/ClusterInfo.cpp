@@ -38,8 +38,10 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
@@ -526,34 +528,8 @@ void ClusterInfo::loadPlan() {
     return;
   }
 
-  // Now contact the agency:
-  AgencyCommResult result = _agency.getValues(prefixPlan);
-
-  if (!result.successful()) {
-    LOG_TOPIC("989d5", DEBUG, Logger::CLUSTER)
-        << "Error while loading " << prefixPlan
-        << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
-
-    return;
-  }
-
-  auto resultSlice = result.slice();
-
-  if (!resultSlice.isArray() || resultSlice.length() != 1) {
-    LOG_TOPIC("e089b", DEBUG, Logger::CLUSTER)
-        << "Error while loading " << prefixPlan << " response structure is not an array of size 1"
-        << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
-
-    return;
-  }
-
-  auto slice = resultSlice[0].get(  // get slice
-      std::vector<std::string>({AgencyCommManager::path(), "Plan"})  // args
-  );
-
-  auto planBuilder = std::make_shared<velocypack::Builder>(slice);
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [planBuilder, index] = agencyCache.get("/arango/Plan");
   auto planSlice = planBuilder->slice();
 
   if (!planSlice.isObject()) {
@@ -1092,43 +1068,13 @@ void ClusterInfo::loadCurrent() {
   LOG_TOPIC("54789", DEBUG, Logger::CLUSTER)
       << "loadCurrent: wantedVersion: " << _currentProt.wantedVersion;
 
-  // Now contact the agency:
-  AgencyCommResult result = _agency.getValues(prefixCurrent);
-
-  if (!result.successful()) {
-    LOG_TOPIC("5d4e4", DEBUG, Logger::CLUSTER)
-        << "Error while loading " << prefixCurrent
-        << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
-
-    return;
-  }
-
-  auto resultSlice = result.slice();
-
-  if (!resultSlice.isArray() || resultSlice.length() != 1) {
-    LOG_TOPIC("b020c", DEBUG, Logger::CLUSTER)
-        << "Error while loading " << prefixCurrent << " response structure is not an array of size 1"
-        << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
-
-    return;
-  }
-
-  auto slice = resultSlice[0].get(  // get slice
-      std::vector<std::string>({AgencyCommManager::path(), "Current"})  // args
-  );
-  auto currentBuilder = std::make_shared<velocypack::Builder>();
-
-  currentBuilder->add(slice);
-
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [currentBuilder, index] = agencyCache.get("/arango/Current");
   auto currentSlice = currentBuilder->slice();
 
   if (!currentSlice.isObject()) {
     LOG_TOPIC("b8410", ERR, Logger::CLUSTER) << "Current is not an object!";
-
     LOG_TOPIC("eed43", DEBUG, Logger::CLUSTER) << "loadCurrent done.";
-
     return;
   }
 

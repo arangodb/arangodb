@@ -65,7 +65,7 @@ private:
 
 
   /// @brief Guard for _readDB
-  mutable std::mutex _lock;
+  mutable std::mutex _storeLock;
 
   /// @brief Commit index
   consensus::index_t _commitIndex;

@@ -41,18 +41,16 @@ bool AgencyCache::start() {
 }
 
 // Get Builder from readDB mainly /Plan /Current
-std::tuple <consensus::query_t, consensus::index_t> const AgencyCache::get(
+std::tuple <query_t, index_t> const AgencyCache::get(
   std::string const& path) const {
-  
-  std::lock_guard g(_lock);
-  query_t builder;
-  _readDB.toBuilder(*builder);
-  
-  return std::tuple(builder,_commitIndex);
+  std::lock_guard g(_storeLock);
+  auto ret = std::make_shared<VPackBuilder>();
+  _readDB.get(path).toBuilder(*ret);
+  return std::tuple(ret, _commitIndex);
 }
 
 index_t AgencyCache::index() const {
-  std::lock_guard g(_lock);
+  std::lock_guard g(_storeLock);
   return _commitIndex;
 }
 
@@ -71,7 +69,7 @@ void AgencyCache::run() {
     [&](VPackBuilder& r) {
       index_t commitIndex = 0;
       {
-        std::lock_guard g(_lock);
+        std::lock_guard g(_storeLock);
         commitIndex = _commitIndex;
       }
       auto ret = AsyncAgencyComm().poll(60s, commitIndex+1);
@@ -98,9 +96,9 @@ void AgencyCache::run() {
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
 
-          auto tmp = VPackParser::fromJson(rb.payloadAsString());
-          auto slc = tmp->slice();
           if (rb.ok() && rb.statusCode() == 202) {
+            auto tmp = VPackParser::fromJson(rb.payloadAsString());
+            auto slc = tmp->slice();
             wait = 0.;
             TRI_ASSERT(slc.hasKey("result"));
             VPackSlice rs = slc.get("result");
@@ -108,9 +106,9 @@ void AgencyCache::run() {
             TRI_ASSERT(rs.get("commitIndex").isNumber());
             TRI_ASSERT(rs.hasKey("firstIndex"));
             TRI_ASSERT(rs.get("firstIndex").isNumber());
-            consensus::index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
-            consensus::index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
-            std::lock_guard g(_lock);
+            index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
+            index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
+            std::lock_guard g(_storeLock);
             if (firstIndex > 0) {
               TRI_ASSERT(rs.hasKey("log"));
               TRI_ASSERT(rs.get("log").isArray());

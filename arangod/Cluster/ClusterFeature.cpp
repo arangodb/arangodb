@@ -781,3 +781,10 @@ ClusterInfo& ClusterFeature::clusterInfo() {
   }
   return *_clusterInfo;
 }
+
+AgencyCache& ClusterFeature::agencyCache() {
+  if (_agencyCache == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  return *_agencyCache;
+}

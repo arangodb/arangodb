@@ -55,6 +55,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   std::string agencyPrefix() const { return _agencyPrefix; }
 
+  AgencyCache& agencyCache();
+
   /// @return role argument as it was supplied by a user
   std::string const& myRole() const noexcept { return _myRole; }
 
