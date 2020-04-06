@@ -408,8 +408,6 @@ set(LIB_ARANGO_VOCBASE_SOURCES
 )
 
 set(LIB_ARANGO_UTILS_SOURCES
-  Utils/CollectionKeys.cpp
-  Utils/CollectionKeysRepository.cpp
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
   Utils/OperationCursor.cpp

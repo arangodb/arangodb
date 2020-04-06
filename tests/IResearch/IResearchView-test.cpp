@@ -1400,7 +1400,7 @@ TEST_F(IResearchViewTest, test_drop_database) {
   EXPECT_TRUE((1 == beforeCount)); // +1 for StorageEngineMock::createView(...)
 
   beforeCount = 0; // reset before call to StorageEngine::dropView(...)
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == databaseFeature.dropDatabase(vocbase->id(), true, true)));
+  EXPECT_TRUE((TRI_ERROR_NO_ERROR == databaseFeature.dropDatabase(vocbase->id(), true)));
   EXPECT_TRUE((1 == beforeCount));
 }
 

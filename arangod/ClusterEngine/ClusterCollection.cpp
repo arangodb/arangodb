@@ -106,10 +106,6 @@ std::string const& ClusterCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
 }
 
-void ClusterCollection::setPath(std::string const&) {
-  // we do not have any path
-}
-
 Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   VPackBuilder merge;
   merge.openObject();
@@ -147,12 +143,6 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
 
   // nothing else to do
   return TRI_ERROR_NO_ERROR;
-}
-
-arangodb::Result ClusterCollection::persistProperties() {
-  // only code path calling this causes these properties to be
-  // already written in RocksDBEngine::changeCollection()
-  return Result();
 }
 
 PhysicalCollection* ClusterCollection::clone(LogicalCollection& logical) const {
@@ -218,8 +208,6 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
 
 /// @brief report extra memory used by indexes etc.
 size_t ClusterCollection::memory() const { return 0; }
-
-void ClusterCollection::open(bool ignoreErrors) {}
 
 void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
   WRITE_LOCKER(guard, _indexesLock);
