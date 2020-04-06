@@ -1580,6 +1580,16 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto it = _collectionMap.find(objectId);
     if (it != _collectionMap.end()) {
+      if (it->second.first != did || it->second.second != cid) {
+        LOG_TOPIC("80e81", ERR, Logger::FIXME) 
+            << "trying to add objectId: " << objectId << ", did: " << did << ", cid: " << cid 
+            << ", found in map: did: " << it->second.first << ", cid: " << it->second.second
+            << ", map contains " << _collectionMap.size() << " entries";
+        for (auto const& it : _collectionMap) {
+          LOG_TOPIC("77de9", ERR, Logger::FIXME) 
+              << "- objectId: " << it.first << " => (did: " << it.second.first << ", cid: " << it.second.second << ")";
+        }
+      }
       TRI_ASSERT(it->second.first == did);
       TRI_ASSERT(it->second.second == cid);
     }
