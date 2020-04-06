@@ -533,11 +533,16 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
           _activeTrx.reset();
 
-          // wait for the transaction to finish first. only after that compact the
-          // data range(s) for the collection
-          // we shouldn't run compact() as part of the transaction, because the compact
-          // will be useless inside due to the snapshot the transaction has taken
-          coll->compact();
+          // note that previously we ran a compaction of the collection's key range
+          // and the collection's indexes key ranges directly after the truncate.
+          // this was done to make RocksDB physically free data of unused key ranges,
+          // but it seems that the used version of RocksDB is struggling to achieve
+          // that goal. although it does compact the range, it seems to read a lot
+          // of extra data from unrelated ranges as well, which blows up the overall
+          // time required to do the compactions. most recent versions of RocksDB
+          // do not seem to have this problem anymore. but for now, in this ArangoDb
+          // version we turn off the manual compaction and rely on RocksDB eventually
+          // freeing the now-unsed ranges.
 
           if (ServerState::instance()->isCoordinator()) {  // ClusterInfo::loadPlan eventually
                                                            // updates status
