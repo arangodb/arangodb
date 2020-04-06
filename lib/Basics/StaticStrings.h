@@ -66,10 +66,9 @@ class StaticStrings {
   static std::string const IsSynchronousReplicationString;
   static std::string const Group;
   static std::string const Namespace;
-  static std::string const ReplaceExisting;
   static std::string const Prefix;
-  static std::string const OverWrite;
-  static std::string const OverWriteMode;
+  static std::string const Overwrite;
+  static std::string const OverwriteMode;
   static std::string const PreserveRevisionIds;
 
   // replication headers

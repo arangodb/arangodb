@@ -120,8 +120,9 @@ class ClusterCollection final : public PhysicalCollection {
   Result compact() override;
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
-
-  LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
+  
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result) override;

@@ -1056,6 +1056,11 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 /// @brief compact-data operation
 Result LogicalCollection::compact() { return getPhysical()->compact(); }
 
+Result LogicalCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const { 
+  return getPhysical()->lookupKey(trx, key, result);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
