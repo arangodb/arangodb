@@ -105,6 +105,8 @@ class AqlCallList {
    */
   [[nodiscard]] auto hasMoreCalls() const noexcept -> bool;
 
+  [[nodiscard]] auto hasDefaultCalls() const noexcept -> bool;
+
   /**
    * @brief Get a reference to the next call.
    *        This is modifiable, but caller will not take
@@ -116,6 +118,8 @@ class AqlCallList {
    * @return AqlCall& reference to the call, can be modified.
    */
   [[nodiscard]] auto modifyNextCall() -> AqlCall&;
+
+  void createEquivalentFetchAllRowsCall();
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallList>;
   auto toVelocyPack(velocypack::Builder&) const -> void;

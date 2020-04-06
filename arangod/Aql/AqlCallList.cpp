@@ -81,6 +81,10 @@ AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall
   return !_specificCalls.empty() || _defaultCall.has_value();
 }
 
+[[nodiscard]] auto AqlCallList::hasDefaultCalls() const noexcept -> bool {
+  return _defaultCall.has_value();
+};
+
 [[nodiscard]] auto AqlCallList::modifyNextCall() -> AqlCall& {
   TRI_ASSERT(hasMoreCalls());
   if (_specificCalls.empty()) {
@@ -90,6 +94,15 @@ AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall
     _specificCalls.emplace_back(_defaultCall.value());
   }
   return _specificCalls.back();
+}
+
+void AqlCallList::createEquivalentFetchAllRowsCall() {
+  std::replace_if(
+      _specificCalls.begin(), _specificCalls.end(),
+      [](auto const&) -> bool { return true; }, AqlCall{});
+  if (_defaultCall.has_value()) {
+    _defaultCall = AqlCall{};
+  }
 }
 
 auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {

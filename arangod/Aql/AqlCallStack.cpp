@@ -159,9 +159,9 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
   AqlCallStack res{*this};
   // We can always overfetch the next subquery here.
   // We gonna need all data anyways.
-  std::replace_if(
-      res._operations.begin(), res._operations.end(),
-      [](auto const&) -> bool { return true; }, AqlCallList{AqlCall{}, AqlCall{}});
+  for (auto& op : res._operations) {
+    op.createEquivalentFetchAllRowsCall();
+  }
   return res;
 }
 
@@ -196,6 +196,11 @@ auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
   // Take the depth-most from top of the vector.
   auto& callList = *(_operations.rbegin() + depth);
   return callList.modifyNextCall();
+}
+
+auto AqlCallStack::modifyCallListAtDepth(size_t depth) -> AqlCallList& {
+  TRI_ASSERT(_operations.size() > depth);
+  return *(_operations.rbegin() + depth);
 }
 
 auto AqlCallStack::modifyTopCall() -> AqlCall& {

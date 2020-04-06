@@ -1452,7 +1452,21 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
     }
     // If we do not have more shadowRows
     // we need to return.
-    return ExecState::DONE;
+
+    auto& subqueryCallList = stack.modifyCallListAtDepth(shadowRow.getDepth());
+
+    if (!subqueryCallList.hasDefaultCalls()) {
+      return ExecState::DONE;
+    }
+
+    auto& subqueryCall = subqueryCallList.modifyNextCall();
+    if (subqueryCall.getLimit() == 0 && !subqueryCall.needSkipMore()) {
+      return ExecState::DONE;
+    }
+
+    _executorReturnedDone = false;
+
+    return ExecState::NEXTSUBQUERY;
   }
 }
 
@@ -1640,6 +1654,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack&) -> ExecSta
     auto const& lookAheadRow = _lastRange.peekShadowRow();
     if (lookAheadRow.isRelevant()) {
       // We are starting the NextSubquery here.
+      if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+        // TODO: Check if this works with skip forwarding
+        return ExecState::SHADOWROWS;
+      }
       return ExecState::NEXTSUBQUERY;
     }
     // we need to forward them
