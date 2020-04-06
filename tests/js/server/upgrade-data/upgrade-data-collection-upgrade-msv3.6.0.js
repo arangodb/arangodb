@@ -131,6 +131,45 @@ function UpgradeData () {
     assertEqual(ftResults.length, 100);
   };
 
+  const verifyEdgeCollectionData = () => {
+    const c = db._collection('EdgeCollectionUpgrade');
+    assertEqual(c.count(), 955);
+
+    // verify indexes
+    const indices = c.getIndexes();
+    require('internal').print(JSON.stringify(indices))
+    assertEqual(indices.length, 2);
+
+    // primary
+    assertEqual(indices[0].type, "primary");
+    assertEqual(indices[0].unique, true);
+    const pResults = c.all().toArray();
+    assertEqual(pResults.length, 955);
+
+    // edge
+    assertEqual(indices[1].type, "edge");
+    assertEqual(indices[1].unique, false);
+
+    const edgeQuery1 =
+      `FOR v in 1..1 OUTBOUND 'CollectionUpgrade/key10' EdgeCollectionUpgrade
+          SORT v.num
+          RETURN v`;
+    const edgeResults1 = db._query(edgeQuery1).toArray();
+    assertEqual(edgeResults1.length, 10);
+    for (let i = 0; i < 10; i++) {
+      assertEqual(edgeResults1[i].num, 10 + i);
+    }
+    const edgeQuery2 =
+      `FOR v in 1..1 INBOUND 'CollectionUpgrade/key95' EdgeCollectionUpgrade
+          SORT v.num
+          RETURN v`;
+    const edgeResults2 = db._query(edgeQuery2).toArray();
+    assertEqual(edgeResults2.length, 10);
+    for (let i = 0; i < 10; i++) {
+      assertEqual(edgeResults2[i].num, 86 + i);
+    }
+  };
+
   return {
 
     ////////////////////////////////////////////////////////////////////////////
@@ -138,6 +177,7 @@ function UpgradeData () {
     ////////////////////////////////////////////////////////////////////////////
     testCollectionUpgrade : function () {
       verifyCollectionData();
+      verifyEdgeCollectionData();
 
       let r = request({
         method: "PUT",
@@ -146,6 +186,7 @@ function UpgradeData () {
       assertEqual(r.statusCode, 200);
       
       verifyCollectionData();
+      verifyEdgeCollectionData();
 
       const props = db.CollectionUpgrade.properties();
       assertTrue(props.syncByRevision);

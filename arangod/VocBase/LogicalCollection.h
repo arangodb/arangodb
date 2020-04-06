@@ -146,6 +146,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmartChild() const { return false; }
 #endif
   bool usesRevisionsAsDocumentIds() const;
+  void setUsesRevisionsAsDocumentIds(bool);
   TRI_voc_rid_t minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
@@ -326,6 +327,7 @@ class LogicalCollection : public LogicalDataSource {
   std::unique_ptr<FollowerInfo> const& followers() const;
 
   bool syncByRevision() const;
+  void setSyncByRevision(bool);
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,

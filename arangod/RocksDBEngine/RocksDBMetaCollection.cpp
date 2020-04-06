@@ -634,7 +634,7 @@ Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
   } else if (plannedTempObjectId != _tempObjectId) {
     TRI_ASSERT(plannedObjectId != _objectId);
     TRI_ASSERT(plannedObjectId != 0);
-    TRI_ASSERT(plannedObjectId = _tempObjectId);
+    TRI_ASSERT(plannedObjectId == _tempObjectId);
     // swapping in new range
     _tempObjectId = plannedTempObjectId;
     _objectId = plannedObjectId;

@@ -180,8 +180,8 @@ void handlePropertiesEntryForObjectIdUpdate(
 }
 
 arangodb::Result setObjectIdsForCollection(arangodb::LogicalCollection& collection,
-                                           std::pair<std::uint64_t, std::uint64_t>& outputPair,
-                                           ::IndicesMap& indicesMap) {
+                                           std::pair<std::uint64_t, std::uint64_t> const& outputPair,
+                                           ::IndicesMap const& indicesMap) {
   arangodb::Result res;
 
   auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
@@ -190,7 +190,7 @@ arangodb::Result setObjectIdsForCollection(arangodb::LogicalCollection& collecti
   if (res.fail()) {
     return res;
   }
-  for (auto& idxPair : indicesMap) {
+  for (auto const& idxPair : indicesMap) {
     auto ridx = static_cast<arangodb::RocksDBIndex*>(idxPair.first.get());
     res = ridx->setObjectIds(idxPair.second.first, idxPair.second.second);
     if (res.fail()) {
@@ -199,6 +199,12 @@ arangodb::Result setObjectIdsForCollection(arangodb::LogicalCollection& collecti
   }
 
   return res;
+}
+
+void setUpgradedPropertiesForCollection(arangodb::LogicalCollection& collection) {
+  collection.setVersion(arangodb::LogicalCollection::Version::v37);
+  collection.setUsesRevisionsAsDocumentIds(true);
+  collection.setSyncByRevision(true);
 }
 
 arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
@@ -262,6 +268,7 @@ arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
   if (res.fail()) {
     return res;
   }
+  ::setUpgradedPropertiesForCollection(collection);
 
   cleanup.cancel();  // succeeded, no cleanup needed
 
@@ -281,29 +288,18 @@ arangodb::Result commitBatch(rocksdb::WriteOptions& wo,
 void rewriteDocument(rocksdb::WriteBatch& batch, arangodb::RocksDBKey& key,
                      arangodb::RocksDBKeyBounds& bounds,
                      rocksdb::Slice oldValue, std::uint64_t tempObjectId) {
-  arangodb::velocypack::Slice oldDocument = arangodb::RocksDBValue::data(oldValue);
+  arangodb::velocypack::Slice document = arangodb::RocksDBValue::data(oldValue);
   arangodb::velocypack::Builder builder;
-  arangodb::velocypack::Slice revSlice =
-      oldDocument.get(arangodb::StaticStrings::RevString);
+  arangodb::velocypack::Slice revSlice = document.get(arangodb::StaticStrings::RevString);
   TRI_ASSERT(revSlice.isString());
   arangodb::velocypack::ValueLength l;
   char const* p = revSlice.getString(l);
   TRI_voc_rid_t revision = TRI_StringToRid(p, l, false);
-  {
-    arangodb::velocypack::ObjectBuilder guard(&builder);
-    for (auto pair : arangodb::velocypack::ObjectIterator(oldDocument)) {
-      builder.add(pair.key);
-      builder.add(pair.value);
-    }
-  }
 
-  arangodb::velocypack::Slice newDocument = builder.slice();
   arangodb::LocalDocumentId newDocumentId{revision};
 
   key.constructDocument(tempObjectId, newDocumentId);
-  auto value = rocksdb::Slice(newDocument.startAs<char>(),
-                              static_cast<size_t>(newDocument.byteSize()));
-  batch.Put(bounds.columnFamily(), key.string(), value);
+  batch.Put(bounds.columnFamily(), key.string(), oldValue);
 }
 
 arangodb::Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
@@ -403,7 +399,7 @@ TRI_voc_rid_t getRevisionFromOldDocumentId(rocksdb::DB& db,
 void rewritePrimaryIndexEntry(arangodb::RocksDBIndex& ridx, arangodb::RocksDBKey& key,
                               arangodb::RocksDBValue& buffer, rocksdb::Slice& value,
                               rocksdb::Slice oldKey, rocksdb::Slice oldValue,
-                              arangodb::LocalDocumentId& newId) {
+                              arangodb::LocalDocumentId const& newId) {
   arangodb::velocypack::StringRef docKey = arangodb::RocksDBKey::primaryKey(oldKey);
   TRI_voc_rid_t revision = arangodb::RocksDBValue::revisionId(oldValue);
   key.constructPrimaryIndexValue(ridx.tempObjectId(), docKey);
@@ -412,14 +408,14 @@ void rewritePrimaryIndexEntry(arangodb::RocksDBIndex& ridx, arangodb::RocksDBKey
 }
 
 void rewriteEdgeIndexEntry(arangodb::RocksDBIndex& ridx, arangodb::RocksDBKey& key,
-                           rocksdb::Slice oldKey, arangodb::LocalDocumentId& newId) {
+                           rocksdb::Slice oldKey, arangodb::LocalDocumentId const& newId) {
   arangodb::velocypack::StringRef vertexId = arangodb::RocksDBKey::vertexId(oldKey);
   key.constructEdgeIndexValue(ridx.tempObjectId(), vertexId, newId);
 }
 
 void rewriteVPackIndexEntry(arangodb::RocksDBIndex& ridx, arangodb::RocksDBKey& key,
                             arangodb::RocksDBValue& buffer, rocksdb::Slice& value,
-                            rocksdb::Slice oldKey, arangodb::LocalDocumentId& newId) {
+                            rocksdb::Slice oldKey, arangodb::LocalDocumentId const& newId) {
   arangodb::velocypack::Slice indexedValues = arangodb::RocksDBKey::indexedVPack(oldKey);
   if (ridx.unique()) {
     key.constructUniqueVPackIndexValue(ridx.tempObjectId(), indexedValues);
@@ -430,14 +426,15 @@ void rewriteVPackIndexEntry(arangodb::RocksDBIndex& ridx, arangodb::RocksDBKey& 
   key.constructVPackIndexValue(ridx.tempObjectId(), indexedValues, newId);
 }
 
-void rewriteFulltextIndexEntry(arangodb::RocksDBIndex& ridx, arangodb::RocksDBKey& key,
-                               rocksdb::Slice oldKey, arangodb::LocalDocumentId& newId) {
+void rewriteFulltextIndexEntry(arangodb::RocksDBIndex& ridx,
+                               arangodb::RocksDBKey& key, rocksdb::Slice oldKey,
+                               arangodb::LocalDocumentId const& newId) {
   arangodb::velocypack::Slice indexedValues = arangodb::RocksDBKey::indexedVPack(oldKey);
   key.constructVPackIndexValue(ridx.tempObjectId(), indexedValues, newId);
 }
 
 void rewriteGeoIndexEntry(arangodb::RocksDBIndex& ridx, arangodb::RocksDBKey& key,
-                          rocksdb::Slice oldKey, arangodb::LocalDocumentId& newId) {
+                          rocksdb::Slice oldKey, arangodb::LocalDocumentId const& newId) {
   uint64_t geoValue = arangodb::RocksDBKey::geoValue(oldKey);
   key.constructGeoIndexValue(ridx.tempObjectId(), geoValue, newId);
 }

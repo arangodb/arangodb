@@ -480,6 +480,12 @@ bool LogicalCollection::usesRevisionsAsDocumentIds() const {
   return _usesRevisionsAsDocumentIds;
 }
 
+void LogicalCollection::setUsesRevisionsAsDocumentIds(bool usesRevisions) {
+  if (!_usesRevisionsAsDocumentIds && usesRevisions && _version >= Version::v37) {
+    _usesRevisionsAsDocumentIds = true;
+  }
+}
+
 TRI_voc_rid_t LogicalCollection::minRevision() const {
   return _minRevision;
 }
@@ -489,6 +495,12 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 }
 
 bool LogicalCollection::syncByRevision() const { return _syncByRevision; }
+
+void LogicalCollection::setSyncByRevision(bool usesRevisions) {
+  if (!_syncByRevision && _usesRevisionsAsDocumentIds && usesRevisions) {
+    _syncByRevision = true;
+  }
+}
 
 bool LogicalCollection::determineSyncByRevision() const {
   if (version() >= LogicalCollection::Version::v37) {
