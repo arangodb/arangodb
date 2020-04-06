@@ -154,6 +154,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/ServerDefaults.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
