@@ -384,7 +384,7 @@ filter::prepared::ptr boolean_filter::prepare(
   std::vector<const filter*> excl;
 
   group_filters(incl, excl);
-  optimize(incl, excl, boost);
+  remove_excess(incl, excl, boost);
 
   all all_docs;
   if (incl.empty() && !excl.empty()) {
@@ -449,7 +449,7 @@ And::And() NOEXCEPT
   : boolean_filter(And::type()) {
 }
 
-void And::optimize(
+void And::remove_excess(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& /*excl*/,
     irs::boost::boost_t& boost) const {
@@ -478,6 +478,26 @@ void And::optimize(
   });
 
   // remove found `all` filters
+  incl.erase(it, incl.end());
+}
+
+void Or::remove_excess(
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& /*excl*/,
+    boost_t& /*boost*/) const {
+  if (incl.empty()) {
+    // nothing to do
+    return;
+  }
+
+  // find `empty` filters
+  auto it = std::remove_if(
+    incl.begin(), incl.end(),
+    [](const irs::filter* filter) {
+      return irs::empty::type() == filter->type();
+  });
+
+  // remove found `empty` filters
   incl.erase(it, incl.end());
 }
 
