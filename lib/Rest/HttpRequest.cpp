@@ -883,7 +883,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
       if (!_vpackBuilder) {
         VPackOptions validationOptions = *options;  // intentional copy
         validationOptions.validateUtf8Strings = true;
-        VPackParser parser(&validationOptions); // adding the validatin here has no effect
+        VPackParser parser(&validationOptions);
         parser.parse(_payload.data(),
                      _payload.size());
         _vpackBuilder = parser.steal();
@@ -898,7 +898,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     validationOptions.disallowExternals = true;
     validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
-    if(!_validatedPayload) {
+    if (!_validatedPayload) {
       _validatedPayload = validator.validate(_payload.data(), _payload.length()); // throws on error
     }
     return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));

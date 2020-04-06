@@ -1505,12 +1505,6 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         Result res =
             restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
         if (res.fail()) {
-          if(res.errorNumber() == TRI_ERROR_HTTP_CORRUPTED_JSON) {
-            using namespace std::literals::string_literals;
-            auto data = std::string(ptr, pos);
-            LOG_TOPIC("f86f3", ERR, Logger::RESTORE) << "invalid json in: " + data;
-            res.appendErrorMessage(" in message '"s + data + "'");
-          }
           return res;
         }
 
