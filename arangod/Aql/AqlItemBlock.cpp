@@ -909,25 +909,6 @@ void AqlItemBlock::eraseAll() {
   _valueCount.clear();
 }
 
-void AqlItemBlock::copyValuesFromRow(size_t currentRow, RegisterId curRegs, size_t fromRow) {
-  TRI_ASSERT(currentRow != fromRow);
-
-  for (RegisterId i = 0; i < curRegs; i++) {
-    auto currentAddress = getAddress(currentRow, i);
-    auto fromAddress = getAddress(fromRow, i);
-    if (_data[currentAddress].isEmpty()) {
-      // First update the reference count, if this fails, the value is empty
-      if (_data[fromAddress].requiresDestruction()) {
-        ++_valueCount[_data[fromAddress]];
-      }
-      TRI_ASSERT(_data[currentAddress].isEmpty());
-      _data[currentAddress] = _data[fromAddress];
-    }
-  }
-  // Copy over subqueryDepth
-  copySubqueryDepth(currentRow, fromRow);
-}
-
 void AqlItemBlock::copyValuesFromRow(size_t currentRow,
                                      std::unordered_set<RegisterId> const& regs,
                                      size_t fromRow) {
