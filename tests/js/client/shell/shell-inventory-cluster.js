@@ -67,7 +67,7 @@ function clusterInventorySuite () {
     assertTrue(Array.isArray(view.storedValues));
     view.storedValues.forEach(function(storedValue) {
       assertEqual("object", typeof storedValue);
-      assertTrue(Array.isArray(storedValue.field));
+      assertTrue(Array.isArray(storedValue.fields));
       assertEqual("string", typeof storedValue.compression);
     });
     //assertEqual("number", typeof view.version);
@@ -92,6 +92,7 @@ function clusterInventorySuite () {
       assertEqual("boolean", typeof link.includeAllFields);
       assertTrue(Array.isArray(link.primarySort));
       assertTrue(link.hasOwnProperty("storeValues"));
+      assertFalse(link.hasOwnProperty("storedValues"));
       assertEqual("boolean", typeof link.trackListPositions);
     });
   };
