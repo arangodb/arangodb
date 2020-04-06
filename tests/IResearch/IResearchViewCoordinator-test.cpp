@@ -5766,12 +5766,12 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
                                arangodb::aql::PART_MAIN);
     query.prepare(arangodb::QueryRegistryFeature::registry(), arangodb::aql::SerializationFormat::SHADOWROWS);
 
-    arangodb::aql::SingletonNode singleton(query.plan(), 0);
+    arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
 
     arangodb::aql::Variable const outVariable("variable", 0);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,        // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 *vocbase,  // database
                                                 view,      // view
                                                 outVariable,
