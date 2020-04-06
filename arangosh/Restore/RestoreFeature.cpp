@@ -529,7 +529,6 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
     arangodb::velocypack::Options opts = arangodb::velocypack::Options::Defaults;
     // do *not* check duplicate attributes here (because that would throw)
     opts.checkAttributeUniqueness = false;
-    opts.validateUtf8Strings = true;
     arangodb::velocypack::Builder builder(&opts);
 
     // instead, we need to manually check for duplicate attributes...
@@ -1182,7 +1181,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   } else {
-    // restore indexes first 
+    // restore indexes first
     result = ::restoreIndexes(httpClient, jobData);
     if (result.fail()) {
       return result;
@@ -1602,7 +1601,7 @@ void RestoreFeature::start() {
     LOG_TOPIC("05c30", INFO, Logger::RESTORE)
         << "Connected to ArangoDB '" << httpClient->getEndpointSpecification() << "'";
   }
-  
+
   if (!isRocksDB) {
     LOG_TOPIC("ae10c", WARN, arangodb::Logger::RESTORE) << "You connected to a server with a potentially incompatible storage engine.";
   }
