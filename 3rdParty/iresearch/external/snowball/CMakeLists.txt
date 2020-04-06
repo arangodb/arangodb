@@ -202,7 +202,6 @@ ENDMACRO()
 INCLUDE_DIRECTORIES("include")
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}/libstemmer")
 
-# NOTE: modules.h gets overwritten by static file from iresearch.build folder
 ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/libstemmer
   COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/mkmodules.pl ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h "libstemmer" ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/modules.txt ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/mkinc.mak

@@ -251,6 +251,19 @@ class OutputAqlItemRow {
    * @brief Whether the input registers were copied from a source row.
    */
   bool _inputRowCopied;
+  
+  /**
+   * @brief Set if and only if the current ExecutionBlock passes the
+   * AqlItemBlocks through.
+   */
+  bool const _doNotCopyInputRow;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _setBaseIndexNotUsed;
+#endif
+  // Need this special bool for allowing an empty AqlValue inside the
+  // SortedCollectExecutor, CountCollectExecutor and ConstrainedSortExecutor.
+  bool _allowSourceRowUninitialized;
 
   /**
    * @brief The last source row seen. Note that this is invalid before the first
@@ -271,22 +284,9 @@ class OutputAqlItemRow {
    */
   AqlCall _call;
 
-  /**
-   * @brief Set if and only if the current ExecutionBlock passes the
-   * AqlItemBlocks through.
-   */
-  bool const _doNotCopyInputRow;
-
   std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _setBaseIndexNotUsed;
-#endif
-  // Need this special bool for allowing an empty AqlValue inside the
-  // SortedCollectExecutor, CountCollectExecutor and ConstrainedSortExecutor.
-  bool _allowSourceRowUninitialized;
 
  private:
   [[nodiscard]] size_t nextUnwrittenIndex() const noexcept {

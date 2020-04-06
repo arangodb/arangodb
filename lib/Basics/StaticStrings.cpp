@@ -63,9 +63,8 @@ std::string const StaticStrings::IsSynchronousReplicationString(
 std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
-std::string const StaticStrings::ReplaceExisting("replaceExisting");
-std::string const StaticStrings::OverWrite("overwrite");
-std::string const StaticStrings::OverWriteMode("overwriteMode");
+std::string const StaticStrings::Overwrite("overwrite");
+std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
 
 // replication headers

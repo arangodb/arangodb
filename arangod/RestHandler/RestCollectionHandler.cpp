@@ -335,7 +335,7 @@ void RestCollectionHandler::handleCommandPost() {
 
   // for some "security" a whitelist of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
-      body, std::unordered_set<std::string>{"doCompact",
+      body, std::unordered_set<std::string>{StaticStrings::DoCompact,
                                             StaticStrings::DataSourceSystem,
                                             StaticStrings::DataSourceId,
                                             "isVolatile",

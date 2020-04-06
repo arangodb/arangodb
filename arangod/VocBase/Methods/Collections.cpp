@@ -488,7 +488,6 @@ void Collections::createSystemCollectionProperties(std::string const& collection
     VPackObjectBuilder scope(&bb);
     bb.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
     bb.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
-    bb.add(StaticStrings::JournalSize, VPackValue(1024 * 1024));
     bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplicationFactor));
     bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultWriteConcern));  // deprecated
     bb.add(StaticStrings::WriteConcern, VPackValue(defaultWriteConcern));
@@ -681,7 +680,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
     auto physical = collection.getPhysical();
     TRI_ASSERT(physical != nullptr);
 
-    return physical->persistProperties();
+    return res;
   }
 }
 

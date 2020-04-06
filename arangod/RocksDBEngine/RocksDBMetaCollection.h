@@ -43,15 +43,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
   virtual ~RocksDBMetaCollection() = default;
   
   std::string const& path() const override final;
-  void setPath(std::string const& path) override final {}
-  arangodb::Result persistProperties() override final {
-    // only code path calling this causes these properties to be
-    // already written in RocksDBEngine::changeCollection()
-    return Result();
-  }
-  void open(bool /*ignoreErrors*/) override final {
-    TRI_ASSERT(_objectId != 0);
-  }
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const&) override final;
 

@@ -25,6 +25,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryString.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -283,7 +284,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
 
   VPackBuilder oneFunctionDocument;
   oneFunctionDocument.openObject();
-  oneFunctionDocument.add("_key", VPackValue(_key));
+  oneFunctionDocument.add(StaticStrings::KeyString, VPackValue(_key));
   oneFunctionDocument.add("name", VPackValue(name));
   oneFunctionDocument.add("code", VPackValue(code));
   oneFunctionDocument.add("isDeterministic", VPackValue(isDeterministic));

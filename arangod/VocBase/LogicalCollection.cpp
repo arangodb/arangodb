@@ -157,13 +157,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 #endif
       _usesRevisionsAsDocumentIds(
           Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
+      _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
+      _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
+      _syncByRevision(determineSyncByRevision()),
       _minRevision((system() || isSmartChild())
                        ? 0
                        : Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision,
                                                                 0)),
-      _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
-      _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
-      _syncByRevision(determineSyncByRevision()),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
@@ -617,9 +617,6 @@ arangodb::Result LogicalCollection::drop() {
   this->close();
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  engine->destroyCollection(vocbase(), *this);
   deleted(true);
   _physical->drop();
 
@@ -972,12 +969,6 @@ futures::Future<OperationResult> LogicalCollection::figures() const {
   return getPhysical()->figures();
 }
 
-/// @brief opens an existing collection
-void LogicalCollection::open(bool ignoreErrors) {
-  getPhysical()->open(ignoreErrors);
-  TRI_UpdateTickServer(id());
-}
-
 /// SECTION Indexes
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(IndexId idxId) const {
@@ -1036,9 +1027,7 @@ void LogicalCollection::persistPhysicalCollection() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto path = engine->createCollection(vocbase(), *this);
-
-  getPhysical()->setPath(path);
+  engine->createCollection(vocbase(), *this);
 }
 
 basics::ReadWriteLock& LogicalCollection::statusLock() {
@@ -1077,6 +1066,11 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
 /// @brief compact-data operation
 Result LogicalCollection::compact() { return getPhysical()->compact(); }
+
+Result LogicalCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const { 
+  return getPhysical()->lookupKey(trx, key, result);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection
