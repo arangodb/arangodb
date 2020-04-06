@@ -41,13 +41,36 @@ using namespace arangodb::tests::aql;
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
                                                      std::deque<SharedAqlItemBlockPtr>&& data,
-                                                     WaitingBehaviour variant)
+                                                     WaitingBehaviour variant,
+                                                     size_t subqueryDepth)
     : ExecutionBlock(engine, node),
       _data(std::move(data)),
       _resourceMonitor(),
       _inflight(0),
       _hasWaited(false),
-      _variant{variant} {}
+      _variant{variant},
+      _infos{::blocksToInfos(data)},
+      _blockData{*engine, node, _infos} {
+  SkipResult s;
+  for (size_t i = 0; i < subqueryDepth; ++i) {
+    s.incrementSubquery();
+  }
+  for (auto const& b : data) {
+    if (b != nullptr) {
+      TRI_ASSERT(s.nothingSkipped());
+      _blockData.addBlock(b, s);
+      if (b->hasShadowRows()) {
+        _doesContainShadowRows = true;
+      }
+    }
+  }
+
+  if (!data.empty() && data.back() == nullptr) {
+    // If the last block in _data is explicitly a nullptr
+    // we will lie on the last row
+    _shouldLieOnLastRow = true;
+  }
+}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
