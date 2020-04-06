@@ -31,6 +31,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
@@ -69,7 +70,6 @@ class RestHandlerFactory;
 }
 
 namespace transaction {
-class ContextData;
 struct Options;
 }  // namespace transaction
 
@@ -144,11 +144,7 @@ class RocksDBEngine final : public StorageEngine {
   void stop() override;
   void unprepare() override;
 
-  bool supportsDfdb() const override { return false; }
-  bool useRawDocumentPointers() override { return false; }
-
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
-  std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
@@ -213,9 +209,6 @@ class RocksDBEngine final : public StorageEngine {
   // database, collection and index management
   // -----------------------------------------
 
-  // intentionally empty, not useful for this type of engine
-  void waitForSyncTick(TRI_voc_tick_t) override {}
-
   /// @brief return a list of the currently open WAL files
   std::vector<std::string> currentWalFiles() const override;
 
@@ -237,9 +230,6 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief current recovery tick
   TRI_voc_tick_t recoveryTick() noexcept override;
 
-  // start compactor thread and delete files form collections marked as deleted
-  void recoveryDone(TRI_vocbase_t& vocbase) override;
-
  public:
   /// @brief disallow purging of WAL files even if the archive gets too big
   /// removing WAL files does not seem to be thread-safe, so we have to track
@@ -251,9 +241,6 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string createCollection(TRI_vocbase_t& vocbase,
                                LogicalCollection const& collection) override;
-
-  arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection) override;
 
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
@@ -272,12 +259,6 @@ class RocksDBEngine final : public StorageEngine {
 
   arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
                               arangodb::LogicalView const& view) override;
-
-  virtual void getViewProperties(TRI_vocbase_t& /*vocbase*/,
-                                 LogicalView const& /*view*/, velocypack::Builder& /*builder*/
-                                 ) override {
-    // does nothing
-  }
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
 
@@ -309,12 +290,12 @@ class RocksDBEngine final : public StorageEngine {
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
   std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> collectionMappings() const;
-  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, TRI_voc_cid_t, IndexId);
   void removeIndexMapping(uint64_t);
 
   // Identifies a collection
   typedef std::pair<TRI_voc_tick_t, TRI_voc_cid_t> CollectionPair;
-  typedef std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> IndexTriple;
+  typedef std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, IndexId> IndexTriple;
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 

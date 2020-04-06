@@ -36,6 +36,7 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "ExecutorTestHelper.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"

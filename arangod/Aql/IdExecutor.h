@@ -116,9 +116,6 @@ class IdExecutor {
   auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, CountStats, size_t, AqlCall>;
 
-  // Deprecated remove me
-  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
-
  private:
   Fetcher& _fetcher;
   Infos& _infos;

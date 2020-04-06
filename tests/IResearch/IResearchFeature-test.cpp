@@ -51,7 +51,6 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
-#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -120,7 +119,7 @@ class IResearchFeatureTest
     dataPath += "-";
     dataPath += std::to_string(link.collection().id());
     dataPath += "_";
-    dataPath += std::to_string(link.id());
+    dataPath += std::to_string(link.id().id());
     return dataPath;
   }
 };
@@ -943,7 +942,7 @@ class IResearchFeatureTestDBServer
     dataPath += "-";
     dataPath += std::to_string(link.collection().id());
     dataPath += "_";
-    dataPath += std::to_string(link.id());
+    dataPath += std::to_string(link.id().id());
     return dataPath;
   }
 };

@@ -119,34 +119,44 @@ ValidatorBase::ValidatorBase(VPackSlice params)
   }
 }
 
-bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert, VPackOptions const* options) const {
+Result ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert, VPackOptions const* options) const {
   // This function performs the validation depending on operation (Insert /
   // Update / Replace) and requested validation level (None / Insert / New /
   // Strict / Moderate).
 
   if (this->_level == ValidationLevel::None) {
-    return true;
+    return {};
   }
 
   if (isInsert) {
-    return this->validateDerived(newDoc, options);
+    return this->validateOne(newDoc, options);
   }
 
   /* update replace case */
   if (this->_level == ValidationLevel::New) {
     // Level NEW is for insert only.
-    return true;
+    return {};
   }
 
   if (this->_level == ValidationLevel::Strict) {
     // Changed document must be good!
-    return validateDerived(newDoc, options);
+    return validateOne(newDoc, options);
   }
 
   TRI_ASSERT(this->_level == ValidationLevel::Moderate);
   // Changed document must be good IIF the unmodified
   // document passed validation.
-  return (this->validateDerived(newDoc, options) || !this->validateDerived(oldDoc, options));
+
+  auto resNew = this->validateOne(newDoc, options);
+  if(resNew.ok()){
+    return {};
+  }
+
+  if(this->validateOne(oldDoc, options).fail()){
+    return {};
+  }
+
+  return resNew;
 }
 
 void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
@@ -163,10 +173,17 @@ void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
 ValidatorBool::ValidatorBool(VPackSlice params) : ValidatorBase(params) {
   _result = params.get(StaticStrings::ValidatorParameterRule).getBool();
 }
-bool ValidatorBool::validateDerived(VPackSlice slice, VPackOptions const* options) const { return _result; }
+Result ValidatorBool::validateOne(VPackSlice slice, VPackOptions const* options) const {
+  if (_result){
+    return {};
+  }
+  return {TRI_ERROR_VALIDATION_FAILED, _message};
+}
+
 void ValidatorBool::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidatorParameterRule, VPackValue(_result));
 }
+
 std::string const& ValidatorBool::type() const {
   return StaticStrings::ValidatorTypeBool;
 }
@@ -178,7 +195,6 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
   if (!rule.isObject()) {
     std::string msg = "No valid schema in rule attribute given (no object): ";
     msg += params.toJson();
-    LOG_TOPIC("ababf", ERR, Logger::VALIDATION) << msg;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
   }
   auto taoRuleValue = validation::slice_to_value(rule);
@@ -192,8 +208,13 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
   }
 }
-bool ValidatorJsonSchema::validateDerived(VPackSlice slice, VPackOptions const* options) const {
-  return validation::validate(*_schema, _special, slice, options);
+
+Result ValidatorJsonSchema::validateOne(VPackSlice slice, VPackOptions const* options) const {
+  auto res = validation::validate(*_schema, _special, slice, options);
+  if (res){
+    return {};
+  }
+  return {TRI_ERROR_VALIDATION_FAILED, _message};
 }
 void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
   TRI_ASSERT(!_builder.slice().isNone());

@@ -46,7 +46,7 @@
 #define ARANGOD_INDEXES_INDEX_ITERATOR_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {

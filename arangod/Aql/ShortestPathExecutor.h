@@ -182,8 +182,6 @@ class ShortestPathExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    */
-  [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
-      -> std::pair<ExecutionState, NoStats>;
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)

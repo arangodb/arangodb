@@ -84,7 +84,6 @@
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
-#include "Transaction/ContextData.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
@@ -209,7 +208,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
-  // to configure this engine and the MMFiles PersistentIndexFeature
+  // to configure this engine
   startsAfter<RocksDBOptionFeature>();
 
   server.addFeature<RocksDBRecoveryManager>();
@@ -863,11 +862,7 @@ void RocksDBEngine::unprepare() {
 
 std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
     transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature, /*keepData*/ false);
-}
-
-std::unique_ptr<transaction::ContextData> RocksDBEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(nullptr);  // not used by rocksdb
+  return std::make_unique<transaction::Manager>(feature);
 }
 
 std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
@@ -1247,8 +1242,6 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
   return TRI_voc_tick_t(server().getFeature<RocksDBRecoveryManager>().recoveryTick());
 }
 
-void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {}
-
 std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& collection) {
   const TRI_voc_cid_t cid = collection.id();
@@ -1268,11 +1261,6 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
   }
 
   return std::string();  // no need to return a path
-}
-
-arangodb::Result RocksDBEngine::persistCollection(TRI_vocbase_t& vocbase,
-                                                  LogicalCollection const& collection) {
-  return {};
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
@@ -1610,7 +1598,7 @@ std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> RocksDBEngine::collectionM
 }
 
 void RocksDBEngine::addIndexMapping(uint64_t objectId, TRI_voc_tick_t did,
-                                    TRI_voc_cid_t cid, TRI_idx_iid_t iid) {
+                                    TRI_voc_cid_t cid, IndexId iid) {
   if (objectId != 0) {
     WRITE_LOCKER(guard, _mapLock);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -2344,7 +2332,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
   // "server" part
   builder.add("server", VPackValue(VPackValueType::Object));  // open
   builder.add("version", VPackValue(ARANGODB_VERSION));
-  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
   builder.add("engine", VPackValue(EngineName));  // "rocksdb"
   builder.close();
 

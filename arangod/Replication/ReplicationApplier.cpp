@@ -553,7 +553,8 @@ bool ReplicationApplier::loadStateNoLock() {
   if (!serverId.isString()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE);
   }
-  _state._serverId = arangodb::basics::StringUtils::uint64(serverId.copyString());
+  _state._serverId =
+      ServerId(arangodb::basics::StringUtils::uint64(serverId.copyString()));
 
   // read the ticks
   readTick(slice, "lastAppliedContinuousTick", _state._lastAppliedContinuousTick, false);
@@ -641,7 +642,7 @@ void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) con
   // add server info
   result.add("server", VPackValue(VPackValueType::Object));
   result.add("version", VPackValue(ARANGODB_VERSION));
-  result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
   result.close();  // server
 
   if (!configuration._endpoint.empty()) {

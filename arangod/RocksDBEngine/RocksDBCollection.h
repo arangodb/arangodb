@@ -25,6 +25,7 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
 
 #include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace rocksdb {
 class PinnableSlice;
@@ -79,7 +80,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                      bool restore, bool& created) override;
 
   /// @brief Drop an index with the given iid.
-  bool dropIndex(TRI_idx_iid_t iid) override;
+  bool dropIndex(IndexId iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
@@ -100,7 +101,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                       TRI_voc_rid_t& revisionId) const;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result, bool) override;
+              ManagedDocumentResult& result) override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
@@ -110,27 +111,21 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                 IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options,
-                bool lock, KeyLockInfo* /*keyLockInfo*/,
-                std::function<void()> const& cbDuringLock) override;
+                arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 ManagedDocumentResult& resultMdr, OperationOptions& options,
-                bool lock, ManagedDocumentResult& previousMdr) override;
+                ManagedDocumentResult& previousMdr) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& resultMdr, OperationOptions& options,
-                 bool lock, ManagedDocumentResult& previousMdr) override;
+                 ManagedDocumentResult& previousMdr) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock, KeyLockInfo* keyLockInfo,
-                std::function<void()> const& cbDuringLock) override;
+                ManagedDocumentResult& previous, OperationOptions& options) override;
 
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock, KeyLockInfo* keyLockInfo,
-                std::function<void()> const& cbDuringLock) override;
+                ManagedDocumentResult& previous, OperationOptions& options) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
@@ -139,7 +134,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
  protected:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                 LocalDocumentId expectedId, ManagedDocumentResult& previous,
-                OperationOptions& options, std::function<void()> const& cbDuringLock);
+                OperationOptions& options);
 
  private:
   /// @brief return engine-specific figures

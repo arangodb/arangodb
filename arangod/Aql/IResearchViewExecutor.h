@@ -33,7 +33,7 @@
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "Indexes/IndexIterator.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 #include <formats/formats.hpp>
 #include <index/heap_iterator.hpp>
@@ -149,14 +149,6 @@ class IResearchViewExecutorBase {
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = IResearchViewExecutorInfos;
   using Stats = IResearchViewStats;
-
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
    * @brief produce the next Rows of Aql Values.

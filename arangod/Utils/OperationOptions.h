@@ -31,8 +31,7 @@ namespace arangodb {
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
   OperationOptions()
-      : recoveryData(nullptr),
-        indexOperationMode(Index::OperationMode::normal),
+      : indexOperationMode(Index::OperationMode::normal),
         waitForSync(false),
         validate(true),
         keepNull(true),
@@ -53,8 +52,7 @@ struct OperationOptions {
   friend std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
     // clang-format off
     os << "OperationOptions : " << std::boolalpha
-       << "{ recoveryData : " << ops.recoveryData
-       << ", indexOperationMode : " << ops.indexOperationMode
+       << "{ indexOperationMode : " << ops.indexOperationMode
        << ", waitForSync : " << ops.waitForSync
        << ", validate : " << ops.validate
        << ", keepNull : " << ops.keepNull
@@ -71,9 +69,6 @@ struct OperationOptions {
     return os;
   }
 #endif
-
-  // original marker, set by an engine's recovery procedure only!
-  void* recoveryData;
 
   Index::OperationMode indexOperationMode;
 

@@ -1067,8 +1067,6 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
 
-        // to turn off waitForSync!
-        trx.addHint(transaction::Hints::Hint::RECOVERY);
         trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
         trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
         res = trx.begin();
@@ -1440,8 +1438,6 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
-
-  trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
   Result res = trx.begin();
 
@@ -2135,7 +2131,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
 void RestReplicationHandler::handleCommandServerId() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId());
+  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId().id());
   result.add("serverId", VPackValue(serverId));
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -2527,8 +2523,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   {  // untrack the (async) replication client, so the WAL may be cleaned
-    TRI_server_id_t const serverId = StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "serverId", ""));
+    arangodb::ServerId const serverId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
         basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
     std::string const clientInfo =
@@ -2742,9 +2738,9 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
-  bool doSoftLock = VelocyPackHelper::getBooleanValue(body, "doSoftLockOnly", false);
+  bool doSoftLock = VelocyPackHelper::getBooleanValue(body, StaticStrings::ReplicationSoftLockOnly, false);
   AccessMode::Type lockType = AccessMode::Type::READ;
-  if (!doSoftLock && EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
+  if (!doSoftLock) {
     // With not doSoftLock we trigger RocksDB to stop writes on this shard.
     // With a softLock we only stop the WAL from being collected,
     // but still allow writes.
@@ -3440,7 +3436,6 @@ Result RestReplicationHandler::createBlockingTransaction(
   }
   auto trx = query->trx();
   TRI_ASSERT(trx != nullptr);
-  trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 

@@ -270,11 +270,11 @@ void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
   }
 }
 
-void RocksDBTransactionCollection::trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexInsert(IndexId iid, uint64_t hash) {
   _trackedIndexOperations[iid].inserts.emplace_back(hash);
 }
 
-void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexRemove(IndexId iid, uint64_t hash) {
   _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 
@@ -305,10 +305,6 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   TRI_ASSERT(physical != nullptr);
 
   double timeout = _transaction->timeout();
-  if (_transaction->hasHint(transaction::Hints::Hint::TRY_LOCK)) {
-    // give up early if we cannot acquire the lock instantly
-    timeout = 0.00000001;
-  }
 
   LOG_TRX("f1246", TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
   int res;

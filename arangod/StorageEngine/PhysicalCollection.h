@@ -36,11 +36,11 @@
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/ReplicationIterator.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
 
-struct KeyLockInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -117,7 +117,7 @@ class PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
 
   /// @brief Find index by iid
-  std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
+  std::shared_ptr<Index> lookupIndex(IndexId) const;
 
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string const&) const;
@@ -136,7 +136,7 @@ class PhysicalCollection {
   virtual std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
                                              bool restore, bool& created) = 0;
 
-  virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
+  virtual bool dropIndex(IndexId iid) = 0;
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;
@@ -170,7 +170,7 @@ class PhysicalCollection {
                                     arangodb::velocypack::Slice const&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result, bool lock) = 0;
+                      ManagedDocumentResult& result) = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
@@ -184,40 +184,27 @@ class PhysicalCollection {
    * @brief Perform document insert, may generate a '_key' value
    * If (options.returnNew == false && !options.silent) result might
    * just contain an object with the '_key' field
-   * @param callbackDuringLock Called immediately after a successful insert.
-   *        If the insert wasn't successful, it isn't called. May be nullptr.
    */
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
-                        std::function<void()> const& cbDuringLock) = 0;
-
-  Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options, bool lock) {
-    return insert(trx, newSlice, result, options, lock, nullptr, nullptr);
-  }
+                        OperationOptions& options) = 0;
 
   virtual Result update(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         ManagedDocumentResult& result, OperationOptions& options,
-                        bool lock, ManagedDocumentResult& previous) = 0;
+                        ManagedDocumentResult& previous) = 0;
 
   virtual Result replace(arangodb::transaction::Methods* trx,
                          arangodb::velocypack::Slice newSlice,
                          ManagedDocumentResult& result, OperationOptions& options,
-                         bool lock, ManagedDocumentResult& previous) = 0;
+                         ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                        ManagedDocumentResult& previous, OperationOptions& options,
-                        bool lock, KeyLockInfo* keyLockInfo,
-                        std::function<void()> const& cbDuringLock) = 0;
+                        ManagedDocumentResult& previous, OperationOptions& options) = 0;
 
   virtual Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                        ManagedDocumentResult& previous, OperationOptions& options,
-                        bool lock, KeyLockInfo* keyLockInfo,
-                        std::function<void()> const& cbDuringLock);
+                        ManagedDocumentResult& previous, OperationOptions& options);
 
   /// @brief new object for insert, value must have _key set correctly.
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,

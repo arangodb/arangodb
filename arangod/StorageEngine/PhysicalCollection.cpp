@@ -153,7 +153,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(VPackSlice const& info) c
   return findIndex(info, _indexes);
 }
 
-std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) const {
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(IndexId idxId) const {
   READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {
@@ -630,9 +630,7 @@ std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
 void PhysicalCollection::adjustNumberDocuments(transaction::Methods&, int64_t) {}
 
 Result PhysicalCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
-                                  ManagedDocumentResult& previous, OperationOptions& options,
-                                  bool lock, KeyLockInfo* keyLockInfo,
-                                  std::function<void()> const& cbDuringLock) {
+                                  ManagedDocumentResult& previous, OperationOptions& options) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

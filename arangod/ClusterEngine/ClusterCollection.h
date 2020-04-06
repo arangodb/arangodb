@@ -23,14 +23,15 @@
 #ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H 1
 
+#include <velocypack/StringRef.h>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "ClusterEngine/ClusterSelectivityEstimates.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/StringRef.h>
 
 namespace rocksdb {
 class Transaction;
@@ -105,7 +106,7 @@ class ClusterCollection final : public PhysicalCollection {
                                      bool restore, bool& created) override;
 
   /// @brief Drop an index with the given iid.
-  bool dropIndex(TRI_idx_iid_t iid) override;
+  bool dropIndex(IndexId iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
@@ -126,7 +127,7 @@ class ClusterCollection final : public PhysicalCollection {
   LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result, bool) override;
+              ManagedDocumentResult& result) override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
@@ -135,22 +136,18 @@ class ClusterCollection final : public PhysicalCollection {
                                 IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result, OperationOptions& options,
-                bool lock, KeyLockInfo* /*keyLockInfo*/,
-                std::function<void()> const& callbackDuringLock) override;
+                arangodb::ManagedDocumentResult& result, OperationOptions& options) override;
 
-  Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+  Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                bool lock, ManagedDocumentResult& previous) override;
+                ManagedDocumentResult& previous) override;
 
-  Result replace(transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+  Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
-                 bool lock, ManagedDocumentResult& previous) override;
+                 ManagedDocumentResult& previous) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock, KeyLockInfo* keyLockInfo,
-                std::function<void()> const& callbackDuringLock) override;
+                ManagedDocumentResult& previous, OperationOptions& options) override;
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine

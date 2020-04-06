@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -113,18 +114,18 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx commited
-  void trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash);
+  void trackIndexInsert(IndexId iid, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx commited
-  void trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash);
+  void trackIndexRemove(IndexId iid, uint64_t hash);
 
   /// @brief tracked index operations
   struct TrackedIndexOperations {
     std::vector<uint64_t> inserts;
     std::vector<uint64_t> removals;
   };
-  using IndexOperationsMap = std::unordered_map<TRI_idx_iid_t, TrackedIndexOperations>;
+  using IndexOperationsMap = std::unordered_map<IndexId, TrackedIndexOperations>;
 
   /// @brief steal the tracked operations from the map
   IndexOperationsMap stealTrackedIndexOperations() {

@@ -49,7 +49,7 @@ GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& 
 
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
   TRI_ASSERT(!_state.master.endpoint.empty());
-  TRI_ASSERT(_state.master.serverId != 0);
+  TRI_ASSERT(_state.master.serverId.isSet());
   TRI_ASSERT(_state.master.majorVersion != 0);
 
   if (_state.master.majorVersion < 3 ||

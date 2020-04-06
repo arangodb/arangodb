@@ -118,18 +118,6 @@ class SingleRowFetcher {
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize);
 
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
-
-  // template methods may not be virtual, thus this #ifdef.
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-  template <BlockPassthrough allowPass = blockPassthrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
-  [[nodiscard]]
-#else
-  [[nodiscard]] TEST_VIRTUAL
-#endif
-  std::pair<ExecutionState, SharedAqlItemBlockPtr>
-  fetchBlockForPassthrough(size_t atMost);
-
   [[nodiscard]] std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
 
   void setDistributeId(std::string const& id);

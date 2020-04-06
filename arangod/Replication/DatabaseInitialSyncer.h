@@ -40,9 +40,6 @@ class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
 class DatabaseInitialSyncer final : public InitialSyncer {
-  friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
-                                                  arangodb::LogicalCollection* col,
-                                                  std::string const& keysId);
   friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                                                   arangodb::LogicalCollection* col,
                                                   std::string const& keysId);

@@ -261,7 +261,7 @@ function setupSmartGraphRegressionTest() {
   c.ensureGeoIndex("a_la", "a_lo");
 
   // we insert data and remove it
-  c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
+  c = db._create("UnitTestsDumpTruncated");
   l = [];
   for (i = 0; i < 10000; ++i) {
     l.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });

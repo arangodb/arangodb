@@ -25,7 +25,7 @@
 
 namespace arangodb {
 
-enum class ClusterEngineType { MMFilesEngine, RocksDBEngine, MockEngine };
+enum class ClusterEngineType { RocksDBEngine, MockEngine };
 
 }  // namespace arangodb
 

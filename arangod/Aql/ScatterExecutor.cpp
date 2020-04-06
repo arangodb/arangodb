@@ -42,7 +42,7 @@ ScatterExecutorInfos::ScatterExecutorInfos(
       ClientsExecutorInfos(std::move(clientIds)) {}
 
 ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
-                                                  ScatterNode const* node,
+                                                  ExecutionNode const* node,
                                                   ExecutorInfos const& scatterInfos)
     : _queue{}, _executor(nullptr), _executorHasMore{false} {
   // We only get shared ptrs to const data. so we need to copy here...
@@ -86,14 +86,15 @@ auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
 auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, ExecutionState upstreamState)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(_executor != nullptr);
+
   // Make sure we actually have data before you call execute
   TRI_ASSERT(hasDataFor(callStack.peek()));
   if (!_executorHasMore) {
     auto const& [block, skipResult] = _queue.front();
     // This cast is guaranteed, we create this a couple lines above and only
     // this executor is used here.
-    // Unfortunately i did not get a version compiled were i could only forward
-    // declare the teplates in header.
+    // Unfortunately i did not get a version compiled were i could only
+    // forward declare the templates in header.
     auto casted =
         static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
     TRI_ASSERT(casted != nullptr);
@@ -102,7 +103,6 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, Execution
     _queue.pop_front();
   }
   auto [state, skipped, result] = _executor->execute(callStack);
-
   // We have all data locally cannot wait here.
   TRI_ASSERT(state != ExecutionState::WAITING);
 

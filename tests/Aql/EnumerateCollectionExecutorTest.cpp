@@ -86,7 +86,6 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
   Collection aqlCollection;
   std::vector<std::string> const projections;
   std::vector<size_t> const coveringIndexAttributePositions;
-  bool useRawPointers;
   bool random;
 
   EnumerateCollectionExecutorInfos infos;
@@ -105,11 +104,10 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         varUsedLater(false),
         engine(fakedQuery->engine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
-        useRawPointers(false),
         random(false),
         infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep, engine,
               &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
-              coveringIndexAttributePositions, useRawPointers, random),
+              coveringIndexAttributePositions, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
@@ -269,7 +267,6 @@ class EnumerateCollectionExecutorTestProduce
   std::vector<std::string> const projections;
   std::vector<size_t> const coveringIndexAttributePositions;
   Collection aqlCollection;
-  bool useRawPointers;
   bool random;
 
   EnumerateCollectionExecutorInfos infos;
@@ -284,10 +281,9 @@ class EnumerateCollectionExecutorTestProduce
         varUsedLater(true),
         engine(fakedQuery.get()->engine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
-        useRawPointers(false),
         random(false),
         infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
-              projections, coveringIndexAttributePositions, useRawPointers, random) {}
+              projections, coveringIndexAttributePositions, random) {}
 
   auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
                  RegisterId nrOutputRegister = 1,
@@ -299,7 +295,7 @@ class EnumerateCollectionExecutorTestProduce
         regToClear,     regToKeep,       engine,
         &aqlCollection, &outVariable,    varUsedLater,
         nullptr,        projections,     coveringIndexAttributePositions,
-        useRawPointers, random};
+        random};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }
@@ -348,7 +344,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
 
   uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
-  // auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
   EXPECT_EQ(vocbase.lookupCollection("UnitTestCollection")
                 ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked
