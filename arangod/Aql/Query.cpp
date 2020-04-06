@@ -314,6 +314,7 @@ void Query::prepareQuery(SerializationFormat format) {
   TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
 
   TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
     
   // note that the engine returned here may already be present in our
   // own _engine attribute (the instanciation procedure may modify us
@@ -465,6 +466,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
 
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
   auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
@@ -691,12 +693,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
  * @return The result of this query. The result is always complete
  */
 QueryResult Query::executeSync() {
-  std::shared_ptr<SharedQueryState> ss = sharedState();
-  if (!ss) {
-    return QueryResult(Result(TRI_ERROR_INTERNAL, "query is not initalized"));
-  }
-  
-  ss->resetWakeupHandler();
+  std::shared_ptr<SharedQueryState> ss;
 
   QueryResult queryResult;
   while (true) {
@@ -705,6 +702,12 @@ QueryResult Query::executeSync() {
       TRI_ASSERT(state == aql::ExecutionState::DONE);
       return queryResult;
     }
+    
+    if (!ss) {
+      ss = sharedState();
+      ss->resetWakeupHandler();
+    }
+    
     ss->waitForAsyncWakeup();
   }
 }
@@ -1463,6 +1466,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
 //  }
 
   TRI_ASSERT(_transactionContext != nullptr);
+  TRI_ASSERT(_trx != nullptr);
   
   if (_isAsyncQuery) {
     TRI_ASSERT(!_ast->containsModificationNode());
@@ -1500,6 +1504,7 @@ std::shared_ptr<SharedQueryState> Query::sharedState() const {
     TRI_ASSERT(_snippets[0].first == 0);
     return _snippets[0].second->sharedState();
   }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "query is not initalized");
   return nullptr;
 }
 

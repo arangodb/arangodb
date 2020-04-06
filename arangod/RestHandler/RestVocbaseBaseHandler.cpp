@@ -610,7 +610,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+    return std::make_shared<transaction::StandaloneContext>(_vocbase);
   }
 
   TRI_voc_tid_t tid = 0;

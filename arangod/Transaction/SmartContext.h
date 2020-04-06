@@ -114,25 +114,6 @@ struct AQLStandaloneContext final : public SmartContext {
   std::shared_ptr<Context> clone() const override;
 };
   
-/// Can be used to reuse transaction state between multiple
-/// transaction::Methods instances. Mainly for legacy clients
-/// that do not send the transaction ID header
-struct StandaloneSmartContext final : public SmartContext {
-  
-  explicit StandaloneSmartContext(TRI_vocbase_t& vocbase);
-  
-  /// @brief get parent transaction (if any)
-  std::shared_ptr<TransactionState> getParentTransaction() const override;
-  
-  /// @brief register the transaction,
-  void registerTransaction(std::shared_ptr<TransactionState> const&) override;
-  
-  /// @brief unregister the transaction
-  void unregisterTransaction() noexcept override;
-  
-  std::shared_ptr<Context> clone() const override;
-};
-
 }  // namespace transaction
 }  // namespace arangodb
 

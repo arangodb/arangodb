@@ -123,6 +123,7 @@ _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
+  TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
   _cursor = std::make_unique<OperationCursor>(
       _trx.indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()

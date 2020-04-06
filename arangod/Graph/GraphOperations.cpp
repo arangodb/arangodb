@@ -54,7 +54,7 @@ using namespace arangodb::graph;
 
 std::shared_ptr<transaction::Context> GraphOperations::ctx() {
   if (!_ctx) {
-    _ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+    _ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   }
   return _ctx;
 }

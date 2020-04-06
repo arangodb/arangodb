@@ -144,35 +144,6 @@ std::shared_ptr<transaction::Context> AQLStandaloneContext::clone() const {
   clone->_state = _state;
   return clone;
 }
-  
-// ============= StandaloneSmartContext =============
-  
-  
-StandaloneSmartContext::StandaloneSmartContext(TRI_vocbase_t& vocbase)
-  : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
-  
-/// @brief get parent transaction (if any)
-std::shared_ptr<TransactionState> StandaloneSmartContext::getParentTransaction() const {
-  return _state;
-}
-
-/// @brief register the transaction,
-void StandaloneSmartContext::registerTransaction(std::shared_ptr<TransactionState> const& state) {
-  TRI_ASSERT(_state == nullptr);
-  _state = state;
-}
-
-/// @brief unregister the transaction
-void StandaloneSmartContext::unregisterTransaction() noexcept {
-  TRI_ASSERT(_state != nullptr);
-  _state = nullptr;
-}
-
-std::shared_ptr<Context> StandaloneSmartContext::clone() const {
-  auto clone = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
-  clone->_state = _state;
-  return clone;
-}
 
 }  // namespace transaction
 }  // namespace arangodb
