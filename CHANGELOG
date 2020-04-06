@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue #11104: `ANALYZER` function doesn't correctly process `!= OR`
+  queries.
+
 * Obsoleted startup option `--database.maximal-journal-size`. This option was
   useful for the MMFiles storage engine only, but did not have an effect with
   the RocksDB engine. Using this startup option is not an error, but has
