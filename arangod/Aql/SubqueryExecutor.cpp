@@ -29,7 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 
-#define LOG_DEVEL_SQ LOG_DEVEL_IF(false)
+#define INTERNAL_LOG_SQ LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -68,39 +68,26 @@ SubqueryExecutor<isModificationSubquery>::SubqueryExecutor(Fetcher& fetcher,
 template <bool isModificationSubquery>
 SubqueryExecutor<isModificationSubquery>::~SubqueryExecutor() = default;
 
-/**
- * This follows the following state machine:
- * If we have a subquery ongoing we need to ask it for hasMore, until it is DONE.
- * In the case of DONE we write the result, and remove it from ongoing.
- * If we do not have a subquery ongoing, we fetch a row and we start a new Subquery and ask it for hasMore.
- */
-
-template <bool isModificationSubquery>
-std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::initializeSubquery(AqlItemBlockInputRange& input)
     -> std::tuple<ExecutionState, bool> {
   // init new subquery
   if (!_input) {
     std::tie(_state, _input) = input.nextDataRow();
-    LOG_DEVEL_SQ << uint64_t(this) << " nextDataRow: " << _state << " "
+    INTERNAL_LOG_SQ << uint64_t(this) << " nextDataRow: " << _state << " "
                  << _input.isInitialized();
     if (!_input) {
-      LOG_DEVEL_SQ << uint64_t(this) << "exit, no more input" << _state;
+      INTERNAL_LOG_SQ << uint64_t(this) << "exit, no more input" << _state;
       return {translatedReturnType(), false};
     }
   }
 
   TRI_ASSERT(_input);
   if (!_infos.isConst() || _input.isFirstDataRowInBlock()) {
-    LOG_DEVEL_SQ << "Subquery: Initialize cursor";
+    INTERNAL_LOG_SQ << "Subquery: Initialize cursor";
     auto [state, result] = _subquery.initializeCursor(_input);
     if (state == ExecutionState::WAITING) {
-      LOG_DEVEL_SQ << "Waiting on initialize cursor";
+      INTERNAL_LOG_SQ << "Waiting on initialize cursor";
       return {state, false};
     }
 
@@ -115,6 +102,12 @@ auto SubqueryExecutor<isModificationSubquery>::initializeSubquery(AqlItemBlockIn
   return {translatedReturnType(), true};
 }
 
+/**
+ * This follows the following state machine:
+ * If we have a subquery ongoing we need to ask it for hasMore, until it is DONE.
+ * In the case of DONE we write the result, and remove it from ongoing.
+ * If we do not have a subquery ongoing, we fetch a row and we start a new Subquery and ask it for hasMore.
+ */
 template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRange& input,
                                                            OutputAqlItemRow& output)
@@ -131,7 +124,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
     return upstreamCall;
   };
 
-  LOG_DEVEL_SQ << uint64_t(this) << "produceRows " << output.getClientCall();
+  INTERNAL_LOG_SQ << uint64_t(this) << "produceRows " << output.getClientCall();
 
   if (_state == ExecutorState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
@@ -151,7 +144,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
       if (_infos.isConst() && !_input.isFirstDataRowInBlock()) {
         // Simply write
         writeOutput(output);
-        LOG_DEVEL_SQ << uint64_t(this) << "wrote output is const " << _state
+        INTERNAL_LOG_SQ << uint64_t(this) << "wrote output is const " << _state
                      << " " << getUpstreamCall();
         continue;
       }
@@ -164,7 +157,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
         return {state, NoStats{}, getUpstreamCall()};
       }
       // We get a result
-      LOG_DEVEL_SQ << uint64_t(this) << " we get subquery result";
+      INTERNAL_LOG_SQ << uint64_t(this) << " we get subquery result";
       if (block != nullptr) {
         TRI_IF_FAILURE("SubqueryBlock::executeSubquery") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -172,7 +165,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
 
         if (_infos.returnsData()) {
           TRI_ASSERT(_subqueryResults != nullptr);
-          LOG_DEVEL_SQ << uint64_t(this)
+          INTERNAL_LOG_SQ << uint64_t(this)
                        << " store subquery result for writing " << block->size();
           _subqueryResults->emplace_back(std::move(block));
         }
@@ -181,13 +174,13 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
       // Subquery DONE
       if (state == ExecutionState::DONE) {
         writeOutput(output);
-        LOG_DEVEL_SQ << uint64_t(this) << "wrote output subquery done "
+        INTERNAL_LOG_SQ << uint64_t(this) << "wrote output subquery done "
                      << _state << " " << getUpstreamCall();
       }
     } else {
       auto const [state, initialized] = initializeSubquery(input);
       if (state == ExecutionState::WAITING) {
-        LOG_DEVEL_SQ << "Waiting on initialize cursor";
+        INTERNAL_LOG_SQ << "Waiting on initialize cursor";
         return {state, NoStats{}, AqlCall{}};
       }
       if (!initialized) {
@@ -254,13 +247,6 @@ std::pair<ExecutionState, Result> SubqueryExecutor<isModificationSubquery>::shut
 }
 
 template <bool isModificationSubquery>
-std::tuple<ExecutionState, typename SubqueryExecutor<isModificationSubquery>::Stats, SharedAqlItemBlockPtr>
-SubqueryExecutor<isModificationSubquery>::fetchBlockForPassthrough(size_t atMost) {
-  auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-  return {rv.first, {}, std::move(rv.second)};
-}
-
-template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::translatedReturnType() const
     noexcept -> ExecutionState {
   if (_state == ExecutorState::DONE) {
@@ -278,7 +264,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
     return upstreamCall;
   };
 
-  LOG_DEVEL_SQ << uint64_t(this) << "skipRowsRange " << call;
+  INTERNAL_LOG_SQ << uint64_t(this) << "skipRowsRange " << call;
 
   if (_state == ExecutorState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
@@ -315,13 +301,13 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
         _subqueryInitialized = false;
         _input = InputAqlItemRow(CreateInvalidInputRowHint{});
         _skipped += 1;
-        LOG_DEVEL_SQ << uint64_t(this) << "did skip one";
+        INTERNAL_LOG_SQ << uint64_t(this) << "did skip one";
       }
 
     } else {
       auto const [state, initialized] = initializeSubquery(inputRange);
       if (state == ExecutionState::WAITING) {
-        LOG_DEVEL_SQ << "Waiting on initialize cursor";
+        INTERNAL_LOG_SQ << "Waiting on initialize cursor";
         return {state, NoStats{}, 0, AqlCall{}};
       }
       if (!initialized) {
@@ -343,6 +329,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
   _skipped = 0;
   return {translatedReturnType(), NoStats{}, call.getSkipCount(), getUpstreamCall()};
 }
+
 template <bool isModificationSubquery>
 [[nodiscard]] auto SubqueryExecutor<isModificationSubquery>::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {

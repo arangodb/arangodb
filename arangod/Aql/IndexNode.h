@@ -47,6 +47,7 @@ class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
 class Expression;
+struct RegisterPlan;
 
 /// @brief struct to hold the member-indexes in the _condition node
 struct NonConstExpression {
@@ -118,10 +119,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// the projection attributes (if any)
   void initIndexCoversProjections();
 
-  void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
-                         std::vector<aql::RegisterId>& nrRegs,
-                         std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
-                         unsigned int& totalNrRegs, unsigned int depth) const;
+  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
   bool isLateMaterialized() const noexcept {
     TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||

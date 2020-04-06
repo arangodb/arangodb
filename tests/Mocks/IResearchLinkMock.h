@@ -53,6 +53,11 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
     IResearchLink::batchInsert(trx, documents, queue);
   }
 */
+  [[nodiscard]] static auto setCallbakForScope(std::function<void(irs::directory&)> callback) {
+    InitCallback = callback;
+    return irs::make_finally([]() {InitCallback = nullptr; });
+  }
+
   bool canBeDropped() const override {
     return IResearchLink::canBeDropped();
   }
@@ -120,6 +125,8 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
+
+  static  std::function<void(irs::directory&)> InitCallback;
 };
 
 }  // namespace iresearch

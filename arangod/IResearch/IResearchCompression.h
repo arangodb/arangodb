@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,22 +17,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+#ifndef ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H
+#define ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H 1
 
-#include "CollectionKeys.h"
-#include "VocBase/ticks.h"
+#include "utils/string.hpp"
+#include <utils/compression.hpp>
 
-using namespace arangodb;
+namespace arangodb {
+namespace iresearch {
 
-CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, double ttl)
-    : _vocbase(vocbase),
-      _collection(nullptr),
-      _id(0),
-      _ttl(ttl),
-      _expires(0.0),
-      _isDeleted(false),
-      _isUsed(false) {
-  _id = TRI_NewTickServer();
-  _expires = TRI_microtime() + _ttl;
-}
+irs::string_ref columnCompressionToString(irs::compression::type_id const* type);
+irs::compression::type_id const* columnCompressionFromString(irs::string_ref const& c);
+irs::compression::type_id const& getDefaultCompression();
+} // iresearch
+} // arangodb
+
+#endif // ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H

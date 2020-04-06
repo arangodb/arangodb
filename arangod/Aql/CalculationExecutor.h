@@ -102,19 +102,10 @@ class CalculationExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
-
-  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
   // specialized implementations

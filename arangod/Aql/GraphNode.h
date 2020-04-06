@@ -75,7 +75,7 @@ class GraphNode : public ExecutionNode {
             std::vector<Collection*> const& edgeColls,
             std::vector<Collection*> const& vertexColls,
             TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> directions,
-            std::unique_ptr<graph::BaseOptions> options);
+            std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
 
   /// @brief Clone constructor, used for constructors of derived classes.
   /// Does not clone recursively, does not clone properties (`other.plan()` is

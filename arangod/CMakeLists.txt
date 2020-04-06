@@ -53,6 +53,7 @@ add_library(arango_iresearch
   IResearch/Containers.cpp IResearch/Containers.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
+  IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
@@ -409,11 +410,10 @@ set(LIB_ARANGO_VOCBASE_SOURCES
 )
 
 set(LIB_ARANGO_UTILS_SOURCES
-  Utils/CollectionKeys.cpp
-  Utils/CollectionKeysRepository.cpp
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
+  Utils/OperationOptions.cpp
   Utils/UrlHelper.cpp
   ${ENTERPRISE_FILES}
 )

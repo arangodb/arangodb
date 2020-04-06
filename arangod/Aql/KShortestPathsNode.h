@@ -71,7 +71,8 @@ class KShortestPathsNode : public virtual GraphNode {
                      std::vector<TRI_edge_direction_e> const& directions,
                      Variable const* inStartVariable, std::string const& startVertexId,
                      Variable const* inTargetVariable, std::string const& targetVertexId,
-                     std::unique_ptr<graph::BaseOptions> options);
+                     std::unique_ptr<graph::BaseOptions> options,
+                     graph::Graph const* graph);
 
  public:
   /// @brief return the type of the node

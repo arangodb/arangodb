@@ -21,23 +21,37 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_EXPORT_HANDLER_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_EXPORT_HANDLER_H 1
+#include "OperationOptions.h"
 
-#include "Basics/Common.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "velocypack/StringRef.h"
 
-namespace arangodb {
-class ClusterRestExportHandler : public RestVocbaseBaseHandler {
- public:
-  ClusterRestExportHandler(application_features::ApplicationServer&,
-                           GeneralRequest*, GeneralResponse*);
+using namespace arangodb;
 
- public:
-  char const* name() const override final { return "ClusterRestExportHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
-};
-}  // namespace arangodb
-
-#endif
+/// @brief stringifies the overwrite mode
+char const* OperationOptions::stringifyOverwriteMode(OperationOptions::OverwriteMode mode) {
+  switch (mode) {
+    case OverwriteMode::Unknown: return "unknown";
+    case OverwriteMode::Conflict: return "conflict";
+    case OverwriteMode::Replace: return "replace";
+    case OverwriteMode::Update: return "update";
+    case OverwriteMode::Ignore: return "ignore";
+  }
+  TRI_ASSERT(false);
+  return "unknown";
+}
+  
+OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(velocypack::StringRef value) {
+  if (value == "conflict") {
+    return OverwriteMode::Conflict;
+  }
+  if (value == "ignore") {
+    return OverwriteMode::Ignore;
+  }
+  if (value == "update") {
+    return OverwriteMode::Update;
+  }
+  if (value == "replace") {
+    return OverwriteMode::Replace;
+  }
+  return OverwriteMode::Unknown;
+}

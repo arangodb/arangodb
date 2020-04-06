@@ -139,14 +139,6 @@ class HashedCollectExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   * @deprecated
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
@@ -159,14 +151,6 @@ class HashedCollectExecutor {
    */
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
-
-  /**
-   * @brief This Executor does not know how many distinct rows will be fetched
-   * from upstream, it can only report how many it has found by itself, plus
-   * it knows that it can only create as many new rows as pulled from upstream.
-   * So it will overestimate.
-   */
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
   /**
    * @brief This Executor does not know how many distinct rows will be fetched

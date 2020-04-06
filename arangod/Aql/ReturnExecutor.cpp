@@ -49,21 +49,9 @@ ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nr
 }
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher) {}
+    : _infos(infos) {}
 
 ReturnExecutor::~ReturnExecutor() = default;
-
-// TODO: @deprecated remove
-std::pair<ExecutionState, size_t> ReturnExecutor::expectedNumberOfRows(size_t atMost) const {
-  return _fetcher.preFetchNumberOfRows(atMost);
-}
-
-// TODO: @deprecated remove
-auto ReturnExecutor::produceRows(OutputAqlItemRow& output)
-    -> std::pair<ExecutionState, Stats> {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {

@@ -176,54 +176,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///        better be called in instantiateFromPlan and similar methods.
   void init();
 
-  /**
-   * @brief Produce atMost many output rows, or less.
-   *        May return waiting if I/O has to be performed
-   *        so we can release this thread.
-   *        Is required to return DONE if it is guaranteed
-   *        that this block does not produce more rows,
-   *        Returns HASMORE if the DONE guarantee cannot be given.
-   *        HASMORE does not give strict guarantee, it maybe that
-   *        HASMORE is returned but no more rows can be produced.
-   *
-   * @param atMost Upper bound of AqlItemRows to be returned.
-   *               Target is to get as close to this upper bound
-   *               as possible.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediately return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with
-   *                   this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if
-   *                      you need more input.
-   *         AqlItemBlock:
-   *           A matrix of result rows.
-   *           Guaranteed to be non nullptr in the HASMORE case, maybe a nullptr
-   *           in DONE. Is a nullptr in WAITING.
-   */
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
-
-  /**
-   * @brief Like get some, but lines are skipped and not returned.
-   *        This can use optimizations to not actually create the data.
-   *
-   * @param atMost Upper bound of AqlItemRows to be skipped.
-   *               Target is to get as close to this upper bound
-   *               as possible.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with
-   *                   this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if
-   *                   you need more input. size_t: Number of rows effectively
-   *                   skipped. On WAITING this is always 0. On any other state
-   *                   this is between 0 and atMost.
-   */
-  [[nodiscard]] std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
-
   [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<ConstFetcher>>>>
@@ -271,32 +223,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
       -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType>;
-
-  /**
-   * @brief Inner getSome() part, without the tracing calls.
-   */
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
-
-  /**
-   * @brief Inner skipSome() part, without the tracing calls.
-   */
-  [[nodiscard]] std::pair<ExecutionState, size_t> skipSomeOnceWithoutTrace(size_t atMost);
-
-  /**
-   * @brief Allocates a new AqlItemBlock and returns it, with the specified
-   *        number of rows (nrItems) and columns (nrRegs).
-   *        In case the Executor supports pass-through of blocks (i.e. reuse the
-   *        input blocks as output blocks), it returns such an input block. In
-   *        this case, the number of columns must still match - this has to be
-   *        guaranteed by register planning.
-   *        The state will be HASMORE if and only if it returns an actual block,
-   *        which it always will in the non-pass-through case (modulo
-   *        exceptions). If it is WAITING or DONE, the returned block is always
-   *        a nullptr. This happens only if upstream is WAITING, or
-   *        respectively, if it is DONE and did not return a new block.
-   */
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(
-      size_t nrItems, RegisterId nrRegs);
 
   [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock,
                                                                   AqlCall&& call);

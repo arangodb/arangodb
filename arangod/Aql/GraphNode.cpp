@@ -444,12 +444,12 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* voc
                      std::vector<Collection*> const& vertexColls,
                      TRI_edge_direction_e defaultDirection,
                      std::vector<TRI_edge_direction_e> directions,
-                     std::unique_ptr<BaseOptions> options)
+                     std::unique_ptr<graph::BaseOptions> options, Graph const* graph)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
-      _graphObj(nullptr),
+      _graphObj(graph),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
