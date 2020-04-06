@@ -55,43 +55,48 @@ std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t
   if (document.isExternal()) {
     document = document.resolveExternal();
   }
-  std::unique_ptr<Graph> result{new Graph{document}};
+  std::unique_ptr<Graph> result{new Graph{document, vocbase}};
   return result;
 }
 
 std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document,
-                                            VPackSlice options) {
+                                            VPackSlice options, TRI_vocbase_t& vocbase) {
   if (document.isExternal()) {
     document = document.resolveExternal();
   }
-  std::unique_ptr<Graph> result{new Graph{std::move(name), document, options}};
+  std::unique_ptr<Graph> result{new Graph{std::move(name), document, options, vocbase}};
   return result;
 }
 #endif
 
-std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name,
-                                            VPackSlice document, VPackSlice options) {
-  return Graph::fromUserInput(std::string{name}, document, options);
+std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name, velocypack::Slice document,
+                                            velocypack::Slice options,
+                                            TRI_vocbase_t& vocbase) {
+  return Graph::fromUserInput(std::string{name}, document, options, vocbase);
 }
 
 namespace {
-size_t getWriteConcern(VPackSlice slice) {
+size_t getWriteConcern(VPackSlice slice, struct ServerDefaults serverDefaults) {
   if (slice.hasKey(StaticStrings::WriteConcern)) {
-    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern, 1);
+    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern,
+                                             serverDefaults.writeConcern);
   }
-  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor, 1);
+  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor,
+                                           serverDefaults.writeConcern);
 }
 }  // namespace
 
 // From persistence
-Graph::Graph(velocypack::Slice const& slice)
+Graph::Graph(velocypack::Slice const& slice, struct ServerDefaults serverDefaults)
     : _graphName(Helper::getStringValue(slice, StaticStrings::KeyString, "")),
       _vertexColls(),
       _edgeColls(),
-      _numberOfShards(Helper::getNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards, 1)),
+      _numberOfShards(Helper::getNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
+                                                        serverDefaults.numberOfShards)),
       _replicationFactor(
-          Helper::getNumericValue<uint64_t>(slice, StaticStrings::ReplicationFactor, 1)),
-      _writeConcern(::getWriteConcern(slice)),
+          Helper::getNumericValue<uint64_t>(slice, StaticStrings::ReplicationFactor,
+                                            serverDefaults.replicationFactor)),
+      _writeConcern(::getWriteConcern(slice, serverDefaults)),
       _rev(Helper::getStringValue(slice, StaticStrings::RevString, "")),
       _isSatellite(Helper::getStringRef(slice, StaticStrings::ReplicationFactor,
                                         velocypack::StringRef("")) == StaticStrings::Satellite) {
@@ -128,7 +133,7 @@ Graph::Graph(velocypack::Slice const& slice)
 }
 
 // From user input
-Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& options)
+Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& options, TRI_vocbase_t& vocbase)
     : _graphName(graphName),
       _vertexColls(),
       _edgeColls(),
@@ -163,7 +168,7 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
                                        StaticStrings::ReplicationFactor +
                                            " must be greater than zero");
       }
-      _writeConcern = ::getWriteConcern(options);
+      _writeConcern = ::getWriteConcern(options, ServerDefaults{vocbase});
     }
   }
 }
