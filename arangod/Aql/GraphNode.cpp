@@ -352,7 +352,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   }
 
   auto query = plan->getAst()->query();
-  auto getAqlCollectionFromName = [&](auto const& name) -> aql::Collection* {
+  auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection* {
     // if the collection was already existent in the query, addCollection will
     // just return it.
     if (isDBServer) {
@@ -373,7 +373,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     // Only TRI_EDGE_IN and TRI_EDGE_OUT allowed here
     TRI_ASSERT(d == TRI_EDGE_IN || d == TRI_EDGE_OUT);
     std::string e = arangodb::basics::VelocyPackHelper::getStringValue(*edgeIt, "");
-    auto aqlCollection = getAqlCollectionFromName(e);
+    auto* aqlCollection = getAqlCollectionFromName(e);
     addEdgeCollection(aqlCollection, d);
   }
 
