@@ -48,8 +48,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
-  void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
-
   bool canAccess(AccessMode::Type accessType) const override;
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;

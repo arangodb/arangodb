@@ -71,10 +71,8 @@ class ClusterCollection final : public PhysicalCollection {
   void flushClusterIndexEstimates() override;
 
   std::string const& path() const override;
-  void setPath(std::string const& path) override;
 
   arangodb::Result updateProperties(velocypack::Slice const& slice, bool doSync) override;
-  virtual arangodb::Result persistProperties() override;
 
   virtual PhysicalCollection* clone(LogicalCollection& collection) const override;
 
@@ -94,7 +92,6 @@ class ClusterCollection final : public PhysicalCollection {
 
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;
-  void open(bool ignoreErrors) override;
 
   ////////////////////////////////////
   // -- SECTION Indexes --
@@ -123,8 +120,9 @@ class ClusterCollection final : public PhysicalCollection {
   Result compact() override;
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
-
-  LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
+  
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result) override;

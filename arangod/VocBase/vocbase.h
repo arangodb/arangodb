@@ -57,7 +57,6 @@ class Builder;
 class Slice;
 class StringRef;
 }  // namespace velocypack
-class CollectionKeysRepository;
 class CursorRepository;
 class DatabaseReplicationApplier;
 class LogicalCollection;
@@ -72,24 +71,6 @@ constexpr auto TRI_COL_NAME_USERS = "_users";
 
 /// @brief maximal name length
 constexpr size_t TRI_COL_NAME_LENGTH = 256;
-
-/// @brief default maximal collection journal size
-constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32;  // 32 MiB
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief minimal collection journal size (for testing, we allow very small
-/// file sizes in maintainer mode)
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 16 * 1024;  // 16 KiB
-
-#else
-
-constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 1024 * 1024;  // 1 MiB
-
-#endif
 
 /// @brief document handle separator as character
 constexpr char TRI_DOCUMENT_HANDLE_SEPARATOR_CHR = '/';
@@ -133,9 +114,6 @@ enum TRI_vocbase_col_status_e : int {
 struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
-  /// @brief database state
-  enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
-
   TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
@@ -162,7 +140,6 @@ struct TRI_vocbase_t {
 
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
-  State _state;
   bool _isOwnAppsDirectory;
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
@@ -180,7 +157,6 @@ struct TRI_vocbase_t {
 
   std::unique_ptr<arangodb::aql::QueryList> _queries;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
-  std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
 
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
@@ -215,8 +191,6 @@ struct TRI_vocbase_t {
   std::uint32_t writeConcern() const;
   std::string const& sharding() const;
   TRI_vocbase_type_e type() const { return _type; }
-  State state() const { return _state; }
-  void setState(State state) { _state = state; }
 
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
@@ -232,15 +206,9 @@ struct TRI_vocbase_t {
   arangodb::CursorRepository* cursorRepository() const {
     return _cursorRepository.get();
   }
-  arangodb::CollectionKeysRepository* collectionKeys() const {
-    return _collectionKeys.get();
-  }
 
   bool isOwnAppsDirectory() const { return _isOwnAppsDirectory; }
   void setIsOwnAppsDirectory(bool value) { _isOwnAppsDirectory = value; }
-
-  /// @brief signal the cleanup thread to wake up
-  void signalCleanup();
 
   /// @brief increase the reference counter for a database.
   /// will return true if the refeence counter was increased, false otherwise

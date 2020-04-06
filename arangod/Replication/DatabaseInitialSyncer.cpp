@@ -110,6 +110,7 @@ arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  options.waitForSync = false;
 
   for (std::size_t rid : toRemove) {
     double t = TRI_microtime();
@@ -149,8 +150,10 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  options.validate = false; // no validation during replication
   options.indexOperationMode = arangodb::Index::OperationMode::internal;
   options.ignoreUniqueConstraints = true;
+  options.waitForSync = false; // no waitForSync during replication
   if (!state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = state.leaderId;
   }

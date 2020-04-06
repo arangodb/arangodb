@@ -158,10 +158,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // return the path for a database
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
 
-  // return the path for a collection
-  virtual std::string collectionPath(TRI_vocbase_t const& vocbase,
-                                     TRI_voc_cid_t id) const = 0;
-
   // database, collection and index management
   // -----------------------------------------
 
@@ -217,10 +213,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // perform a physical deletion of the database
   virtual Result dropDatabase(TRI_vocbase_t& database) = 0;
 
-  /// @brief wait until a database directory disappears - not under lock in
-  /// databaseFreature
-  virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) = 0;
-
   /// @brief is database in recovery
   bool inRecovery() { return recoveryState() < RecoveryState::DONE; }
 
@@ -239,8 +231,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the creation and throw only then, so that subsequent collection creation
   // requests will not fail. the WAL entry for the collection creation will be
   // written *after* the call to "createCollection" returns
-  virtual std::string createCollection(TRI_vocbase_t& vocbase,
-                                       LogicalCollection const& collection) = 0;
+  virtual void createCollection(TRI_vocbase_t& vocbase,
+                                LogicalCollection const& collection) = 0;
 
   // asks the storage engine to drop the specified collection and persist the
   // deletion info. Note that physical deletion of the collection data must not
@@ -251,11 +243,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // will be written *after* the call to "dropCollection" returns
   virtual arangodb::Result dropCollection(TRI_vocbase_t& vocbase,
                                           LogicalCollection& collection) = 0;
-
-  // perform a physical deletion of the collection
-  // After this call data of this collection is corrupted, only perform if
-  // assured that no one is using the collection anymore
-  virtual void destroyCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) = 0;
 
   // asks the storage engine to change properties of the collection as specified
   // in the VPack Slice object and persist them. If this operation fails
@@ -303,12 +290,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual arangodb::Result dropView(TRI_vocbase_t const& vocbase,
                                     LogicalView const& view) = 0;
 
-  // perform a physical deletion of the view
-  // After this call data of this view is corrupted, only perform if
-  // assured that no one is using the view anymore
-  // 'noexcept' becuase it may be used in destructor
-  virtual void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept = 0;
-
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
@@ -318,12 +299,6 @@ class StorageEngine : public application_features::ApplicationFeature {
     TRI_ASSERT(_indexFactory.get() != nullptr);
     return *_indexFactory;
   }
-
-  virtual void unloadCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) = 0;
-
-  virtual void signalCleanup(TRI_vocbase_t& vocbase) = 0;
-
-  virtual int shutdownDatabase(TRI_vocbase_t& vocbase) = 0;
 
   // AQL functions
   // -------------

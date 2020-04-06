@@ -128,7 +128,7 @@ install:
   - cd %DEPS_DIR%
   - appveyor-retry git clone --quiet %SNOWBALL_URL% %SNOWBALL_DIR%
   - cd %SNOWBALL_DIR%
-  - git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
+  - git reset --hard 53739a805cfa6c77ff8496dc711dc1c106d987c1
   - set SNOWBALL_ROOT=%SNOWBALL_DIR%
 
   ############################################################################

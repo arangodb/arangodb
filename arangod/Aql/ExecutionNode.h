@@ -493,6 +493,8 @@ class ExecutionNode {
 
   /// @brief whether or not _varsUsedLater and _varsValid are actually valid
   bool _varUsageValid;
+  
+  bool _isInSplicedSubquery;
 
   /// @brief _plan, the ExecutionPlan object
   ExecutionPlan* _plan;
@@ -504,8 +506,6 @@ class ExecutionNode {
   /// just before this node hands on results. This is computed during
   /// the static analysis for each node using the variable usage in the plan.
   std::unordered_set<RegisterId> _regsToClear;
-
-  bool _isInSplicedSubquery;
 
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes

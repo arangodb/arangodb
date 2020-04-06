@@ -172,10 +172,6 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   }
 };
 
-IResearchViewCoordinator::~IResearchViewCoordinator() {
-  LogicalViewHelperClusterInfo::destruct(*this);  // cleanup of the storage engine
-}
-
 Result IResearchViewCoordinator::appendVelocyPackImpl(
     velocypack::Builder& builder, Serialization context) const {
   if (Serialization::List == context) {

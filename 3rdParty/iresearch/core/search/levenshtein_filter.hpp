@@ -30,6 +30,7 @@
 NS_ROOT
 
 class parametric_description;
+struct filter_visitor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance
@@ -55,6 +56,14 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
     byte_type max_distance,
     pdp_f provider,
     bool with_transpositions);
+
+  static void visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    byte_type max_distance,
+    pdp_f provider,
+    bool with_transpositions,
+    filter_visitor& fv);
 
   explicit by_edit_distance() noexcept;
 
