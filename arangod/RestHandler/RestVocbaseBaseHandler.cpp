@@ -570,7 +570,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     try {
       tid = std::stoull(value, &pos, 10);
     } catch (...) {}
-    if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
+    if (tid == 0 || (transaction::isLegacyTRI_voc_tid_t(tid) &&
                      ServerState::instance()->isRunningInCluster())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
     }
@@ -618,7 +618,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   try {
     tid = std::stoull(value, &pos, 10);
   } catch (...) {}
-  if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
+  if (tid == 0 || (transaction::isLegacyTRI_voc_tid_t(tid) &&
                    ServerState::instance()->isRunningInCluster())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
   }
@@ -627,7 +627,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   TRI_ASSERT(mgr != nullptr);
 
   if (pos > 0 && pos < value.size()) {
-    if (!transaction::isLeaderTransactionId(tid) ||
+    if (!transaction::isLeaderTRI_voc_tid_t(tid) ||
         !ServerState::instance()->isDBServer()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
     }

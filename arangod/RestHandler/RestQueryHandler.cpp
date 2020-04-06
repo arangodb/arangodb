@@ -334,8 +334,8 @@ ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
     uint64_t tid = basics::StringUtils::uint64(value);
-    if (!transaction::isCoordinatorTransactionId(tid)) {
-      TRI_ASSERT(transaction::isLegacyTransactionId(tid));
+    if (!transaction::isCoordinatorTRI_voc_tid_t(tid)) {
+      TRI_ASSERT(transaction::isLegacyTRI_voc_tid_t(tid));
       return {std::make_pair(StaticStrings::Empty, false)};
     }
     uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);

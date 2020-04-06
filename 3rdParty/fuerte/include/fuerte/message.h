@@ -180,8 +180,6 @@ class Request final : public Message {
   Request(RequestHeader messageHeader = RequestHeader())
       : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
 
-  Request(Request const&);
-
   /// @brief request header
   RequestHeader header;
 

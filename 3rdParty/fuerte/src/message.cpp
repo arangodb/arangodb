@@ -150,11 +150,6 @@ bool Message::isContentTypeText() const {
 // class Request
 ///////////////////////////////////////////////
 
-Request::Request(Request const& other)
-    : header(other.header),
-      _payload(other._payload),
-      _timeout(other._timeout) {}
-
 constexpr std::chrono::milliseconds Request::defaultTimeout;
 
 ContentType Request::acceptType() const { return header.acceptType(); }

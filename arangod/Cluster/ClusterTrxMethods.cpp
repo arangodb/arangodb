@@ -132,7 +132,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 Future<network::Response> beginTransactionRequest(TransactionState& state,
                                                   ServerID const& server) {
   TRI_voc_tid_t tid = state.id() + 1;
-  TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
+  TRI_ASSERT(!transaction::isLegacyTRI_voc_tid_t(tid));
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -208,7 +208,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
       (state->isCoordinator() && state->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
     return Result();
   }
-  TRI_ASSERT(!state->isDBServer() || !transaction::isFollowerTransactionId(state->id()));
+  TRI_ASSERT(!state->isDBServer() || !transaction::isFollowerTRI_voc_tid_t(state->id()));
 
   network::RequestOptions reqOpts;
   reqOpts.database = state->vocbase().name();
@@ -236,7 +236,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
   return futures::collectAll(requests).thenValue(
       [=](std::vector<Try<network::Response>>&& responses) -> Result {
         if (state->isCoordinator()) {
-          TRI_ASSERT(transaction::isCoordinatorTransactionId(state->id()));
+          TRI_ASSERT(transaction::isCoordinatorTRI_voc_tid_t(state->id()));
 
           for (Try<arangodb::network::Response> const& tryRes : responses) {
             network::Response const& resp = tryRes.get();  // throws exceptions upwards
@@ -250,7 +250,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
         }
 
         TRI_ASSERT(state->isDBServer());
-        TRI_ASSERT(transaction::isLeaderTransactionId(state->id()));
+        TRI_ASSERT(transaction::isLeaderTRI_voc_tid_t(state->id()));
 
         // Drop all followers that were not successful:
         for (Try<arangodb::network::Response> const& tryRes : responses) {
@@ -347,7 +347,7 @@ void addTransactionHeader(transaction::Methods const& trx,
     return;  // no need
   }
   TRI_voc_tid_t tidPlus = state.id() + 1;
-  TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
+  TRI_ASSERT(!transaction::isLegacyTRI_voc_tid_t(tidPlus));
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
   const bool addBegin = !state.knowsServer(server);
@@ -356,7 +356,7 @@ void addTransactionHeader(transaction::Methods const& trx,
       return;  // do not add header to servers without a snippet
     }
     TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-               transaction::isLeaderTransactionId(state.id()));
+               transaction::isLeaderTRI_voc_tid_t(state.id()));
     transaction::BuilderLeaser builder(trx.transactionContextPtr());
     ::buildTransactionBody(state, server, *builder.get());
     headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
@@ -413,7 +413,7 @@ bool isElCheapo(transaction::Methods const& trx) {
 }
 
 bool isElCheapo(TransactionState const& state) {
-  return !transaction::isLegacyTransactionId(state.id()) &&
+  return !transaction::isLegacyTRI_voc_tid_t(state.id()) &&
          (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
           state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 }

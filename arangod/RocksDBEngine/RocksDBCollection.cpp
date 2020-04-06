@@ -553,7 +553,7 @@ arangodb::Result cleanupOldIdSpaces(rocksdb::DB& db, arangodb::RocksDBMetaCollec
     auto& ridx = static_cast<arangodb::RocksDBIndex&>(*idx);
     if (ridx.tempObjectId() != 0) {
       auto bounds = ridx.getBounds(ridx.tempObjectId());
-      res = arangodb::rocksutils::removeLargeRange(&db, bounds, ridx.type() != Index::TRI_IDX_TYPE_EDGE_INDEX, true);
+      res = arangodb::rocksutils::removeLargeRange(&db, bounds, ridx.type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX, true);
       if (res.fail()) {
         return res;
       }

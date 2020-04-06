@@ -1807,7 +1807,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get an ID for use with coordTransactionId
+/// @brief get an ID for use with coordTRI_voc_tid_t
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {

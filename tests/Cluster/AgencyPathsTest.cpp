@@ -156,7 +156,7 @@ static_assert(!std::is_default_constructible<Root::Arango::Target::CleanedServer
 static_assert(!std::is_default_constructible<Root::Arango::Target::LatestCoordinatorId>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId::Server>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId::Server::TransactionId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId::Server::TRI_voc_tid_t>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId::Server::ShortName>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::FailedServers>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::MapLocalToId>::value, CONSTRUCTIBLE_MESSAGE);
@@ -295,7 +295,7 @@ static_assert(!std::is_constructible<Root::Arango::Target::CleanedServers, Root:
 static_assert(!std::is_constructible<Root::Arango::Target::LatestCoordinatorId, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server, Root::Arango::Target::MapUniqueToShortId>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server::TransactionId, Root::Arango::Target::MapUniqueToShortId::Server>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server::TRI_voc_tid_t, Root::Arango::Target::MapUniqueToShortId::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server::ShortName, Root::Arango::Target::MapUniqueToShortId::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::FailedServers, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::MapLocalToId, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);

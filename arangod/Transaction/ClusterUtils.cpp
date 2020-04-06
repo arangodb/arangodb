@@ -40,7 +40,7 @@ void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
   TRI_ASSERT(mgr != nullptr);
   
   bool didWork = mgr->abortManagedTrx([cid](TransactionState const& state, std::string const& /*user*/) -> bool {
-    if (transaction::isLeaderTransactionId(state.id())) {
+    if (transaction::isLeaderTRI_voc_tid_t(state.id())) {
       TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
       return tcoll != nullptr;
     }
@@ -55,7 +55,7 @@ void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid) {
   TRI_ASSERT(mgr != nullptr);
   
   bool didWork = mgr->abortManagedTrx([cid](TransactionState const& state, std::string const& /*user*/) -> bool {
-    if (transaction::isFollowerTransactionId(state.id())) {
+    if (transaction::isFollowerTRI_voc_tid_t(state.id())) {
       TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
       return tcoll != nullptr;
     }
