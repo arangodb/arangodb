@@ -262,7 +262,7 @@ bool arangodb::aql::operator==(AqlCallList const& left, AqlCallList const& right
 }
 
 auto arangodb::aql::operator<<(std::ostream& out, AqlCallList const& list) -> std::ostream& {
-  out << "specific: [ ";
+  out << "{specific: [ ";
   for (auto const& [index, call] : enumerate(list._specificCalls)) {
     if (index > 0) {
       out << ", ";
@@ -271,7 +271,8 @@ auto arangodb::aql::operator<<(std::ostream& out, AqlCallList const& list) -> st
   }
   out << " ]";
   if (list._defaultCall.has_value()) {
-    out << " default: " << list._defaultCall.value();
+    out << ", default: " << list._defaultCall.value();
   }
+  out << "}";
   return out;
 }

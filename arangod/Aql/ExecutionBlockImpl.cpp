@@ -640,6 +640,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
+<<<<<<< HEAD
   // TODO remove this IF
   // These are new style executors
   if constexpr (isNewStyleExecutor<Executor>) {
@@ -659,6 +660,15 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
 
     auto res = executeWithoutTrace(stack);
     return traceExecuteEnd(res);
+=======
+  traceExecuteBegin(stack);
+  // silence tests -- we need to introduce new failure tests for fetchers
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+>>>>>>> d34d013507... Attempt to improve shadowRow forwarding inside of a subquery context
   }
 
   // Fall back to getSome/skipSome
@@ -2401,7 +2411,8 @@ auto ExecutionBlockImpl<Executor>::memoizeCall(AqlCall const& call,
       // We can only try to memoize the first call ever send.
       // Otherwise the call might be influenced by state
       // inside the Executor
-      if (wasCalledWithContinueCall && call.getOffset() == 0 && !call.needsFullCount()) {
+      if (wasCalledWithContinueCall && call.getOffset() == 0 &&
+          !call.needsFullCount() && !call.hasSoftLimit()) {
         // First draft, we only memoize non-skipping calls
         _defaultUpstreamRequest = call;
       }
@@ -2432,13 +2443,10 @@ auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack, s
   auto& subList = stack.modifyCallListAtDepth(depth);
   auto& subCall = subList.modifyNextCall();
   subCall.didProduce(1);
-  if (subCall.getLimit() == 0) {
-    // This call has produced everything.
-    // Remove it from the Stack to not reuse it
-    // If it has a softLimit and we cannot
-    // continue there will be no additional
-    // call available.
-    std::ignore = subList.popNextCall();
+  if (depth > 0) {
+    // We have written a ShadowRow.
+    // Pop the corresponding production call.
+    std::ignore = stack.modifyCallListAtDepth(depth - 1).popNextCall();
   }
 }
 
