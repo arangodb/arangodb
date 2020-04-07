@@ -1,6 +1,10 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
+* Improve continuation behavior of AQL queries. We post the continuation
+  handler on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM
+  prio instead of LOW.
+  
 * Don't invoke collection key ranges compaction after performing a truncate
   operation on a RocksDB storage engine collection via the REST API's truncate
   endpoint.
