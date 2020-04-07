@@ -92,7 +92,8 @@ function clusterInventorySuite () {
       assertEqual("boolean", typeof link.includeAllFields);
       assertTrue(Array.isArray(link.primarySort));
       assertTrue(link.hasOwnProperty("storeValues"));
-      assertFalse(link.hasOwnProperty("storedValues"));
+      assertTrue(link.hasOwnProperty("storedValues"));
+      assertTrue(Array.isArray(link.storedValues));
       assertEqual("boolean", typeof link.trackListPositions);
     });
   };
