@@ -1092,6 +1092,7 @@ void ClusterInfo::loadCurrent() {
     LOG_TOPIC("e088e", WARN, Logger::CLUSTER)
         << "Attention: /arango/Current/Version in the agency is not set or not "
            "a positive number.";
+    return;
   }
 
   {
@@ -2774,7 +2775,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
   auto [acb, index] = agencyCache.get(
     std::vector<std::string>{
       AgencyCommManager::path("Plan/Views/" + databaseName + "/" + viewID)});
-  
+
   if (acb->slice()[0].hasKey(
         {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID})) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
@@ -2816,19 +2817,23 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
                                                    TRI_vocbase_col_status_e status) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac(_server);
-  AgencyCommResult res;
 
   AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
                                     AgencyPrecondition::Type::EMPTY, false);
 
-  res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID);
+  
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(
+    std::vector<std::string>{
+      AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)});
 
-  if (!res.successful()) {
+  std::vector<std::string> vpath(
+    {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID});
+
+  if (!acb->slice()[0].hasKey(vpath)) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-
-  VPackSlice col = res.slice()[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+  VPackSlice col = acb->slice()[0].get(vpath);
 
   if (!col.isObject()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -2856,15 +2861,13 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   } catch (...) {
     return Result(TRI_ERROR_OUT_OF_MEMORY);
   }
-  res.clear();
 
   AgencyOperation setColl("Plan/Collections/" + databaseName + "/" + collectionID,
                           AgencyValueOperationType::SET, builder.slice());
-  AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
+  AgencyOperation incVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
-
-  res = ac.sendTransactionWithFailover(trans);
+  AgencyWriteTransaction trans({setColl, incVersion}, databaseExists);
+  AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (res.successful()) {
     loadPlan();
@@ -3166,7 +3169,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
         auto [acb, index] = agencyCache.get(planIndexesKey);
         auto indexes = acb->slice();
-                
+
         bool found = false;
         if (indexes.isArray()) {
           for (VPackSlice v : VPackArrayIterator(indexes)) {
@@ -3337,6 +3340,11 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
 
+  /*
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(planIndexesKey);
+  auto indexes = acb->slice();
+  */
   AgencyCommResult previous = ac.getValues(planCollKey);
 
   if (!previous.successful()) {
@@ -3535,14 +3543,24 @@ void ClusterInfo::loadServers() {
                               AgencyCommManager::path(prefixServersKnown)}));
   auto result = acb->slice();
 
-  velocypack::Slice serversRegistered = result[0].get(std::vector<std::string>(
-                                                        {AgencyCommManager::path(), "Current", "ServersRegistered"}));
+  VPackSlice serversRegistered, serversAliases, serversKnownSlice;
 
-  velocypack::Slice serversAliases = result[0].get(std::vector<std::string>(
-                                                     {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
-
-  velocypack::Slice serversKnownSlice = result[0].get(std::vector<std::string>(
-                                                        {AgencyCommManager::path(), "Current", "ServersKnown"}));
+  std::vector<std::string> serversRegisteredPath {
+    AgencyCommManager::path(), "Current", "ServersRegistered"};
+  if (result[0].hasKey(serversRegisteredPath)) {
+    serversRegistered = result[0].get(serversRegisteredPath);
+  }
+  std::vector<std::string> mapUniqueToShortIDPath {
+    AgencyCommManager::path(), "Target", "MapUniqueToShortID"};
+  if (result[0].hasKey(mapUniqueToShortIDPath)) {
+    serversAliases = result[0].get(mapUniqueToShortIDPath);
+  }
+  std::vector<std::string> serversKnownPath {
+    AgencyCommManager::path(), "Current", "ServersKnown"};
+  if (result[0].hasKey(serversKnownPath)) {
+    serversKnownSlice = result[0].get(serversKnownPath);
+  }
+  
 
   if (serversRegistered.isObject()) {
     decltype(_servers) newServers;
@@ -3773,6 +3791,7 @@ void ClusterInfo::loadCurrentCoordinators() {
   }
 
   // Now contact the agency:
+  
   AgencyCommResult result = _agency.getValues(prefixCurrentCoordinators);
 
   if (result.successful()) {
@@ -3879,90 +3898,105 @@ void ClusterInfo::loadCurrentDBServers() {
     return;
   }
 
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(std::vector<std::string>{
+      AgencyCommManager::path(prefixCurrentDBServers),
+        AgencyCommManager::path(prefixTarget)});
+  auto result = acb->slice();
+  if (!result.isArray()) {
+    return;
+  }
+  
   // Now contact the agency:
-  AgencyCommResult result = _agency.getValues(prefixCurrentDBServers);
-  AgencyCommResult target = _agency.getValues(prefixTarget);
+  //AgencyCommResult result = _agency.getValues(prefixCurrentDBServers);
+  //AgencyCommResult target = _agency.getValues(prefixTarget);
+  velocypack::Slice currentDBServers;
+  velocypack::Slice failedDBServers;
+  velocypack::Slice cleanedDBServers;
+  velocypack::Slice toBeCleanedDBServers;
 
-  if (result.successful() && target.successful()) {
-    velocypack::Slice currentDBServers;
-    velocypack::Slice failedDBServers;
-    velocypack::Slice cleanedDBServers;
-    velocypack::Slice toBeCleanedDBServers;
+  auto curDBServersPath = std::vector<std::string>{
+    AgencyCommManager::path(), "Current", "DBServers"};
+  if (result[0].hasKey(curDBServersPath)) {
+    currentDBServers = result[0].get(curDBServersPath);
+  }
+  auto failedServerPath = std::vector<std::string>{
+    AgencyCommManager::path(), "Target", "FailedServers"};
+  if (result[0].hasKey(failedServerPath)) {
+    failedDBServers = result[0].get(failedServerPath);
+  }
+  auto cleanedServersPath = std::vector<std::string>{
+    AgencyCommManager::path(), "Target", "CleanedServers"};
+  if (result[0].hasKey(cleanedServersPath)) {
+    cleanedDBServers = result[0].get(cleanedServersPath);
+  }
+  
+  auto toBeCleanedServersPath = std::vector<std::string>{
+    AgencyCommManager::path(), "Target", "ToBeCleanedServers"};
+  if (result[0].hasKey(toBeCleanedServersPath)) {
+    toBeCleanedDBServers = result[0].get(toBeCleanedServersPath);
+  }
+  
+  if (currentDBServers.isObject() && failedDBServers.isObject()) {
+    decltype(_DBServers) newDBServers;
 
-    if (result.slice().length() > 0) {
-      currentDBServers = result.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Current", "DBServers"}));
-    }
-    if (target.slice().length() > 0) {
-      failedDBServers = target.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Target", "FailedServers"}));
-      cleanedDBServers = target.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Target", "CleanedServers"}));
-      toBeCleanedDBServers = target.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Target", "ToBeCleanedServers"}));
-    }
-    if (currentDBServers.isObject() && failedDBServers.isObject()) {
-      decltype(_DBServers) newDBServers;
+    for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
+      bool found = false;
+      if (failedDBServers.isObject()) {
+        for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
+          if (basics::VelocyPackHelper::equal(dbserver.key, failedServer.key, false)) {
+            found = true;
+            break;
+          }
+        }
+      }
+      if (found) {
+        continue;
+      }
 
-      for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
-        bool found = false;
-        if (failedDBServers.isObject()) {
-          for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
-            if (basics::VelocyPackHelper::equal(dbserver.key, failedServer.key, false)) {
-              found = true;
-              break;
-            }
+      if (cleanedDBServers.isArray()) {
+        found = false;
+        for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
+          if (basics::VelocyPackHelper::equal(dbserver.key, cleanedServer, false)) {
+            found = true;
+            break;
           }
         }
         if (found) {
           continue;
         }
-
-        if (cleanedDBServers.isArray()) {
-          found = false;
-          for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
-            if (basics::VelocyPackHelper::equal(dbserver.key, cleanedServer, false)) {
-              found = true;
-              break;
-            }
-          }
-          if (found) {
-            continue;
-          }
-        }
-
-        if (toBeCleanedDBServers.isArray()) {
-          found = false;
-          for (auto const& toBeCleanedServer : VPackArrayIterator(toBeCleanedDBServers)) {
-            if (basics::VelocyPackHelper::equal(dbserver.key, toBeCleanedServer, false)) {
-              found = true;
-              break;
-            }
-          }
-          if (found) {
-            continue;
-          }
-        }
-
-        newDBServers.try_emplace(dbserver.key.copyString(),
-                                            dbserver.value.copyString());
       }
 
-      // Now set the new value:
-      {
-        WRITE_LOCKER(writeLocker, _DBServersProt.lock);
-        _DBServers.swap(newDBServers);
-        _DBServersProt.doneVersion = storedVersion;
-        _DBServersProt.isValid = true;
+      if (toBeCleanedDBServers.isArray()) {
+        found = false;
+        for (auto const& toBeCleanedServer : VPackArrayIterator(toBeCleanedDBServers)) {
+          if (basics::VelocyPackHelper::equal(dbserver.key, toBeCleanedServer, false)) {
+            found = true;
+            break;
+          }
+        }
+        if (found) {
+          continue;
+        }
       }
-      return;
+
+      newDBServers.try_emplace(dbserver.key.copyString(),
+                               dbserver.value.copyString());
     }
+
+    // Now set the new value:
+    {
+      WRITE_LOCKER(writeLocker, _DBServersProt.lock);
+      _DBServers.swap(newDBServers);
+      _DBServersProt.doneVersion = storedVersion;
+      _DBServersProt.isValid = true;
+    }
+    return;
   }
 
   LOG_TOPIC("5a7e1", DEBUG, Logger::CLUSTER)
-      << "Error while loading " << prefixCurrentDBServers
-      << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+    << "Error while loading " << prefixCurrentDBServers
+    << " result was " << result.toJson();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

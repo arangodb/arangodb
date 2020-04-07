@@ -490,6 +490,9 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+  //if (AsyncAgencyCommManager::INSTANCE != nullptr) {
+    //}
+  
   if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myEndpoint,
                                                      _myAdvertisedEndpoint)) {
     LOG_TOPIC("fea1e", FATAL, Logger::STARTUP)
@@ -509,14 +512,32 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+
+}
+
+void ClusterFeature::start() {
+
+  auto role = ServerState::instance()->getRole();
+  // return if cluster is disabled
+  if (!_enableCluster) {
+    startHeartbeatThread(nullptr, 5000, 5, std::string());
+    return;
+  }
+
   // if nonempty, it has already been set above
 
   // If we are a coordinator, we wait until at least one DBServer is there,
   // otherwise we can do very little, in particular, we cannot create
   // any collection:
+  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
+    _agencyCache =
+      std::make_unique<AgencyCache>(server());
+    _agencyCache->start();
+  }
+
   if (role == ServerState::ROLE_COORDINATOR) {
     double start = TRI_microtime();
-
+    
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // in maintainer mode, a developer does not want to spend that much time
     // waiting for extra nodes to start up
@@ -524,28 +545,20 @@ void ClusterFeature::prepare() {
 #else
     constexpr double waitTime = 15.0;
 #endif
-
     while (true) {
       LOG_TOPIC("d4db4", INFO, arangodb::Logger::CLUSTER)
-          << "Waiting for DBservers to show up...";
+        << "Waiting for DBservers to show up...";
+      
       _clusterInfo->loadCurrentDBServers();
       std::vector<ServerID> DBServers = _clusterInfo->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
           (DBServers.size() > 1 || TRI_microtime() - start > waitTime)) {
         LOG_TOPIC("22f55", INFO, arangodb::Logger::CLUSTER)
-            << "Found " << DBServers.size() << " DBservers.";
+          << "Found " << DBServers.size() << " DBservers.";
         break;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-  }
-}
-
-void ClusterFeature::start() {
-  // return if cluster is disabled
-  if (!_enableCluster) {
-    startHeartbeatThread(nullptr, 5000, 5, std::string());
-    return;
   }
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
@@ -560,7 +573,6 @@ void ClusterFeature::start() {
 
   std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
@@ -714,12 +726,6 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
                                           uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                                           std::string const& endpoints) {
 
-  if (AsyncAgencyCommManager::INSTANCE != nullptr) {
-    _agencyCache =
-      std::make_unique<AgencyCache>(server());
-    _agencyCache->start();
-  }
-  
   _heartbeatThread =
       std::make_shared<HeartbeatThread>(server(), agencyCallbackRegistry,
                                         std::chrono::microseconds(interval_ms * 1000),
@@ -744,7 +750,9 @@ void ClusterFeature::shutdownHeartbeatThread() {
   }
 
   _heartbeatThread->beginShutdown();
-  _agencyCache->beginShutdown();
+  if (_agencyCache != nullptr) {
+    _agencyCache->beginShutdown();
+  }
 
   int counter = 0;
   while (_heartbeatThread->isRunning()) {
@@ -755,7 +763,7 @@ void ClusterFeature::shutdownHeartbeatThread() {
           << "waiting for heartbeat thread to finish";
     }
   }
-  while (_agencyCache->isRunning()) {
+  while (_agencyCache != nullptr && _agencyCache->isRunning()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // emit warning after 5 seconds
     if (++counter == 10 * 5) {

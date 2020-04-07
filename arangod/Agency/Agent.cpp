@@ -1522,9 +1522,6 @@ void Agent::run() {
       // Check whether we can advance _commitIndex
       advanceCommitIndex();
 
-      // Clear expired long polls
-      clearExpiredPolls();
-
       // Empty store callback trash bin
       emptyCbTrashBin();
 
