@@ -459,7 +459,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
           << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
-        auto const tmp = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+        index_t const tmp = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
         if (tmp > _commitIndex) {
           logsForTrigger();
         }
