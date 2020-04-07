@@ -352,6 +352,9 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   }
 
   auto query = plan->getAst()->query();
+  // MSVC did throw an internal compiler error with auto instead of std::string
+  // here at the time of this writing (some MSVC 2019 14.25.28610). Could
+  // reproduce it only in our CI, my local MSVC (same version) ran fine...
   auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection* {
     // if the collection was already existent in the query, addCollection will
     // just return it.
