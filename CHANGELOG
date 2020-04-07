@@ -1,6 +1,21 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
+* Don't invoke collection key ranges compaction after performing a truncate
+  operation on a RocksDB storage engine collection via the REST API's truncate
+  endpoint.
+
+  The compaction was previously done to make RocksDB physically free data of key
+  ranges that were supposed to be empty after the truncate, but it seems that
+  the used version of RocksDB is struggling to achieve that goal. Although it
+  does compact the ranges, it seems to read a lot of extra data from unrelated
+  ranges as well, which blows up the overall time required to do the
+  compactions.
+  Most recent versions of RocksDB do not seem to have this problem anymore.
+  But without upgrading RocksDB to the latest version the most sensible fix is
+  to turn off the manual compaction and rely on RocksDB eventually freeing the
+  key ranges that are empty after a truncate.
+
 * Avoid some unnecessary internal calls to the storage engine during the
   incremental sync protocol for the RocksDB storage engine. This change can help
   reduce the I/O load on the follower during incremental sync for the RocksDB
