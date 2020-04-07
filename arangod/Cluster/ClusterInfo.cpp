@@ -2826,7 +2826,6 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   auto [acb, index] = agencyCache.get(
     std::vector<std::string>{
       AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)});
-
   std::vector<std::string> vpath(
     {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID});
 
@@ -3340,20 +3339,18 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
 
-  /*
+  
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(planIndexesKey);
-  auto indexes = acb->slice();
-  */
-  AgencyCommResult previous = ac.getValues(planCollKey);
+  auto [acb, index] = agencyCache.get(
+    std::vector<std::string>{AgencyCommManager::path(planCollKey)});
+  auto previous = acb->slice();
 
-  if (!previous.successful()) {
+  if (!previous.isArray() || previous.length() == 0) {
     events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
 
     return Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
   }
-
-  velocypack::Slice collection = previous.slice()[0].get(std::vector<std::string>(
+  velocypack::Slice collection = previous[0].get(std::vector<std::string>(
       {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
   if (!collection.isObject()) {
     events::DropIndex(databaseName, collectionID, idString,
