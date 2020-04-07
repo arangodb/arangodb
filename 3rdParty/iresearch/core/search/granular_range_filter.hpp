@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_GRANULAR_RANGE_FILTER_H
 #define IRESEARCH_GRANULAR_RANGE_FILTER_H
 
+#include "limited_sample_collector.hpp"
 #include "range_filter.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
@@ -46,11 +47,25 @@ class IRESEARCH_API by_granular_range: public filter {
   // granularity levels and terms
   typedef bytes_ref::char_type granularity_level_t;
   typedef std::map<granularity_level_t, bstring> terms_t;
+  typedef range<terms_t> range_t;
   typedef terms_t::const_iterator const_iterator;
   typedef terms_t::iterator iterator;
   typedef terms_t::key_type level_t;
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
+
+  static filter::prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const range_t& rng,
+    size_t scored_terms_limit);
+
+  static void visit(
+    const term_reader& reader,
+    const range_t& rng,
+    filter_visitor& visitor);
 
   by_granular_range();
 
@@ -159,11 +174,13 @@ class IRESEARCH_API by_granular_range: public filter {
   }
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr,
+      const index_reader& index,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_view& ctx
-  ) const override;
+      const attribute_view& /*ctx*/) const override {
+    return prepare(index, ord, this->boost()*boost,
+                   field(), rng_, scored_terms_limit_);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
@@ -198,7 +215,6 @@ class IRESEARCH_API by_granular_range: public filter {
   virtual bool equals(const filter& rhs) const noexcept override;
 
  private:
-  typedef range<terms_t> range_t;
   template<Bound B> struct get;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

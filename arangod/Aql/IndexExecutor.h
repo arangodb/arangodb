@@ -220,21 +220,12 @@ class IndexExecutor {
   IndexExecutor(Fetcher& fetcher, Infos&);
   ~IndexExecutor();
 
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
-
   auto produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
- public:
   void initializeCursor();
 
  private:

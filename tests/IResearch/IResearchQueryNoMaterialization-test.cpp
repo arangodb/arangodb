@@ -98,7 +98,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
           "\"name\": \"" + viewName + "\", \
            \"type\": \"arangosearch\", \
            \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}], \
-           \"storedValues\": [\"str\", \"value\", \"_id\", [\"str\", \"value\"], \"exist\"] \
+           \"storedValues\": [{\"field\":\"str\", \"compression\":\"none\"}, \"value\", \"_id\", [\"str\", \"value\"], \"exist\"] \
         }");
       view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
           vocbase().createView(createJson->slice()));
@@ -412,6 +412,152 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
                                    arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("str"),
                                    arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("value"),
                                    "@_PK"};
+    for (auto const& segment : snapshotReader) {
+      auto col = segment.columns();
+      auto doc = segment.docs_iterator();
+      ASSERT_TRUE(doc);
+      ASSERT_TRUE(doc->next());
+      size_t counter = 0;
+      while (col->next()) {
+        auto const& val = col->value();
+        ASSERT_TRUE(counter < columnsCount);
+        EXPECT_EQ(columns[counter], val.name);
+        if (5 == counter) { // skip PK
+          ++counter;
+          continue;
+        }
+        auto columnReader = segment.column_reader(val.id);
+        ASSERT_TRUE(columnReader);
+        auto valReader = columnReader->values();
+        ASSERT_TRUE(valReader);
+        irs::bytes_ref value; // column value
+        ASSERT_TRUE(valReader(doc->value(), value));
+        if (1 == counter) { // foo
+          EXPECT_TRUE(value.null());
+          ++counter;
+          continue;
+        }
+        size_t valueSize = value.size();
+        auto slice = VPackSlice(value.c_str());
+        switch (counter) {
+        case 0: {
+          ASSERT_TRUE(slice.isString());
+          arangodb::velocypack::ValueLength length = 0;
+          auto str = slice.getString(length);
+          std::string strVal(str, length);
+          ASSERT_TRUE(length > collectionName.size());
+          EXPECT_EQ(collectionName + "/", strVal.substr(0, collectionName.size() + 1));
+          break;
+        }
+        case 2: {
+          arangodb::velocypack::ValueLength size = slice.byteSize();
+          ASSERT_TRUE(slice.isString());
+          arangodb::velocypack::ValueLength length = 0;
+          auto str = slice.getString(length);
+          EXPECT_EQ("abc", std::string(str, length));
+          slice = VPackSlice(slice.start() + slice.byteSize());
+          size += slice.byteSize();
+          EXPECT_TRUE(slice.isNull());
+          slice = VPackSlice(slice.start() + slice.byteSize());
+          size += slice.byteSize();
+          ASSERT_TRUE(slice.isNumber());
+          EXPECT_EQ(10, slice.getNumber<int>());
+          EXPECT_EQ(valueSize, size);
+          break;
+        }
+        case 3: {
+          ASSERT_TRUE(slice.isString());
+          arangodb::velocypack::ValueLength length = 0;
+          auto str = slice.getString(length);
+          EXPECT_EQ("abc", std::string(str, length));
+          break;
+        }
+        case 4:
+          ASSERT_TRUE(slice.isNumber());
+          EXPECT_EQ(10, slice.getNumber<int>());
+          break;
+        default:
+          ASSERT_TRUE(false);
+          break;
+        }
+        ++counter;
+      }
+      EXPECT_EQ(columnsCount, counter);
+    }
+  }
+}
+
+TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompression) {
+  static std::vector<std::string> const EMPTY;
+  auto doc = arangodb::velocypack::Parser::fromJson("{ \"str\": \"abc\", \"value\": 10 }");
+  std::string collectionName("testCollection");
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\":\"" + collectionName + "\"}");
+  auto logicalCollection = vocbase().createCollection(collectionJson->slice());
+  ASSERT_TRUE(logicalCollection);
+  size_t const columnsCount = 6; // PK + storedValues
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+    "{ \
+        \"id\": 42, \
+        \"name\": \"testView\", \
+        \"type\": \"arangosearch\", \
+        \"storedValues\": [{\"field\":\"str\", \"compression\":\"none\"}, \"foo\",\
+        {\"field\":[\"value\"], \"compression\":\"lz4\"}, \"_id\", {\"field\":[\"str\", \"foo\", \"value\"]}] \
+      }");
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase().createView(viewJson->slice()));
+  ASSERT_TRUE(view);
+
+  auto updateJson = VPackParser::fromJson(
+    "{\"links\": {\"" + collectionName + "\": {\"includeAllFields\": true} }}");
+  EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+
+  arangodb::velocypack::Builder builder;
+
+  builder.openObject();
+  view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+  builder.close();
+
+  auto slice = builder.slice();
+  EXPECT_TRUE(slice.isObject());
+  EXPECT_TRUE(slice.get("type").copyString() ==
+    arangodb::iresearch::DATA_SOURCE_TYPE.name());
+  EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
+  auto tmpSlice = slice.get("links");
+  EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());
+
+  arangodb::ManagedDocumentResult insertedDoc;
+  {
+    arangodb::OperationOptions opt;
+    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
+      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::Options());
+    EXPECT_TRUE(trx.begin().ok());
+    auto const res =
+      logicalCollection->insert(&trx, doc->slice(), insertedDoc, opt);
+    EXPECT_TRUE(res.ok());
+
+    EXPECT_TRUE(trx.commit().ok());
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view)
+      ->commit().ok());
+  }
+
+  {
+    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
+      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::Options());
+    EXPECT_TRUE(trx.begin().ok());
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view);
+    ASSERT_TRUE(link);
+    irs::directory_reader const snapshotReader = link->snapshot();
+    std::string const columns[] = { arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("_id"),
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("foo"),
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("foo") +
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "str" +
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "value",
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("str"),
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("value"),
+                                   "@_PK" };
     for (auto const& segment : snapshotReader) {
       auto col = segment.columns();
       auto doc = segment.docs_iterator();

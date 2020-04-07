@@ -112,7 +112,7 @@ void assertJaccard(double_t expectedValue, char const* lhs, char const* rhs) {
 }
 
 TEST(JaccardFunctionTest, test) {
-  assertJaccard(0.0, "[]", "[]");
+  assertJaccard(1.0, "[]", "[]");
   assertJaccard(1.0, "[null]", "[null]");
   assertJaccard(0.0, "[null]", "[]");
   assertJaccard(0.0, "[null]", "[1]");

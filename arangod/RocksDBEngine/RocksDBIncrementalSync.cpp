@@ -182,6 +182,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   options.ignoreRevs = true;
   options.isRestore = true;
   options.indexOperationMode = Index::OperationMode::internal;
+  options.waitForSync = false;
+  options.validate = false;
+
   if (!syncer._state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
   }
@@ -478,9 +481,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         return res;
       };
 
-      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
-
-      if (!documentId.isSet()) {
+      std::pair<LocalDocumentId, TRI_voc_rid_t> lookupResult;
+      if (physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // key does not yet exist
         // INSERT
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
@@ -625,6 +628,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  options.waitForSync = false;
+  options.validate = false;
 
   if (!syncer._state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._state.leaderId;

@@ -73,6 +73,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -355,58 +357,11 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _depth(slice.get("depth").getNumericValue<int>()),
       _varUsageValid(true),
-      _plan(plan),
-      _isInSplicedSubquery(false) {
-  TRI_ASSERT(_registerPlan.get() == nullptr);
-  _registerPlan.reset(new RegisterPlan());
-  _registerPlan->clear();
-  _registerPlan->depth = _depth;
-  _registerPlan->totalNrRegs = slice.get("totalNrRegs").getNumericValue<unsigned int>();
-
-  VPackSlice varInfoList = slice.get("varInfoList");
-  if (!varInfoList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "\"varInfoList\" attribute needs to be an array");
-  }
-
-  _registerPlan->varInfo.reserve(varInfoList.length());
-
-  for (VPackSlice it : VPackArrayIterator(varInfoList)) {
-    if (!it.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "\"varInfoList\" item needs to be an object");
-    }
-    VariableId variableId = it.get("VariableId").getNumericValue<VariableId>();
-    RegisterId registerId = it.get("RegisterId").getNumericValue<RegisterId>();
-    unsigned int depth = it.get("depth").getNumericValue<unsigned int>();
-
-    _registerPlan->varInfo.try_emplace(variableId, VarInfo(depth, registerId));
-  }
-
-  VPackSlice nrRegsList = slice.get("nrRegs");
-  if (!nrRegsList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "\"nrRegs\" attribute needs to be an array");
-  }
-
-  _registerPlan->nrRegs.reserve(nrRegsList.length());
-  for (VPackSlice it : VPackArrayIterator(nrRegsList)) {
-    _registerPlan->nrRegs.emplace_back(it.getNumericValue<RegisterId>());
-  }
-
-  VPackSlice nrRegsHereList = slice.get("nrRegsHere");
-  if (!nrRegsHereList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "\"nrRegsHere\" needs to be an array");
-  }
-
-  _registerPlan->nrRegsHere.reserve(nrRegsHereList.length());
-  for (VPackSlice it : VPackArrayIterator(nrRegsHereList)) {
-    _registerPlan->nrRegsHere.emplace_back(it.getNumericValue<RegisterId>());
-  }
-
+      _isInSplicedSubquery(false),
+      _plan(plan) {
+  TRI_ASSERT(_registerPlan == nullptr);
+  _registerPlan = std::make_shared<RegisterPlan>(slice, _depth);
+  
   VPackSlice regsToClearList = slice.get("regsToClear");
   if (!regsToClearList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -502,8 +457,9 @@ ExecutionNode* ExecutionNode::cloneHelper(std::unique_ptr<ExecutionNode> other,
   return registeredNode;
 }
 
-void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan, ExecutionNode& other, bool withProperties) const {
-
+void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
+                                                           ExecutionNode& other,
+                                                           bool withProperties) const {
   if (&plan == _plan) {
     // same execution plan for source and target
     // now assign a new id to the cloned node, otherwise it will fail
@@ -538,10 +494,8 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan, 
       other._varsValid.insert(var);
     }
 
-    if (_registerPlan.get() != nullptr) {
-      auto otherRegisterPlan =
-          std::shared_ptr<RegisterPlan>(_registerPlan->clone(&plan, _plan));
-      other._registerPlan = otherRegisterPlan;
+    if (_registerPlan != nullptr) {
+      other._registerPlan = _registerPlan->clone();
     }
   } else {
     // point to current AST -> don't do deep copies.
@@ -769,39 +723,9 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add("depth", VPackValue(_depth));
 
     if (_registerPlan) {
-      nodes.add(VPackValue("varInfoList"));
-      {
-        VPackArrayBuilder guard(&nodes);
-        for (auto const& oneVarInfo : _registerPlan->varInfo) {
-          VPackObjectBuilder guardInner(&nodes);
-          nodes.add("VariableId", VPackValue(oneVarInfo.first));
-          nodes.add("depth", VPackValue(oneVarInfo.second.depth));
-          nodes.add("RegisterId", VPackValue(oneVarInfo.second.registerId));
-        }
-      }
-      nodes.add(VPackValue("nrRegs"));
-      {
-        VPackArrayBuilder guard(&nodes);
-        for (auto const& oneRegisterID : _registerPlan->nrRegs) {
-          nodes.add(VPackValue(oneRegisterID));
-        }
-      }
-      nodes.add(VPackValue("nrRegsHere"));
-      {
-        VPackArrayBuilder guard(&nodes);
-        for (auto const& oneRegisterID : _registerPlan->nrRegsHere) {
-          nodes.add(VPackValue(oneRegisterID));
-        }
-      }
-      nodes.add("totalNrRegs", VPackValue(_registerPlan->totalNrRegs));
+      _registerPlan->toVelocyPack(nodes);
     } else {
-      nodes.add(VPackValue("varInfoList"));
-      { VPackArrayBuilder guard(&nodes); }
-      nodes.add(VPackValue("nrRegs"));
-      { VPackArrayBuilder guard(&nodes); }
-      nodes.add(VPackValue("nrRegsHere"));
-      { VPackArrayBuilder guard(&nodes); }
-      nodes.add("totalNrRegs", VPackValue(0));
+      RegisterPlan::toVelocyPackEmpty(nodes);
     }
 
     nodes.add(VPackValue("regsToClear"));
@@ -886,9 +810,9 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   std::shared_ptr<RegisterPlan> v;
 
   if (super == nullptr) {
-    v.reset(new RegisterPlan());
+    v = std::make_shared<RegisterPlan>();
   } else {
-    v.reset(new RegisterPlan(*(super->_registerPlan), super->_depth));
+    v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
   }
   v->setSharedPtr(&v);
 
@@ -1076,7 +1000,11 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, size_t id)
-    : _id(id), _depth(0), _varUsageValid(false), _plan(plan), _isInSplicedSubquery(false) {}
+    : _id(id), 
+      _depth(0), 
+      _varUsageValid(false), 
+      _isInSplicedSubquery(false),
+      _plan(plan) {} 
 
 size_t ExecutionNode::id() const { return _id; }
 
@@ -2099,9 +2027,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = std::make_unique<FilterNode>(plan, _id, inVariable);
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::make_unique<FilterNode>(plan, _id, inVariable), withDependencies, withProperties);
 }
 
 /// @brief estimateCost

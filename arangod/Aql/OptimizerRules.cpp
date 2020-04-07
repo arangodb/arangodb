@@ -2032,13 +2032,15 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   template <typename T>
   void replaceStartTargetVariables(ExecutionNode* en) {
-    auto node = std::invoke([en](auto) {
-      if constexpr (std::is_base_of_v<GraphNode, T>) {
-        return dynamic_cast<T*>(en);
-      } else {
-        return static_cast<T*>(en);
-      }
-    }, 0);
+    auto node = std::invoke(
+        [en](auto) {
+          if constexpr (std::is_base_of_v<GraphNode, T>) {
+            return dynamic_cast<T*>(en);
+          } else {
+            return static_cast<T*>(en);
+          }
+        },
+        0);
     if (node->_inStartVariable != nullptr) {
       node->_inStartVariable = Variable::replace(node->_inStartVariable, _replacements);
     }
@@ -5738,7 +5740,8 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   // variables from them
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
-    auto* options = static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
+    auto* options =
+        static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
 
     std::vector<Variable const*> pruneVars;
     traversal->getPruneVariables(pruneVars);
@@ -5780,18 +5783,15 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       traversal->setPathOutput(nullptr);
       modified = true;
     }
-  
+
     // check if we can make use of the optimized neighbors enumerator
     if (!ServerState::instance()->isCoordinator()) {
-      if (traversal->vertexOutVariable() != nullptr &&
-          traversal->edgeOutVariable() == nullptr &&
-          traversal->pathOutVariable() == nullptr &&
-          options->useBreadthFirst &&
+      if (traversal->vertexOutVariable() != nullptr && traversal->edgeOutVariable() == nullptr &&
+          traversal->pathOutVariable() == nullptr && options->useBreadthFirst &&
           options->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL &&
-          !options->usesPrune() &&
-          !options->hasDepthLookupInfo()) {
+          !options->usesPrune() && !options->hasDepthLookupInfo()) {
         // this is possible in case *only* vertices are produced (no edges, no path),
-        // the traversal is breadth-first, the vertex uniqueness level is set to "global", 
+        // the traversal is breadth-first, the vertex uniqueness level is set to "global",
         // there is no pruning and there are no depth-specific filters
         options->useNeighbors = true;
         modified = true;

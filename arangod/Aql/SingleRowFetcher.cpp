@@ -69,15 +69,6 @@ SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
       _currentShadowRow{CreateInvalidShadowRowHint{}} {}
 
 template <BlockPassthrough passBlocksThrough>
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-template <BlockPassthrough, typename>
-#endif
-std::pair<ExecutionState, SharedAqlItemBlockPtr>
-SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
-  return _dependencyProxy->fetchBlockForPassthrough(atMost);
-}
-
-template <BlockPassthrough passBlocksThrough>
 std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>
 SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
   auto [state, skipped, block] = _dependencyProxy->execute(stack);
@@ -103,19 +94,6 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
   }
   return {state, skipped,
           AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(), block, start}};
-}
-
-template <BlockPassthrough passBlocksThrough>
-std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(size_t atMost) {
-  TRI_ASSERT(!_currentRow.isInitialized() || _currentRow.isLastRowInBlock());
-  TRI_ASSERT(!indexIsValid());
-
-  auto res = _dependencyProxy->skipSome(atMost);
-  _upstreamState = res.first;
-
-  TRI_ASSERT(res.second <= atMost);
-
-  return res;
 }
 
 template <BlockPassthrough passBlocksThrough>
@@ -279,11 +257,6 @@ template <BlockPassthrough blockPassthrough>
 bool SingleRowFetcher<blockPassthrough>::isAtShadowRow() const {
   return indexIsValid() && _currentBlock->isShadowRow(_rowIndex);
 }
-#endif
-
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-template std::pair<ExecutionState, SharedAqlItemBlockPtr>
-SingleRowFetcher<BlockPassthrough::Enable>::fetchBlockForPassthrough<BlockPassthrough::Enable, void>(size_t atMost);
 #endif
 
 //@deprecated

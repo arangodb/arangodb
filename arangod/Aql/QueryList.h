@@ -226,9 +226,6 @@ class QueryList {
   /// @brief list of slow queries
   std::list<QueryEntryCopy> _slow;
 
-  /// @brief current number of slow queries
-  size_t _slowCount;
-
   /// @brief whether or not queries are tracked
   std::atomic<bool> _enabled;
 
