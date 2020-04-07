@@ -344,6 +344,8 @@ struct AqlValue final {
   /// this will throw if the value type is not VPACK_SLICE_POINTER,
   /// VPACK_INLINE, VPACK_MANAGED_SLICE or VPACK_MANAGED_BUFFER
   arangodb::velocypack::Slice slice() const;
+  
+  arangodb::velocypack::Slice slice(AqlValueType type) const;
 
   /// @brief clone a value
   AqlValue clone() const;

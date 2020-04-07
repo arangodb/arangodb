@@ -145,60 +145,11 @@ function optimizerCollectMethodsTestSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief expect hash COLLECT
-////////////////////////////////////////////////////////////////////////////////
-
-    testHashedWithNonSortedIndexMMFiles : function () {
-      if (db._engine().name !== "mmfiles") {
-        return;
-      }
-      
-      c.ensureIndex({ type: "hash", fields: [ "group" ] }); 
-      c.ensureIndex({ type: "hash", fields: [ "group", "value" ] }); 
-
-      var queries = [
-        [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500 ],
-        [ "FOR j IN " + c.name() + " COLLECT value = j.haxe RETURN value", 1500 ],
-        [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10 ],
-        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500 ],
-        [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10 ],
-        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", 1500 ]
-      ];
-
-      queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
-
-        var aggregateNodes = 0;
-        var sortNodes = 0;
-        plan.nodes.map(function(node) {
-          if (node.type === "CollectNode") {
-            ++aggregateNodes;
-            assertEqual("hash", node.collectOptions.method);
-          }
-          if (node.type === "SortNode") {
-            ++sortNodes;
-          }
-        });
-        
-        assertEqual(isCluster ? 2 : 1, aggregateNodes);
-        assertEqual(1, sortNodes);
-
-        var results = AQL_EXECUTE(query[0]);
-        assertEqual(query[1], results.json.length);
-      });
-    },
-    
-    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief expect hash COLLECT
     ////////////////////////////////////////////////////////////////////////////////
     
     testHashedWithNonSortedIndexRocksDB : function () {
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-      
       c.ensureIndex({ type: "hash", fields: [ "group" ] });
       c.ensureIndex({ type: "hash", fields: [ "group", "value" ] });
       

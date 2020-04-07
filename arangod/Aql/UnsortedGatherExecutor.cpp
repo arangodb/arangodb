@@ -40,14 +40,14 @@ struct Dependency {
   size_t _number;
 };
 
-UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher{fetcher} {}
+UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher&, Infos&) {}
 
 UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 
 auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                          OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCallSet> {
+  initialize(input);
   while (!output.isFull() && !done()) {
     if (input.hasDataRow(currentDependency())) {
       auto [state, inputRow] = input.nextDataRow(currentDependency());
@@ -92,6 +92,7 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
 
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
+  initialize(input);
   auto skipped = size_t{0};
 
   if (done()) {
@@ -124,9 +125,15 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
 }
 
-auto UnsortedGatherExecutor::numDependencies() const
-    noexcept(noexcept(_fetcher.numberDependencies())) -> size_t {
-  return _fetcher.numberDependencies();
+auto UnsortedGatherExecutor::initialize(typename Fetcher::DataRange const& input) -> void {
+  // Dependencies can never change
+  TRI_ASSERT(_numDependencies == 0 || _numDependencies == input.numberDependencies());
+  _numDependencies = input.numberDependencies();
+}
+
+auto UnsortedGatherExecutor::numDependencies() const noexcept -> size_t {
+  TRI_ASSERT(_numDependencies != 0);
+  return _numDependencies;
 }
 
 auto UnsortedGatherExecutor::done() const noexcept -> bool {

@@ -214,12 +214,6 @@ class Methods {
   /// @brief return a collection name
   std::string name(TRI_voc_cid_t cid) const;
 
-  /// @brief order a ditch for a collection
-  ENTERPRISE_VIRT void pinData(TRI_voc_cid_t);
-
-  /// @brief whether or not a ditch has been created for the collection
-  ENTERPRISE_VIRT bool isPinned(TRI_voc_cid_t cid) const;
-
   /// @brief extract the _id attribute from a slice,
   /// and convert it into a string
   std::string extractIdString(VPackSlice);
@@ -254,8 +248,7 @@ class Methods {
   ENTERPRISE_VIRT Result documentFastPath(std::string const& collectionName,
                                           ManagedDocumentResult* mmdr,
                                           arangodb::velocypack::Slice const value,
-                                          arangodb::velocypack::Builder& result,
-                                          bool shouldLock);
+                                          arangodb::velocypack::Builder& result);
 
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document
@@ -265,8 +258,7 @@ class Methods {
   ///        server, not in cluster case!
   ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
                                                arangodb::velocypack::StringRef const& key,
-                                               ManagedDocumentResult& result,
-                                               bool shouldLock);
+                                               ManagedDocumentResult& result);
 
   /// @brief return one or multiple documents from a collection
   /// @deprecated use async variant
@@ -488,9 +480,6 @@ class Methods {
 
   Future<OperationResult> truncateLocal(std::string const& collectionName,
                                         OperationOptions& options);
-
-  OperationResult rotateActiveJournalCoordinator(std::string const& collectionName,
-                                                 OperationOptions const& options);
 
  protected:
   /// @brief return the transaction collection for a document collection

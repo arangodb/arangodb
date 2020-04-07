@@ -71,12 +71,13 @@ class min_match_disjunction : public doc_iterator_base<doc_iterator>, score_ctx 
   min_match_disjunction(
       doc_iterators_t&& itrs,
       size_t min_match_count = 1,
-      const order::prepared& ord = order::prepared::unordered())
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
       lead_(itrs_.size()), doc_(doc_limits::invalid()),
-      merger_(ord.prepare_merger()) {
+      merger_(ord.prepare_merger(merge_type)) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
@@ -425,7 +426,7 @@ class min_match_disjunction : public doc_iterator_base<doc_iterator>, score_ctx 
     const irs::byte_type** pVal = scores_vals_.data();
     std::for_each(
       lead(), heap_.end(),
-      [this, lhs, &pVal](size_t it) {
+      [this, &pVal](size_t it) {
         assert(it < itrs_.size());
         detail::evaluate_score_iter(pVal, itrs_[it]);
     });

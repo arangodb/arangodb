@@ -44,21 +44,30 @@ function version(options) {
   // create empty data directory
   const dataDir = fs.join(fs.getTempPath(), 'version');
 
-  // use same configuration as dfdb, works here.
-  const args = ['-c', fs.join(pu.CONFIG_DIR, 'arango-dfdb.conf'), dataDir];
+  const args = ['-c', 'none', dataDir];
   if (options.storageEngine !== undefined) {
     args.push('--server.storage-engine');
     args.push(options.storageEngine);
   }
+  args.push('--database.auto-upgrade');
+  args.push('false');
+  args.push('--database.upgrade-check');
+  args.push('false');
   args.push('--database.check-version');
   args.push('true');
-  
+  args.push('--foxx.queues');
+  args.push('false');
   args.push('--server.rest-server');
   args.push('false');
+  args.push('--server.statistics');
+  args.push('false');
+  args.push('--javascript.startup-directory');
+  args.push(fs.join('.', 'js'));
+  args.push('--javascript.app-path');
+  args.push(fs.join('.', 'js', 'apps'));
+  args.push('--javascript.v8-contexts');
+  args.push('1');
   
-  args.push('--server.allow-deprecated-storage-engine');
-  args.push('true');
-
   fs.makeDirectoryRecursive(dataDir);
   pu.cleanupDBDirectoriesAppend(dataDir);
 

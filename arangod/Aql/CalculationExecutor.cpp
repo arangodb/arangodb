@@ -87,50 +87,6 @@ std::vector<RegisterId> const& CalculationExecutorInfos::getExpInRegs() const no
 }
 
 template <CalculationType calculationType>
-std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
-CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
-  // TRI_ASSERT(false);
-  // THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  ExecutionState state;
-  InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  std::tie(state, row) = _fetcher.fetchRow();
-
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!row);
-    TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
-    return {state, NoStats{}};
-  }
-
-  if (!row) {
-    TRI_ASSERT(state == ExecutionState::DONE);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_fetcher.isAtShadowRow() || (!_fetcher.hasRowsLeftInBlock() &&
-                                            !_infos.getQuery().hasEnteredContext()));
-#endif
-    return {state, NoStats{}};
-  }
-
-  doEvaluation(row, output);
-
-  // _hasEnteredContext implies the query has entered the context, but not
-  // the other way round because it may be owned by exterior.
-  TRI_ASSERT(!_hasEnteredContext || _infos.getQuery().hasEnteredContext());
-
-  // The following only affects V8Conditions. If we should exit the V8 context
-  // between blocks, because we might have to wait for client or upstream, then
-  //   hasEnteredContext => state == HASMORE,
-  // as we only leave the context open when there are rows left in the current
-  // block.
-  // Note that _infos.getQuery().hasEnteredContext() may be true, even if
-  // _hasEnteredContext is false, if (and only if) the query context is owned
-  // by exterior.
-  TRI_ASSERT(!shouldExitContextBetweenBlocks() || !_hasEnteredContext ||
-             state == ExecutionState::HASMORE);
-
-  return {state, NoStats{}};
-}
-
-template <CalculationType calculationType>
 std::tuple<ExecutorState, typename CalculationExecutor<calculationType>::Stats, AqlCall>
 CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputRange,
                                                   OutputAqlItemRow& output) {
@@ -143,7 +99,7 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
     TRI_ASSERT(!output.isFull());
-    std::tie(state, input) = inputRange.nextDataRow(); 
+    std::tie(state, input) = inputRange.nextDataRow();
     TRI_ASSERT(input.isInitialized());
 
     doEvaluation(input, output);
@@ -166,13 +122,6 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
   }
 
   return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
-}
-
-template <CalculationType calculationType>
-std::tuple<ExecutionState, typename CalculationExecutor<calculationType>::Stats, SharedAqlItemBlockPtr>
-CalculationExecutor<calculationType>::fetchBlockForPassthrough(size_t atMost) {
-  auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-  return {rv.first, {}, std::move(rv.second)};
 }
 
 template <CalculationType calculationType>

@@ -51,7 +51,6 @@ class FollowerInfo;
 class Index;
 class IndexIterator;
 class KeyGenerator;
-struct KeyLockInfo;
 class LocalDocumentId;
 class ManagedDocumentResult;
 struct OperationOptions;
@@ -150,8 +149,6 @@ class LogicalCollection : public LogicalDataSource {
   TRI_voc_rid_t minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
-  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
-  bool isClusterGlobal() const { return _isAStub; }
 
   bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
 
@@ -246,9 +243,6 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief return the figures for a collection
   virtual futures::Future<OperationResult> figures() const;
 
-  /// @brief opens an existing collection
-  void open(bool ignoreErrors);
-
   /// @brief closes an open collection
   int close();
 
@@ -272,7 +266,7 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief reads an element from the document collection
   Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& mdr, bool lock);
+              ManagedDocumentResult& mdr);
 
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);
@@ -280,32 +274,22 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief compact-data operation
   Result compact();
 
-  // convenience function for downwards-compatibility
-  Result insert(transaction::Methods* trx, velocypack::Slice const slice,
-                ManagedDocumentResult& result, OperationOptions& options, bool lock) {
-    return insert(trx, slice, result, options, lock, nullptr, nullptr);
-  }
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const;
 
-  /**
-   * @param cbDuringLock Called immediately after a successful insert. If
-   * it returns a failure, the insert will be rolled back. If the insert wasn't
-   * successful, it isn't called. May be nullptr.
-   */
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
-                ManagedDocumentResult& result, OperationOptions& options, bool lock,
-                KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
+                ManagedDocumentResult& result, OperationOptions& options);
 
   Result update(transaction::Methods*, velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions&, bool lock,
+                ManagedDocumentResult& result, OperationOptions&,
                 ManagedDocumentResult& previousMdr);
 
   Result replace(transaction::Methods*, velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions&, bool lock,
+                 ManagedDocumentResult& result, OperationOptions&,
                  ManagedDocumentResult& previousMdr);
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options, bool lock, ManagedDocumentResult& previousMdr,
-                KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
+                OperationOptions& options, ManagedDocumentResult& previousMdr);
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const;
@@ -390,14 +374,14 @@ class LogicalCollection : public LogicalDataSource {
 
   bool const _usesRevisionsAsDocumentIds;
 
-  TRI_voc_rid_t const _minRevision;
-
   // SECTION: Properties
   bool _waitForSync;
 
   bool const _allowUserKeys;
 
   bool _syncByRevision;
+  
+  TRI_voc_rid_t const _minRevision;
 
   std::string _smartJoinAttribute;
 

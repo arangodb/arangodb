@@ -83,14 +83,12 @@ function ahuacatlProfilerTestSuite () {
   const totalItems = (rowsPerShard) =>
     _.sum(_.values(rowsPerShard));
   const dbServerBatches = (rowsPerClient, fuzzy = false) => {
-    fuzzy = fuzzy || db._engine().name === 'mmfiles';
     return _.sum(
       _.values(rowsPerClient)
         .map(fuzzy ? mmfilesBatches : optimalBatches)
     );
   };
   const dbServerBatch = (rows, fuzzy = false) => {
-    fuzzy = fuzzy || db._engine().name === 'mmfiles';
     return (fuzzy ? mmfilesBatches : optimalBatches)(rows);
   };
   const dbServerOptimalBatches = (rowsPerClient) =>

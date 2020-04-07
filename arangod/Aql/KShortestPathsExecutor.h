@@ -166,8 +166,6 @@ class KShortestPathsExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
-      -> std::pair<ExecutionState, Stats>;
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)

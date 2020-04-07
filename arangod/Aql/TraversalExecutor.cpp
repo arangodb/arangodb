@@ -146,11 +146,10 @@ std::vector<std::pair<Variable const*, RegisterId>> const& TraversalExecutorInfo
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _inputRow{CreateInvalidInputRowHint{}}, _traverser(infos.traverser()) {
-
   // reset the traverser, so that no residual state is left in it. This is
-  // important because the TraversalExecutor is sometimes reconstructed (in place)
-  // with the same TraversalExecutorInfos as before. Those infos contain the traverser
-  // which might contain state from a previous run.
+  // important because the TraversalExecutor is sometimes reconstructed (in
+  // place) with the same TraversalExecutorInfos as before. Those infos contain
+  // the traverser which might contain state from a previous run.
   _traverser.done();
 }
 

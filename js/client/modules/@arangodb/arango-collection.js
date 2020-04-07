@@ -411,19 +411,6 @@ ArangoCollection.prototype.properties = function (properties) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief rotate the journal of a collection
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.rotate = function () {
-  var requestResult = this._database._connection.PUT(this._baseurl('rotate'), null);
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.result;
-};
-
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief recalculate counts of a acollection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -561,26 +548,6 @@ ArangoCollection.prototype.truncate = function (options) {
 
   if (!options.compact) {
     return;
-  }
-
-  // fetch storage engine type
-  var engine = getEngine(this._database);
-
-  if (engine === 'mmfiles') {
-    try {
-      // after we are done with the truncation, we flush the WAL to move out all
-      // remove operations
-      this._database._connection.PUT(this._prefixurl('/_admin/wal/flush?waitForSync=true&waitForCollector=true&maxWaitTime=5'), null);
-      try {
-        // after the WAL flush, we rotate the collection's active journals, so they can be
-        // compacted
-        this._database._connection.PUT(this._baseurl('rotate'), null);
-      } catch (err) {
-        // this operation is invisible to the user, so we will intentionally ignore all errors here
-      }
-    } catch (err) {
-      // ignore any WAL-flush related error (may be a privilege issue anyway)
-    }
   }
 };
 
@@ -963,25 +930,11 @@ ArangoCollection.prototype.save =
       url = appendSyncParameter(url, options.waitForSync);
     }
 
-    if (options.skipDocumentValidation) {
-      url = appendBoolParameter(url, 'skipDocumentValidation', options.skipDocumentValidation);
-    }
-
-    if (options.returnNew) {
-      url = appendBoolParameter(url, 'returnNew', options.returnNew);
-    }
-
-    if (options.returnOld) {
-      url = appendBoolParameter(url, 'returnOld', options.returnOld);
-    }
-
-    if (options.silent) {
-      url = appendBoolParameter(url, 'silent', options.silent);
-    }
-
-    if (options.overwrite) {
-      url = appendBoolParameter(url, 'overwrite', options.overwrite);
-    }
+    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function(key) {
+      if (options[key]) {
+        url = appendBoolParameter(url, key, options[key]);
+      }
+    });
 
     if (options.overwriteMode) {
       url = appendOverwriteModeParameter(url, options.overwriteMode);
