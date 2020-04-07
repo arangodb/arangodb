@@ -340,13 +340,13 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
   if (_checkUniqueness) {
     if (!_isLastIndex) {
       // insert & check for duplicates in one go
-      if (!_alreadyReturned.insert(token.id()).second) {
+      if (!_alreadyReturned.insert(RevisionId{token}).second) {
         // Document already in list. Skip this
         return false;
       }
     } else {
       // only check for duplicates
-      if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
+      if (_alreadyReturned.find(RevisionId{token.id()}) != _alreadyReturned.end()) {
         // Document found, skip
         return false;
       }

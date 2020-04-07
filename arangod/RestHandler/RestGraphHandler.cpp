@@ -274,9 +274,9 @@ void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collect
                                         std::string const& key) {
   // check for an etag
   bool isValidRevision;
-  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
+  RevisionId ifNoneRid = extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    ifNoneRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifNoneRid = RevisionId::max();  // an impossible rev, so precondition failed will happen
   }
 
   auto maybeRev = handleRevision();
@@ -296,8 +296,8 @@ void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collect
     return;
   }
 
-  if (ifNoneRid != 0) {
-    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+  if (ifNoneRid.isSet()) {
+    RevisionId const rid = RevisionId::fromSlice(result.slice());
     if (ifNoneRid == rid) {
       generateNotModified(rid);
       return;
@@ -537,9 +537,9 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
                                       const std::string& key) {
   // check for an etag
   bool isValidRevision;
-  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
+  RevisionId ifNoneRid = extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    ifNoneRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifNoneRid = RevisionId::max();  // an impossible rev, so precondition failed will happen
   }
 
   auto maybeRev = handleRevision();
@@ -553,8 +553,8 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
     return;
   }
 
-  if (ifNoneRid != 0) {
-    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+  if (ifNoneRid.isSet()) {
+    RevisionId const rid = RevisionId::fromSlice(result.slice());
     if (ifNoneRid == rid) {
       generateNotModified(rid);
       return;
@@ -861,7 +861,7 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
 
   if (result.fail()) {
     // need to call more detailed constructor here
-    generateTransactionError(collectionName, result, "", 0);
+    generateTransactionError(collectionName, result, "", RevisionId::none());
   } else {
     switch (colType) {
       case TRI_COL_TYPE_DOCUMENT:
@@ -999,18 +999,18 @@ Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph, TRI_co
 
 RequestLane RestGraphHandler::lane() const { return RequestLane::CLIENT_SLOW; }
 
-std::optional<TRI_voc_rid_t> RestGraphHandler::handleRevision() const {
+std::optional<RevisionId> RestGraphHandler::handleRevision() const {
   bool isValidRevision;
-  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
+  RevisionId revision = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    revision = UINT64_MAX;  // an impossible revision, so precondition failed
+    revision = RevisionId::max();  // an impossible revision, so precondition failed
   }
-  if (revision == 0 || revision == UINT64_MAX) {
+  if (revision.empty() || revision == RevisionId::max()) {
     bool found = false;
     std::string const& revString = _request->value("rev", found);
     if (found) {
-      revision = TRI_StringToRid(revString.data(), revString.size(), false);
+      revision = RevisionId::fromString(revString.data(), revString.size(), false);
     }
   }
-  return revision != 0 ? std::optional{revision} : std::nullopt;
+  return revision.isSet() ? std::optional{revision} : std::nullopt;
 }

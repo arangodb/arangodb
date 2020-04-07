@@ -402,13 +402,13 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice)
 
 void RestVocbaseBaseHandler::generatePreconditionFailed(std::string const& collectionName,
                                                         std::string const& key,
-                                                        TRI_voc_rid_t rev) {
+                                                        RevisionId rev) {
   VPackBuilder builder;
   builder.openObject();
   builder.add(StaticStrings::IdString,
               VPackValue(assembleDocumentId(collectionName, key, false)));
   builder.add(StaticStrings::KeyString, VPackValue(key));
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev)));
+  builder.add(StaticStrings::RevString, VPackValue(rev.toString()));
   builder.close();
 
   generatePreconditionFailed(builder.slice());
@@ -418,10 +418,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(std::string const& colle
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generateNotModified(RevisionId rid) {
   resetResponse(rest::ResponseCode::NOT_MODIFIED);
-  _response->setHeaderNC(StaticStrings::Etag,
-                         "\"" + TRI_RidToString(rid) + "\"");
+  _response->setHeaderNC(StaticStrings::Etag, "\"" + rid.toString() + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -464,7 +463,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input, bool gene
 void RestVocbaseBaseHandler::generateTransactionError(std::string const& collectionName,
                                                       OperationResult const& result,
                                                       std::string const& key,
-                                                      TRI_voc_rid_t rev) {
+                                                      RevisionId rev) {
   int code = result.errorNumber();
   switch (code) {
     case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
@@ -509,7 +508,7 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header, bool& isValid) const {
+RevisionId RestVocbaseBaseHandler::extractRevision(char const* header, bool& isValid) const {
   isValid = true;
   bool found;
   std::string const& etag = _request->header(header, found);
@@ -534,16 +533,16 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header, bool& 
       --e;
     }
 
-    TRI_voc_rid_t rid = 0;
+    RevisionId rid = RevisionId::none();
 
     bool isOld;
-    rid = TRI_StringToRid(s, e - s, isOld, false);
-    isValid = (rid != 0 && rid != UINT64_MAX);
+    rid = RevisionId::fromString(s, e - s, isOld, false);
+    isValid = (rid.isSet() && rid != RevisionId::max());
 
     return rid;
   }
 
-  return 0;
+  return RevisionId::none();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

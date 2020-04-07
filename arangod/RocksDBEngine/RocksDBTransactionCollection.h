@@ -28,6 +28,7 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -52,7 +53,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void unuse(int nestingLevel) override;
   void release() override;
 
-  TRI_voc_rid_t revision() const { return _revision; }
+  RevisionId revision() const { return _revision; }
   uint64_t numberDocuments() const {
     return _initialNumberDocuments + _numInserts - _numRemoves;
   }
@@ -61,7 +62,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t numRemoves() const { return _numRemoves; }
 
   /// @brief add an operation for a transaction collection
-  void addOperation(TRI_voc_document_operation_e operationType, TRI_voc_rid_t revisionId);
+  void addOperation(TRI_voc_document_operation_e operationType, RevisionId revisionId);
 
   /**
    * @brief Prepare collection for commit by placing collection blockers
@@ -85,15 +86,15 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
-  void trackInsert(TRI_voc_rid_t rid);
+  void trackInsert(RevisionId rid);
 
   /// @brief Track documents removed from the collection
   ///        Used to update the revision tree for replication after commit
-  void trackRemove(TRI_voc_rid_t rid);
+  void trackRemove(RevisionId rid);
 
   struct TrackedOperations {
-    std::vector<std::size_t> inserts;
-    std::vector<std::size_t> removals;
+    std::vector<std::uint64_t> inserts;
+    std::vector<std::uint64_t> removals;
     bool empty() const { return inserts.empty() && removals.empty(); }
     void clear() {
       inserts.clear();
@@ -147,7 +148,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   bool _exclusiveWrites;
 
   uint64_t _initialNumberDocuments;
-  TRI_voc_rid_t _revision;
+  RevisionId _revision;
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;

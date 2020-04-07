@@ -390,7 +390,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       }
       highKey.assign(key.data(), key.size());
 
-      TRI_voc_rid_t docRev;
+      RevisionId docRev;
       if (!RocksDBValue::revisionId(cIter->iter->value(), docRev)) {
         // for collections that do not have the revisionId in the value
         LocalDocumentId docId = RocksDBValue::documentId(cIter->iter->value());
@@ -401,7 +401,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
                          docKey.string(), &ps);
         if (s.ok()) {
           TRI_ASSERT(ps.size() > 0);
-          docRev = TRI_ExtractRevisionId(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
+          docRev = RevisionId::fromSlice(
+              VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
         } else {
           LOG_TOPIC("32e3b", WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
@@ -410,7 +411,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
           return rv.reset(TRI_ERROR_INTERNAL);
         }
       }
-      TRI_ASSERT(docRev != 0);
+      TRI_ASSERT(docRev.isSet());
 
       // we can get away with the fast hash function here, as key values are
       // restricted to strings
@@ -418,7 +419,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       tmpHashBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
       hashval ^= tmpHashBuilder.slice().hashString();
       tmpHashBuilder.clear();
-      tmpHashBuilder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
+      tmpHashBuilder.add(docRev.toValuePair(&ridBuffer[0]));
       hashval ^= tmpHashBuilder.slice().hashString();
 
       cIter->iter->Next();
@@ -449,7 +450,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
           << "an offet of " << adjustment << " will be applied";
       auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
       auto seq = rocksutils::latestSequenceNumber();
-      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+      rcoll->meta().adjustNumberDocuments(seq, static_cast<RevisionId>(0), adjustment);
     }
   }
 
@@ -537,7 +538,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
       cIter->lastSortedIteratorOffset++;
     });
 
-    TRI_voc_rid_t docRev;
+    RevisionId docRev;
     if (!RocksDBValue::revisionId(cIter->iter->value(), docRev)) {
       // for collections that do not have the revisionId in the value
       LocalDocumentId docId = RocksDBValue::documentId(cIter->iter->value());
@@ -548,7 +549,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
                        tmpKey.string(), &ps);
       if (s.ok()) {
         TRI_ASSERT(ps.size() > 0);
-        docRev = TRI_ExtractRevisionId(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
+        docRev = RevisionId::fromSlice(
+            VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
       } else {
         arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
         LOG_TOPIC("41803", WARN, Logger::REPLICATION)
@@ -562,7 +564,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
     arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
     b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
-    b.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
+    b.add(docRev.toValuePair(&ridBuffer[0]));
     b.close();
   }
   b.close();

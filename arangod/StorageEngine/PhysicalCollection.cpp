@@ -173,23 +173,21 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxNam
   return nullptr;
 }
 
-TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
+RevisionId PhysicalCollection::newRevisionId() const {
   if (_logicalCollection.hasClusterWideUniqueRevs()) {
     application_features::ApplicationServer& server =
         _logicalCollection.vocbase().server();
-    ClusterFeature& cf = server.getFeature<ClusterFeature>();
-    ClusterInfo& ci = cf.clusterInfo();
-    return static_cast<TRI_voc_rid_t>(ci.uniqid());
+    return RevisionId::createClusterWideUnique(server);
   }
-  return TRI_HybridLogicalClock();
+  return RevisionId::create();
 }
 
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 Result PhysicalCollection::mergeObjectsForUpdate(
-    transaction::Methods*, VPackSlice const& oldValue,
-    VPackSlice const& newValue, bool isEdgeCollection, bool mergeObjects,
-    bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
+    transaction::Methods*, VPackSlice const& oldValue, VPackSlice const& newValue,
+    bool isEdgeCollection, bool mergeObjects, bool keepNull, VPackBuilder& b,
+    bool isRestore, RevisionId& revisionId) const {
   b.openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -267,7 +265,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
       b.add(StaticStrings::RevString, s);
       VPackValueLength l;
       char const* p = s.getStringUnchecked(l);
-      revisionId = TRI_StringToRid(p, l, false);
+      revisionId = RevisionId::fromString(p, l, false);
       handled = true;
     }
   }
@@ -275,7 +273,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     // temporary buffer for stringifying revision ids
     char ridBuffer[21];
     revisionId = newRevisionId();
-    b.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
+    b.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -340,7 +338,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
                                               VPackSlice const& value, bool isEdgeCollection,
                                               VPackBuilder& builder, bool isRestore,
-                                              TRI_voc_rid_t& revisionId) const {
+                                              RevisionId& revisionId) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -421,7 +419,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
       char const* str = s.getStringUnchecked(l);
-      revisionId = TRI_StringToRid(str, l, false);
+      revisionId = RevisionId::fromString(str, l, false);
       handled = true;
     }
   }
@@ -429,7 +427,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
     // temporary buffer for stringifying revision ids
     char ridBuffer[21];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
+    builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -440,10 +438,9 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
 }
 
 /// @brief new object for remove, must have _key set
-void PhysicalCollection::newObjectForRemove(transaction::Methods*,
-                                            VPackSlice const& oldValue,
+void PhysicalCollection::newObjectForRemove(transaction::Methods*, VPackSlice const& oldValue,
                                             VPackBuilder& builder, bool isRestore,
-                                            TRI_voc_rid_t& revisionId) const {
+                                            RevisionId& revisionId) const {
   // create an object consisting of _key and _rev (in this order)
   builder.openObject();
   if (oldValue.isString()) {
@@ -457,7 +454,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods*,
   // temporary buffer for stringifying revision ids
   char ridBuffer[21];
   revisionId = newRevisionId();
-  builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
+  builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   builder.close();
 }
 
@@ -467,7 +464,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
                                                VPackSlice const& oldValue,
                                                VPackSlice const& newValue, bool isEdgeCollection,
                                                VPackBuilder& builder, bool isRestore,
-                                               TRI_voc_rid_t& revisionId) const {
+                                               RevisionId& revisionId) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -510,7 +507,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
       char const* p = s.getStringUnchecked(l);
-      revisionId = TRI_StringToRid(p, l, false);
+      revisionId = RevisionId::fromString(p, l, false);
       handled = true;
     }
   }
@@ -518,7 +515,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
     // temporary buffer for stringifying revision ids
     char ridBuffer[21];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
+    builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -550,9 +547,9 @@ void PhysicalCollection::removeRevisionTreeBlocker(TRI_voc_tid_t) {
 }
 
 /// @brief checks the revision of a document
-int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
-                                      TRI_voc_rid_t found) const {
-  if (expected != 0 && found != expected) {
+int PhysicalCollection::checkRevision(transaction::Methods*, RevisionId expected,
+                                      RevisionId found) const {
+  if (expected.isSet() && found != expected) {
     return TRI_ERROR_ARANGO_CONFLICT;
   }
   return TRI_ERROR_NO_ERROR;

@@ -148,7 +148,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
       // on with a replace.
       if (keySlice.isString()) {
-        std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
         if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
           useReplace = true;
           opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());

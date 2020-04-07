@@ -268,7 +268,7 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
 /// this is an optimized version used when loading collections, WAL
 /// collection and compaction
 void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
-                                                        TRI_voc_rid_t& revisionId) {
+                                                        RevisionId& revisionId) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
@@ -289,13 +289,7 @@ void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackS
       foundKey = true;
     } else if (*p == basics::VelocyPackHelper::RevAttribute) {
       VPackSlice revSlice(p + 1);
-      if (revSlice.isString()) {
-        VPackValueLength l;
-        char const* p = revSlice.getStringUnchecked(l);
-        revisionId = TRI_StringToRid(p, l, false);
-      } else if (revSlice.isNumber()) {
-        revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
-      }
+      revisionId = RevisionId::fromSlice(revSlice);
       if (foundKey) {
         return;
       }
@@ -312,12 +306,12 @@ void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackS
     keySlice = slice.get(StaticStrings::KeyString);
     VPackValueLength l;
     char const* p = slice.get(StaticStrings::RevString).getString(l);
-    revisionId = TRI_StringToRid(p, l, false);
+    revisionId = RevisionId::fromString(p, l, false);
   }
 }
 
 /// @brief extract _rev from a database document
-TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
+RevisionId transaction::helpers::extractRevFromDocument(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
 
@@ -327,15 +321,7 @@ TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
   while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
     if (*p == basics::VelocyPackHelper::RevAttribute) {
       VPackSlice revSlice(p + 1);
-      if (revSlice.isString()) {
-        VPackValueLength l;
-        char const* p = revSlice.getStringUnchecked(l);
-        return TRI_StringToRid(p, l, false);
-      } else if (revSlice.isNumber()) {
-        return revSlice.getNumericValue<TRI_voc_rid_t>();
-      }
-      // invalid type for revision id
-      return 0;
+      return RevisionId::fromSlice(revSlice);
     }
     // skip over the attribute name
     ++p;
@@ -344,11 +330,7 @@ TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
   }
 
   // fall back to regular lookup
-  {
-    VPackValueLength l;
-    char const* p = slice.get(StaticStrings::RevString).getString(l);
-    return TRI_StringToRid(p, l, false);
-  }
+  return RevisionId::fromSlice(slice);
 }
 
 VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {

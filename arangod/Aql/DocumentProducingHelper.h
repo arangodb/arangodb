@@ -24,14 +24,15 @@
 #ifndef ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
 
-#include "Aql/types.h"
-#include "Indexes/IndexIterator.h"
-#include "VocBase/voc-types.h"
-
 #include <functional>
 #include <string>
 #include <unordered_set>
 #include <vector>
+
+#include "Aql/types.h"
+#include "Indexes/IndexIterator.h"
+#include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 class LocalDocumentId;
@@ -121,7 +122,7 @@ struct DocumentProducingFunctionContext {
   size_t _numFiltered;
 
   /// @brief set of already returned documents. Used to make the result distinct
-  std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
+  std::unordered_set<RevisionId> _alreadyReturned;
 
   RegisterId const _outputRegister;
   bool const _produceResult;

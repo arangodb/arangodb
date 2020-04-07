@@ -72,8 +72,7 @@
 using namespace arangodb;
 
 namespace {
-LocalDocumentId generateDocumentId(LogicalCollection const& collection,
-                                   TRI_voc_rid_t revisionId) {
+LocalDocumentId generateDocumentId(LogicalCollection const& collection, RevisionId revisionId) {
   bool useRev = collection.usesRevisionsAsDocumentIds();
   return useRev ? LocalDocumentId::create(revisionId) : LocalDocumentId::create();
 }
@@ -691,10 +690,10 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     // To print the WAL we need key and RID
     VPackSlice key;
-    TRI_voc_rid_t rid = 0;
+    RevisionId rid = RevisionId::none();
     transaction::helpers::extractKeyAndRevFromDocument(document, key, rid);
     TRI_ASSERT(key.isString());
-    TRI_ASSERT(rid != 0);
+    TRI_ASSERT(rid.isSet());
 
     RocksDBSavePoint guard(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
     state->prepareOperation(_logicalCollection.id(),
@@ -709,7 +708,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     }
 
     bool hasPerformedIntermediateCommit = false;
-    res = state->addOperation(_logicalCollection.id(), docId.id(), TRI_VOC_DOCUMENT_OPERATION_REMOVE,
+    res = state->addOperation(_logicalCollection.id(), RevisionId{docId},
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                               hasPerformedIntermediateCommit);
 
     if (res.fail()) {  // This should never happen...
@@ -743,43 +743,42 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   return Result{};
 }
 
-Result RocksDBCollection::lookupKey(transaction::Methods* trx,
-                                    VPackStringRef key,
-                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const {
+Result RocksDBCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
+                                    std::pair<LocalDocumentId, RevisionId>& result) const {
   result.first.clear();
-  result.second = 0;
-  
+  result.second = RevisionId::none();
+
   // lookup the revision id in the primary index
   if (!primaryIndex()->lookupRevision(trx, key, result.first, result.second)) {
     // document not found
     TRI_ASSERT(!result.first.isSet());
-    TRI_ASSERT(result.second == 0);
+    TRI_ASSERT(result.second.empty());
     return Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   // document found, but revisionId may not have been present in the primary
   // index. this can happen for "older" collections
   TRI_ASSERT(result.first.isSet());
-  TRI_ASSERT(result.second != 0);
+  TRI_ASSERT(result.second.isSet());
   return Result();
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice const& key,
-                                       TRI_voc_rid_t& revisionId) const {
+                                       RevisionId& revisionId) const {
   TRI_ASSERT(key.isString());
   LocalDocumentId documentId;
-  revisionId = 0;
+  revisionId = RevisionId::none();
   // lookup the revision id in the primary index
   if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key),
                                       documentId, revisionId)) {
     // document not found
-    TRI_ASSERT(revisionId == 0);
+    TRI_ASSERT(revisionId.empty());
     return false;
   }
 
   // document found, and we have a valid revisionId
   TRI_ASSERT(documentId.isSet());
-  TRI_ASSERT(revisionId != 0);
+  TRI_ASSERT(revisionId.isSet());
   return true;
 }
 
@@ -843,7 +842,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
-  TRI_voc_tick_t revisionId;
+  RevisionId revisionId;
   Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder.get(),
                                 options.isRestore, revisionId));
   if (res.fail()) {
@@ -936,10 +935,10 @@ Result RocksDBCollection::update(transaction::Methods* trx,
   TRI_ASSERT(previousPS.size() > 0);
   VPackSlice const oldDoc(reinterpret_cast<uint8_t const*>(previousPS.data()));
   previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
-  TRI_ASSERT(previousMdr.revisionId() != 0);
+  TRI_ASSERT(previousMdr.revisionId().isSet());
 
   if (!options.ignoreRevs) {  // Check old revision:
-    TRI_voc_rid_t expectedRev = TRI_ExtractRevisionId(newSlice);
+    RevisionId expectedRev = RevisionId::fromSlice(newSlice);
     int result = checkRevision(trx, expectedRev, previousMdr.revisionId());
     if (result != TRI_ERROR_NO_ERROR) {
       return res.reset(result);
@@ -956,7 +955,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
   }
 
   // merge old and new values
-  TRI_voc_rid_t revisionId;
+  RevisionId revisionId;
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
@@ -1055,10 +1054,10 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   TRI_ASSERT(previousPS.size() > 0);
   VPackSlice const oldDoc(reinterpret_cast<uint8_t const*>(previousPS.data()));
   previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
-  TRI_ASSERT(previousMdr.revisionId() != 0);
+  TRI_ASSERT(previousMdr.revisionId().isSet());
 
   if (!options.ignoreRevs) {  // Check old revision:
-    TRI_voc_rid_t expectedRev = TRI_ExtractRevisionId(newSlice);
+    RevisionId expectedRev = RevisionId::fromSlice(newSlice);
     res = checkRevision(trx, expectedRev, previousMdr.revisionId());
     if (res.fail()) {
       return res;
@@ -1066,7 +1065,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   // merge old and new values
-  TRI_voc_rid_t revisionId;
+  RevisionId revisionId;
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
@@ -1158,7 +1157,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   // Check old revision:
   LocalDocumentId expectedId;
   if (!options.ignoreRevs && slice.isObject()) {
-    expectedId = LocalDocumentId::create(TRI_ExtractRevisionId(slice));
+    expectedId = LocalDocumentId::create(RevisionId::fromSlice(slice));
   }
 
   return remove(trx, documentId, expectedId, previousMdr, options);
@@ -1188,11 +1187,11 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   TRI_ASSERT(previousPS.size() > 0);
   VPackSlice const oldDoc(reinterpret_cast<uint8_t const*>(previousPS.data()));
   previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
-  TRI_ASSERT(previousMdr.revisionId() != 0);
+  TRI_ASSERT(previousMdr.revisionId().isSet());
 
   // Check old revision:
   if (!options.ignoreRevs && expectedId.isSet()) {
-    res = checkRevision(&trx, expectedId.id(), previousMdr.revisionId());
+    res = checkRevision(&trx, RevisionId{expectedId}, previousMdr.revisionId());
     if (res.fail()) {
       return res;
     }
@@ -1231,7 +1230,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 
 void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t diff) {
   auto seq = rocksutils::latestSequenceNumber();
-  meta().adjustNumberDocuments(seq, /*revId*/ 0, diff);
+  meta().adjustNumberDocuments(seq, RevisionId::none(), diff);
 }
 
 /// @brief return engine-specific figures
@@ -1334,7 +1333,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   if (res.ok()) {
     RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
-                                                       documentId.id());
+                                                       RevisionId{documentId});
   }
 
   return res;
@@ -1390,7 +1389,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   if (res.ok()) {
     RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
-                                                       documentId.id());
+                                                       RevisionId{documentId});
   }
 
   return res;
@@ -1459,9 +1458,9 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
 
   if (res.ok()) {
     RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
-                                                       oldDocumentId.id());
+                                                       RevisionId{oldDocumentId});
     RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
-                                                       newDocumentId.id());
+                                                       RevisionId{newDocumentId});
   }
 
   return res;

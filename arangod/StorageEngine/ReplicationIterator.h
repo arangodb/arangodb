@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -68,11 +69,11 @@ class RevisionReplicationIterator : public ReplicationIterator {
 
   Ordering order() const override;
 
-  virtual TRI_voc_rid_t revision() const = 0;
+  virtual RevisionId revision() const = 0;
   virtual VPackSlice document() const = 0;
 
   virtual void next() = 0;
-  virtual void seek(TRI_voc_rid_t) = 0;
+  virtual void seek(RevisionId) = 0;
 };
 
 }  // namespace arangodb

@@ -42,11 +42,11 @@ class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
   virtual bool hasMore() const override;
   virtual void reset() override;
 
-  virtual TRI_voc_rid_t revision() const override;
+  virtual RevisionId revision() const override;
   virtual VPackSlice document() const override;
 
   virtual void next() override;
-  virtual void seek(TRI_voc_rid_t) override;
+  virtual void seek(RevisionId) override;
 
  private:
   std::unique_ptr<rocksdb::Iterator> _iter;

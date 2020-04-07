@@ -69,7 +69,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
 
   if (collection.syncByRevision()) {
     _revisionTree =
-        std::make_unique<containers::RevisionTree>(6, collection.minRevision());
+        std::make_unique<containers::RevisionTree>(6, collection.minRevision().id());
   }
 }
 
@@ -83,7 +83,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
 
   if (collection.syncByRevision()) {
     _revisionTree =
-        std::make_unique<containers::RevisionTree>(6, collection.minRevision());
+        std::make_unique<containers::RevisionTree>(6, collection.minRevision().id());
   }
 }
 
@@ -97,7 +97,7 @@ void RocksDBMetaCollection::deferDropCollection(std::function<bool(LogicalCollec
   _revisionTree.reset();
 }
 
-TRI_voc_rid_t RocksDBMetaCollection::revision(transaction::Methods* trx) const {
+RevisionId RocksDBMetaCollection::revision(transaction::Methods* trx) const {
   auto* state = RocksDBTransactionState::toState(trx);
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(
                                                                   state->findCollection(_logicalCollection.id()));
@@ -293,7 +293,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
     << "inconsistent collection count detected, "
     << "an offet of " << adjustment << " will be applied";
-    _meta.adjustNumberDocuments(0, static_cast<TRI_voc_rid_t>(0), adjustment);
+    _meta.adjustNumberDocuments(0, static_cast<RevisionId>(0), adjustment);
   }
   
   return _meta.numberDocuments();
@@ -483,15 +483,15 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
 
 Result RocksDBMetaCollection::rebuildRevisionTree() {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  _revisionTree =
-      std::make_unique<containers::RevisionTree>(6, _logicalCollection.minRevision());
+  _revisionTree = std::make_unique<containers::RevisionTree>(
+      6, _logicalCollection.minRevision().id());
 
   Result res = basics::catchToResult([this]() -> Result {
     auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
     SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
     auto* state = RocksDBTransactionState::toState(&trx);
 
-    std::vector<std::size_t> revisions;
+    std::vector<RevisionId::BaseType> revisions;
     auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
     if (!iter) {
       LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
@@ -503,7 +503,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     RevisionReplicationIterator& it =
         *static_cast<RevisionReplicationIterator*>(iter.get());
     while (it.hasMore()) {
-      revisions.emplace_back(it.revision());
+      revisions.emplace_back(it.revision().id());
       if (revisions.size() >= 5000) {  // arbitrary batch size
         _revisionTree->insert(revisions);
         revisions.clear();

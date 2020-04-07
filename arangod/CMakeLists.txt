@@ -385,6 +385,8 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Utils/DatabaseGuard.cpp
   Utils/SingleCollectionTransaction.cpp
   VocBase/Identifiers/IndexId.cpp
+  VocBase/Identifiers/LocalDocumentId.cpp
+  VocBase/Identifiers/RevisionId.cpp
   VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
@@ -891,6 +893,7 @@ target_link_libraries(arango_pregel boost_system)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
+target_link_libraries(arango_replication arango_vocbase)
 
 target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 target_link_libraries(arango_rocksdb arango_cache)

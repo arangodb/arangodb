@@ -1726,8 +1726,8 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
 
           if (generateNewRevisionIds && arangodb::velocypack::StringRef(it.key) ==
                                             StaticStrings::RevString) {
-            TRI_voc_rid_t newRid = physical->newRevisionId();
-            builder.add(TRI_RidToValuePair(newRid, ridBuffer));
+            RevisionId newRid = physical->newRevisionId();
+            builder.add(newRid.toValuePair(ridBuffer));
           } else {
             builder.add(it.value);
           }
@@ -2978,7 +2978,7 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
   // get resume
   std::string const& resumeString = _request->value("resume", found);
   if (found) {
-    ctx.resume = basics::HybridLogicalClock::decodeTimeStamp(resumeString);
+    ctx.resume = RevisionId::fromString(resumeString);
   }
 
   // print request
@@ -3081,7 +3081,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
   bool badFormat = !body.isArray();
   if (!badFormat) {
     std::size_t i = 0;
-    std::uint64_t previousRight = 0;
+    RevisionId previousRight = RevisionId::none();
     for (VPackSlice entry : VPackArrayIterator(body)) {
       if (!entry.isArray() || entry.length() != 2) {
         badFormat = true;
@@ -3093,10 +3093,10 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         badFormat = true;
         break;
       }
-      TRI_voc_rid_t left = basics::HybridLogicalClock::decodeTimeStamp(first);
-      TRI_voc_rid_t right = basics::HybridLogicalClock::decodeTimeStamp(second);
-      if (left == std::numeric_limits<TRI_voc_rid_t>::max() ||
-          right == std::numeric_limits<TRI_voc_rid_t>::max() || left >= right ||
+      RevisionId left = RevisionId::fromSlice(first);
+      RevisionId right = RevisionId::fromSlice(second);
+      if (left == std::numeric_limits<RevisionId>::max() ||
+          right == std::numeric_limits<RevisionId>::max() || left >= right ||
           left < previousRight) {
         badFormat = true;
         break;
@@ -3123,14 +3123,14 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
   VPackBuilder response;
   {
     VPackObjectBuilder obj(&response);
-    TRI_voc_rid_t resumeNext = ctx.resume;
+    RevisionId resumeNext = ctx.resume;
     VPackSlice range;
-    TRI_voc_rid_t left;
-    TRI_voc_rid_t right;
+    RevisionId left;
+    RevisionId right;
     auto setRange = [&body, &range, &left, &right](std::size_t index) -> void {
       range = body.at(index);
-      left = basics::HybridLogicalClock::decodeTimeStamp(range.at(0));
-      right = basics::HybridLogicalClock::decodeTimeStamp(range.at(1));
+      left = RevisionId::fromSlice(range.at(0));
+      right = RevisionId::fromSlice(range.at(1));
     };
     setRange(current);
 
@@ -3150,13 +3150,13 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
           TRI_ASSERT(!subOpen);
           response.openArray();
           subOpen = true;
-          resumeNext = std::max(ctx.resume + 1, left);
+          resumeNext = std::max(ctx.resume.next(), left);
         }
 
         if (it.hasMore() && it.revision() >= left && it.revision() <= right) {
-          response.add(basics::HybridLogicalClock::encodeTimeStampToValuePair(it.revision(), ridBuffer));
+          response.add(it.revision().toValuePair(ridBuffer));
           ++total;
-          resumeNext = it.revision() + 1;
+          resumeNext = it.revision().next();
           it.next();
         }
 
@@ -3166,7 +3166,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
           subOpen = false;
           response.close();
           TRI_ASSERT(response.isOpenArray());
-          resumeNext = right + 1;
+          resumeNext = right.next();
           ++current;
           if (current < body.length()) {
             setRange(current);
@@ -3189,8 +3189,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     if (body.length() >= 1) {
       setRange(body.length() - 1);
       if (body.length() > 0 && resumeNext <= right) {
-        response.add(StaticStrings::RevisionTreeResume,
-                     basics::HybridLogicalClock::encodeTimeStampToValuePair(resumeNext, ridBuffer));
+        response.add(StaticStrings::RevisionTreeResume, resumeNext.toValuePair(ridBuffer));
       }
     }
   }
@@ -3247,7 +3246,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     VPackArrayBuilder docs(&response);
 
     for (VPackSlice entry : VPackArrayIterator(body)) {
-      TRI_voc_rid_t rev = basics::HybridLogicalClock::decodeTimeStamp(entry);
+      RevisionId rev = RevisionId::fromSlice(entry);
       if (it.hasMore() && it.revision() < rev) {
         it.seek(rev);
       }

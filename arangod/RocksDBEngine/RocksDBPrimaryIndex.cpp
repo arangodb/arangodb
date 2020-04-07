@@ -547,9 +547,9 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
                                          arangodb::velocypack::StringRef keyRef,
                                          LocalDocumentId& documentId,
-                                         TRI_voc_rid_t& revisionId) const {
+                                         RevisionId& revisionId) const {
   documentId.clear();
-  revisionId = 0;
+  revisionId = RevisionId::none();
 
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
@@ -576,7 +576,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
                                    OperationOptions& options) {
   Index::OperationMode mode = options.indexOperationMode;
   VPackSlice keySlice;
-  TRI_voc_rid_t revision;
+  RevisionId revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
 
   TRI_ASSERT(keySlice.isString());
@@ -608,7 +608,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
     blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
   }
 
-  TRI_ASSERT(revision != 0);
+  TRI_ASSERT(revision.isSet());
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
   rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ true);
   if (!s.ok()) {
@@ -631,7 +631,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
 
   key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
-  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
+  RevisionId revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
   
   // blacklist new index entry to avoid caching without committing first

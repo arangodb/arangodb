@@ -51,8 +51,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   uint64_t objectId() const { return _objectId; }
   
   RocksDBMetadata& meta() { return _meta; }
-  
-  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override final;
+
+  RevisionId revision(arangodb::transaction::Methods* trx) const override final;
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
   
   int lockWrite(double timeout = 0.0);

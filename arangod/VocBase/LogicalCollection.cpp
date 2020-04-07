@@ -160,9 +160,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
       _syncByRevision(determineSyncByRevision()),
       _minRevision(isSmartChild()
-                       ? 0
-                       : Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision,
-                                                                0)),
+                       ? RevisionId::none()
+                       : RevisionId::fromSlice(info.get(StaticStrings::MinRevision))),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
@@ -465,7 +464,7 @@ TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
 }
 
 // SECTION: Properties
-TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
+RevisionId LogicalCollection::revision(transaction::Methods* trx) const {
   // TODO CoordinatorCase
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return _physical->revision(trx);
@@ -475,9 +474,7 @@ bool LogicalCollection::usesRevisionsAsDocumentIds() const {
   return _usesRevisionsAsDocumentIds;
 }
 
-TRI_voc_rid_t LogicalCollection::minRevision() const {
-  return _minRevision;
-}
+RevisionId LogicalCollection::minRevision() const { return _minRevision; }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
@@ -743,7 +740,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
   result.add(StaticStrings::UsesRevisionsAsDocumentIds,
              VPackValue(usesRevisionsAsDocumentIds()));
-  result.add(StaticStrings::MinRevision, VPackValue(minRevision()));
+  result.add(StaticStrings::MinRevision, VPackValue(minRevision().toString()));
   result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
 
   if (hasSmartJoinAttribute()) {
@@ -1057,7 +1054,7 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 Result LogicalCollection::compact() { return getPhysical()->compact(); }
 
 Result LogicalCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
-                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const { 
+                                    std::pair<LocalDocumentId, RevisionId>& result) const {
   return getPhysical()->lookupKey(trx, key, result);
 }
 

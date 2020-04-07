@@ -172,7 +172,7 @@ void RocksDBTransactionCollection::release() {
 
 /// @brief add an operation for a transaction collection
 void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e operationType,
-                                                TRI_voc_rid_t revisionId) {
+                                                RevisionId revisionId) {
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
@@ -216,7 +216,7 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   // Update the collection count
   int64_t const adj = _numInserts - _numRemoves;
   if (hasOperations()) {
-    TRI_ASSERT(_revision != 0 && commitSeq != 0);
+    TRI_ASSERT(_revision.isSet() && commitSeq != 0);
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 
@@ -255,15 +255,15 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   _trackedIndexOperations.clear();
 }
 
-void RocksDBTransactionCollection::trackInsert(TRI_voc_rid_t rid) {
+void RocksDBTransactionCollection::trackInsert(RevisionId rid) {
   if (_collection->syncByRevision()) {
-    _trackedOperations.inserts.emplace_back(static_cast<std::size_t>(rid));
+    _trackedOperations.inserts.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
 
-void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
+void RocksDBTransactionCollection::trackRemove(RevisionId rid) {
   if (_collection->syncByRevision()) {
-    _trackedOperations.removals.emplace_back(static_cast<std::size_t>(rid));
+    _trackedOperations.removals.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
 
