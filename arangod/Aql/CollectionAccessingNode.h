@@ -109,7 +109,7 @@ class CollectionAccessingNode {
   void useAsSatelliteOf(ExecutionNodeId prototypeAccessId);
 
   void cloneInto(CollectionAccessingNode& c) const {
-    c._collectionAccess = std::make_shared<aql::CollectionAccess>(*_collectionAccess);
+    c._collectionAccess = _collectionAccess;
     c._restrictedTo = _restrictedTo;
     c._usedShard = _usedShard;
   }
@@ -124,11 +124,10 @@ class CollectionAccessingNode {
   /// @brief Get local value of getSatelliteOf, without resolving it recursively.
   auto getRawSatelliteOf() const -> std::optional<aql::ExecutionNodeId>;
 
-  auto collectionAccess() const -> std::shared_ptr<aql::CollectionAccess const>;
+  auto collectionAccess() const -> aql::CollectionAccess const&;
 
  protected:
-  // TODO This does not have to be external any longer
-  std::shared_ptr<aql::CollectionAccess> _collectionAccess;
+  aql::CollectionAccess _collectionAccess;
 
   /// @brief A shard this node is restricted to, may be empty
   std::string _restrictedTo;

@@ -42,9 +42,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
-    : _collectionAccess(std::make_shared<CollectionAccess>(collection)) {
-  TRI_ASSERT(_collectionAccess != nullptr);
-  TRI_ASSERT(_collectionAccess->collection() != nullptr);
+    : _collectionAccess(collection) {
+  TRI_ASSERT(_collectionAccess.collection() != nullptr);
   TRI_ASSERT(_usedShard.empty());
 }
 
@@ -60,8 +59,7 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
   }
   // After we optionally added the collection for distribute we can create
   // the CollectionAccess:
-  _collectionAccess =
-      std::make_shared<CollectionAccess>(plan->getAst()->query()->collections(), slice);
+  _collectionAccess = CollectionAccess{plan->getAst()->query()->collections(), slice};
 
   VPackSlice restrictedTo = slice.get("restrictedTo");
 
@@ -71,14 +69,14 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
 }
 
 TRI_vocbase_t* CollectionAccessingNode::vocbase() const {
-  return _collectionAccess->collection()->vocbase();
+  return collection()->vocbase();
 }
 
 /// @brief modify collection after cloning
 /// should be used only in smart-graph context!
 void CollectionAccessingNode::collection(aql::Collection const* collection) {
   TRI_ASSERT(collection != nullptr);
-  _collectionAccess->setCollection(collection);
+  _collectionAccess.setCollection(collection);
 }
 
 void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
@@ -124,26 +122,26 @@ void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypac
 }
 
 bool CollectionAccessingNode::isUsedAsSatellite() const {
-  return _collectionAccess->isUsedAsSatellite();
+  return _collectionAccess.isUsedAsSatellite();
 }
 
 void CollectionAccessingNode::useAsSatelliteOf(ExecutionNodeId prototypeAccessId) {
   TRI_ASSERT(collection()->isSatellite());
-  _collectionAccess->useAsSatelliteOf(prototypeAccessId);
+  _collectionAccess.useAsSatelliteOf(prototypeAccessId);
 }
 
 auto CollectionAccessingNode::getSatelliteOf(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
     -> ExecutionNode* {
-  return _collectionAccess->getSatelliteOf(nodesById);
+  return _collectionAccess.getSatelliteOf(nodesById);
 }
 
 auto CollectionAccessingNode::getRawSatelliteOf() const -> std::optional<aql::ExecutionNodeId> {
-  return _collectionAccess->getRawSatelliteOf();
+  return _collectionAccess.getRawSatelliteOf();
 }
 
 aql::Collection const* CollectionAccessingNode::collection() const {
-  return _collectionAccess->collection();
+  return _collectionAccess.collection();
 }
 
 void CollectionAccessingNode::restrictToShard(std::string const& shardId) {
@@ -160,17 +158,17 @@ std::string const& CollectionAccessingNode::restrictedShard() const {
 
 void CollectionAccessingNode::setPrototype(arangodb::aql::Collection const* prototypeCollection,
                                            arangodb::aql::Variable const* prototypeOutVariable) {
-  _collectionAccess->setPrototype(prototypeCollection, prototypeOutVariable);
+  _collectionAccess.setPrototype(prototypeCollection, prototypeOutVariable);
 }
 
 aql::Collection const* CollectionAccessingNode::prototypeCollection() const {
-  return _collectionAccess->prototypeCollection();
+  return _collectionAccess.prototypeCollection();
 }
 
 aql::Variable const* CollectionAccessingNode::prototypeOutVariable() const {
-  return _collectionAccess->prototypeOutVariable();
+  return _collectionAccess.prototypeOutVariable();
 }
 
-auto CollectionAccessingNode::collectionAccess() const -> std::shared_ptr<aql::CollectionAccess const> {
+auto CollectionAccessingNode::collectionAccess() const -> aql::CollectionAccess const& {
   return _collectionAccess;
 }

@@ -46,6 +46,7 @@ struct Variable;
  */
 class CollectionAccess {
  public:
+  CollectionAccess() = default;
   explicit CollectionAccess(aql::Collection const*);
   CollectionAccess(aql::Collections const*, velocypack::Slice);
 
