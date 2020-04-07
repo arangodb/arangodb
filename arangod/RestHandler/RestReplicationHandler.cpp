@@ -1750,7 +1750,8 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
-    options.overwrite = true;
+    options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+    
     double startTime = TRI_microtime();
     opRes = trx.insert(collectionName, requestSlice, options);
     double duration = TRI_microtime() - startTime;

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -1780,6 +1780,71 @@
           analyzers.remove(queryAnalyzer, true);
         }
       },
+
+      testAnalyzerNotOrFalse : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.a != 'foo' OR FALSE, 'identity') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertNotEqual(0, result.length);
+      },
+
+      testPhraseTerm : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {TERM: 'quick'}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseTermViaArray : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{TERM: 'quick'}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseStartsWith : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {STARTS_WITH: 'qui'}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseStartsWithViaArray : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{STARTS_WITH: 'qui'}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseWildcard : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {WILDCARD: 'qu_ck'}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseWildcardViaArray : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{WILDCARD: 'qu_ck'}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseLevenshteinMatch : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {LEVENSHTEIN_MATCH: ['queck', 1, false]}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseLevenshteinMatchViaArray : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{LEVENSHTEIN_MATCH: ['queck', 1, false]}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseTerms : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {TERMS: ['quick', 'fast']}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseTermsViaArray : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{TERMS: ['quick', 'fast']}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseInRange : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {IN_RANGE: ['quic', 'ruick', false, true]}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseInRangeViaArray : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{IN_RANGE: ['quic', 'ruick', false, true]}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      }
     };
   };
 }());

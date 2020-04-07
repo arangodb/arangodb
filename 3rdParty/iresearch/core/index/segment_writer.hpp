@@ -311,10 +311,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool store_worker(Field& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto name = make_hashed_ref(
-      static_cast<const string_ref&>(field.name()),
-      std::hash<irs::string_ref>()
-    );
+    const auto name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
@@ -337,10 +334,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool index_worker(Field& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto name = make_hashed_ref(
-      static_cast<const string_ref&>(field.name()),
-      std::hash<irs::string_ref>()
-    );
+    const auto name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
@@ -355,10 +349,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool index_and_store_worker(Field& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto name = make_hashed_ref(
-      static_cast<const string_ref&>(field.name()),
-      std::hash<irs::string_ref>()
-    );
+    const auto name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());

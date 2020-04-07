@@ -95,7 +95,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
 
-  LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
+  /// @brief returns the LocalDocumentId and the revision id for the document with the 
+  /// specified key.
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
 
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       TRI_voc_rid_t& revisionId) const;
