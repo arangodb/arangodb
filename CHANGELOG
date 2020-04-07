@@ -1,6 +1,12 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
+* When relaying requests to other coordinators in a load-balanced setup, don't
+  forward the "http/1.1" HTTP header from the remote response. Forwarding that
+  header in the same way as any other header is not required, as each response
+  will store and set its status separately anyway. Adding it to the headers
+  again will only cause confusion and some client applications to choke.
+
 * Don't invoke collection key ranges compaction after performing a truncate
   operation on a RocksDB storage engine collection via the REST API's truncate
   endpoint.
