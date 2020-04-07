@@ -147,13 +147,13 @@ void RestTransactionHandler::executeBegin() {
       return;
     }
     tid = basics::StringUtils::uint64(value);
-    if (tid == 0 || !transaction::isChildTRI_voc_tid_t(tid)) {
+    if (tid == 0 || !transaction::isChildTransactionId(tid)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "invalid transaction ID on DBServer");
       return;
     }
     TRI_ASSERT(tid != 0);
-    TRI_ASSERT(!transaction::isLegacyTRI_voc_tid_t(tid));
+    TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
   } else {
     if (!ServerState::isCoordinator(role) && !ServerState::isSingleServer(role)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,

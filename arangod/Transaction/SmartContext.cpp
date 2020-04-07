@@ -132,11 +132,10 @@ void AQLStandaloneContext::unregisterTransaction() noexcept {
 }
   
 // ============= StandaloneSmartContext =============
-  
-  
+
 StandaloneSmartContext::StandaloneSmartContext(TRI_vocbase_t& vocbase)
-  : SmartContext(vocbase, Context::makeTRI_voc_tid_t(), nullptr) {}
-  
+    : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
+
 /// @brief get parent transaction (if any)
 TransactionState* StandaloneSmartContext::getParentTransaction() const {
   return _state;

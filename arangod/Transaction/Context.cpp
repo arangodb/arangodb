@@ -226,10 +226,10 @@ void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
 }
 
 TRI_voc_tid_t transaction::Context::generateId() const {
-  return Context::makeTRI_voc_tid_t();
+  return Context::makeTransactionId();
 }
 
-/*static*/ TRI_voc_tid_t transaction::Context::makeTRI_voc_tid_t() {
+/*static*/ TRI_voc_tid_t transaction::Context::makeTransactionId() {
   auto role = ServerState::instance()->getRole();
   if (ServerState::isCoordinator(role)) {
     return TRI_NewServerSpecificTickMod4();

@@ -1603,7 +1603,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
           using BaseType::DynamicComponent;
 
-          class TRI_voc_tid_t : public StaticComponent<TRI_voc_tid_t, Server> {
+          class TransactionId : public StaticComponent<TransactionId, Server> {
            public:
             constexpr char const* component() const noexcept {
               return "TransactionID";
@@ -1612,8 +1612,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             using BaseType::StaticComponent;
           };
 
-          std::shared_ptr<TRI_voc_tid_t const> transactionID() const {
-            return TRI_voc_tid_t::make_shared(shared_from_this());
+          std::shared_ptr<TransactionId const> transactionID() const {
+            return TransactionId::make_shared(shared_from_this());
           }
 
           class ShortName : public StaticComponent<ShortName, Server> {

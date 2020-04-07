@@ -148,26 +148,22 @@ class BuilderLeaser {
   arangodb::velocypack::Builder* _builder;
 };
 
-inline bool isCoordinatorTRI_voc_tid_t(TRI_voc_tid_t tid) {
+inline bool isCoordinatorTransactionId(TRI_voc_tid_t tid) {
   return (tid % 4) == 0;
 }
 
-inline bool isFollowerTRI_voc_tid_t(TRI_voc_tid_t tid) {
+inline bool isFollowerTransactionId(TRI_voc_tid_t tid) {
   return (tid % 4) == 2;
 }
 
-inline bool isLeaderTRI_voc_tid_t(TRI_voc_tid_t tid) {
-  return (tid % 4) == 1;
-}
-  
-inline bool isChildTRI_voc_tid_t(TRI_voc_tid_t tid) {
-  return isLeaderTRI_voc_tid_t(tid) || isFollowerTRI_voc_tid_t(tid);
+inline bool isLeaderTransactionId(TRI_voc_tid_t tid) { return (tid % 4) == 1; }
+
+inline bool isChildTransactionId(TRI_voc_tid_t tid) {
+  return isLeaderTransactionId(tid) || isFollowerTransactionId(tid);
 }
 
-inline bool isLegacyTRI_voc_tid_t(TRI_voc_tid_t tid) {
-  return (tid % 4) == 3;
-}
-  
+inline bool isLegacyTransactionId(TRI_voc_tid_t tid) { return (tid % 4) == 3; }
+
 }  // namespace transaction
 }  // namespace arangodb
 
