@@ -1,6 +1,11 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
+* Avoid some unnecessary internal calls to the storage engine during the
+  incremental sync protocol for the RocksDB storage engine. This change can help
+  reduce the I/O load on the follower during incremental sync for the RocksDB
+  storage engine.
+
 * Fixed issue #11104: `ANALYZER` function doesn't correctly process `!= OR`
   queries.
 
@@ -8,8 +13,8 @@ v3.6.3 (XXXX-XX-XX)
   traversals in a OneShard setting failed with 'direction can only be INBOUND,
   OUTBOUND or ANY'.
 
-* Fixed a rare race condition in SmartGraphs where the graph is unblanced, but a
-  successful result could be found by only on database server, where the other
+* Fixed a rare race condition in SmartGraphs where the graph is unbalanced, but
+  a successful result could be found by only on database server, where the other
   server is still searching. In this race the query could continue on the other
   server and hit a non-thread save object.
 
