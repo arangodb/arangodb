@@ -390,9 +390,6 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
     sanitizedBuilder.openObject();
     IResearchViewMeta::Mask mask(true);
-    if (context == Serialization::Properties) {
-      mask._storedValues = false;
-    }
     if (!_meta.json(sanitizedBuilder, nullptr, &mask) ||
         !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
       return arangodb::Result(
