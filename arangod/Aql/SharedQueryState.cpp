@@ -96,41 +96,41 @@ void SharedQueryState::queueHandler() {
     // We are shutting down
     return;
   }
-      
-  bool queued = scheduler->queue(RequestLane::CLIENT_AQL,
-                                 [self = shared_from_this(),
-                                  cb = _wakeupCb,
-                                  v = _cbVersion]() {
-//    auto guard = scopeGuard([&] {
-//      std::unique_lock<std::mutex> lck(self->_mutex);
-//      self->_inWakeupCb = false;
-//    });
-    
-    std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-    do {
-      bool cntn = false;
-      try {
-        cntn = cb();
-      } catch (...) {}
-      
-      lck.lock();
-      if (v == self->_cbVersion) {
-        uint32_t c = self->_numWakeups--;
-        TRI_ASSERT(c > 0);
-        if (c == 1 || !cntn || !self->_valid) {
-          break;
-        }
-      } else {
-        return;
-      }
-      lck.unlock();
-    } while (true);
+  bool queued =
+      scheduler->queue(RequestLane::CLUSTER_AQL, [self = shared_from_this(),
+                                                  cb = _wakeupCb, v = _cbVersion]() {
+        //    auto guard = scopeGuard([&] {
+        //      std::unique_lock<std::mutex> lck(self->_mutex);
+        //      self->_inWakeupCb = false;
+        //    });
 
-    TRI_ASSERT(lck);
-    self->queueHandler();
-  });
-  
+        std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
+
+        do {
+          bool cntn = false;
+          try {
+            cntn = cb();
+          } catch (...) {
+          }
+
+          lck.lock();
+          if (v == self->_cbVersion) {
+            uint32_t c = self->_numWakeups--;
+            TRI_ASSERT(c > 0);
+            if (c == 1 || !cntn || !self->_valid) {
+              break;
+            }
+          } else {
+            return;
+          }
+          lck.unlock();
+        } while (true);
+
+        TRI_ASSERT(lck);
+        self->queueHandler();
+      });
+
   if (!queued) { // just invalidate
      _wakeupCb = nullptr;
      _valid = false;

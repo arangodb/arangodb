@@ -217,6 +217,10 @@ class PhysicalCollection {
 
   RevisionId newRevisionId() const;
 
+  virtual Result upgrade();
+  virtual bool didPartialUpgrade();
+  virtual Result cleanupAfterUpgrade();
+
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 

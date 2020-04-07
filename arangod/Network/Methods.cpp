@@ -310,11 +310,9 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
   /// @brief schedule calling the response promise
   void callResponse(Error err, std::unique_ptr<fuerte::Response> res, std::unique_ptr<fuerte::Request> req) {
-
-    LOG_TOPIC_IF("2713d", DEBUG, Logger::COMMUNICATION, err != fuerte::Error::NoError)
-        << "error on request to '" << _destination
-        << "' '" << fuerte::to_string(_type) << " " << _path
-        << "' '" << fuerte::to_string(err) << "'";
+    LOG_TOPIC_IF("2713e", DEBUG, Logger::COMMUNICATION, err != fuerte::Error::NoError)
+        << "error on request to '" << _destination << "' '" << fuerte::to_string(_type)
+        << " " << _path << "' '" << fuerte::to_string(err) << "'";
 
     Scheduler* sch = SchedulerFeature::SCHEDULER;
     if (_options.skipScheduler || sch == nullptr) {
@@ -336,10 +334,9 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   }
 
   void retryLater(std::chrono::steady_clock::duration tryAgainAfter) {
-
-    LOG_TOPIC("2713e", DEBUG, Logger::COMMUNICATION)
-        << "retry request to '" << _destination
-        << "' '" << fuerte::to_string(_type) << " " << _path << "'";
+    LOG_TOPIC("2713f", DEBUG, Logger::COMMUNICATION)
+        << "retry request to '" << _destination << "' '"
+        << fuerte::to_string(_type) << " " << _path << "'";
 
     auto* sch = SchedulerFeature::SCHEDULER;
     if (ADB_UNLIKELY(sch == nullptr)) {

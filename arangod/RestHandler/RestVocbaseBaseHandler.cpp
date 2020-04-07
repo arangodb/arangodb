@@ -626,8 +626,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   TRI_ASSERT(mgr != nullptr);
 
   if (pos > 0 && pos < value.size()) {
-    if (!transaction::isLeaderTransactionId(tid) ||
-        !ServerState::instance()->isDBServer()) {
+    if (!transaction::isLeaderTransactionId(tid) || !ServerState::instance()->isDBServer()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {

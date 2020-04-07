@@ -852,20 +852,20 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     std::string("arangosearch-42"))
     .utf8();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
-    "\"includeAllFields\": true,\
+      "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
+      "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
-    "{ \
+      "{ \
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
@@ -946,21 +946,21 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
     std::string("arangosearch-42"))
     .utf8();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
-    "\"includeAllFields\": true,\
+      "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
+      "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
-    "{ \
+      "{ \
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
@@ -1045,24 +1045,24 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     std::string("arangosearch-42"))
     .utf8();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
-    "\"includeAllFields\": true,\
+      "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
+      "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
-    "{ \
+      "{ \
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
@@ -1143,26 +1143,26 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     std::string("arangosearch-42"))
     .utf8();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
-    "\"includeAllFields\": true,\
+      "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
+      "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
-    "{ \
+      "{ \
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
@@ -1251,26 +1251,26 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     std::string("arangosearch-42"))
     .utf8();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
-    "\"includeAllFields\": true,\
+      "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
+      "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
-    "{ \
+      "{ \
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values]

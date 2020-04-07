@@ -96,7 +96,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief hard-coded minimum version number for collections
   static constexpr Version minimumVersion() { return Version::v30; }
   /// @brief current version for collections
-  static constexpr Version currentVersion() { return Version::v34; }
+  static constexpr Version currentVersion() { return Version::v37; }
 
   // SECTION: Meta Information
   Version version() const { return _version; }
@@ -147,6 +147,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmartChild() const { return false; }
 #endif
   bool usesRevisionsAsDocumentIds() const;
+  void setUsesRevisionsAsDocumentIds(bool);
   RevisionId minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
@@ -327,6 +328,7 @@ class LogicalCollection : public LogicalDataSource {
   std::unique_ptr<FollowerInfo> const& followers() const;
 
   bool syncByRevision() const;
+  void setSyncByRevision(bool);
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
@@ -373,14 +375,14 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isSmartChild;
 #endif
 
-  bool const _usesRevisionsAsDocumentIds;
+  std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   // SECTION: Properties
   bool _waitForSync;
 
   bool const _allowUserKeys;
 
-  bool _syncByRevision;
+  std::atomic<bool> _syncByRevision;
 
   RevisionId const _minRevision;
 

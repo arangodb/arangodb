@@ -80,9 +80,6 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
     : _lock(),
-      _current(),
-      _slow(),
-      _slowCount(0),
       _enabled(feature.trackSlowQueries()),
       _trackSlowQueries(feature.trackSlowQueries()),
       _trackBindVars(feature.trackBindVars()),
@@ -138,18 +135,22 @@ void QueryList::remove(Query* query) {
     return;
   }
 
-  bool const isStreaming = query->queryOptions().stream;
-  double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
-
-  if (!_trackSlowQueries || threshold < 0.0) {
-    return;
-  }
-
   double const started = query->startTime();
   double const now = TRI_microtime();
 
   query->vocbase().server().getFeature<arangodb::MetricsFeature>().counter(
       StaticStrings::AqlQueryRuntimeMs) += static_cast<uint64_t>(1000 * (now - started));
+
+  if (!_trackSlowQueries) {
+    return;
+  }
+
+  bool const isStreaming = query->queryOptions().stream;
+  double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
+
+  if (threshold < 0.0) {
+    return;
+  }
 
   try {
     // check if we need to push the query into the list of slow queries
@@ -201,10 +202,11 @@ void QueryList::remove(Query* query) {
                                          : QueryExecutionState::ValueType::FINISHED,
                          isStreaming);
 
-      if (++_slowCount > _maxSlowQueries) {
+      // _slow is an std::list, but since c++11 the size() method of all
+      // standard containers is O(1), so this is ok
+      if (_slow.size() > _maxSlowQueries) {
         // free first element
         _slow.pop_front();
-        --_slowCount;
       }
     }
   } catch (...) {
@@ -320,7 +322,6 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
 void QueryList::clearSlow() {
   WRITE_LOCKER(writeLocker, _lock);
   _slow.clear();
-  _slowCount = 0;
 }
 
 size_t QueryList::count() {
