@@ -3788,11 +3788,13 @@ void ClusterInfo::loadCurrentCoordinators() {
   }
 
   // Now contact the agency:
-  
-  AgencyCommResult result = _agency.getValues(prefixCurrentCoordinators);
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(
+    std::vector<std::string>{AgencyCommManager::path(prefixCurrentCoordinators)});
+  auto result = acb->slice();
 
-  if (result.successful()) {
-    velocypack::Slice currentCoordinators = result.slice()[0].get(std::vector<std::string>(
+  if (result.isArray()) {
+    velocypack::Slice currentCoordinators = result[0].get(std::vector<std::string>(
         {AgencyCommManager::path(), "Current", "Coordinators"}));
 
     if (currentCoordinators.isObject()) {
@@ -3815,8 +3817,7 @@ void ClusterInfo::loadCurrentCoordinators() {
 
   LOG_TOPIC("5ee6d", DEBUG, Logger::CLUSTER)
       << "Error while loading " << prefixCurrentCoordinators
-      << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+      << " result was " << result.toJson();
 }
 
 static std::string const prefixMappings = "Target/MapUniqueToShortID";
@@ -3834,10 +3835,14 @@ void ClusterInfo::loadCurrentMappings() {
   }
 
   // Now contact the agency:
-  AgencyCommResult result = _agency.getValues(prefixMappings);
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.get(
+    std::vector<std::string>{AgencyCommManager::path(prefixCurrentCoordinators)});
+  auto result = acb->slice();
 
-  if (result.successful()) {
-    velocypack::Slice mappings = result.slice()[0].get(std::vector<std::string>(
+  if (result.isArray()) {
+
+    velocypack::Slice mappings = result[0].get(std::vector<std::string>(
         {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
 
     if (mappings.isObject()) {
@@ -3871,9 +3876,7 @@ void ClusterInfo::loadCurrentMappings() {
   }
 
   LOG_TOPIC("36f2e", DEBUG, Logger::CLUSTER)
-      << "Error while loading " << prefixMappings
-      << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+      << "Error while loading " << prefixMappings << " result was " << result.toJson();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
