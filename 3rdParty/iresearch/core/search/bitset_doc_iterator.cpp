@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "bitset_doc_iterator.hpp"
@@ -60,13 +59,13 @@ bitset_doc_iterator::bitset_doc_iterator(
   ));
 }
 
-bool bitset_doc_iterator::next() NOEXCEPT {
+bool bitset_doc_iterator::next() noexcept {
   return !doc_limits::eof(
     seek(doc_.value + irs::doc_id_t(doc_.value < size_))
   );
 }
 
-doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
+doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
   const auto* pword = begin_ + bitset::word(target);
 
   if (pword >= end_) {

@@ -1,0 +1,39 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+de_CH{
+    Keys{
+        colCaseFirst{"Sortierung nach Gross- bzw. Kleinbuchstaben"}
+        colCaseLevel{"Sortierung nach Gross- oder Kleinschreibung"}
+        ms{"Mass-System"}
+    }
+    Languages{
+        ace{"Aceh-Sprache"}
+        ach{"Acholi-Sprache"}
+        ars{"Nadschd-Arabisch"}
+        bas{"Basaa-Sprache"}
+        be{"Weissrussisch"}
+        bik{"Bikol-Sprache"}
+        bin{"Bini-Sprache"}
+        chb{"Chibcha-Sprache"}
+        din{"Dinka-Sprache"}
+        fan{"Pangwe-Sprache"}
+        gba{"Gbaya-Sprache"}
+        kmb{"Kimbundu-Sprache"}
+        mus{"Muskogee-Sprache"}
+        prg{"Altpreussisch"}
+    }
+    Types{
+        colCaseFirst{
+            upper{"Grossbuchstaben zuerst aufführen"}
+        }
+        colCaseLevel{
+            no{"Ohne Gross-/Kleinschreibung sortieren"}
+            yes{"Nach Gross-/Kleinschreibung sortieren"}
+        }
+        ms{
+            uksystem{"britisches Mass-System"}
+            ussystem{"US Mass-System"}
+        }
+    }
+    Version{"2.1.47.86"}
+}

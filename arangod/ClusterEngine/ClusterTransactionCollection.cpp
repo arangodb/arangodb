@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterTransactionCollection.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -46,9 +48,6 @@ ClusterTransactionCollection::~ClusterTransactionCollection() = default;
 bool ClusterTransactionCollection::hasOperations() const {
   return false;  //(_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
 }
-
-void ClusterTransactionCollection::freeOperations(transaction::Methods* /*activeTrx*/,
-                                                  bool /*mustRollback*/) {}
 
 bool ClusterTransactionCollection::canAccess(AccessMode::Type accessType) const {
   // check if access type matches

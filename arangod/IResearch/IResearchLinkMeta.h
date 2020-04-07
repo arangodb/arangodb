@@ -30,11 +30,13 @@
 
 #include "analysis/analyzer.hpp"
 #include "utils/object_pool.hpp"
+#include "utils/compression.hpp"
 
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
+#include "IResearchCompression.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -128,20 +130,22 @@ struct FieldMeta {
   /// @brief initialize FieldMeta with values from a JSON description
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
+  /// @param server underlying application server
   /// @param slice input definition
   /// @param errorField field causing error (out-param)
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   /// @param defaults inherited defaults
   /// @param mask if set reflects which fields were initialized from JSON
-  /// @param analyzers analyzers referenced in this link
+  /// @param referencedAnalyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(velocypack::Slice const& slice,
+  bool init(arangodb::application_features::ApplicationServer& server,
+            velocypack::Slice const& slice,
             std::string& errorField,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             FieldMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr,
-            std::set<AnalyzerPool::ptr, AnalyzerComparer>* analyzers = nullptr);
+            std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a FieldMeta object
@@ -149,6 +153,7 @@ struct FieldMeta {
   ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
+  /// @param server underlying application server
   /// @param builder output buffer
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
@@ -156,7 +161,8 @@ struct FieldMeta {
   /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder,
+  bool json(arangodb::application_features::ApplicationServer& server,
+            arangodb::velocypack::Builder& builder,
             FieldMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;
@@ -182,23 +188,26 @@ struct IResearchLinkMeta : public FieldMeta {
       : FieldMeta::Mask(mask),
         _analyzerDefinitions(mask),
         _sort(mask),
-        _storedValues(mask) {
+        _storedValues(mask),
+        _sortCompression(mask) {
     }
 
     bool _analyzerDefinitions;
     bool _sort;
     bool _storedValues;
+    bool _sortCompression;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort; // sort condition associated with the link
   IResearchViewStoredValues _storedValues; // stored values associated with the link
+  irs::compression::type_id const* _sortCompression{&getDefaultCompression()};
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
   // NOTE: if adding fields don't forget to modify the init(...) function !!!
   // NOTE: if adding fields don't forget to modify the json(...) function !!!
-  // NOTE: if adding fields don't forget to modify the memSize() function !!!
+  // NOTE: if adding fields don't forget to modify the memory() function !!!
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;
@@ -230,12 +239,14 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param defaults inherited defaults
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(velocypack::Slice const& slice,
-            bool readAnalyzerDefinition,
-            std::string& errorField,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
-            FieldMeta const& defaults = DEFAULT(),
-            Mask* mask = nullptr);
+  bool init(
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Slice const& slice,
+      bool readAnalyzerDefinition,
+      std::string& errorField,
+      TRI_vocbase_t const* defaultVocbase = nullptr,
+      IResearchLinkMeta const& defaults = DEFAULT(),
+      Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object
@@ -250,11 +261,13 @@ struct IResearchLinkMeta : public FieldMeta {
   ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(velocypack::Builder& builder,
-            bool writeAnalyzerDefinition,
-            IResearchLinkMeta const* ignoreEqual = nullptr,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
-            Mask const* mask = nullptr) const;
+  bool json(
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Builder& builder,
+      bool writeAnalyzerDefinition,
+      IResearchLinkMeta const* ignoreEqual = nullptr,
+      TRI_vocbase_t const* defaultVocbase = nullptr,
+      Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this IResearchLinkMeta

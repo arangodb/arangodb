@@ -36,7 +36,7 @@ class SimpleHttpCommunicatorResult : public SimpleHttpResult {
   SimpleHttpCommunicatorResult() = delete;
   explicit SimpleHttpCommunicatorResult(HttpResponse* response)
       : SimpleHttpResult(), _response(response), _headers(nullptr) {}
-  virtual ~SimpleHttpCommunicatorResult() {}
+  virtual ~SimpleHttpCommunicatorResult() = default;
 
  public:
   virtual bool wasHttpError() const override {

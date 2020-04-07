@@ -30,6 +30,7 @@
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
 
 #include <cstddef>
 #include <memory>
@@ -41,6 +42,8 @@ class Methods;
 
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputMatrix;
 class AllRowsFetcher;
 class ExecutorInfos;
 class NoStats;
@@ -93,18 +96,29 @@ class SortExecutor {
   using Infos = SortExecutorInfos;
   using Stats = NoStats;
 
-  SortExecutor(Fetcher& fetcher, Infos&);
+  SortExecutor(Fetcher&, Infos& infos);
   ~SortExecutor();
 
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  void initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix);
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const;
+  /**
+   * @brief produce the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputMatrix& inputMatrix, OutputAqlItemRow& output);
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputMatrix& inputMatrix, AqlCall& call);
+
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputMatrix const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   void doSorting();
@@ -112,9 +126,8 @@ class SortExecutor {
  private:
   Infos& _infos;
 
-  Fetcher& _fetcher;
-
   AqlItemMatrix const* _input;
+  InputAqlItemRow _currentRow;
 
   std::vector<AqlItemMatrix::RowIndex> _sortedIndexes;
 

@@ -29,7 +29,7 @@
 #include "Basics/Common.h"
 
 #include <array>
-#include <cstddef>
+#include <cstdint>
 
 namespace arangodb {
 
@@ -68,6 +68,8 @@ class AqlItemBlockManager {
   // Only used for the mocks in the catch tests. Other code should always use
   // SharedAqlItemBlockPtr which in turn call returnBlock()!
   static void deleteBlock(AqlItemBlock* block);
+
+  static uint32_t getBucketId(size_t targetSize) noexcept;
 #endif
 
 #ifndef ARANGODB_USE_GOOGLE_TESTS
@@ -84,7 +86,7 @@ class AqlItemBlockManager {
   ResourceMonitor* _resourceMonitor;
   SerializationFormat const _format;
 
-  static constexpr size_t numBuckets = 12;
+  static constexpr uint32_t numBuckets = 12;
   static constexpr size_t numBlocksPerBucket = 7;
 
   struct Bucket {
@@ -102,7 +104,7 @@ class AqlItemBlockManager {
 
     void push(AqlItemBlock* block) noexcept;
 
-    static size_t getId(size_t targetSize) noexcept;
+    static uint32_t getId(size_t targetSize) noexcept;
   };
 
   Bucket _buckets[numBuckets];

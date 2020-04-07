@@ -44,6 +44,7 @@ struct Response {
   DestinationId destination;
   fuerte::Error error;  /// connectivity error
   std::unique_ptr<arangodb::fuerte::Response> response;
+  std::unique_ptr<arangodb::fuerte::Request> request;
 
   bool ok() const { return fuerte::Error::NoError == this->error; }
 
@@ -55,6 +56,13 @@ struct Response {
       return response->slice();
     }
     return velocypack::Slice();  // none slice
+  }
+
+  fuerte::StatusCode statusCode() const {
+    if (error == fuerte::Error::NoError && response) {
+      return response->statusCode();
+    }
+    return fuerte::StatusUndefined;
   }
 
  public:
@@ -73,7 +81,7 @@ struct RequestOptions {
   Timeout timeout = Timeout(120.0);
   bool retryNotFound = false; // retry if answers is "datasource not found"
   bool skipScheduler = false; // do not use Scheduler queue
-  
+
   template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
     this->parameters.insert_or_assign(std::forward<K>(key), std::forward<V>(val));
@@ -99,7 +107,8 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
 
 using Sender =
     std::function<FutureRes(DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,
-                            velocypack::Buffer<uint8_t>, Timeout, Headers)>;
+                            velocypack::Buffer<uint8_t>, RequestOptions const& options,
+                            Headers)>;
 
 }  // namespace network
 }  // namespace arangodb

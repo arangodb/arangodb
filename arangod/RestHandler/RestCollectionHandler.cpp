@@ -132,14 +132,14 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
   std::string const& sub = suffixes[1];
   _builder.clear();
-  
+
   std::shared_ptr<LogicalCollection> coll;
   auto res = methods::Collections::lookup(_vocbase, name, coll);
   if (res.fail()) {
     generateError(res);
     return RestStatus::DONE;
   }
-  
+
   TRI_ASSERT(coll);
   if (sub == "checksum") {
     // /_api/collection/<identifier>/checksum
@@ -149,12 +149,12 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
     bool withRevisions = _request->parsedValue("withRevisions", false);
     bool withData = _request->parsedValue("withData", false);
-    
+
     uint64_t checksum;
     TRI_voc_rid_t revId;
     res = methods::Collections::checksum(*coll, withRevisions, withData,
                                          checksum, revId);
-    
+
     if (res.ok()) {
       {
         VPackObjectBuilder obj(&_builder, true);
@@ -176,7 +176,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
     generateError(res);
     return RestStatus::DONE;
-  
+
   } else if (sub == "figures") {
     // /_api/collection/<identifier>/figures
     _ctxt = std::make_unique<methods::Collections::Context>(_vocbase, *coll);
@@ -266,10 +266,10 @@ RestStatus RestCollectionHandler::handleCommandGet() {
             continue;
           }
 
-          VPackArrayBuilder arr(&_builder, shard);
+          VPackArrayBuilder arr2(&_builder, shard);
 
           for (auto const& server : servers) {
-            arr->add(VPackValue(server));
+            arr2->add(VPackValue(server));
           }
         }
       } else {
@@ -283,7 +283,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     }
     return standardResponse();
   }
-  
+
   generateError(
       rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
       "expecting one of the resources 'checksum', 'count', "
@@ -332,9 +332,10 @@ void RestCollectionHandler::handleCommandPost() {
     }
   }
 
+
   // for some "security" a whitelist of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
-      body, std::unordered_set<std::string>{"doCompact",
+      body, std::unordered_set<std::string>{StaticStrings::DoCompact,
                                             StaticStrings::DataSourceSystem,
                                             StaticStrings::DataSourceId,
                                             "isVolatile",
@@ -354,6 +355,7 @@ void RestCollectionHandler::handleCommandPost() {
                                             StaticStrings::ReplicationFactor,
                                             StaticStrings::MinReplicationFactor, // deprecated
                                             StaticStrings::WriteConcern,
+                                            StaticStrings::Validation,
                                             "servers"
                                           });
   VPackSlice const parameters = filtered.slice();
@@ -379,7 +381,7 @@ void RestCollectionHandler::handleCommandPost() {
     /*showFigures*/ false,
     /*showCount*/ false,
     /*detailedCount*/ true);
-    
+
     generateOk(rest::ResponseCode::OK, _builder);
   } else {
     generateError(res);
@@ -414,7 +416,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
   std::shared_ptr<LogicalCollection> coll;
   Result res = methods::Collections::lookup(_vocbase, name, coll);
-  
+
   if (res.fail()) {
     generateError(res);
     return RestStatus::DONE;
@@ -453,7 +455,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       generateError(res);
       return RestStatus::DONE;
     }
-    
+
   } else if (sub == "compact") {
     res = coll->compact();
 
@@ -468,7 +470,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       generateError(res);
       return RestStatus::DONE;
     }
-    
+
     VPackBuilder temp;
     if (body.isString()) {
       temp.openObject();
@@ -497,7 +499,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       generateError(res);
       return RestStatus::DONE;
     }
-    
+
   } else if (sub == "truncate") {
     OperationOptions opts;
 
@@ -514,7 +516,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       _activeTrx.reset();
       return RestStatus::DONE;
     }
-    
+
     return waitForFuture(
         _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll](OperationResult&& opres) {
           // Will commit if no error occured.
@@ -552,12 +554,12 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                                    /*detailedCount*/ true);
           standardResponse();
         }));
-      
-  } else if (sub == "properties") {
 
+  } else if (sub == "properties") {
     std::vector<std::string> keep = {StaticStrings::DoCompact,
                                      StaticStrings::JournalSize,
                                      StaticStrings::WaitForSyncString,
+                                     StaticStrings::Validation,
                                      StaticStrings::IndexBuckets,
                                      StaticStrings::ReplicationFactor,
                                      StaticStrings::MinReplicationFactor,  // deprecated
@@ -570,14 +572,14 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       generateError(res);
       return RestStatus::DONE;
     }
-    
+
     collectionRepresentation(name, /*showProperties*/ true,
                              /*showFigures*/ false, /*showCount*/ false,
                              /*detailedCount*/ true);
     return standardResponse();
 
   } else if (sub == "rename") {
-    
+
     VPackSlice const newNameSlice = body.get(StaticStrings::DataSourceName);
     if (!newNameSlice.isString()) {
       generateError(Result(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name is empty"));
@@ -593,10 +595,10 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                                /*detailedCount*/ true);
       return standardResponse();
     }
-    
+
     generateError(res);
     return RestStatus::DONE;
-    
+
   } else if (sub == "loadIndexesIntoMemory") {
 
     return waitForFuture(
@@ -613,9 +615,9 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
           standardResponse();
         }));
-    
+
   }
-  
+
   res = handleExtraCommandPut(*coll, sub, _builder);
   if (res.is(TRI_ERROR_NOT_IMPLEMENTED)) {
     res.reset(
@@ -628,7 +630,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   } else {
     standardResponse();
   }
-  
+
   return RestStatus::DONE;
 }
 

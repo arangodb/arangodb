@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TERM_FILTER_H
@@ -38,14 +37,14 @@ class IRESEARCH_API by_term : public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_term();
+  by_term() noexcept;
 
   by_term& field(std::string fld) {
     fld_ = std::move(fld); 
     return *this;
   }
 
-  const std::string& field() const { 
+  const std::string& field() const noexcept {
     return fld_; 
   }
 
@@ -72,15 +71,17 @@ class IRESEARCH_API by_term : public filter {
     const attribute_view& ctx
   ) const override;
 
-  const bstring& term() const { 
+  const bstring& term() const noexcept {
     return term_;
   }
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
  protected:
-  by_term(const type_id& type);
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  explicit by_term(const type_id& type) noexcept
+    : filter(type) {
+  }
+  virtual bool equals(const filter& rhs) const noexcept override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

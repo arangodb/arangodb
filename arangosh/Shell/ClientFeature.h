@@ -23,6 +23,8 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_CLIENT_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_CLIENT_FEATURE_H 1
 
+#include <functional>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 

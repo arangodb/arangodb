@@ -69,7 +69,7 @@ namespace tests {
         auto& attrs = docs_itr->attributes();
 
         ASSERT_EQ(1, itr->second.erase(docs_itr->value()));
-        ASSERT_EQ(1 + (frequency ? 1 : 0) + (position ? 1 : 0), attrs.size());
+        ASSERT_EQ(3 + (frequency ? 1 : 0) + (position ? 1 : 0), attrs.size());
         ASSERT_TRUE(attrs.contains(iresearch::document::type()));
 
         if (frequency) {
@@ -1319,7 +1319,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto& field = terms->meta();
       auto& features = STRING_FIELD_FEATURES;
       size_t frequency = 1;
-      std::vector<uint32_t> position = { 0 };
+      std::vector<uint32_t> position = { irs::pos_limits::min() };
       std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
 
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string1_data"))].emplace(1);
@@ -1350,7 +1350,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto& field = terms->meta();
       auto& features = TEXT_FIELD_FEATURES;
       size_t frequency = 1;
-      std::vector<uint32_t> position = { 0 };
+      std::vector<uint32_t> position = { irs::pos_limits::min() };
       std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
 
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text1_data"))].emplace(1);
@@ -1660,7 +1660,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto& field = terms->meta();
       auto& features = STRING_FIELD_FEATURES;
       size_t frequency = 1;
-      std::vector<uint32_t> position = { 0 };
+      std::vector<uint32_t> position = { irs::pos_limits::min() };
       std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
 
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string3_data"))].emplace(1);
@@ -1691,7 +1691,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto& field = terms->meta();
       auto& features = TEXT_FIELD_FEATURES;
       size_t frequency = 1;
-      std::vector<uint32_t> position = { 0 };
+      std::vector<uint32_t> position = { irs::pos_limits::min() };
       std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
 
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text3_data"))].emplace(1);
@@ -2059,7 +2059,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& field = terms->meta();
     auto& features = STRING_FIELD_FEATURES;
     size_t frequency = 1;
-    std::vector<uint32_t> position = { 0 };
+    std::vector<uint32_t> position = { irs::pos_limits::min() };
     std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
 
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string1_data"))].emplace(1);
@@ -2091,7 +2091,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& field = terms->meta();
     auto& features = TEXT_FIELD_FEATURES;
     size_t frequency = 1;
-    std::vector<uint32_t> position = { 0 };
+    std::vector<uint32_t> position = { irs::pos_limits::min() };
     std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
 
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text1_data"))].emplace(1);

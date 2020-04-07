@@ -19,6 +19,8 @@
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
+/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cctype> // for std::isspace(...)
@@ -310,7 +312,7 @@ irs::analysis::analyzer::ptr construct(
     options_ptr = &(irs::map_utils::try_emplace_update_key(
       cached_state_by_key,
       generator,
-      irs::make_hashed_ref(cache_key, std::hash<irs::string_ref>()),
+      irs::make_hashed_ref(cache_key),
       std::move(options),
       std::move(stopwords)
     ).first->second);
@@ -332,7 +334,7 @@ irs::analysis::analyzer::ptr construct(
   {
     SCOPED_LOCK(mutex);
     auto itr = cached_state_by_key.find(
-      irs::make_hashed_ref(irs::string_ref(cache_key), std::hash<irs::string_ref>())
+      irs::make_hashed_ref(irs::string_ref(cache_key))
     );
 
     if (itr != cached_state_by_key.end()) {
@@ -722,7 +724,7 @@ bool make_json_config(
     // explicit_stopwords_set  marks that even empty stopwords list is valid
     rapidjson::Value stopwordsArray(rapidjson::kArrayType);
     if (!options.explicit_stopwords.empty()) {
-      // for simplifying comparsion between properties we need deterministic order of stopwords
+      // for simplifying comparison between properties we need deterministic order of stopwords
       std::vector<irs::string_ref> sortedWords;
       sortedWords.reserve(options.explicit_stopwords.size());
       for (const auto& stopword : options.explicit_stopwords) {
@@ -827,8 +829,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     {
       SCOPED_LOCK(mutex);
-      auto itr = cached_state_by_key.find(
-          irs::make_hashed_ref(args, std::hash<irs::string_ref>()));
+      auto itr = cached_state_by_key.find(irs::make_hashed_ref(args));
 
       if (itr != cached_state_by_key.end()) {
         return irs::memory::make_unique<irs::analysis::text_token_stream>(

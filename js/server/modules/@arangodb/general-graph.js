@@ -35,7 +35,6 @@ const GeneralGraph = internal.ArangoGeneralGraphModule;
 
 // This is supposed to be a class
 const ArangoGraph = internal.ArangoGraph;
-//const arangodb = require("@arangodb");
 
 // inherited graph class
 let CommonGraph = ggc.__GraphClass;

@@ -42,7 +42,20 @@ enum class ExecutionState {
   WAITING
 };
 
+enum class ExecutorState {
+  // done with this block, definitely no more results
+  DONE,
+  // (potentially) more results available. this may "lie" and
+  // report that there are more results when in fact there are
+  // none (background: to accurately determine that there are
+  // more results we may need to execute expensive operations
+  // on the preceeding blocks, which we want to avoid)
+  HASMORE
+};
+
 std::ostream& operator<<(std::ostream& ostream, ExecutionState state);
+
+std::ostream& operator<<(std::ostream& ostream, ExecutorState state);
 
 }  // namespace aql
 }  // namespace arangodb

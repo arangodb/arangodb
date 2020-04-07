@@ -83,9 +83,9 @@ synchronization for collections that have a default *waitForSync* value
 of *true*.
 
 The body of the response contains a JSON array of the same length
-as the input array with the information about the handle and the
+as the input array with the information about the identifier and the
 revision of the updated documents. In each entry, the attribute
-*_id* contains the known *document-handle* of each updated document,
+*_id* contains the known *document-id* of each updated document,
 *_key* contains the key which uniquely identifies a document in a
 given collection, and the attribute *_rev* contains the new document
 revision. In case of an error or violated precondition, an error

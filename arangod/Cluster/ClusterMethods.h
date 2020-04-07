@@ -149,13 +149,12 @@ futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& 
 ///        the lake is cleared.
 ///        TraversalVariant
 
-int fetchEdgesFromEngines(
-    transaction::Methods& trx,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    arangodb::velocypack::Slice vertexId, size_t depth,
-    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
-    std::vector<arangodb::velocypack::Slice>&,
-    std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>&, size_t&, size_t&);
+Result fetchEdgesFromEngines(transaction::Methods& trx,
+                             std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+                             arangodb::velocypack::Slice vertexId, size_t depth,
+                             std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
+                             std::vector<arangodb::velocypack::Slice>&,
+                             std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>&, size_t&, size_t&);
 
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -169,14 +168,14 @@ int fetchEdgesFromEngines(
 ///        the lake is cleared.
 ///        ShortestPathVariant
 
-int fetchEdgesFromEngines(
-    transaction::Methods& trx,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    arangodb::velocypack::Slice vertexId, bool backward,
-    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache,
-    std::vector<arangodb::velocypack::Slice>& result,
-    std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>& datalake,
-    size_t& read);
+Result fetchEdgesFromEngines(
+            transaction::Methods& trx,
+            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+            arangodb::velocypack::Slice vertexId, bool backward,
+            std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache,
+            std::vector<arangodb::velocypack::Slice>& result,
+            std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>& datalake,
+            size_t& read);
 
 /// @brief fetch vertices from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -296,12 +295,6 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
 arangodb::Result applyDBServerMatchesToPlan(VPackSlice const plan,
                                             std::map<ServerID, ServerID> const& matches,
                                             VPackBuilder& newPlan);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rotate the active journals for the collection on all DBservers
-////////////////////////////////////////////////////////////////////////////////
-
-int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string const& collname);
 
 class ClusterMethods {
  public:

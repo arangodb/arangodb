@@ -26,7 +26,9 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -37,7 +39,6 @@
 #include "Aql/Graphs.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
-#include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -432,18 +433,18 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
     options = &NopNode;
   }
 
-  bool overwrite = false;
+  bool returnOld = false;
   if (options->type == NODE_TYPE_OBJECT) {
     auto ops = ExecutionPlan::parseModificationOptions(options);
-    overwrite = ops.overwrite;
+    returnOld = ops.isOverwriteModeUpdateReplace();
   }
 
-  node->reserve(overwrite ? 5 : 4);
+  node->reserve(returnOld ? 5 : 4);
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
   node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
-  if (overwrite) {
+  if (returnOld) {
     node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false));
   }
 
@@ -844,7 +845,7 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
   // do a bit of normalization here, so that attribute accesses are normally
   // on the left side of a comparison. this may allow future simplifications
   // of code that check filter conditions
-  // note that there will still be cases in which both sides of the comparsion
+  // note that there will still be cases in which both sides of the comparison
   // contain an attribute access, e.g.  doc.value1 == doc.value2
   bool swap = false;
   if (type == NODE_TYPE_OPERATOR_BINARY_EQ && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
@@ -900,6 +901,17 @@ AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs
 
   TRI_ASSERT(node->isArrayComparisonOperator());
   TRI_ASSERT(node->numMembers() == 3);
+
+  return node;
+}
+
+/// @brief create an AST ternary operator node, using the condition as the truth part
+AstNode* Ast::createNodeTernaryOperator(AstNode const* condition, 
+                                        AstNode const* falsePart) {
+  AstNode* node = createNode(NODE_TYPE_OPERATOR_TERNARY);
+  node->reserve(2);
+  node->addMember(condition);
+  node->addMember(falsePart);
 
   return node;
 }
@@ -1137,7 +1149,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
     cache.try_emplace(slice, member);
   }
 
-  auto node = createNodeArray(cache.size() + nr);
+  auto node = createNodeArray(nl);
 
   for (size_t i = 0; i < nr; ++i) {
     auto member = rhs->getMemberUnchecked(i);
@@ -1145,8 +1157,12 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
 
     auto it = cache.find(slice);
 
-    if (it != cache.end()) {
+    if (it != cache.end() &&
+        (*it).second != nullptr) {
+      // add to output
       node->addMember((*it).second);
+      // make sure we don't add the same value again
+      (*it).second = nullptr;
     }
   }
 
@@ -3087,11 +3103,11 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY);
-  TRI_ASSERT(node->numMembers() == 3);
+  TRI_ASSERT(node->numMembers() >= 2 && node->numMembers() <= 3);
 
   AstNode* condition = node->getMember(0);
-  AstNode* truePart = node->getMember(1);
-  AstNode* falsePart = node->getMember(2);
+  AstNode* truePart = (node->numMembers() == 2) ? condition : node->getMember(1);
+  AstNode* falsePart = (node->numMembers() == 2) ? node->getMember(1) : node->getMember(2);
 
   if (condition == nullptr || truePart == nullptr || falsePart == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3724,13 +3740,7 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t
   // convert name to upper case
   std::transform(functionName.begin(), functionName.end(), functionName.begin(), ::toupper);
 
-  if (functionName.find(':') == std::string::npos) {
-    // prepend default namespace for internal functions
-    return std::make_pair(std::move(functionName), true);
-  }
-
-  // user-defined function
-  return std::make_pair(std::move(functionName), false);
+  return std::make_pair(std::move(functionName), functionName.find(':') == std::string::npos);
 }
 
 /// @brief create a node of the specified type

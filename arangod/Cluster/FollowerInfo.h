@@ -212,9 +212,10 @@ class FollowerInfo {
   ///        Builder needs to be an open object and is not allowed to contain
   ///        the keys "servers" and "failoverCandidates".
   //////////////////////////////////////////////////////////////////////////////
-  void injectFollowerInfo(arangodb::velocypack::Builder& builder) const {
+  std::pair<size_t, size_t> injectFollowerInfo(arangodb::velocypack::Builder& builder) const {
     READ_LOCKER(readLockerData, _dataLock);
     injectFollowerInfoInternal(builder);
+    return std::make_pair(_followers->size(), _failoverCandidates->size());
   }
 
  private:

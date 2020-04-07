@@ -10,6 +10,9 @@ documents, graphs, and key-values. Build high performance applications using a
 convenient SQL-like query language or JavaScript extensions. Use ACID
 transactions if you require them. Scale horizontally with a few mouse clicks.
 
+ArangoDB runs everywhere: On-prem, in the cloud and also on
+[ArangoDBs Cloud Service Oasis](https://cloud.arangodb.com/home).
+
 The supported data models can be mixed in queries and allow ArangoDB to be the
 aggregation point for your data.
 
@@ -76,6 +79,8 @@ Other features of ArangoDB include:
 - Free **index choice**: use the correct index for your problem, be it a skiplist 
   or a fulltext search
 - ArangoDB is **multi-threaded** - exploit the power of all your cores
+- Easy to use **web interface** and **command-line client tools** for interaction
+  with the server
 - It is **open source** (Apache License 2.0)
 
 For more in-depth information read the

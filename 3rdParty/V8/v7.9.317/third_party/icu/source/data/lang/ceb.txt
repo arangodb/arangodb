@@ -1,0 +1,71 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ceb{
+    Languages{
+        ceb{"Cebuano"}
+        de{"Aleman"}
+        de_AT{"Aleman (Austriano)"}
+        de_CH{"Aleman (Swiss Hataas nga Aleman)"}
+        en{"Ingles"}
+        en_AU{"Australyanong Ingles"}
+        en_CA{"Ingles (Kanada)"}
+        en_GB{"Ingles (Britaniko)"}
+        en_US{"Ingles (Amerika)"}
+        es{"Espanyol"}
+        es_419{"Espanyol (Latino Amerikano)"}
+        es_ES{"Espanyol (Uropanhon)"}
+        es_MX{"Espanyol (Mexicano)"}
+        fr{"Pransesa"}
+        fr_CA{"Pranses (Kanada)"}
+        fr_CH{"Pransesa (Swiss)"}
+        it{"Italiano"}
+        ja{"Nipponggo"}
+        pt{"Portuguese"}
+        pt_BR{"Portuguese (Brazilyano)"}
+        pt_PT{"Portuguese (Uropanhon)"}
+        ru{"Ruso"}
+        und{"Wala Mailhing Pinulongan"}
+        zh{"Intsik"}
+        zh_Hans{"Pinasimpleng Intsik"}
+        zh_Hant{"Tradisyonal Intsik"}
+    }
+    Languages%short{
+        en_GB{"Ingles (Britaniko)"}
+        en_US{"Ingles (Amerika)"}
+    }
+    Scripts{
+        Arab{"Arabo"}
+        Cyrl{"Sirilisko"}
+        Hans{"Pinasimple"}
+        Hant{"Tradisyonal"}
+        Latn{"Latin"}
+        Zxxx{"Dili-sinulat"}
+        Zzzz{"Wala Mailihing Alpabeto"}
+    }
+    Scripts%stand-alone{
+        Hans{"Pinasimpleng Han"}
+        Hant{"Tradisyonal nga Han"}
+    }
+    Types{
+        calendar{
+            gregorian{"Gregorian nga Kalendaryo"}
+        }
+        collation{
+            standard{"Standard nga Paagi sa Pagpihig"}
+        }
+        numbers{
+            latn{"Kasadpanhong mga Digit"}
+        }
+    }
+    Version{"2.1.49.82"}
+    codePatterns{
+        language{"Pinulongan: {0}"}
+        script{"Alpabeto {0}"}
+        territory{"Rehiyon {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

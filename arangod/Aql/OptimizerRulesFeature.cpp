@@ -62,7 +62,7 @@ void OptimizerRulesFeature::collectOptions(std::shared_ptr<arangodb::options::Pr
   options->addOption("--query.optimizer-rules",
                      "enable or disable specific optimizer rules (use rule name prefixed with '-' for disabling, '+' for enabling)",
                      new arangodb::options::VectorParameter<arangodb::options::StringParameter>(&_optimizerRules),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
 
   options->addOption("--query.parallelize-gather-writes",
@@ -305,10 +305,6 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeTraversalPathVariable,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // prepare traversal info
-  registerRule("prepare-traversals", prepareTraversalsRule, OptimizerRule::prepareTraversalsRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::Hidden));
-
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,
                OptimizerRule::substituteSingleDocumentOperations,
@@ -376,6 +372,11 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 
 #ifdef USE_ENTERPRISE
+  registerRule("scatter-satellite-graphs", scatterSatelliteGraphRule,
+               OptimizerRule::scatterSatelliteGraphRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
   registerRule("remove-satellite-joins", removeSatelliteJoinsRule,
                OptimizerRule::removeSatelliteJoinsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
@@ -510,7 +511,7 @@ void OptimizerRulesFeature::enableOrDisableRules() {
         }
       } else {
         int id = translateRule(n);
-        if (id == -1) {
+        if (id != -1) {
           auto& rule = ruleByLevel(id);
           if (rule.hasFlag(OptimizerRule::Flags::CanBeDisabled)) {
             rule.flags |= OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);

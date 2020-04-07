@@ -23,6 +23,7 @@
 
 #include "RestWalAccessHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -215,7 +216,7 @@ void RestWalAccessHandler::handleCommandTickRange(WalAccess const* wal) {
     {  // "server" part
       VPackObjectBuilder server(&result, "server", true);
       server->add("version", VPackValue(ARANGODB_VERSION));
-      server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+      server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
     }
     result.close();
     generateResult(rest::ResponseCode::OK, result.slice());
@@ -233,7 +234,7 @@ void RestWalAccessHandler::handleCommandLastTick(WalAccess const* wal) {
   {  // "server" part
     VPackObjectBuilder server(&result, "server", true);
     server->add("version", VPackValue(ARANGODB_VERSION));
-    server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+    server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
   }
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -255,7 +256,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   // check for serverId
-  TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
+  ServerId const clientId{StringUtils::uint64(_request->value("serverId"))};
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
   std::string const clientInfo = _request->value("clientInfo");
 

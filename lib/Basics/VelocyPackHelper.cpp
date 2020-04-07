@@ -60,8 +60,6 @@
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
@@ -217,6 +215,10 @@ void VelocyPackHelper::initialize() {
   // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
+  
+  // disallow tagged values and BCDs. they are not used in ArangoDB as of now
+  VPackOptions::Defaults.disallowTags = true;
+  VPackOptions::Defaults.disallowBCD = true;
   
   ::optionsWithUniquenessCheck = VPackOptions::Defaults;
   ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
@@ -818,6 +820,7 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
     case VPackValueType::Binary:
     case VPackValueType::BCD:
     case VPackValueType::Custom:
+    case VPackValueType::Tagged:
       break;
   }
 

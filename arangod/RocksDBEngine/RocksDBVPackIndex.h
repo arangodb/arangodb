@@ -42,6 +42,7 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -65,7 +66,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   RocksDBVPackIndex() = delete;
 
-  RocksDBVPackIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                     arangodb::velocypack::Slice const& info);
 
   ~RocksDBVPackIndex();
@@ -119,8 +120,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                LocalDocumentId const& documentId, velocypack::Slice const& doc,
+                OperationOptions& options) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,

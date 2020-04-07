@@ -55,7 +55,7 @@ class ShardingInfo {
   std::string shardingStrategyName() const;
 
   LogicalCollection* collection() const;
-  void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids);
+  void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids) const;
 
   std::string distributeShardsLike() const;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
@@ -103,6 +103,8 @@ class ShardingInfo {
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           ShardID& shardID, bool& usesDefaultShardKeys,
                           arangodb::velocypack::StringRef const&);
+
+  static void sortShardNamesNumerically(std::vector<ShardID>& list);
 
  private:
   // @brief the logical collection we are working for

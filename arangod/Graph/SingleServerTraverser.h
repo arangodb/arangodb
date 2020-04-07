@@ -32,7 +32,6 @@ namespace arangodb {
 
 namespace graph {
 struct BaseOptions;
-class SingleServerEdgeCursor;
 }  // namespace graph
 
 namespace traverser {
@@ -55,6 +54,7 @@ class SingleServerTraverser final : public Traverser {
   /// @brief No engines on single server
   //////////////////////////////////////////////////////////////////////////////
   void destroyEngines() override {}
+  void clear() override;
 
  protected:
   /// @brief Function to load the other sides vertex of an edge
@@ -80,6 +80,10 @@ class SingleServerTraverser final : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   void addVertexToVelocyPack(arangodb::velocypack::StringRef, arangodb::velocypack::Builder&) override;
+
+ private:
+  /// @brief build the (single) path enumerator of this traverser
+  void createEnumerator();
 };
 }  // namespace traverser
 }  // namespace arangodb

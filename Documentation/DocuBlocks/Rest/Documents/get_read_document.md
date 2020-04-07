@@ -25,9 +25,9 @@ Etag. The document is returned, if it has the same revision as the
 given Etag. Otherwise a *HTTP 412* is returned.
 
 @RESTDESCRIPTION
-Returns the document identified by *document-handle*. The returned
+Returns the document identified by *document-id*. The returned
 document contains three special attributes: *_id* containing the document
-handle, *_key* containing key which uniquely identifies a document
+identifier, *_key* containing key which uniquely identifies a document
 in a given collection and *_rev* containing the revision.
 
 @RESTRETURNCODES
@@ -50,7 +50,7 @@ attributes *_id* and *_key* will be returned.
 
 @EXAMPLES
 
-Use a document handle:
+Use a document identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocument}
     var cn = "products";
@@ -68,7 +68,7 @@ Use a document handle:
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Use a document handle and an Etag:
+Use a document identifier and an Etag:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentIfNoneMatch}
     var cn = "products";
@@ -85,10 +85,10 @@ Use a document handle and an Etag:
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Unknown document handle:
+Unknown document identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentUnknownHandle}
-    var url = "/_api/document/products/unknownhandle";
+    var url = "/_api/document/products/unknown-identifier";
 
     var response = logCurlRequest('GET', url);
 

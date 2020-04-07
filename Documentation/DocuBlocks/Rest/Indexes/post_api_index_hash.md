@@ -25,8 +25,6 @@ if *true*, then create a sparse index.
 if *false*, the deduplication of array values is turned off.
 
 @RESTDESCRIPTION
-**NOTE** Swagger examples won't work due to the anchor.
-
 Creates a hash index for the collection *collection-name* if it
 does not already exist. The call expects an object containing the index
 details.

@@ -22,6 +22,7 @@
 
 #include "CheckVersionFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
@@ -74,7 +75,7 @@ void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options
   options->addOption("--database.check-version",
                      "checks the versions of the database and exit",
                      new BooleanParameter(&_checkVersion),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                   arangodb::options::Flags::Command));
 }
 
@@ -140,16 +141,7 @@ void CheckVersionFeature::checkVersion() {
   // can do this without a lock as this is the startup
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
-  bool ignoreDatafileErrors = false;
-  {
-    VPackBuilder options = server().options([](std::string const& name) {
-      return (name.find("database.ignore-datafile-errors") != std::string::npos);
-    });
-    VPackSlice s = options.slice();
-    if (s.get("database.ignore-datafile-errors").isBoolean()) {
-      ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
-    }
-  }
+  bool ignoreDatafileErrors = databaseFeature.ignoreDatafileErrors();
 
   // iterate over all databases
   for (auto& name : databaseFeature.getDatabaseNames()) {

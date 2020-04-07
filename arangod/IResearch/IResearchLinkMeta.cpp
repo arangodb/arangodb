@@ -28,15 +28,17 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ServerState.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "VelocyPackHelper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
+#include "Cluster/ServerState.h"
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "VelocyPackHelper.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
 
 namespace {
 
@@ -148,7 +150,8 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
   return true;
 }
 
-bool FieldMeta::init(velocypack::Slice const& slice,
+bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
+                     velocypack::Slice const& slice,
                      std::string& errorField,
                      TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
                      FieldMeta const& defaults /*= DEFAULT()*/,
@@ -173,7 +176,6 @@ bool FieldMeta::init(velocypack::Slice const& slice,
     if (!mask->_analyzers) {
       _analyzers = defaults._analyzers;
     } else {
-      auto& server = application_features::ApplicationServer::server();
       auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
       auto& sysDatabase = server.getFeature<SystemDatabaseFeature>();
 
@@ -378,7 +380,7 @@ bool FieldMeta::init(velocypack::Slice const& slice,
 
         std::string childErrorField;
 
-        if (!_fields[name]->init(value, childErrorField, defaultVocbase,
+        if (!_fields[name]->init(server, value, childErrorField, defaultVocbase,
                                  subDefaults, nullptr, referencedAnalyzers)) {
           errorField = fieldName + "." + name + "." + childErrorField;
 
@@ -391,7 +393,8 @@ bool FieldMeta::init(velocypack::Slice const& slice,
   return true;
 }
 
-bool FieldMeta::json(velocypack::Builder& builder,
+bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
+                     velocypack::Builder& builder,
                      FieldMeta const* ignoreEqual /*= nullptr*/,
                      TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
                      Mask const* mask /*= nullptr*/) const {
@@ -415,7 +418,6 @@ bool FieldMeta::json(velocypack::Builder& builder,
       std::string name;
 
       if (defaultVocbase) {
-        auto& server = application_features::ApplicationServer::server();
         auto sysVocbase = server.getFeature<SystemDatabaseFeature>().use();
 
         if (!sysVocbase) {
@@ -466,9 +468,9 @@ bool FieldMeta::json(velocypack::Builder& builder,
           velocypack::Value(velocypack::ValueType::Object)
         );
 
-          if (!entry.value()->json(fieldsBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
-            return false;
-          }
+        if (!entry.value()->json(server, fieldsBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
+          return false;
+        }
 
         fieldsBuilder.close();
       }
@@ -549,6 +551,10 @@ bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcep
     return false;
   }
 
+  if (_sortCompression != other._sortCompression) {
+    return false;
+  }
+
   return true;
 }
 
@@ -558,11 +564,12 @@ bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcep
   return meta;
 }
 
-bool IResearchLinkMeta::init(velocypack::Slice const& slice,
+bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& server,
+                             arangodb::velocypack::Slice const& slice,
                              bool readAnalyzerDefinition,
                              std::string& errorField,
                              TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
-                             FieldMeta const& defaults /*= DEFAULT()*/,
+                             IResearchLinkMeta const& defaults /*= DEFAULT()*/,
                              Mask* mask /*= nullptr*/) {
   if (!slice.isObject()) {
     return false;
@@ -597,6 +604,17 @@ bool IResearchLinkMeta::init(velocypack::Slice const& slice,
       return false;
     }
   }
+  {
+    // optional sort compression
+    static VPackStringRef const fieldName("primarySortCompression");
+    auto const field = slice.get(fieldName);
+    mask->_sortCompression = field.isString();
+
+    if (readAnalyzerDefinition && mask->_sortCompression &&
+      (_sortCompression = columnCompressionFromString(getStringRef(field))) == nullptr) {
+      return false;
+    }
+  }
 
   {
     // clear existing definitions
@@ -610,7 +628,6 @@ bool IResearchLinkMeta::init(velocypack::Slice const& slice,
     // load analyzer definitions if requested (used on cluster)
     // @note must load definitions before loading 'analyzers' to ensure presence
     if (readAnalyzerDefinition && mask->_analyzerDefinitions) {
-      auto& server = application_features::ApplicationServer::server();
       auto& sysDatabase = server.getFeature<SystemDatabaseFeature>();
 
       auto field = slice.get(fieldName);
@@ -749,10 +766,11 @@ bool IResearchLinkMeta::init(velocypack::Slice const& slice,
     }
   }
 
-  return FieldMeta::init(slice, errorField, defaultVocbase, defaults, mask, &_analyzerDefinitions);
+  return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults, mask, &_analyzerDefinitions);
 }
 
-bool IResearchLinkMeta::json(velocypack::Builder& builder,
+bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& server,
+                             velocypack::Builder& builder,
                              bool writeAnalyzerDefinition,
                              IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
                              TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
@@ -778,6 +796,11 @@ bool IResearchLinkMeta::json(velocypack::Builder& builder,
     }
   }
 
+  if (writeAnalyzerDefinition && (!mask || mask->_sortCompression) && _sortCompression
+      && (!ignoreEqual || _sortCompression != ignoreEqual->_sortCompression)) {
+    addStringRef(builder, "primarySortCompression", columnCompressionToString(_sortCompression));
+  }
+
   // output definitions if 'writeAnalyzerDefinition' requested and not maked
   // this should be the case for the default top-most call
   if (writeAnalyzerDefinition && (!mask || mask->_analyzerDefinitions)) {
@@ -789,7 +812,8 @@ bool IResearchLinkMeta::json(velocypack::Builder& builder,
     }
   }
 
-  return FieldMeta::json(builder, ignoreEqual, defaultVocbase, mask);
+
+  return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask);
 }
 
 size_t IResearchLinkMeta::memory() const noexcept {

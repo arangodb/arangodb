@@ -267,10 +267,13 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
   for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
     std::unique_ptr<Graph> graph =
         Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
-    result = changeEdgeDefinitionForGraph(*(graph.get()), edgeDefinition, waitForSync, trx);
-  }
-  if (result.fail()) {
-    return result;
+    if (graph->hasEdgeCollection(edgeDefinition.getName())) {
+      // only try to modify the edgeDefinition if it's available.
+      result = changeEdgeDefinitionForGraph(*(graph.get()), edgeDefinition, waitForSync, trx);
+      if (result.fail()) {
+        return result;
+      }
+    }
   }
 
   res = trx.finish(TRI_ERROR_NO_ERROR);

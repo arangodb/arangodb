@@ -137,7 +137,7 @@ TEST_F(IResearchQueryStartsWithTest, test) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, false);
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -179,6 +179,144 @@ TEST_F(IResearchQueryStartsWithTest, test) {
     arangodb::velocypack::ArrayIterator resultIt(result);
     EXPECT_EQ(0, resultIt.size());
     EXPECT_FALSE(resultIt.valid());
+  }
+
+  // execution outside arangosearch (true)
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('abc', 'a')");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isBool());
+      ASSERT_TRUE(resolved.getBool());
+    }
+  }
+
+  // execution outside arangosearch (true)
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('abc', 'abc')");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isBool());
+      ASSERT_TRUE(resolved.getBool());
+    }
+  }
+
+  // execution outside arangosearch (false)
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('a', 'abc')");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isBool());
+      ASSERT_FALSE(resolved.getBool());
+    }
+  }
+
+  // execution outside arangosearch (wrong args)
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with(1, 'abc')");
+    ASSERT_TRUE(queryResult.result.ok());
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isNull());
+    }
+  }
+
+  // execution outside arangosearch (wrong args)
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with(true, 'abc')");
+    ASSERT_TRUE(queryResult.result.ok());
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isNull());
+    }
+  }
+
+  // execution outside arangosearch (wrong args)
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with(null, 'abc')");
+    ASSERT_TRUE(queryResult.result.ok());
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isNull());
+    }
+  }
+
+  // execution outside arangosearch (wrong args)
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('a', 1)");
+    ASSERT_TRUE(queryResult.result.ok());
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isNull());
+    }
+  }
+
+  // execution outside arangosearch (wrong args)
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('a', null)");
+    ASSERT_TRUE(queryResult.result.ok());
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isNull());
+    }
+  }
+
+  // execution outside arangosearch (wrong args)
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('a', true)");
+    ASSERT_TRUE(queryResult.result.ok());
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isNull());
+    }
   }
 
   // exact term, unordered

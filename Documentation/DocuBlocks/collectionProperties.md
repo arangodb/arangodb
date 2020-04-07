@@ -44,6 +44,11 @@ Returns an object containing all collection properties.
   Changes (see below) are applied when the collection is loaded the next
   time.
 
+* *validation* (optional, default is *null*, **rocksdb-only**): 
+  Object that specifies the collection level document validation for documents.
+  The attribute keys `rule`, `level` and `message` must follow the rules
+  documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+
 In a cluster setup, the result will also contain the following attributes:
 
 * *numberOfShards*: the number of shards of the collection.
@@ -52,15 +57,17 @@ In a cluster setup, the result will also contain the following attributes:
   determine the target shard for documents.
 
 * *replicationFactor*: determines how many copies of each shard are kept 
-  on different DBServers. Has to be in the range of 1-10 *(Cluster only)*
+  on different DB-Servers. Has to be in the range of 1-10. _(cluster only)_
 
-* *writeConcern* : determines the number of minimal shard copies kept on
-  different DBServers, a shard will refuse to write if less than this amount
-  of copies are in sync. Has to be in the range of 1-replicationFactor *(Cluster only)*
+* *writeConcern*: determines how many copies of each shard are required to be
+  in sync on the different DB-Servers. If there are less then these many copies
+  in the cluster a shard will refuse to write. Writes to shards with enough
+  up-to-date copies will succeed at the same time however. The value of
+  *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 * *shardingStrategy*: the sharding strategy selected for the collection.
   This attribute will only be populated in cluster mode and is not populated
-  in single-server mode.
+  in single-server mode. _(cluster only)_
 
 `collection.properties(properties)`
 
@@ -70,20 +77,22 @@ one or more of the following attribute(s):
 * *waitForSync*: If *true* creating a document will only return
   after the data was synced to disk.
 
-* *journalSize* : The size of the journal in bytes.
+* *journalSize*: The size of the journal in bytes.
   This option is meaningful for the MMFiles storage engine only.
 
-* *indexBuckets* : See above, changes are only applied when the
+* *indexBuckets*: See above, changes are only applied when the
   collection is loaded the next time.
   This option is meaningful for the MMFiles storage engine only.
 
-* *replicationFactor* : Change the number of shard copies kept on 
-  different DBServers, valid values are  integer numbers
-  in the range of 1-10 *(Cluster only)*
+* *replicationFactor*: Change the number of shard copies kept on 
+  different DB-Servers, valid values are  integer numbers
+  in the range of 1-10. _(cluster only)_
 
-* *writeConcern* : Change the number of minimal shard copies to be in sync on 
-  different DBServers, a shard will refuse to write if less than this amount
-  of copies are in sync. Has to be in the range of 1-replicationFactor *(Cluster only)*
+* *writeConcern*: change how many copies of each shard are required to be
+  in sync on the different DB-Servers. If there are less then these many copies
+  in the cluster a shard will refuse to write. Writes to shards with enough
+  up-to-date copies will succeed at the same time however. The value of
+  *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 **Note**: some other collection properties, such as *type*, *isVolatile*,
 *keyOptions*, *numberOfShards* or *shardingStrategy* cannot be changed once 

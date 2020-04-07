@@ -1,5 +1,5 @@
 /* jshint esnext: true */
-/* global assertEqual, assertTrue, fail, AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
+/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -31,6 +31,7 @@
 'use strict';
 
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, fail} = jsunity.jsUnity.assertions;
 
 const internal = require('internal');
 const db = internal.db;
@@ -39,14 +40,13 @@ const gm = require('@arangodb/general-graph');
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 const isCluster = require('@arangodb/cluster').isCluster();
-const roundCost = require('@arangodb/aql-helper').roundCost;
+const removeCost = require('@arangodb/aql-helper').removeCost;
 
 var _ = require('lodash');
 var vertex = {};
 var edge = {};
 var vc;
 var ec;
-var mmfilesEngine = (db._engine().name === 'mmfiles');
 
 var cleanup = function () {
   db._drop(vn);
@@ -56,14 +56,14 @@ var cleanup = function () {
 };
 
 var createBaseGraph = function () {
-  vc = db._create(vn, { numberOfShards: 4 });
-  ec = db._createEdgeCollection(en, { numberOfShards: 4 });
-  vertex.A = vc.save({ _key: 'A' })._id;
-  vertex.B = vc.save({ _key: 'B' })._id;
-  vertex.C = vc.save({ _key: 'C' })._id;
-  vertex.D = vc.save({ _key: 'D' })._id;
-  vertex.E = vc.save({ _key: 'E' })._id;
-  vertex.F = vc.save({ _key: 'F' })._id;
+  vc = db._create(vn, {numberOfShards: 4});
+  ec = db._createEdgeCollection(en, {numberOfShards: 4});
+  vertex.A = vc.save({_key: 'A'})._id;
+  vertex.B = vc.save({_key: 'B'})._id;
+  vertex.C = vc.save({_key: 'C'})._id;
+  vertex.D = vc.save({_key: 'D'})._id;
+  vertex.E = vc.save({_key: 'E'})._id;
+  vertex.F = vc.save({_key: 'F'})._id;
 
   edge.AB = ec.save(vertex.A, vertex.B, {})._id;
   edge.BC = ec.save(vertex.B, vertex.C, {})._id;
@@ -84,14 +84,14 @@ function invalidStartVertexSuite() {
       db._drop(gn + 'e');
 
       let c;
-      c = db._create(gn + 'v1', { numberOfShards: 1 });
-      c.insert({ _key: "test" });
+      c = db._create(gn + 'v1', {numberOfShards: 1});
+      c.insert({_key: "test"});
 
-      c = db._create(gn + 'v2', { numberOfShards: 1 });
-      c.insert({ _key: "test" });
+      c = db._create(gn + 'v2', {numberOfShards: 1});
+      c.insert({_key: "test"});
 
-      c = db._createEdgeCollection(gn + 'e', { numberOfShards: 1 });
-      c.insert({ _from: gn + "v2/test", _to: gn + "v1/test" });
+      c = db._createEdgeCollection(gn + 'e', {numberOfShards: 1});
+      c.insert({_from: gn + "v2/test", _to: gn + "v1/test"});
     },
 
     tearDownAll: function () {
@@ -99,10 +99,10 @@ function invalidStartVertexSuite() {
       db._drop(gn + 'v2');
       db._drop(gn + 'e');
     },
-    
+
     testTraversalNullStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         try {
           let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} null ${gn + 'e'} RETURN {v, e}`;
           AQL_EXECUTE(q);
@@ -112,10 +112,10 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testTraversalNumberStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} -123 ${gn + 'e'} RETURN {v, e}`;
         try {
           AQL_EXECUTE(q);
@@ -128,17 +128,17 @@ function invalidStartVertexSuite() {
 
     testTraversalEmptyStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} '' ${gn + 'e'} RETURN {v, e}`;
         let res = AQL_EXECUTE(q);
         assertEqual([], res.json);
         assertTrue(res.warnings.length > 0);
       });
     },
-    
+
     testShortestPathNullStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH null TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN {v, e}`;
         try {
           AQL_EXECUTE(q);
@@ -148,10 +148,10 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testShortestPathNumberStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH -123 TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN {v, e}`;
         try {
           AQL_EXECUTE(q);
@@ -164,7 +164,7 @@ function invalidStartVertexSuite() {
 
     testShortestPathEmptyStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '' TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN {v, e}`;
         let res = AQL_EXECUTE(q);
         assertEqual([], res.json);
@@ -174,17 +174,17 @@ function invalidStartVertexSuite() {
 
     testShortestPathEmptyEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '${vn + 'v1'}/1' TO '' ${gn + 'e'} RETURN {v, e}`;
         let res = AQL_EXECUTE(q);
         assertEqual([], res.json);
         assertTrue(res.warnings.length > 0);
       });
     },
-    
+
     testShortestPathNullEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '${vn + 'v1'}/1' TO null ${gn + 'e'} RETURN {v, e}`;
         try {
           AQL_EXECUTE(q);
@@ -194,10 +194,10 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testShortestPathNumberEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '${vn + 'v1'}/1' TO -123 ${gn + 'e'} RETURN {v, e}`;
         try {
           AQL_EXECUTE(q);
@@ -210,7 +210,7 @@ function invalidStartVertexSuite() {
 
     testShortestPathBothEmpty: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '' TO '' ${gn + 'e'} RETURN {v, e}`;
         let res = AQL_EXECUTE(q);
         assertEqual([], res.json);
@@ -220,7 +220,7 @@ function invalidStartVertexSuite() {
 
     testKShortestPathsNullStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS null TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
         try {
           AQL_EXECUTE(q);
@@ -230,10 +230,10 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testKShortestsPathNumberStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS -123 TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
         try {
           AQL_EXECUTE(q);
@@ -246,7 +246,7 @@ function invalidStartVertexSuite() {
 
     testKShortestPathsEmptyStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '' TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
         let res = AQL_EXECUTE(q);
         assertEqual([], res.json);
@@ -256,17 +256,17 @@ function invalidStartVertexSuite() {
 
     testKShortestPathsEmptyEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '${vn + 'v1'}/1' TO '' ${gn + 'e'} RETURN v`;
         let res = AQL_EXECUTE(q);
         assertEqual([], res.json);
         assertTrue(res.warnings.length > 0);
       });
     },
-    
+
     testKShortestPathsNullEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '${vn + 'v1'}/1' TO null ${gn + 'e'} RETURN v`;
         try {
           AQL_EXECUTE(q);
@@ -276,10 +276,10 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testKShortestPathsNumberEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '${vn + 'v1'}/1' TO -123 ${gn + 'e'} RETURN v`;
         try {
           AQL_EXECUTE(q);
@@ -292,7 +292,7 @@ function invalidStartVertexSuite() {
 
     testKShortestPathsBothEmpty: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
-      directions.forEach(function(direction) {
+      directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '' TO '' ${gn + 'e'} RETURN v`;
         let res = AQL_EXECUTE(q);
         assertEqual([], res.json);
@@ -314,14 +314,14 @@ function simpleInboundOutboundSuite() {
       db._drop(gn + 'e');
 
       let c;
-      c = db._create(gn + 'v1', { numberOfShards: 9 });
-      c.insert({ _key: "test" });
+      c = db._create(gn + 'v1', {numberOfShards: 9});
+      c.insert({_key: "test"});
 
-      c = db._create(gn + 'v2', { numberOfShards: 7 });
-      c.insert({ _key: "test" });
+      c = db._create(gn + 'v2', {numberOfShards: 7});
+      c.insert({_key: "test"});
 
-      c = db._createEdgeCollection(gn + 'e', { numberOfShards: 5 });
-      c.insert({ _from: gn + "v2/test", _to: gn + "v1/test" });
+      c = db._createEdgeCollection(gn + 'e', {numberOfShards: 5});
+      c.insert({_from: gn + "v2/test", _to: gn + "v1/test"});
     },
 
     tearDown: function () {
@@ -367,18 +367,18 @@ function limitSuite() {
 
       var c = db._create(gn + 'v');
       for (i = 0; i < 10000; ++i) {
-        c.insert({ _key: 'test' + i });
+        c.insert({_key: 'test' + i});
       }
 
       c = db._createEdgeCollection(gn + 'e');
       for (i = 0; i < 10000; ++i) {
-        c.insert({ _from: gn + 'v/test' + i, _to: gn + 'v/test' + i });
+        c.insert({_from: gn + 'v/test' + i, _to: gn + 'v/test' + i});
       }
 
       c = db._createEdgeCollection(gn + 'e2');
-      c.insert({ _from: gn + 'v/test1', _to: gn + 'v/test0' });
-      c.insert({ _from: gn + 'v/test2', _to: gn + 'v/test0' });
-      c.insert({ _from: gn + 'v/test2', _to: gn + 'v/test1' });
+      c.insert({_from: gn + 'v/test1', _to: gn + 'v/test0'});
+      c.insert({_from: gn + 'v/test2', _to: gn + 'v/test0'});
+      c.insert({_from: gn + 'v/test2', _to: gn + 'v/test1'});
     },
 
     tearDownAll: function () {
@@ -461,11 +461,11 @@ function nestedSuite() {
       tagged = db._createEdgeCollection(gn + 'tagged');
 
       ['airplane', 'bicycle', 'train', 'car', 'boat'].forEach(function (_key) {
-        objects.insert({ _key });
+        objects.insert({_key});
       });
 
       ['public', 'private', 'fast', 'slow', 'land', 'air', 'water'].forEach(function (_key) {
-        tags.insert({ _key });
+        tags.insert({_key});
       });
 
       [
@@ -485,7 +485,7 @@ function nestedSuite() {
         ['public', 'train'],
         ['public', 'boat']
       ].forEach(function (edge) {
-        tagged.insert({ _from: tags.name() + '/' + edge[0], _to: objects.name() + '/' + edge[1] });
+        tagged.insert({_from: tags.name() + '/' + edge[0], _to: objects.name() + '/' + edge[1]});
       });
     },
 
@@ -498,31 +498,67 @@ function nestedSuite() {
     testNested: function () {
       var query = 'with ' + objects.name() + ', ' + tags.name() + ' for vehicle in any @start1 @@tagged for type in any @start2 @@tagged filter vehicle._id == type._id return vehicle._key';
 
-      var result = AQL_EXECUTE(query, { start1: tags.name() + '/land', start2: tags.name() + '/public', '@tagged': tagged.name() }).json;
+      var result = AQL_EXECUTE(query, {
+        start1: tags.name() + '/land',
+        start2: tags.name() + '/public',
+        '@tagged': tagged.name()
+      }).json;
       assertEqual(['train'], result);
 
-      result = AQL_EXECUTE(query, { start1: tags.name() + '/air', start2: tags.name() + '/fast', '@tagged': tagged.name() }).json;
+      result = AQL_EXECUTE(query, {
+        start1: tags.name() + '/air',
+        start2: tags.name() + '/fast',
+        '@tagged': tagged.name()
+      }).json;
       assertEqual(['airplane'], result);
 
-      result = AQL_EXECUTE(query, { start1: tags.name() + '/air', start2: tags.name() + '/slow', '@tagged': tagged.name() }).json;
+      result = AQL_EXECUTE(query, {
+        start1: tags.name() + '/air',
+        start2: tags.name() + '/slow',
+        '@tagged': tagged.name()
+      }).json;
       assertEqual([], result);
 
-      result = AQL_EXECUTE(query, { start1: tags.name() + '/land', start2: tags.name() + '/fast', '@tagged': tagged.name() }).json;
+      result = AQL_EXECUTE(query, {
+        start1: tags.name() + '/land',
+        start2: tags.name() + '/fast',
+        '@tagged': tagged.name()
+      }).json;
       assertEqual(['car', 'train'], result.sort());
 
-      result = AQL_EXECUTE(query, { start1: tags.name() + '/land', start2: tags.name() + '/private', '@tagged': tagged.name() }).json;
+      result = AQL_EXECUTE(query, {
+        start1: tags.name() + '/land',
+        start2: tags.name() + '/private',
+        '@tagged': tagged.name()
+      }).json;
       assertEqual(['bicycle', 'car'], result.sort());
 
-      result = AQL_EXECUTE(query, { start1: tags.name() + '/public', start2: tags.name() + '/slow', '@tagged': tagged.name() }).json;
+      result = AQL_EXECUTE(query, {
+        start1: tags.name() + '/public',
+        start2: tags.name() + '/slow',
+        '@tagged': tagged.name()
+      }).json;
       assertEqual(['boat'], result);
 
-      result = AQL_EXECUTE(query, { start1: tags.name() + '/public', start2: tags.name() + '/fast', '@tagged': tagged.name() }).json;
+      result = AQL_EXECUTE(query, {
+        start1: tags.name() + '/public',
+        start2: tags.name() + '/fast',
+        '@tagged': tagged.name()
+      }).json;
       assertEqual(['airplane', 'train'], result.sort());
 
-      result = AQL_EXECUTE(query, { start1: tags.name() + '/public', start2: tags.name() + '/foo', '@tagged': tagged.name() }).json;
+      result = AQL_EXECUTE(query, {
+        start1: tags.name() + '/public',
+        start2: tags.name() + '/foo',
+        '@tagged': tagged.name()
+      }).json;
       assertEqual([], result);
 
-      result = AQL_EXECUTE(query, { start1: tags.name() + '/foo', start2: tags.name() + '/fast', '@tagged': tagged.name() }).json;
+      result = AQL_EXECUTE(query, {
+        start1: tags.name() + '/foo',
+        start2: tags.name() + '/fast',
+        '@tagged': tagged.name()
+      }).json;
       assertEqual([], result);
     }
   };
@@ -539,7 +575,7 @@ function namedGraphSuite() {
    ***********************************************************************/
   const gn = 'UnitTestGraph';
   var ruleName = 'optimize-traversals';
-  var paramEnabled = { optimizer: { rules: ['-all', '+' + ruleName] } };
+  var paramEnabled = {optimizer: {rules: ['-all', '+' + ruleName]}};
   var opts = _.clone(paramEnabled);
 
   return {
@@ -573,7 +609,7 @@ function namedGraphSuite() {
       assertEqual(result[0]._id, vertex.C);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -589,7 +625,7 @@ function namedGraphSuite() {
       assertEqual(result[0]._id, edge.BC);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -610,7 +646,7 @@ function namedGraphSuite() {
       assertEqual(entry.edges[0]._id, edge.BC);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -627,7 +663,7 @@ function namedGraphSuite() {
       assertEqual(entry, vertex.C);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -644,7 +680,7 @@ function namedGraphSuite() {
       assertEqual(entry, vertex.B);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -665,7 +701,7 @@ function namedGraphSuite() {
       assertEqual(entry, vertex.E);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -683,7 +719,7 @@ function namedGraphSuite() {
       assertEqual(result[1], vertex.F);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -702,7 +738,7 @@ function namedGraphSuite() {
       assertEqual(result[2], vertex.F);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -719,7 +755,7 @@ function namedGraphSuite() {
       assertEqual(result[0], vertex.D);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -736,7 +772,7 @@ function namedGraphSuite() {
       assertEqual(result[0], vertex.B);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -754,7 +790,7 @@ function namedGraphSuite() {
       assertEqual(result[1], vertex.C);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -781,7 +817,7 @@ function namedGraphSuite() {
 
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -853,7 +889,7 @@ function multiCollectionGraphSuite() {
   const vn2 = 'UnitTestVertexCollection2';
   const en2 = 'UnitTestEdgeCollection2';
   var ruleName = 'optimize-traversals';
-  var paramEnabled = { optimizer: { rules: ['-all', '+' + ruleName] } };
+  var paramEnabled = {optimizer: {rules: ['-all', '+' + ruleName]}};
   var opts = _.clone(paramEnabled);
 
   // We always use the same query, the result should be identical.
@@ -883,7 +919,7 @@ function multiCollectionGraphSuite() {
       db._drop(en2);
       createBaseGraph();
       gm._create(gn, [gm._relation(en, vn, vn), gm._relation(en2, vn2, vn)]);
-      db[vn2].save({ _key: 'G' });
+      db[vn2].save({_key: 'G'});
       db[en2].save(vn2 + '/G', vn + '/D', {});
     },
 
@@ -902,7 +938,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query).toArray();
       var plans = AQL_EXPLAIN(query, {}, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -912,7 +948,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query).toArray();
       var plans = AQL_EXPLAIN(query, {}, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -924,7 +960,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result.length, 0);
       var plans = AQL_EXPLAIN(query, {}, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult.length, 0);
       });
     },
@@ -936,7 +972,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result.length, 0);
       var plans = AQL_EXPLAIN(query, {}, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult.length, 0);
       });
     },
@@ -950,7 +986,7 @@ function multiCollectionGraphSuite() {
       validateResult(result);
       var plans = AQL_EXPLAIN(query, {}, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -967,7 +1003,7 @@ function multiCollectionGraphSuite() {
       validateResult(result);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -984,7 +1020,7 @@ function multiCollectionGraphSuite() {
       validateResult(result);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1001,7 +1037,7 @@ function multiCollectionGraphSuite() {
       validateResult(result);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1019,7 +1055,7 @@ function multiCollectionGraphSuite() {
       validateResult(result);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1038,7 +1074,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[0]._id, vertex.C);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1057,7 +1093,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[0]._id, edge.BC);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1081,7 +1117,7 @@ function multiCollectionGraphSuite() {
       assertEqual(entry.edges[0]._id, edge.BC);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1101,7 +1137,7 @@ function multiCollectionGraphSuite() {
       assertEqual(entry, vertex.C);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1121,7 +1157,7 @@ function multiCollectionGraphSuite() {
       assertEqual(entry, vertex.B);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1145,7 +1181,7 @@ function multiCollectionGraphSuite() {
       assertEqual(entry, vertex.E);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1166,7 +1202,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[1], vertex.F);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1188,7 +1224,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[2], vertex.F);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1208,7 +1244,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[0], vertex.D);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1240,7 +1276,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[1], vertex.D);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1258,7 +1294,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[0]._id, vertex.C);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1283,7 +1319,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[5], vertex.F);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -1372,7 +1408,7 @@ function multiEdgeCollectionGraphSuite() {
   const gn = 'UnitTestGraph';
   const en2 = 'UnitTestEdgeCollection2';
   var ruleName = 'optimize-traversals';
-  var paramEnabled = { optimizer: { rules: ['-all', '+' + ruleName] } };
+  var paramEnabled = {optimizer: {rules: ['-all', '+' + ruleName]}};
   var opts = _.clone(paramEnabled);
 
   return {
@@ -1387,17 +1423,17 @@ function multiEdgeCollectionGraphSuite() {
         // It is expected that this graph does not exist.
       }
 
-      vc = db._create(vn, { numberOfShards: 4 });
-      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
-      var ec2 = db._createEdgeCollection(en2, { numberOfShards: 4 });
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      var ec2 = db._createEdgeCollection(en2, {numberOfShards: 4});
 
       gm._create(gn, [gm._relation(en, vn, vn), gm._relation(en2, vn, vn)]);
 
-      vertex.A = vc.save({ _key: 'A' })._id;
-      vertex.B = vc.save({ _key: 'B' })._id;
-      vertex.C = vc.save({ _key: 'C' })._id;
-      vertex.D = vc.save({ _key: 'D' })._id;
-      vertex.E = vc.save({ _key: 'E' })._id;
+      vertex.A = vc.save({_key: 'A'})._id;
+      vertex.B = vc.save({_key: 'B'})._id;
+      vertex.C = vc.save({_key: 'C'})._id;
+      vertex.D = vc.save({_key: 'D'})._id;
+      vertex.E = vc.save({_key: 'E'})._id;
 
       edge.AB = ec.save(vertex.A, vertex.B, {})._id;
       edge.CA = ec.save(vertex.C, vertex.A, {})._id;
@@ -1427,7 +1463,7 @@ function multiEdgeCollectionGraphSuite() {
       assertEqual(result, expectResult, query);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     }
@@ -1446,8 +1482,8 @@ function potentialErrorsSuite() {
       ec = db._createEdgeCollection(en);
       vertex.A = vn + '/unknown';
 
-      vertex.B = vc.save({ _key: 'B' })._id;
-      vertex.C = vc.save({ _key: 'C' })._id;
+      vertex.B = vc.save({_key: 'B'})._id;
+      vertex.C = vc.save({_key: 'C'})._id;
       ec.save(vertex.B, vertex.C, {});
     },
 
@@ -1716,7 +1752,7 @@ function potentialErrorsSuite() {
 
 function complexInternaSuite() {
   var ruleName = 'optimize-traversals';
-  var paramEnabled = { optimizer: { rules: ['-all', '+' + ruleName] } };
+  var paramEnabled = {optimizer: {rules: ['-all', '+' + ruleName]}};
   var opts = _.clone(paramEnabled);
 
   return {
@@ -1734,8 +1770,8 @@ function complexInternaSuite() {
       const vn2 = 'UnitTestVertexCollectionOther';
       db._drop(vn2);
       const vc2 = db._create(vn2);
-      vc.save({ _key: '1' });
-      vc2.save({ _key: '1' });
+      vc.save({_key: '1'});
+      vc2.save({_key: '1'});
       ec.save(vn + '/1', vn2 + '/1', {});
       var query = `WITH ${vn2}
       FOR x IN OUTBOUND @startId @@eCol
@@ -1776,11 +1812,11 @@ function complexInternaSuite() {
         '@eCol': en,
         'startId': startId
       };
-      vc.save({ _key: startId.split('/')[1] });
+      vc.save({_key: startId.split('/')[1]});
 
       // Insert amount many edges and vertices into the collections.
       for (var i = 0; i < amount; ++i) {
-        var tmp = vc.save({ _key: '' + i })._id;
+        var tmp = vc.save({_key: '' + i})._id;
         ec.save(startId, tmp, {});
       }
 
@@ -1790,52 +1826,72 @@ function complexInternaSuite() {
       assertEqual(result.length, amount);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
 
     testSkipSome: function () {
-      var query = `WITH ${vn}
+      const query = `WITH ${vn}
       FOR x, e, p IN 1..2 OUTBOUND @startId @@eCol
       LIMIT 4, 100
       RETURN p.vertices[1]._key`;
-      var startId = vn + '/test';
-      var bindVars = {
+      const startId = vn + '/start';
+      const bindVars = {
         '@eCol': en,
         'startId': startId
       };
-      vc.save({ _key: startId.split('/')[1] });
+      vc.save({_key: startId.split('/')[1]});
 
       // Insert amount many edges and vertices into the collections.
-      for (var i = 0; i < 3; ++i) {
-        var tmp = vc.save({ _key: '' + i })._id;
+      for (let i = 0; i < 3; ++i) {
+        const tmp = vc.save({_key: '' + i})._id;
         ec.save(startId, tmp, {});
-        for (var k = 0; k < 3; ++k) {
-          var tmp2 = vc.save({ _key: '' + i + '_' + k })._id;
+        for (let k = 0; k < 3; ++k) {
+          const tmp2 = vc.save({_key: '' + i + '_' + k})._id;
           ec.save(tmp, tmp2, {});
         }
       }
 
+      /*
+                   /-> 0_0
+               -> 0 -> 0_1
+             /     \-> 0_2
+            |
+            |      /-> 1_0
+         start -> 1 -> 1_1
+            |      \-> 1_2
+            |
+             \     /-> 2_0
+               -> 2 -> 2_1
+                   \-> 2_2
+       */
+
+      const isValidResult = result => {
+        return true
+          // all results must be depth 1 vertices
+          && result.every(v => -1 !== ['0', '1', '2'].indexOf(v))
+          // we expect exactly 8 results
+          && result.length === 8
+          // but only two different vertices (because we skipped one subtree)
+          && _.uniq(result).length === 2
+          // first one (any) of the subtrees must be returned, then the other
+          && _.uniq(result.slice(0, 4)).length === 1
+          && _.uniq(result.slice(4, 8)).length === 1;
+      };
+
       // Check that we can get all of them out again.
-      var result = db._query(query, bindVars).toArray();
-      // Internally: The Query selects elements in chunks, check that nothing is lost.
-      assertEqual(result.length, 8);
+      const result = db._query(query, bindVars).toArray();
+      assertTrue(isValidResult(result), result);
 
       // Each of the 3 parts of this graph contains of 4 nodes, one connected to the start.
       // And 3 connected to the first one. As we do a depth first traversal we expect to skip
       // exactly one sub-tree. Therefor we expect exactly two sub-trees to be traversed.
-      var seen = {};
-      for (var r of result) {
-        if (!seen.hasOwnProperty(r)) {
-          seen[r] = true;
-        }
-      }
-      assertEqual(Object.keys(seen).length, 2);
-      var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
+
+      const plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
-        assertEqual(jsonResult, result, query + " " + JSON.stringify(plan));
+        const jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
+        assertTrue(isValidResult(jsonResult), JSON.stringify({jsonResult, plan}));
       });
     },
 
@@ -1848,7 +1904,7 @@ function complexInternaSuite() {
         '@eCol': en,
         'startId': startId
       };
-      vc.save({ _key: startId.split('/')[1] });
+      vc.save({_key: startId.split('/')[1]});
       var amount = 10000;
       for (var i = 0; i < amount; ++i) {
         var _id = vc.save({});
@@ -2013,15 +2069,15 @@ function optimizeInSuite() {
 
     setUpAll: function () {
       cleanup();
-      vc = db._create(vn, { numberOfShards: 4 });
-      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
-      vc.save({ _key: startId.split('/')[1] });
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      vc.save({_key: startId.split('/')[1]});
 
       for (var i = 0; i < 100; ++i) {
-        var tmp = vc.save({ _key: 'tmp' + i, value: i });
-        ec.save(startId, tmp._id, { _key: 'tmp' + i, value: i });
+        var tmp = vc.save({_key: 'tmp' + i, value: i});
+        ec.save(startId, tmp._id, {_key: 'tmp' + i, value: i});
         for (var j = 0; j < 100; ++j) {
-          var innerTmp = vc.save({ _key: 'innertmp' + i + '_' + j });
+          var innerTmp = vc.save({_key: 'innertmp' + i + '_' + j});
           ec.save(tmp._id, innerTmp._id, {});
         }
       }
@@ -2065,7 +2121,7 @@ function optimizeInSuite() {
       assertEqual(result.count(), 1000);
 
       // if the rule is disabled we expect to do way more filtering
-      var noOpt = { optimizer: { rules: ['-all'] } };
+      var noOpt = {optimizer: {rules: ['-all']}};
       result = db._query(vertexQuery, bindVars, {}, noOpt);
 
       extra = result.getExtra();
@@ -2149,7 +2205,7 @@ function optimizeInSuite() {
       assertEqual(result.count(), 1000);
 
       // if the rule is disabled we expect to do way more filtering
-      var noOpt = { optimizer: { rules: ['-all'] } };
+      var noOpt = {optimizer: {rules: ['-all']}};
       result = db._query(vertexQuery, bindVars, {}, noOpt);
       extra = result.getExtra();
       // For each vertex not in the list we filter once for every connected edge
@@ -2187,23 +2243,29 @@ function optimizeInSuite() {
       var bindVars = {
         '@eCol': en,
         'startId': startId,
-        'obj': { '_key': 'tmp0', 'value': 0 }
+        'obj': {'_key': 'tmp0', 'value': 0}
       };
 
-      var noOpt = { optimizer: { rules: ['-all'] } };
-      var opt = { optimizer: { rules: ['-all', '+' + ruleName] } };
+      var noOpt = {optimizer: {rules: ['-all']}};
+      var opt = {optimizer: {rules: ['-all', '+' + ruleName]}};
 
       var optPlans = AQL_EXPLAIN(vertexQuery, bindVars, opt).plan;
       var noOptPlans = AQL_EXPLAIN(vertexQuery, bindVars, noOpt).plan;
       assertEqual(optPlans.rules, []);
       // This query cannot be optimized by traversal rule
-      assertEqual(roundCost(optPlans), roundCost(noOptPlans));
+      // we do not want to test estimatedCost or selectivityEstimate here
+      // 1.) subject to rounding errors and other fluctuations
+      // 2.) absolute numbers for estimatedCost and selectivityEstimate are an implementation detail and meaningless for this test.
+      assertEqual(removeCost(optPlans), removeCost(noOptPlans));
 
       optPlans = AQL_EXPLAIN(edgeQuery, bindVars, opt).plan;
       noOptPlans = AQL_EXPLAIN(edgeQuery, bindVars, noOpt).plan;
       assertEqual(optPlans.rules, []);
       // This query cannot be optimized by traversal rule
-      assertEqual(roundCost(optPlans), roundCost(noOptPlans));
+      // we do not want to test estimatedCost or selectivityEstimate here
+      // 1.) subject to rounding errors and other fluctuations
+      // 2.) absolute numbers for estimatedCost and selectivityEstimate are an implementation detail and meaningless for this test.
+      assertEqual(removeCost(optPlans), removeCost(noOptPlans));
     }
   };
 }
@@ -2225,30 +2287,30 @@ function complexFilteringSuite() {
   return {
     setUpAll: function () {
       cleanup();
-      var vc = db._create(vn, { numberOfShards: 4 });
-      var ec = db._createEdgeCollection(en, { numberOfShards: 4 });
-      vertex.A = vc.save({ _key: 'A', left: false, right: false })._id;
-      vertex.B = vc.save({ _key: 'B', left: true, right: false, value: 25 })._id;
-      vertex.C = vc.save({ _key: 'C', left: true, right: false })._id;
-      vertex.D = vc.save({ _key: 'D', left: false, right: true, value: 75 })._id;
-      vertex.E = vc.save({ _key: 'E', left: false, right: true })._id;
-      vertex.F = vc.save({ _key: 'F', left: true, right: false })._id;
-      vertex.G = vc.save({ _key: 'G', left: false, right: true })._id;
+      var vc = db._create(vn, {numberOfShards: 4});
+      var ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      vertex.A = vc.save({_key: 'A', left: false, right: false})._id;
+      vertex.B = vc.save({_key: 'B', left: true, right: false, value: 25})._id;
+      vertex.C = vc.save({_key: 'C', left: true, right: false})._id;
+      vertex.D = vc.save({_key: 'D', left: false, right: true, value: 75})._id;
+      vertex.E = vc.save({_key: 'E', left: false, right: true})._id;
+      vertex.F = vc.save({_key: 'F', left: true, right: false})._id;
+      vertex.G = vc.save({_key: 'G', left: false, right: true})._id;
 
-      edge.AB = ec.save(vertex.A, vertex.B, { left: true, right: false })._id;
-      edge.BC = ec.save(vertex.B, vertex.C, { left: true, right: false })._id;
-      edge.AD = ec.save(vertex.A, vertex.D, { left: false, right: true })._id;
-      edge.DE = ec.save(vertex.D, vertex.E, { left: false, right: true })._id;
-      edge.BF = ec.save(vertex.B, vertex.F, { left: true, right: false })._id;
-      edge.DG = ec.save(vertex.D, vertex.G, { left: false, right: true })._id;
+      edge.AB = ec.save(vertex.A, vertex.B, {left: true, right: false})._id;
+      edge.BC = ec.save(vertex.B, vertex.C, {left: true, right: false})._id;
+      edge.AD = ec.save(vertex.A, vertex.D, {left: false, right: true})._id;
+      edge.DE = ec.save(vertex.D, vertex.E, {left: false, right: true})._id;
+      edge.BF = ec.save(vertex.B, vertex.F, {left: true, right: false})._id;
+      edge.DG = ec.save(vertex.D, vertex.G, {left: false, right: true})._id;
 
-      vertex.Tri1 = vc.save({ _key: 'Tri1', isLoop: true })._id;
-      vertex.Tri2 = vc.save({ _key: 'Tri2', isLoop: true })._id;
-      vertex.Tri3 = vc.save({ _key: 'Tri3', isLoop: true })._id;
+      vertex.Tri1 = vc.save({_key: 'Tri1', isLoop: true})._id;
+      vertex.Tri2 = vc.save({_key: 'Tri2', isLoop: true})._id;
+      vertex.Tri3 = vc.save({_key: 'Tri3', isLoop: true})._id;
 
-      edge.Tri12 = ec.save(vertex.Tri1, vertex.Tri2, { isLoop: true })._id;
-      edge.Tri23 = ec.save(vertex.Tri2, vertex.Tri3, { isLoop: true })._id;
-      edge.Tri31 = ec.save(vertex.Tri3, vertex.Tri1, { isLoop: true, lateLoop: true })._id;
+      edge.Tri12 = ec.save(vertex.Tri1, vertex.Tri2, {isLoop: true})._id;
+      edge.Tri23 = ec.save(vertex.Tri2, vertex.Tri3, {isLoop: true})._id;
+      edge.Tri31 = ec.save(vertex.Tri3, vertex.Tri1, {isLoop: true, lateLoop: true})._id;
     },
 
     tearDownAll: cleanup,
@@ -2284,11 +2346,7 @@ function complexFilteringSuite() {
       // 1 Edge (Tri1->Tri2)
       // 1 Primary (Tri2)
 
-      if (mmfilesEngine) {
-        assertEqual(stats.scannedIndex, 2);
-      } else {
-        assertEqual(stats.scannedIndex, 1);
-      }
+      assertEqual(stats.scannedIndex, 1);
 
       assertEqual(stats.filtered, 1);
     },
@@ -2326,13 +2384,8 @@ function complexFilteringSuite() {
       assertEqual(stats.scannedFull, 0);
       // The lookup will be using the primary Index.
       // It will find 0 elements.
-      if (mmfilesEngine) {
-        assertEqual(stats.scannedIndex, 1);
-        assertEqual(stats.filtered, 1);
-      } else {
-        assertEqual(stats.scannedIndex, 0);
-        assertEqual(stats.filtered, 0);
-      }
+      assertEqual(stats.scannedIndex, 0);
+      assertEqual(stats.filtered, 0);
     },
 
     testVertexLevel0: function () {
@@ -2377,11 +2430,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 9);
-        } else {
-          assertTrue(stats.scannedIndex <= 5);
-        }
+        assertTrue(stats.scannedIndex <= 5);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary (B, D) for Filtering
@@ -2396,11 +2445,7 @@ function complexFilteringSuite() {
         // Without traverser-read-cache
         assertTrue(stats.scannedIndex <= 17);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 17);
-          } else {
           assertEqual(stats.scannedIndex, 13);
-          }
         */
       }
       // 1 Filter On D
@@ -2428,11 +2473,7 @@ function complexFilteringSuite() {
         // 1 Primary lookup A
         // 2 Primary lookup B,D
         // 4 Primary Lookups (C, F, E, G)
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 13);
-        } else {
-          assertTrue(stats.scannedIndex <= 7);
-        }
+        assertTrue(stats.scannedIndex <= 7);
       } else {
         // 2 Edge Lookups (A)
         // 4 Edge Lookups (2 B) (2 D)
@@ -2447,11 +2488,7 @@ function complexFilteringSuite() {
         // With traverser-read-cache
         assertTrue(stats.scannedIndex <= 24);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 24);
-          } else {
-          assertEqual(stats.scannedIndex, 18);
-          }
+        assertEqual(stats.scannedIndex, 18);
         */
       }
       // 2 Filter (B, C) too short
@@ -2480,11 +2517,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups (E, G)
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 9);
-        } else {
-          assertTrue(stats.scannedIndex <= 5);
-        }
+        assertTrue(stats.scannedIndex <= 5);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary Lookups for Eval (B, D)
@@ -2497,11 +2530,7 @@ function complexFilteringSuite() {
         // Without traverser-read-cache
         assertTrue(stats.scannedIndex <= 11);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 11);
-          } else {
           assertEqual(stats.scannedIndex, 7);
-          }
         */
       }
       // 2 Filter (B, D) too short
@@ -2529,11 +2558,7 @@ function complexFilteringSuite() {
         // 1 Primary (B)
         // 2 Edge
         // 2 Primary (C,F)
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 8);
-        } else {
-          assertTrue(stats.scannedIndex <= 4);
-        }
+        assertTrue(stats.scannedIndex <= 4);
       } else {
         // 2 Edge Lookups (A)
         // 2 Edge Lookups (B)
@@ -2546,11 +2571,7 @@ function complexFilteringSuite() {
         // Without traverser-read-cache
         assertTrue(stats.scannedIndex <= 15);
         /*
-          if (mmfilesEngine){
-          assertEqual(stats.scannedIndex, 15);
-          } else {
-          assertEqual(stats.scannedIndex, 11);
-          }
+        assertEqual(stats.scannedIndex, 11);
         */
       }
       // 1 Filter (A->D)
@@ -2580,11 +2601,7 @@ function complexFilteringSuite() {
         // they may be inserted in the vertexToFetch list, which
         // lazy loads all vertices in it.
         if (stats.scannedIndex !== 8) {
-          if (mmfilesEngine) {
-            assertTrue(stats.scannedIndex <= 11);
-          } else {
-            assertTrue(stats.scannedIndex <= 5);
-          }
+          assertTrue(stats.scannedIndex <= 5);
         }
       } else {
         // 2 Edge Lookups (A)
@@ -2599,11 +2616,7 @@ function complexFilteringSuite() {
         // Without traverser-read-cache
         assertTrue(stats.scannedIndex <= 20);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 20);
-          } else {
-          assertEqual(stats.scannedIndex, 14);
-          }
+        assertEqual(stats.scannedIndex, 14);
         */
       }
       // 2 Filter On (B, D) too short
@@ -2643,13 +2656,7 @@ function complexFilteringSuite() {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          if (mmfilesEngine) {
-            assertTrue(stats.scannedIndex <= 9);
-          } else {
-            // FIXME this used to be 5 ??
-            assertTrue(stats.scannedIndex <= 5, stats.scannedIndex);
-            // assertEqual(stats.scannedIndex <= 5);
-          }
+          assertTrue(stats.scannedIndex <= 5, stats.scannedIndex);
         } else {
           // Cluster uses a lookup cache.
           // Pointless in single-server mode
@@ -2667,11 +2674,7 @@ function complexFilteringSuite() {
           // Without traverser-read-cache
           assertTrue(stats.scannedIndex <= 17);
           /*
-            if(mmfilesEngine){
-            assertEqual(stats.scannedIndex, 17);
-            } else {
-            assertEqual(stats.scannedIndex, 13);
-            }
+          assertEqual(stats.scannedIndex, 13);
           */
         }
         // 1 Filter On D
@@ -2711,11 +2714,7 @@ function complexFilteringSuite() {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          if (mmfilesEngine) {
-            assertTrue(stats.scannedIndex <= 9);
-          } else {
-            assertTrue(stats.scannedIndex <= 5);
-          }
+          assertTrue(stats.scannedIndex <= 5);
         } else {
           // Cluster uses a lookup cache.
           // Pointless in single-server mode
@@ -2733,11 +2732,7 @@ function complexFilteringSuite() {
           // Without traverser-read-cache
           assertTrue(stats.scannedIndex <= 17);
           /*
-            if(mmfilesEngine){
-            assertEqual(stats.scannedIndex, 17);
-            } else {
-            assertEqual(stats.scannedIndex, 13);
-            }
+          assertEqual(stats.scannedIndex, 13);
           */
         }
         // 1 Filter On D
@@ -2769,11 +2764,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 13);
-        } else {
-          assertTrue(stats.scannedIndex <= 7);
-        }
+        assertTrue(stats.scannedIndex <= 7);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary (B, D) for Filtering
@@ -2788,11 +2779,7 @@ function complexFilteringSuite() {
         // Without traverser-read-cache
         assertTrue(stats.scannedIndex <= 28);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 17);
-          } else {
-          assertEqual(stats.scannedIndex, 13);
-          }
+        assertEqual(stats.scannedIndex, 13);
         */
       }
       // 1 Filter On D
@@ -2803,17 +2790,17 @@ function complexFilteringSuite() {
 }
 
 function brokenGraphSuite() {
-  var paramDisabled = { optimizer: { rules: ['-all'] } };
+  var paramDisabled = {optimizer: {rules: ['-all']}};
 
   return {
 
     setUpAll: function () {
       cleanup();
-      vc = db._create(vn, { numberOfShards: 4 });
-      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
 
-      vertex.A = vc.save({ _key: 'A' })._id;
-      vertex.B = vc.save({ _key: 'B' })._id;
+      vertex.A = vc.save({_key: 'A'})._id;
+      vertex.B = vc.save({_key: 'B'})._id;
 
       ec.save(vertex.A, vn + '/missing', {});
       ec.save(vn + '/missing', vertex.B, {});
@@ -2916,6 +2903,105 @@ function brokenGraphSuite() {
   };
 }
 
+/*
+ *       A
+ *     ↙ ↲ ↘  // Edge from A to the edge connecting "A->B"
+ *   B       C
+ */
+function edgeConnectedFromVertexToEdge() {
+  const gn = 'UnitTestGraph';
+  const gn2 = 'UnitTestGraph2';
+  const en2 = 'UnitTestEdgeCollection2';
+
+  return {
+    setUpAll: function () {
+      cleanup();
+
+      vc = db._createDocumentCollection(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      let ec2 = db._createEdgeCollection(en2, {numberOfShards: 4});
+
+      vertex.A = vc.save({_key: 'A'})._id;
+      vertex.B = vc.save({_key: 'B'})._id;
+      vertex.C = vc.save({_key: 'C'})._id;
+
+      // collections and directions
+      edge.AB = ec.save(vertex.A, vertex.B, {_key: 'AB'});
+      edge.AC = ec.save(vertex.A, vertex.C, {_key: 'AC'});
+      edge.AAB = ec.save(vertex.A, edge.AB, {_key: 'AAB'}); // Edge from A to the edge connecting "A->B"
+
+      edge.AB = ec2.save(vertex.A, vertex.B, {_key: 'AB'});
+      edge.AC = ec2.save(vertex.A, vertex.C, {_key: 'AC'});
+      edge.AAB = ec2.save(vertex.A, edge.AB, {_key: 'AAB'}); // Edge from A to the edge connecting "A->B"
+
+      // also create a named graph for testing as well
+      try {
+        gm._drop(gn, true);
+        if (isCluster) {
+          gm._drop(gn2, true);
+        }
+      } catch (e) {
+        // It is expected that those graphs are not existing.
+      }
+      gm._create(gn, [gm._relation(en, vn, [vn, en])]); // complete definition
+      if (isCluster) {
+        gm._create(gn2, [gm._relation(en2, vn, vn)]); // en collection is missing
+      }
+    },
+
+    tearDownAll: function () {
+      gm._drop(gn, true);
+      if (isCluster) {
+        gm._drop(gn2, true);
+      }
+      cleanup();
+    },
+
+    testConnectedEdgeToAnotherEdge: function () {
+      let queries = [
+        `WITH ${vn}, ${en} FOR x,y,z IN 1..10 OUTBOUND @start @@ec return x`,
+        `FOR x,y,z IN 1..10 OUTBOUND @start GRAPH "${gn}" return x`,
+        `FOR x,y,z IN 1..10 OUTBOUND @start GRAPH "${gn2}" return x`
+      ];
+
+      let bindVarsAnonymous = {
+        '@ec': en,
+        start: vertex.A
+      };
+
+      let bindVarsNamed = {
+        start: vertex.A
+      };
+
+      let checkFoundVertices = function(result) {
+        // sort returned array
+        result = _.orderBy(result, ['_key'],['asc']);
+        assertEqual(result[0]._key, 'AB');
+        assertEqual(result[1]._key, 'B');
+        assertEqual(result[2]._key, 'C');
+        assertEqual(result.length, 3);
+      };
+
+      // must work
+      checkFoundVertices(db._query(queries[0], bindVarsAnonymous).toArray()); // anonymous
+      checkFoundVertices(db._query(queries[1], bindVarsNamed).toArray()); // named, all collections well defined
+
+      if (isCluster) {
+        try {
+          // must fail
+          db._query(queries[2], bindVarsNamed).toArray(); // en collection is missing in "to"
+          fail();
+        } catch (e) {
+          // TODO: In the future create a better error message. Named graphs cannot work with the
+          // "WITH" statement. But currently it is reported to the user as a solution within th error
+          // message. This is false and needs to be fixed.
+          assertEqual(e.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+        }
+      }
+    }
+  };
+}
+
 function multiEdgeDirectionSuite() {
   const en2 = 'UnitTestEdgeCollection2';
   var ec2;
@@ -2926,17 +3012,16 @@ function multiEdgeDirectionSuite() {
       cleanup();
       db._drop(en2);
 
-      vc = db._create(vn, { numberOfShards: 4 });
-      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
-      ec2 = db._createEdgeCollection(en2, { numberOfShards: 4 });
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      ec2 = db._createEdgeCollection(en2, {numberOfShards: 4});
 
-      vertex.A = vc.save({ _key: 'A' })._id;
-      vertex.B = vc.save({ _key: 'B' })._id;
-      vertex.C = vc.save({ _key: 'C' })._id;
-      vertex.D = vc.save({ _key: 'D' })._id;
-      vertex.E = vc.save({ _key: 'E' })._id;
-
-      vertex.F = vc.save({ _key: 'F' })._id;
+      vertex.A = vc.save({_key: 'A'})._id;
+      vertex.B = vc.save({_key: 'B'})._id;
+      vertex.C = vc.save({_key: 'C'})._id;
+      vertex.D = vc.save({_key: 'D'})._id;
+      vertex.E = vc.save({_key: 'E'})._id;
+      vertex.F = vc.save({_key: 'F'})._id;
 
       // F is always 2 hops away and only reachable with alternating
       // collections and directions
@@ -3067,8 +3152,8 @@ function subQuerySuite() {
      */
     setUpAll: function () {
       cleanup();
-      vc = db._create(vn, { numberOfShards: 4 });
-      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
 
       try {
         gm._drop(gn);
@@ -3078,28 +3163,28 @@ function subQuerySuite() {
 
       gm._create(gn, [gm._relation(en, vn, vn)]);
 
-      vertex.A = vc.save({ _key: 'A' })._id;
-      vertex.B = vc.save({ _key: 'B' })._id;
-      vertex.C = vc.save({ _key: 'C' })._id;
-      vertex.D = vc.save({ _key: 'D' })._id;
+      vertex.A = vc.save({_key: 'A'})._id;
+      vertex.B = vc.save({_key: 'B'})._id;
+      vertex.C = vc.save({_key: 'C'})._id;
+      vertex.D = vc.save({_key: 'D'})._id;
 
-      vertex.B1 = vc.save({ _key: 'B1', value: 1 })._id;
-      vertex.B2 = vc.save({ _key: 'B2', value: 2 })._id;
-      vertex.B3 = vc.save({ _key: 'B3', value: 3 })._id;
-      vertex.B4 = vc.save({ _key: 'B4', value: 4 })._id;
-      vertex.B5 = vc.save({ _key: 'B5', value: 5 })._id;
+      vertex.B1 = vc.save({_key: 'B1', value: 1})._id;
+      vertex.B2 = vc.save({_key: 'B2', value: 2})._id;
+      vertex.B3 = vc.save({_key: 'B3', value: 3})._id;
+      vertex.B4 = vc.save({_key: 'B4', value: 4})._id;
+      vertex.B5 = vc.save({_key: 'B5', value: 5})._id;
 
-      vertex.C1 = vc.save({ _key: 'C1', value: 1 })._id;
-      vertex.C2 = vc.save({ _key: 'C2', value: 2 })._id;
-      vertex.C3 = vc.save({ _key: 'C3', value: 3 })._id;
-      vertex.C4 = vc.save({ _key: 'C4', value: 4 })._id;
-      vertex.C5 = vc.save({ _key: 'C5', value: 5 })._id;
+      vertex.C1 = vc.save({_key: 'C1', value: 1})._id;
+      vertex.C2 = vc.save({_key: 'C2', value: 2})._id;
+      vertex.C3 = vc.save({_key: 'C3', value: 3})._id;
+      vertex.C4 = vc.save({_key: 'C4', value: 4})._id;
+      vertex.C5 = vc.save({_key: 'C5', value: 5})._id;
 
-      vertex.D1 = vc.save({ _key: 'D1', value: 1 })._id;
-      vertex.D2 = vc.save({ _key: 'D2', value: 2 })._id;
-      vertex.D3 = vc.save({ _key: 'D3', value: 3 })._id;
-      vertex.D4 = vc.save({ _key: 'D4', value: 4 })._id;
-      vertex.D5 = vc.save({ _key: 'D5', value: 5 })._id;
+      vertex.D1 = vc.save({_key: 'D1', value: 1})._id;
+      vertex.D2 = vc.save({_key: 'D2', value: 2})._id;
+      vertex.D3 = vc.save({_key: 'D3', value: 3})._id;
+      vertex.D4 = vc.save({_key: 'D4', value: 4})._id;
+      vertex.D5 = vc.save({_key: 'D5', value: 5})._id;
 
       ec.save(vertex.A, vertex.B, {});
       ec.save(vertex.A, vertex.C, {});
@@ -3205,8 +3290,8 @@ function optionsSuite() {
   return {
     setUp: function () {
       cleanup();
-      vc = db._create(vn, { numberOfShards: 4 });
-      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
       try {
         gm._drop(gn);
       } catch (e) {
@@ -3226,11 +3311,11 @@ function optionsSuite() {
     },
 
     testEdgeUniquenessPath: function () {
-      var start = vc.save({ _key: 's' })._id;
-      var a = vc.save({ _key: 'a' })._id;
-      var b = vc.save({ _key: 'b' })._id;
-      var c = vc.save({ _key: 'c' })._id;
-      var d = vc.save({ _key: 'd' })._id;
+      var start = vc.save({_key: 's'})._id;
+      var a = vc.save({_key: 'a'})._id;
+      var b = vc.save({_key: 'b'})._id;
+      var c = vc.save({_key: 'c'})._id;
+      var d = vc.save({_key: 'd'})._id;
       ec.save(start, a, {});
       ec.save(a, b, {});
       ec.save(b, c, {});
@@ -3255,7 +3340,7 @@ function optionsSuite() {
     },
 
     testEdgeUniquenessGlobal: function () {
-      var start = vc.save({ _key: 's' })._id;
+      var start = vc.save({_key: 's'})._id;
       try {
         db._query(
           `WITH ${vn}
@@ -3269,11 +3354,11 @@ function optionsSuite() {
     },
 
     testEdgeUniquenessNone: function () {
-      var start = vc.save({ _key: 's' })._id;
-      var a = vc.save({ _key: 'a' })._id;
-      var b = vc.save({ _key: 'b' })._id;
-      var c = vc.save({ _key: 'c' })._id;
-      var d = vc.save({ _key: 'd' })._id;
+      var start = vc.save({_key: 's'})._id;
+      var a = vc.save({_key: 'a'})._id;
+      var b = vc.save({_key: 'b'})._id;
+      var c = vc.save({_key: 'c'})._id;
+      var d = vc.save({_key: 'd'})._id;
       ec.save(start, a, {});
       ec.save(a, b, {});
       ec.save(b, c, {});
@@ -3305,11 +3390,11 @@ function optionsSuite() {
     },
 
     testVertexUniquenessNone: function () {
-      var start = vc.save({ _key: 's' })._id;
-      var a = vc.save({ _key: 'a' })._id;
-      var b = vc.save({ _key: 'b' })._id;
-      var c = vc.save({ _key: 'c' })._id;
-      var d = vc.save({ _key: 'd' })._id;
+      var start = vc.save({_key: 's'})._id;
+      var a = vc.save({_key: 'a'})._id;
+      var b = vc.save({_key: 'b'})._id;
+      var c = vc.save({_key: 'c'})._id;
+      var d = vc.save({_key: 'd'})._id;
       ec.save(start, a, {});
       ec.save(a, b, {});
       ec.save(b, c, {});
@@ -3336,7 +3421,7 @@ function optionsSuite() {
     },
 
     testVertexUniquenessGlobalDepthFirst: function () {
-      var start = vc.save({ _key: 's' })._id;
+      var start = vc.save({_key: 's'})._id;
       try {
         db._query(
           `WITH ${vn}
@@ -3350,10 +3435,10 @@ function optionsSuite() {
     },
 
     testVertexUniquenessPath: function () {
-      var start = vc.save({ _key: 's' })._id;
-      var a = vc.save({ _key: 'a' })._id;
-      var b = vc.save({ _key: 'b' })._id;
-      var c = vc.save({ _key: 'c' })._id;
+      var start = vc.save({_key: 's'})._id;
+      var a = vc.save({_key: 'a'})._id;
+      var b = vc.save({_key: 'b'})._id;
+      var c = vc.save({_key: 'c'})._id;
       ec.save(start, a, {});
       ec.save(a, b, {});
       ec.save(a, a, {});
@@ -3401,22 +3486,22 @@ function optimizeQuantifierSuite() {
   return {
     setUpAll: function () {
       cleanup();
-      vc = db._create(vn, { numberOfShards: 4 });
-      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
-      vertices.A = vc.save({ _key: 'A', foo: true, bar: true })._id;
-      vertices.B = vc.save({ _key: 'B', foo: true, bar: true })._id;
-      vertices.C = vc.save({ _key: 'C', foo: true, bar: true })._id;
-      vertices.D = vc.save({ _key: 'D', foo: true, bar: false })._id;
-      vertices.E = vc.save({ _key: 'E', foo: false, bar: true })._id;
-      vertices.F = vc.save({ _key: 'F', foo: false, bar: true })._id;
-      vertices.G = vc.save({ _key: 'G', foo: false, bar: false })._id;
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      vertices.A = vc.save({_key: 'A', foo: true, bar: true})._id;
+      vertices.B = vc.save({_key: 'B', foo: true, bar: true})._id;
+      vertices.C = vc.save({_key: 'C', foo: true, bar: true})._id;
+      vertices.D = vc.save({_key: 'D', foo: true, bar: false})._id;
+      vertices.E = vc.save({_key: 'E', foo: false, bar: true})._id;
+      vertices.F = vc.save({_key: 'F', foo: false, bar: true})._id;
+      vertices.G = vc.save({_key: 'G', foo: false, bar: false})._id;
 
-      edges.AB = ec.save({ _key: 'AB', _from: vertices.A, _to: vertices.B, foo: true, bar: true })._id;
-      edges.BC = ec.save({ _key: 'BC', _from: vertices.B, _to: vertices.C, foo: true, bar: true })._id;
-      edges.BD = ec.save({ _key: 'BD', _from: vertices.B, _to: vertices.D, foo: true, bar: false })._id;
-      edges.AE = ec.save({ _key: 'AE', _from: vertices.A, _to: vertices.E, foo: false, bar: true })._id;
-      edges.EF = ec.save({ _key: 'EF', _from: vertices.E, _to: vertices.F, foo: false, bar: true })._id;
-      edges.EG = ec.save({ _key: 'EG', _from: vertices.E, _to: vertices.G, foo: false, bar: false })._id;
+      edges.AB = ec.save({_key: 'AB', _from: vertices.A, _to: vertices.B, foo: true, bar: true})._id;
+      edges.BC = ec.save({_key: 'BC', _from: vertices.B, _to: vertices.C, foo: true, bar: true})._id;
+      edges.BD = ec.save({_key: 'BD', _from: vertices.B, _to: vertices.D, foo: true, bar: false})._id;
+      edges.AE = ec.save({_key: 'AE', _from: vertices.A, _to: vertices.E, foo: false, bar: true})._id;
+      edges.EF = ec.save({_key: 'EF', _from: vertices.E, _to: vertices.F, foo: false, bar: true})._id;
+      edges.EG = ec.save({_key: 'EG', _from: vertices.E, _to: vertices.G, foo: false, bar: false})._id;
 
       try {
         gm._drop(gn);
@@ -3451,11 +3536,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 9);
-        } else {
-          assertTrue(stats.scannedIndex <= 5);
-        }
+        assertTrue(stats.scannedIndex <= 5);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3465,11 +3546,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 23);
         assertTrue(stats.scannedIndex <= 22);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 22);
-          } else {
-          assertEqual(stats.scannedIndex, 18);
-          }
+        assertEqual(stats.scannedIndex, 18);
         */
       }
       assertEqual(stats.filtered, 1);
@@ -3504,11 +3581,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 8);
-        } else {
-          assertTrue(stats.scannedIndex <= 4);
-        }
+        assertTrue(stats.scannedIndex <= 4);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3518,11 +3591,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 18);
         assertTrue(stats.scannedIndex <= 17);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 17);
-          } else {
-          assertEqual(stats.scannedIndex, 13);
-          }
+        assertEqual(stats.scannedIndex, 13);
         */
       }
       assertTrue(stats.filtered <= 2);
@@ -3541,11 +3610,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 8);
-        } else {
-          assertTrue(stats.scannedIndex <= 4);
-        }
+        assertTrue(stats.scannedIndex <= 4);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3554,11 +3619,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 18);
         assertTrue(stats.scannedIndex <= 17);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 17);
-          } else {
-          assertEqual(stats.scannedIndex, 13);
-          }
+        assertEqual(stats.scannedIndex, 13);
         */
       }
       assertTrue(stats.filtered <= 2);
@@ -3579,11 +3640,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 9);
-        } else {
-          assertTrue(stats.scannedIndex <= 5);
-        }
+        assertTrue(stats.scannedIndex <= 5);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3593,11 +3650,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 23);
         assertTrue(stats.scannedIndex <= 22);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 22);
-          } else {
-          assertEqual(stats.scannedIndex, 18);
-          }
+        assertEqual(stats.scannedIndex, 18);
         */
       }
       assertEqual(stats.filtered, 1);
@@ -3632,11 +3685,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 8);
-        } else {
-          assertTrue(stats.scannedIndex <= 4);
-        }
+        assertTrue(stats.scannedIndex <= 4);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3645,11 +3694,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 18);
         assertTrue(stats.scannedIndex <= 17);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 17);
-          } else {
-          assertEqual(stats.scannedIndex, 13);
-          }
+        assertEqual(stats.scannedIndex, 13);
         */
       }
       assertEqual(stats.filtered, 1);
@@ -3668,11 +3713,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 8);
-        } else {
-          assertTrue(stats.scannedIndex <= 4);
-        }
+        assertTrue(stats.scannedIndex <= 4);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3681,11 +3722,7 @@ function optimizeQuantifierSuite() {
         // TODO Check for Optimization
         assertTrue(stats.scannedIndex <= 17);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 17);
-          } else {
-          assertEqual(stats.scannedIndex, 13);
-          }
+        assertEqual(stats.scannedIndex, 13);
         */
       }
       assertEqual(stats.filtered, 1);
@@ -3707,11 +3744,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 9);
-        } else {
-          assertTrue(stats.scannedIndex <= 5);
-        }
+        assertTrue(stats.scannedIndex <= 5);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3720,11 +3753,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 17);
         assertTrue(stats.scannedIndex <= 18);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 18);
-          } else {
-          assertEqual(stats.scannedIndex, 14);
-          }
+        assertEqual(stats.scannedIndex, 14);
         */
       }
       assertEqual(stats.filtered, 2);
@@ -3746,11 +3775,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 7);
-        } else {
-          assertTrue(stats.scannedIndex <= 3);
-        }
+        assertTrue(stats.scannedIndex <= 3);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3759,11 +3784,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 12);
         assertTrue(stats.scannedIndex <= 13);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 13);
-          } else {
-          assertEqual(stats.scannedIndex, 9);
-          }
+        assertEqual(stats.scannedIndex, 9);
         */
       }
       assertTrue(stats.filtered <= 3);
@@ -3785,11 +3806,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 9);
-        } else {
-          assertTrue(stats.scannedIndex <= 5);
-        }
+        assertTrue(stats.scannedIndex <= 5);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3799,11 +3816,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 17);
         assertTrue(stats.scannedIndex <= 18);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 18);
-          } else {
-          assertEqual(stats.scannedIndex, 14);
-          }
+        assertEqual(stats.scannedIndex, 14);
         */
       }
       assertEqual(stats.filtered, 2);
@@ -3825,11 +3838,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 7);
-        } else {
-          assertTrue(stats.scannedIndex <= 3);
-        }
+        assertTrue(stats.scannedIndex <= 3);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3839,11 +3848,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 12);
         assertTrue(stats.scannedIndex <= 13);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 13);
-          } else {
-          assertEqual(stats.scannedIndex, 9);
-          }
+        assertEqual(stats.scannedIndex, 9);
         */
       }
       assertTrue(stats.filtered <= 3);
@@ -3865,11 +3870,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 9);
-        } else {
-          assertTrue(stats.scannedIndex <= 5);
-        }
+        assertTrue(stats.scannedIndex <= 5);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 9);
@@ -3879,11 +3880,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 17);
         assertTrue(stats.scannedIndex <= 18);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 18);
-          } else {
-          assertEqual(stats.scannedIndex, 14);
-          }
+        assertEqual(stats.scannedIndex, 14);
         */
       }
       assertTrue(stats.filtered <= 4);
@@ -3905,11 +3902,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        if (mmfilesEngine) {
-          assertTrue(stats.scannedIndex <= 7);
-        } else {
-          assertTrue(stats.scannedIndex <= 3);
-        }
+        assertTrue(stats.scannedIndex <= 3);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3919,11 +3912,7 @@ function optimizeQuantifierSuite() {
         // assertEqual(stats.scannedIndex, 12);
         assertTrue(stats.scannedIndex <= 13);
         /*
-          if(mmfilesEngine){
-          assertEqual(stats.scannedIndex, 13);
-          } else {
-          assertEqual(stats.scannedIndex, 9);
-          }
+        assertEqual(stats.scannedIndex, 9);
         */
       }
       assertTrue(stats.filtered <= 4);
@@ -3933,7 +3922,7 @@ function optimizeQuantifierSuite() {
 
 function optimizeNonVertexCentricIndexesSuite() {
   let explain = function (query, params) {
-    return AQL_EXPLAIN(query, params, { optimizer: { rules: ['+all'] } });
+    return AQL_EXPLAIN(query, params, {optimizer: {rules: ['+all']}});
   };
 
   let vertices = {};
@@ -3942,30 +3931,30 @@ function optimizeNonVertexCentricIndexesSuite() {
   return {
     setUpAll: () => {
       cleanup();
-      vc = db._create(vn, { numberOfShards: 4 });
-      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
-      vertices.A = vc.save({ _key: 'A' })._id;
-      vertices.B = vc.save({ _key: 'B' })._id;
-      vertices.C = vc.save({ _key: 'C' })._id;
-      vertices.D = vc.save({ _key: 'D' })._id;
-      vertices.E = vc.save({ _key: 'E' })._id;
-      vertices.F = vc.save({ _key: 'F' })._id;
-      vertices.G = vc.save({ _key: 'G' })._id;
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      vertices.A = vc.save({_key: 'A'})._id;
+      vertices.B = vc.save({_key: 'B'})._id;
+      vertices.C = vc.save({_key: 'C'})._id;
+      vertices.D = vc.save({_key: 'D'})._id;
+      vertices.E = vc.save({_key: 'E'})._id;
+      vertices.F = vc.save({_key: 'F'})._id;
+      vertices.G = vc.save({_key: 'G'})._id;
 
-      vertices.FOO = vc.save({ _key: 'FOO' })._id;
-      vertices.BAR = vc.save({ _key: 'BAR' })._id;
+      vertices.FOO = vc.save({_key: 'FOO'})._id;
+      vertices.BAR = vc.save({_key: 'BAR'})._id;
 
-      edges.AB = ec.save({ _key: 'AB', _from: vertices.A, _to: vertices.B, foo: 'A', bar: true })._id;
-      edges.BC = ec.save({ _key: 'BC', _from: vertices.B, _to: vertices.C, foo: 'B', bar: true })._id;
-      edges.BD = ec.save({ _key: 'BD', _from: vertices.B, _to: vertices.D, foo: 'C', bar: false })._id;
-      edges.AE = ec.save({ _key: 'AE', _from: vertices.A, _to: vertices.E, foo: 'D', bar: true })._id;
-      edges.EF = ec.save({ _key: 'EF', _from: vertices.E, _to: vertices.F, foo: 'E', bar: true })._id;
-      edges.EG = ec.save({ _key: 'EG', _from: vertices.E, _to: vertices.G, foo: 'F', bar: false })._id;
+      edges.AB = ec.save({_key: 'AB', _from: vertices.A, _to: vertices.B, foo: 'A', bar: true})._id;
+      edges.BC = ec.save({_key: 'BC', _from: vertices.B, _to: vertices.C, foo: 'B', bar: true})._id;
+      edges.BD = ec.save({_key: 'BD', _from: vertices.B, _to: vertices.D, foo: 'C', bar: false})._id;
+      edges.AE = ec.save({_key: 'AE', _from: vertices.A, _to: vertices.E, foo: 'D', bar: true})._id;
+      edges.EF = ec.save({_key: 'EF', _from: vertices.E, _to: vertices.F, foo: 'E', bar: true})._id;
+      edges.EG = ec.save({_key: 'EG', _from: vertices.E, _to: vertices.G, foo: 'F', bar: false})._id;
 
       // Adding these edges to make the estimate for the edge-index extremly bad
       let badEdges = [];
       for (let j = 0; j < 1000; ++j) {
-        badEdges.push({ _from: vertices.FOO, _to: vertices.BAR, foo: 'foo' + j, bar: j });
+        badEdges.push({_from: vertices.FOO, _to: vertices.BAR, foo: 'foo' + j, bar: j});
       }
       ec.save(badEdges);
     },
@@ -3981,14 +3970,16 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testUniqueHashIndex: () => {
-      var idx = db[en].ensureIndex({ type: 'hash', fields: ['foo'], unique: true, sparse: false });
+      var idx = db[en].ensureIndex({type: 'hash', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
       internal.waitForEstimatorSync(); // make sure estimates are consistent
 
-      let exp = explain(q, {}).plan.nodes.filter(node => { return node.type === 'TraversalNode'; });
+      let exp = explain(q, {}).plan.nodes.filter(node => {
+        return node.type === 'TraversalNode';
+      });
       assertEqual(1, exp.length);
       // Check if we did use the hash index on level 0
       let indexes = exp[0].indexes;
@@ -4003,14 +3994,16 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testUniqueSkiplistIndex: () => {
-      var idx = db[en].ensureIndex({ type: 'skiplist', fields: ['foo'], unique: true, sparse: false });
+      var idx = db[en].ensureIndex({type: 'skiplist', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
       internal.waitForEstimatorSync(); // make sure estimates are consistent
 
-      let exp = explain(q, {}).plan.nodes.filter(node => { return node.type === 'TraversalNode'; });
+      let exp = explain(q, {}).plan.nodes.filter(node => {
+        return node.type === 'TraversalNode';
+      });
       assertEqual(1, exp.length);
       // Check if we did use the hash index on level 0
       let indexes = exp[0].indexes;
@@ -4025,13 +4018,15 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testAllUniqueHashIndex: () => {
-      var idx = db[en].ensureIndex({ type: 'hash', fields: ['foo'], unique: true, sparse: false });
+      var idx = db[en].ensureIndex({type: 'hash', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[*].foo ALL == 'A'
       RETURN v._id`;
 
-      let exp = explain(q, {}).plan.nodes.filter(node => { return node.type === 'TraversalNode'; });
+      let exp = explain(q, {}).plan.nodes.filter(node => {
+        return node.type === 'TraversalNode';
+      });
       assertEqual(1, exp.length);
       // Check if we did use the hash index on level 0
       let indexes = exp[0].indexes;
@@ -4046,13 +4041,15 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testAllUniqueSkiplistIndex: () => {
-      var idx = db[en].ensureIndex({ type: 'skiplist', fields: ['foo'], unique: true, sparse: false });
+      var idx = db[en].ensureIndex({type: 'skiplist', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[*].foo ALL == 'A'
       RETURN v._id`;
 
-      let exp = explain(q, {}).plan.nodes.filter(node => { return node.type === 'TraversalNode'; });
+      let exp = explain(q, {}).plan.nodes.filter(node => {
+        return node.type === 'TraversalNode';
+      });
       assertEqual(1, exp.length);
       // Check if we did use the hash index on level 0
       let indexes = exp[0].indexes;
@@ -4203,9 +4200,9 @@ function exampleGraphsSuite() {
 
 function pruneTraversalSuite() {
   const optionsToTest = {
-    DFS: { bfs: false },
-    BFS: { bfs: true },
-    Neighbors: { bfs: true, uniqueVertices: 'global' }
+    DFS: {bfs: false},
+    BFS: {bfs: true},
+    Neighbors: {bfs: true, uniqueVertices: 'global'}
   };
 
   // We have identical tests for all traversal options.
@@ -4382,6 +4379,85 @@ function pruneTraversalSuite() {
   return testObj;
 }
 
+function unusedVariableSuite() {
+  const gn = 'UnitTestGraph';
+
+  return {
+
+    setUpAll: function () {
+      db._drop(gn + 'v');
+      db._drop(gn + 'e');
+
+      var i;
+
+      var c = db._create(gn + 'v');
+      for (i = 0; i < 10000; ++i) {
+        c.insert({_key: 'test' + i});
+      }
+
+      c = db._createEdgeCollection(gn + 'e');
+      for (i = 0; i < 10000; ++i) {
+        c.insert({_from: gn + 'v/test' + i, _to: gn + 'v/test' + (i+1)});
+      }
+    },
+
+    tearDownAll: function () {
+      db._drop(gn + 'v');
+      db._drop(gn + 'e');
+    },
+
+    testCount: function () {
+      const queries = [
+        [ 'WITH @@vertices,@@edges FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
+        [ 'WITH @@vertices,@@edges FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
+        [ 'WITH @@vertices,@@edges FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
+        [ 'WITH @@vertices,@@edges FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
+        [ 'WITH @@vertices,@@edges FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
+        [ 'WITH @@vertices,@@edges FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1', 1],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1', 100],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v', 1],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v', 100],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v', 1000],
+      ];
+
+      queries.forEach(function (query) {
+        const r = db._query(query[0], {"start": gn + 'v/test0', "@vertices": gn+'v', "@edges": gn+'e'});
+        const resultArray = r.toArray();
+        assertEqual(query[1], resultArray.length, query);
+      });
+
+    },
+
+    testCountSubquery: function () {
+      const queries = [
+        [ 'RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+        [ 'RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+        [ 'RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+        [ 'RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+        [ 'RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+        [ 'RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)', 1],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)', 100],
+        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000],
+      ];
+
+      queries.forEach(function (query) {
+        const r = db._query(query[0], {"start": gn + 'v/test0', "@edges": gn+'e'});
+        const resultArray = r.toArray();
+        assertEqual(resultArray.length, 1);
+        assertEqual(query[1], resultArray[0], query);
+      });
+    },
+  };
+}
+
+
+
 jsunity.run(invalidStartVertexSuite);
 jsunity.run(simpleInboundOutboundSuite);
 jsunity.run(limitSuite);
@@ -4394,6 +4470,7 @@ jsunity.run(complexInternaSuite);
 jsunity.run(optimizeInSuite);
 jsunity.run(complexFilteringSuite);
 jsunity.run(brokenGraphSuite);
+jsunity.run(edgeConnectedFromVertexToEdge);
 jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
 jsunity.run(optionsSuite);
@@ -4403,5 +4480,5 @@ if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);
 }
 jsunity.run(pruneTraversalSuite);
-
+jsunity.run(unusedVariableSuite);
 return jsunity.done();

@@ -73,10 +73,11 @@ static constexpr char const* currentServersRegisteredPref =
 /// running
 ////////////////////////////////////////////////////////////////////////////////
 
-static ServerState Instance;
+static ServerState* Instance = nullptr;
 
-ServerState::ServerState()
-    : _role(RoleEnum::ROLE_UNDEFINED),
+ServerState::ServerState(application_features::ApplicationServer& server)
+    : _server(server),
+      _role(RoleEnum::ROLE_UNDEFINED),
       _lock(),
       _id(),
       _shortId(0),
@@ -88,6 +89,8 @@ ServerState::ServerState()
       _state(STATE_UNDEFINED),
       _initialized(false),
       _foxxmasterQueueupdate(false) {
+  TRI_ASSERT(!Instance);
+  Instance = this;
   setRole(ROLE_UNDEFINED);
 }
 
@@ -152,7 +155,7 @@ ServerState::~ServerState() = default;
 /// @brief create the (sole) instance
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState* ServerState::instance() { return &Instance; }
+ServerState* ServerState::instance() { return Instance; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a role
@@ -350,7 +353,7 @@ bool ServerState::unregister() {
                                        AgencySimpleOperationType::INCREMENT_OP));
 
   AgencyWriteTransaction unregisterTransaction(operations);
-  AgencyComm comm;
+  AgencyComm comm(_server);
   AgencyCommResult r = comm.sendTransactionWithFailover(unregisterTransaction);
   return r.successful();
 }
@@ -389,7 +392,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                        std::string const& advEndpoint) {
   WRITE_LOCKER(writeLocker, _lock);
 
-  AgencyComm comm;
+  AgencyComm comm(_server);
   if (!checkEngineEquality(comm)) {
     LOG_TOPIC("1e2da", FATAL, arangodb::Logger::ENGINES)
         << "the usage of different storage engines in the "
@@ -489,18 +492,17 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
       return "Coordinator";
     case ROLE_SINGLE:
       return "Single";
-
-    case ROLE_UNDEFINED:
-    case ROLE_AGENT: {
-      TRI_ASSERT(false);
+    case ROLE_AGENT: 
+      return "Agent";
+    case ROLE_UNDEFINED: {
+      return "Undefined";
     }
   }
   return "INVALID_CLUSTER_ROLE";
 }
 
 std::string ServerState::getUuidFilename() const {
-  auto& server = application_features::ApplicationServer::server();
-  auto& dbpath = server.getFeature<DatabasePathFeature>();
+  auto& dbpath = _server.getFeature<DatabasePathFeature>();
   return FileUtils::buildFilename(dbpath.directory(), "UUID");
 }
 
@@ -738,6 +740,14 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
   return false;
 }
 
+std::string ServerState::getShortName() const {
+  std::stringstream ss;  // ShortName
+  auto num = getShortId();
+  size_t width = std::max(std::to_string(num + 1).size(), static_cast<size_t>(4));
+  ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0') << num + 1;
+  return ss.str();
+}
+
 bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersistedId) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
 
@@ -751,8 +761,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
     pre.emplace_back(AgencyPrecondition(rebootIdPath, AgencyPrecondition::Type::EMPTY, true));
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  while (!server.isStopping()) {
+  while (!_server.isStopping()) {
     VPackBuilder builder;
     {
       VPackObjectBuilder b(&builder);
@@ -787,11 +796,11 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
 
   // if we left the above retry loop because the server is stopping
   // we'll skip this and return false right away.
-  while (!server.isStopping()) {
+  while (!_server.isStopping()) {
     auto result = readRebootIdFromAgency(comm);
 
     if (result) {
-      setRebootId(result.get());
+      setRebootId(RebootId{result.get()});
       return true;
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -851,13 +860,13 @@ void ServerState::setShortId(uint32_t id) {
   _shortId.store(id, std::memory_order_relaxed);
 }
 
-uint64_t ServerState::getRebootId() const {
-  TRI_ASSERT(_rebootId > 0);
+RebootId ServerState::getRebootId() const {
+  TRI_ASSERT(_rebootId.initialized());
   return _rebootId;
 }
 
-void ServerState::setRebootId(uint64_t rebootId) {
-  TRI_ASSERT(rebootId > 0);
+void ServerState::setRebootId(RebootId const rebootId) {
+  TRI_ASSERT(rebootId.initialized());
   _rebootId = rebootId;
 }
 
@@ -1032,7 +1041,7 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
                                          builder.slice()));
 
     AgencyWriteTransaction readonlyMode(operations);
-    AgencyComm comm;
+    AgencyComm comm(_server);
     AgencyCommResult r = comm.sendTransactionWithFailover(readonlyMode);
     if (!r.successful()) {
       return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());

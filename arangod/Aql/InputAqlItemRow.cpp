@@ -135,6 +135,8 @@ void InputAqlItemRow::toSimpleVelocyPack(velocypack::Options const* trxOpts,
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
     : _block(block), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(!_block->isShadowRow(baseIndex));
 }
 
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
@@ -166,13 +168,10 @@ RegisterCount InputAqlItemRow::getNrRegisters() const noexcept {
   return block().getNrRegs();
 }
 
-bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
-  return this->_block == other._block && this->_baseIndex == other._baseIndex;
+bool InputAqlItemRow::isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept {
+    return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
-bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
-  return !(*this == other);
-}
 
 bool InputAqlItemRow::equates(InputAqlItemRow const& other,
                               velocypack::Options const* const options) const noexcept {

@@ -157,21 +157,23 @@ RestStatus RestAgencyHandler::handleStores() {
       VPackObjectBuilder b(&body);
       {
         _agent->executeLockedRead([&]() {
-          body.add(VPackValue("spearhead"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->spearhead().dumpToBuilder(body);
-          }
-          body.add(VPackValue("read_db"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->readDB().dumpToBuilder(body);
-          }
-          body.add(VPackValue("transient"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->transient().dumpToBuilder(body);
-          }
+            body.add(VPackValue("spearhead"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->spearhead().dumpToBuilder(body);
+            }
+            body.add(VPackValue("read_db"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->readDB().dumpToBuilder(body);
+            }
+        });
+        _agent->executeTransientLocked([&]() {
+            body.add(VPackValue("transient"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->transient().dumpToBuilder(body);
+            }
         });
       }
     }
@@ -207,6 +209,8 @@ RestStatus RestAgencyHandler::handleStore() {
 }
 
 RestStatus RestAgencyHandler::handleWrite() {
+
+  using namespace std::chrono;
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
   }
@@ -235,6 +239,9 @@ RestStatus RestAgencyHandler::handleWrite() {
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
+
+  // Start timing
+  auto const start = high_resolution_clock::now();
 
   // Do write
   write_ret_t ret;
@@ -293,6 +300,8 @@ RestStatus RestAgencyHandler::handleWrite() {
 
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
+          _agent->commitHist().count(
+            duration<float,std::milli>(high_resolution_clock::now()-start).count());
         }
       }
     }
@@ -520,7 +529,6 @@ RestStatus RestAgencyHandler::handleRead() {
         return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
                              "No leader");
       } else {
-        TRI_ASSERT(ret.redirect != _agent->id());
         redirectRequest(ret.redirect);
       }
     }
@@ -536,6 +544,14 @@ RestStatus RestAgencyHandler::handleConfig() {
   if (_request->requestType() == rest::RequestType::POST) {
     try {
       _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr());
+    } catch (std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+      return RestStatus::DONE;
+    }
+  }
+  else if (_request->requestType() == rest::RequestType::PUT) {
+    try {
+      _agent->updateSomeConfigValues(_request->toVelocyPackBuilderPtr()->slice());
     } catch (std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
       return RestStatus::DONE;
@@ -603,6 +619,7 @@ RestStatus RestAgencyHandler::execute() {
         return handleTransact();
       } else if (suffixes[0] == "config") {
         if (_request->requestType() != rest::RequestType::GET &&
+            _request->requestType() != rest::RequestType::PUT &&
             _request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }

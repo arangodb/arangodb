@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_SKIP_LIST_H
@@ -62,22 +61,22 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   skip_writer(
     size_t skip_0,
     size_t skip_n
-  ) NOEXCEPT;
+  ) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
   //////////////////////////////////////////////////////////////////////////////
-  size_t skip_0() const NOEXCEPT { return skip_0_; }
+  size_t skip_0() const noexcept { return skip_0_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the levels from 1 to num_levels()
   //////////////////////////////////////////////////////////////////////////////
-  size_t skip_n() const NOEXCEPT { return skip_n_; }
+  size_t skip_n() const noexcept { return skip_n_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements in a skip-list
   //////////////////////////////////////////////////////////////////////////////
-  size_t num_levels() const NOEXCEPT { return levels_.size(); }
+  size_t num_levels() const noexcept { return levels_.size(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares skip_writer
@@ -108,12 +107,12 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief resets skip reader internal state
   //////////////////////////////////////////////////////////////////////////////
-  void reset() NOEXCEPT;
+  void reset() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns true if skip_writer was succesfully prepared
   //////////////////////////////////////////////////////////////////////////////
-  explicit operator bool() const NOEXCEPT {
+  explicit operator bool() const noexcept {
     return static_cast<bool>(write_);
   }
 
@@ -148,22 +147,22 @@ class IRESEARCH_API skip_reader: util::noncopyable {
   /// @param skip_0 skip interval for level 0
   /// @param skip_n skip interval for levels 1..n
   //////////////////////////////////////////////////////////////////////////////
-  skip_reader(size_t skip_0, size_t skip_n) NOEXCEPT;
+  skip_reader(size_t skip_0, size_t skip_n) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
   //////////////////////////////////////////////////////////////////////////////
-  size_t skip_0() const NOEXCEPT { return skip_0_; }
+  size_t skip_0() const noexcept { return skip_0_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the levels from 1 to num_levels()
   //////////////////////////////////////////////////////////////////////////////
-  size_t skip_n() const NOEXCEPT { return skip_n_; }
+  size_t skip_n() const noexcept { return skip_n_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements in a skip-list
   //////////////////////////////////////////////////////////////////////////////
-  size_t num_levels() const NOEXCEPT { return levels_.size(); }
+  size_t num_levels() const noexcept { return levels_.size(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares skip_reader
@@ -191,7 +190,7 @@ class IRESEARCH_API skip_reader: util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns true if skip_reader was succesfully prepared
   //////////////////////////////////////////////////////////////////////////////
-  explicit operator bool() const NOEXCEPT  {
+  explicit operator bool() const noexcept  {
     return static_cast<bool>(read_);
   }
 
@@ -205,8 +204,8 @@ class IRESEARCH_API skip_reader: util::noncopyable {
       uint64_t child = 0,
       size_t skipped = 0,
       doc_id_t doc = doc_limits::invalid()
-    ) NOEXCEPT;
-    level(level&& rhs) NOEXCEPT;
+    ) noexcept;
+    level(level&& rhs) noexcept;
 
     ptr dup() const override;
     uint8_t read_byte() override;

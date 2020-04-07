@@ -43,6 +43,8 @@ class Methods;
 }
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 struct Collection;
 class EnumerateCollectionStats;
 class ExecutionEngine;
@@ -62,10 +64,8 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
-      Expression* filter,
-      std::vector<std::string> const& projections,
-      std::vector<size_t> const& coveringIndexAttributePositions,
-      bool useRawDocumentPointers, bool random);
+      Expression* filter, std::vector<std::string> const& projections,
+      std::vector<size_t> const& coveringIndexAttributePositions, bool random);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
@@ -81,7 +81,6 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   std::vector<std::string> const& getProjections() const noexcept;
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
   bool getProduceResult() const;
-  bool getUseRawDocumentPointers() const;
   bool getRandom() const;
   RegisterId getOutputRegisterId() const;
 
@@ -93,7 +92,6 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
   RegisterId _outputRegisterId;
-  bool _useRawDocumentPointers;
   bool _produceResult;
   bool _random;
 };
@@ -121,13 +119,28 @@ class EnumerateCollectionExecutor {
   ~EnumerateCollectionExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief Will fetch a new InputRow if necessary and store their local state
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return bool done in case we do not have any input and upstreamState is done
    */
+  void initializeNewRow(AqlItemBlockInputRange& inputRange);
 
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  std::tuple<ExecutionState, EnumerateCollectionStats, size_t> skipRows(size_t atMost);
+  /**
+   * @brief produce the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& input, OutputAqlItemRow& output);
+
+  uint64_t skipEntries(size_t toSkip, EnumerateCollectionStats& stats);
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
   void initializeCursor();
 
@@ -136,19 +149,16 @@ class EnumerateCollectionExecutor {
 
   void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
-  /// @brief whether or not we are allowed to use the covering index
-  /// optimization in a callback
-  bool getAllowCoveringIndexOptimization() const noexcept;
-
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
   IndexIterator::DocumentCallback _documentProducer;
   IndexIterator::DocumentCallback _documentSkipper;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   ExecutionState _state;
+  ExecutorState _executorState;
   bool _cursorHasMore;
-  InputAqlItemRow _input;
+  InputAqlItemRow _currentRow;
+  ExecutorState _currentRowState;
   std::unique_ptr<OperationCursor> _cursor;
 };
 

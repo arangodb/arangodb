@@ -43,6 +43,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "V8/v8-globals.h"
@@ -261,18 +262,40 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     }
     // fall-through to linear search
   }
-
+  
   // use linear search
-  for (size_t i = 0; i < n; ++i) {
-    bool mustDestroy;
-    AqlValue a = right.at(i, mustDestroy, false);
-    AqlValueGuard guard(a, mustDestroy);
 
-    int compareResult = AqlValue::Compare(trx, left, a, false);
+  if (!right.isDocvec() && !right.isRange() &&
+      !left.isDocvec() && !left.isRange()) {
+    // optimization for the case in which rhs is a Velocypack array, and we 
+    // can simply use a VelocyPack iterator to walk through it. this will
+    // be a lot more efficient than using right.at(i) in case the array is
+    // of type Compact (without any index tables)
+    VPackSlice const lhs(left.slice());
 
-    if (compareResult == 0) {
-      // item found in the list
-      return true;
+    VPackOptions const* options = trx->transactionContextPtr()->getVPackOptions();
+    VPackArrayIterator it(right.slice());
+    while (it.valid()) {
+      int compareResult = arangodb::basics::VelocyPackHelper::compare(lhs, it.value(), false, options);
+    
+      if (compareResult == 0) {
+        // item found in the list
+        return true;
+      }
+      it.next();
+    }
+  } else {
+    for (size_t i = 0; i < n; ++i) {
+      bool mustDestroy;
+      AqlValue a = right.at(i, mustDestroy, false);
+      AqlValueGuard guard(a, mustDestroy);
+
+      int compareResult = AqlValue::Compare(trx, left, a, false);
+
+      if (compareResult == 0) {
+        // item found in the list
+        return true;
+      }
     }
   }
 
@@ -412,13 +435,10 @@ AqlValue Expression::executeSimpleExpression(AstNode const* node, transaction::M
     case NODE_TYPE_OPERATOR_NARY_OR:
       return executeSimpleExpressionNaryAndOr(node, trx, mustDestroy);
     case NODE_TYPE_COLLECTION:
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "node type 'collection' is not supported in ArangoDB 3.4");
     case NODE_TYPE_VIEW:
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
-          "node type 'view' is not supported in ArangoDB 3.4");
+          std::string("node type '") + node->getTypeString() + "' is not supported in expressions");
 
     default:
       std::string msg("unhandled type '");
@@ -824,16 +844,19 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
                                       v8::Handle<v8::Value>* args, bool& mustDestroy) {
   ISOLATE;
   auto current = isolate->GetCurrentContext()->Global();
+  auto context = TRI_IGETC;
 
   v8::Handle<v8::Value> module =
-      current->Get(TRI_V8_ASCII_STRING(isolate, "_AQL"));
+    current->Get(context, TRI_V8_ASCII_STRING(isolate, "_AQL")).FromMaybe(v8::Local<v8::Value>());
   if (module.IsEmpty() || !module->IsObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to find global _AQL module");
   }
 
   v8::Handle<v8::Value> function =
-      v8::Handle<v8::Object>::Cast(module)->Get(TRI_V8_STD_STRING(isolate, jsName));
+    v8::Handle<v8::Object>::Cast(module)->Get(context,
+                                              TRI_V8_STD_STRING(isolate, jsName)
+                                              ).FromMaybe(v8::Local<v8::Value>());
   if (function.IsEmpty() || !function->IsFunction()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -843,7 +866,7 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
   // actually call the V8 function
   v8::TryCatch tryCatch(isolate);
   v8::Handle<v8::Value> result =
-      v8::Handle<v8::Function>::Cast(function)->Call(current, static_cast<int>(callArgs), args);
+    v8::Handle<v8::Function>::Cast(function)->Call(context, current, static_cast<int>(callArgs), args).FromMaybe(v8::Local<v8::Value>());
 
   try {
     V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
@@ -885,10 +908,11 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
     v8::HandleScope scope(isolate);                                   \
+    auto context = TRI_IGETC;
     _ast->query()->prepareV8Context();
 
     std::string jsName;
-    size_t const n = static_cast<int>(member->numMembers());
+    size_t const n = member->numMembers();
     size_t callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
     auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 
@@ -904,7 +928,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
         AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
         AqlValueGuard guard(a, localMustDestroy);
 
-        params->Set(static_cast<uint32_t>(i), a.toV8(isolate, trx));
+        params->Set(context, static_cast<uint32_t>(i), a.toV8(isolate, trx)).FromMaybe(false);
       }
 
       // function name
@@ -1309,6 +1333,20 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(AstNode const* node,
 AqlValue Expression::executeSimpleExpressionTernary(AstNode const* node,
                                                     transaction::Methods* trx,
                                                     bool& mustDestroy) {
+  if (node->numMembers() == 2) {
+    AqlValue condition =
+      executeSimpleExpression(node->getMember(0), trx, mustDestroy, true);
+    AqlValueGuard guard(condition, mustDestroy);
+
+    if (condition.toBoolean()) {
+      guard.steal();
+      return condition;
+    }
+    return executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, true);
+  }
+  
+  TRI_ASSERT(node->numMembers() == 3);
+
   AqlValue condition =
       executeSimpleExpression(node->getMember(0), trx, mustDestroy, false);
 
@@ -1559,7 +1597,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
     TRI_ASSERT(!mustDestroy);
     r = 0.0;
   }
-
+  
   if (r == 0.0) {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV || node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       // division by zero
@@ -1572,7 +1610,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
       return AqlValue(AqlValueHintNull());
     }
   }
-
+  
   mustDestroy = false;
   double result;
 

@@ -106,7 +106,7 @@ void ClusterSelectivityEstimates::set(IndexEstMap const& estimates) {
   auto indexes = _collection.getIndexes();
 
   for (std::shared_ptr<Index>& idx : indexes) {
-    auto it = estimates.find(std::to_string(idx->id()));
+    auto it = estimates.find(std::to_string(idx->id().id()));
 
     if (it != estimates.end()) {
       idx->updateClusterSelectivityEstimate(it->second);

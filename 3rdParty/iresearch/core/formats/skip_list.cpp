@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -54,7 +53,7 @@ NS_ROOT
 // --SECTION--                                       skip_writer implementation
 // ----------------------------------------------------------------------------
 
-skip_writer::skip_writer(size_t skip_0, size_t skip_n) NOEXCEPT
+skip_writer::skip_writer(size_t skip_0, size_t skip_n) noexcept
   : skip_0_(skip_0), skip_n_(skip_n) {
 }
 
@@ -140,7 +139,7 @@ void skip_writer::flush(index_output& out) {
   });
 }
 
-void skip_writer::reset() NOEXCEPT {
+void skip_writer::reset() noexcept {
   for(auto& level : levels_) {
     level.stream.reset();
   }
@@ -158,7 +157,7 @@ skip_reader::level::level(
     uint64_t child /*= 0*/,
     size_t skipped /*= 0*/,
     doc_id_t doc /*= doc_limits::invalid()*/
-) NOEXCEPT
+) noexcept
   : stream(std::move(stream)), // thread-safe input
     begin(begin), 
     end(end),
@@ -168,7 +167,7 @@ skip_reader::level::level(
     doc(doc) {
 }
 
-skip_reader::level::level(skip_reader::level&& rhs) NOEXCEPT 
+skip_reader::level::level(skip_reader::level&& rhs) noexcept 
   : stream(std::move(rhs.stream)),
     begin(rhs.begin),
     end(rhs.end),
@@ -242,7 +241,7 @@ int64_t skip_reader::level::checksum(size_t offset) const {
 
 skip_reader::skip_reader(
     size_t skip_0, 
-    size_t skip_n) NOEXCEPT
+    size_t skip_n) noexcept
   : skip_0_(skip_0), skip_n_(skip_n) {
 }
 

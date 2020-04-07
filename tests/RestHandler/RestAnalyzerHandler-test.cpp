@@ -66,7 +66,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
   static ptr make(irs::string_ref const&) {
@@ -111,7 +111,7 @@ class RestAnalyzerHandlerTest
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope;  // (&execContext);
   arangodb::aql::QueryRegistry queryRegistry;  // required for UserManager::loadFromDB()

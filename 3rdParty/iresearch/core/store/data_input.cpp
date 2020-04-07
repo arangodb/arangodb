@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -74,14 +73,14 @@ std::streamsize input_buf::showmanyc() {
 
 buffered_index_input::buffered_index_input(
     size_t buf_size/*= DEFAULT_BUFFER_SIZE*/
-) NOEXCEPT
+) noexcept
   : start_(0),
     buf_size_(buf_size) {
 }
 
 buffered_index_input::buffered_index_input(
     const buffered_index_input& rhs
-) NOEXCEPT
+) noexcept
   : index_input(),
     start_(rhs.start_ + rhs.offset()),
     buf_size_(rhs.buf_size_) {

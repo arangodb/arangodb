@@ -42,19 +42,18 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   // return the names of all available storage engines
   static std::unordered_set<std::string> availableEngineNames();
 
-  // return all available storage engines
-  static std::unordered_map<std::string, std::type_index> availableEngines();
-
   // whether the engine has been selected yet
   bool selected() const { return _selected.load(); }
 
   StorageEngine& engine();
 
+  template <typename As, typename std::enable_if<std::is_base_of<StorageEngine, As>::value, int>::type = 0>
+  As& engine();
+
   static std::string const& engineName();
 
   static std::string const& defaultEngine();
 
-  static bool isMMFiles();
   static bool isRocksDB();
 
   // selected storage engine. this will contain a pointer to the storage engine
@@ -69,6 +68,7 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   std::string _engine;
   std::string _engineFilePath;
   std::atomic<bool> _selected;
+  bool _allowDeprecatedDeployments;
 };
 
 }  // namespace arangodb

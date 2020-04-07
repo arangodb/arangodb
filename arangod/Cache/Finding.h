@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_FINDING_H
 #define ARANGODB_CACHE_FINDING_H
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cache/CachedValue.h"
 

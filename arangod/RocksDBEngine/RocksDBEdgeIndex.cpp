@@ -22,16 +22,19 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBEdgeIndex.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/cpu-relax.h"
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -94,7 +97,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _keys(std::move(keys)),
         _keysIterator(_keys->slice()),
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
-        _builderIterator(arangodb::velocypack::Slice::emptyArraySlice()),
+        _builderIterator(VPackArrayIterator::Empty{}),
         _lastKey(VPackSlice::nullSlice()) {
     TRI_ASSERT(_keys != nullptr);
     TRI_ASSERT(_keys->slice().isArray());
@@ -171,7 +174,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       if (_cache) {
         for (size_t attempts = 0; attempts < 10; ++attempts) {
           // Try to read from cache
-          auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
+          auto finding = _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
           if (finding.found()) {
             needRocksLookup = false;
             // We got sth. in the cache
@@ -193,7 +196,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
                 _builderIterator.next();
                 limit--;
               }
-              _builderIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
+              _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
             } else {
               // We need to copy it.
               // And then we just get back to beginning of the loop
@@ -258,8 +261,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     resetInplaceMemory();
     _keysIterator.reset();
     _lastKey = VPackSlice::nullSlice();
-    _builderIterator =
-        VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
+    _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
   }
 
   /// @brief index supports rearming
@@ -388,7 +390,7 @@ uint64_t RocksDBEdgeIndex::HashForKey(const rocksdb::Slice& key) {
   return static_cast<uint64_t>(hasher(tmp));
 }
 
-RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                    arangodb::velocypack::Slice const& info,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection,
@@ -413,7 +415,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
     TRI_ASSERT(_estimator != nullptr);
   }
   // edge indexes are always created with ID 1 or 2
-  TRI_ASSERT(iid == 1 || iid == 2);
+  TRI_ASSERT(iid.isEdge());
   TRI_ASSERT(_objectId != 0);
 }
 
@@ -447,7 +449,7 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc, Index::OperationMode mode) {
+                                velocypack::Slice const& doc, OperationOptions& options) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());

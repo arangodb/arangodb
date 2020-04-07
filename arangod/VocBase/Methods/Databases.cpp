@@ -70,8 +70,8 @@ TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
   return nullptr;
 }
 
-std::vector<std::string> Databases::list(std::string const& user) {
-  auto& server = application_features::ApplicationServer::server();
+std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
+                                         std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
@@ -93,7 +93,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
 
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
-    AgencyComm agency;
+    AgencyComm agency(vocbase->server());
     AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
@@ -282,18 +282,16 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 arangodb::Result Databases::create(application_features::ApplicationServer& server,
                                    std::string const& dbName, VPackSlice const& users,
                                    VPackSlice const& options) {
-  arangodb::Result res;
-
   // Only admin users are permitted to create databases
   ExecContext const& exec = ExecContext::current();
 
-  if (!exec.isAdminUser()) {
+  if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
     events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
   CreateDatabaseInfo createInfo(server);
-  res = createInfo.load(dbName, options, users);
+  arangodb::Result res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
     LOG_TOPIC("15580", ERR, Logger::FIXME)
@@ -330,7 +328,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   // because the cache entry has a TTL
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
-      auto& server = application_features::ApplicationServer::server();
       auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
       auto database = sysDbFeature.use();
 
@@ -383,7 +380,7 @@ int dropDBCoordinator(std::string const& dbName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-const std::string dropError = "Error when dropping Datbase";
+const std::string dropError = "Error when dropping database";
 }  // namespace
 
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
@@ -413,7 +410,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
         // If we are a coordinator in a cluster, we have to behave differently:
         res = ::dropDBCoordinator(dbName);
       } else {
-        res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
+        res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
 
         if (res.fail()) {
           events::DropDatabase(dbName, res.errorNumber());
@@ -441,7 +438,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
       // If we are a coordinator in a cluster, we have to behave differently:
       res = ::dropDBCoordinator(dbName);
     } else {
-      res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
+      res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
     }
   }
 

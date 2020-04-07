@@ -36,6 +36,7 @@
 
 #include "ApplicationServer.h"
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
@@ -64,18 +65,9 @@ static void failCallback(std::string const& message) {
   LOG_TOPIC("85b08", FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
   FATAL_ERROR_EXIT();
 }
-
-ApplicationServer* OLD_INSTANCE = nullptr;
 }  // namespace
 
-ApplicationServer* ApplicationServer::INSTANCE(nullptr);
-
 std::atomic<bool> ApplicationServer::CTRL_C(false);
-
-ApplicationServer& ApplicationServer::server() {
-  TRI_ASSERT(INSTANCE);
-  return *INSTANCE;
-}
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
                                      char const* binaryPath)
@@ -84,15 +76,6 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
       _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
-
-  ::OLD_INSTANCE = ApplicationServer::INSTANCE;
-
-  ApplicationServer::INSTANCE = this;
-}
-
-ApplicationServer::~ApplicationServer() {
-  ApplicationServer::INSTANCE = OLD_INSTANCE;
-  OLD_INSTANCE = nullptr;
 }
 
 bool ApplicationServer::isPrepared() {
@@ -310,13 +293,13 @@ void ApplicationServer::collectOptions() {
 
   _options->addOption("--dump-dependencies", "dump dependency graph",
                       new BooleanParameter(&_dumpDependencies),
-                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                    arangodb::options::Flags::Command));
 
   _options->addOption("--dump-options",
                       "dump configuration options in JSON format",
                       new BooleanParameter(&_dumpOptions),
-                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                    arangodb::options::Flags::Command));
 
   apply(

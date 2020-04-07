@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_GRANULAR_RANGE_FILTER_H
 #define IRESEARCH_GRANULAR_RANGE_FILTER_H
 
+#include "limited_sample_collector.hpp"
 #include "range_filter.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
@@ -46,11 +47,25 @@ class IRESEARCH_API by_granular_range: public filter {
   // granularity levels and terms
   typedef bytes_ref::char_type granularity_level_t;
   typedef std::map<granularity_level_t, bstring> terms_t;
+  typedef range<terms_t> range_t;
   typedef terms_t::const_iterator const_iterator;
   typedef terms_t::iterator iterator;
   typedef terms_t::key_type level_t;
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
+
+  static filter::prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const range_t& rng,
+    size_t scored_terms_limit);
+
+  static void visit(
+    const term_reader& reader,
+    const range_t& rng,
+    filter_visitor& visitor);
 
   by_granular_range();
 
@@ -78,14 +93,14 @@ class IRESEARCH_API by_granular_range: public filter {
 
   by_granular_range& field(std::string fld);
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
   template<Bound B>
-  bool include() const { return Bound_Type::INCLUSIVE == get<B>::type(rng_); }
+  bool include() const { return BoundType::INCLUSIVE == get<B>::type(rng_); }
 
   template<Bound B>
   by_granular_range& include(bool incl) {
-    get<B>::type(rng_) = incl ? Bound_Type::INCLUSIVE : Bound_Type::EXCLUSIVE;
+    get<B>::type(rng_) = incl ? BoundType::INCLUSIVE : BoundType::EXCLUSIVE;
     return *this;
   }
 
@@ -127,8 +142,8 @@ class IRESEARCH_API by_granular_range: public filter {
   ) {
     insert(get<B>::term(rng_), granularity_level, std::move(term));
 
-    if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
+    if (BoundType::UNBOUNDED == get<B>::type(rng_)) {
+      get<B>::type(rng_) = BoundType::EXCLUSIVE;
     }
 
     return *this;
@@ -141,8 +156,8 @@ class IRESEARCH_API by_granular_range: public filter {
   ) {
     assert(!term.null());
 
-    if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
+    if (BoundType::UNBOUNDED == get<B>::type(rng_)) {
+      get<B>::type(rng_) = BoundType::EXCLUSIVE;
     }
 
     insert(get<B>::term(rng_), granularity_level, term);
@@ -159,11 +174,13 @@ class IRESEARCH_API by_granular_range: public filter {
   }
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr,
+      const index_reader& index,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_view& ctx
-  ) const override;
+      const attribute_view& /*ctx*/) const override {
+    return prepare(index, ord, this->boost()*boost,
+                   field(), rng_, scored_terms_limit_);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
@@ -181,8 +198,8 @@ class IRESEARCH_API by_granular_range: public filter {
   // the lower the value of 'granularity_level' the more precise the term
   template<Bound B>
   bstring& term(level_t granularity_level) {
-    if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
+    if (BoundType::UNBOUNDED == get<B>::type(rng_)) {
+      get<B>::type(rng_) = BoundType::EXCLUSIVE;
     }
 
     return insert(get<B>::term(rng_), granularity_level);
@@ -195,10 +212,9 @@ class IRESEARCH_API by_granular_range: public filter {
   }
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  virtual bool equals(const filter& rhs) const noexcept override;
 
  private:
-  typedef detail::range<terms_t> range_t;
   template<Bound B> struct get;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -217,15 +233,15 @@ class IRESEARCH_API by_granular_range: public filter {
 template<> struct by_granular_range::get<Bound::MIN> {
   static terms_t& term(range_t& rng) { return rng.min; }
   static const terms_t& term(const range_t& rng) { return rng.min; }
-  static Bound_Type& type(range_t& rng) { return rng.min_type; }
-  static const Bound_Type& type(const range_t& rng) { return rng.min_type; }
+  static BoundType& type(range_t& rng) { return rng.min_type; }
+  static const BoundType& type(const range_t& rng) { return rng.min_type; }
 }; // get<Bound::MIN>
 
 template<> struct by_granular_range::get<Bound::MAX> {
   static terms_t& term(range_t& rng) { return rng.max; }
   static const terms_t& term(const range_t& rng) { return rng.max; }
-  static Bound_Type& type(range_t& rng) { return rng.max_type; }
-  static const Bound_Type& type(const range_t& rng) { return rng.max_type; }
+  static BoundType& type(range_t& rng) { return rng.max_type; }
+  static const BoundType& type(const range_t& rng) { return rng.max_type; }
 }; // get<Bound::MAX>
 
 NS_END // ROOT

@@ -1,11 +1,11 @@
 
 @startDocuBlock get_api_database_current
-@brief retrieves information about the current database (alias /_api/database/properties)
+@brief retrieves information about the current database
 
 @RESTHEADER{GET /_api/database/current, Information of the database, getDatabases:current}
 
 @RESTDESCRIPTION
-Retrieves information about the current database
+Retrieves the properties of the current database
 
 The response is a JSON object with the following attributes:
 
@@ -17,11 +17,11 @@ The response is a JSON object with the following attributes:
 
 - *isSystem*: whether or not the current database is the *_system* database
 
-- *sharding*: information about the default sharding method for collections created in this database
+- *sharding*: the default sharding method for collections created in this database
 
 - *replicationFactor*: the default replication factor for collections in this database
 
-- *minReplicationFactor*: the default minimum replication factor for collections in this database 
+- *writeConcern*: the default write concern for collections in this database
 
 @RESTRETURNCODES
 

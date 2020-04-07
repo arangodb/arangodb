@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FST_STRING_WEIGHT_H
@@ -72,7 +71,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
 
   friend bool operator==(
       const StringLeftWeight& lhs, 
-      const StringLeftWeight& rhs) NOEXCEPT {
+      const StringLeftWeight& rhs) noexcept {
     return lhs.str_ == rhs.str_;
   }
 
@@ -91,7 +90,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     : str_(rhs.str_) {
   }
 
-  StringLeftWeight(StringLeftWeight&& rhs) NOEXCEPT
+  StringLeftWeight(StringLeftWeight&& rhs) noexcept
     : str_(std::move(rhs.str_)) {
   }
 
@@ -99,7 +98,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     : str_(rhs.c_str(), rhs.size()) {
   }
 
-  StringLeftWeight& operator=(StringLeftWeight&& rhs) NOEXCEPT {
+  StringLeftWeight& operator=(StringLeftWeight&& rhs) noexcept {
     if (this != &rhs) {
       str_ = std::move(rhs.str_);
     }
@@ -118,7 +117,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return *this;
   }
 
-  bool Member() const NOEXCEPT {
+  bool Member() const noexcept {
     return StringLeftWeightTraits<Label>::Member(*this);
   }
 
@@ -159,11 +158,11 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return strm;
   }
 
-  size_t Hash() const NOEXCEPT {
+  size_t Hash() const noexcept {
     return std::hash<str_t>()(str_);
   }
 
-  StringLeftWeight Quantize(float delta = kDelta) const NOEXCEPT { 
+  StringLeftWeight Quantize(float delta = kDelta) const noexcept { 
     return *this; 
   }
 
@@ -171,32 +170,32 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return ReverseWeight(str_.rbegin(), str_.rend());
   }
 
-  static uint64 Properties() NOEXCEPT {
-    static CONSTEXPR auto props = kLeftSemiring | kIdempotent;
+  static uint64 Properties() noexcept {
+    static constexpr auto props = kLeftSemiring | kIdempotent;
     return props;
   }
 
-  Label& operator[](size_t i) NOEXCEPT {
+  Label& operator[](size_t i) noexcept {
     return str_[i];
   }
 
-  const Label& operator[](size_t i) const NOEXCEPT {
+  const Label& operator[](size_t i) const noexcept {
     return str_[i];
   }
 
-  const Label* c_str() const NOEXCEPT {
+  const Label* c_str() const noexcept {
     return str_.c_str();
   }
 
-  bool Empty() const NOEXCEPT {
+  bool Empty() const noexcept {
     return str_.empty();
   }
 
-  void Clear() NOEXCEPT {
+  void Clear() noexcept {
     str_.clear();
   }
 
-  size_t Size() const NOEXCEPT { 
+  size_t Size() const noexcept { 
     return str_.size(); 
   }
 
@@ -217,11 +216,11 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     str_.reserve(capacity);
   }
 
-  iterator begin() const NOEXCEPT { return str_.begin(); }
-  iterator end() const NOEXCEPT { return str_.end(); }
+  iterator begin() const noexcept { return str_.begin(); }
+  iterator end() const noexcept { return str_.end(); }
 
   // intentionally implicit
-  operator irs::basic_string_ref<Label>() const NOEXCEPT {
+  operator irs::basic_string_ref<Label>() const noexcept {
     return str_;
   }
 
@@ -415,20 +414,20 @@ inline StringLeftWeight<Label> Divide(
 
 template <>
 struct StringLeftWeightTraits<irs::byte_type> {
-  static const StringLeftWeight<irs::byte_type>& Zero() NOEXCEPT {
+  static const StringLeftWeight<irs::byte_type>& Zero() noexcept {
     static const StringLeftWeight<irs::byte_type> zero;
     return zero;
   }
 
-  static const StringLeftWeight<irs::byte_type>& One() NOEXCEPT {
+  static const StringLeftWeight<irs::byte_type>& One() noexcept {
     return Zero();
   }
 
-  static const StringLeftWeight<irs::byte_type>& NoWeight() NOEXCEPT {
+  static const StringLeftWeight<irs::byte_type>& NoWeight() noexcept {
     return Zero();
   }
 
-  static bool Member(const StringLeftWeight<irs::byte_type>& weight) NOEXCEPT {
+  static bool Member(const StringLeftWeight<irs::byte_type>& weight) noexcept {
     // always member
     return true;
   }

@@ -97,13 +97,17 @@ struct SingleRemoteModificationExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  protected:
-  bool doSingleRemoteModificationOperation(InputAqlItemRow&, OutputAqlItemRow&, Stats&);
+  auto doSingleRemoteModificationOperation(InputAqlItemRow&, Stats&) -> OperationResult;
+  auto doSingleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
+                                        OperationResult&) -> void;
 
   Infos& _info;
-  Fetcher& _fetcher;
   ExecutionState _upstreamState;
 };
 

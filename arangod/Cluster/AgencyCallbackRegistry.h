@@ -28,13 +28,17 @@
 #include "Cluster/AgencyCallback.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class AgencyCallbackRegistry {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
-  explicit AgencyCallbackRegistry(std::string const&);
+  explicit AgencyCallbackRegistry(application_features::ApplicationServer&,
+                                  std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dtor

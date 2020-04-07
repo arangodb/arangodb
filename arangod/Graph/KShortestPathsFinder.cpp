@@ -42,10 +42,22 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-//
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _pathAvailable(false) {}
+    : ShortestPathFinder(options) {
+  // cppcheck-suppress *
+  _forwardCursor = options.buildCursor(false);
+  // cppcheck-suppress *
+  _backwardCursor = options.buildCursor(true);
+}
+
 KShortestPathsFinder::~KShortestPathsFinder() = default;
+
+void KShortestPathsFinder::clear() {
+  _shortestPaths.clear();
+  _candidatePaths.clear();
+  _vertexCache.clear();
+  _traversalDone = true;
+}
 
 // Sets up k-shortest-paths traversal from start to end
 bool KShortestPathsFinder::startKShortestPathsTraversal(
@@ -55,13 +67,13 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
 
-  _pathAvailable = true;
+  _vertexCache.clear();
   _shortestPaths.clear();
   _candidatePaths.clear();
 
-  TRI_IF_FAILURE("TraversalOOMInitialize") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
+  _traversalDone = false;
+
+  TRI_IF_FAILURE("Travefalse") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 
   return true;
 }
@@ -130,22 +142,13 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
 
 void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direction direction,
                                                         std::vector<Step>& steps) {
-  std::unique_ptr<EdgeCursor> edgeCursor;
-
-  switch (direction) {
-    case BACKWARD:
-      edgeCursor.reset(_options.nextReverseCursor(vertex));
-      break;
-    case FORWARD:
-      edgeCursor.reset(_options.nextCursor(vertex));
-      break;
-    default:
-      TRI_ASSERT(false);
-  }
+  EdgeCursor* cursor =
+      direction == BACKWARD ? _backwardCursor.get() : _forwardCursor.get();
+  cursor->rearm(vertex, 0);
 
   // TODO: This is a bit of a hack
   if (_options.useWeight()) {
-    auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
       if (edge.isString()) {
         VPackSlice doc = _options.cache()->lookupToken(eid);
         double weight = _options.weightEdge(doc);
@@ -163,10 +166,9 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
           steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
         }
       }
-    };
-    edgeCursor->readAll(callback);
+    });
   } else {
-    auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
       if (edge.isString()) {
         if (edge.compareString(vertex.data(), vertex.length()) != 0) {
           VertexRef id = _options.cache()->persistString(VertexRef(edge));
@@ -182,8 +184,7 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
           steps.emplace_back(std::move(eid), id, 1);
         }
       }
-    };
-    edgeCursor->readAll(callback);
+    });
   }
 }
 
@@ -249,9 +250,9 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
   DijkstraInfo* it;
   it = left._frontier.find(join);
   TRI_ASSERT(it != nullptr);
-  double startToJoin = it->_weight;
+  double startToJoin = it->weight();
   result._weight = startToJoin;
-  while (it != nullptr && it->_weight > 0) {
+  while (it != nullptr && it->getKey() != left.center()) {
     result._vertices.push_front(it->_pred);
     result._edges.push_front(it->_edge);
     result._weights.push_front(it->_weight);
@@ -262,9 +263,9 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
 
   it = right._frontier.find(join);
   TRI_ASSERT(it != nullptr);
-  double joinToEnd = it->_weight;
+  double joinToEnd = it->weight();
   result._weight += joinToEnd;
-  while (it != nullptr && it->_weight > 0) {
+  while (it != nullptr && it->getKey() != right.center()) {
     result._vertices.emplace_back(it->_pred);
     result._edges.emplace_back(it->_edge);
     it = right._frontier.find(it->_pred);
@@ -340,38 +341,37 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
 }
 
 bool KShortestPathsFinder::getNextPath(Path& result) {
-  bool available = false;
   result.clear();
 
-  // TODO: this looks a bit ugly
+  // This is for the first time that getNextPath is called
   if (_shortestPaths.empty()) {
     if (_start == _end) {
       TRI_ASSERT(!_start.empty());
       result._vertices.emplace_back(_start);
       result._weight = 0;
-      available = true;
     } else {
-      available = computeShortestPath(_start, _end, {}, {}, result);
+      // Compute the first shortest path (i.e. the shortest path
+      // between _start and _end!)
+      computeShortestPath(_start, _end, {}, {}, result);
       result._branchpoint = 0;
     }
   } else {
-    if (_start == _end) {
-      available = false;
-    } else {
-      available = computeNextShortestPath(result);
-    }
+    // We must not have _start == _end here, because we handle _start == _end
+    computeNextShortestPath(result);
   }
 
-  if (available) {
+  if (result.length() > 0) {
     _shortestPaths.emplace_back(result);
     _options.fetchVerticesCoordinator(result._vertices);
 
     TRI_IF_FAILURE("TraversalOOMPath") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+  } else {
+    // If we did not find a path, traversal is done.
+    _traversalDone = true;
   }
-  _pathAvailable = available;
-  return available;
+  return !_traversalDone;
 }
 
 bool KShortestPathsFinder::getNextPathShortestPathResult(ShortestPathResult& result) {
@@ -419,4 +419,9 @@ bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result)
   } else {
     return false;
   }
+}
+
+bool KShortestPathsFinder::skipPath() {
+  Path path;
+  return getNextPath(path);
 }

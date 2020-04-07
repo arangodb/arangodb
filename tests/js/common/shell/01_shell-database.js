@@ -86,6 +86,29 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test create with too long names function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLongName : function () {
+      const prefix = "UnitTestsDatabase";
+      let name = prefix + Array(64 + 1 - prefix.length).join("x");
+      assertEqual(64, name.length);
+          
+      assertTrue(internal.db._createDatabase(name));
+      assertTrue(internal.db._dropDatabase(name));
+
+      name += 'x';
+      assertEqual(65, name.length);
+
+      try {
+        internal.db._createDatabase(name);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _name function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -177,6 +200,26 @@ function DatabaseSuite () {
     testQueryHelper : function () {
       var query = require("@arangodb").query;
       assertEqual([ 1 ], query`RETURN 1`.toArray());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test query helper as function
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryHelperAsFunction : function () {
+      var query = require("@arangodb").query;
+      assertEqual([ 1 ], query()`RETURN 1`.toArray());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test query helper with options
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryHelperWithOptions : function () {
+      var query = require("@arangodb").query;
+      var result = query({fullCount: true})`RETURN 1`;
+      assertEqual([ 1 ], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

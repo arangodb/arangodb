@@ -25,18 +25,27 @@
 #ifndef ARANGOD_AQL_REGISTER_PLAN_H
 #define ARANGOD_AQL_REGISTER_PLAN_H 1
 
+#include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/debugging.h"
 
 #include <memory>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
-namespace aql {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+}
+
+namespace arangodb::aql {
 
 class ExecutionNode;
 class ExecutionPlan;
+struct Variable;
 
 /// @brief static analysis, walker class and information collector
 struct VarInfo {
@@ -54,9 +63,6 @@ struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
   // map VariableIds to their depth and registerId:
   std::unordered_map<VariableId, VarInfo> varInfo;
 
-  // number of variables in the frame of the current depth:
-  std::vector<RegisterId> nrRegsHere;
-
   // number of variables in this and all outer frames together,
   // the entry with index i here is always the sum of all values
   // in nrRegsHere from index 0 to i (inclusively) and the two
@@ -66,29 +72,35 @@ struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
   // We collect the subquery nodes to deal with them at the end:
   std::vector<ExecutionNode*> subQueryNodes;
 
+ private:
   // Local for the walk:
   unsigned int depth;
+  
   unsigned int totalNrRegs;
 
- private:
   // This is used to tell all nodes and share a pointer to ourselves
   std::shared_ptr<RegisterPlan>* me;
 
  public:
-  RegisterPlan() : depth(0), totalNrRegs(0), me(nullptr) {
-    nrRegsHere.reserve(8);
-    nrRegsHere.emplace_back(0);
-    nrRegs.reserve(8);
-    nrRegs.emplace_back(0);
-  }
-
-  void clear();
-
-  void setSharedPtr(std::shared_ptr<RegisterPlan>* shared) { me = shared; }
-
+  RegisterPlan();
+  RegisterPlan(arangodb::velocypack::Slice slice, unsigned int depth);
   // Copy constructor used for a subquery:
   RegisterPlan(RegisterPlan const& v, unsigned int newdepth);
   ~RegisterPlan() = default;
+  
+  void setSharedPtr(std::shared_ptr<RegisterPlan>* shared) { me = shared; }
+
+  std::shared_ptr<RegisterPlan> clone();
+
+  void registerVariable(Variable const* v);
+  
+  void increaseDepth();
+  
+  void addRegister();
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  
+  static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
   virtual bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;  // do not walk into subquery
@@ -96,19 +108,12 @@ struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
 
   virtual void after(ExecutionNode* eb) override final;
 
-  RegisterPlan* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
-
  public:
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = 1000;
-
-  /// @brief reserved register id for subquery depth. Needs to
-  ///        be present in all AqlItemMatrixes.
-  static constexpr RegisterId SUBQUERY_DEPTH_REGISTER = 0;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif

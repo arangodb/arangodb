@@ -21,13 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Upgrade.h"
-#include "Basics/Common.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Utils/ExecContext.h"
-#include "Logger/LogMacros.h"
 #include "VocBase/Methods/UpgradeTasks.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
@@ -159,16 +160,6 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
             << "  --database.auto-upgrade true";
         LOG_TOPIC("13414", ERR, Logger::STARTUP)
             << "option to upgrade the data in the database directory.";
-
-        LOG_TOPIC("7421a", ERR, Logger::STARTUP)
-            << "Normally you can use the control "
-               "script to upgrade your database'";
-        LOG_TOPIC("fb665", ERR, Logger::STARTUP)
-            << "  /etc/init.d/arangodb stop";
-        LOG_TOPIC("6753e", ERR, Logger::STARTUP)
-            << "  /etc/init.d/arangodb upgrade";
-        LOG_TOPIC("f7b06", ERR, Logger::STARTUP)
-            << "  /etc/init.d/arangodb start";
         LOG_TOPIC("24bd1", ERR, Logger::STARTUP)
             << "---------------------------------------------------------------"
                "-------'";
@@ -244,10 +235,6 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
-  addTask(upgradeFeature, "persistLocalDocumentIds", "convert collection data from old format",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-          /*database*/ DATABASE_UPGRADE, &UpgradeTasks::persistLocalDocumentIds);
   addTask(upgradeFeature, "renameReplicationApplierStateFiles",
           "rename replication applier state files",
           /*system*/ Flags::DATABASE_ALL,

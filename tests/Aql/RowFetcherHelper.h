@@ -56,7 +56,7 @@ namespace aql {
 /**
  * @brief Mock for SingleRowFetcher
  */
-template<::arangodb::aql::BlockPassthrough passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class SingleRowFetcherHelper
     : public arangodb::aql::SingleRowFetcher<passBlocksThrough> {
  public:
@@ -73,22 +73,17 @@ class SingleRowFetcherHelper
 
   // NOLINTNEXTLINE google-default-arguments
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::InputAqlItemRow> fetchRow(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
 
   // NOLINTNEXTLINE google-default-arguments
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
 
   uint64_t nrCalled() { return _nrCalled; }
   uint64_t nrReturned() { return _nrReturned; }
   uint64_t nrItems() { return _nrItems; }
 
   size_t totalSkipped() const { return _totalSkipped; }
-
-  std::pair<arangodb::aql::ExecutionState, size_t> skipRows(size_t atMost) override;
-
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlockForPassthrough(
-      size_t atMost) override;
 
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(size_t atMost) override;
 

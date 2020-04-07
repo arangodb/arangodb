@@ -79,7 +79,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
   REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
-  REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document identifier");
   REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maximal size of journal too small");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_NAME, "duplicate name");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
@@ -87,7 +87,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
-  REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
+  REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index identifier");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");
@@ -218,6 +218,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
+  REG_ERROR(ERROR_VALIDATION_FAILED, "validation failed");
+  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid validation parameter");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
@@ -284,8 +286,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
   REG_ERROR(ERROR_WAS_ERLAUBE, "was erlaube?!");
-  REG_ERROR(ERROR_COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
-  REG_ERROR(ERROR_COMMUNICATOR_DISABLED, "Communication was disabled");
   REG_ERROR(ERROR_INTERNAL_AQL, "General internal AQL error");
   REG_ERROR(ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS, "An AQL block wrote too few output registers");
   REG_ERROR(ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS, "An AQL block wrote too many output registers");

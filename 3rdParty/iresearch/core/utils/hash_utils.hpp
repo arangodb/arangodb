@@ -33,7 +33,7 @@
 
 NS_ROOT
 
-FORCE_INLINE size_t hash_combine(size_t seed, size_t v) NOEXCEPT {
+FORCE_INLINE size_t hash_combine(size_t seed, size_t v) noexcept {
   return seed ^ (v + 0x9e3779b9 + (seed<<6) + (seed>>2));
 }
 
@@ -47,42 +47,52 @@ class IRESEARCH_API_TEMPLATE hashed_basic_string_ref : public basic_string_ref<E
  public:
   typedef basic_string_ref<Elem> base_t;
 
-  hashed_basic_string_ref(size_t hash, const base_t& ref)
+  hashed_basic_string_ref(size_t hash, const base_t& ref) noexcept
     : base_t(ref), hash_(hash) {
   }
 
-  hashed_basic_string_ref(size_t hash, const base_t& ref, size_t size)
+  hashed_basic_string_ref(size_t hash, const base_t& ref, size_t size) noexcept
     : base_t(ref, size), hash_(hash) {
   }
 
-  hashed_basic_string_ref(size_t hash, const typename base_t::char_type* ptr)
-    : base_t(ptr), hash_(hash) {
+  hashed_basic_string_ref(
+      size_t hash,
+      const typename base_t::char_type* ptr) noexcept
+    : base_t(ptr),  hash_(hash) {
   }
 
-  hashed_basic_string_ref(size_t hash, const typename base_t::char_type* ptr, size_t size)
-    : base_t(ptr, size), hash_(hash) {
+  hashed_basic_string_ref(
+      size_t hash,
+      const typename base_t::char_type* ptr,
+      size_t size) noexcept
+    : base_t(ptr, size),  hash_(hash) {
   }
 
-  hashed_basic_string_ref(size_t hash, const std::basic_string<typename base_t::char_type>& str)
+  hashed_basic_string_ref(
+      size_t hash,
+      const std::basic_string<typename base_t::char_type>& str) noexcept
     : base_t(str), hash_(hash) {
   }
 
-  hashed_basic_string_ref(size_t hash, const std::basic_string<typename base_t::char_type>& str, size_t size)
+  hashed_basic_string_ref(
+      size_t hash,
+      const std::basic_string<typename base_t::char_type>& str,
+      size_t size) noexcept
     : base_t(str, size), hash_(hash) {
   }
 
-  inline size_t hash() const { return hash_; }
+  size_t hash() const noexcept { return hash_; }
 
  private:
   size_t hash_;
 }; // hashed_basic_string_ref 
 
-template<typename Elem, typename Hasher>
+template<typename Elem, typename Hasher = std::hash<basic_string_ref<Elem>>>
 hashed_basic_string_ref<Elem> make_hashed_ref(const basic_string_ref<Elem>& ref, const Hasher& hasher = Hasher()) {
   return hashed_basic_string_ref<Elem>(hasher(ref), ref);
 }
 
-template<typename Elem, typename Hasher>
+template<typename Elem, typename Hasher = std::hash<basic_string_ref<Elem>>>
 hashed_basic_string_ref<Elem> make_hashed_ref(const basic_string_ref<Elem>& ref, size_t size, const Hasher& hasher = Hasher()) {
   return hashed_basic_string_ref<Elem>(hasher(ref), ref, size);
 }

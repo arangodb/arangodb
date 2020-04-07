@@ -55,6 +55,10 @@
 #include "search/scorers.hpp"
 
 #include "search/boolean_filter.hpp"
+#include "search/term_filter.hpp"
+#include "search/range_filter.hpp"
+#include "utils/string.hpp"
+
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
@@ -68,18 +72,88 @@
 
 extern const char* ARGV0;  // defined in main.cpp
 
+// GTEST printers for IResearch filters
+namespace iresearch {
+  std::ostream& operator<<(std::ostream& os, filter const& filter);
+
+  std::ostream& operator<<(std::ostream& os, by_range const& range) {
+    os << "Range(" << range.field();
+    std::string termValueMin(ref_cast<char>(range.term<Bound::MIN>()));
+    std::string termValueMax(ref_cast<char>(range.term<Bound::MAX>()));
+    if (!termValueMin.empty()) {
+      os << " " << (range.include<Bound::MIN>() ? ">=" : ">") << termValueMin;
+    }
+    if (!termValueMax.empty()) {
+      if (!termValueMin.empty()) {
+        os << ", ";
+      } else {
+        os << " ";
+      }
+      os << (range.include<Bound::MAX>() ? "<=" : "<") << termValueMax;
+    }
+    return os << ")";
+  }
+
+  std::ostream& operator<<(std::ostream& os, by_term const& term) {
+    std::string termValue(ref_cast<char>(term.term()));
+    return os << "Term(" << term.field() << "=" << termValue << ")";
+  }
+
+  std::ostream& operator<<(std::ostream& os, And const& filter) {
+    os << "AND[";
+    for (auto it = filter.begin(); it != filter.end(); ++it) {
+      if (it != filter.begin()) {
+        os << " && ";
+      }
+      os << *it;
+    }
+    os << "]";
+    return os;
+  }
+
+  std::ostream& operator<<(std::ostream& os, Or const& filter ) {
+    os << "OR[";
+    for (auto it = filter.begin(); it != filter.end(); ++it) {
+      if (it != filter.begin()) {
+        os << " || ";
+      }
+      os << *it;
+    }
+    os << "]";
+    return os;
+  }
+
+  std::ostream& operator<<(std::ostream& os, Not const& filter) {
+    os << "NOT[" << *filter.filter() << "]";
+    return os;
+  }
+
+  std::ostream& operator<<(std::ostream& os, filter const& filter) {
+    const auto& type = filter.type();
+    if (type == And::type()) {
+      return os << static_cast<And const&>(filter);
+    } else if (type == Or::type()) {
+      return os << static_cast<Or const&>(filter);
+    } else if (type == Not::type()) {
+      return os << static_cast<Not const&>(filter);
+    } else if (type == by_term::type()) {
+      return os << static_cast<by_term const&>(filter);
+    } else if (type == by_range::type()) {
+      return os << static_cast<by_range const&>(filter);
+    } else {
+      return os << "[Unknown filter]";
+    }
+  }
+}
+
 namespace {
 
 struct BoostScorer : public irs::sort {
-  struct Prepared : public prepared_base<irs::boost_t, void> {
+  struct Prepared : public irs::prepared_sort_base<irs::boost_t, void> {
    public:
     DECLARE_FACTORY(Prepared);
 
     Prepared() = default;
-
-    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
-      score_cast(dst) += score_cast(src);
-    }
 
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
@@ -92,7 +166,7 @@ struct BoostScorer : public irs::sort {
     }
 
     virtual bool less(irs::byte_type const* lhs, irs::byte_type const* rhs) const override {
-      return score_cast(lhs) < score_cast(rhs);
+      return traits_t::score_cast(lhs) < traits_t::score_cast(rhs);
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
@@ -100,27 +174,28 @@ struct BoostScorer : public irs::sort {
     }
 
     virtual void prepare_score(irs::byte_type* score) const override {
-      score_cast(score) = 0.f;
+      traits_t::score_cast(score) = 0.f;
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       return nullptr;
     }
 
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
         irs::attribute_view const&, irs::boost_t boost) const override {
-      struct ScoreCtx : public irs::sort::score_ctx {
+      struct ScoreCtx : public irs::score_ctx {
         ScoreCtx(irs::boost_t score) : scr(score) {}
 
         irs::boost_t scr;
       };
 
-      return {std::make_unique<ScoreCtx>(boost),
-              [](const void* ctx, irs::byte_type* score_buf) noexcept {
-                  auto & state = *static_cast<const ScoreCtx*>(ctx);
-      irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
-    }
+      return {
+        std::make_unique<ScoreCtx>(boost),
+        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
+          auto & state = *static_cast<const ScoreCtx*>(ctx);
+          irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
+      }
   };
 }
 };  // namespace
@@ -145,15 +220,11 @@ virtual irs::sort::prepared::ptr prepare() const override {
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
 struct CustomScorer : public irs::sort {
-  struct Prepared : public irs::sort::prepared_base<float_t, void> {
+  struct Prepared : public irs::prepared_sort_base<float_t, void> {
    public:
     DECLARE_FACTORY(Prepared);
 
     Prepared(float_t i) : i(i) {}
-
-    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
-      score_cast(dst) += score_cast(src);
-    }
 
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
@@ -166,7 +237,7 @@ struct CustomScorer : public irs::sort {
     }
 
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
-      return score_cast(lhs) < score_cast(rhs);
+      return traits_t::score_cast(lhs) < traits_t::score_cast(rhs);
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
@@ -174,24 +245,24 @@ struct CustomScorer : public irs::sort {
     }
 
     virtual void prepare_score(irs::byte_type* score) const override {
-      score_cast(score) = 0.f;
+      traits_t::score_cast(score) = 0.f;
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       return nullptr;
     }
 
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
         irs::attribute_view const&, irs::boost_t) const override {
-      struct ScoreCtx : public irs::sort::score_ctx {
+      struct ScoreCtx : public irs::score_ctx {
         ScoreCtx(float_t score) : i(score) {}
 
         float_t i;
       };
 
       return {std::make_unique<ScoreCtx>(i),
-              [](const void* ctx, irs::byte_type* score_buf) noexcept {
+              [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
                   auto & state = *static_cast<const ScoreCtx*>(ctx);
       irs::sort::score_cast<float_t>(score_buf) = state.i;
     }
@@ -309,12 +380,16 @@ void v8Init() {
   struct init_t {
     std::shared_ptr<v8::Platform> platform;
     init_t() {
-      platform = std::shared_ptr<v8::Platform>(v8::platform::CreateDefaultPlatform(),
-                                               [](v8::Platform* p) -> void {
-                                                 v8::V8::Dispose();
-                                                 v8::V8::ShutdownPlatform();
-                                                 delete p;
-                                               });
+      auto uniquePlatform = v8::platform::NewDefaultPlatform();
+      platform = std::shared_ptr<v8::Platform>(
+        uniquePlatform.get(),
+        [](v8::Platform* p) -> void {
+          v8::V8::Dispose();
+          v8::V8::ShutdownPlatform();
+          delete p;
+        }
+      );
+      uniquePlatform.release();
       v8::V8::InitializePlatform(platform.get());  // avoid SIGSEGV duing 8::Isolate::New(...)
       v8::V8::Initialize();  // avoid error: "Check failed: thread_data_table_"
     }
@@ -377,6 +452,7 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
   return result;
 }
 
+
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
@@ -409,8 +485,8 @@ std::unique_ptr<arangodb::aql::Query> prepareQuery(
   return query;
 }
 
-uint64_t getCurrentPlanVersion() {
-  auto const result = arangodb::AgencyComm().getValues("Plan");
+uint64_t getCurrentPlanVersion(arangodb::application_features::ApplicationServer& server) {
+  auto const result = arangodb::AgencyComm(server).getValues("Plan");
   auto const planVersionSlice = result.slice()[0].get<std::string>(
       {arangodb::AgencyCommManager::path(), "Plan", "Version"});
   return planVersionSlice.getNumber<uint64_t>();
@@ -483,7 +559,7 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
 ) {
   auto options = arangodb::velocypack::Parser::fromJson(
       //    "{ \"tracing\" : 1 }"
-      "{ }");
+      " { } ");
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);
@@ -800,6 +876,7 @@ void assertFilterExecutionFail(TRI_vocbase_t& vocbase, std::string const& queryS
 void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryString,
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/
 ) {
+  SCOPED_TRACE(testing::Message("assertFilterParseFail failed for query:<") << queryString << ">");
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 

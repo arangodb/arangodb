@@ -46,7 +46,7 @@
 #define ARANGOD_INDEXES_INDEX_ITERATOR_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -84,7 +84,7 @@ class IndexIterator {
   virtual char const* typeName() const = 0;
 
   /// @brief return the underlying collection
-  /// note: this may return a nullptr in case we are dealing with the EmptyIndexIterator! 
+  /// this is guaranteed to be a non-nullptr
   LogicalCollection* collection() const { return _collection; }
 
   transaction::Methods* transaction() const { return _trx; }

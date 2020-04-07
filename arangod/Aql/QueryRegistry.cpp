@@ -352,7 +352,7 @@ void QueryRegistry::expireQueries() {
   }
 
   if (!queriesLeft.empty()) {
-    LOG_TOPIC("4f142", TRACE, arangodb::Logger::AQL)
+    LOG_TOPIC("4f142", DEBUG, arangodb::Logger::AQL)
         << "queries left in QueryRegistry: " << queriesLeft;
   }
 

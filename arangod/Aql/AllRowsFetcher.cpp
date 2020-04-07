@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AllRowsFetcher.h"
+#include <Logger/LogMacros.h>
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
@@ -59,6 +60,49 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
   return {ExecutionState::DONE, nullptr};
 }
 
+std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack& stack) {
+  TRI_ASSERT(stack.peek().getOffset() == 0);
+  TRI_ASSERT(!stack.peek().needsFullCount());
+  // We allow a 0 hardLimit for bypassing
+  // bot otherwise we do not allow any limit
+  TRI_ASSERT(!stack.peek().hasHardLimit() || stack.peek().getLimit() == 0);
+  TRI_ASSERT(!stack.peek().hasSoftLimit());
+
+  if (_aqlItemMatrix == nullptr) {
+    _aqlItemMatrix = std::make_unique<AqlItemMatrix>(getNrInputRegisters());
+  }
+  // We can only execute More if we are not Stopped yet.
+  TRI_ASSERT(!_aqlItemMatrix->stoppedOnShadowRow());
+  while (true) {
+    auto [state, skipped, block] = _dependencyProxy->execute(stack);
+    TRI_ASSERT(skipped.getSkipCount() == 0);
+
+    // we will either build a complete fetched AqlItemBlockInputMatrix or return an empty one
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(skipped.nothingSkipped());
+      TRI_ASSERT(block == nullptr);
+      // On waiting we have nothing to return
+      return {state, SkipResult{}, AqlItemBlockInputMatrix{ExecutorState::HASMORE}};
+    }
+    TRI_ASSERT(block != nullptr || state == ExecutionState::DONE);
+
+    if (block != nullptr) {
+      // we need to store the block for later creation of AqlItemBlockInputMatrix
+      _aqlItemMatrix->addBlock(std::move(block));
+    }
+
+    // If we find a ShadowRow or ExecutionState == Done, we're done fetching.
+    if (_aqlItemMatrix->stoppedOnShadowRow() || state == ExecutionState::DONE) {
+      if (state == ExecutionState::HASMORE) {
+        return {state, skipped,
+                AqlItemBlockInputMatrix{ExecutorState::HASMORE, _aqlItemMatrix.get()}};
+      }
+      return {state, skipped,
+              AqlItemBlockInputMatrix{ExecutorState::DONE, _aqlItemMatrix.get()}};
+    }
+  }
+}
+
 std::pair<ExecutionState, InputAqlItemRow> AllRowsFetcher::fetchRow(size_t atMost) {
   switch (_dataFetchedState) {
     case ALL_DATA_FETCHED:
@@ -83,7 +127,7 @@ std::pair<ExecutionState, InputAqlItemRow> AllRowsFetcher::fetchRow(size_t atMos
       _nextReturn = 0;
       _dataFetchedState = DATA_FETCH_ONGOING;
     }
-    [[fallthrough]];
+      [[fallthrough]];
     case DATA_FETCH_ONGOING: {
       TRI_ASSERT(_nextReturn < _rowIndexes.size());
       TRI_ASSERT(_aqlItemMatrix != nullptr);
@@ -170,7 +214,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForModificationExecutor(
-    std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
+    std::size_t limit = ExecutionBlock::DefaultBatchSize) {
   // TODO this method is considered obsolete.
   // It cannot yet be removed as we need modification on the calling Executors which is ongoing
   // However this method will not be fixed and updated for ShadowRows
@@ -253,4 +297,9 @@ std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_
   }
 
   return {state, row};
+}
+
+//@deprecated
+auto AllRowsFetcher::useStack(AqlCallStack const& stack) -> void {
+  _dependencyProxy->useStack(stack);
 }

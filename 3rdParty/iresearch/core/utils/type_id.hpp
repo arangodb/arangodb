@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TYPE_ID_H
@@ -34,11 +33,11 @@ NS_ROOT
 struct IRESEARCH_API type_id {
   type_id() : hash(compute_hash(this)) { }
 
-  bool operator==(const type_id& rhs) const NOEXCEPT {
+  bool operator==(const type_id& rhs) const noexcept {
     return this == &rhs;
   }
 
-  bool operator!=(const type_id& rhs) const NOEXCEPT {
+  bool operator!=(const type_id& rhs) const noexcept {
     return !(*this == rhs);
   }
 

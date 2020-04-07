@@ -52,7 +52,8 @@ enum class ValueType : uint8_t {
   String,
   Binary,
   BCD,
-  Custom
+  Custom,
+  Tagged
 };
 
 char const* valueTypeName(ValueType);

@@ -4,6 +4,13 @@
 
 @RESTHEADER{GET /_api/replication/applier-state, State of the replication applier,handleCommandApplierGetState}
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, returns the state of the global replication applier for all
+databases. If set to *false*, returns the state of the replication applier in the
+selected database.
+
 @RESTDESCRIPTION
 Returns the state of the replication applier, regardless of whether the
 applier is currently running or not.

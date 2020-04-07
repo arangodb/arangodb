@@ -27,9 +27,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
 #include <utility>
@@ -53,51 +51,70 @@ RegisterId CountCollectExecutorInfos::getOutputRegisterId() const {
   return _collectRegister;
 }
 
-CountCollectExecutor::CountCollectExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _state(ExecutionState::HASMORE), _count(0) {}
+CountCollectExecutor::CountCollectExecutor(Fetcher&, Infos& infos)
+    : _infos(infos) {}
 
-std::pair<ExecutionState, NoStats> CountCollectExecutor::produceRows(OutputAqlItemRow& output) {
+auto CountCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                       OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
   TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  // skipped > 0 -> done
+  // We have the guarantee that every thing is skipped
+  // within a single call
+  TRI_ASSERT(inputRange.skippedInFlight() == 0 ||
+             inputRange.upstreamState() == ExecutorState::DONE);
+  if (inputRange.upstreamState() == ExecutorState::DONE) {
+    // We have skipped all, report it.
+    // In general, we do not have an input row. In fact, we never fetch one.
+    output.setAllowSourceRowUninitialized();
 
-  if (_state == ExecutionState::DONE) {
-    return {_state, NoStats{}};
+    // We must produce exactly one output row.
+    output.cloneValueInto(_infos.getOutputRegisterId(),
+                          InputAqlItemRow{CreateInvalidInputRowHint{}},
+                          AqlValue(AqlValueHintUInt(inputRange.skipAll())));
+    output.advanceRow();
   }
-
-  while (_state != ExecutionState::DONE) {
-    size_t skipped;
-    std::tie(_state, skipped) = _fetcher.skipRows(ExecutionBlock::SkipAllSize());
-
-    if (_state == ExecutionState::WAITING) {
-      TRI_ASSERT(skipped == 0);
-      return {_state, NoStats{}};
-    }
-
-    TRI_ASSERT(skipped != 0 || _state == ExecutionState::DONE);
-    incrCountBy(skipped);
-  }
-
-  // In general, we do not have an input row. In fact, we never fetch one.
-  output.setAllowSourceRowUninitialized();
-
-  // We must produce exactly one output row.
-  output.cloneValueInto(_infos.getOutputRegisterId(),
-                        InputAqlItemRow{CreateInvalidInputRowHint{}},
-                        AqlValue(AqlValueHintUInt(getCount())));
-
-  return {_state, NoStats{}};
+  // We always send a hardLimit with fullcount to upstream
+  return {inputRange.upstreamState(), NoStats{},
+          AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
 }
 
-void CountCollectExecutor::incrCountBy(size_t incr) noexcept { _count += incr; }
-
-uint64_t CountCollectExecutor::getCount() noexcept { return _count; }
-
-std::pair<ExecutionState, size_t> CountCollectExecutor::expectedNumberOfRows(size_t) const {
-  if (_state == ExecutionState::DONE) {
-    return {ExecutionState::DONE, 0};
+auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return {ExecutionState::HASMORE, 1};
+  // skipped > 0 -> done
+  // We have the guarantee that every thing is skipped
+  // within a single call
+  TRI_ASSERT(inputRange.skippedInFlight() == 0 ||
+             inputRange.upstreamState() == ExecutorState::DONE);
+  if (inputRange.upstreamState() == ExecutorState::DONE) {
+    // We have skipped all, report it.
+    auto skipped = inputRange.skipAll();
+    // We request to just forward, we do not even care how much
+    TRI_ASSERT(skipped == 0);
+    call.didSkip(1);
+  }
+  // We always send a hardLimit with fullcount to upstream
+  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
+          AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
+}
+
+auto CountCollectExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                                   AqlCall const& call) const
+    noexcept -> size_t {
+  auto subqueries = input.countShadowRows();
+  if (subqueries > 0) {
+    // We will return 1 row for every subquery execution.
+    // We do overallocate here if we have nested subqueries
+    return subqueries;
+  }
+  // No subqueries, we are at the end of the execution.
+  // We either return 1, or the callLimit.
+  return std::min<size_t>(1, call.getLimit());
 }
 
 const CountCollectExecutor::Infos& CountCollectExecutor::infos() const noexcept {

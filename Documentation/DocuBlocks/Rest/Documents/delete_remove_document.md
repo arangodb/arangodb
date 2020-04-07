@@ -33,8 +33,8 @@ using the *if-match* HTTP header.
 
 @RESTDESCRIPTION
 If *silent* is not set to *true*, the body of the response contains a JSON
-object with the information about the handle and the revision. The attribute
-*_id* contains the known *document-handle* of the removed document, *_key*
+object with the information about the identifier and the revision. The attribute
+*_id* contains the known *document-id* of the removed document, *_key*
 contains the key which uniquely identifies a document in a given collection,
 and the attribute *_rev* contains the document revision.
 
@@ -70,7 +70,7 @@ attributes *_id* and *_key* will be returned.
 
 @EXAMPLES
 
-Using document handle:
+Using document identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocument}
     var cn = "products";
@@ -88,7 +88,7 @@ Using document handle:
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Unknown document handle:
+Unknown document identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentUnknownHandle}
     var cn = "products";

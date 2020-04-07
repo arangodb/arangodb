@@ -76,28 +76,44 @@ bool FailedServer::start(bool& aborts) {
     std::stringstream reason;
     reason << "Server " << _server << " no longer in health. Already removed. Abort.";
     LOG_TOPIC("1479a", INFO, Logger::SUPERVISION) << reason.str();
-    finish(_server, "", false, reason.str()); // Finish or abort?
+    finish(_server, "", false, reason.str());  // Finish or abort?
     return false;
   }
 
-  // Abort job blocking server if abortable
-  auto jobId = _snapshot.hasAsString(blockedServersPrefix + _server);
-  if (jobId.second && !abortable(_snapshot, jobId.first)) {
-    return false;
-  } else if (jobId.second) {
+  auto abortJob = [&aborts, this](Slice s) {
+    auto jobId = s.copyString();
+    if (!abortable(_snapshot, jobId)) {
+      return false;
+    }
+    JobContext(PENDING, s.copyString(), _snapshot, _agent)
+        .abort("failed server");
     aborts = true;
-    JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed server");
-  }
+    return true;
+  };
 
-  // Special case for moveshards that have this server as from server (and thus do not lock it)
-  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
-
-  for (auto const& subJob : pends) {
-    if (subJob.second->hasAsString("type").first == "moveShard") {
-      if (subJob.second->hasAsString("fromServer").first == _server) {
-        JobContext(PENDING, subJob.first, _snapshot, _agent).abort("From server failed");
-        aborts = true;
+  std::pair<Slice, bool> dbserverLock =
+      _snapshot.hasAsSlice(blockedServersPrefix + _server);
+  if (auto const& s = dbserverLock.first; dbserverLock.second) {
+    if (s.isArray()) {
+      for (auto const& m : VPackArrayIterator(s)) {
+        if (m.isString()) {
+          if (!abortJob(m)) {
+            return false;
+          }
+        } else {
+          LOG_TOPIC("1479b", ERR, Logger::SUPERVISION)
+              << "bad value in lock for server " << _server;
+          TRI_ASSERT(false);
+        }
       }
+    } else if (s.isString()) {
+      if (!abortJob(s)) {
+        return false;
+      }
+    } else {
+      LOG_TOPIC("1479c", ERR, Logger::SUPERVISION)
+          << "bad value in lock for server " << _server;
+      TRI_ASSERT(false);
     }
   }
 
@@ -114,8 +130,9 @@ bool FailedServer::start(bool& aborts) {
       if (toDoJob.second) {
         toDoJob.first.toBuilder(todo);
       } else {
-        LOG_TOPIC("729c3", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("729c3", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -145,26 +162,27 @@ bool FailedServer::start(bool& aborts) {
           auto const& collection = *(collptr.second);
 
           auto const& replicationFactorPair =
-            collection.hasAsNode(StaticStrings::ReplicationFactor);
+              collection.hasAsNode(StaticStrings::ReplicationFactor);
           if (replicationFactorPair.second) {
-
             VPackSlice const replicationFactor = replicationFactorPair.first.slice();
             uint64_t number = 1;
             bool isSatellite = false;
 
-            if (replicationFactor.isString() && replicationFactor.compareString(StaticStrings::Satellite) == 0) {
-              isSatellite = true; // do nothing - number = Job::availableServers(_snapshot).size();
+            if (replicationFactor.isString() &&
+                replicationFactor.compareString(StaticStrings::Satellite) == 0) {
+              isSatellite = true;  // do nothing - number = Job::availableServers(_snapshot).size();
             } else if (replicationFactor.isNumber()) {
               try {
                 number = replicationFactor.getNumber<uint64_t>();
-              } catch(...) {
-                LOG_TOPIC("f5290", ERR, Logger::SUPERVISION) << "Failed to read replicationFactor. job: "
-                  << _jobId << " " << collection.hasAsString("id").first;
-                continue ;
+              } catch (...) {
+                LOG_TOPIC("f5290", ERR, Logger::SUPERVISION)
+                    << "Failed to read replicationFactor. job: " << _jobId
+                    << " " << collection.hasAsString("id").first;
+                continue;
               }
 
               if (number == 1) {
-                continue ;
+                continue;
               }
             } else {
               continue;  // no point to try salvaging unreplicated data
@@ -182,19 +200,21 @@ bool FailedServer::start(bool& aborts) {
 
                 if (dbs == _server || dbs == "_" + _server) {
                   if (pos == 0) {
-                    FailedLeader(
-                      _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                      _jobId, database.first, collptr.first, shard.first, _server)
-                      .create(transactions);
+                    FailedLeader(_snapshot, _agent,
+                                 _jobId + "-" + std::to_string(sub++), _jobId,
+                                 database.first, collptr.first, shard.first, _server)
+                        .create(transactions);
                   } else {
                     if (!isSatellite) {
-                      FailedFollower(
-                        _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                        _jobId, database.first, collptr.first, shard.first, _server)
-                        .create(transactions);
+                      FailedFollower(_snapshot, _agent,
+                                     _jobId + "-" + std::to_string(sub++), _jobId,
+                                     database.first, collptr.first, shard.first, _server)
+                          .create(transactions);
                     } else {
-                      LOG_TOPIC("c6c32", DEBUG, Logger::SUPERVISION) << "Do intentionally nothing for failed follower of satellite collection. job: "
-                        << _jobId;
+                      LOG_TOPIC("c6c32", DEBUG, Logger::SUPERVISION)
+                          << "Do intentionally nothing for failed follower of "
+                             "satellite collection. job: "
+                          << _jobId;
                     }
                   }
                 }
@@ -234,8 +254,7 @@ bool FailedServer::start(bool& aborts) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("bbd90", DEBUG, Logger::SUPERVISION)
-      << "Pending job for failed DB Server " << _server;
-
+        << "Pending job for failed DB Server " << _server;
 
     return true;
   }

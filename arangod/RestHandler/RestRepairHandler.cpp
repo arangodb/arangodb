@@ -28,6 +28,7 @@
 #include <thread>
 #include <valarray>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -52,8 +53,7 @@ RestRepairHandler::RestRepairHandler(application_features::ApplicationServer& se
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestRepairHandler::execute() {
-  auto& server = application_features::ApplicationServer::server();
-  if (server.isStopping()) {
+  if (server().isStopping()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::DONE;
   }
@@ -323,7 +323,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         << "Failed to get job status: "
         << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
 
-    return ResultT<bool>::error(std::move(jobStatus.result()));
+    return ResultT<bool>::error(std::move(jobStatus).result());
   }
 
   return ResultT<bool>::success(false);
@@ -333,7 +333,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
                                                   CollectionID const& collectionId,
                                                   std::string const& dbAndCollectionName,
                                                   std::list<RepairOperation> const& repairOperations) {
-  AgencyComm comm;
+  AgencyComm comm(server());
 
   size_t opNum = 0;
   for (auto& op : repairOperations) {
@@ -426,7 +426,7 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
     std::array<std::string const, N> const& agencyKeyArray) {
   std::array<VPackBufferPtr, N> resultArray;
 
-  AgencyComm agency;
+  AgencyComm agency(server());
 
   std::vector<std::string> paths;
 

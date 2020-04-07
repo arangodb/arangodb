@@ -31,6 +31,7 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -89,7 +90,7 @@ class PhysicalCollectionTest
 // -----------------------------------------------------------------------------
 
 TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
@@ -188,7 +189,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 
 class MockIndex : public Index {
  public:
-  MockIndex(Index::IndexType type, bool needsReversal, TRI_idx_iid_t id,
+  MockIndex(Index::IndexType type, bool needsReversal, arangodb::IndexId id,
             LogicalCollection& collection, const std::string& name,
             std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
             bool unique, bool sparse)
@@ -214,35 +215,35 @@ class MockIndex : public Index {
 };
 
 TEST_F(PhysicalCollectionTest, test_index_ordeing) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;
   PhysicalCollection::IndexContainerType test_container;
   // also regular index but no need to be reversed
   test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_HASH_INDEX,
-                                                    false, 2, *collection, "4",
-                                                    dummyFields, false, false));
+                                                    false, arangodb::IndexId{2}, *collection,
+                                                    "4", dummyFields, false, false));
   // Edge index- should go right after primary and after all other non-reversable edge indexes
   test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_EDGE_INDEX,
-                                                    true, 3, *collection, "3",
-                                                    dummyFields, false, false));
+                                                    true, arangodb::IndexId{3}, *collection,
+                                                    "3", dummyFields, false, false));
   // Edge index- non-reversable should go right after primary
   test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_EDGE_INDEX,
-                                                    false, 4, *collection, "2",
-                                                    dummyFields, false, false));
+                                                    false, arangodb::IndexId{4}, *collection,
+                                                    "2", dummyFields, false, false));
   // Primary index. Should be first!
   test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_PRIMARY_INDEX,
-                                                    true, 5, *collection, "1",
-                                                    dummyFields, true, false));
+                                                    true, arangodb::IndexId{5}, *collection,
+                                                    "1", dummyFields, true, false));
   // should execute last - regular index with reversal possible
   test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_HASH_INDEX,
-                                                    true, 1, *collection, "5",
-                                                    dummyFields, false, false));
+                                                    true, arangodb::IndexId{1}, *collection,
+                                                    "5", dummyFields, false, false));
 
-  TRI_idx_iid_t prevId = 5;
+  arangodb::IndexId prevId{5};
   for (auto idx : test_container) {
     ASSERT_EQ(prevId, idx->id());
-    --prevId;
+    prevId = arangodb::IndexId{prevId.id() - 1};
   }
 }

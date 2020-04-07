@@ -61,7 +61,7 @@ You can conditionally update a document based on a target revision id by
 using the *if-match* HTTP header.
 
 @RESTDESCRIPTION
-Partially updates the document identified by *document-handle*.
+Partially updates the document identified by *document-id*.
 The body of the request must contain a JSON document with the
 attributes to patch (the patch document). All attributes from the
 patch document will be added to the existing document if they do not
@@ -108,8 +108,8 @@ synchronization for collections that have a default *waitForSync* value
 of *true*.
 
 If *silent* is not set to *true*, the body of the response contains a JSON
-object with the information about the handle and the revision. The attribute
-*_id* contains the known *document-handle* of the updated document, *_key*
+object with the information about the identifier and the revision. The attribute
+*_id* contains the known *document-id* of the updated document, *_key*
 contains the key which uniquely identifies a document in a given collection,
 and the attribute *_rev* contains the new document revision.
 

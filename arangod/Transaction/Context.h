@@ -51,7 +51,6 @@ class TransactionState;
 
 namespace transaction {
 
-class ContextData;
 class Methods;
 
 class Context {
@@ -74,29 +73,23 @@ class Context {
   /// @brief return the vocbase
   TRI_vocbase_t& vocbase() const { return _vocbase; }
 
-  /// @brief pin data for the collection
-  void pinData(arangodb::LogicalCollection*);
-
-  /// @brief whether or not the data for the collection is pinned
-  bool isPinned(TRI_voc_cid_t);
-
   /// @brief temporarily lease a StringBuffer object
   basics::StringBuffer* leaseStringBuffer(size_t initialSize);
 
   /// @brief return a temporary StringBuffer object
-  void returnStringBuffer(basics::StringBuffer* stringBuffer);
+  void returnStringBuffer(basics::StringBuffer* stringBuffer) noexcept;
   
   /// @brief temporarily lease a std::string
   std::string* leaseString();
 
   /// @brief return a temporary std::string object
-  void returnString(std::string* str);
+  void returnString(std::string* str) noexcept;
 
   /// @brief temporarily lease a Builder object
   arangodb::velocypack::Builder* leaseBuilder();
 
   /// @brief return a temporary Builder object
-  void returnBuilder(arangodb::velocypack::Builder*);
+  void returnBuilder(arangodb::velocypack::Builder*) noexcept;
 
   /// @brief get velocypack options with a custom type handler
   TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
@@ -106,7 +99,7 @@ class Context {
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
-  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations,
+  void storeTransactionResult(TRI_voc_tid_t id, 
                               bool wasRegistered, bool isReadOnlyTransaction) noexcept;
 
  public:
@@ -154,11 +147,8 @@ class Context {
   arangodb::velocypack::Options _dumpOptions;
   
  private:
-  std::unique_ptr<transaction::ContextData> _contextData;
-
   struct {
     TRI_voc_tid_t id;
-    bool hasFailedOperations;
     bool isReadOnlyTransaction;
   } _transaction;
 

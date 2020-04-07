@@ -169,7 +169,7 @@ bool FailedFollower::start(bool& aborts) {
   // Get proper replacement
   _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
-    // retry later
+    finish("", _shard, false, "No server available.");
     return false;
   }
 

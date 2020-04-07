@@ -252,6 +252,7 @@ class Query {
 
   /// @brief inject the engine
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
+  TEST_VIRTUAL void setEngine(std::unique_ptr<ExecutionEngine>&& engine);
 
   /// @brief return the transaction, if prepared
   TEST_VIRTUAL inline transaction::Methods* trx() const { return _trx.get(); }
@@ -344,12 +345,9 @@ class Query {
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
 
-  /// @brief returns the next query id
-  static TRI_voc_tick_t nextId();
-
  private:
   /// @brief query id
-  const TRI_voc_tick_t _id;
+  TRI_voc_tick_t const _id;
 
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;

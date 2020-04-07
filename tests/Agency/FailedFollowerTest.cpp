@@ -396,8 +396,19 @@ TEST_F(FailedFollowerTest, if_there_is_no_healthy_free_server_at_start_just_fini
   ASSERT_TRUE(builder);
   Node agency = createNodeFromBuilder(*builder);
 
-  // nothing should happen
   Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    // check that moveshard is being moved to failed
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+    EXPECT_TRUE(std::string(q->slice()[0][0].get("/arango/Target/Failed/1").typeName()) ==
+                "object");
+    return fakeWriteResult;
+  });
+
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
   auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
@@ -405,7 +416,6 @@ TEST_F(FailedFollowerTest, if_there_is_no_healthy_free_server_at_start_just_fini
 
 TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
   Mock<AgentInterface> moveShardMockAgent;
-
   Builder moveShardBuilder;
   When(Method(moveShardMockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     EXPECT_EQ(std::string(q->slice().typeName()), "array");
@@ -416,7 +426,6 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
     EXPECT_TRUE(std::string(q->slice()[0][0].get("/arango/Target/ToDo/2").typeName()) ==
                 "object");
     moveShardBuilder.add(q->slice()[0][0].get("/arango/Target/ToDo/2"));
-
     return fakeWriteResult;
   });
   When(Method(moveShardMockAgent, waitFor)).Return();
@@ -425,7 +434,6 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
       MoveShard(baseStructure(PREFIX), &moveShardAgent, "2", "strunz", DATABASE,
                 COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true, true);
   moveShard.create();
-
   std::string jobId = "1";
   TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
     std::unique_ptr<Builder> builder(new Builder());
@@ -440,28 +448,31 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
       }
       if (path == "/arango/Supervision/Shards") {
         builder->add(SHARD, VPackValue("2"));
+
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createJob().slice());
+
       } else if (path == "/arango/Target/Pending") {
         builder->add("2", moveShardBuilder.slice());
       }
+
     } else {
       if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION +
-                      "/" + SHARD + "/servers") {
+                  "/" + SHARD + "/servers") {
         VPackArrayBuilder a(builder.get());
         builder->add(VPackValue(SHARD_LEADER));
         builder->add(VPackValue(SHARD_FOLLOWER2));
+
       } else {
         builder->add(s);
       }
     }
     return builder;
   };
-
   auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   Node agency = createNodeFromBuilder(*builder);
-
+  // nothing should happen
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     // check that moveshard is being moved to failed
@@ -474,11 +485,9 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
     return fakeWriteResult;
   });
 
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
   auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
-  Verify(Method(mockAgent, write));
 }
 
 TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {

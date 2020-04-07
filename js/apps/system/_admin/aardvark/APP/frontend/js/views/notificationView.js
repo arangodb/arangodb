@@ -86,6 +86,8 @@
                 n.close();
               }, {id: 'button3', 'data-status': 'false'})
             ];
+          } else if (latestModel.get('type') === 'info') {
+            time = 10000;
           }
 
           arangoHelper.hideArangoNotifications();

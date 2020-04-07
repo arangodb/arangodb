@@ -25,6 +25,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
@@ -281,10 +282,8 @@ std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
         &ci,
         [pool](network::DestinationId const& d, arangodb::fuerte::RestVerb v,
                std::string const& u, velocypack::Buffer<uint8_t> b,
-               network::Timeout t, network::Headers h) -> network::FutureRes {
-          network::RequestOptions options;
-          options.timeout = t;;
-          return sendRequest(pool, d, v, u, std::move(b), options, std::move(h));
+               network::RequestOptions const& opts, network::Headers h) -> network::FutureRes {
+          return sendRequest(pool, d, v, u, std::move(b), opts, std::move(h));
         });
   }
   return _theInstance;
@@ -307,7 +306,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
       // Send requests
       for (auto const& s : *(allShards.get())) {
         double timeleft = endtime - TRI_microtime();
-        network::Timeout timeout(timeleft);
+        
         serversToAsk.clear();
         auto curServers = cic->servers(s.first);
         auto& entry = counters[s.first];  // Emplaces a new SyncCountInfo
@@ -319,16 +318,18 @@ void ShardDistributionReporter::helperDistributionForDatabase(
         } else {
           entry.followers = curServers;
           if (timeleft > 0.0) {
-            std::string path = "/_db/" + basics::StringUtils::urlEncode(dbName) +
-                               "/_api/collection/" +
+            std::string path = "/_api/collection/" +
                                basics::StringUtils::urlEncode(s.first) +
                                "/count";
             VPackBuffer<uint8_t> body;
+            network::RequestOptions reqOpts;
+            reqOpts.database = dbName;
+            reqOpts.timeout = network::Timeout(timeleft);
 
             // First Ask the leader
             network::Headers headers;
             auto leaderF = _send("server:" + s.second.at(0), fuerte::RestVerb::Get,
-                                 path, body, timeout, headers);
+                                 path, body, reqOpts, headers);
 
             // Now figure out which servers need to be asked
             for (auto const& planned : s.second) {
@@ -348,9 +349,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             std::vector<network::FutureRes> futures;
             futures.reserve(serversToAsk.size());
             for (auto const& server : serversToAsk) {
-              network::Headers headers;
               auto f = _send("server:" + server, fuerte::RestVerb::Get, path,
-                             body, timeout, headers);
+                             body, reqOpts, headers);
               futures.emplace_back(std::move(f));
             }
 

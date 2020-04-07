@@ -273,7 +273,8 @@ void makeAttributesUnique(arangodb::velocypack::Builder& builder,
 /// @brief Create the database to restore to, connecting manually
 arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationServer& server,
                                    std::string const& name,
-                                   VPackSlice properties) {
+                                   VPackSlice properties,
+                                   arangodb::RestoreFeature::Options const& options) {
   using arangodb::httpclient::SimpleHttpClient;
   using arangodb::httpclient::SimpleHttpResult;
   using arangodb::rest::RequestType;
@@ -284,6 +285,8 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   // get client feature for configuration info
   arangodb::ClientFeature& client =
       server.getFeature<arangodb::HttpEndpointProvider, arangodb::ClientFeature>();
+         
+  client.setDatabaseName(arangodb::StaticStrings::SystemDatabase);
 
   // get httpclient by hand rather than using manager, to bypass any built-in
   // checks which will fail if the database doesn't exist
@@ -293,6 +296,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
     httpClient->params().setLocationRewriter(static_cast<void*>(&client),
                                              arangodb::ClientManager::rewriteLocation);
     httpClient->params().setUserNamePassword("/", client.username(), client.password());
+
   } catch (...) {
     LOG_TOPIC("832ef", FATAL, arangodb::Logger::RESTORE)
         << "cannot create server connection, giving up!";
@@ -307,12 +311,21 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
     // add replication factor write concern etc
     if (properties.isObject()) {
       ObjectBuilder guard(&builder, "options");
-      for(auto const& key : std::vector<std::string>{
+      for (auto const& key : std::vector<std::string>{
         arangodb::StaticStrings::ReplicationFactor,
         arangodb::StaticStrings::Sharding,
         arangodb::StaticStrings::WriteConcern
       }) {
         VPackSlice slice = properties.get(key);
+        if (key == arangodb::StaticStrings::ReplicationFactor) {
+          // overwrite replicationFactor if set
+          bool isSatellite = false;
+          uint64_t replicationFactor = getReplicationFactor(options, properties, isSatellite);
+          if (!isSatellite) {
+            object->add(key, VPackValue(replicationFactor));
+            continue;
+          }
+        }
         if (!slice.isNone()) {
           object->add(key, slice);
         }
@@ -328,8 +341,9 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
       }
     }
   }
-  std::string const body = builder.slice().toJson();
 
+  std::string const body = builder.slice().toJson();
+      
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(RequestType::POST, "/_api/database", body.c_str(), body.size()));
   if (response == nullptr || !response->isComplete()) {
@@ -512,10 +526,10 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    arangodb::velocypack::Options options = arangodb::velocypack::Options::Defaults;
+    arangodb::velocypack::Options opts = arangodb::velocypack::Options::Defaults;
     // do *not* check duplicate attributes here (because that would throw)
-    options.checkAttributeUniqueness = false;
-    arangodb::velocypack::Builder builder(&options);
+    opts.checkAttributeUniqueness = false;
+    arangodb::velocypack::Builder builder(&opts);
 
     // instead, we need to manually check for duplicate attributes...
     char const* p = buffer;
@@ -569,11 +583,19 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
     bufferSize = cleaned.length();
   }
 
-  std::string const url = "/_api/replication/restore-data?collection=" + urlEncode(cname) +
-                          "&force=" + (options.force ? "true" : "false");
+  std::string const url =
+      "/_api/replication/restore-data?collection=" + urlEncode(cname) +
+      "&force=" + (options.force ? "true" : "false") +
+      (options.preserveRevisionIds
+           ? ("&" + arangodb::StaticStrings::PreserveRevisionIds + "=true")
+           : "");
 
+  std::unordered_map<std::string, std::string> headers;
+  headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
+                  arangodb::StaticStrings::MimeTypeDump);
+  
   std::unique_ptr<SimpleHttpResult> response(
-      httpClient.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize));
+      httpClient.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize, headers));
   return ::checkHttpResponse(httpClient, response, "restoring data", "");
 }
 
@@ -1159,22 +1181,13 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   } else {
-    if (jobData.options.indexesFirst && jobData.options.importStructure) {
-      // restore indexes first if we are using rocksdb
-      result = ::restoreIndexes(httpClient, jobData);
-      if (result.fail()) {
-        return result;
-      }
+    // restore indexes first 
+    result = ::restoreIndexes(httpClient, jobData);
+    if (result.fail()) {
+      return result;
     }
     if (jobData.options.importData) {
       result = ::restoreData(httpClient, jobData);
-      if (result.fail()) {
-        return result;
-      }
-    }
-    if (!jobData.options.indexesFirst && jobData.options.importStructure) {
-      // restore indexes second if we are using mmfiles
-      result = ::restoreIndexes(httpClient, jobData);
       if (result.fail()) {
         return result;
       }
@@ -1285,7 +1298,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
           "clean up duplicate attributes (use first specified value) in input "
           "documents instead of making the restore operation fail",
           new BooleanParameter(&_options.cleanupDuplicateAttributes),
-          arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
@@ -1305,7 +1318,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       ->addOption(
           "--number-of-shards",
           "override value for numberOfShards (can be specified multiple times, "
-          "e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
+          "e.g. --number-of-shards 2 --number-of-shards myCollection=3)",
           new VectorParameter<StringParameter>(&_options.numberOfShards))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
@@ -1313,8 +1326,8 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options
       ->addOption("--replication-factor",
                   "override value for replicationFactor (can be specified "
-                  "multiple times, e.g. --replicationFactor 2 "
-                  "--replicationFactor myCollection=3)",
+                  "multiple times, e.g. --replication-factor 2 "
+                  "--replication-factor myCollection=3)",
                   new VectorParameter<StringParameter>(&_options.replicationFactor))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
@@ -1333,7 +1346,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       ->addOption("--default-number-of-shards",
                   "default value for numberOfShards if not specified in dump",
                   new UInt64Parameter(&_options.defaultNumberOfShards),
-                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 
@@ -1342,9 +1355,17 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
           "--default-replication-factor",
           "default value for replicationFactor if not specified in dump",
           new UInt64Parameter(&_options.defaultReplicationFactor),
-          arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
+
+  options
+      ->addOption(
+          "--preserve-revision-ids",
+          "preserve `_rev` values for the documents (potentially unsafe)",
+          new BooleanParameter(&_options.preserveRevisionIds),
+          arangodb::options::makeDefaultFlags(options::Flags::Hidden))
+      .setIntroducedIn(30700);
 }
 
 void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -1480,12 +1501,12 @@ void RestoreFeature::start() {
 
   // enumerate all databases present in the dump directory (in case of
   // --all-databases=true, or use just the flat files in case of --all-databases=false)
-  std::vector<std::pair<std::string,VPackBuilder>> databases;
+  std::vector<std::pair<std::string, VPackBuilder>> databases;
   if (_options.allDatabases) {
     for (auto const& it : basics::FileUtils::listFiles(_options.inputPath)) {
       std::string path = basics::FileUtils::buildFilename(_options.inputPath, it);
       if (basics::FileUtils::isDirectory(path)) {
-        databases.push_back(std::pair(it,VPackBuilder{}));
+        databases.push_back(std::pair(it, VPackBuilder{}));
       }
     }
 
@@ -1495,9 +1516,9 @@ void RestoreFeature::start() {
     // credentials for the user which users the current arangorestore connection, and
     // this will make subsequent arangorestore calls to the server fail with "unauthorized"
     std::sort(databases.begin(), databases.end(), [](auto const& lhs, auto const& rhs) {
-      if (lhs.first == "_system" && rhs.first != "_system") {
+      if (lhs.first == StaticStrings::SystemDatabase && rhs.first != StaticStrings::SystemDatabase) {
         return false;
-      } else if (rhs.first == "_system" && lhs.first != "_system") {
+      } else if (rhs.first == StaticStrings::SystemDatabase && lhs.first != StaticStrings::SystemDatabase) {
         return true;
       }
       return lhs.first < rhs.first;
@@ -1507,15 +1528,13 @@ void RestoreFeature::start() {
       FATAL_ERROR_EXIT();
     }
   } else {
-    databases.push_back(std::pair(client.databaseName(),VPackBuilder{}));
+    databases.push_back(std::pair(client.databaseName(), VPackBuilder{}));
   }
 
   std::unique_ptr<SimpleHttpClient> httpClient;
 
   // final result
-  Result result;
-
-  result = _clientManager.getConnectedClient(httpClient, _options.force,
+  Result result = _clientManager.getConnectedClient(httpClient, _options.force,
                                              true, !_options.createDatabase, false);
   if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
@@ -1528,13 +1547,11 @@ void RestoreFeature::start() {
       // database not found, but database creation requested
       LOG_TOPIC("9b5a6", INFO, Logger::RESTORE) << "Creating database '" << dbName << "'";
 
-      client.setDatabaseName("_system");
-
       VPackBuilder properties;
       getDBProperties(*_directory, properties);
-      Result res = ::tryCreateDatabase(server(), dbName, properties.slice());
+      Result res = ::tryCreateDatabase(server(), dbName, properties.slice(), _options);
       if (res.fail()) {
-        LOG_TOPIC("b19db", FATAL, Logger::RESTORE) << "Could not create database '" << dbName << "': " << httpClient->getErrorMessage();
+        LOG_TOPIC("b19db", FATAL, Logger::RESTORE) << "Could not create database '" << dbName << "': " << res.errorMessage();
         FATAL_ERROR_EXIT();
       }
 
@@ -1569,7 +1586,8 @@ void RestoreFeature::start() {
     LOG_TOPIC("1fc99", WARN, arangodb::Logger::RESTORE) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
   }
 
-  std::tie(result, _options.indexesFirst) =
+  bool isRocksDB;
+  std::tie(result, isRocksDB) =
       _clientManager.getArangoIsUsingEngine(*httpClient, "rocksdb");
   if (result.fail()) {
     LOG_TOPIC("b90ec", FATAL, arangodb::Logger::RESTORE)
@@ -1583,6 +1601,10 @@ void RestoreFeature::start() {
     LOG_TOPIC("05c30", INFO, Logger::RESTORE)
         << "Connected to ArangoDB '" << httpClient->getEndpointSpecification() << "'";
   }
+  
+  if (!isRocksDB) {
+    LOG_TOPIC("ae10c", WARN, arangodb::Logger::RESTORE) << "You connected to a server with a potentially incompatible storage engine.";
+  }
 
   // set up threads and workers
   _clientTaskQueue.spawnWorkers(_clientManager, _options.threadCount);
@@ -1591,7 +1613,7 @@ void RestoreFeature::start() {
 
   if (_options.allDatabases) {
     std::vector<std::string> dbs;
-    std::transform(databases.begin(), databases.end(),std::back_inserter(dbs), [](auto const& pair) { return pair.first; } );
+    std::transform(databases.begin(), databases.end(), std::back_inserter(dbs), [](auto const& pair) { return pair.first; } );
     LOG_TOPIC("7c10a", INFO, Logger::RESTORE)
       << "About to restore databases '"
       << basics::StringUtils::join(dbs, "', '") << "' from dump directory '" << _options.inputPath << "'...";
@@ -1622,11 +1644,9 @@ void RestoreFeature::start() {
           // database not found, but database creation requested
           LOG_TOPIC("080f3", INFO, Logger::RESTORE) << "Creating database '" << db.first << "'";
 
-          client.setDatabaseName("_system");
-
-          result = ::tryCreateDatabase(server(), db.first, db.second.slice());
+          result = ::tryCreateDatabase(server(), db.first, db.second.slice(), _options);
           if (result.fail()) {
-            LOG_TOPIC("7a35f", ERR, Logger::RESTORE) << "Could not create database '" << db.first << "': " << httpClient->getErrorMessage();
+            LOG_TOPIC("7a35f", ERR, Logger::RESTORE) << "Could not create database '" << db.first << "': " << result.errorMessage();
             break;
           }
 

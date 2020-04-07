@@ -46,7 +46,7 @@ struct TraverserOptions;
 namespace aql {
 
 /// @brief class TraversalNode
-class TraversalNode : public GraphNode {
+class TraversalNode : public virtual GraphNode {
   class TraversalEdgeConditionBuilder final : public EdgeConditionBuilder {
    private:
     /// @brief reference to the outer traversal node
@@ -87,11 +87,23 @@ class TraversalNode : public GraphNode {
 
   /// @brief Internal constructor to clone the node.
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
-                std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
+                std::vector<std::unique_ptr<Collection>> const& edgeColls,
+                std::vector<std::unique_ptr<Collection>> const& vertexColls,
                 Variable const* inVariable, std::string const& vertexId,
+                TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
-                std::unique_ptr<graph::BaseOptions> options);
+                std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
+
+ protected:
+  /// @brief Clone constructor, used for constructors of derived classes.
+  /// Does not clone recursively, does not clone properties (`other.plan()` is
+  /// expected to be the same as `plan)`, and does not register this node in the
+  /// plan.
+  /// When allowAlreadyBuiltCopy is true, allows copying a node which options
+  /// are already prepared. prepareOptions() has to be called on the copy if
+  /// the options were already prepared on other (_optionsBuilt)!
+  TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
+                bool allowAlreadyBuiltCopy = false);
 
  public:
   /// @brief return the type of the node
@@ -108,7 +120,7 @@ class TraversalNode : public GraphNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const override;
 
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
@@ -194,10 +206,16 @@ class TraversalNode : public GraphNode {
   //        You are not responsible for it!
   Expression* pruneExpression() const { return _pruneExpression.get(); }
 
+  /// @brief Overrides GraphNode::options() with a more specific return type
+  ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
+  auto options() const -> traverser::TraverserOptions*;
+
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
+
+  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c, bool withProperties) const;
 
  private:
   /// @brief vertex output variable

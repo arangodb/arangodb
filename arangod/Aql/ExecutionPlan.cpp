@@ -26,6 +26,7 @@
 
 #include "ExecutionPlan.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -55,6 +56,7 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
 
 using namespace arangodb;
@@ -117,6 +119,26 @@ uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
+void parseGraphCollectionRestriction(std::vector<std::string>& collections, AstNode const* src) {
+  if (src->isStringValue()) {
+    collections.emplace_back(src->getString());
+  } else if (src->type == NODE_TYPE_ARRAY) {
+    size_t const n = src->numMembers();
+    collections.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      AstNode const* c = src->getMemberUnchecked(i);
+      if (!c->isStringValue()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+            "collection restrictions option must be either a string or an array of collection names");
+      }
+      collections.emplace_back(c->getStringValue(), c->getStringLength());
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+        "collection restrictions option must be either a string or an array of collection names");
+  }
+}
+
 std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
@@ -150,7 +172,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
     size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = optionsNode->getMember(i);
+      auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -160,39 +182,43 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
         if (name == "bfs") {
           options->useBreadthFirst = value->isTrue();
         } else if (name == "uniqueVertices" && value->isStringValue()) {
-          if (value->stringEquals("path", true)) {
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryPath)) {
             options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
-          } else if (value->stringEquals("global", true)) {
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryGlobal)) {
             options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
           // path is the default
-          if (value->stringEquals("none", true)) {
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryNone)) {
             options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
-          } else if (value->stringEquals("global", true)) {
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryGlobal)) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_BAD_PARAMETER,
                 "uniqueEdges: 'global' is not supported, "
-                "due to unpredictable results. Use 'path' "
+                "due to otherwise unpredictable results. Use 'path' "
                 "or 'none' instead");
           }
+        } else if (name == "edgeCollections") {
+          parseGraphCollectionRestriction(options->edgeCollections, value);
+        } else if (name == "vertexCollections") {
+          parseGraphCollectionRestriction(options->vertexCollections, value);
         }
       }
     }
   }
+
   if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
       !options->useBreadthFirst) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueVertices: 'global' is only "
                                    "supported, with bfs: true due to "
-                                   "unpredictable results.");
+                                   "otherwise unpredictable results.");
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+
+  return options;
 }
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Query* query,
@@ -203,7 +229,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -220,9 +246,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
       }
     }
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+  
+  return options;
 }
 
 std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
@@ -443,13 +468,9 @@ bool ExecutionPlan::hasAppliedRule(int level) const {
                      [level](int l) { return l == level; });
 }
 
-void ExecutionPlan::enableRule(int rule) {
-  _disabledRules.erase(rule);
-}
+void ExecutionPlan::enableRule(int rule) { _disabledRules.erase(rule); }
 
-void ExecutionPlan::disableRule(int rule) {
-  _disabledRules.emplace(rule);
-}
+void ExecutionPlan::disableRule(int rule) { _disabledRules.emplace(rule); }
 
 bool ExecutionPlan::isDisabledRule(int rule) const {
   return (_disabledRules.find(rule) != _disabledRules.end());
@@ -471,8 +492,7 @@ ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
 }
 
 /// @brief creates a calculation node for an arbitrary expression
-ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
-                                                AstNode const* expression,
+ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* expression,
                                                 ExecutionNode* previous) {
   TRI_ASSERT(out != nullptr);
 
@@ -676,7 +696,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(CalculationNode const* previo
                             nullptr, nullptr, std::vector<Variable const*>(),
                             _ast->variables()->variables(false), false, true);
 
-  registerNode(reinterpret_cast<ExecutionNode*>(en));
+  registerNode(en);
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
   en->specialized();
 
@@ -712,12 +732,13 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node) {
   ModificationOptions options;
 
+
   // parse the modification options we got
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -725,25 +746,37 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 
         TRI_ASSERT(value->isConstant());
 
-        if (name == "waitForSync") {
+        if (name == StaticStrings::WaitForSyncString) {
           options.waitForSync = value->isTrue();
-        } else if (name == "ignoreErrors") {
-          options.ignoreErrors = value->isTrue();
-        } else if (name == "keepNull") {
-          // nullMeansRemove is the opposite of keepNull
-          options.nullMeansRemove = value->isFalse();
-        } else if (name == "mergeObjects") {
+        } else if (name == StaticStrings::SkipDocumentValidation) {
+          options.validate = ! value->isTrue();
+        } else if (name == StaticStrings::KeepNullString) {
+          options.keepNull = value->isTrue();
+        } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
+        } else if (name == StaticStrings::Overwrite && value->isTrue()) {
+          // legacy: overwrite is set, superseded by overwriteMode
+          // default behavior if only "overwrite" is specified
+          if (!options.isOverwriteModeSet()) {
+            options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+          }
+        } else if (name == StaticStrings::OverwriteMode && value->isStringValue()) {
+          auto overwriteMode = OperationOptions::determineOverwriteMode(value->getStringRef());
+
+          if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+            options.overwriteMode = overwriteMode;
+          }
+        } else if (name == StaticStrings::IgnoreRevsString) {
+          options.ignoreRevs = value->isTrue();
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
-        } else if (name == "overwrite") {
-          options.overwrite = value->isTrue();
-        } else if (name == "ignoreRevs") {
-          options.ignoreRevs = value->isTrue();
+        } else if (name == "ignoreErrors") {
+          options.ignoreErrors = value->isTrue();
         }
       }
     }
   }
+
   return options;
 }
 
@@ -833,7 +866,8 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   try {
     auto [it, emplaced] = _ids.try_emplace(node->id(), node);
     if (!emplaced) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to register node in plan");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to register node in plan");
     }
     TRI_ASSERT(it != _ids.end());
   } catch (...) {
@@ -1280,7 +1314,9 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
       // the LET. and don't create the LET
 
       subquery->replaceOutVariable(v);
-      // TODO Local fix of #10304. Remove this note after #10304 is merged back.
+      // We do not create a new node here, just return the last dependency.
+      // Note that we *do not* want to return `subquery`, as we might leave a
+      // dangling branch of ExecutionNodes from it.
       return previous;
     }
     // otherwise fall-through to normal behavior
@@ -1321,10 +1357,10 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous, AstNode cons
     if (ascending->type == NODE_TYPE_VALUE) {
       if (ascending->value.type == VALUE_TYPE_STRING) {
         // special treatment for string values ASC/DESC
-        if (ascending->stringEquals("ASC", true)) {
+        if (ascending->stringEqualsCaseInsensitive(StaticStrings::QuerySortASC)) {
           isAscending = true;
           handled = true;
-        } else if (ascending->stringEquals("DESC", true)) {
+        } else if (ascending->stringEqualsCaseInsensitive(StaticStrings::QuerySortDESC)) {
           isAscending = false;
           handled = true;
         }
@@ -2387,9 +2423,9 @@ bool ExecutionPlan::isDeadSimple() const {
     auto const nodeType = current->getType();
 
     if (nodeType == ExecutionNode::SUBQUERY || nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
-        nodeType == ExecutionNode::ENUMERATE_LIST || nodeType == ExecutionNode::TRAVERSAL ||
-        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::K_SHORTEST_PATHS ||
-        nodeType == ExecutionNode::INDEX) {
+        nodeType == ExecutionNode::ENUMERATE_LIST ||
+        nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
+        nodeType == ExecutionNode::K_SHORTEST_PATHS || nodeType == ExecutionNode::INDEX) {
       // these node types are not simple
       return false;
     }
@@ -2405,6 +2441,29 @@ bool ExecutionPlan::fullCount() const noexcept {
                                  ? nullptr
                                  : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
   return lastLimitNode != nullptr && lastLimitNode->fullCount();
+}
+
+void ExecutionPlan::prepareTraversalOptions() {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  findNodesOfType(nodes,
+      {arangodb::aql::ExecutionNode::TRAVERSAL,
+       arangodb::aql::ExecutionNode::SHORTEST_PATH,
+       arangodb::aql::ExecutionNode::K_SHORTEST_PATHS},
+      true);
+  for (auto& node : nodes) {
+    switch (node->getType()) {
+      case ExecutionNode::TRAVERSAL:
+      case ExecutionNode::SHORTEST_PATH:
+      case ExecutionNode::K_SHORTEST_PATHS: {
+        auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
+        graphNode->prepareOptions();
+      } break;
+      default:
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+    }
+  }
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -2423,13 +2482,9 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
     return true;
   }
 
-  void leaveSubquery(ExecutionNode*, ExecutionNode*) final {
-    indent--;
-  }
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) final { indent--; }
 
-  bool before(ExecutionNode* en) final {
-    return false;
-  }
+  bool before(ExecutionNode* en) final { return false; }
 
   void after(ExecutionNode* en) final {
     if (en->getType() == ExecutionNode::SUBQUERY_END) {

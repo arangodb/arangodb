@@ -41,11 +41,18 @@ struct ShortestPathOptions;
 namespace aql {
 
 /// @brief class KShortestPathsNode
-class KShortestPathsNode : public GraphNode {
+class KShortestPathsNode : public virtual GraphNode {
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
+ protected:
+  /// @brief Clone constructor, used for constructors of derived classes.
+  /// Does not clone recursively, does not clone properties (`other.plan()` is
+  /// expected to be the same as `plan)`, and does not register this node in the
+  /// plan.
+  KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode const& node);
+
  public:
   KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                      AstNode const* direction, AstNode const* start,
@@ -60,10 +67,12 @@ class KShortestPathsNode : public GraphNode {
   KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                      std::vector<std::unique_ptr<Collection>> const& edgeColls,
                      std::vector<std::unique_ptr<Collection>> const& vertexColls,
+                     TRI_edge_direction_e defaultDirection,
                      std::vector<TRI_edge_direction_e> const& directions,
                      Variable const* inStartVariable, std::string const& startVertexId,
                      Variable const* inTargetVariable, std::string const& targetVertexId,
-                     std::unique_ptr<graph::BaseOptions> options);
+                     std::unique_ptr<graph::BaseOptions> options,
+                     graph::Graph const* graph);
 
  public:
   /// @brief return the type of the node
@@ -80,7 +89,7 @@ class KShortestPathsNode : public GraphNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const override;
 
   bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
   Variable const& pathOutVariable() const {
@@ -134,6 +143,14 @@ class KShortestPathsNode : public GraphNode {
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
+
+  /// @brief Overrides GraphNode::options() with a more specific return type
+  ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
+  auto options() const -> graph::ShortestPathOptions*;
+
+ private:
+  void kShortestPathsCloneHelper(ExecutionPlan& plan, KShortestPathsNode& c,
+                                 bool withProperties) const;
 
  private:
   /// @brief path output variable

@@ -1,0 +1,83 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_US{
+    %%Parent{"es_419"}
+    Currencies{
+        AMD{
+            "AMD",
+            "dram",
+        }
+        JPY{
+            "¥",
+            "yen",
+        }
+        MYR{
+            "MYR",
+            "ringit",
+        }
+        STN{
+            "STN",
+            "dobra santotomense",
+        }
+        THB{
+            "THB",
+            "bat",
+        }
+        USD{
+            "$",
+            "dólar estadounidense",
+        }
+        UZS{
+            "UZS",
+            "sum",
+        }
+        XAF{
+            "XAF",
+            "franco CFA de África central",
+        }
+        XOF{
+            "XOF",
+            "franco CFA de África Occidental",
+        }
+    }
+    Currencies%narrow{
+        FKP{"£"}
+        RON{"lei"}
+        SSP{"£"}
+        SYP{"£"}
+        VEF{"Bs"}
+    }
+    CurrencyPlurals{
+        MWK{
+            one{"kwacha malauí"}
+        }
+        MYR{
+            one{"ringit"}
+            other{"ringits"}
+        }
+        RON{
+            one{"leu rumano"}
+        }
+        STN{
+            one{"dobra santotomense"}
+            other{"dobra santotomense"}
+        }
+        THB{
+            one{"bat"}
+            other{"bats"}
+        }
+        UZS{
+            one{"sum"}
+            other{"sums"}
+        }
+        XAF{
+            one{"franco CFA de África central"}
+            other{"francos CFA de África central"}
+        }
+        XOF{
+            one{"franco CFA de África Occidental"}
+            other{"francos CFA de África Occidental"}
+        }
+    }
+    Version{"2.1.47.86"}
+}

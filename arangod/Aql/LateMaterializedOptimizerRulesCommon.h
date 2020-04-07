@@ -50,7 +50,7 @@ struct AstAndFieldData {
 };
 
 struct AstAndColumnFieldData : AstAndFieldData {
-  int columnNumber;
+  ptrdiff_t columnNumber;
   std::vector<std::string> postfix;
 };
 

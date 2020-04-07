@@ -5,7 +5,7 @@ this readme is more intended for internal use.
 
 ## Protocol
 
-Message format between DBServers:
+Message format between DB-Servers:
 
 ```json
 {

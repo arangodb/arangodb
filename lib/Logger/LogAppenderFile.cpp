@@ -23,6 +23,7 @@
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <algorithm>
 #include <iostream>
 
 #include "Basics/operating-system.h"
@@ -86,9 +87,9 @@ size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
   return q - s;
 }
 
-void LogAppenderStream::logMessage(LogLevel level, std::string const& message, size_t offset) {
+void LogAppenderStream::logMessage(LogMessage const& message) {
   // check max. required output length
-  size_t const neededBufferSize = determineOutputBufferSize(message);
+  size_t const neededBufferSize = determineOutputBufferSize(message._message);
 
   // check if we can re-use our already existing buffer
   if (neededBufferSize > _bufferSize) {
@@ -110,10 +111,10 @@ void LogAppenderStream::logMessage(LogLevel level, std::string const& message, s
 
   TRI_ASSERT(_buffer != nullptr);
 
-  size_t length = writeIntoOutputBuffer(message);
+  size_t length = writeIntoOutputBuffer(message._message);
   TRI_ASSERT(length <= neededBufferSize);
 
-  this->writeLogMessage(level, _buffer.get(), length);
+  this->writeLogMessage(message._level, message._topicId, _buffer.get(), length);
 
   if (_bufferSize > maxBufferSize) {
     // free the buffer so the Logger is not hogging so much memory
@@ -169,7 +170,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
-void LogAppenderFile::writeLogMessage(LogLevel level, char const* buffer, size_t len) {
+void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/, char const* buffer, size_t len) {
   bool giveUp = false;
 
   while (len > 0) {
@@ -202,7 +203,7 @@ void LogAppenderFile::writeLogMessage(LogLevel level, char const* buffer, size_t
   }
 }
 
-std::string LogAppenderFile::details() {
+std::string LogAppenderFile::details() const {
   std::string buffer("More error details may be provided in the logfile '");
   buffer.append(_filename);
   buffer.append("'");
@@ -299,12 +300,12 @@ LogAppenderStdStream::~LogAppenderStdStream() {
   }
 }
 
-void LogAppenderStdStream::writeLogMessage(LogLevel level, char const* buffer, size_t len) {
-  writeLogMessage(_fd, _useColors, level, buffer, len, false);
+void LogAppenderStdStream::writeLogMessage(LogLevel level, size_t topicId, char const* buffer, size_t len) {
+  writeLogMessage(_fd, _useColors, level, topicId, buffer, len, false);
 }
 
 void LogAppenderStdStream::writeLogMessage(int fd, bool useColors,
-                                           LogLevel level, char const* buffer,
+                                           LogLevel level, size_t /*topicId*/, char const* buffer,
                                            size_t len, bool appendNewline) {
   if (!allowStdLogging()) {
     return;

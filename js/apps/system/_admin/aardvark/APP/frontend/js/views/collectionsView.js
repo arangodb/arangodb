@@ -385,10 +385,19 @@
               smartJoinAttribute = $('#smart-join-attribute').val().trim();
             }
             if (frontendConfig.isEnterprise) {
-              distributeShardsLike = $('#distribute-shards-like').val().trim();
+              try {
+                // field may be entirely hidden
+                distributeShardsLike = $('#distribute-shards-like').val().trim();
+              } catch (err) {
+              }
             }
 
-            shards = $('#new-collection-shards').val();
+            // number of shards field may be read-only, in this case we just assume 1
+            try {
+              shards = $('#new-collection-shards').val();
+            } catch (err) {
+              shards = 1;
+            }
 
             if (shards === '') {
               shards = 1;
@@ -445,7 +454,7 @@
           try {
             if (Number.parseInt(writeConcern) > Number.parseInt(replicationFactor)) {
               // validation here, as our Joi integration misses some core features
-              arangoHelper.arangoError("New Collection", "Minimum replication factor is not allowed to be greater than replication factor");
+              arangoHelper.arangoError("New Collection", "Write concern is not allowed to be greater than replication factor");
               abort = true;
             }
           } catch (ignore) {
@@ -460,9 +469,6 @@
             shardKeys: shardKeys
           };
 
-          if (self.engine.name !== 'rocksdb') {
-            tmpObj.journalSize = collSize;
-          }
           if (smartJoinAttribute !== '') {
             tmpObj.smartJoinAttribute = smartJoinAttribute;
           }
@@ -472,7 +478,7 @@
             // if we are in the cluster and are not using distribute shards like
             // then we want to make use of the replication factor
             tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
-            tmpObj.minReplicationFactor = Number(writeConcern);
+            tmpObj.writeConcern = Number(writeConcern);
           }
 
           if (!abort) {
@@ -551,16 +557,28 @@
           );
 
           if (isCoordinator) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-collection-shards',
-                'Number of shards',
-                this.maxNumberOfShards === 1 ? String(this.maxNumberOfShards) : 0,
-                'The number of shards to create. The maximum value is ' + this.maxNumberOfShards + '. You cannot change this afterwards.',
-                '',
-                true
-              )
-            );
+            var allowEdit = properties.sharding !== 'single' && !frontendConfig.forceOneShard;
+            if (allowEdit) {
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'new-collection-shards',
+                  'Number of shards',
+                  this.maxNumberOfShards === 1 ? String(this.maxNumberOfShards) : 0,
+                  'The number of shards to create. The maximum value is ' + this.maxNumberOfShards + '. You cannot change this afterwards.',
+                  '',
+                  true
+                )
+              );
+            } else {
+              tableContent.push(
+                window.modalView.createReadOnlyEntry(
+                  'new-collection-shards-readonly',
+                  'Number of shards',
+                  this.maxNumberOfShards === 1 ? String(this.maxNumberOfShards) : 1,
+                  ''
+                )
+              );
+            }
             tableContent.push(
               window.modalView.createSelect2Entry(
                 'new-collection-shardKeys',
@@ -578,7 +596,7 @@
                 window.modalView.createTextEntry(
                   'new-replication-factor',
                   'Replication factor',
-                  ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.replicationFactor : '',
+                  properties.replicationFactor ? properties.replicationFactor : '',
                   'Numeric value. Must be between ' + 
                   (this.minReplicationFactor ? this.minReplicationFactor : 1) + 
                   ' and ' + 
@@ -608,18 +626,20 @@
           );
           if (window.App.isCluster) {
             if (frontendConfig.isEnterprise) {
-              advancedTableContent.push(
-                window.modalView.createTextEntry(
-                  'distribute-shards-like',
-                  'Distribute shards like',
-                  properties.sharding === "single" ? "_graphs" : "",
-                  'Name of another collection that should be used as a prototype for sharding this collection.',
-                  '',
-                  false,
-                  [
-                  ]
-                )
-              );
+              if (properties.sharding !== 'single' && !frontendConfig.forceOneShard) {
+                advancedTableContent.push(
+                  window.modalView.createTextEntry(
+                    'distribute-shards-like',
+                    'Distribute shards like',
+                    '',
+                    'Name of another collection that should be used as a prototype for sharding this collection.',
+                    '',
+                    false,
+                    [
+                    ]
+                  )
+                );
+              }
               advancedTableContent.push(
                 window.modalView.createSelectEntry(
                   'is-satellite-collection',
@@ -646,33 +666,15 @@
             advancedTableContent.push(
               window.modalView.createTextEntry(
                 'new-write-concern',
-                'Minimum replication factor',
-                ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.minReplicationFactor : '',
-                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+                'Write concern',
+                properties.writeConcern ? properties.writeConcern : '',
+                'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
                 '',
                 false,
                 [
                   {
                     rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
                     msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
-                  }
-                ]
-              )
-            );
-          }
-          if (self.engine.name !== 'rocksdb') {
-            advancedTableContent.push(
-              window.modalView.createTextEntry(
-                'new-collection-size',
-                'Journal size',
-                '',
-                'The maximal size of a journal or datafile (in MB). Must be at least 1.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
                   }
                 ]
               )

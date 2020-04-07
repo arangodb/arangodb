@@ -59,7 +59,7 @@ class ResourceMutex {
   ReadMutex& mutex() const {
     return _readMutex;
   }              // prevent '_resource' reset()
-  void reset();  // will block until a write lock can be aquired on the _mutex
+  void reset();  // will block until a write lock can be acquired on the _mutex
 
  protected:
   void* get() const { return _resource.load(); }

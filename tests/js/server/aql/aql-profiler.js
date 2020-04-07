@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global AQL_EXPLAIN */
+/*global AQL_EXPLAIN, assertTrue */
 
 "use strict";
 
@@ -52,10 +52,6 @@ const _ = require('lodash');
 // TODO EnumerateCollectionBlock *and* IndexBlock are suboptimal because both
 // abort after iterating over the collection once and return the items fetched
 // so far instead of filling up the result. (see aql-profiler-noncluster*.js)
-
-// NOTE EnumerateCollectionBlock is suboptimal on mmfiles, is it returns HASMORE
-// instead of DONE when asked for exactly all documents in the collection.
-// (low impact) (see aql-profiler-noncluster*.js)
 
 // TODO IndexBlock is still suboptimal, as it can return HASMORE when there are no
 // items left. (low impact) (see aql-profiler-noncluster*.js)
@@ -346,15 +342,39 @@ function ahuacatlProfilerTestSuite () {
 
     testFilterBlock2 : function () {
       const query = 'FOR i IN 1..@rows FILTER i % 13 != 0 RETURN i';
-      const genNodeList = (rows, batches) => {
+      const genNodeList = (rows) => {
+        // This is an array 1..rows where true means it passes the filter
+        const list = Array.from(Array(rows)).map((_, index ) => {
+          return ((index + 1) % 13 !== 0);
+        });
+
+        const recursiveFilterCallEstimator = (rowsToFetch) => {
+          if (rowsToFetch === 0 || list.length === 0) {
+            return 0;
+          }
+          if (rowsToFetch < 0) {
+            // We would have counted an overfetch!
+            assertTrue(false);
+          }
+          // We count one required call.
+          // We remove rowsToFetch elements from the beginning of the array.
+          // We count how many of those are true.
+          // We simulate an above call with rowsToFetch - the number of true counts.
+          // Redo until we have no more rows to fetch.
+          return 1 + recursiveFilterCallEstimator(rowsToFetch - list.splice(0, rowsToFetch).filter(e => e).length);
+        };
+        let batchesAboveFilter = 0;
+        while (list.length > 0) {
+          batchesAboveFilter += recursiveFilterCallEstimator(defaultBatchSize);
+        }
         const rowsAfterFilter = rows - Math.floor(rows / 13);
         const batchesAfterFilter = Math.ceil(rowsAfterFilter / defaultBatchSize);
 
         return [
           { type : SingletonBlock, calls : 1, items : 1 },
           { type : CalculationBlock, calls : 1, items : 1 },
-          { type : EnumerateListBlock, calls : batches, items : rows },
-          { type : CalculationBlock, calls : batches, items : rows },
+          { type : EnumerateListBlock, calls : batchesAboveFilter, items : rows },
+          { type : CalculationBlock, calls : batchesAboveFilter, items : rows },
           { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
         ];
@@ -368,15 +388,38 @@ function ahuacatlProfilerTestSuite () {
 
     testFilterBlock3 : function () {
       const query = 'FOR i IN 1..@rows FILTER i % 13 == 0 RETURN i';
-      const genNodeList = (rows, batches) => {
+      const genNodeList = (rows) => {
+        // This is an array 1..rows where true means it passes the filter
+        const list = Array.from(Array(rows)).map((_, index ) => {
+          return ((index + 1) % 13 === 0);
+        });
+        const recursiveFilterCallEstimator = (rowsToFetch) => {
+          if (rowsToFetch === 0 || list.length === 0) {
+            return 0;
+          }
+          if (rowsToFetch < 0) {
+            // We would have counted an overfetch!
+            assertTrue(false);
+          }
+          // We count one required call.
+          // We remove rowsToFetch elements from the beginning of the array.
+          // We count how many of those are true.
+          // We simulate an above call with rowsToFetch - the number of true counts.
+          // Redo until we have no more rows to fetch.
+          return 1 + recursiveFilterCallEstimator(rowsToFetch - list.splice(0, rowsToFetch).filter(e => e).length);
+        };
+        let batchesAboveFilter = 0;
+        while (list.length > 0) {
+          batchesAboveFilter += recursiveFilterCallEstimator(defaultBatchSize);
+        }
         const rowsAfterFilter = Math.floor(rows / 13);
         const batchesAfterFilter = Math.max(1, Math.ceil(rowsAfterFilter / defaultBatchSize));
 
         return [
           { type : SingletonBlock, calls : 1, items : 1 },
           { type : CalculationBlock, calls : 1, items : 1 },
-          { type : EnumerateListBlock, calls : batches, items : rows },
-          { type : CalculationBlock, calls : batches, items : rows },
+          { type : EnumerateListBlock, calls : batchesAboveFilter, items : rows },
+          { type : CalculationBlock, calls : batchesAboveFilter, items : rows },
           { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
         ];
@@ -504,7 +547,7 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: limitBatches(rows) + skipOffsetBatches(rows), items: limit(rows) + offset(rows)},
+        {type: EnumerateListBlock, calls: limitBatches(rows), items: limit(rows) + offset(rows)},
         {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
         {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
       ];
@@ -524,13 +567,13 @@ function ahuacatlProfilerTestSuite () {
     testNoResultsBlock1: function() {
       const query = 'FOR i IN 1..@rows FILTER 1 == 0 RETURN i';
 
-      // As the descendant blocks of NoResultsBlock don't get a single getSome
-      // call, they don't show up in the statistics.
+      // Also if we have no results, we do send a drop-all to dependecies
+      // potentielly we have modifiaction nodes that need to be executed.
 
       const genNodeList = () => [
-        {type: SingletonBlock, calls: 0, items: 0},
-        {type: CalculationBlock, calls: 0, items: 0},
-        {type: EnumerateListBlock, calls: 0, items: 0},
+        {type: SingletonBlock, calls: 1, items: 0},
+        {type: CalculationBlock, calls: 1, items: 0},
+        {type: EnumerateListBlock, calls: 1, items: 0},
         {type: NoResultsBlock, calls: 1, items: 0},
         {type: ReturnBlock, calls: 1, items: 0},
       ];
@@ -630,7 +673,7 @@ function ahuacatlProfilerTestSuite () {
         { type : SingletonBlock, calls : 1, items : 1 },
         { type : CalculationBlock, calls : 1, items : 1 },
         { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : ConstrainedSortBlock, calls : skipOffsetBatches(rows) + limitMinusSkipBatches(rows), items : limit(rows) },
+        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : limit(rows) },
         { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) },
         { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) }
       ];
@@ -651,13 +694,11 @@ function ahuacatlProfilerTestSuite () {
 
     testSortLimitBlock2 : function () {
       const query = 'FOR i IN 1..@rows SORT i DESC LIMIT @offset, @limit RETURN i';
-      const remainder = rows => rows - limit(rows);
-      const remainderBatches = rows => remainder(rows) === 0 ? 0 : 1;
       const genNodeList = (rows, batches) => [
         { type : SingletonBlock, calls : 1, items : 1 },
         { type : CalculationBlock, calls : 1, items : 1 },
         { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : ConstrainedSortBlock, calls : skipOffsetBatches(rows) + limitMinusSkipBatches(rows) + remainderBatches(rows), items : rows },
+        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : rows },
         { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) },
         { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) }
       ];

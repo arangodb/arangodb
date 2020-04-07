@@ -97,7 +97,7 @@
   c.ensureGeoIndex("a_la", "a_lo");
 
   // we insert data and remove it
-  c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
+  c = db._create("UnitTestsDumpTruncated");
   c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i})));  
   c.truncate();
 
@@ -263,7 +263,19 @@
         }
       }
     });
-  } catch (err) { }
+  } catch (err) {}
+
+  // insert an entry into _jobs collection
+  try {
+    db._jobs.remove("test");
+  } catch (err) {}
+  db._jobs.insert({ _key: "test", status: "completed" });
+
+  // insert an entry into _queues collection
+  try {
+    db._queues.remove("test");
+  } catch (err) {}
+  db._queues.insert({ _key: "test" });
 
   // Install Foxx
   const fs = require('fs');

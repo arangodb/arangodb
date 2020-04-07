@@ -24,6 +24,7 @@
 #define ARANGODB_TRANSACTION_MANAGER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/debugging.h"
 #include "Scheduler/Scheduler.h"
 
 #include <mutex>

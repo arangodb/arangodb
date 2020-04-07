@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TERM_QUERY_H
@@ -26,12 +25,12 @@
 
 #include "filter.hpp"
 #include "cost.hpp"
-
 #include "utils/string.hpp"
 
 NS_ROOT
 
 struct term_reader;
+struct filter_visitor;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_state
@@ -40,17 +39,14 @@ struct term_reader;
 struct reader_term_state {
   reader_term_state() = default;
 
-  reader_term_state(reader_term_state&& rhs) NOEXCEPT
+  reader_term_state(reader_term_state&& rhs) noexcept
     : reader(rhs.reader),
-      cookie(std::move(rhs.cookie)),
-      estimation(rhs.estimation) {
+      cookie(std::move(rhs.cookie)) {
     rhs.reader = nullptr;
-    rhs.estimation = 0;
   }
 
   const term_reader* reader{};
   seek_term_iterator::cookie_ptr cookie;
-  cost::cost_t estimation{};
 }; // term_state
 
 //////////////////////////////////////////////////////////////////////////////
@@ -71,6 +67,11 @@ class term_query : public filter::prepared {
     const bytes_ref& term
   );
 
+  static void visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    filter_visitor& visitor);
+
   explicit term_query(states_t&& states, bstring&& stats, boost_t boost);
 
   virtual doc_iterator::ptr execute(
@@ -81,6 +82,7 @@ class term_query : public filter::prepared {
 
  private:
   states_cache<reader_term_state> states_;
+  bstring stats_;
 }; // term_query
 
 NS_END // ROOT

@@ -8,9 +8,9 @@ returned. If the index existed and was dropped, then *true* is
 returned. Note that you cannot drop some special indexes (e.g. the primary
 index of a collection or the edge index of an edge collection).
 
-`collection.dropIndex(index-handle)`
+`collection.dropIndex(index-id)`
 
-Same as above. Instead of an index an index handle can be given.
+Same as above. Instead of an index an index id can be given.
 
 @EXAMPLE_ARANGOSH_OUTPUT{col_dropIndex}
 ~db._create("example");

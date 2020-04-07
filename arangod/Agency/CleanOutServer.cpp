@@ -345,6 +345,7 @@ bool CleanOutServer::start(bool& aborts) {
       addPreconditionServerHealth(*pending, _server, "GOOD");
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
+      addPreconditionUnchanged(*pending, planVersion, _snapshot(planVersion).slice());
     }
   }  // array for transaction done
 
@@ -405,7 +406,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false)
+                    toServer, isLeader, false).withParent(_jobId)
               .create(trx);
 
           } else {
@@ -439,7 +440,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           // Schedule move into trx:
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false)
+                    toServer, isLeader, false).withParent(_jobId)
               .create(trx);
         }
       }

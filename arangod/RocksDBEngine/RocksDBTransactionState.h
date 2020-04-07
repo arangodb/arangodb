@@ -30,10 +30,12 @@
 #include "Basics/Common.h"
 #include "Containers/SmallVector.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
@@ -139,19 +141,36 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
 
+  RocksDBTransactionCollection::TrackedOperations& trackedOperations(TRI_voc_cid_t cid);
+
+  /// @brief Track documents inserted to the collection
+  ///        Used to update the revision tree for replication after commit
+  void trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+
+  /// @brief Track documents removed from the collection
+  ///        Used to update the revision tree for replication after commit
+  void trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx committed
-  void trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
+  void trackIndexInsert(TRI_voc_cid_t cid, IndexId idxObjectId, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx committed
-  void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
-  
+  void trackIndexRemove(TRI_voc_cid_t cid, IndexId idxObjectId, uint64_t hash);
+
   bool isOnlyExclusiveTransaction() const;
+
+  rocksdb::SequenceNumber beginSeq() const;
 
  private:
   /// @brief create a new rocksdb transaction
   void createTransaction();
+
+  void prepareCollections();
+  void commitCollections(rocksdb::SequenceNumber lastWritten);
+  void cleanupCollections();
+
   /// @brief delete transaction, snapshot and cache trx
   void cleanupTransaction() noexcept;
   /// @brief internally commit a transaction
@@ -182,6 +201,8 @@ class RocksDBTransactionState final : public TransactionState {
   cache::Transaction* _cacheTx;
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
+
+  bool _blockers = false;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL

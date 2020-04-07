@@ -50,7 +50,8 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
-static void parseNodeInput(AstNode const* node, std::string& id, Variable const*& variable, char const* part) {
+static void parseNodeInput(AstNode const* node, std::string& id,
+                           Variable const*& variable, char const* part) {
   switch (node->type) {
     case NODE_TYPE_REFERENCE:
       variable = static_cast<Variable*>(node->getData());
@@ -58,8 +59,9 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
       break;
     case NODE_TYPE_VALUE:
       if (node->value.type != VALUE_TYPE_STRING) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                       std::string("invalid ") + part + " vertex. Must either be "
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_PARSE, std::string("invalid ") + part +
+                                       " vertex. Must either be "
                                        "an _id string or an object with _id.");
       }
       variable = nullptr;
@@ -67,8 +69,9 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
       break;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     std::string("invalid ") + part + " vertex. Must either be an "
-                                     "_id string or an object with _id.");
+                                     std::string("invalid ") + part +
+                                         " vertex. Must either be an "
+                                         "_id string or an object with _id.");
   }
 }
 static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNode const* node,
@@ -142,10 +145,12 @@ ShortestPathNode::ShortestPathNode(
     ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     std::vector<std::unique_ptr<Collection>> const& edgeColls,
     std::vector<std::unique_ptr<Collection>> const& vertexColls,
-    std::vector<TRI_edge_direction_e> const& directions, Variable const* inStartVariable,
-    std::string const& startVertexId, Variable const* inTargetVariable,
-    std::string const& targetVertexId, std::unique_ptr<BaseOptions> options)
-    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, std::move(options)),
+    TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> const& directions,
+    Variable const* inStartVariable, std::string const& startVertexId,
+    Variable const* inTargetVariable, std::string const& targetVertexId,
+    std::unique_ptr<BaseOptions> options, graph::Graph const* graph)
+    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
+                directions, std::move(options), graph),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
       _inTargetVariable(inTargetVariable),
@@ -198,13 +203,13 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
 
   // Filter Condition Parts
   TRI_ASSERT(base.hasKey("fromCondition"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
   _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
 
   TRI_ASSERT(base.hasKey("toCondition"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
@@ -263,14 +268,14 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
-                                  it->second.registerId);
+                                      it->second.registerId);
     outputRegisters->emplace(it->second.registerId);
   }
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::EDGE,
-                                  it->second.registerId);
+                                      it->second.registerId);
     outputRegisters->emplace(it->second.registerId);
   }
 
@@ -303,37 +308,43 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp = std::make_unique<ShortestPathOptions>(*oldOpts);
   auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls,
-                                              _vertexColls, _directions, _inStartVariable,
-                                              _startVertexId, _inTargetVariable,
-                                              _targetVertexId, std::move(tmp));
+                                              _vertexColls, _defaultDirection, _directions,
+                                              _inStartVariable, _startVertexId,
+                                              _inTargetVariable, _targetVertexId,
+                                              std::move(tmp), _graphObj);
+  shortestPathCloneHelper(*plan, *c, withProperties);
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
+                                               bool withProperties) const {
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
-      vertexOutVariable = plan->getAst()->variables()->createVariable(vertexOutVariable);
+      vertexOutVariable = plan.getAst()->variables()->createVariable(vertexOutVariable);
     }
     TRI_ASSERT(vertexOutVariable != nullptr);
-    c->setVertexOutput(vertexOutVariable);
+    c.setVertexOutput(vertexOutVariable);
   }
 
   if (usesEdgeOutVariable()) {
     auto edgeOutVariable = _edgeOutVariable;
     if (withProperties) {
-      edgeOutVariable = plan->getAst()->variables()->createVariable(edgeOutVariable);
+      edgeOutVariable = plan.getAst()->variables()->createVariable(edgeOutVariable);
     }
     TRI_ASSERT(edgeOutVariable != nullptr);
-    c->setEdgeOutput(edgeOutVariable);
+    c.setEdgeOutput(edgeOutVariable);
   }
 
   // Temporary Filter Objects
-  c->_tmpObjVariable = _tmpObjVariable;
-  c->_tmpObjVarNode = _tmpObjVarNode;
-  c->_tmpIdNode = _tmpIdNode;
+  c._tmpObjVariable = _tmpObjVariable;
+  c._tmpObjVarNode = _tmpObjVarNode;
+  c._tmpIdNode = _tmpIdNode;
 
   // Filter Condition Parts
-  c->_fromCondition = _fromCondition->clone(_plan->getAst());
-  c->_toCondition = _toCondition->clone(_plan->getAst());
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  c._fromCondition = _fromCondition->clone(_plan->getAst());
+  c._toCondition = _toCondition->clone(_plan->getAst());
 }
 
 void ShortestPathNode::prepareOptions() {
@@ -377,4 +388,27 @@ void ShortestPathNode::prepareOptions() {
     _options->activateCache(false, nullptr);
   }
   _optionsBuilt = true;
+}
+
+auto ShortestPathNode::options() const -> ShortestPathOptions* {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* opts = dynamic_cast<ShortestPathOptions*>(GraphNode::options());
+  TRI_ASSERT((GraphNode::options() == nullptr) == (opts == nullptr));
+#else
+  auto* opts = static_cast<ShortestPathOptions*>(GraphNode::options());
+#endif
+  return opts;
+}
+
+// This constructor is only used from SatelliteTraversalNode, and GraphNode
+// is virtually inherited; thus its constructor is never called from here.
+ShortestPathNode::ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& other)
+    : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),
+      _inStartVariable(other._inStartVariable),
+      _startVertexId(other._startVertexId),
+      _inTargetVariable(other._inTargetVariable),
+      _targetVertexId(other._targetVertexId),
+      _fromCondition(nullptr),
+      _toCondition(nullptr) {
+  other.shortestPathCloneHelper(plan, *this, false);
 }

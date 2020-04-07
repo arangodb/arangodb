@@ -29,6 +29,9 @@
 #include <string>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace stats {
 
 enum RequestStatisticsSource {
@@ -74,7 +77,7 @@ struct Figure {
 
 class Descriptions final {
  public:
-  Descriptions();
+  explicit Descriptions(application_features::ApplicationServer&);
 
   std::vector<stats::Group> const& groups() const { return _groups; }
 
@@ -86,6 +89,8 @@ class Descriptions final {
   void processStatistics(velocypack::Builder&) const;
 
  private:
+  application_features::ApplicationServer& _server;
+
   std::vector<double> _requestTimeCuts;
   std::vector<double> _connectionTimeCuts;
   std::vector<double> _bytesSendCuts;

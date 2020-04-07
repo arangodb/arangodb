@@ -10,7 +10,7 @@
 Include system collections in the result. The default value is *true*.
 
 @RESTQUERYPARAM{global,boolean,optional}
-Include alll databases in the response. Only works on `_system` The default value is *false*.
+Include all databases in the response. Only works on `_system` The default value is *false*.
 
 @RESTQUERYPARAM{batchId,number,required}
 The RocksDB engine requires a valid batchId for this API call
@@ -75,13 +75,13 @@ server, the following additional steps need to be carried out:
   response will be empty and clients can go to sleep for a while and try again
   later.
 
-**Note**: on a coordinator, this request must have the query parameter
-*DBserver* which must be an ID of a DBserver.
-The very same request is forwarded synchronously to that DBserver.
-It is an error if this attribute is not bound in the coordinator case.
+**Note**: on a Coordinator, this request must have the query parameter
+*DBserver* which must be an ID of a DB-Server.
+The very same request is forwarded synchronously to that DB-Server.
+It is an error if this attribute is not bound in the Coordinator case.
 
-**Note:**: Using the `global` parameter the top-level object contains a key `databases`
-under which each key represents a datbase name, and the value conforms to the above describtion.
+**Note**: Using the `global` parameter the top-level object contains a key `databases`
+under which each key represents a database name, and the value conforms to the above description.
 
 @RESTRETURNCODES
 

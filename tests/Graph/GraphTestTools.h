@@ -43,6 +43,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -77,6 +78,7 @@ struct GraphTestSetup
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
 
     // setup required application features
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
@@ -247,8 +249,6 @@ struct MockGraphDatabase {
         new arangodb::aql::Query(false, vocbase, queryString, nullptr,
                                  arangodb::velocypack::Parser::fromJson("{}"),
                                  arangodb::aql::PART_MAIN);
-    // TODO Local fix of #10304. Remove this after #10304 is merged back.
-    // query->parse();
     query->prepare(arangodb::QueryRegistryFeature::registry(), SerializationFormat::SHADOWROWS);
 
     queries.emplace_back(query);

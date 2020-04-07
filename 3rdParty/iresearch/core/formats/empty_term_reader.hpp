@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_EMPTY_TERM_READER_H
@@ -34,38 +33,43 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class empty_term_reader: public irs::term_reader {
  public:
-  empty_term_reader(uint64_t docs_count): docs_count_(docs_count) {
+  empty_term_reader(uint64_t docs_count) noexcept
+    : docs_count_(docs_count) {
   }
 
-  virtual irs::seek_term_iterator::ptr iterator() const NOEXCEPT override {
-    return nullptr; // no terms in reader
+  virtual irs::seek_term_iterator::ptr iterator() const noexcept override {
+    return irs::seek_term_iterator::empty(); // no terms in reader
   }
 
-  virtual const irs::field_meta& meta() const NOEXCEPT override {
+  virtual irs::seek_term_iterator::ptr iterator(automaton_table_matcher&) const noexcept override {
+    return irs::seek_term_iterator::empty(); // no terms in reader
+  }
+
+  virtual const irs::field_meta& meta() const noexcept override {
     return irs::field_meta::EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return irs::attribute_view::empty_instance();
   }
 
   // total number of terms
-  virtual size_t size() const NOEXCEPT override {
+  virtual size_t size() const noexcept override {
     return 0; // no terms in reader
   }
 
   // total number of documents
-  virtual uint64_t docs_count() const NOEXCEPT override {
+  virtual uint64_t docs_count() const noexcept override {
     return docs_count_;
   }
 
   // least significant term
-  virtual const irs::bytes_ref& (min)() const NOEXCEPT override {
+  virtual const irs::bytes_ref& (min)() const noexcept override {
     return irs::bytes_ref::NIL;
   }
 
   // most significant term
-  virtual const irs::bytes_ref& (max)() const NOEXCEPT override {
+  virtual const irs::bytes_ref& (max)() const noexcept override {
     return irs::bytes_ref::NIL;
   }
 

@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBPrimaryIndex.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
@@ -41,12 +42,12 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "RocksDBPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
@@ -448,7 +449,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
                                          arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(0, collection, StaticStrings::IndexNamePrimary,
+    : RocksDBIndex(IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),
@@ -572,7 +573,8 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
                                    velocypack::Slice const& slice,
-                                   Index::OperationMode mode) {
+                                   OperationOptions& options) {
+  Index::OperationMode mode = options.indexOperationMode;
   VPackSlice keySlice;
   TRI_voc_rid_t revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
@@ -583,34 +585,32 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
   transaction::StringLeaser leased(&trx);
   rocksdb::PinnableSlice ps(leased.get());
-  rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), &ps);
-
   Result res;
-  if (s.ok()) {  // detected conflicting primary key
-    std::string existingId = keySlice.copyString();
+  if (!options.ignoreUniqueConstraints) {
+    rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), &ps);
 
-    if (mode == OperationMode::internal) {
-      return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, std::move(existingId));
+    if (s.ok()) {  // detected conflicting primary key
+      if (mode == OperationMode::internal) {
+        return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
+      }
+      res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return addErrorMsg(res, keySlice.copyString());
+    } else if (!s.IsNotFound()) {
+      // IsBusy(), IsTimedOut() etc... this indicates a conflict
+      return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
     }
 
-    res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-
-    return addErrorMsg(res, existingId);
-  } else if (!s.IsNotFound()) {
-    // IsBusy(), IsTimedOut() etc... this indicates a conflict
-    return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
+    ps.Reset();  // clear used memory
   }
-
-  ps.Reset();  // clear used memory
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // blacklist new index entry to avoid caching without committing first
     blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
   }
 
+  TRI_ASSERT(revision != 0);
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
-
-  s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/true);
+  rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ true);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
     addErrorMsg(res);

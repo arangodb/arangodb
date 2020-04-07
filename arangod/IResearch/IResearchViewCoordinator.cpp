@@ -28,6 +28,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -58,6 +60,7 @@ void ensureImmutableProperties(
   dst._writebufferSizeMax = src._writebufferSizeMax;
   dst._primarySort = src._primarySort;
   dst._storedValues = src._storedValues;
+  dst._primarySortCompression = src._primarySortCompression;
 }
 
 }  // namespace
@@ -169,10 +172,6 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   }
 };
 
-IResearchViewCoordinator::~IResearchViewCoordinator() {
-  LogicalViewHelperClusterInfo::destruct(*this);  // cleanup of the storage engine
-}
-
 Result IResearchViewCoordinator::appendVelocyPackImpl(
     velocypack::Builder& builder, Serialization context) const {
   if (Serialization::List == context) {
@@ -253,8 +252,11 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 
   VPackBuilder sanitizedBuilder;
   sanitizedBuilder.openObject();
-
-  if (!_meta.json(sanitizedBuilder) ||
+  IResearchViewMeta::Mask mask(true);
+  if (context == Serialization::Properties) {
+    mask._storedValues = false;
+  }
+  if (!_meta.json(sanitizedBuilder, nullptr, &mask) ||
       !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
     return { TRI_ERROR_INTERNAL,
              std::string("failure to generate definition while generating "

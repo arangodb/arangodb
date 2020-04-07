@@ -181,6 +181,9 @@ bool parse_json_config(
 
           return true;
         }
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
       default:  // fall through
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_normalizing_stream "

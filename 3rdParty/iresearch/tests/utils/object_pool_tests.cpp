@@ -153,10 +153,8 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
 
       auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
-      // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
-      MSVC2015_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-      MSVC2017_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-      MSVC2019_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+      // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+      while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -228,10 +226,8 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     });
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
 
-    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
-    MSVC2015_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-    MSVC2017_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-    MSVC2019_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+    while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
 
     obj.reset();
     ASSERT_FALSE(obj);
@@ -261,10 +257,8 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
 
       auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
-      // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
-      MSVC2015_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-      MSVC2017_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-      MSVC2019_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+      // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+      while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -336,10 +330,8 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     });
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
 
-    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
-    MSVC2015_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-    MSVC2017_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-    MSVC2019_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+    while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
 
     obj.reset();
 

@@ -44,35 +44,82 @@
       }
 
       if (id === 'smartGraph') {
-        this.toggleSmartGraph();
-        $('#createGraph').addClass('active');
-        this.showSmartGraphOptions();
+        this.setSmartGraphRows(true);
+      } else if (id === 'satelliteGraph') {
+        this.setSatelliteGraphRows(true);
       } else if (id === 'createGraph') {
-        this.toggleSmartGraph();
-        this.hideSmartGraphOptions();
+        this.setGeneralGraphRows(false);
       }
     },
 
-    hideSmartGraphOptions: function () {
-      $('#row_general-numberOfShards').show();
-      $('#row_general-replicationFactor').show();
-      $('#row_general-writeConcern').show();
-      $('#smartGraphInfo').hide();
-      $('#row_new-numberOfShards').hide();
-      $('#row_new-replicationFactor').hide();
-      $('#row_new-writeConcern').hide();
-      $('#row_new-smartGraphAttribute').hide();
+    // rows that are valid for general, smart & satellite
+    generalGraphRows: [
+      'row_general-numberOfShards',
+      'row_general-replicationFactor',
+      'row_general-writeConcern'
+    ],
+
+    // rows that needs to be added while creating smarties
+    neededSmartGraphRows: [
+      'smartGraphInfo',
+      'row_new-smartGraphAttribute',
+      'row_new-numberOfShards',
+      'row_new-replicationFactor',
+      'row_new-writeConcern'
+    ],
+
+    // rows that needs to be hidden while creating satellites
+    notNeededSatelliteGraphRows: [
+      'row_general-numberOfShards',
+      'row_general-replicationFactor',
+      'row_general-writeConcern'
+    ],
+
+    setGeneralGraphRows: function (cache) {
+      this.setCacheModeState(cache);
+      this.hideSmartGraphRows();
+      _.each(this.generalGraphRows, function (rowId) {
+        $('#' + rowId).show();
+      });
     },
 
-    showSmartGraphOptions: function () {
-      $('#row_general-numberOfShards').hide();
-      $('#row_general-replicationFactor').hide();
-      $('#row_general-writeConcern').hide();
-      $('#smartGraphInfo').show();
-      $('#row_new-numberOfShards').show();
-      $('#row_new-replicationFactor').show();
-      $('#row_new-writeConcern').show();
-      $('#row_new-smartGraphAttribute').show();
+    setSatelliteGraphRows: function (cache) {
+      $('#createGraph').addClass('active');
+      this.setCacheModeState(cache);
+
+      this.showGeneralGraphRows();
+      this.hideSmartGraphRows();
+      _.each(this.notNeededSatelliteGraphRows, function (rowId) {
+        $('#' + rowId).hide();
+      });
+    },
+
+    setSmartGraphRows: function (cache) {
+      $('#createGraph').addClass('active');
+      this.setCacheModeState(cache);
+
+      this.hideGeneralGraphRows();
+      _.each(this.neededSmartGraphRows, function (rowId) {
+        $('#' + rowId).show();
+      });
+    },
+
+    hideSmartGraphRows: function () {
+      _.each(this.neededSmartGraphRows, function (rowId) {
+        $('#' + rowId).hide();
+      });
+    },
+
+    showGeneralGraphRows: function () {
+      _.each(this.generalGraphRows, function (rowId) {
+        $('#' + rowId).show();
+      });
+    },
+
+    hideGeneralGraphRows: function () {
+      _.each(this.generalGraphRows, function (rowId) {
+        $('#' + rowId).hide();
+      });
     },
 
     redirectToGraphViewer: function (e) {
@@ -146,8 +193,11 @@
           this.createEditGraphModal();
         } else {
           this.createEditGraphModal();
-          // hide tab entry
+          // hide tab entries
+          // no smart graphs in single server mode
           $('#tab-smartGraph').parent().remove();
+          // no satellite graphs in single server mode
+          $('#tab-satelliteGraph').parent().remove();
         }
       }
     },
@@ -250,85 +300,99 @@
       });
     },
 
-    toggleSmartGraph: function () {
+    forgetCachedCollectionsState: function () {
+      // Note: re-enable cached collections for general graph
+      // General graph collections are allowed to use existing collections
+      // Satellite Graphs and Smart Graphs are not allowed to use them, so we need to "forget" them here
+      var collList = [];
+      var self = this;
+      var collections = this.options.collectionCollection.models;
+
+      collections.forEach(function (c) {
+        if (c.get('isSystem')) {
+          return;
+        }
+        collList.push(c.id);
+      });
+
+      var i;
+      for (i = 0; i < this.counter; i++) {
+        $('#newEdgeDefinitions' + i).select2({
+          tags: self.eCollList
+        });
+        $('#newEdgeDefinitions' + i).select2('data', self.cachedNewEdgeDefinitions);
+        $('#newEdgeDefinitions' + i).attr('disabled', self.cachedNewEdgeDefinitionsState);
+
+        $('#fromCollections' + i).select2({
+          tags: collList
+        });
+        $('#fromCollections' + i).select2('data', self.cachedFromCollections);
+        $('#fromCollections' + i).attr('disabled', self.cachedFromCollectionsState);
+
+        $('#toCollections' + i).select2({
+          tags: collList
+        });
+        $('#toCollections' + i).select2('data', self.cachedToCollections);
+        $('#toCollections' + i).attr('disabled', self.cachedToCollectionsState);
+      }
+      $('#newVertexCollections').select2({
+        tags: collList
+      });
+      $('#newVertexCollections').select2('data', self.cachedNewVertexCollections);
+      $('#newVertexCollections').attr('disabled', self.cachedNewVertexCollectionsState);
+    },
+
+    rememberCachedCollectionsState: function () {
+      var self = this;
+      var i;
+
+      for (i = 0; i < self.counter; i++) {
+        $('#newEdgeDefinitions' + i).select2({
+          tags: []
+        });
+        self.cachedNewEdgeDefinitions = $('#newEdgeDefinitions' + i).select2('data');
+        self.cachedNewEdgeDefinitionsState = $('#newEdgeDefinitions' + i).attr('disabled');
+        $('#newEdgeDefinitions' + i).select2('data', '');
+        $('#newEdgeDefinitions' + i).attr('disabled', false);
+        $('#newEdgeDefinitions' + i).change();
+
+        $('#fromCollections' + i).select2({
+          tags: []
+        });
+        self.cachedFromCollections = $('#fromCollections' + i).select2('data');
+        self.cachedFromCollectionsState = $('#fromCollections' + i).attr('disabled');
+        $('#fromCollections' + i).select2('data', '');
+        $('#fromCollections' + i).attr('disabled', false);
+        $('#fromCollections' + i).change();
+
+        $('#toCollections' + i).select2({
+          tags: []
+        });
+        self.cachedToCollections = $('#toCollections' + i).select2('data');
+        self.cachedToCollectionsState = $('#toCollections' + i).attr('disabled');
+        $('#toCollections' + i).select2('data', '');
+        $('#toCollections' + i).attr('disabled', false);
+        $('#toCollections' + i).change();
+      }
+      $('#newVertexCollections').select2({
+        tags: []
+      });
+      self.cachedNewVertexCollections = $('#newVertexCollections').select2('data');
+      self.cachedNewVertexCollectionsState = $('#newVertexCollections').attr('disabled');
+      $('#newVertexCollections').select2('data', '');
+      $('#newVertexCollections').attr('disabled', false);
+      $('#newVertexCollections').change();
+    },
+
+    setCacheModeState: function (forget) {
       if (!frontendConfig.isCluster || !frontendConfig.isEnterprise) {
         return;
       }
 
-      var i;
-      var self = this;
-
-      if (!$('#tab-smartGraph').parent().hasClass('active')) {
-        for (i = 0; i < this.counter; i++) {
-          $('#newEdgeDefinitions' + i).select2({
-            tags: []
-          });
-          self.cachedNewEdgeDefinitions = $('#newEdgeDefinitions' + i).select2('data');
-          self.cachedNewEdgeDefinitionsState = $('#newEdgeDefinitions' + i).attr('disabled');
-          $('#newEdgeDefinitions' + i).select2('data', '');
-          $('#newEdgeDefinitions' + i).attr('disabled', false);
-          $('#newEdgeDefinitions' + i).change();
-
-          $('#fromCollections' + i).select2({
-            tags: []
-          });
-          self.cachedFromCollections = $('#fromCollections' + i).select2('data');
-          self.cachedFromCollectionsState = $('#fromCollections' + i).attr('disabled');
-          $('#fromCollections' + i).select2('data', '');
-          $('#fromCollections' + i).attr('disabled', false);
-          $('#fromCollections' + i).change();
-
-          $('#toCollections' + i).select2({
-            tags: []
-          });
-          self.cachedToCollections = $('#toCollections' + i).select2('data');
-          self.cachedToCollectionsState = $('#toCollections' + i).attr('disabled');
-          $('#toCollections' + i).select2('data', '');
-          $('#toCollections' + i).attr('disabled', false);
-          $('#toCollections' + i).change();
-        }
-        $('#newVertexCollections').select2({
-          tags: []
-        });
-        self.cachedNewVertexCollections = $('#newVertexCollections').select2('data');
-        self.cachedNewVertexCollectionsState = $('#newVertexCollections').attr('disabled');
-        $('#newVertexCollections').select2('data', '');
-        $('#newVertexCollections').attr('disabled', false);
-        $('#newVertexCollections').change();
+      if (forget) {
+        this.forgetCachedCollectionsState();
       } else {
-        var collList = []; var collections = this.options.collectionCollection.models;
-
-        collections.forEach(function (c) {
-          if (c.get('isSystem')) {
-            return;
-          }
-          collList.push(c.id);
-        });
-
-        for (i = 0; i < this.counter; i++) {
-          $('#newEdgeDefinitions' + i).select2({
-            tags: this.eCollList
-          });
-          $('#newEdgeDefinitions' + i).select2('data', self.cachedNewEdgeDefinitions);
-          $('#newEdgeDefinitions' + i).attr('disabled', self.cachedNewEdgeDefinitionsState);
-
-          $('#fromCollections' + i).select2({
-            tags: collList
-          });
-          $('#fromCollections' + i).select2('data', self.cachedFromCollections);
-          $('#fromCollections' + i).attr('disabled', self.cachedFromCollectionsState);
-
-          $('#toCollections' + i).select2({
-            tags: collList
-          });
-          $('#toCollections' + i).select2('data', self.cachedToCollections);
-          $('#toCollections' + i).attr('disabled', self.cachedToCollectionsState);
-        }
-        $('#newVertexCollections').select2({
-          tags: collList
-        });
-        $('#newVertexCollections').select2('data', self.cachedNewVertexCollections);
-        $('#newVertexCollections').attr('disabled', self.cachedNewVertexCollectionsState);
+        this.rememberCachedCollectionsState();
       }
     },
 
@@ -431,6 +495,8 @@
       var graph = this.collection.findWhere({_key: this.graphToEdit});
       if (graph.get('isSmart')) {
         this.createEditGraphModal(graph, true);
+      } else if (graph.get('replicationFactor') === 'satellite') {
+        this.createEditGraphModal(graph, false, true);
       } else {
         this.createEditGraphModal(graph);
       }
@@ -679,6 +745,10 @@
             minReplicationFactor: parseInt($('#new-writeConcern').val()),
           };
         }
+      } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
+        newCollectionObject.options = {
+          replicationFactor: "satellite"
+        };
       } else {
         if (frontendConfig.isCluster) {
           if ($('#general-numberOfShards').val().length > 0) {
@@ -723,7 +793,7 @@
       });
     },
 
-    createEditGraphModal: function (graph, isSmart) {
+    createEditGraphModal: function (graph, isSmart, isSatellite) {
       var buttons = [];
       var collList = [];
       var tableContent = [];
@@ -760,9 +830,12 @@
       });
       this.counter = 0;
 
+      // edit graph section
       if (graph) {
         if (isSmart) {
           title = 'Edit Smart Graph';
+        } else if (isSatellite) {
+          title = 'Edit Satellite Graph';
         } else {
           title = 'Edit Graph';
         }
@@ -821,9 +894,9 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'writeConcern',
-              'Minimum replication factor',
+              'Write concern',
               graph.get('minReplicationFactor'),
-              'Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
+              'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
             )
           );
         }
@@ -838,6 +911,7 @@
           window.modalView.createSuccessButton('Save', this.saveEditedGraph.bind(this))
         );
       } else {
+        // create graph section
         title = 'Create Graph';
 
         tableContent.push(
@@ -894,15 +968,15 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-writeConcern',
-            'Minimum replication factor',
+            'Write concern',
             '',
-                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
             '',
             false,
             [
               {
                 rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
-                msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
+                msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
               }
             ]
           )
@@ -964,9 +1038,9 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'general-writeConcern',
-            'Minimum replication factor',
+            'Write concern',
             '',
-            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster to be in sync. If we get below this value the collection will be read-only until enough copies are created.',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
             '',
             false,
             [
@@ -1068,7 +1142,9 @@
       );
 
       if ($('#tab-createGraph').parent().hasClass('active')) {
-        self.hideSmartGraphOptions();
+        // hide them by default, as we're showing general graph as default
+        // satellite does not need to appear here as it has no additional input fields
+        self.hideSmartGraphRows();
       }
 
       if (graph) {

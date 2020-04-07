@@ -20,6 +20,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <functional>
+
 #include "BasicFeaturePhaseClient.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"

@@ -23,7 +23,9 @@
 
 #include "ExecutionEngine.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlResult.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
@@ -37,12 +39,11 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ReturnExecutor.h"
+#include "Aql/SkipResult.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -563,6 +564,49 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlIte
   return res;
 }
 
+auto ExecutionEngine::execute(AqlCallStack const& stack)
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  if (_query.killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+  auto const res = _root->execute(stack);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (std::get<ExecutionState>(res) == ExecutionState::WAITING) {
+    auto const skipped = std::get<SkipResult>(res);
+    auto const block = std::get<SharedAqlItemBlockPtr>(res);
+    TRI_ASSERT(skipped.nothingSkipped());
+    TRI_ASSERT(block == nullptr);
+  }
+#endif
+  return res;
+}
+
+auto ExecutionEngine::executeForClient(AqlCallStack const& stack, std::string const& clientId)
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  if (_query.killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
+  auto rootBlock = dynamic_cast<BlocksWithClients*>(root());
+  if (rootBlock == nullptr) {
+    using namespace std::string_literals;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                   "unexpected node type "s +
+                                       root()->getPlanNode()->getTypeString());
+  }
+
+  auto const res = rootBlock->executeForClient(stack, clientId);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (std::get<ExecutionState>(res) == ExecutionState::WAITING) {
+    auto const skipped = std::get<SkipResult>(res);
+    auto const& block = std::get<SharedAqlItemBlockPtr>(res);
+    TRI_ASSERT(skipped.nothingSkipped());
+    TRI_ASSERT(block == nullptr);
+  }
+#endif
+  return res;
+}
+
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t atMost) {
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -573,7 +617,13 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
       return {res.first, nullptr};
     }
   }
-  return _root->getSome((std::min)(atMost, ExecutionBlock::DefaultBatchSize()));
+  // we use a backwards compatible stack here.
+  // This will always continue with a fetch-all on underlying subqueries (if any)
+  AqlCallStack compatibilityStack{AqlCallList{AqlCall::SimulateGetSome(atMost)}, true};
+  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  // We cannot trigger a skip operation from here
+  TRI_ASSERT(skipped.nothingSkipped());
+  return {state, block};
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
@@ -586,7 +636,15 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
       return {res.first, 0};
     }
   }
-  return _root->skipSome(atMost);
+
+  // we use a backwards compatible stack here.
+  // This will always continue with a fetch-all on underlying subqueries (if any)
+  AqlCallStack compatibilityStack{AqlCallList{AqlCall::SimulateSkipSome(atMost)}, true};
+  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  // We cannot be triggered within a subquery from earlier versions.
+  // Also we cannot produce anything ourselfes here.
+  TRI_ASSERT(block == nullptr);
+  return {state, skipped.getSkipCount()};
 }
 
 Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
@@ -712,7 +770,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
 
     bool const returnInheritedResults = !arangodb::ServerState::isDBServer(role);
     if (returnInheritedResults) {
-      auto returnNode = dynamic_cast<ExecutionBlockImpl<IdExecutor<void>>*>(root);
+      auto returnNode =
+          dynamic_cast<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>*>(
+              root);
       TRI_ASSERT(returnNode != nullptr);
       engine->resultRegister(returnNode->getOutputRegisterId());
     } else {
@@ -758,4 +818,8 @@ RegisterId ExecutionEngine::resultRegister() const { return _resultRegister; }
 
 AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
   return _itemBlockManager;
+}
+
+auto ExecutionEngine::getStats() const noexcept -> ExecutionStats const& {
+  return _stats;
 }

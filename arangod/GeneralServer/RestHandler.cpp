@@ -23,10 +23,13 @@
 
 #include "RestHandler.h"
 
+#include <fuerte/jwt.h>
 #include <velocypack/Exception.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -34,6 +37,7 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
@@ -159,29 +163,25 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     // request is coming in with VelocyStream, where the authentication happens
     // once at the beginning of the connection and not with every request.
     // In this case, we have to produce a proper JWT token as authorization:
-      auto auth = AuthenticationFeature::instance();
+    auto auth = AuthenticationFeature::instance();
     if (auth != nullptr && auth->isActive()) {
       // when in superuser mode, username is empty
       // in this case ClusterComm will add the default superuser token
       std::string const& username = _request->user();
       if (!username.empty()) {
-        VPackBuilder builder;
-        {
-          VPackObjectBuilder payload{&builder};
-          payload->add("preferred_username", VPackValue(username));
-        }
-        VPackSlice slice = builder.slice();
         headers.emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().generateJwt(slice));
+                        "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
       }
     }
   }
 
   network::RequestOptions options;
   options.database = dbname;
-  options.timeout = network::Timeout(300);
+  options.timeout = network::Timeout(900);
+  // if the type is unset JSON is used
   options.contentType = rest::contentTypeToString(_request->contentType());
   options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
+    
   for (auto const& i : _request->values()) {
     options.param(i.first, i.second);
   }
@@ -206,7 +206,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
     resetResponse(static_cast<rest::ResponseCode>(response.response->statusCode()));
     _response->setContentType(fuerte::v1::to_string(response.response->contentType()));
-
+    
     if (!useVst) {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
       if (_response == nullptr) {
@@ -215,16 +215,21 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       }
       httpResponse->body() = response.response->payloadAsString();
     } else {
-      _response->setPayload(std::move(*response.response->stealPayload()), true);
+      _response->setPayload(std::move(*response.response->stealPayload()));
     }
     
 
     auto const& resultHeaders = response.response->messageHeader().meta();
     for (auto const& it : resultHeaders) {
+      if (it.first == "http/1.1") {
+        // never forward this header, as the HTTP response code was already set
+        // via "resetResponse" above
+        continue;
+      }
       _response->setHeader(it.first, it.second);
     }
     _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);
-
+    
     return Result();
   };
   return std::move(future).thenValue(cb);
@@ -399,6 +404,7 @@ bool RestHandler::wakeupHandler() {
 }
 
 void RestHandler::executeEngine(bool isContinue) {
+  DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
 
@@ -503,7 +509,7 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
       if (_request != nullptr) {
         _response->setContentType(_request->contentTypeResponse());
       }
-      _response->setPayload(std::move(buffer), true, options,
+      _response->setPayload(std::move(buffer), options,
                             /*resolveExternals*/false);
     } catch (...) {
       // exception while generating error

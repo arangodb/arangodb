@@ -146,7 +146,7 @@ void SortedIndexAttributeMatcher::matchAttributes(
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     size_t& postFilterConditions, size_t& values, 
     std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
-  // assert we have a proper formed conditions - nary conjunction
+  // assert we have a properly formed condition - nary conjunction
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   // inspect the the conjuncts - allowed are binary comparisons and a contains check
@@ -474,7 +474,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   // must edit in place, no access to AST; TODO change so we can replace with
   // copy
   TEMPORARILY_UNLOCK_NODE(node);
-  node->removeMembers();
+  node->clearMembers();
 
   for (auto& it : children) {
     TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
