@@ -661,7 +661,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
     if (!isUserDefined && (strcmp(name, Variable::NAME_OLD) == 0 ||
                            strcmp(name, Variable::NAME_NEW) == 0)) {
       // special variable
-      auto variable = _variables.createVariable(name, nameLength, isUserDefined);
+      auto variable = _variables.createVariable(std::string(name, nameLength), isUserDefined);
       _scopes.replaceVariable(variable);
 
       AstNode* node = createNode(NODE_TYPE_VARIABLE);
@@ -674,7 +674,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
     return nullptr;
   }
 
-  auto variable = _variables.createVariable(name, nameLength, isUserDefined);
+  auto variable = _variables.createVariable(std::string(name, nameLength), isUserDefined);
   _scopes.addVariable(variable);
 
   AstNode* node = createNode(NODE_TYPE_VARIABLE);

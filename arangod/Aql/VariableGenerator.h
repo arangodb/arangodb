@@ -28,7 +28,17 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
 namespace aql {
 
 class VariableGenerator {
@@ -40,20 +50,20 @@ class VariableGenerator {
   VariableGenerator& operator=(VariableGenerator const& other) = delete;
 
   /// @brief destroy the generator
-  ~VariableGenerator();
+  ~VariableGenerator() = default;
 
  public:
+  /// @brief visit all variables
+  void visit(std::function<void(Variable*)> const&); 
+
   /// @brief return a map of all variable ids with their names
   std::unordered_map<VariableId, std::string const> variables(bool includeTemporaries) const;
 
   /// @brief generate a variable
-  Variable* createVariable(char const*, size_t, bool);
-
-  /// @brief generate a variable
-  Variable* createVariable(std::string const&, bool);
+  Variable* createVariable(std::string name, bool isUserDefined);
 
   /// @brief generate a variable from VelocyPack
-  Variable* createVariable(arangodb::velocypack::Slice const);
+  Variable* createVariable(arangodb::velocypack::Slice);
 
   /// @brief clones a variable from an existing one
   Variable* createVariable(Variable const*);
@@ -85,7 +95,7 @@ class VariableGenerator {
 
  private:
   /// @brief all variables created
-  std::unordered_map<VariableId, Variable*> _variables;
+  std::unordered_map<VariableId, std::unique_ptr<Variable>> _variables;
 
   /// @brief the next assigned variable id
   VariableId _id;

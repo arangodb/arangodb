@@ -2488,6 +2488,26 @@ bool ExecutionPlan::fullCount() const noexcept {
                                  : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
   return lastLimitNode != nullptr && lastLimitNode->fullCount();
 }
+  
+/// @brief find all variables that are populated with data from collections
+void ExecutionPlan::findCollectionAccessVariables() {
+  _ast->variables()->visit([this](Variable* variable) {
+    ExecutionNode* node = this->getVarSetBy(variable->id);
+    if (node != nullptr) {
+      if (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+          node->getType() == ExecutionNode::INDEX ||
+          node->getType() == ExecutionNode::INSERT ||
+          node->getType() == ExecutionNode::UPDATE ||
+          node->getType() == ExecutionNode::REPLACE ||
+          node->getType() == ExecutionNode::REMOVE) {
+        // TODO: maybe add more node types here, e.g. arangosearch nodes
+        // also check if it makes sense to do this if the node uses
+        // projections
+        variable->isDataFromCollection = true;
+      }
+    }
+  });
+}
 
 void ExecutionPlan::prepareTraversalOptions() {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;

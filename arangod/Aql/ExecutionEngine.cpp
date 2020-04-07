@@ -834,6 +834,7 @@ Result ExecutionEngine::instantiateFromPlan(QueryContext& query,
   plan.findVarUsage();
   if (planRegisters) {
     plan.planRegisters();
+    plan.findCollectionAccessVariables();
   }
 
   ExecutionBlock* root = nullptr;
