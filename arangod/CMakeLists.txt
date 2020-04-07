@@ -242,7 +242,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AsyncExecutor.cpp
   Aql/AttributeAccessor.cpp
   Aql/BindParameters.cpp
-  Aql/BlockCollector.cpp
   Aql/BlocksWithClients.cpp
   Aql/CalculationExecutor.cpp
   Aql/CalculationNodeVarFinder.cpp

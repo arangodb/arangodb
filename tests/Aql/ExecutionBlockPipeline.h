@@ -25,6 +25,8 @@
 
 #include "Aql/ExecutionBlock.h"
 
+#include <deque>
+
 using namespace arangodb::aql;
 
 namespace arangodb {

@@ -27,7 +27,6 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/Ast.h"
-#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
@@ -80,15 +79,13 @@ size_t ExecutionBlock::DefaultBatchSize = ExecutionBlock::ProductionDefaultBatch
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _shutdownResult(TRI_ERROR_NO_ERROR),
+      _profile(engine->getQuery().queryOptions().getProfileLevel()),
       _done(false),
       _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
       _exeNode(ep),
       _dependencies(),
       _dependencyPos(_dependencies.end()),
-      _profile(engine->getQuery().queryOptions().getProfileLevel()),
-      _upstreamState(ExecutionState::HASMORE),
-      _pos(0),
-      _collector(&engine->itemBlockManager()) {}
+      _upstreamState(ExecutionState::HASMORE) {}
 
 ExecutionBlock::~ExecutionBlock() = default;
 
@@ -105,12 +102,8 @@ std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(InputAqlItemR
     }
   }
 
-  _buffer.clear();
-
   _done = false;
   _upstreamState = ExecutionState::HASMORE;
-  _pos = 0;
-  _collector.clear();
 
   TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
   TRI_ASSERT(_dependencyPos == _dependencies.end());
@@ -140,8 +133,6 @@ std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
     }
   }
 
-  _buffer.clear();
-
   return {ExecutionState::DONE, _shutdownResult};
 }
 
@@ -149,7 +140,7 @@ ExecutionState ExecutionBlock::getHasMoreState() {
   if (_done) {
     return ExecutionState::DONE;
   }
-  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
+  if (_upstreamState == ExecutionState::DONE) {
     _done = true;
     return ExecutionState::DONE;
   }

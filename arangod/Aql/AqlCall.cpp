@@ -22,6 +22,7 @@
 
 #include "AqlCall.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
