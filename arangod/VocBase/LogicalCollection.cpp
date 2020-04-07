@@ -477,12 +477,12 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
 }
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const {
-  return _usesRevisionsAsDocumentIds;
+  return _usesRevisionsAsDocumentIds.load();
 }
 
 void LogicalCollection::setUsesRevisionsAsDocumentIds(bool usesRevisions) {
-  if (!_usesRevisionsAsDocumentIds && usesRevisions && _version >= Version::v37) {
-    _usesRevisionsAsDocumentIds = true;
+  if (!_usesRevisionsAsDocumentIds.load() && usesRevisions && _version >= Version::v37) {
+    _usesRevisionsAsDocumentIds.store(true);
   }
 }
 
@@ -494,11 +494,13 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-bool LogicalCollection::syncByRevision() const { return _syncByRevision; }
+bool LogicalCollection::syncByRevision() const {
+  return _syncByRevision.load();
+}
 
 void LogicalCollection::setSyncByRevision(bool usesRevisions) {
-  if (!_syncByRevision && _usesRevisionsAsDocumentIds && usesRevisions) {
-    _syncByRevision = true;
+  if (!_syncByRevision.load() && _usesRevisionsAsDocumentIds.load() && usesRevisions) {
+    _syncByRevision.store(true);
   }
 }
 

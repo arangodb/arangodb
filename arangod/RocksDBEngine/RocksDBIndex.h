@@ -63,8 +63,8 @@ class RocksDBIndex : public Index {
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type) const override;
 
-  uint64_t objectId() const { return _objectId; }
-  uint64_t tempObjectId() const { return _tempObjectId; }
+  uint64_t objectId() const { return _objectId.load(); }
+  uint64_t tempObjectId() const { return _tempObjectId.load(); }
 
   /// @brief if true this index should not be shown externally
   virtual bool isHidden() const override {
@@ -146,12 +146,14 @@ class RocksDBIndex : public Index {
   };
 
  protected:
-  uint64_t _objectId;
-  uint64_t _tempObjectId;
   rocksdb::ColumnFamilyHandle* _cf;
 
   mutable std::shared_ptr<cache::Cache> _cache;
   bool _cacheEnabled;
+
+ private:
+  std::atomic<uint64_t> _objectId;
+  std::atomic<uint64_t> _tempObjectId;
 };
 }  // namespace arangodb
 

@@ -63,10 +63,10 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "volatile collections are unsupported in the RocksDB engine");
   }
-  
-  TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
-  rocksutils::globalRocksEngine()->addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
-                                                        _logicalCollection.id());
+
+  TRI_ASSERT(_logicalCollection.isAStub() || _objectId.load() != 0);
+  rocksutils::globalRocksEngine()->addCollectionMapping(
+      _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
 
   if (collection.syncByRevision()) {
     _revisionTree =
@@ -77,11 +77,13 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              PhysicalCollection const* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId),
-      _tempObjectId(static_cast<RocksDBMetaCollection const*>(physical)->_tempObjectId),
+      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId.load()),
+      _tempObjectId(
+          static_cast<RocksDBMetaCollection const*>(physical)->_tempObjectId.load()),
       _revisionTreeApplied(0) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  rocksutils::globalRocksEngine()->addCollectionMapping(_objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
+  rocksutils::globalRocksEngine()->addCollectionMapping(
+      _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
 
   if (collection.syncByRevision()) {
     _revisionTree =
@@ -524,7 +526,8 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     // read the raw RocksDB data; on the plus side, we are in recovery, so we
     // are single-threaded and don't need to worry about transactions anyway
 
-    RocksDBKeyBounds documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+    RocksDBKeyBounds documentBounds =
+        RocksDBKeyBounds::CollectionDocuments(_objectId.load());
     rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
     rocksdb::ReadOptions ro;
     rocksdb::Slice const end = documentBounds.end();
@@ -623,21 +626,21 @@ Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
   auto& selector = server.getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
 
-  if (plannedObjectId == _objectId && plannedTempObjectId != _tempObjectId) {
+  if (plannedObjectId == _objectId.load() && plannedTempObjectId != _tempObjectId) {
     // just temp id has changed
-    std::uint64_t oldId = (plannedTempObjectId == 0) ? _tempObjectId : 0;
-    _tempObjectId = plannedTempObjectId;
+    std::uint64_t oldId = (plannedTempObjectId == 0) ? _tempObjectId.load() : 0;
+    _tempObjectId.store(plannedTempObjectId);
     if (oldId != 0) {  // need to clean up the old range
       RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(oldId);
       res = rocksutils::removeLargeRange(engine.db(), bounds, true, true);
     }
   } else if (plannedTempObjectId != _tempObjectId) {
-    TRI_ASSERT(plannedObjectId != _objectId);
+    TRI_ASSERT(plannedObjectId != _objectId.load());
     TRI_ASSERT(plannedObjectId != 0);
-    TRI_ASSERT(plannedObjectId == _tempObjectId);
+    TRI_ASSERT(plannedObjectId == _tempObjectId.load());
     // swapping in new range
-    _tempObjectId = plannedTempObjectId;
-    _objectId = plannedObjectId;
+    _tempObjectId.store(plannedTempObjectId);
+    _objectId.store(plannedObjectId);
     engine.addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                                 _logicalCollection.id());
   }

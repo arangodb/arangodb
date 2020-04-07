@@ -61,11 +61,11 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
                            bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                            uint64_t objectId, uint64_t tempObjectId, bool useCache)
     : Index(id, collection, name, attributes, unique, sparse),
-      _objectId(::ensureObjectId(objectId)),
-      _tempObjectId(tempObjectId),
       _cf(cf),
       _cache(nullptr),
-      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
+      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr),
+      _objectId(::ensureObjectId(objectId)),
+      _tempObjectId(tempObjectId) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_cacheEnabled) {
@@ -74,19 +74,20 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
 
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
-  engine->addIndexMapping(_objectId, collection.vocbase().id(), collection.id(), _iid);
+  engine->addIndexMapping(_objectId.load(), collection.vocbase().id(),
+                          collection.id(), _iid);
 }
 
 RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
                            arangodb::velocypack::Slice const& info,
                            rocksdb::ColumnFamilyHandle* cf, bool useCache)
     : Index(id, collection, info),
-      _objectId(::ensureObjectId(
-          basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId))),
-      _tempObjectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId)),
       _cf(cf),
       _cache(nullptr),
-      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
+      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr),
+      _objectId(::ensureObjectId(
+          basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId))),
+      _tempObjectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId)) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_cacheEnabled) {
@@ -94,12 +95,13 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
   }
 
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->addIndexMapping(_objectId, collection.vocbase().id(), collection.id(), _iid);
+  engine->addIndexMapping(_objectId.load(), collection.vocbase().id(),
+                          collection.id(), _iid);
 }
 
 RocksDBIndex::~RocksDBIndex() {
   auto engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->removeIndexMapping(_objectId);
+  engine->removeIndexMapping(_objectId.load());
 
   if (useCache()) {
     try {
@@ -155,9 +157,10 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
   Index::toVelocyPack(builder, flags);
   if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     // If we store it, it cannot be 0
-    TRI_ASSERT(_objectId != 0);
-    builder.add(StaticStrings::ObjectId, VPackValue(std::to_string(_objectId)));
-    builder.add(StaticStrings::TempObjectId, VPackValue(std::to_string(_tempObjectId)));
+    TRI_ASSERT(_objectId.load() != 0);
+    builder.add(StaticStrings::ObjectId, VPackValue(std::to_string(_objectId.load())));
+    builder.add(StaticStrings::TempObjectId,
+                VPackValue(std::to_string(_tempObjectId.load())));
   }
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
@@ -340,11 +343,12 @@ Result RocksDBIndex::setObjectIds(std::uint64_t plannedObjectId,
   auto& selector = server.getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
 
-  if (plannedObjectId == _objectId && plannedTempObjectId != _tempObjectId) {
-    TRI_ASSERT(_tempObjectId == 0 || plannedTempObjectId == 0);
+  if (plannedObjectId == _objectId.load() &&
+      plannedTempObjectId != _tempObjectId.load()) {
+    TRI_ASSERT(_tempObjectId.load() == 0 || plannedTempObjectId == 0);
     // just temp id has changed
-    std::uint64_t oldId = _tempObjectId;
-    _tempObjectId = plannedTempObjectId;
+    std::uint64_t oldId = _tempObjectId.load();
+    _tempObjectId.store(plannedTempObjectId);
     if (oldId != 0) {
       try {
         RocksDBKeyBounds bounds = getBounds(type(), oldId, unique());
@@ -358,14 +362,17 @@ Result RocksDBIndex::setObjectIds(std::uint64_t plannedObjectId,
         }
       }
     }
-  } else if (plannedTempObjectId != _tempObjectId) {
-    TRI_ASSERT(plannedObjectId != _objectId);
+  } else if (plannedTempObjectId != _tempObjectId.load()) {
+    TRI_ASSERT(plannedObjectId != _objectId.load());
     TRI_ASSERT(plannedObjectId != 0);
-    TRI_ASSERT(plannedObjectId = _tempObjectId);
+    TRI_ASSERT(plannedObjectId = _tempObjectId.load());
     // swapping in new range
-    _tempObjectId = plannedTempObjectId;
-    _objectId = plannedObjectId;
-    engine.addIndexMapping(_objectId, _collection.vocbase().id(), _collection.id(), id());
+    std::uint64_t oldId = _objectId.load();
+    _tempObjectId.store(plannedTempObjectId);
+    _objectId.store(plannedObjectId);
+    engine.addIndexMapping(_objectId.load(), _collection.vocbase().id(),
+                           _collection.id(), id());
+    engine.removeIndexMapping(oldId);
   }
 
   return res;

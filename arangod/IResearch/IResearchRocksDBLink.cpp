@@ -76,8 +76,8 @@ void IResearchRocksDBLink::toVelocyPack( // generate definition
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals)) {
-    TRI_ASSERT(_objectId != 0);  // If we store it, it cannot be 0
-    builder.add("objectId", VPackValue(std::to_string(_objectId)));
+    TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
+    builder.add("objectId", VPackValue(std::to_string(objectId())));
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
