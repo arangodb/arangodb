@@ -7,12 +7,35 @@ v3.6.3 (XXXX-XX-XX)
   will store and set its status separately anyway. Adding it to the headers
   again will only cause confusion and some client applications to choke.
 
+* Don't invoke collection key ranges compaction after performing a truncate
+  operation on a RocksDB storage engine collection via the REST API's truncate
+  endpoint.
+
+  The compaction was previously done to make RocksDB physically free data of key
+  ranges that were supposed to be empty after the truncate, but it seems that
+  the used version of RocksDB is struggling to achieve that goal. Although it
+  does compact the ranges, it seems to read a lot of extra data from unrelated
+  ranges as well, which blows up the overall time required to do the
+  compactions.
+  Most recent versions of RocksDB do not seem to have this problem anymore.
+  But without upgrading RocksDB to the latest version the most sensible fix is
+  to turn off the manual compaction and rely on RocksDB eventually freeing the
+  key ranges that are empty after a truncate.
+
+* Avoid some unnecessary internal calls to the storage engine during the
+  incremental sync protocol for the RocksDB storage engine. This change can help
+  reduce the I/O load on the follower during incremental sync for the RocksDB
+  storage engine.
+
+* Fixed issue #11104: `ANALYZER` function doesn't correctly process `!= OR`
+  queries.
+
 * Fixed internal issue ES-544: Instantiation of AQL queries with graph
   traversals in a OneShard setting failed with 'direction can only be INBOUND,
   OUTBOUND or ANY'.
 
-* Fixed a rare race condition in SmartGraphs where the graph is unblanced, but a
-  successful result could be found by only on database server, where the other
+* Fixed a rare race condition in SmartGraphs where the graph is unbalanced, but
+  a successful result could be found by only on database server, where the other
   server is still searching. In this race the query could continue on the other
   server and hit a non-thread save object.
 
