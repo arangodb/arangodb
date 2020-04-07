@@ -221,6 +221,12 @@ auto AqlCallStack::modifyTopCall() -> AqlCall& {
 }
 
 auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
-  return std::all_of(_operations.begin(), _operations.end(),
-                     [](AqlCallList const& list) { return list.hasMoreCalls(); });
+  return std::all_of(_operations.begin(), _operations.end(), [](AqlCallList const& list) {
+    if (!list.hasMoreCalls()) {
+      return false;
+    }
+    auto const& call = list.peekNextCall();
+    // We cannot continue if any of our calls has a softLimit reached.
+    return !(call.hasSoftLimit() && call.getLimit() == 0 && call.getOffset() == 0);
+  });
 }
