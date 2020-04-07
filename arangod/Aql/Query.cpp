@@ -942,6 +942,8 @@ Result Query::finalizeSnippets(ExecutionStats& stats) {
     engine->collectExecutionStats(stats);
     engine->setShutdown(); // no need to pass through shutdown
   }
+
+  return commitResult;
 }
 
 /// @brief parse an AQL query
