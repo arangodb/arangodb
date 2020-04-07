@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, arangoHelper, Joi, Backbone, window, $ */
+/* global arangoHelper, Backbone, window, $, templateEngine, document, JSONEditor */
 
 (function () {
   'use strict';
@@ -16,20 +16,18 @@
     },
 
     events: {
-      "click #saveValidationButton" : 'saveValidation' 
+      "click #saveValidationButton": 'saveValidation'
     },
 
     render: function () {
-      // get poperties here?
       this.breadcrumb();
-      arangoHelper.buildCollectionSubNav(this.collectionName, 'Validation');
+      arangoHelper.buildCollectionSubNav(this.collectionName, 'Schema');
       $(this.el).html(this.template.render({}));
       this.renderValidationEditor();
       this.getValidationProperties();
     },
 
     resize: function () {
-      console.log("resizing");
       $('#validationEditor').height($('.centralRow').height() - 300);
     },
 
@@ -38,10 +36,9 @@
       this.resize();
       var options = {
         onChange: function () {
-          //self.jsonContentChanged();
         },
         onModeChange: function (newMode) {
-          //self.storeMode(newMode);
+          void (newMode);
         },
         search: true,
         mode: 'code',
@@ -54,44 +51,41 @@
 
     getValidationProperties: function () {
       var propCB = (error, data) => {
-        console.log(error);
-        console.log(data);
-        if(error) {
-          window.arangoHelper.arangoError("Validation", "Could not get collectin properties", null) ;
+        if (error) {
+          window.arangoHelper.arangoError("Error", "Could not get collection properties");
         } else {
-          this.editor.set(data.validation);
+          console.log(data);
+          this.editor.set(data.schema);
         }
       };
       this.model.getProperties(propCB);
     },
 
     breadcrumb: function () {
-      // OBI: do not touch
       $('#subNavigationBar .breadcrumb').html(
         'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
     saveValidation: function () {
-      console.log("triggerd save");
       var saveCallback = function (error, isCoordinator) {
+        void (isCoordinator);
         if (error) {
-          arangoHelper.arangoError('Error', 'Could not save validation');
+          arangoHelper.arangoError('Error', 'Could not save schma.');
         } else {
           var newprops;
           try {
-            newprops= this.editor.get();
+            newprops = this.editor.get();
           } catch (ex) {
-            arangoHelper.arangoError('Error', 'Could not save validation' + ex);
+            arangoHelper.arangoError('Error', 'Could not save schema: ' + ex);
             throw ex;
-            return;
           }
 
           this.model.changeValidation(newprops, (err, data) => {
-            if(err) {
-              arangoHelper.arangoError('Error', 'Could not update validation for' + this.model.get('name') + '.');
+            if (err) {
+              arangoHelper.arangoError('Error', 'Could not update schema for: ' + this.model.get('name') + '.');
             } else {
-              arangoHelper.arangoNotification('Saved validaiton for collection ' + this.model.get('name') + '.');
+              arangoHelper.arangoNotification('Saved schema for collection: ' + this.model.get('name') + '. ' + data);
             }
           });
 

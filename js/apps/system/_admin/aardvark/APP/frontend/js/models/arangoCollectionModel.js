@@ -264,7 +264,7 @@
       }
 
       var data = {
-        validation: validation
+        schema: validation
       };
 
       $.ajax({

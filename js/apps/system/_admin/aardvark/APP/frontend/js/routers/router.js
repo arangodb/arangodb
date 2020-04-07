@@ -1,6 +1,6 @@
 /* jshint unused: false */
 /* global window, $, Backbone, document, d3, ReactDOM */
-/* global $, arangoHelper, btoa, atob, _, frontendConfig */
+/* global arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -23,7 +23,7 @@
       'collection/:colid/documents/:pageid': 'documents',
       'cIndices/:colname': 'cIndices',
       'cSettings/:colname': 'cSettings',
-      'cValidation/:colname': 'cValidation',
+      'cSchema/:colname': 'cSchema',
       'cInfo/:colname': 'cInfo',
       'collection/:colid/:docid': 'document',
       'shell': 'shell',
@@ -140,6 +140,7 @@
 
     listener: function (event) {
       _.each(window.App.listenerFunctions, function (func, key) {
+        void (key);
         func(event);
       });
     },
@@ -695,12 +696,12 @@
       });
     },
 
-    cValidation: function (colname, initialized) {
+    cSchema: function (colname, initialized) {
       var self = this;
 
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.cValidation.bind(this), colname);
+        this.waitForInit(this.cSchema.bind(this), colname);
         return;
       }
       this.arangoCollectionsStore.fetch({
@@ -790,6 +791,7 @@
       this.documentView.render();
 
       var callback = function (error, type) {
+        void (type);
         if (!error) {
           this.documentView.setType();
         } else {
@@ -1165,8 +1167,8 @@
       if (this.documentView && Backbone.history.getFragment().indexOf('collection') > -1) {
         this.documentView.resize();
       }
-      if (this.validationView && Backbone.history.getFragment().indexOf('cValidation') > -1) {
-        //TODO the resize does not work :( -- kittens die -- Heiko Help:)
+      if (this.validationView && Backbone.history.getFragment().indexOf('cSchema') > -1) {
+        // TODO the resize does not work :( -- kittens die -- Heiko Help:)
         this.validationView.resize();
       }
     },

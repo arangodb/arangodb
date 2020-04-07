@@ -582,8 +582,8 @@
         Settings: {
           route: '#cSettings/' + encodeURIComponent(collectionName)
         },
-        Validation: {
-          route: '#cValidation/' + encodeURIComponent(collectionName)
+        Schema: {
+          route: '#cSchema/' + encodeURIComponent(collectionName)
         }
       };
 
