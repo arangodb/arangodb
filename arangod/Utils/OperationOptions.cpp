@@ -21,19 +21,37 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionKeys.h"
-#include "VocBase/ticks.h"
+#include "OperationOptions.h"
+
+#include "velocypack/StringRef.h"
 
 using namespace arangodb;
 
-CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, double ttl)
-    : _vocbase(vocbase),
-      _collection(nullptr),
-      _id(0),
-      _ttl(ttl),
-      _expires(0.0),
-      _isDeleted(false),
-      _isUsed(false) {
-  _id = TRI_NewTickServer();
-  _expires = TRI_microtime() + _ttl;
+/// @brief stringifies the overwrite mode
+char const* OperationOptions::stringifyOverwriteMode(OperationOptions::OverwriteMode mode) {
+  switch (mode) {
+    case OverwriteMode::Unknown: return "unknown";
+    case OverwriteMode::Conflict: return "conflict";
+    case OverwriteMode::Replace: return "replace";
+    case OverwriteMode::Update: return "update";
+    case OverwriteMode::Ignore: return "ignore";
+  }
+  TRI_ASSERT(false);
+  return "unknown";
+}
+  
+OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(velocypack::StringRef value) {
+  if (value == "conflict") {
+    return OverwriteMode::Conflict;
+  }
+  if (value == "ignore") {
+    return OverwriteMode::Ignore;
+  }
+  if (value == "update") {
+    return OverwriteMode::Update;
+  }
+  if (value == "replace") {
+    return OverwriteMode::Replace;
+  }
+  return OverwriteMode::Unknown;
 }

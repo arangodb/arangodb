@@ -1227,11 +1227,6 @@ Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
   return dropDatabase(database.id());
 }
 
-void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */, int& status) {
-  // can delete databases instantly
-  status = TRI_ERROR_NO_ERROR;
-}
-
 // current recovery state
 RecoveryState RocksDBEngine::recoveryState() noexcept {
   return server().getFeature<RocksDBRecoveryManager>().recoveryState();
@@ -1242,8 +1237,8 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
   return TRI_voc_tick_t(server().getFeature<RocksDBRecoveryManager>().recoveryTick());
 }
 
-std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
-                                            LogicalCollection const& collection) {
+void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
+                                     LogicalCollection const& collection) {
   const TRI_voc_cid_t cid = collection.id();
   TRI_ASSERT(cid != 0);
 
@@ -1259,8 +1254,6 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
-  return std::string();  // no need to return a path
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
@@ -1393,11 +1386,6 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   return Result();
 }
 
-void RocksDBEngine::destroyCollection(TRI_vocbase_t& /*vocbase*/, LogicalCollection& /*collection*/
-) {
-  // not required
-}
-
 void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection, bool doSync) {
   auto builder = collection.toVelocyPackIgnore(
@@ -1425,10 +1413,6 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
                                         arangodb::velocypack::StringRef(oldName)));
 
   return arangodb::Result(res);
-}
-
-void RocksDBEngine::unloadCollection(TRI_vocbase_t& /*vocbase*/, LogicalCollection& collection) {
-  collection.setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 }
 
 Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
@@ -1491,14 +1475,6 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   return rocksutils::convertStatus(res);
 }
 
-void RocksDBEngine::destroyView(TRI_vocbase_t const& /*vocbase*/, LogicalView const& /*view*/
-                                ) noexcept {
-  // nothing to do here
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC("5d5f7", DEBUG, Logger::ENGINES) << "RocksDBEngine::destroyView";
-#endif
-}
-
 Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
                                  arangodb::LogicalView const& view, bool /*doSync*/
 ) {
@@ -1547,14 +1523,6 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
   LOG_TOPIC_IF("6ee8a", TRACE, Logger::VIEWS, !res.ok())
       << "could not change view: " << res.ToString();
   return rocksutils::convertStatus(res);
-}
-
-void RocksDBEngine::signalCleanup(TRI_vocbase_t& vocbase) {
-  // nothing to do here
-}
-
-int RocksDBEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Add engine-specific optimizer rules
@@ -2473,7 +2441,3 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
 }
 
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

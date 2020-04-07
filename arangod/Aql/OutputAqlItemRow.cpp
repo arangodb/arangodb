@@ -57,17 +57,17 @@ OutputAqlItemRow::OutputAqlItemRow(
       _baseIndex(0),
       _lastBaseIndex(0),
       _inputRowCopied(false),
-      _lastSourceRow{CreateInvalidInputRowHint{}},
-      _numValuesWritten(0),
-      _call(clientCall),
       _doNotCopyInputRow(copyRowBehavior == CopyRowBehavior::DoNotCopyInputRows),
-      _outputRegisters(std::move(outputRegisters)),
-      _registersToKeep(std::move(registersToKeep)),
-      _registersToClear(std::move(registersToClear)),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _setBaseIndexNotUsed(true),
 #endif
-      _allowSourceRowUninitialized(false) {
+      _allowSourceRowUninitialized(false),
+      _lastSourceRow{CreateInvalidInputRowHint{}},
+      _numValuesWritten(0),
+      _call(clientCall),
+      _outputRegisters(std::move(outputRegisters)),
+      _registersToKeep(std::move(registersToKeep)),
+      _registersToClear(std::move(registersToClear)) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
     for (auto const& reg : *_outputRegisters) {
