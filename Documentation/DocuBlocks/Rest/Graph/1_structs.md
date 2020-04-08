@@ -21,6 +21,7 @@ concurrent modifications to this graph.
 
 @RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
 The replication factor used for every new collection in the graph.
+Can also be the string `"satellite"` for a SatelliteCollection.
 
 @RESTSTRUCT{writeConcern,graph_representation,integer,optional,}
 Default write concern for new collections in the graph.
