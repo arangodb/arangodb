@@ -5,14 +5,10 @@ devel
 
 * Removed old AgencyComm.
 
-* Make arangobench return a proper error message when its initial attempt to 
-
-* Fix supervision mode detection when unlocking agency in hot backup
-
 * Improve continuation behavior of AQL queries. We post the continuation handler
   on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
   of LOW.
-  
+
 * When relaying requests to other coordinators in a load-balanced setup, don't
   forward the "http/1.1" HTTP header from the remote response. Forwarding that
   header in the same way as any other header is not required, as each response
@@ -35,10 +31,10 @@ devel
 
 * Added compression property to ArangoSearch View storedValues.
 
-* Added overwrite mode "ignore" for document inserts. This mode allows 
+* Added overwrite mode "ignore" for document inserts. This mode allows
   ignoring primary key conflicts on insert when the target document already
   exists.
-  
+
   The following overwrite modes now exist:
 
   * "ignore": if a document with the specified `_key` value exists already,
@@ -64,7 +60,7 @@ devel
       INSERT { _key: ..., .... } INTO collection OPTIONS { overwriteMode: "ignore" }
 
   Again, when the overwrite mode "ignore" is used from AQL, it does not
-  support returning the old document version. Using "RETURN OLD" in 
+  support returning the old document version. Using "RETURN OLD" in
   an INSERT operation that uses the "ignore" overwrite mode will trigger
   a parse error, as there will be no old version to return. "RETURN NEW"
   will only return the document in case it was inserted. In case the
@@ -143,7 +139,6 @@ devel
 
 * Fix premature access to temporary path before a user-specified path was
   read from the config options.
->>>>>>> origin/devel
 
 * Rebuild UI and update swagger.
 
