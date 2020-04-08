@@ -65,7 +65,14 @@ function ahuacatlSubqueryChaos() {
   const randomFilter = function(indent, bias, variables = []) {
     if (variables.length > 0 && coinToss(bias)) {
       var variable = Math.trunc(randomInt(0, variables.length));
-      return indent + " FILTER " + variables[variable] + " < " + randomInt(0, 15) + "\n";
+      return (
+        indent +
+        " FILTER " +
+        variables[variable] +
+        " < " +
+        randomInt(0, 15) +
+        "\n"
+      );
     }
     return "";
   };
@@ -136,7 +143,9 @@ function ahuacatlSubqueryChaos() {
 
       // here we could put a count with collect, but then we have to
       // erase variables from there on in. bah.
-      my_query = my_query + indent +
+      my_query =
+        my_query +
+        indent +
         " RETURN {" +
         [...variables.forVariables, ...variables.subqueryVariables].join(", ") +
         "}";
@@ -144,6 +153,78 @@ function ahuacatlSubqueryChaos() {
       return my_query;
     };
     return query("", { forVariables: [], subqueryVariables: [] });
+  };
+
+  const createModifyingChaosQuery = function(numberSubqueries) {
+    var subqueryTotal = numberSubqueries;
+    const idGenerator = idGeneratorGenerator();
+    const collectionSize = 20;
+
+    const collectionIdGenerator = (function*() {
+      var counter = 0;
+      while (true) {
+        var cn = "SubqueryChaosCollection" + counter;
+        counter = counter + 1;
+        yield cn;
+      }
+    })();
+
+    const query = function(indent, outerVariables) {
+      // We have access to all variables in the enclosing scope
+      // but we don't want them to leak outside, so we take a copy
+      var variables = {
+        forVariables: [...outerVariables.forVariables],
+        subqueryVariables: [...outerVariables.subqueryVariables],
+        collectionNames: [...outerVariables.collectionNames]
+      };
+
+      const for_variable = "fv" + idGenerator.next().value;
+      variables.forVariables.push(for_variable);
+
+      const collection = collectionIdGenerator.next().value;
+      variables.collectionNames.push(collection);
+      var my_query = "FOR " + for_variable + " IN " + collection + " \n";
+
+      // here we could filter by any one of the variables in scope
+      // or really filter by any variable in scope in between subqueries
+
+      my_query = my_query + randomFilter(indent, 0.2, variables);
+
+      var nqueries = randomInt(0, Math.min(subqueryTotal, 3));
+      subqueryTotal = subqueryTotal - nqueries;
+      for (var i = 0; i < nqueries; i++) {
+        var sqv = "sq" + idGenerator.next().value;
+        var sq = query(indent + "  ", variables);
+        variables.subqueryVariables.push(sqv);
+
+        my_query = my_query + indent + " LET " + sqv + " = (" + sq + ")\n";
+        my_query = my_query + randomFilter(indent, 0.4, variables.forVariables);
+      }
+
+      my_query = my_query + indent + " UPSERT {value: fv0} INSERT {value: 2} UPDATE {value: 15, updated: true} IN " + collection + "\n";
+
+      my_query = my_query + randomLimit(indent, 0.7);
+
+      collect = randomCollectWithCount(indent, 0.1);
+      if (collect !== "") {
+        my_query = my_query + collect;
+        variables = { forVariables: [], subqueryVariables: ["counter"] };
+      } else {
+        variables.forVariables = [for_variable];
+      }
+
+      // here we could put a count with collect, but then we have to
+      // erase variables from there on in. bah.
+      my_query =
+        my_query +
+        indent +
+        " RETURN {" +
+        [...variables.forVariables, ...variables.subqueryVariables].join(", ") +
+        "}";
+
+      return {collectionNames: variables.collectionNames, queryString: my_query};
+    };
+    return query("", { forVariables: [], subqueryVariables: [], collectionNames: [] })
   };
 
   const specificQueries = {
@@ -198,32 +279,25 @@ function ahuacatlSubqueryChaos() {
 
     testSpecificQueries: function() {
       for (const [key, value] of Object.entries(specificQueries)) {
-        const result1 = db
-              ._query(value, {}, {})
-              .toArray();
+        const result1 = db._query(value, {}, {}).toArray();
         const result2 = db
-              ._query(
-                value,
-                {},
-                { fullCount: true, optimizer: { rules: ["-splice-subqueries"] } }
-              )
-              .toArray();
+          ._query(value, {}, { optimizer: { rules: ["-splice-subqueries"] } })
+          .toArray();
 
+        require("internal").print("spliced:     " + result1);
+        require("internal").print("non-spliced: " + result2);
         assertEqual(result1, result2);
       }
     },
 
-    testSubqueryChaos: function() {
+    _testSubqueryChaos: function() {
       for (var i = 0; i < 50; i++) {
         const randomQuery = createChaosQuery(7);
 
         require("internal").print("\n\n" + randomQuery);
 
-
         require("internal").print("with splicing: ");
-        const result1 = db
-          ._query(randomQuery, {}, {})
-          .toArray();
+        const result1 = db._query(randomQuery, {}, {}).toArray();
         require("internal").print("without splicing: ");
         const result2 = db
           ._query(
@@ -235,6 +309,39 @@ function ahuacatlSubqueryChaos() {
 
         assertEqual(result1, result2);
       }
+    },
+
+    testSubqueryModificationChaos: function() {
+      const randomQuery = createModifyingChaosQuery(7);
+
+      require("internal").print("\n\n" + JSON.stringify(randomQuery));
+      require("internal").print("with splicing: ");
+      for(cn of randomQuery.collectionNames) {
+        db._drop(cn);
+        db._createDocumentCollection(cn);
+        db._query(`FOR i IN 1..100 INSERT { value: i } INTO ${cn}`);
+      }
+      const result1 = db._query(randomQuery, {}, {}).toArray();
+
+      require("internal").print("without splicing: ");
+      for(cn of randomQuery.collectionNames) {
+        db._drop(cn);
+        db._createDocumentCollection(cn);
+        db._query(`FOR i IN 1..100 INSERT { value: i } INTO ${cn}`);
+      }
+      const result2 = db
+            ._query(
+              randomQuery,
+              {},
+              { fullCount: true, optimizer: { rules: ["-splice-subqueries"] } }
+            )
+            .toArray();
+
+      for(cn of randomQuery.collectionNames) {
+        db._drop(cn);
+      }
+
+      assertEqual(result1, result2);
     }
   };
 }
