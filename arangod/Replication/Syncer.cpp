@@ -48,7 +48,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Indexes.h"
@@ -148,9 +148,8 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
       // on with a replace.
       if (keySlice.isString()) {
-        arangodb::LocalDocumentId const oldDocumentId =
-            coll->getPhysical()->lookupKey(&trx, keySlice);
-        if (oldDocumentId.isSet()) {
+        std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
           useReplace = true;
           opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
         }
@@ -475,7 +474,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     
   // get our own server-id
   _state.localServerId = ServerIdFeature::getId();
-  _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId);
+  _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId.id());
 
   _state.master.endpoint = _state.applier._endpoint;
 }
@@ -804,11 +803,11 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
   // check any identifier conflicts first
   {
     // check ID first
-    TRI_idx_iid_t iid = 0;
+    IndexId iid = IndexId::none();
     std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
     Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
-    if (res.ok() && iid != 0) {
+    if (res.ok() && !iid.isNone()) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);
       auto byDef = physical->lookupIndex(idxDef);
@@ -867,7 +866,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
                     "id not found in index drop slice");
     }
 
-    TRI_idx_iid_t const iid = basics::StringUtils::uint64(id);
+    IndexId const iid{basics::StringUtils::uint64(id)};
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
 
     if (vocbase == nullptr) {

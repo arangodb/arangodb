@@ -194,10 +194,10 @@ arangodb::Result dropLink( // drop link
 ) {
   // don't need to create an extra transaction inside arangodb::methods::Indexes::drop(...)
   if (!collection.dropIndex(link.id())) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failed to drop link '") + std::to_string(link.id()) + "' from collection '" + collection.name() + "'"
-    );
+    return arangodb::Result(  // result
+        TRI_ERROR_INTERNAL,   // code
+        std::string("failed to drop link '") + std::to_string(link.id().id()) +
+            "' from collection '" + collection.name() + "'");
   }
 
   return arangodb::Result();
@@ -211,9 +211,9 @@ arangodb::Result dropLink<arangodb::iresearch::IResearchViewCoordinator>( // dro
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  builder.add( // add
-    arangodb::StaticStrings::IndexId, // key
-    arangodb::velocypack::Value(link.id()) // value
+  builder.add(                                     // add
+      arangodb::StaticStrings::IndexId,            // key
+      arangodb::velocypack::Value(link.id().id())  // value
   );
   builder.close();
 
@@ -619,9 +619,9 @@ namespace iresearch {
          && lhsMeta == rhsMeta;  // left meta equal right meta
 }
 
-/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find( // find link
-    LogicalCollection const& collection, // collection to search
-    TRI_idx_iid_t id // index id to find
+/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(  // find link
+    LogicalCollection const& collection,  // collection to search
+    IndexId id                            // index id to find
 ) {
   auto index = collection.lookupIndex(id);
 

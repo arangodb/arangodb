@@ -99,6 +99,19 @@ class OutputAqlItemRow {
   void copyBlockInternalRegister(InputAqlItemRow const& sourceRow,
                                  RegisterId input, RegisterId output);
 
+  /**
+   * @brief This function will only work if input and output
+   *        have the same block.
+   *        We will "copy" all rows in the input block into the output.
+   *        No Registers will be modified.
+   *
+   * @param sourceRow The input source row.
+   *                  Requirements:
+   *                    - Input and Output blocks are the same
+   *                    - Input and Output row position are identical
+   */
+  auto fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows) -> void;
+
   [[nodiscard]] std::size_t getNrRegisters() const {
     return block().getNrRegs();
   }
@@ -238,6 +251,19 @@ class OutputAqlItemRow {
    * @brief Whether the input registers were copied from a source row.
    */
   bool _inputRowCopied;
+  
+  /**
+   * @brief Set if and only if the current ExecutionBlock passes the
+   * AqlItemBlocks through.
+   */
+  bool const _doNotCopyInputRow;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _setBaseIndexNotUsed;
+#endif
+  // Need this special bool for allowing an empty AqlValue inside the
+  // SortedCollectExecutor, CountCollectExecutor and ConstrainedSortExecutor.
+  bool _allowSourceRowUninitialized;
 
   /**
    * @brief The last source row seen. Note that this is invalid before the first
@@ -258,22 +284,9 @@ class OutputAqlItemRow {
    */
   AqlCall _call;
 
-  /**
-   * @brief Set if and only if the current ExecutionBlock passes the
-   * AqlItemBlocks through.
-   */
-  bool const _doNotCopyInputRow;
-
   std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _setBaseIndexNotUsed;
-#endif
-  // Need this special bool for allowing an empty AqlValue inside the
-  // SortedCollectExecutor, CountCollectExecutor and ConstrainedSortExecutor.
-  bool _allowSourceRowUninitialized;
 
  private:
   [[nodiscard]] size_t nextUnwrittenIndex() const noexcept {

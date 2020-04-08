@@ -49,7 +49,7 @@ const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-
 
 const irs::column_info_provider_t DEFAULT_COLUMN_INFO = [](const irs::string_ref&) {
   // no compression, no encryption
-  return irs::column_info{ irs::compression::raw::type(), {}, false };
+  return irs::column_info{ irs::compression::none::type(), {}, false };
 };
 
 struct flush_segment_context {
@@ -2091,7 +2091,6 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
         // new version will be created. Remove old version from cache!
         ctx->segment_mask_.emplace(pending_segment.segment.meta);
       }
-      assert(ctx->segment_mask_.find(pending_segment.segment.meta) != ctx->segment_mask_.end()); // this segment should be deleted from cache!
       write_document_mask(dir, pending_segment.segment.meta, docs_mask, !pending_consolidation);
       pending_consolidation = true; // force write new segment meta
     }

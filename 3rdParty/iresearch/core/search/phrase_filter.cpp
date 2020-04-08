@@ -20,70 +20,15 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/automaton.hpp" // FOR FST_NO_DYNAMIC_LINKING
-
-#include "phrase_filter.hpp"
-
 #include <boost/functional/hash.hpp>
 
-#include "shared.hpp"
-#include "cost.hpp"
-#include "term_query.hpp"
-#include "conjunction.hpp"
-#include "disjunction.hpp"
-#include "levenshtein_filter.hpp"
-#include "prefix_filter.hpp"
-#include "wildcard_filter.hpp"
-
-#if defined(_MSC_VER)
-  #pragma warning( disable : 4706 )
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wparentheses"
-#endif
-
+#include "phrase_filter.hpp"
 #include "phrase_iterator.hpp"
-
-#if defined(_MSC_VER)
-  #pragma warning( default : 4706 )
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-#include "analysis/token_attributes.hpp"
-
-#include "index/index_reader.hpp"
+#include "term_query.hpp"
+#include "wildcard_filter.hpp"
 #include "index/field_meta.hpp"
-#include "utils/fst_table_matcher.hpp"
-#include "utils/levenshtein_utils.hpp"
-#include "utils/misc.hpp"
-#include "utils/utf8_utils.hpp"
-#include "utils/wildcard_utils.hpp"
 
 NS_ROOT
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class phrase_state 
-/// @brief cached per reader phrase state
-//////////////////////////////////////////////////////////////////////////////
-template<template<typename...> class T>
-struct phrase_state {
-  typedef seek_term_iterator::cookie_ptr term_state_t;
-  typedef T<term_state_t> terms_states_t;
-
-  phrase_state() = default;
-
-  phrase_state(phrase_state&& rhs) noexcept
-    : terms(std::move(rhs.terms)),
-      reader(rhs.reader) {
-    rhs.reader = nullptr;
-  }
-
-  phrase_state& operator=(const phrase_state&) = delete;
-
-  terms_states_t terms;
-  const term_reader* reader{};
-}; // phrase_state
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class phrase_query
@@ -114,17 +59,17 @@ class phrase_query : public filter::prepared {
   bstring stats_;
 }; // phrase_query
 
-class fixed_phrase_query : public phrase_query<order::prepared::FixedContainer> {
+class fixed_phrase_query : public phrase_query<FixedContainer> {
  public:
 
   DECLARE_SHARED_PTR(fixed_phrase_query);
 
   fixed_phrase_query(
-      typename phrase_query<order::prepared::FixedContainer>::states_t&& states,
-      typename phrase_query<order::prepared::FixedContainer>::positions_t&& positions,
+      typename phrase_query<FixedContainer>::states_t&& states,
+      typename phrase_query<FixedContainer>::positions_t&& positions,
       bstring&& stats,
       boost_t boost) noexcept
-    : phrase_query<order::prepared::FixedContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
+    : phrase_query<FixedContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
   }
 
   using filter::prepared::execute;
@@ -137,7 +82,7 @@ class fixed_phrase_query : public phrase_query<order::prepared::FixedContainer> 
     auto phrase_state = states_.find(rdr);
 
     if (!phrase_state) {
-      // invalid state 
+      // invalid state
       return doc_iterator::empty();
     }
 
@@ -192,7 +137,7 @@ class fixed_phrase_query : public phrase_query<order::prepared::FixedContainer> 
   }
 }; // fixed_phrase_query
 
-class variadic_phrase_query : public phrase_query<order::prepared::VariadicContainer> {
+class variadic_phrase_query : public phrase_query<VariadicContainer> {
  public:
 
   DECLARE_SHARED_PTR(variadic_phrase_query);
@@ -202,7 +147,7 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
       positions_t&& positions,
       bstring&& stats,
       boost_t boost) noexcept
-    : phrase_query<order::prepared::VariadicContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
+    : phrase_query<VariadicContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
   }
 
   using filter::prepared::execute;
@@ -228,7 +173,8 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
     conjunction_t::doc_iterators_t conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
 
-    typedef disjunction<doc_iterator::ptr, irs::position_score_iterator_adapter<doc_iterator::ptr>, true> disjunction_t;
+    typedef position_score_iterator_adapter<doc_iterator::ptr> adapter_t;
+    typedef disjunction<doc_iterator::ptr, adapter_t, true> disjunction_t;
 
     phrase_iterator_t::positions_t positions;
     positions.resize(phrase_state->terms.size());
@@ -268,8 +214,15 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
       if (!is_found) {
         return doc_iterator::empty();
       }
-      conj_itrs.emplace_back(make_disjunction<disjunction_t>(std::move(disj_itrs)));
-      ps.first = &conj_itrs.back()->attributes().get<attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>>();
+      auto disj = make_disjunction<disjunction_t>(std::move(disj_itrs));
+      typedef irs::compound_doc_iterator<adapter_t> compound_doc_iterator_t;
+      #ifdef IRESEARCH_DEBUG
+        ps.first = dynamic_cast<compound_doc_iterator_t*>(disj.get());
+        assert(ps.first);
+      #else
+        ps.first = static_cast<compound_doc_iterator_t*>(disj.get());
+      #endif
+      conj_itrs.emplace_back(std::move(disj));
       ++position;
     }
 
@@ -305,172 +258,34 @@ bool by_phrase::equals(const filter& rhs) const noexcept {
   return filter::equals(rhs) && fld_ == trhs.fld_ && phrase_ == trhs.phrase_;
 }
 
-by_phrase::info_t::info_t() : type(PhrasePartType::TERM), st() {
+by_phrase::phrase_part::phrase_part() : type(PhrasePartType::TERM), st() {
 }
 
-by_phrase::info_t::info_t(const info_t& other) {
-  type = other.type;
-  allocate();
-  switch (type) {
-    case PhrasePartType::TERM:
-      this->st = other.st;
-      break;
-    case PhrasePartType::PREFIX:
-      this->pt = other.pt;
-      break;
-    case PhrasePartType::WILDCARD:
-      this->wt = other.wt;
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      this->lt = other.lt;
-      break;
-    case PhrasePartType::SET:
-      this->ct = other.ct;
-      break;
-    default:
-      assert(false);
-  }
+by_phrase::phrase_part::phrase_part(const phrase_part& other) {
+  allocate(other);
 }
 
-by_phrase::info_t::info_t(info_t&& other) noexcept {
-  type = other.type;
-  allocate();
-  switch (type) {
-    case PhrasePartType::TERM:
-      this->st = std::move(other.st);
-      break;
-    case PhrasePartType::PREFIX:
-      this->pt = std::move(other.pt);
-      break;
-    case PhrasePartType::WILDCARD:
-      this->wt = std::move(other.wt);
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      this->lt = std::move(other.lt);
-      break;
-    case PhrasePartType::SET:
-      this->ct = std::move(other.ct);
-      break;
-    default:
-      assert(false);
-  }
+by_phrase::phrase_part::phrase_part(phrase_part&& other) noexcept {
+  allocate(std::move(other));
 }
 
-by_phrase::info_t::info_t(const simple_term& st) {
-  type = PhrasePartType::TERM;
-  allocate();
-  this->st = st;
-}
-
-by_phrase::info_t::info_t(simple_term&& st) noexcept {
-  type = PhrasePartType::TERM;
-  allocate();
-  this->st = std::move(st);
-}
-
-by_phrase::info_t::info_t(const prefix_term& pt) {
-  type = PhrasePartType::PREFIX;
-  allocate();
-  this->pt = pt;
-}
-
-by_phrase::info_t::info_t(prefix_term&& pt) noexcept {
-  type = PhrasePartType::PREFIX;
-  allocate();
-  this->pt = std::move(pt);
-}
-
-by_phrase::info_t::info_t(const wildcard_term& wt) {
-  type = PhrasePartType::WILDCARD;
-  allocate();
-  this->wt = wt;
-}
-
-by_phrase::info_t::info_t(wildcard_term&& wt) noexcept {
-  type = PhrasePartType::WILDCARD;
-  allocate();
-  this->wt = std::move(wt);
-}
-
-by_phrase::info_t::info_t(const levenshtein_term& lt) {
-  type = PhrasePartType::LEVENSHTEIN;
-  allocate();
-  this->lt = lt;
-}
-
-by_phrase::info_t::info_t(levenshtein_term&& lt) noexcept {
-  type = PhrasePartType::LEVENSHTEIN;
-  allocate();
-  this->lt = std::move(lt);
-}
-
-by_phrase::info_t::info_t(const set_term& ct) {
-  type = PhrasePartType::SET;
-  allocate();
-  this->ct = ct;
-}
-
-by_phrase::info_t::info_t(set_term&& ct) noexcept {
-  type = PhrasePartType::SET;
-  allocate();
-  this->ct = std::move(ct);
-}
-
-by_phrase::info_t& by_phrase::info_t::operator=(const info_t& other) noexcept {
+by_phrase::phrase_part& by_phrase::phrase_part::operator=(const phrase_part& other) {
   if (&other == this) {
     return *this;
   }
-  recreate(other.type);
-  switch (type) {
-    case PhrasePartType::TERM:
-      st = other.st;
-      break;
-    case PhrasePartType::PREFIX:
-      pt = other.pt;
-      break;
-    case PhrasePartType::WILDCARD:
-      wt = other.wt;
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      lt = other.lt;
-      break;
-    case PhrasePartType::SET:
-      ct = other.ct;
-      break;
-    default:
-      assert(false);
-  }
+  recreate(other);
   return *this;
 }
 
-by_phrase::info_t& by_phrase::info_t::operator=(info_t&& other) noexcept {
+by_phrase::phrase_part& by_phrase::phrase_part::operator=(phrase_part&& other) noexcept {
   if (&other == this) {
     return *this;
   }
-  recreate(other.type);
-  switch (type) {
-    case PhrasePartType::TERM:
-      st = std::move(other.st);
-      break;
-    case PhrasePartType::PREFIX:
-      pt = std::move(other.pt);
-      break;
-    case PhrasePartType::WILDCARD:
-      wt = std::move(other.wt);
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      lt = std::move(other.lt);
-      break;
-    case PhrasePartType::SET:
-      ct = std::move(other.ct);
-      break;
-    default:
-      assert(false);
-  }
+  recreate(std::move(other));
   return *this;
 }
 
-bool by_phrase::info_t::operator==(const info_t& other) const noexcept {
+bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept {
   if (type != other.type) {
     return false;
   }
@@ -485,35 +300,108 @@ bool by_phrase::info_t::operator==(const info_t& other) const noexcept {
       return lt == other.lt;
     case PhrasePartType::SET:
       return ct == other.ct;
+    case PhrasePartType::RANGE:
+      return rt == other.rt;
     default:
       assert(false);
   }
   return false;
 }
 
-void by_phrase::info_t::allocate() noexcept {
-  switch (type) {
+/*static*/ bool by_phrase::phrase_part::variadic_type_collect(
+    const term_reader& reader,
+    const phrase_part& phr_part,
+    phrase_term_visitor<variadic_terms_collectors>& ptv) {
+  auto found = false;
+  switch (phr_part.type) {
     case PhrasePartType::TERM:
-      new (&st) simple_term();
+      term_query::visit(reader, phr_part.st.term, ptv);
+      found = ptv.found();
       break;
     case PhrasePartType::PREFIX:
-      new (&pt) prefix_term();
+      by_prefix::visit(reader, phr_part.pt.term, ptv);
+      found = ptv.found();
       break;
     case PhrasePartType::WILDCARD:
-      new (&wt) wildcard_term();
+      by_wildcard::visit(reader, phr_part.wt.term, ptv);
+      found = ptv.found();
       break;
     case PhrasePartType::LEVENSHTEIN:
-      new (&lt) levenshtein_term();
+      by_edit_distance::visit(
+        reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
+        phr_part.lt.with_transpositions, ptv);
+      found = ptv.found();
       break;
     case PhrasePartType::SET:
-      new (&ct) set_term();
+      for (const auto& term : phr_part.ct.terms) {
+        term_query::visit(reader, term, ptv);
+        found |= ptv.found();
+        ptv.reset();
+      }
+      break;
+    case PhrasePartType::RANGE:
+      by_range::visit(reader, phr_part.rt.rng, ptv);
+      found = ptv.found();
+      break;
+    default:
+      assert(false);
+  }
+  return found;
+}
+
+void by_phrase::phrase_part::allocate(const phrase_part& other) {
+  type = other.type;
+  switch (type) {
+    case PhrasePartType::TERM:
+      new (&st) simple_term(other.st);
+      break;
+    case PhrasePartType::PREFIX:
+      new (&pt) prefix_term(other.pt);
+      break;
+    case PhrasePartType::WILDCARD:
+      new (&wt) wildcard_term(other.wt);
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      new (&lt) levenshtein_term(other.lt);
+      break;
+    case PhrasePartType::SET:
+      new (&ct) set_term(other.ct);
+      break;
+    case PhrasePartType::RANGE:
+      new (&rt) range_term(other.rt);
       break;
     default:
       assert(false);
   }
 }
 
-void by_phrase::info_t::destroy() noexcept {
+void by_phrase::phrase_part::allocate(phrase_part&& other) noexcept {
+  type = other.type;
+  switch (type) {
+    case PhrasePartType::TERM:
+      new (&st) simple_term(std::move(other.st));
+      break;
+    case PhrasePartType::PREFIX:
+      new (&pt) prefix_term(std::move(other.pt));
+      break;
+    case PhrasePartType::WILDCARD:
+      new (&wt) wildcard_term(std::move(other.wt));
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      new (&lt) levenshtein_term(std::move(other.lt));
+      break;
+    case PhrasePartType::SET:
+      new (&ct) set_term(std::move(other.ct));
+      break;
+    case PhrasePartType::RANGE:
+      new (&rt) range_term(std::move(other.rt));
+      break;
+    default:
+      assert(false);
+  }
+}
+
+void by_phrase::phrase_part::destroy() noexcept {
   switch (type) {
     case PhrasePartType::TERM:
       st.~simple_term();
@@ -530,35 +418,50 @@ void by_phrase::info_t::destroy() noexcept {
     case PhrasePartType::SET:
       ct.~set_term();
       break;
+    case PhrasePartType::RANGE:
+      rt.~range_term();
+      break;
     default:
       assert(false);
   }
 }
 
-void by_phrase::info_t::recreate(PhrasePartType new_type) noexcept {
-  if (type != new_type) {
+void by_phrase::phrase_part::recreate(const phrase_part& other) {
+  if (type != other.type) {
     destroy();
-    type = new_type;
-    allocate();
   }
+  allocate(other);
 }
 
-size_t hash_value(const by_phrase::info_t& info) {
-  auto seed = std::hash<int>()(static_cast<int>(info.type));
+void by_phrase::phrase_part::recreate(phrase_part&& other) noexcept {
+  if (type != other.type) {
+    destroy();
+  }
+  allocate(std::move(other));
+}
+
+size_t hash_value(const by_range::range_t& rng);
+
+size_t hash_value(const by_phrase::phrase_part& info) {
+  auto seed = std::hash<int>()(static_cast<std::underlying_type<by_phrase::PhrasePartType>::type>(info.type));
   switch (info.type) {
     case by_phrase::PhrasePartType::TERM:
+      ::boost::hash_combine(seed, info.st.term);
       break;
     case by_phrase::PhrasePartType::PREFIX:
-      ::boost::hash_combine(seed, std::hash<size_t>()(info.pt.scored_terms_limit));
+      ::boost::hash_combine(seed, info.pt.scored_terms_limit);
+      ::boost::hash_combine(seed, info.pt.term);
       break;
     case by_phrase::PhrasePartType::WILDCARD:
-      ::boost::hash_combine(seed, std::hash<size_t>()(info.wt.scored_terms_limit));
+      ::boost::hash_combine(seed, info.wt.scored_terms_limit);
+      ::boost::hash_combine(seed, info.wt.term);
       break;
     case by_phrase::PhrasePartType::LEVENSHTEIN:
-      ::boost::hash_combine(seed, std::hash<size_t>()(info.lt.scored_terms_limit));
-      ::boost::hash_combine(seed, std::hash<byte_type>()(info.lt.max_distance));
-      ::boost::hash_combine(seed, std::hash<by_edit_distance::pdp_f>()(info.lt.provider));
-      ::boost::hash_combine(seed, std::hash<bool>()(info.lt.with_transpositions));
+      ::boost::hash_combine(seed, info.lt.with_transpositions);
+      ::boost::hash_combine(seed, info.lt.max_distance);
+      ::boost::hash_combine(seed, info.lt.scored_terms_limit);
+      ::boost::hash_combine(seed, info.lt.provider);
+      ::boost::hash_combine(seed, info.lt.term);
       break;
     case by_phrase::PhrasePartType::SET:
       std::for_each(
@@ -566,6 +469,10 @@ size_t hash_value(const by_phrase::info_t& info) {
         [&seed](const bstring& term) {
           ::boost::hash_combine(seed, term);
       });
+      break;
+    case by_phrase::PhrasePartType::RANGE:
+      ::boost::hash_combine(seed, info.rt.scored_terms_limit);
+      ::boost::hash_combine(seed, info.rt.rng);
       break;
     default:
       assert(false);
@@ -578,7 +485,7 @@ size_t by_phrase::hash() const noexcept {
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);
   std::for_each(
-    phrase_.begin(), phrase_.end(),
+    phrase_.cbegin(), phrase_.cend(),
     [&seed](const by_phrase::term_t& term) {
       ::boost::hash_combine(seed, term);
   });
@@ -586,7 +493,7 @@ size_t by_phrase::hash() const noexcept {
 }
 
 filter::prepared::ptr by_phrase::prepare(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& /*ctx*/) const {
@@ -598,88 +505,89 @@ filter::prepared::ptr by_phrase::prepare(
   const auto phrase_size = phrase_.size();
   if (1 == phrase_size) {
     const auto& term_info = phrase_.begin()->second;
+    boost *= this->boost();
     switch (term_info.type) {
       case PhrasePartType::TERM: // similar to `term_query`
-        return term_query::make(rdr, ord, boost*this->boost(), fld_, term_info.st.term);
+        return term_query::make(index, ord, boost, fld_, term_info.st.term);
       case PhrasePartType::PREFIX:
-        return by_prefix::prepare(rdr, ord, boost*this->boost(), fld_, term_info.pt.term,
+        return by_prefix::prepare(index, ord, boost, fld_, term_info.pt.term,
                                   term_info.pt.scored_terms_limit);
       case PhrasePartType::WILDCARD:
-        return by_wildcard::prepare(rdr, ord, boost*this->boost(), fld_,
-                                    term_info.wt.term, term_info.wt.scored_terms_limit);
+        return by_wildcard::prepare(index, ord, boost, fld_, term_info.wt.term,
+                                    term_info.wt.scored_terms_limit);
       case PhrasePartType::LEVENSHTEIN:
-        return by_edit_distance::prepare(rdr, ord, boost*this->boost(), fld_,
-                                         term_info.lt.term, term_info.lt.scored_terms_limit,
+        return by_edit_distance::prepare(index, ord, boost, fld_, term_info.lt.term,
+                                         term_info.lt.scored_terms_limit,
                                          term_info.lt.max_distance, term_info.lt.provider,
                                          term_info.lt.with_transpositions);
       case PhrasePartType::SET:
         // do nothing
         break;
+      case PhrasePartType::RANGE:
+        return by_range::prepare(index, ord, boost, fld_, term_info.rt.rng,
+                                 term_info.rt.scored_terms_limit);
       default:
         assert(false);
+        return filter::prepared::empty();
     }
   }
 
   // prepare phrase stats (collector for each term)
   if (is_simple_term_only_) {
-    return fixed_prepare_collect(rdr, ord, boost, ord.fixed_prepare_collectors(phrase_size));
+    return fixed_prepare_collect(index, ord, boost, fixed_terms_collectors(ord, phrase_size));
   }
-  return variadic_prepare_collect(rdr, ord, boost, ord.variadic_prepare_collectors(phrase_size));
+  return variadic_prepare_collect(index, ord, boost, variadic_terms_collectors(ord, phrase_size));
 }
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    order::prepared::fixed_terms_collectors collectors) const {
+    fixed_terms_collectors collectors) const {
   // per segment phrase states
-  fixed_phrase_query::states_t phrase_states(rdr.size());
+  fixed_phrase_query::states_t phrase_states(index.size());
 
   // per segment phrase terms
-  phrase_state<order::prepared::FixedContainer>::terms_states_t phrase_terms;
+  phrase_state<FixedContainer>::terms_states_t phrase_terms;
   auto phrase_size = phrase_.size();
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
   const string_ref field = fld_;
 
-  for (const auto& sr : rdr) {
+  for (const auto& segment : index) {
     // get term dictionary for field
-    const term_reader* tr = sr.field(field);
+    const term_reader* reader = segment.field(field);
 
-    if (!tr) {
+    if (!reader) {
       continue;
     }
 
     // check required features
-    if (!by_phrase::required().is_subset_of(tr->meta().features)) {
+    if (!by_phrase::required().is_subset_of(reader->meta().features)) {
       continue;
     }
 
-    collectors.collect(sr, *tr); // collect field statistics once per segment
+    collectors.collect(segment, *reader); // collect field statistics once per segment
 
-    // find terms
-    seek_term_iterator::ptr term = tr->iterator();
-    size_t term_itr = 0;
+    size_t term_offset = 0;
+    auto is_ord_empty = ord.empty();
+
+    phrase_part::phrase_term_visitor<fixed_terms_collectors> ptv(
+      segment, *reader, collectors, phrase_terms);
 
     for (const auto& word : phrase_) {
       assert(PhrasePartType::TERM == word.second.type);
-      auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
-      if (!term->seek(word.second.st.term)) {
-        if (ord.empty()) {
+      ptv.reset(term_offset);
+      term_query::visit(*reader, word.second.st.term, ptv);
+      if (!ptv.found()) {
+        if (is_ord_empty) {
           break;
-        } else {
-          // continue here because we should collect
-          // stats for other terms in phrase
-          continue;
         }
+        // continue here because we should collect
+        // stats for other terms in phrase
       }
-
-      term->read(); // read term attributes
-      collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
-
-      // estimate phrase & term
-      phrase_terms.emplace_back(term->cookie());
+      ++term_offset;
     }
 
     // we have not found all needed terms
@@ -688,9 +596,9 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
       continue;
     }
 
-    auto& state = phrase_states.insert(sr);
+    auto& state = phrase_states.insert(segment);
     state.terms = std::move(phrase_terms);
-    state.reader = tr;
+    state.reader = reader;
 
     phrase_terms.reserve(phrase_size);
   }
@@ -711,7 +619,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   ord.prepare_stats(stats_buf);
-  collectors.finish(stats_buf, rdr);
+  collectors.finish(stats_buf, index);
 
   return memory::make_shared<fixed_phrase_query>(
     std::move(phrase_states),
@@ -722,274 +630,56 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 }
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    order::prepared::variadic_terms_collectors collectors) const {
+    variadic_terms_collectors collectors) const {
   // per segment phrase states
-  variadic_phrase_query::states_t phrase_states(rdr.size());
+  variadic_phrase_query::states_t phrase_states(index.size());
 
   // per segment phrase terms
-  phrase_state<order::prepared::VariadicContainer>::terms_states_t phrase_terms;
+  phrase_state<VariadicContainer>::terms_states_t phrase_terms;
   auto phrase_size = phrase_.size();
   phrase_terms.resize(phrase_size);
 
   // iterate over the segments
   const string_ref field = fld_;
 
-  for (const auto& sr : rdr) {
-    // get term dictionary for field
-    const term_reader* tr = sr.field(field);
+  const auto is_ord_empty = ord.empty();
 
-    if (!tr) {
+  for (const auto& segment : index) {
+    // get term dictionary for field
+    const auto* reader = segment.field(field);
+
+    if (!reader) {
       continue;
     }
 
     // check required features
-    if (!by_phrase::required().is_subset_of(tr->meta().features)) {
+    if (!by_phrase::required().is_subset_of(reader->meta().features)) {
       continue;
     }
 
-    collectors.collect(sr, *tr); // collect field statistics once per segment
+    collectors.collect(segment, *reader); // collect field statistics once per segment
 
-    // find terms
-    seek_term_iterator::ptr term = tr->iterator();
-    size_t term_itr = 0;
+    size_t term_offset = 0;
     size_t found_words_count = 0;
 
-    size_t i = 0;
+    phrase_part::phrase_term_visitor<variadic_terms_collectors> ptv(
+      segment, *reader, collectors);
+
     for (const auto& word : phrase_) {
-      auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
-      auto& pt = phrase_terms[i++];
-      auto type = word.second.type;
-      bytes_ref pattern;
-      auto stop = false;
-      switch (word.second.type) {
-        case PhrasePartType::TERM:
-          pattern = word.second.st.term;
+      ptv.reset(phrase_terms[term_offset], term_offset);
+      if (!phrase_part::variadic_type_collect(*reader, word.second, ptv)) {
+        if (is_ord_empty) {
           break;
-        case PhrasePartType::PREFIX:
-          pattern = word.second.pt.term;
-          break;
-        case PhrasePartType::WILDCARD:
-          pattern = word.second.wt.term;
-          switch (irs::wildcard_type(pattern)) {
-            case WildcardType::INVALID:
-              if (ord.empty()) {
-                stop = true;
-                // else we should collect
-                // stats for other terms in phrase
-              }
-              break;
-            case WildcardType::TERM:
-              type = PhrasePartType::TERM;
-              break;
-            case WildcardType::MATCH_ALL:
-              pattern = bytes_ref::EMPTY; // empty prefix == match all
-              type = PhrasePartType::PREFIX;
-              break;
-            case WildcardType::PREFIX: {
-              assert(!pattern.empty());
-              const auto* begin = pattern.c_str();
-              const auto* end = begin + pattern.size();
-
-              // pattern is already checked to be a valid UTF-8 sequence
-              const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
-              assert(pos != end);
-              pattern = bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
-              type = PhrasePartType::PREFIX;
-              break;
-            }
-            case WildcardType::WILDCARD:
-              // do nothing
-              break;
-            default:
-              assert(false);
-          }
-          break;
-        case PhrasePartType::LEVENSHTEIN:
-          if (0 == word.second.lt.max_distance) {
-            type = PhrasePartType::TERM;
-          }
-          break;
-        case PhrasePartType::SET:
-          if (word.second.ct.terms.size() == 1) {
-            pattern = word.second.ct.terms.front();
-            type = PhrasePartType::TERM;
-          }
-          break;
-        default:
-          assert(false);
+        }
+        // continue here because we should collect
+        // stats for other terms in phrase
+      } else {
+        ++found_words_count;
       }
-      if (stop) {
-        break;
-      }
-
-      switch (type) {
-        case PhrasePartType::TERM: {
-          if (!term->seek(pattern)) {
-            if (ord.empty()) {
-              stop = true;
-              // else we should collect
-              // stats for other terms in phrase
-            }
-            break;
-          }
-
-          term->read(); // read term attributes
-          collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
-
-          // estimate phrase & term
-          pt.emplace_back(term->cookie());
-          ++found_words_count;
-          break;
-        }
-        case PhrasePartType::PREFIX: {
-          // seek to prefix
-          if (SeekResult::END == term->seek_ge(pattern)) {
-            if (ord.empty()) {
-              stop = true;
-              // else we should collect
-              // stats for other terms in phrase
-            }
-            break;
-          }
-
-          const auto& value = term->value();
-
-          #ifdef IRESEARCH_DEBUG
-            auto found = false;
-          #endif
-          while (starts_with(value, pattern)) {
-            #ifdef IRESEARCH_DEBUG
-              found = true;
-            #endif
-            term->read();
-            collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
-
-            // estimate phrase & term
-            pt.emplace_back(term->cookie());
-            if (!term->next()) {
-              break;
-            }
-          }
-          #ifdef IRESEARCH_DEBUG
-            assert(found);
-          #endif
-          ++found_words_count;
-          break;
-        }
-        case PhrasePartType::WILDCARD: {
-          const auto& acceptor = from_wildcard(pattern);
-          automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
-
-          if (fst::kError == matcher.Properties(0)) {
-            IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
-                          "got the following properties " IR_UINT64_T_SPECIFIER "",
-                          acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
-            if (ord.empty()) {
-              stop = true;
-              // else we should collect
-              // stats for other terms in phrase
-            }
-            break;
-          }
-
-          auto term_wildcard = tr->iterator(matcher);
-
-          auto found = false;
-          while (term_wildcard->next()) {
-            found = true;
-            term_wildcard->read();
-            collectors.collect(sr, *tr, term_itr, term_wildcard->attributes()); // collect statistics
-
-            // estimate phrase & term
-            pt.emplace_back(term_wildcard->cookie());
-          }
-          if (found) {
-            ++found_words_count;
-          } else if (ord.empty()) {
-            stop = true;
-            // else we should collect
-            // stats for other terms in phrase
-          }
-          break;
-        }
-        case PhrasePartType::LEVENSHTEIN: {
-          assert(word.second.lt.provider);
-          const auto& d = (*word.second.lt.provider)(word.second.lt.max_distance,
-                                                     word.second.lt.with_transpositions);
-          if (!d) {
-            if (ord.empty()) {
-              stop = true;
-              // else we should collect
-              // stats for other terms in phrase
-            }
-            break;
-          }
-          const auto& acceptor = irs::make_levenshtein_automaton(d, word.second.lt.term);
-          automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
-
-          if (fst::kError == matcher.Properties(0)) {
-            IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
-                          "got the following properties " IR_UINT64_T_SPECIFIER "",
-                          acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
-            if (ord.empty()) {
-              stop = true;
-              // else we should collect
-              // stats for other terms in phrase
-            }
-            break;
-          }
-          auto term_levenshtein = tr->iterator(matcher);
-
-          auto found = false;
-          while (term_levenshtein->next()) {
-            found = true;
-            term_levenshtein->read();
-            collectors.collect(sr, *tr, term_itr, term_levenshtein->attributes()); // collect statistics
-
-            // estimate phrase & term
-            pt.emplace_back(term_levenshtein->cookie());
-          }
-          if (found) {
-            ++found_words_count;
-          } else if (ord.empty()) {
-            stop = true;
-            // else we should collect
-            // stats for other terms in phrase
-          }
-          break;
-        }
-        case PhrasePartType::SET: {
-          auto found = false;
-          for (const auto& pat : word.second.ct.terms) {
-            if (!term->seek(pat)) {
-              continue;
-            }
-            found = true;
-
-            term->read(); // read term attributes
-            collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
-
-            // estimate phrase & term
-            pt.emplace_back(term->cookie());
-          }
-          if (found) {
-            ++found_words_count;
-          } else if (ord.empty()) {
-            stop = true;
-            // else we should collect
-            // stats for other terms in phrase
-          }
-          break;
-        }
-        default:
-          assert(false);
-      }
-      if (stop) {
-        break;
-      }
+      ++term_offset;
     }
 
     // we have not found all needed terms
@@ -1000,9 +690,9 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       continue;
     }
 
-    auto& state = phrase_states.insert(sr);
+    auto& state = phrase_states.insert(segment);
     state.terms = std::move(phrase_terms);
-    state.reader = tr;
+    state.reader = reader;
 
     phrase_terms.resize(phrase_size);
   }
@@ -1023,7 +713,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   ord.prepare_stats(stats_buf);
-  collectors.finish(stats_buf, rdr);
+  collectors.finish(stats_buf, index);
 
   return memory::make_shared<variadic_phrase_query>(
     std::move(phrase_states),

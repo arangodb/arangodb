@@ -1,4 +1,0 @@
-include *.rst
-include setup.*
-recursive-include src *.py
-include MANIFEST.in

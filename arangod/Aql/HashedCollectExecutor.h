@@ -139,14 +139,6 @@ class HashedCollectExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   * @deprecated
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
@@ -166,7 +158,8 @@ class HashedCollectExecutor {
    * it knows that it can only create as many new rows as pulled from upstream.
    * So it will overestimate.
    */
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   using AggregateValuesType = std::vector<std::unique_ptr<Aggregator>>;
@@ -215,7 +208,7 @@ class HashedCollectExecutor {
 
   /// @brief hashmap of all encountered groups
   GroupMapType _allGroups;
-  GroupMapType::iterator _currentGroup;
+  GroupMapType::const_iterator _currentGroup;
 
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 

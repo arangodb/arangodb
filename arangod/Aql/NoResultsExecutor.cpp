@@ -43,3 +43,10 @@ auto NoResultsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCal
   return {inputRange.upstreamState(), NoStats{}, 0,
           AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 };
+
+[[nodiscard]] auto NoResultsExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                                              AqlCall const& call) const
+    noexcept -> size_t {
+  // Well nevermind the input, but we will always return 0 rows here.
+  return 0;
+}

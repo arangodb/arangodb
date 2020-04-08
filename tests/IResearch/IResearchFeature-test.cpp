@@ -52,7 +52,6 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
-#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -121,7 +120,7 @@ class IResearchFeatureTest
     dataPath += "-";
     dataPath += std::to_string(link.collection().id());
     dataPath += "_";
-    dataPath += std::to_string(link.id());
+    dataPath += std::to_string(link.id().id());
     return dataPath;
   }
 };
@@ -638,12 +637,12 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(1000))));  // wait for the first task to start
 
-  std::thread thread([resourceMutex]() -> void { resourceMutex->reset(); });  // try to aquire a write lock
+  std::thread thread([resourceMutex]() -> void { resourceMutex->reset(); });  // try to acquire a write lock
   std::this_thread::sleep_for(std::chrono::milliseconds(100));  // hopefully a write-lock aquisition attempt is in progress
 
   {
     TRY_SCOPED_LOCK_NAMED(resourceMutex->mutex(), resourceLock);
-    EXPECT_FALSE(resourceLock.owns_lock());  // write-lock aquired successfully (read-locks blocked)
+    EXPECT_FALSE(resourceLock.owns_lock());  // write-lock acquired successfully (read-locks blocked)
   }
 
   {
@@ -651,7 +650,7 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
                                [](bool* ptr) -> void { *ptr = true; });
     feature.async(resourceMutex, [flag](size_t&, bool) -> bool { return false; });  // will never get invoked because resourceMutex is reset
   }
-  cond.notify_all();  // wake up first task after resourceMutex write-lock aquired (will process pending tasks)
+  cond.notify_all();  // wake up first task after resourceMutex write-lock acquired (will process pending tasks)
   lock.unlock();      // allow first task to run
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   EXPECT_TRUE(deallocated0);
@@ -973,7 +972,7 @@ class IResearchFeatureTestDBServer
     dataPath += "-";
     dataPath += std::to_string(link.collection().id());
     dataPath += "_";
-    dataPath += std::to_string(link.id());
+    dataPath += std::to_string(link.id().id());
     return dataPath;
   }
 };

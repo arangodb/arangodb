@@ -26,20 +26,14 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/Enumerate.h"
 
 #include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
 static constexpr size_t InvalidRowIndex = std::numeric_limits<size_t>::max();
-
-namespace {
-static size_t FirstReleveantDataRowInBlock(SharedAqlItemBlockPtr const& block) {
-  auto const& shadowIndexes = block->getShadowRowIndexes();
-  TRI_ASSERT(!shadowIndexes.empty());
-  return *shadowIndexes.rbegin() + 1;
-}
-}  // namespace
 
 size_t AqlItemMatrix::numberOfBlocks() const noexcept { return _blocks.size(); }
 
@@ -57,66 +51,21 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
   std::vector<RowIndex> result;
   if (!empty()) {
     result.reserve(size());
-    uint32_t index = 0;
-    if (_blocks.size() == 1) {
-      // Special case, we only have a single block
-      auto const& block = _blocks.front();
+    for (auto const& [index, block] : enumerate(_blocks)) {
       // Default case, 0 -> end
       size_t startRow = 0;
       // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
       size_t endRow = block->size();
 
-      if (block->hasShadowRows()) {
-        // We have one (or more) shadowRow(s) with this block.
-        // We need to adjast start / end row to the slice of ShadowRows we are working on.
-        if (stoppedOnShadowRow()) {
-          // We need to stop on _lastShadowRow;
-          endRow = _lastShadowRow;
-
-          auto const& shadowIndexes = block->getShadowRowIndexes();
-          TRI_ASSERT(!shadowIndexes.empty());
-          // we need to start at the ShadowRow before _lastShadowRow
-          auto before = shadowIndexes.find(_lastShadowRow);
-          if (before != shadowIndexes.begin()) {
-            before--;
-            // Pick the shadowRow before the lastShadowRow
-            // And start from the line AFTER.
-            // NOTE: This could already be the next shadowRow. in this case we return an empty list
-            startRow = *before + 1;
-          }
-        } else {
-          // We need to start after the last shadowRow
-          // NOTE: this might be AFTER the block, but this will be sorted out by the loop later.
-          startRow = ::FirstReleveantDataRowInBlock(block);
-        }
+      if (index == 0) {
+        startRow = _startIndexInFirstBlock;
+      }
+      if (index + 1 == _blocks.size() && _stopIndexInLastBlock != InvalidRowIndex) {
+        endRow = _stopIndexInLastBlock;
       }
       for (; startRow < endRow; ++startRow) {
         TRI_ASSERT(!block->isShadowRow(startRow));
         result.emplace_back(index, static_cast<uint32_t>(startRow));
-      }
-    } else {
-      for (auto const& block : _blocks) {
-        // Default case, 0 -> end
-        size_t startRow = 0;
-        // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
-        size_t endRow = block->size();
-
-        if (block == _blocks.front() && block->hasShadowRows()) {
-          // The first block was sliced by a ShadowRow, we need to pick everything after the last:
-          startRow = ::FirstReleveantDataRowInBlock(block);
-        } else if (block == _blocks.back() && block->hasShadowRows()) {
-          // The last Block is sliced by a shadowRow. We can only use data up to this shadow row
-          endRow = _lastShadowRow;
-        } else {
-          // Intermediate blocks cannot have shadow rows.
-          // Go from 0 -> end
-          TRI_ASSERT(!block->hasShadowRows());
-        }
-        for (; startRow < endRow; ++startRow) {
-          TRI_ASSERT(!block->isShadowRow(startRow));
-          result.emplace_back(index, static_cast<uint32_t>(startRow));
-        }
-        ++index;
       }
     }
   }
@@ -128,6 +77,8 @@ bool AqlItemMatrix::empty() const noexcept { return _blocks.empty(); }
 void AqlItemMatrix::clear() {
   _blocks.clear();
   _size = 0;
+  _startIndexInFirstBlock = 0;
+  _stopIndexInLastBlock = InvalidRowIndex;
 }
 
 RegisterId AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
@@ -160,8 +111,8 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
   if (blockPtr->hasShadowRows()) {
     TRI_ASSERT(!blockPtr->getShadowRowIndexes().empty());
     // Let us stop on the first
-    _lastShadowRow = *blockPtr->getShadowRowIndexes().begin();
-    _size += _lastShadowRow;
+    _stopIndexInLastBlock = *blockPtr->getShadowRowIndexes().begin();
+    _size += _stopIndexInLastBlock;
   } else {
     _size += blockPtr->size();
   }
@@ -171,36 +122,36 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
 }
 
 bool AqlItemMatrix::stoppedOnShadowRow() const noexcept {
-  return _lastShadowRow != InvalidRowIndex;
+  return _stopIndexInLastBlock != InvalidRowIndex;
 }
 
 ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
   TRI_ASSERT(stoppedOnShadowRow());
   auto const& blockPtr = _blocks.back();
   // We need to return this shadow row
-  ShadowAqlItemRow shadowRow{_blocks.back(), _lastShadowRow};
+  ShadowAqlItemRow shadowRow{_blocks.back(), _stopIndexInLastBlock};
 
   // We need to move forward the next shadow row.
   auto const& shadowIndexes = blockPtr->getShadowRowIndexes();
-  auto next = shadowIndexes.find(_lastShadowRow);
-  auto lastSize = _lastShadowRow;
+  auto next = shadowIndexes.find(_stopIndexInLastBlock);
+  _startIndexInFirstBlock = _stopIndexInLastBlock + 1;
 
   next++;
 
   if (next != shadowIndexes.end()) {
-    _lastShadowRow = *next;
+    _stopIndexInLastBlock = *next;
     TRI_ASSERT(stoppedOnShadowRow());
     // We move always forward
-    TRI_ASSERT(_lastShadowRow > lastSize);
-    _size = _lastShadowRow - lastSize - 1;
+    TRI_ASSERT(_stopIndexInLastBlock >= _startIndexInFirstBlock);
+    _size = _stopIndexInLastBlock - _startIndexInFirstBlock;
   } else {
-    _lastShadowRow = InvalidRowIndex;
+    _stopIndexInLastBlock = InvalidRowIndex;
     TRI_ASSERT(!stoppedOnShadowRow());
-    // lastSize a 0 based index. size is a counter.
-    TRI_ASSERT(blockPtr->size() > lastSize);
-    _size = blockPtr->size() - lastSize - 1;
+    // _stopIndexInLastBlock a 0 based index. size is a counter.
+    TRI_ASSERT(blockPtr->size() >= _startIndexInFirstBlock);
+    _size = blockPtr->size() - _startIndexInFirstBlock;
   }
-  // Remove all but the last
+  // Remove all but the last block
   _blocks.erase(_blocks.begin(), _blocks.end() - 1);
   TRI_ASSERT(_blocks.size() == 1);
   return shadowRow;
@@ -208,9 +159,41 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
 
 ShadowAqlItemRow AqlItemMatrix::peekShadowRow() const {
   TRI_ASSERT(stoppedOnShadowRow());
-  return ShadowAqlItemRow{_blocks.back(), _lastShadowRow};
+  return ShadowAqlItemRow{_blocks.back(), _stopIndexInLastBlock};
 }
 
 AqlItemMatrix::AqlItemMatrix(RegisterId nrRegs)
-    : _size(0), _nrRegs(nrRegs), _lastShadowRow(InvalidRowIndex) {
+    : _size(0), _nrRegs(nrRegs), _stopIndexInLastBlock(InvalidRowIndex) {}
+
+[[nodiscard]] auto AqlItemMatrix::countDataRows() const noexcept -> std::size_t {
+  size_t num = 0;
+  for (auto const& block : _blocks) {
+    // We only have valid blocks
+    TRI_ASSERT(block != nullptr);
+    num += block->size();
+  }
+  // Guard against underflow
+  TRI_ASSERT(_startIndexInFirstBlock + countShadowRows() <= num);
+  // We have counted overall amount.
+  // Subtract all rows we have already delivered (_startIndex)
+  // Subtract all shadow rows.
+  return num - _startIndexInFirstBlock - countShadowRows();
+}
+
+[[nodiscard]] auto AqlItemMatrix::countShadowRows() const noexcept -> std::size_t {
+  // We can only have shadow rows in the last block
+  if (!stoppedOnShadowRow()) {
+    return 0;
+  }
+  auto const& block = _blocks.back();
+  auto const& rows = block->getShadowRowIndexes();
+  return std::count_if(rows.begin(), rows.end(),
+                       [&](auto r) -> bool { return r >= _stopIndexInLastBlock; });
+}
+
+[[nodiscard]] auto AqlItemMatrix::hasMoreAfterShadowRow() const noexcept -> bool {
+  if (_blocks.empty()) {
+    return false;
+  }
+  return _stopIndexInLastBlock + 1 < _blocks.back()->size();
 }

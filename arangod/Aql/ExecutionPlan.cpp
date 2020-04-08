@@ -56,6 +56,7 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
 
 using namespace arangodb;
@@ -695,7 +696,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(CalculationNode const* previo
                             nullptr, nullptr, std::vector<Variable const*>(),
                             _ast->variables()->variables(false), false, true);
 
-  registerNode(reinterpret_cast<ExecutionNode*>(en));
+  registerNode(en);
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
   en->specialized();
 
@@ -737,7 +738,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -745,33 +746,32 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 
         TRI_ASSERT(value->isConstant());
 
-        if (name == "waitForSync") {
+        if (name == StaticStrings::WaitForSyncString) {
           options.waitForSync = value->isTrue();
         } else if (name == StaticStrings::SkipDocumentValidation) {
           options.validate = ! value->isTrue();
-        } else if (name == "ignoreErrors") {
-          options.ignoreErrors = value->isTrue();
-        } else if (name == "keepNull") {
-          // nullMeansRemove is the opposite of keepNull
-          options.nullMeansRemove = value->isFalse();
-        } else if (name == "mergeObjects") {
+        } else if (name == StaticStrings::KeepNullString) {
+          options.keepNull = value->isTrue();
+        } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
+        } else if (name == StaticStrings::Overwrite && value->isTrue()) {
+          // legacy: overwrite is set, superseded by overwriteMode
+          // default behavior if only "overwrite" is specified
+          if (!options.isOverwriteModeSet()) {
+            options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+          }
+        } else if (name == StaticStrings::OverwriteMode && value->isStringValue()) {
+          auto overwriteMode = OperationOptions::determineOverwriteMode(value->getStringRef());
+
+          if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+            options.overwriteMode = overwriteMode;
+          }
+        } else if (name == StaticStrings::IgnoreRevsString) {
+          options.ignoreRevs = value->isTrue();
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
-        } else if (name == "overwrite") {
-          if(value->isTrue()) {
-            options.overwrite = true;
-          }
-        } else if (name == "overwriteMode" && value->isStringValue()) {
-          auto ref = value->getStringRef();
-          if(ref == "update") {
-            options.overwrite = true;
-            options.overwriteModeUpdate = true;
-          } else if(ref == "replace") {
-            options.overwrite = true;
-          }
-        } else if (name == "ignoreRevs") {
-          options.ignoreRevs = value->isTrue();
+        } else if (name == "ignoreErrors") {
+          options.ignoreErrors = value->isTrue();
         }
       }
     }

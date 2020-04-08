@@ -31,6 +31,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
@@ -69,7 +70,6 @@ class RestHandlerFactory;
 }
 
 namespace transaction {
-class ContextData;
 struct Options;
 }  // namespace transaction
 
@@ -144,11 +144,7 @@ class RocksDBEngine final : public StorageEngine {
   void stop() override;
   void unprepare() override;
 
-  bool supportsDfdb() const override { return false; }
-  bool useRawDocumentPointers() override { return false; }
-
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
-  std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
@@ -183,11 +179,6 @@ class RocksDBEngine final : public StorageEngine {
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
-  std::string collectionPath(TRI_vocbase_t const& /*vocbase*/, TRI_voc_cid_t /*id*/
-                             ) const override {
-    return std::string();  // no path to be returned here
-  }
-
   void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
@@ -213,9 +204,6 @@ class RocksDBEngine final : public StorageEngine {
   // database, collection and index management
   // -----------------------------------------
 
-  // intentionally empty, not useful for this type of engine
-  void waitForSyncTick(TRI_voc_tick_t) override {}
-
   /// @brief return a list of the currently open WAL files
   std::vector<std::string> currentWalFiles() const override;
 
@@ -229,16 +217,12 @@ class RocksDBEngine final : public StorageEngine {
   int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
-  void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery
   RecoveryState recoveryState() noexcept override;
 
   /// @brief current recovery tick
   TRI_voc_tick_t recoveryTick() noexcept override;
-
-  // start compactor thread and delete files form collections marked as deleted
-  void recoveryDone(TRI_vocbase_t& vocbase) override;
 
  public:
   /// @brief disallow purging of WAL files even if the archive gets too big
@@ -249,15 +233,10 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not purging of WAL files is currently allowed
   RocksDBFilePurgeEnabler startPurging() noexcept;
 
-  std::string createCollection(TRI_vocbase_t& vocbase,
-                               LogicalCollection const& collection) override;
-
-  arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection) override;
+  void createCollection(TRI_vocbase_t& vocbase,
+                        LogicalCollection const& collection) override;
 
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
-
-  void destroyCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection, bool doSync) override;
@@ -265,27 +244,13 @@ class RocksDBEngine final : public StorageEngine {
   arangodb::Result renameCollection(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
                                     std::string const& oldName) override;
 
-  void unloadCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
-
   arangodb::Result changeView(TRI_vocbase_t& vocbase,
                               arangodb::LogicalView const& view, bool doSync) override;
 
   arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
                               arangodb::LogicalView const& view) override;
 
-  virtual void getViewProperties(TRI_vocbase_t& /*vocbase*/,
-                                 LogicalView const& /*view*/, velocypack::Builder& /*builder*/
-                                 ) override {
-    // does nothing
-  }
-
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
-
-  void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept override;
-
-  void signalCleanup(TRI_vocbase_t& vocbase) override;
-
-  int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
@@ -309,12 +274,12 @@ class RocksDBEngine final : public StorageEngine {
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
   std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> collectionMappings() const;
-  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, TRI_voc_cid_t, IndexId);
   void removeIndexMapping(uint64_t);
 
   // Identifies a collection
   typedef std::pair<TRI_voc_tick_t, TRI_voc_cid_t> CollectionPair;
-  typedef std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> IndexTriple;
+  typedef std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, IndexId> IndexTriple;
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 
@@ -425,7 +390,7 @@ public:
   rocksdb::TransactionDB* _db;
   /// default read options
   rocksdb::Options _options;
-  /// arangodb comparator - requried because of vpack in keys
+  /// arangodb comparator - required because of vpack in keys
   std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
   /// path used by rocksdb (inside _basePath)
   std::string _path;

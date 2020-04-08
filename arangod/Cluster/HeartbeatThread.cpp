@@ -1248,7 +1248,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        databaseFeature.dropDatabase(id, false, true);
+        databaseFeature.dropDatabase(id, true);
       }
     }
 

@@ -449,15 +449,16 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
                                          arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(0, collection, StaticStrings::IndexNamePrimary,
+    : RocksDBIndex(IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),
-                   basics::VelocyPackHelper::stringUInt64(info, "objectId"),
+                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
+                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
                    static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
       _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
-  TRI_ASSERT(_objectId != 0);
+  TRI_ASSERT(objectId() != 0);
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() = default;
@@ -486,7 +487,7 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
 LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                                arangodb::velocypack::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
-  key->constructPrimaryIndexValue(_objectId, keyRef);
+  key->constructPrimaryIndexValue(objectId(), keyRef);
 
   bool lockTimeout = false;
   if (useCache()) {
@@ -552,7 +553,7 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   revisionId = 0;
 
   RocksDBKeyLeaser key(trx);
-  key->constructPrimaryIndexValue(_objectId, keyRef);
+  key->constructPrimaryIndexValue(objectId(), keyRef);
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
@@ -581,7 +582,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
   TRI_ASSERT(keySlice.isString());
   RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
+  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
   transaction::StringLeaser leased(&trx);
   rocksdb::PinnableSlice ps(leased.get());
@@ -629,7 +630,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
   RocksDBKeyLeaser key(&trx);
 
-  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
+  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
@@ -655,7 +656,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   TRI_ASSERT(keySlice.isString());
   RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
+  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
@@ -695,12 +696,14 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
           &_collection /*logical collection*/, trx, this,
-          RocksDBKeyBounds::PrimaryIndex(_objectId, ::lowest, ::highest), opts.forceProjection);
+          RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
+          opts.forceProjection);
     }
     // reverse version
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
         &_collection /*logical collection*/, trx, this,
-        RocksDBKeyBounds::PrimaryIndex(_objectId, ::lowest, ::highest), opts.forceProjection);
+        RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
+        opts.forceProjection);
   }
 
   TRI_ASSERT(node != nullptr);
@@ -864,12 +867,12 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
           &_collection /*logical collection*/, trx, this,
-          RocksDBKeyBounds::PrimaryIndex(_objectId, lower, upper), opts.forceProjection);
+          RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper), opts.forceProjection);
     }
     // reverse version
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
         &_collection /*logical collection*/, trx, this,
-        RocksDBKeyBounds::PrimaryIndex(_objectId, lower, upper), opts.forceProjection);
+        RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper), opts.forceProjection);
   }
 
   // operator type unsupported or IN used on non-array

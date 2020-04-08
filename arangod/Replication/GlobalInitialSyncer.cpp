@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -50,7 +51,7 @@ using namespace arangodb::rest;
 GlobalInitialSyncer::GlobalInitialSyncer(ReplicationApplierConfiguration const& configuration)
     : InitialSyncer(configuration) {
   // has to be set here, otherwise broken
-  _state.databaseName = TRI_VOC_SYSTEM_DATABASE;
+  _state.databaseName = StaticStrings::SystemDatabase;
 }
 
 GlobalInitialSyncer::~GlobalInitialSyncer() {

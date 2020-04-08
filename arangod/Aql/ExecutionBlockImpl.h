@@ -28,6 +28,7 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallSet.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
@@ -142,6 +143,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     UPSTREAM,
     // We are done with a subquery, we need to pass forward ShadowRows
     SHADOWROWS,
+    // We have passed the shadowRows and check if we can continue with the next subquery
+    NEXTSUBQUERY,
     // Locally done, ready to return, will set state to resetted
     DONE
   };
@@ -173,54 +176,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///        Is currently called conditionally in execute() itself, but should
   ///        better be called in instantiateFromPlan and similar methods.
   void init();
-
-  /**
-   * @brief Produce atMost many output rows, or less.
-   *        May return waiting if I/O has to be performed
-   *        so we can release this thread.
-   *        Is required to return DONE if it is guaranteed
-   *        that this block does not produce more rows,
-   *        Returns HASMORE if the DONE guarantee cannot be given.
-   *        HASMORE does not give strict guarantee, it maybe that
-   *        HASMORE is returned but no more rows can be produced.
-   *
-   * @param atMost Upper bound of AqlItemRows to be returned.
-   *               Target is to get as close to this upper bound
-   *               as possible.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediately return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with
-   *                   this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if
-   *                      you need more input.
-   *         AqlItemBlock:
-   *           A matrix of result rows.
-   *           Guaranteed to be non nullptr in the HASMORE case, maybe a nullptr
-   *           in DONE. Is a nullptr in WAITING.
-   */
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
-
-  /**
-   * @brief Like get some, but lines are skipped and not returned.
-   *        This can use optimizations to not actually create the data.
-   *
-   * @param atMost Upper bound of AqlItemRows to be skipped.
-   *               Target is to get as close to this upper bound
-   *               as possible.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with
-   *                   this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if
-   *                   you need more input. size_t: Number of rows effectively
-   *                   skipped. On WAITING this is always 0. On any other state
-   *                   this is between 0 and atMost.
-   */
-  [[nodiscard]] std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
   [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
@@ -258,7 +213,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
   std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
-      AqlCallStack& stack, AqlCallType const& aqlCall);
+      AqlCallStack& stack, AqlCallType const& aqlCall, bool wasCalledWithContinueCall);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);
@@ -269,32 +224,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
       -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType>;
-
-  /**
-   * @brief Inner getSome() part, without the tracing calls.
-   */
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
-
-  /**
-   * @brief Inner skipSome() part, without the tracing calls.
-   */
-  [[nodiscard]] std::pair<ExecutionState, size_t> skipSomeOnceWithoutTrace(size_t atMost);
-
-  /**
-   * @brief Allocates a new AqlItemBlock and returns it, with the specified
-   *        number of rows (nrItems) and columns (nrRegs).
-   *        In case the Executor supports pass-through of blocks (i.e. reuse the
-   *        input blocks as output blocks), it returns such an input block. In
-   *        this case, the number of columns must still match - this has to be
-   *        guaranteed by register planning.
-   *        The state will be HASMORE if and only if it returns an actual block,
-   *        which it always will in the non-pass-through case (modulo
-   *        exceptions). If it is WAITING or DONE, the returned block is always
-   *        a nullptr. This happens only if upstream is WAITING, or
-   *        respectively, if it is DONE and did not return a new block.
-   */
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(
-      size_t nrItems, RegisterId nrRegs);
 
   [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock,
                                                                   AqlCall&& call);
@@ -309,12 +238,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] ExecutionState fetchShadowRowInternal();
 
   // Allocate an output block and install a call in it
-  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call)
+  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
       -> std::unique_ptr<OutputAqlItemRow>;
 
-  // Ensure that we have an output block of the desired dimenstions
+  // Ensure that we have an output block of the desired dimensions
   // Will as a side effect modify _outputItemRow
-  void ensureOutputBlock(AqlCall&& call);
+  void ensureOutputBlock(AqlCall&& call, DataRange const& inputRange);
 
   // Compute the next state based on the given call.
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
@@ -323,7 +252,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Executor is done, we need to handle ShadowRows of subqueries.
   // In most executors they are simply copied, in subquery executors
   // there needs to be actions applied here.
-  [[nodiscard]] auto shadowRowForwarding() -> ExecState;
+  [[nodiscard]] auto shadowRowForwarding(AqlCallStack& stack) -> ExecState;
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
@@ -340,20 +269,16 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
                                                    SkipResult& skipResult) -> ExecState;
 
-  /**
-   * @brief Transition to the next state after shadowRows
-   *
-   * @param state the state returned by the getShadowRowCall
-   * @param range the current data range
-   * @return ExecState The next state
-   */
-  [[nodiscard]] auto nextStateAfterShadowRows(ExecutorState const& state,
-                                              DataRange const& range) const
-      noexcept -> ExecState;
-
   void initOnce();
 
   [[nodiscard]] auto executorNeedsCall(AqlCallType& call) const noexcept -> bool;
+
+  auto memoizeCall(AqlCall const& call, bool wasCalledWithContinueCall) noexcept -> void;
+
+  [[nodiscard]] auto createUpstreamCall(AqlCall const& call, bool wasCalledWithContinueCall)
+      -> AqlCallList;
+
+  auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
 
  private:
   /**
@@ -391,7 +316,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   AqlCallType _upstreamRequest;
 
+  std::optional<AqlCallType> _defaultUpstreamRequest{std::nullopt};
+
+  bool _hasMemoizedCall{false};
+
   AqlCall _clientRequest;
+
+  AqlCallStack _stackBeforeWaiting;
 
   // Only used in passthrough variant.
   // We track if we have reference the range's block

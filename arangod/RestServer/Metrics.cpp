@@ -101,7 +101,7 @@ void Counter::store(uint64_t const& n) {
 
 void Counter::toPrometheus(std::string& result) const {
   _b.push();
-  result += "#TYPE " + name() + " counter\n";
+  result += "\n#TYPE " + name() + " counter\n";
   result += "#HELP " + name() + " " + help() + "\n";
   result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
 }

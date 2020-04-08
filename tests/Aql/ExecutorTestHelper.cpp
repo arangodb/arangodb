@@ -22,6 +22,7 @@
 
 #include "ExecutorTestHelper.h"
 
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionEngine.h"
 
 using namespace arangodb::tests::aql;
@@ -167,56 +168,4 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
       }
     }
   }
-}
-
-template <bool enableQueryTrace>
-AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase()
-    : fakedQuery{_server->createFakeQuery(enableQueryTrace)} {
-  auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-  fakedQuery->setEngine(engine.release());
-  if constexpr (enableQueryTrace) {
-    Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
-  }
-}
-
-template <bool enableQueryTrace>
-AqlExecutorTestCase<enableQueryTrace>::~AqlExecutorTestCase() {
-  if constexpr (enableQueryTrace) {
-    Logger::QUERIES.setLogLevel(LogLevel::INFO);
-  }
-}
-
-template <bool enableQueryTrace>
-auto AqlExecutorTestCase<enableQueryTrace>::generateNodeDummy() -> ExecutionNode* {
-  auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
-  auto res = dummy.get();
-  _execNodes.emplace_back(std::move(dummy));
-  return res;
-}
-template <bool enableQueryTrace>
-auto AqlExecutorTestCase<enableQueryTrace>::manager() const -> AqlItemBlockManager& {
-  return fakedQuery->engine()->itemBlockManager();
-}
-
-template class ::arangodb::tests::aql::AqlExecutorTestCase<true>;
-template class ::arangodb::tests::aql::AqlExecutorTestCase<false>;
-
-std::ostream& arangodb::tests::aql::operator<<(std::ostream& stream,
-                                               arangodb::tests::aql::ExecutorCall call) {
-  return stream << [call]() {
-    switch (call) {
-      case ExecutorCall::SKIP_ROWS:
-        return "SKIP_ROWS";
-      case ExecutorCall::PRODUCE_ROWS:
-        return "PRODUCE_ROWS";
-      case ExecutorCall::FETCH_FOR_PASSTHROUGH:
-        return "FETCH_FOR_PASSTHROUGH";
-      case ExecutorCall::EXPECTED_NR_ROWS:
-        return "EXPECTED_NR_ROWS";
-    }
-    // The control flow cannot reach this. It is only here to make MSVC happy,
-    // which is unable to figure out that the switch above is complete.
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
-  }();
 }

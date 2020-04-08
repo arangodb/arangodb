@@ -126,7 +126,6 @@
 
 // storage engines
 #include "ClusterEngine/ClusterEngine.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
 #ifdef _WIN32
@@ -266,7 +265,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     // storage engines
     server.addFeature<ClusterEngine>();
-    server.addFeature<MMFilesEngine>();
     server.addFeature<RocksDBEngine>();
 
     try {

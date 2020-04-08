@@ -143,7 +143,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(cursors != nullptr);
 
   bool busy;
-  Cursor* cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
+  Cursor* cursor = cursors->find(cursorId, busy);
   TRI_DEFER(cursors->release(cursor));
 
   if (cursor == nullptr) {
@@ -206,7 +206,7 @@ struct V8Cursor final {
       TRI_vocbase_t* vocbase = v8g->_vocbase;
       if (vocbase) {
         CursorRepository* cursors = vocbase->cursorRepository();
-        cursors->remove(_cursorId, Cursor::CURSOR_VPACK);
+        cursors->remove(_cursorId);
       }
     }
   }
@@ -226,7 +226,7 @@ struct V8Cursor final {
       TRI_GET_GLOBALS();
       CursorRepository* cursors = v8g->_vocbase->cursorRepository();
       bool busy;
-      Cursor* cc = cursors->find(_cursorId, Cursor::CURSOR_VPACK, busy);
+      Cursor* cc = cursors->find(_cursorId, busy);
       if (busy || cc == nullptr) {
         TRI_V8_SET_ERROR(TRI_errno_string(TRI_ERROR_CURSOR_BUSY));
         return false;  // someone else is using it
@@ -517,7 +517,7 @@ struct V8Cursor final {
     if (self != nullptr) {
       TRI_GET_GLOBALS();
       CursorRepository* cursors = v8g->_vocbase->cursorRepository();
-      cursors->remove(self->_cursorId, Cursor::CURSOR_VPACK);
+      cursors->remove(self->_cursorId);
       self->_hasMore = false;
       self->_dataSlice = VPackSlice::noneSlice();
       self->_extraSlice = VPackSlice::noneSlice();

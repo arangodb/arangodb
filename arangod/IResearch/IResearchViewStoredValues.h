@@ -25,8 +25,11 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
-
-#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include "VelocyPackHelper.h"
+#include "IResearchCompression.h"
+#include <unordered_set>
 
 namespace arangodb {
 
@@ -43,6 +46,7 @@ class IResearchViewStoredValues {
   struct StoredColumn {
     std::string name;
     std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> fields;
+    irs::compression::type_id const* compression{ &getDefaultCompression() };
 
     bool operator==(StoredColumn const& rhs) const noexcept {
       return name == rhs.name;
@@ -75,6 +79,12 @@ class IResearchViewStoredValues {
   bool fromVelocyPack(velocypack::Slice, std::string& error);
 
  private:
+  bool buildStoredColumnFromSlice(
+      velocypack::Slice const& columnSlice,
+      std::unordered_set<std::string>& uniqueColumns,
+      std::vector<irs::string_ref>& fieldNames,
+      irs::compression::type_id const* compression);
+
   void clear() noexcept {
     _storedColumns.clear();
   }

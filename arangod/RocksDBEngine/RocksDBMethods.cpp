@@ -121,7 +121,7 @@ std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool i
   auto end = bounds.end();
   rocksdb::Comparator const* cmp = bounds.columnFamily()->GetComparator();
 
-  // extra check to aviod extra comparisons with isElementInRage later;
+  // extra check to avoid extra comparisons with isElementInRage later;
   if (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++count;
     if (isElementInRange) {

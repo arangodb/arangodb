@@ -68,7 +68,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -145,12 +144,9 @@ bool TRI_vocbase_t::markAsDropped() {
   // been marked as deleted
   return (oldValue % 2 == 0);
 }
-
-/// @brief signal the cleanup thread to wake up
-void TRI_vocbase_t::signalCleanup() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  engine->signalCleanup(*this);
+  
+bool TRI_vocbase_t::isSystem() const {
+  return _info.getName() == StaticStrings::SystemDatabase; 
 }
 
 void TRI_vocbase_t::checkCollectionInvariants() const {
@@ -565,32 +561,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     // disk activity, index creation etc.)
     locker.unlock();
 
-    bool ignoreDatafileErrors = false;
-    if (DatabaseFeature::DATABASE != nullptr) {
-      ignoreDatafileErrors = DatabaseFeature::DATABASE->ignoreDatafileErrors();
-    }
-
-    try {
-      collection->open(ignoreDatafileErrors);
-    } catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC("b092e", ERR, arangodb::Logger::FIXME)
-          << "caught exception while opening collection '" << collection->name()
-          << "': " << ex.what();
-      collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
-      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("0daf1", ERR, arangodb::Logger::FIXME)
-          << "caught exception while opening collection '" << collection->name()
-          << "': " << ex.what();
-      collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
-      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
-    } catch (...) {
-      LOG_TOPIC("4711a", ERR, arangodb::Logger::FIXME)
-          << "caught unknown exception while opening collection '"
-          << collection->name() << "'";
-      collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
-      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
-    }
+    TRI_UpdateTickServer(collection->id());
 
     // lock again to adjust the status
     locker.lockEventual();
@@ -769,20 +740,6 @@ void TRI_vocbase_t::stop() {
     // mark all collection keys as deleted so underlying collections can be freed
     // soon, we have to retry, since some of these collection keys might currently
     // still being in use:
-    auto lastTime = TRI_microtime();
-    _collectionKeys->stopStores();
-    while (true) {
-      if (!_collectionKeys->garbageCollect(true)) {
-        break;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      if (TRI_microtime() - lastTime > 1.0) {
-        LOG_TOPIC("ddaae", WARN, Logger::STARTUP)
-          << "Have collection keys left over, keep trying to garbage collect...";
-        lastTime = TRI_microtime();
-      }
-    }
-
   } catch (...) {
     // we are calling this on shutdown, and always want to go on from here
   }
@@ -810,16 +767,6 @@ void TRI_vocbase_t::shutdown() {
     }
     unloadCollection(collection.get(), true);
   }
-
-  // this will signal the compactor thread to do one last iteration
-  setState(TRI_vocbase_t::State::SHUTDOWN_COMPACTOR);
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  engine->shutdownDatabase(*this);  // shutdownDatabase() stops all threads
-
-  // this will signal the cleanup thread to do one last iteration
-  setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
 
   {
     RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
@@ -1145,8 +1092,6 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-
-  auto res2 = engine->persistCollection(*this, *collection); //MMFiles Only
   // API compatibility, we always return the collection,
   // even if creation failed.
 
@@ -1218,11 +1163,8 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
   }  // release locks
 
   collection->unload();
-
-  // wake up the cleanup thread
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  engine->unloadCollection(*this, *collection);
+  
+  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1268,7 +1210,6 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
         DropCollectionCallback(*collection);
       } else {
         collection->deferDropCollection(DropCollectionCallback);
-        engine->signalCleanup(collection->vocbase());  // wake up the cleanup thread
       }
 
       if (DatabaseFeature::DATABASE != nullptr &&
@@ -1719,7 +1660,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
     _info(std::move(info)),
     _type(type),
     _refCount(0),
-    _state(TRI_vocbase_t::State::NORMAL),
     _isOwnAppsDirectory(true),
     _deadlockDetector(false),
     _userStructures(nullptr) {
@@ -1729,7 +1669,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
   _queries.reset(new arangodb::aql::QueryList(feature, this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
-  _collectionKeys.reset(new arangodb::CollectionKeysRepository());
   _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
 
   // init collections
@@ -1744,10 +1683,6 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   if (_userStructures != nullptr) {
     TRI_FreeUserStructuresVocBase(this);
   }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  engine->shutdownDatabase(*this);
 
   // do a final cleanup of collections
   for (auto& it : _collections) {

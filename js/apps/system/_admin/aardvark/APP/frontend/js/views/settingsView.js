@@ -122,28 +122,6 @@
             var status = this.model.get('status');
 
             if (status === 'loaded') {
-              var journalSize;
-              if (frontendConfig.engine !== 'rocksdb') {
-                try {
-                  journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
-                } catch (e) {
-                  arangoHelper.arangoError('Please enter a valid journal size number.');
-                  return 0;
-                }
-              }
-
-              var indexBuckets;
-              if (frontendConfig.engine !== 'rocksdb') {
-                try {
-                  indexBuckets = JSON.parse($('#change-index-buckets').val());
-                  if (indexBuckets < 1 || parseInt(indexBuckets, 10) !== Math.pow(2, Math.log2(indexBuckets))) {
-                    throw new Error('invalid indexBuckets value');
-                  }
-                } catch (e) {
-                  arangoHelper.arangoError('Please enter a valid number of index buckets.');
-                  return 0;
-                }
-              }
               var self = this;
 
               var callbackChange = function (error, data) {
@@ -178,7 +156,7 @@
                     }
                   }
                   if (!abort) {
-                    this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, writeConcern, callbackChange);
+                    this.model.changeCollection(wfs, replicationFactor, writeConcern, callbackChange);
                   }
                 }
               }.bind(this);
@@ -374,46 +352,6 @@
                 arangoHelper.arangoError('Collection', 'Could not fetch properties');
               } else {
                 var wfs = data.waitForSync;
-                if (data.journalSize) {
-                  var journalSize = data.journalSize / (1024 * 1024);
-                  var indexBuckets = data.indexBuckets;
-
-                  tableContent.push(
-                    window.modalView.createTextEntry(
-                      'change-collection-size',
-                      'Journal size',
-                      journalSize,
-                      'The maximal size of a journal or datafile (in MB). Must be at least 1.',
-                      '',
-                      true,
-                      [
-                        {
-                          rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                          msg: 'Must be a number.'
-                        }
-                      ]
-                    )
-                  );
-                }
-
-                if (indexBuckets) {
-                  tableContent.push(
-                    window.modalView.createTextEntry(
-                      'change-index-buckets',
-                      'Index buckets',
-                      indexBuckets,
-                      'The number of index buckets for this collection. Must be at least 1 and a power of 2.',
-                      '',
-                      true,
-                      [
-                        {
-                          rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                          msg: 'Must be a number greater than 1 and a power of 2.'
-                        }
-                      ]
-                    )
-                  );
-                }
                 if (data.replicationFactor && frontendConfig.isCluster) {
                   if (data.replicationFactor === 'satellite') {
                     tableContent.push(

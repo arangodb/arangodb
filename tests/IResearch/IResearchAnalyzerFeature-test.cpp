@@ -87,7 +87,7 @@
 namespace {
 
 struct TestIndex : public arangodb::Index {
-  TestIndex(TRI_idx_iid_t id, arangodb::LogicalCollection& collection,
+  TestIndex(arangodb::IndexId id, arangodb::LogicalCollection& collection,
             arangodb::velocypack::Slice const& definition)
       : arangodb::Index(id, collection, definition) {}
   bool canBeDropped() const override { return false; }
@@ -857,7 +857,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
   void TearDown() override {
     // Not allowed to assert here
     if (server.server().hasFeature<arangodb::DatabaseFeature>()) {
-      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(dbName, true, true);
+      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(dbName, true);
       _vocbase = nullptr;
     }
     analyzerFeature.unprepare();
@@ -1056,7 +1056,7 @@ class IResearchAnalyzerFeatureCoordinatorTest
   void TearDown() override {
     // Not allowed to assert here
     if (server.server().hasFeature<arangodb::DatabaseFeature>()) {
-      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(_dbName, true, true);
+      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(_dbName, true);
       _vocbase = nullptr;
     }
   }
@@ -1092,7 +1092,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
 
       std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                    arangodb::velocypack::Slice const& definition,
-                                                   TRI_idx_iid_t id,
+                                                   arangodb::IndexId id,
                                                    bool isClusterConstructor) const override {
         auto& ci =
             collection.vocbase().server().getFeature<arangodb::ClusterFeature>().clusterInfo();

@@ -156,6 +156,9 @@ ShortestPathExecutor::ShortestPathExecutor(Fetcher&, Infos& infos)
   if (!_infos.useRegisterForTargetInput()) {
     _targetBuilder.add(VPackValue(_infos.getTargetInputValue()));
   }
+  // Make sure the finder does not contain any leftovers in case of
+  // the executor being reconstructed.
+  _finder.clear();
 }
 
 // Shutdown query
@@ -209,6 +212,7 @@ auto ShortestPathExecutor::doSkipPath(AqlCall& call) -> size_t {
 auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
   // We only want to call fetchPath if we don't have a path currently available
   TRI_ASSERT(pathLengthAvailable() == 0);
+  _finder.clear();
   _path->clear();
   _posInPath = 0;
 
@@ -235,11 +239,6 @@ auto ShortestPathExecutor::pathLengthAvailable() -> size_t {
   // Subtraction must not undeflow
   TRI_ASSERT(_posInPath <= _path->length());
   return _path->length() - _posInPath;
-}
-
-std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)

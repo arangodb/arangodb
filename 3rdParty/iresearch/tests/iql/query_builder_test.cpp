@@ -76,7 +76,6 @@ namespace tests {
       }
       virtual void prepare_score(iresearch::byte_type* score) const override {}
       virtual void prepare_stats(irs::byte_type*) const override { }
-      virtual void merge(irs::byte_type* dst_buf, const irs::byte_type** src_start, const size_t size, size_t offset) const override { }
       virtual bool less(const iresearch::byte_type* lhs, const iresearch::byte_type* rhs) const override { throw std::bad_function_call(); }
       std::pair<size_t, size_t> score_size() const override {
         return std::make_pair(size_t(0), size_t(0));

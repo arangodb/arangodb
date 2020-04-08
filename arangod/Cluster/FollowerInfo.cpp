@@ -336,6 +336,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   std::string curPath = CurrentShardPath(*_docColl);
   std::string planPath = PlanShardPath(*_docColl);
   AgencyComm ac(_docColl->vocbase().server());
+  int badCurrentCount = 0;
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
       LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
@@ -356,6 +357,15 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
             << reportName(isRemove) << ", did not find object in " << curPath;
         if (!currentEntry.isNone()) {
           LOG_TOPIC("57c84", ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
+        }
+        // We have to prevent an endless loop in this case, if the collection has
+        // been dropped in the agency in the meantime
+        ++badCurrentCount;
+        if (badCurrentCount > 30) {
+          // this retries for 15s, if current is bad for such a long time, we
+          // assume that the collection has been dropped in the meantime:
+          LOG_TOPIC("8972b", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
+          return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
         }
       } else {
         if (!planEntry.isArray() || planEntry.length() == 0 || !planEntry[0].isString() ||

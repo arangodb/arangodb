@@ -15,7 +15,7 @@ Returns the array of collections and indexes available on the cluster.
 The response will be an array of JSON objects, one for each collection.
 Each collection containscontains exactly two keys "parameters" and
 "indexes". This
-information comes from Plan/Collections/{DB-Name}/* in the agency,
+information comes from Plan/Collections/{DB-Name}/* in the Agency,
 just that the *indexes* attribute there is relocated to adjust it to
 the data format of arangodump.
 

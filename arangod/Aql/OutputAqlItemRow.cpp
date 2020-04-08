@@ -57,17 +57,17 @@ OutputAqlItemRow::OutputAqlItemRow(
       _baseIndex(0),
       _lastBaseIndex(0),
       _inputRowCopied(false),
-      _lastSourceRow{CreateInvalidInputRowHint{}},
-      _numValuesWritten(0),
-      _call(clientCall),
       _doNotCopyInputRow(copyRowBehavior == CopyRowBehavior::DoNotCopyInputRows),
-      _outputRegisters(std::move(outputRegisters)),
-      _registersToKeep(std::move(registersToKeep)),
-      _registersToClear(std::move(registersToClear)),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _setBaseIndexNotUsed(true),
 #endif
-      _allowSourceRowUninitialized(false) {
+      _allowSourceRowUninitialized(false),
+      _lastSourceRow{CreateInvalidInputRowHint{}},
+      _numValuesWritten(0),
+      _call(clientCall),
+      _outputRegisters(std::move(outputRegisters)),
+      _registersToKeep(std::move(registersToKeep)),
+      _registersToClear(std::move(registersToClear)) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
     for (auto const& reg : *_outputRegisters) {
@@ -164,6 +164,30 @@ void OutputAqlItemRow::copyRow(ItemRowType const& sourceRow, bool ignoreMissing)
   }
 
   doCopyRow(sourceRow, ignoreMissing);
+}
+
+auto OutputAqlItemRow::fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows)
+    -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(sourceRow.internalBlockIs(_block));
+#endif
+  TRI_ASSERT(_doNotCopyInputRow);
+  TRI_ASSERT(_call.getLimit() >= rows);
+  TRI_ASSERT(rows > 0);
+  // We have the guarantee that we have all data in our block.
+  // We only need to adjust internal indexes.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Safely assert that the API is not missused.
+  TRI_ASSERT(_baseIndex + rows <= _block->size());
+  for (size_t i = _baseIndex; i < _baseIndex + rows; ++i) {
+    TRI_ASSERT(!_block->isShadowRow(i));
+  }
+#endif
+  _baseIndex += rows;
+  TRI_ASSERT(_baseIndex > 0);
+  _lastBaseIndex = _baseIndex - 1;
+  _lastSourceRow = InputAqlItemRow{_block, _lastBaseIndex};
+  _call.didProduce(rows);
 }
 
 void OutputAqlItemRow::copyBlockInternalRegister(InputAqlItemRow const& sourceRow,
@@ -300,9 +324,9 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
 }
 
 void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
+  size_t newDepth = sourceRow.getDepth() + 1;
   doCopyRow(sourceRow, false);
-  block().setShadowRowDepth(_baseIndex,
-                            AqlValue{AqlValueHintUInt{sourceRow.getDepth() + 1}});
+  block().setShadowRowDepth(_baseIndex, AqlValue{AqlValueHintUInt{newDepth}});
   // We need to fake produced state
   _numValuesWritten = numRegistersToWrite();
   TRI_ASSERT(produced());

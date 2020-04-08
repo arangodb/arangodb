@@ -40,7 +40,7 @@ class ClusterFeature;
 /// @brief HotBackup engine selector operations
 ////////////////////////////////////////////////////////////////////////////////
 
-enum BACKUP_ENGINE {ROCKSDB, MMFILES, CLUSTER};
+enum BACKUP_ENGINE {ROCKSDB, CLUSTER};
 
 class HotBackup {
 public:
@@ -73,13 +73,6 @@ private:
   arangodb::Result executeCoordinator(
     std::string const& command, VPackSlice const payload, VPackBuilder& report);
   
-  /**
-   * @brief select engine and create backup
-   * @param  payload  rest handling payload
-   */
-  arangodb::Result executeMMFiles(
-    std::string const& command, VPackSlice const payload, VPackBuilder& report);
-
 #ifdef USE_ENTERPRISE
   application_features::ApplicationServer& _server;
 #endif

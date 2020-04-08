@@ -21,9 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "wildcard_filter.hpp"
+#include "phrase_filter.hpp"
 
 #include "shared.hpp"
-#include "limited_sample_scorer.hpp"
 #include "multiterm_query.hpp"
 #include "term_query.hpp"
 #include "index/index_reader.hpp"
@@ -33,13 +33,15 @@
 
 NS_LOCAL
 
-inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
+using namespace irs;
+
+inline bytes_ref unescape(const bytes_ref& in, bstring& out) {
   out.reserve(in.size());
 
   bool copy = true;
   std::copy_if(in.begin(), in.end(), std::back_inserter(out),
-               [&copy](irs::byte_type c) {
-    if (c == irs::WildcardMatch::ESCAPE) {
+               [&copy](byte_type c) {
+    if (c == WildcardMatch::ESCAPE) {
       copy = !copy;
     } else {
       copy = true;
@@ -50,9 +52,80 @@ inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
   return out;
 }
 
+template<typename Invalid, typename Term, typename Prefix, typename WildCard>
+inline void executeWildcard(
+    bstring& buf, bytes_ref& term, Invalid inv, Term t, Prefix p, WildCard w) {
+  switch (wildcard_type(term)) {
+    case WildcardType::INVALID:
+      inv();
+      break;
+    case WildcardType::TERM_ESCAPED:
+      term = unescape(term, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
+    case WildcardType::TERM:
+      t(term);
+      break;
+    case WildcardType::MATCH_ALL:
+      term = bytes_ref::EMPTY;
+      p(term);
+      break;
+    case WildcardType::PREFIX_ESCAPED:
+      term = unescape(term, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
+    case WildcardType::PREFIX: {
+      assert(!term.empty());
+      const auto* begin = term.c_str();
+      const auto* end = begin + term.size();
+
+      // term is already checked to be a valid UTF-8 sequence
+      const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
+      assert(pos != end);
+
+      term = bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
+      p(term);
+      break;
+    }
+    case WildcardType::WILDCARD:
+      w(term);
+      break;
+    default:
+      assert(false);
+      inv();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// MSVC2019 does not link inner functions in lambdas directly
+inline void by_prefix_visit(const term_reader& reader,
+                            const bytes_ref& term,
+                            filter_visitor& fv) {
+  by_prefix::visit(reader, term, fv);
+}
+
+inline void term_query_visit(const term_reader& reader,
+                             const bytes_ref& term,
+                             filter_visitor& fv) {
+  term_query::visit(reader, term, fv);
+}
+
+inline void automaton_visit(const term_reader& reader,
+                            const bytes_ref& term,
+                            filter_visitor& fv) {
+  automaton_visit(reader, from_wildcard(term), fv);
+}
+////////////////////////////////////////////////////////////////////////////////
+
 NS_END
 
 NS_ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        by_wildcard implementation
+// -----------------------------------------------------------------------------
 
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
@@ -65,42 +138,39 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     bytes_ref term,
     size_t scored_terms_limit) {
   bstring buf;
-  switch (wildcard_type(term)) {
-    case WildcardType::INVALID:
-      return prepared::empty();
-    case WildcardType::TERM_ESCAPED:
-      term = unescape(term, buf);
-      [[fallthrough]];
-    case WildcardType::TERM:
-      return term_query::make(index, order, boost, field, term);
-    case WildcardType::MATCH_ALL:
-      return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref::EMPTY, // empty prefix == match all
-                                scored_terms_limit);
-    case WildcardType::PREFIX_ESCAPED:
-      term = unescape(term, buf);
-      [[fallthrough]];
-    case WildcardType::PREFIX: {
-      assert(!term.empty());
-      const auto* begin = term.c_str();
-      const auto* end = begin + term.size();
+  filter::prepared::ptr res;
+  executeWildcard(
+    buf, term,
+    [&res]() {
+      res = prepared::empty(); },
+    [&res, &index, &order, boost, &field](const bytes_ref& term) {
+      res = term_query::make(index, order, boost, field, term);},
+    [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
+      res = by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);},
+    [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
+      res = prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit, index, order, boost);}
+  );
+  return res;
+}
 
-      // term is already checked to be a valid UTF-8 sequence
-      const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
-      assert(pos != end);
-
-      return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref(begin, size_t(pos - begin)), // remove trailing '%'
-                                scored_terms_limit);
+/*static*/ void by_wildcard::visit(
+    const term_reader& reader,
+    bytes_ref term,
+    filter_visitor& fv) {
+  bstring buf;
+  executeWildcard(
+    buf, term,
+    []() {},
+    [&reader, &fv](const bytes_ref& term) {
+      term_query_visit(reader, term, fv);
+    },
+    [&reader, &fv](const bytes_ref& term) {
+      by_prefix_visit(reader, term, fv);
+    },
+    [&reader, &fv](const bytes_ref& term) {
+      ::automaton_visit(reader, term, fv);
     }
-
-    case WildcardType::WILDCARD:
-      return prepare_automaton_filter(field, from_wildcard(term),
-                                      scored_terms_limit, index, order, boost);
-  }
-
-  assert(false);
-  return prepared::empty();
+  );
 }
 
 by_wildcard::by_wildcard() noexcept

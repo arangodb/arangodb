@@ -265,8 +265,7 @@ function saveToJunitXML(options, results) {
     testRunName: '',
     seenTestCases: false,
   };
-  let prefix = options.cluster ? 'CL_' : '' +
-      (options.storageEngine === 'rocksdb') ? 'RX_': 'MM_';    
+  let prefix = (options.cluster ? 'CL_' : '') + 'RX_';
   iterateTestResults(options, results, xmlState, {
     testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
     testSuite: function(options, state, testSuite, testSuiteName) {
@@ -442,15 +441,19 @@ function unitTestPrettyPrintResults (options, results) {
             continue;
           }
 
+          let isSkipped = true;
           if (name === 'SKIPPED') {
             m = '    [SKIPPED]  the following tests were skipped due to the server not being in a trustworthy state anymore.';
           } else {
             m = '    [FAILED]  ' + name;
           }
+          let details = failedCases[name];
+          if (isSkipped && details.test === "") {
+            continue;
+          }
+
           failedMessages += RED + m + RESET + '\n\n';
           onlyFailedMessages += m + '\n\n';
-
-          let details = failedCases[name];
 
           let count = 0;
           for (let one in details) {
@@ -646,7 +649,6 @@ function locateLongSetupTeardown(options, results) {
     'export',
     'hot_backup',
     'dump_multiple',
-    'dfdb',
     'config'
   ];
   let testsToShow = 11;

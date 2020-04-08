@@ -24,7 +24,76 @@
 
 #include "shared.hpp"
 #include "score_doc_iterators.hpp"
+#include "filter_visitor.hpp"
 #include "index/index_reader.hpp"
+
+NS_LOCAL
+
+using namespace irs;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class term_visitor
+/// @brief filter visitor for term queries
+//////////////////////////////////////////////////////////////////////////////
+class term_visitor final : public filter_visitor {
+ public:
+  term_visitor(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const fixed_terms_collectors& collectors,
+    term_query::states_t& states,
+    size_t term_offset
+  ) : term_offset_(term_offset), segment_(segment), reader_(reader),
+    collectors_(collectors), states_(states) {}
+
+  virtual void prepare(const seek_term_iterator& terms) noexcept override {
+    terms_ = &terms;
+  }
+
+  virtual void visit() override {
+    // collect statistics
+    assert(terms_);
+    collectors_.collect(segment_, reader_, term_offset_, terms_->attributes());
+
+    // Cache term state in prepared query attributes.
+    // Later, using cached state we could easily "jump" to
+    // postings without relatively expensive FST traversal
+    auto& state = states_.insert(segment_);
+    state.reader = &reader_;
+    assert(terms_);
+    state.cookie = terms_->cookie();
+  }
+
+ private:
+  const size_t term_offset_;
+  const sub_reader& segment_;
+  const term_reader& reader_;
+  const fixed_terms_collectors& collectors_;
+  term_query::states_t& states_;
+  const seek_term_iterator* terms_ = nullptr;
+};
+
+template<typename Visitor>
+void visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    Visitor& visitor) {
+  // find term
+  auto terms = reader.iterator();
+
+  if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
+    return;
+  }
+
+  visitor.prepare(*terms);
+
+  // read term attributes
+  terms->read();
+
+  visitor.visit();
+}
+
+NS_END
 
 NS_ROOT
 
@@ -32,14 +101,14 @@ NS_ROOT
 // --SECTION--                                         term_query implementation
 // -----------------------------------------------------------------------------
 
-term_query::ptr term_query::make(
+/*static*/ term_query::ptr term_query::make(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
     const string_ref& field,
     const bytes_ref& term) {
   term_query::states_t states(index.size());
-  auto collectors = ord.fixed_prepare_collectors(1);
+  fixed_terms_collectors collectors(ord, 1);
 
   // iterate over the segments
   for (const auto& segment : index) {
@@ -52,24 +121,10 @@ term_query::ptr term_query::make(
 
     collectors.collect(segment, *reader); // collect field statistics once per segment
 
-    // find term
-    auto terms = reader->iterator();
+    // term_offset = 0 because only 1 term
+    term_visitor tv(segment, *reader, collectors, states, 0);
 
-    if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
-      continue;
-    }
-
-    // read term attributes
-    terms->read();
-
-    // Cache term state in prepared query attributes.
-    // Later, using cached state we could easily "jump" to
-    // postings without relatively expensive FST traversal
-    auto& state = states.insert(segment);
-    state.reader = reader;
-    state.cookie = terms->cookie();
-
-    collectors.collect(segment, *reader, 0, terms->attributes()); // collect statistics, 0 because only 1 term
+    ::visit(*reader, term, tv);
   }
 
   bstring stats(ord.stats_size(), 0);
@@ -81,6 +136,13 @@ term_query::ptr term_query::make(
   return memory::make_shared<term_query>(
     std::move(states), std::move(stats), boost
   );
+}
+
+/*static*/ void term_query::visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    filter_visitor& visitor) {
+  ::visit(reader, term, visitor);
 }
 
 term_query::term_query(

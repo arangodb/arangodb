@@ -32,9 +32,9 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -62,12 +62,16 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/ticks.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
 #endif
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "ClusterEngine/Common.h"
+#include "ClusterEngine/ClusterEngine.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
@@ -128,56 +132,30 @@ void recursiveAdd(VPackSlice const& value, VPackBuilder& builder) {
 
   updated.openObject();
 
-  updated.add("alive", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"alive", "count"})));
-  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                    {"alive", "size"})));
-  updated.close();
+  bool cacheInUse = Helper::getBooleanValue(value, "cacheInUse", false);
+  bool totalCacheInUse = cacheInUse || Helper::getBooleanValue(builder.slice(), "cacheInUse", false);
+  updated.add("cacheInUse", VPackValue(totalCacheInUse));
 
-  updated.add("dead", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"dead", "count"})));
-  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                    {"dead", "size"})));
-  updated.add("deletion", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                        {"dead", "deletion"})));
-  updated.close();
-
+  if (cacheInUse) {
+    updated.add("cacheLifeTimeHitRate", VPackValue(addFigures<double>(value, builder.slice(),
+                                                                      {"cacheLifeTimeHitRate"})));
+    updated.add("cacheWindowedHitRate", VPackValue(addFigures<double>(value, builder.slice(),
+                                                                      {"cacheWindowedHitRate"})));
+  }
+  updated.add("cacheSize", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                               {"cacheSize"})));
+  updated.add("cacheUsage", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                               {"cacheUsage"})));
+  updated.add("documentsSize", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                               {"documentsSize"})));
+  
   updated.add("indexes", VPackValue(VPackValueType::Object));
   updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                      {"indexes", "count"})));
   updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                     {"indexes", "size"})));
   updated.close();
-
-  updated.add("datafiles", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"datafiles", "count"})));
-  updated.add("fileSize",
-              VPackValue(addFigures<size_t>(value, builder.slice(),
-                                            {"datafiles", "fileSize"})));
-  updated.close();
-
-  updated.add("journals", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"journals", "count"})));
-  updated.add("fileSize",
-              VPackValue(addFigures<size_t>(value, builder.slice(),
-                                            {"journals", "fileSize"})));
-  updated.close();
-
-  updated.add("compactors", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"compactors", "count"})));
-  updated.add("fileSize",
-              VPackValue(addFigures<size_t>(value, builder.slice(),
-                                            {"compactors", "fileSize"})));
-  updated.close();
-
-  updated.add("documentReferences",
-              VPackValue(addFigures<size_t>(value, builder.slice(), {"documentReferences"})));
-
+  
   updated.close();
 
   TRI_ASSERT(updated.slice().isObject());
@@ -1032,8 +1010,8 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
                       VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
+        // add to the total
         if (figures.isObject()) {
-          // add to the total
           recursiveAdd(figures, builder);
         }
       } else {
@@ -1296,12 +1274,11 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
            .param(StaticStrings::KeepNullString, (options.keepNull ? "true" : "false"))
            .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
-           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"))
            .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"));
-    if(options.overwriteModeUpdate) {
-      reqOpts.parameters.insert_or_assign(StaticStrings::OverWriteMode,  "update" );
+    if (options.isOverwriteModeSet()) {
+      reqOpts.parameters.insert_or_assign(StaticStrings::OverwriteMode, 
+                                          OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
-
 
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
@@ -2249,7 +2226,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     VPackBuffer<uint8_t> buffer;
     buffer.append(slice.begin(), slice.byteSize());
 
-    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);

@@ -146,128 +146,6 @@ std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
   return {ExecutionState::DONE, _shutdownResult};
 }
 
-void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
-    }
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      auto const node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
-      LOG_TOPIC("ca7db", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "getSome type=" << node->getTypeString() << " atMost=" << atMost
-          << " this=" << (uintptr_t)this << " id=" << node->id();
-    }
-  }
-}
-
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd(
-    ExecutionState state, SharedAqlItemBlockPtr result) {
-  TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    ExecutionNode const* en = getPlanNode();
-    ExecutionStats::Node stats;
-    auto const items = result != nullptr ? result->size() : 0;
-    stats.calls = 1;
-    stats.items = items;
-    if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
-
-    auto it = _engine->_stats.nodes.find(en->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.try_emplace(en->id(), stats);
-    }
-
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      ExecutionNode const* node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
-      LOG_TOPIC("07a60", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "getSome done type=" << node->getTypeString()
-          << " this=" << (uintptr_t)this << " id=" << node->id()
-          << " state=" << stateToString(state) << " items=" << items;
-
-      if (_profile >= PROFILE_LEVEL_TRACE_2) {
-        if (result == nullptr) {
-          LOG_TOPIC("daa64", INFO, Logger::QUERIES)
-              << "[query#" << queryId << "] "
-              << "getSome type=" << node->getTypeString() << " result: nullptr";
-        } else {
-          VPackBuilder builder;
-          auto const options = trxVpackOptions();
-          result->toSimpleVPack(options, builder);
-          LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
-              << "[query#" << queryId << "] "
-              << "getSome type=" << node->getTypeString()
-              << " result: " << VPackDumper::toString(builder.slice(), options);
-        }
-      }
-    }
-  }
-  return {state, std::move(result)};
-}
-
-void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
-    }
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      auto node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
-      LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "skipSome type=" << node->getTypeString() << " atMost=" << atMost
-          << " this=" << (uintptr_t)this << " id=" << node->id();
-    }
-  }
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
-    std::pair<ExecutionState, size_t> const res) {
-  ExecutionState const state = res.first;
-  size_t const skipped = res.second;
-
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    ExecutionNode const* en = getPlanNode();
-    ExecutionStats::Node stats;
-    stats.calls = 1;
-    stats.items = skipped;
-    if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
-
-    auto it = _engine->_stats.nodes.find(en->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.try_emplace(en->id(), stats);
-    }
-
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      ExecutionNode const* node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
-      LOG_TOPIC("d1950", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "skipSome done type=" << node->getTypeString()
-          << " this=" << (uintptr_t)this << " id=" << node->id()
-          << " state=" << stateToString(state) << " skipped=" << skipped;
-    }
-  }
-  return res;
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(ExecutionState state,
-                                                                   size_t skipped) {
-  return traceSkipSomeEnd({state, skipped});
-}
-
 ExecutionState ExecutionBlock::getHasMoreState() {
   if (_done) {
     return ExecutionState::DONE;
@@ -306,13 +184,12 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string co
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto const node = getPlanNode();
       auto const queryId = this->_engine->getQuery()->id();
-      // TODO make sure this works also if stack is non relevant, e.g. passed through by outer subquery.
-      auto const& call = stack.peek();
+
       LOG_TOPIC("1e717", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
-          << "execute type=" << node->getTypeString() << " call= " << call
-          << " this=" << (uintptr_t)this << " id=" << node->id()
-          << (clientId.empty() ? "" : " clientId=" + clientId);
+          << "execute type=" << node->getTypeString()
+          << " callStack= " << stack.toString() << " this=" << (uintptr_t)this
+          << " id=" << node->id() << (clientId.empty() ? "" : " clientId=" + clientId);
     }
   }
 }
@@ -340,10 +217,17 @@ auto ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      size_t rows = 0;
+      size_t shadowRows = 0;
+      if (block != nullptr) {
+        shadowRows = block->getShadowRowIndexes().size();
+        rows = block->size() - shadowRows;
+      }
       ExecutionNode const* node = getPlanNode();
       LOG_QUERY("60bbc", INFO)
           << "execute done " << printBlockInfo() << " state=" << stateToString(state)
-          << " skipped=" << skipped.getSkipCount() << " produced=" << items
+          << " skipped=" << skipped.getSkipCount() << " produced=" << rows
+          << " shadowRows=" << shadowRows
           << (clientId.empty() ? "" : " clientId=" + clientId);
       ;
 

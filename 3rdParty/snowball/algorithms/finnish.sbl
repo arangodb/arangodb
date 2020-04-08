@@ -1,0 +1,197 @@
+
+/* Finnish stemmer.
+
+   Numbers in square brackets refer to the sections in
+   Fred Karlsson, Finnish: An Essential Grammar. Routledge, 1999
+   ISBN 0-415-20705-3
+
+*/
+
+routines (
+           mark_regions
+           R2
+           particle_etc possessive
+           LONG VI
+           case_ending
+           i_plural
+           t_plural
+           other_endings
+           tidy
+)
+
+externals ( stem )
+
+integers ( p1 p2 )
+strings ( x )
+booleans ( ending_removed )
+groupings ( AEI C V1 V2 particle_end )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a"   '{U+00E4}'
+stringdef o"   '{U+00F6}'
+
+define AEI 'a{a"}ei'
+define C 'bcdfghjklmnpqrstvwxz'
+define V1 'aeiouy{a"}{o"}'
+define V2 'aeiou{a"}{o"}'
+define particle_end V1 + 'nt'
+
+define mark_regions as (
+
+    $p1 = limit
+    $p2 = limit
+
+    goto V1  gopast non-V1  setmark p1
+    goto V1  gopast non-V1  setmark p2
+)
+
+backwardmode (
+
+    define R2 as $p2 <= cursor
+
+    define particle_etc as (
+        setlimit tomark p1 for ([substring])
+        among(
+            'kin'
+            'kaan' 'k{a"}{a"}n'
+            'ko'   'k{o"}'
+            'han'  'h{a"}n'
+            'pa'   'p{a"}'    // Particles [91]
+                (particle_end)
+            'sti'             // Adverb [87]
+                (R2)
+        )
+        delete
+    )
+    define possessive as (    // [36]
+        setlimit tomark p1 for ([substring])
+        among(
+            'si'
+                (not 'k' delete)  // take 'ksi' as the Comitative case
+            'ni'
+                (delete ['kse'] <- 'ksi') // kseni = ksi + ni
+            'nsa' 'ns{a"}'
+            'mme'
+            'nne'
+                (delete)
+            /* Now for Vn possessives after case endings: [36] */
+            'an'
+                (among('ta' 'ssa' 'sta' 'lla' 'lta' 'na') delete)
+            '{a"}n'
+                (among('t{a"}' 'ss{a"}' 'st{a"}'
+                       'll{a"}' 'lt{a"}' 'n{a"}') delete)
+            'en'
+                (among('lle' 'ine') delete)
+        )
+    )
+
+    define LONG as
+        among('aa' 'ee' 'ii' 'oo' 'uu' '{a"}{a"}' '{o"}{o"}')
+
+    define VI as ('i' V2)
+
+    define case_ending as (
+        setlimit tomark p1 for ([substring])
+        among(
+            'han'    ('a')          //-.
+            'hen'    ('e')          // |
+            'hin'    ('i')          // |
+            'hon'    ('o')          // |
+            'h{a"}n' ('{a"}')       // Illative   [43]
+            'h{o"}n' ('{o"}')       // |
+            'siin'   VI             // |
+            'seen'   LONG           //-'
+
+            'den'    VI
+            'tten'   VI             // Genitive plurals [34]
+                     ()
+            'n'                     // Genitive or Illative
+                ( try ( LONG // Illative
+                        or 'ie' // Genitive
+                          and next ]
+                      )
+                  /* otherwise Genitive */
+                )
+
+            'a' '{a"}'              //-.
+                     (V1 C)         // |
+            'tta' 'tt{a"}'          // Partitive  [32]
+                     ('e')          // |
+            'ta' 't{a"}'            //-'
+
+            'ssa' 'ss{a"}'          // Inessive   [41]
+            'sta' 'st{a"}'          // Elative    [42]
+
+            'lla' 'll{a"}'          // Adessive   [44]
+            'lta' 'lt{a"}'          // Ablative   [51]
+            'lle'                   // Allative   [46]
+            'na' 'n{a"}'            // Essive     [49]
+            'ksi'                   // Translative[50]
+            'ine'                   // Comitative [51]
+
+            /* Abessive and Instructive are too rare for
+               inclusion [51] */
+
+        )
+        delete
+        set ending_removed
+    )
+    define other_endings as (
+        setlimit tomark p2 for ([substring])
+        among(
+            'mpi' 'mpa' 'mp{a"}'
+            'mmi' 'mma' 'mm{a"}'    // Comparative forms [85]
+                (not 'po')          //-improves things
+            'impi' 'impa' 'imp{a"}'
+            'immi' 'imma' 'imm{a"}' // Superlative forms [86]
+            'eja' 'ej{a"}'          // indicates agent [93.1B]
+        )
+        delete
+    )
+    define i_plural as (            // [26]
+        setlimit tomark p1 for ([substring])
+        among(
+            'i'  'j'
+        )
+        delete
+    )
+    define t_plural as (            // [26]
+        setlimit tomark p1 for (
+            ['t'] test V1
+            delete
+        )
+        setlimit tomark p2 for ([substring])
+        among(
+            'mma' (not 'po') //-mmat endings
+            'imma'           //-immat endings
+        )
+        delete
+    )
+    define tidy as (
+        setlimit tomark p1 for (
+            do ( LONG and ([next] delete ) ) // undouble vowel
+            do ( [AEI] C delete ) // remove trailing a, a", e, i
+            do ( ['j'] 'o' or 'u' delete )
+            do ( ['o'] 'j' delete )
+        )
+        goto non-V1 [C] -> x  x delete // undouble consonant
+    )
+)
+
+define stem as (
+
+    do mark_regions
+    unset ending_removed
+    backwards (
+        do particle_etc
+        do possessive
+        do case_ending
+        do other_endings
+        (ending_removed do i_plural) or do t_plural
+        do tidy
+    )
+)
+

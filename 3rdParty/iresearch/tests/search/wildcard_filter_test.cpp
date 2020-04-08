@@ -90,6 +90,13 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
+  // term query
+  {
+    auto lhs = irs::by_term().field("foo").term("foo%").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("foo\\%").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
+
   // prefix query
   {
     auto lhs = irs::by_prefix().field("foo").term("bar").prepare(irs::sub_reader::empty());
@@ -254,9 +261,34 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
   }
 
   // match nothing
+  check_query(irs::by_wildcard().field("prefix").term("ab\\%"), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_wildcard().field("same").term("x\\_z"), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_wildcard().field("same").term("x\\%z"), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_wildcard().field("same").term("_"), docs_t{}, costs_t{0}, rdr);
+
+  // escaped prefix
+  {
+    docs_t result{10, 11};
+    costs_t costs{ result.size() };
+
+    check_query(irs::by_wildcard().field("prefix").term("ab\\\\%"), result, costs, rdr);
+  }
+
+  // escaped term
+  {
+    docs_t result{10};
+    costs_t costs{ result.size() };
+
+    check_query(irs::by_wildcard().field("prefix").term("ab\\\\\\%"), result, costs, rdr);
+  }
+
+  // escaped term
+  {
+    docs_t result{11};
+    costs_t costs{ result.size() };
+
+    check_query(irs::by_wildcard().field("prefix").term("ab\\\\\\\\%"), result, costs, rdr);
+  }
 
   // valid prefix
   {
@@ -363,6 +395,46 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
   // whole word
   check_query(irs::by_wildcard().field("prefix").term("bateradsfsfasdf"), docs_t{24}, costs_t{1}, rdr);
 }
+
+#ifndef IRESEARCH_DLL
+TEST_P(wildcard_filter_test_case, visit) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
+  tests::empty_filter_visitor visitor;
+  std::string fld = "prefix";
+  irs::string_ref field = irs::string_ref(fld);
+  auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+  auto prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("ab%"));
+  auto wildcard = irs::ref_cast<irs::byte_type>(irs::string_ref("a_c%"));
+  // read segment
+  auto index = open_reader();
+  for (const auto& segment : index) {
+    // get term dictionary for field
+    const auto* reader = segment.field(field);
+    ASSERT_TRUE(reader != nullptr);
+
+    irs::by_wildcard::visit(*reader, term, visitor);
+    ASSERT_EQ(1, visitor.prepare_calls_counter());
+    ASSERT_EQ(1, visitor.visit_calls_counter());
+    visitor.reset();
+
+    irs::by_wildcard::visit(*reader, prefix, visitor);
+    ASSERT_EQ(1, visitor.prepare_calls_counter());
+    ASSERT_EQ(6, visitor.visit_calls_counter());
+    visitor.reset();
+
+    irs::by_wildcard::visit(*reader, wildcard, visitor);
+    ASSERT_EQ(1, visitor.prepare_calls_counter());
+    ASSERT_EQ(5, visitor.visit_calls_counter());
+    visitor.reset();
+  }
+}
+#endif
 
 INSTANTIATE_TEST_CASE_P(
   wildcard_filter_test,

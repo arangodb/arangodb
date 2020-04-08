@@ -33,6 +33,7 @@
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/types.h"
@@ -1078,50 +1079,27 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   }
 }
 
-void IResearchViewNode::planNodeRegisters(
-    std::vector<aql::RegisterId>& nrRegsHere, std::vector<aql::RegisterId>& nrRegs,
-    std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
-    unsigned int& totalNrRegs, unsigned int depth) const {
-  nrRegsHere.emplace_back(0);
-
-  // create a copy of the last value here
-  // this is required because back returns a reference and emplace/push_back
-  // may invalidate all references
-  aql::RegisterCount const prevRegistersCount = nrRegs.back();
-  nrRegs.emplace_back(prevRegistersCount);
-
+void IResearchViewNode::planNodeRegisters(aql::RegisterPlan& registerPlan) const {
   // plan registers for output scores
   for (auto const& scorer : _scorers) {
-    ++nrRegsHere[depth];
-    ++nrRegs[depth];
-    varInfo.try_emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
+    registerPlan.registerVariable(scorer.var);
   }
 
   if (isLateMaterialized() || noMaterialization()) {
     if (isLateMaterialized()) {
-      ++nrRegsHere[depth];
-      ++nrRegs[depth];
-      varInfo.try_emplace(_outNonMaterializedColPtr->id, aql::VarInfo(depth, totalNrRegs++));
-      ++nrRegsHere[depth];
-      ++nrRegs[depth];
-      varInfo.try_emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
+      registerPlan.registerVariable(_outNonMaterializedColPtr);
+      registerPlan.registerVariable(_outNonMaterializedDocId);
     } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
       // there is no variable if noMaterialization()
-      ++nrRegsHere[depth];
-      ++nrRegs[depth];
-      ++totalNrRegs;
+      registerPlan.addRegister();
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldVar : columnFieldsVars.second) {
-        ++nrRegsHere[depth];
-        ++nrRegs[depth];
-        varInfo.try_emplace(fieldVar.var->id, aql::VarInfo(depth, totalNrRegs++));
+        registerPlan.registerVariable(fieldVar.var);
       }
     }
   } else { // plan register for document-id only block
-    ++nrRegsHere[depth];
-    ++nrRegs[depth];
-    varInfo.try_emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
+    registerPlan.registerVariable(_outVariable);
   }
 }
 

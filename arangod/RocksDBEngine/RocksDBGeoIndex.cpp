@@ -235,13 +235,13 @@ class RDBNearIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
 
-RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info,
                                  std::string const& typeName)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid.isSet());
   _unique = false;
   _sparse = true;
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
@@ -279,7 +279,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 
     // Short circuit. If id is correct the index is identical.
     arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid);
+    return idRef == std::to_string(_iid.id());
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IndexUnique,
@@ -398,7 +398,7 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   TRI_ASSERT(!_unique);
 
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
+    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
     TRI_ASSERT(key->containsLocalDocumentId(documentId));
  
     rocksdb::Status s = mthd->PutUntracked(RocksDBColumnFamily::geo(), key.ref(), val.string());
@@ -441,7 +441,7 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
+    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
     rocksdb::Status s = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));

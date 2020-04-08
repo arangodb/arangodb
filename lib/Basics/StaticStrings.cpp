@@ -63,9 +63,8 @@ std::string const StaticStrings::IsSynchronousReplicationString(
 std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
-std::string const StaticStrings::ReplaceExisting("replaceExisting");
-std::string const StaticStrings::OverWrite("overwrite");
-std::string const StaticStrings::OverWriteMode("overwriteMode");
+std::string const StaticStrings::Overwrite("overwrite");
+std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
 
 // replication headers
@@ -226,25 +225,30 @@ std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 std::string const StaticStrings::EncodingDeflate("deflate");
 
 // collection attributes
+std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+std::string const StaticStrings::DoCompact("doCompact");
+std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
-std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::IndexBuckets("indexBuckets");
 std::string const StaticStrings::JournalSize("journalSize");
-std::string const StaticStrings::DoCompact("doCompact");
-std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::MinRevision("minRevision");
+std::string const StaticStrings::ObjectId("objectId");
+std::string const StaticStrings::ReplicationFactor("replicationFactor");
+std::string const StaticStrings::Satellite("satellite");
 std::string const StaticStrings::ShardKeys("shardKeys");
+std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
-std::string const StaticStrings::Sharding("sharding");
-std::string const StaticStrings::Satellite("satellite");
+std::string const StaticStrings::SyncByRevision("syncByRevision");
+std::string const StaticStrings::TempObjectId("tempObjectId");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Validation("validation");
+std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
 
 // graph attribute names
@@ -330,6 +334,8 @@ std::string const StaticStrings::AqlRemoteSkipped("skipped");
 std::string const StaticStrings::AqlRemoteState("state");
 std::string const StaticStrings::AqlRemoteStateDone("done");
 std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
+std::string const StaticStrings::AqlCallListSpecific("specifics");
+std::string const StaticStrings::AqlCallListDefault("default");
 
 // validation
 std::string const StaticStrings::ValidatorLevelNone("none");
@@ -341,10 +347,20 @@ std::string const StaticStrings::ValidatorParameterMessage("message");
 std::string const StaticStrings::ValidatorParameterLevel("level");
 std::string const StaticStrings::ValidatorParameterType("type");
 std::string const StaticStrings::ValidatorParameterRule("rule");
+std::string const StaticStrings::ValidatorParameterSpecialProperties("special");
 
 std::string const StaticStrings::ValidatorTypeAQL("aql");
 std::string const StaticStrings::ValidatorTypeJsonSchema("json");
 std::string const StaticStrings::ValidatorTypeBool("bool");
+
+
+std::string const StaticStrings::ValidatorPropertyNone("none");
+std::string const StaticStrings::ValidatorPropertyId("id");
+std::string const StaticStrings::ValidatorPropertyKey("key");
+std::string const StaticStrings::ValidatorPropertyRev("rev");
+std::string const StaticStrings::ValidatorPropertyFrom("from");
+std::string const StaticStrings::ValidatorPropertyTo("to");
+std::string const StaticStrings::ValidatorPropertyAll("all");
 
 // metrics prometheus labels
 std::string const StaticStrings::HeartbeatSendTimeMs("arangodb_heartbeat_send_time_msec");
@@ -390,6 +406,3 @@ std::string const StaticStrings::SupervisionRuntimeWaitForSyncMs("arangodb_agenc
 std::string const StaticStrings::SupervisionAccumRuntimeMs("arangodb_agency_supervision_accum_runtime_msec");
 std::string const StaticStrings::SupervisionAccumRuntimeWaitForSyncMs("arangodb_agency_supervision_accum_runtime_wait_for_replication_msec");
 std::string const StaticStrings::SupervisionFailedServerCount("arangodb_agency_supervision_failed_server_count");
-
-
-

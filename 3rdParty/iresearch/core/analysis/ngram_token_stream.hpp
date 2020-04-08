@@ -46,7 +46,7 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
    struct Options {
      Options() noexcept
        : min_gram(0), max_gram(0),
-         stream_bytes_type(InputType::Binary) ,
+         stream_bytes_type(InputType::Binary),
          preserve_original(true) { 
      }
      Options(size_t min, size_t max, bool original)
@@ -57,8 +57,8 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
      Options(size_t min, size_t max,
              bool original,
              InputType stream_type,
-             const irs::bytes_ref start,
-             const irs::bytes_ref end)
+             const irs::bytes_ref& start,
+             const irs::bytes_ref& end)
          : start_marker(start),
            end_marker(end),
            min_gram(min), max_gram(max),

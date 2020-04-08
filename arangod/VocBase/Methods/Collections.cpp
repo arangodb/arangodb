@@ -172,14 +172,14 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
         return Result();
       } else {
-        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection not found");
       }
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      return Result(TRI_ERROR_INTERNAL);
+      return Result(TRI_ERROR_INTERNAL,"internal error during collection lookup");
     }
 
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -200,7 +200,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      return Result(TRI_ERROR_INTERNAL);
+      return Result(TRI_ERROR_INTERNAL,"internal error during collection lookup - canUseCollection");
     }
 
     return Result();
@@ -259,14 +259,15 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                              vocbase.server().hasFeature<ShardingFeature>();
   bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
   bool useRevs =
-      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB();
+      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB() &&
+      LogicalCollection::currentVersion() >= LogicalCollection::Version::v37;
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
 
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
-  
+
     if (ServerState::instance()->isCoordinator()) {
       Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties, vocbase.server(), enforceReplicationFactor);
       if (res.fail()) {
@@ -291,12 +292,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
+    bool isSystem = vocbase.IsSystemName(info.name);
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
       bool isSmartChild =
           Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-      TRI_voc_rid_t minRev = isSmartChild ? 0 : TRI_HybridLogicalClock();
+      TRI_voc_rid_t minRev = (isSystem || isSmartChild) ? 0 : TRI_HybridLogicalClock();
       helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
     }
 
@@ -304,18 +306,18 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
-        if (factor > 0 && vocbase.IsSystemName(info.name)) {
+        if (factor > 0 && isSystem) {
           auto& cl = vocbase.server().getFeature<ClusterFeature>();
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       }
 
-      if (!vocbase.IsSystemName(info.name)) {
-        uint64_t numberOfShards = Helper::getNumericValue<uint64_t>(info.properties, StaticStrings::NumberOfShards, 0);
+      if (!isSystem) {
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
-        if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+        if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+            vocbase.sharding() == "single") {
           auto const isSatellite =
               Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
                                    velocypack::StringRef{""}) == StaticStrings::Satellite;
@@ -327,14 +329,6 @@ Result Collections::create(TRI_vocbase_t& vocbase,
             helper.add(StaticStrings::DistributeShardsLike,
                        VPackValue(vocbase.shardingPrototypeName()));
           }
-        } else if (vocbase.sharding() == "single" && numberOfShards <= 1) {
-          auto distributeSlice = info.properties.get(StaticStrings::DistributeShardsLike);
-          if (distributeSlice.isNone()) {
-            helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
-          } else if (distributeSlice.isNull() ||
-                     (distributeSlice.isString() && distributeSlice.compareString("") == 0)) {
-            helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
-          }
         }
       }
 
@@ -342,7 +336,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       if (writeConcernSlice.isNone()) { // "minReplicationFactor" deprecated in 3.6
         writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
       }
-      
+
       if (writeConcernSlice.isNone()) {
         helper.add(StaticStrings::MinReplicationFactor, VPackValue(vocbase.writeConcern()));
         helper.add(StaticStrings::WriteConcern, VPackValue(vocbase.writeConcern()));
@@ -377,7 +371,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
   TRI_ASSERT(builder.isOpenArray());
   builder.close();
-    
+
 
   VPackSlice const infoSlice = builder.slice();
 
@@ -494,7 +488,6 @@ void Collections::createSystemCollectionProperties(std::string const& collection
     VPackObjectBuilder scope(&bb);
     bb.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
     bb.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
-    bb.add(StaticStrings::JournalSize, VPackValue(1024 * 1024));
     bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplicationFactor));
     bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultWriteConcern));  // deprecated
     bb.add(StaticStrings::WriteConcern, VPackValue(defaultWriteConcern));
@@ -627,10 +620,10 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 Result Collections::updateProperties(LogicalCollection& collection,
                                      velocypack::Slice const& props) {
   const bool partialUpdate = false; // always a full update for collections
-  
+
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
-  
+
   if (!canModify || !exec.canUseDatabase(auth::Level::RW)) {
     return TRI_ERROR_FORBIDDEN;
   }
@@ -640,7 +633,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
         collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto info = ci.getCollection(collection.vocbase().name(),
                                  std::to_string(collection.id()));
-    
+
     // replication checks
     int64_t replFactor = Helper::getNumericValue<int64_t>(props, StaticStrings::ReplicationFactor, 0);
     if (replFactor > 0) {
@@ -648,7 +641,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
         return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
       }
     }
-    
+
     // not an error: for historical reasons the write concern is read from the
     // variable "minReplicationFactor" if it exists
     uint64_t writeConcern = Helper::getNumericValue(props, StaticStrings::MinReplicationFactor, 0);
@@ -687,7 +680,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
     auto physical = collection.getPhysical();
     TRI_ASSERT(physical != nullptr);
 
-    return physical->persistProperties();
+    return res;
   }
 }
 
@@ -836,7 +829,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   } else {
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
-  
+
   LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail())
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
@@ -899,6 +892,30 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   return futures::makeFuture(res);
 }
 
+futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
+                                             LogicalCollection const& coll) {
+  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
+  if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
+    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
+  }
+
+  if (!ServerState::instance()->isSingleServer()) {
+    return futures::makeFuture(
+        Result(TRI_ERROR_NOT_IMPLEMENTED,
+               "collection upgrade in cluster not supported yet"));
+  }
+
+  Result res;
+  PhysicalCollection* physical = coll.getPhysical();
+  if (!physical) {
+    res.reset(TRI_ERROR_INTERNAL, "collection not found");
+    return futures::makeFuture(res);
+  }
+  res = physical->upgrade();
+
+  return futures::makeFuture(res);
+}
+
 futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
@@ -952,8 +969,8 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     // We directly read the entire cursor. so batchsize == limit
     OperationCursor opCursor(trx.indexScan(cname, transaction::Methods::CursorType::ALL));
 
-    opCursor.allDocuments([&](LocalDocumentId const&, VPackSlice doc) { 
-      cb(doc.resolveExternal()); 
+    opCursor.allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
+      cb(doc.resolveExternal());
       return true;
     }, 1000);
 
@@ -967,7 +984,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   if (ServerState::instance()->isCoordinator()) {
     return Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
-  
+
   auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
   Result res = trx.begin();
@@ -975,7 +992,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   if (res.fail()) {
     return res;
   }
-  
+
   revId = collection.revision(&trx);
   checksum = 0;
 
