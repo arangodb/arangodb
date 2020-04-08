@@ -230,3 +230,15 @@ auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
     return !(call.hasSoftLimit() && call.getLimit() == 0 && call.getOffset() == 0);
   });
 }
+
+auto AqlCallStack::requestLessDataThen(AqlCallStack const& other) const noexcept -> bool {
+  if (_operations.size() != other._operations.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < _operations.size(); ++i) {
+    if (!_operations[i].requestLessDataThen(other._operations[i])) {
+      return false;
+    }
+  }
+  return true;
+}
