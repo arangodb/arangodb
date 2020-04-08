@@ -95,7 +95,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
       // normalize arrays by hashing array length and iterating
       // over all array members
       uint64_t const tmp = n ^ 0xba5bedf00d;
-      uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(int64_t), VPackSlice::defaultSeed);
+      uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(uint64_t), VPackSlice::defaultSeed);
 
       for (size_t i = 0; i < n; ++i) {
         // upcast integer values to double

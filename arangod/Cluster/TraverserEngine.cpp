@@ -145,7 +145,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
       inaccessible.insert(shard.copyString());
     }
     trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
-                                       true, std::move(inaccessible));
+                                      std::move(inaccessible));
   } else {
     trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
   }
