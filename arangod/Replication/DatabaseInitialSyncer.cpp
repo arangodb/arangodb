@@ -38,7 +38,6 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/utilities.h"
 #include "Rest/CommonDefines.h"
-#include "RestServer/ServerFeature.h"
 #include "RestHandler/RestReplicationHandler.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
