@@ -285,7 +285,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   // get client feature for configuration info
   arangodb::ClientFeature& client =
       server.getFeature<arangodb::HttpEndpointProvider, arangodb::ClientFeature>();
-
+         
   client.setDatabaseName(arangodb::StaticStrings::SystemDatabase);
 
   // get httpclient by hand rather than using manager, to bypass any built-in
@@ -343,7 +343,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   }
 
   std::string const body = builder.slice().toJson();
-
+      
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(RequestType::POST, "/_api/database", body.c_str(), body.size()));
   if (response == nullptr || !response->isComplete()) {
@@ -593,7 +593,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
                   arangodb::StaticStrings::MimeTypeDump);
-
+  
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize, headers));
   return ::checkHttpResponse(httpClient, response, "restoring data", "");
@@ -1181,7 +1181,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   } else {
-    // restore indexes first
+    // restore indexes first 
     result = ::restoreIndexes(httpClient, jobData);
     if (result.fail()) {
       return result;
@@ -1601,7 +1601,7 @@ void RestoreFeature::start() {
     LOG_TOPIC("05c30", INFO, Logger::RESTORE)
         << "Connected to ArangoDB '" << httpClient->getEndpointSpecification() << "'";
   }
-
+  
   if (!isRocksDB) {
     LOG_TOPIC("ae10c", WARN, arangodb::Logger::RESTORE) << "You connected to a server with a potentially incompatible storage engine.";
   }
