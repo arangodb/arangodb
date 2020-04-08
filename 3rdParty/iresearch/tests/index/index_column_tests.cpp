@@ -1969,7 +1969,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
   // sparse_column<dense_block>
   irs::index_writer::init_options options;
   options.column_info = [](const irs::string_ref&) {
-    return irs::column_info{ irs::compression::raw::type(), irs::compression::options{}, true };
+    return irs::column_info{ irs::compression::none::type(), irs::compression::options{}, true };
   };
 
   static const irs::doc_id_t BLOCK_SIZE = 1024;
@@ -3118,7 +3118,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
   irs::index_writer::init_options options;
   options.column_info = [](const irs::string_ref&) {
-    return irs::column_info{ irs::compression::raw::type(), irs::compression::options{}, false };
+    return irs::column_info{ irs::compression::none::type(), irs::compression::options{}, false };
   };
 
   // border case for sparse fixed offset columns, e.g.

@@ -60,7 +60,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions,
-    bool useRawDocumentPointers, bool random)
+    bool random)
     : ExecutorInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
@@ -72,7 +72,6 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _outputRegisterId(outputRegister),
-      _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _random(random) {}
 
@@ -113,24 +112,19 @@ bool EnumerateCollectionExecutorInfos::getProduceResult() const {
   return _produceResult;
 }
 
-bool EnumerateCollectionExecutorInfos::getUseRawDocumentPointers() const {
-  return _useRawDocumentPointers;
-}
-
 bool EnumerateCollectionExecutorInfos::getRandom() const { return _random; }
 RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
   return _outputRegisterId;
 }
 
-EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
+EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
       _documentProducer(nullptr),
       _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(), _infos.getQuery(),
                                         _infos.getFilter(), _infos.getProjections(),
                                         _infos.getCoveringIndexAttributePositions(),
-                                        true, _infos.getUseRawDocumentPointers(), false),
+                                        true, false),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),
@@ -156,18 +150,6 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
-
-std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRows(
-    OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollectionExecutor::skipRows(
-    size_t const toSkip) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
                                                   EnumerateCollectionStats& stats) {

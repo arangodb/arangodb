@@ -194,11 +194,7 @@ function ExplainSuite () {
       assertEqual("SingletonNode", node.type);
 
       node = nodes[1];
-      if (db._engine().name !== 'mmfiles') {
-        assertEqual("IndexNode", node.type);
-      } else {
-        assertEqual("EnumerateCollectionNode", node.type);
-      }
+      assertEqual("IndexNode", node.type);
       assertEqual("u", node.outVariable.name);
       assertEqual(cn, node.collection);
 
@@ -219,11 +215,7 @@ function ExplainSuite () {
       assertEqual("SingletonNode", node.type);
 
       node = nodes[1];
-      if (db._engine().name !== 'mmfiles') {
-        assertEqual("IndexNode", node.type);
-      } else {
-        assertEqual("EnumerateCollectionNode", node.type);
-      }
+      assertEqual("IndexNode", node.type);
       assertEqual("u", node.outVariable.name);
       assertEqual(cn, node.collection);
 

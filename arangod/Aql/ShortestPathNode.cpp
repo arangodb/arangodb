@@ -145,12 +145,12 @@ ShortestPathNode::ShortestPathNode(
     ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     std::vector<std::unique_ptr<Collection>> const& edgeColls,
     std::vector<std::unique_ptr<Collection>> const& vertexColls,
-    TRI_edge_direction_e defaultDirection,
-    std::vector<TRI_edge_direction_e> const& directions, Variable const* inStartVariable,
-    std::string const& startVertexId, Variable const* inTargetVariable,
-    std::string const& targetVertexId, std::unique_ptr<BaseOptions> options)
+    TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> const& directions,
+    Variable const* inStartVariable, std::string const& startVertexId,
+    Variable const* inTargetVariable, std::string const& targetVertexId,
+    std::unique_ptr<BaseOptions> options, graph::Graph const* graph)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
-                directions, std::move(options)),
+                directions, std::move(options), graph),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
       _inTargetVariable(inTargetVariable),
@@ -312,10 +312,10 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp = std::make_unique<ShortestPathOptions>(*oldOpts);
   auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls,
-                                              _vertexColls, _defaultDirection,
-                                              _directions, _inStartVariable,
-                                              _startVertexId, _inTargetVariable,
-                                              _targetVertexId, std::move(tmp));
+                                              _vertexColls, _defaultDirection, _directions,
+                                              _inStartVariable, _startVertexId,
+                                              _inTargetVariable, _targetVertexId,
+                                              std::move(tmp), _graphObj);
   shortestPathCloneHelper(*plan, *c, withProperties);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);

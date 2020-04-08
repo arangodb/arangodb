@@ -149,8 +149,6 @@ class AqlItemBlock {
   /// elsewhere
   void eraseAll();
 
-  void copyValuesFromRow(size_t currentRow, RegisterId curRegs, size_t fromRow);
-
   void copyValuesFromRow(size_t currentRow,
                          std::unordered_set<RegisterId> const& regs, size_t fromRow);
 

@@ -901,8 +901,7 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
 
   Result res;
   try {
-    res = trx->documentFastPath(collectionName, nullptr, searchBuilder->slice(),
-                                result, true);
+    res = trx->documentFastPath(collectionName, nullptr, searchBuilder->slice(), result);
   } catch (arangodb::basics::Exception const& ex) {
     res.reset(ex.code());
   }
@@ -5066,7 +5065,7 @@ AqlValue Functions::Jaccard(ExpressionContext* ctx, transaction::Methods* trx,
     count = 0;
   }
 
-  auto const jaccard = values.empty() ? 0.0 : double_t(cardinality) / values.size();
+  auto const jaccard = values.empty() ? 1.0 : double_t(cardinality) / values.size();
 
   return AqlValue{AqlValueHintDouble{jaccard}};
 }

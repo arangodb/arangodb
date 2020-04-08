@@ -340,13 +340,8 @@ function HashIndexSuite() {
       assertEqual("hash", idx.type);
       assertFalse(idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
-      if (internal.db._engine().name === 'mmfiles') {
-        assertEqual(id, idx.id);
-        assertFalse(idx.isNewlyCreated);
-      } else {
-        assertNotEqual(id, idx.id);
-        assertTrue(idx.isNewlyCreated);
-      }
+      assertNotEqual(id, idx.id);
+      assertTrue(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -533,17 +528,15 @@ function HashIndexSuite() {
         collection.insert({ value: i });
       }
       
-      if (internal.db._engine().name === "rocksdb") {
-        internal.db._executeTransaction({
-          collections: { write: cn },
-          action: function(params) {
-            // need to run compaction in the rocksdb case, as the lookups
-            // may use bloom filters afterwards but not for memtables
-            require("internal").db[params.cn].compact();
-          },
-          params: { cn }
-        });
-      }
+      internal.db._executeTransaction({
+        collections: { write: cn },
+        action: function(params) {
+          // need to run compaction in the rocksdb case, as the lookups
+          // may use bloom filters afterwards but not for memtables
+          require("internal").db[params.cn].compact();
+        },
+        params: { cn }
+      });
 
       assertEqual(2 * bound, collection.count());
 
@@ -581,17 +574,15 @@ function HashIndexSuite() {
         i *= 2;
       }
 
-      if (internal.db._engine().name === "rocksdb") {
-        internal.db._executeTransaction({
-          collections: { write: cn },
-          action: function(params) {
-            // need to run compaction in the rocksdb case, as the lookups
-            // may use bloom filters afterwards but not for memtables
-            require("internal").db[params.cn].compact();
-          },
-          params: { cn }
-        });
-      }
+      internal.db._executeTransaction({
+        collections: { write: cn },
+        action: function(params) {
+          // need to run compaction in the rocksdb case, as the lookups
+          // may use bloom filters afterwards but not for memtables
+          require("internal").db[params.cn].compact();
+        },
+        params: { cn }
+      });
         
       i = 0;
       while (i < 100000) {

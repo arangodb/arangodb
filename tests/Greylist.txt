@@ -21,12 +21,7 @@ or PRs.
 - `test/js/common/shell/shell-tasks-timecritical.js`
 - `test/js/common/shell/shell-query-timecritical-spec.js`
 - `test/js/common/shell/shell-query-stream-timecritical-spec.js`
-- `test/js/common/shell/shell-deadlocks-timecritical-noncluster-mmfiles.js`
-- `test/js/server/shell/shell-compaction-mmfiles-noncluster-timecritical.js`
-- `test/js/server/shell/shell-datafile-mmfiles-timecritical-noncluster.js`
 - `test/js/server/shell/shell-skiplist-rm-performance-timecritical-noncluster.js`
-- `test/js/server/shell/shell-compaction-seq-mmfiles-noncluster-timecritical.js`
-- `test/js/server/shell/shell-collection-not-loaded-mmfiles-timecritical-noncluster.js`
 
 Due to requirement to execute also these tests as "onlyGrey" in nightly runs!
 
@@ -143,7 +138,6 @@ Mount: /unittest/paths
     at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:514:15)
     at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
     at tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js:1052:9)
-      [FAILED]  tests/js/server/recovery/corrupted-crc-mmfiles.js
 
       "test" failed: failed to read /work/tmp/arangosh_MNeeKL/crashtmp/6/tmp/testresult.json - ArangoError 2: No such file or directory: while reading /work/tmp/arangosh_MNeeKL/crashtmp/6/tmp/testresult.json
 

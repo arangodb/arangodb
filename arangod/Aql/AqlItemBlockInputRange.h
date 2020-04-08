@@ -58,7 +58,6 @@ class AqlItemBlockInputRange {
   bool hasShadowRow() const noexcept;
 
   arangodb::aql::ShadowAqlItemRow peekShadowRow() const;
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRowAndState() const;
 
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 

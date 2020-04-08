@@ -90,13 +90,7 @@ AqlValue const& ModifierOutput::getNewValue() const {
 template <typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
                                                                       Infos& infos)
-    : _lastState(ExecutionState::HASMORE), _infos(infos), _fetcher(fetcher), _modifier(infos) {
-  // In MMFiles we need to make sure that the data is not moved in memory or collected
-  // for this collection as soon as we start writing to it.
-  // This pin makes sure that no memory is moved pointers we get from a collection stay
-  // correct until we release this pin
-  _infos._trx->pinData(this->_infos._aqlCollection->id());
-}
+    : _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
 
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier
@@ -154,14 +148,6 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
         break;
     }
   }
-}
-
-template <typename FetcherType, typename ModifierType>
-std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
-ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-
-  return {ExecutionState::DONE, ModificationStats{}};
 }
 
 template <typename FetcherType, typename ModifierType>
