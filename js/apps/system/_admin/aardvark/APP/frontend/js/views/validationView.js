@@ -54,7 +54,6 @@
         if (error) {
           window.arangoHelper.arangoError("Error", "Could not get collection properties");
         } else {
-          console.log(data);
           this.editor.set(data.schema);
         }
       };
