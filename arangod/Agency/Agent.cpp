@@ -1462,7 +1462,7 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
       bool queued = scheduler->queue(
         RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
       if (!queued) {
-        LOG_TOPIC("3647c", DEBUG, Logger::AGENCY) <<
+        LOG_TOPIC("3647c", WARN, Logger::AGENCY) <<
           "Failed to schedule logsForTrigger running in main thread";
         pp->setValue(qu);
       }
