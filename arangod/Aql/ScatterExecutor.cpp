@@ -42,7 +42,7 @@ ScatterExecutorInfos::ScatterExecutorInfos(
       ClientsExecutorInfos(std::move(clientIds)) {}
 
 ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
-                                                  ScatterNode const* node,
+                                                  ExecutionNode const* node,
                                                   ExecutorInfos const& scatterInfos)
     : _queue{}, _executor(nullptr), _executorHasMore{false} {
   // We only get shared ptrs to const data. so we need to copy here...

@@ -53,7 +53,7 @@ class ScatterExecutor {
 
   class ClientBlockData {
    public:
-    ClientBlockData(ExecutionEngine& engine, ScatterNode const* node,
+    ClientBlockData(ExecutionEngine& engine, ExecutionNode const* node,
                     ExecutorInfos const& scatterInfos);
 
     auto clear() -> void;

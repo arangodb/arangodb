@@ -644,7 +644,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
-<<<<<<< HEAD
   // TODO remove this IF
   // These are new style executors
   if constexpr (isNewStyleExecutor<Executor>) {
@@ -664,15 +663,6 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
 
     auto res = executeWithoutTrace(stack);
     return traceExecuteEnd(res);
-=======
-  traceExecuteBegin(stack);
-  // silence tests -- we need to introduce new failure tests for fetchers
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
->>>>>>> d34d013507... Attempt to improve shadowRow forwarding inside of a subquery context
   }
 
   // Fall back to getSome/skipSome
