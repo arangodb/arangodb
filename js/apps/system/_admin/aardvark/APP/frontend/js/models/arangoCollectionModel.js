@@ -255,6 +255,33 @@
         }
       });
       return result;
+    },
+
+    changeValidation: function (validation, callback) {
+      var result = false;
+      if (!validation) {
+        validation = {};
+      }
+
+      var data = {
+        schema: validation
+      };
+
+      $.ajax({
+        cache: false,
+        type: 'PUT',
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/properties'),
+        data: JSON.stringify(data),
+        contentType: 'application/json',
+        processData: false,
+        success: function () {
+          callback(false);
+        },
+        error: function (data) {
+          callback(true, data);
+        }
+      });
+      return result;
     }
 
   });
