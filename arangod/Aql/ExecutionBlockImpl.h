@@ -28,6 +28,7 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallSet.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
@@ -283,6 +284,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] auto createUpstreamCall(AqlCall const& call, bool wasCalledWithContinueCall)
       -> AqlCallList;
 
+  auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
@@ -327,6 +330,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   
   /// used to track the stats per executor
   typename Executor::Stats _blockStats;
+
+  AqlCallStack _stackBeforeWaiting;
 
   // Only used in passthrough variant.
   // We track if we have reference the range's block
