@@ -391,13 +391,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   std::string const& cType =
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
-    VPackOptions options;
-    options.validateUtf8Strings = true;
-    options.disallowExternals = true;
-    options.disallowCustom = true;
-    options.checkAttributeUniqueness = true;
-    options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
-    VPackValidator validator(&options);
+    VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
 
     try {
       while (p < end) {
@@ -429,7 +423,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
     TRI_ASSERT(*end == '\0');
 
     VPackBuilder builder;
-    VPackParser parser(builder);
+    VPackParser parser(builder, &basics::VelocyPackHelper::requestValidationOptions);
 
     while (p < end) {
       char const* q = strchr(p, '\n');

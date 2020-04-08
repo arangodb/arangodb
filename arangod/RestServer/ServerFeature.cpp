@@ -84,6 +84,10 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_restServer),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
+  options->addOption("--server.validate-utf8-strings", "perform UTF-8 string validation for incoming JSON and VelocyPack data",
+                     new BooleanParameter(&_validateUtf8Strings),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden)).setIntroducedIn(30603);
+
   options->addObsoleteOption(
       "--server.session-timeout",
       "timeout of web interface server sessions (in seconds)", true);
@@ -177,6 +181,11 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       _operationMode == OperationMode::MODE_CONSOLE) {
     server().getFeature<ShutdownFeature>().disable();
   }
+}
+
+void ServerFeature::prepare() {
+  // adjust global settings for UTF-8 string validation
+  basics::VelocyPackHelper::requestValidationOptions.validateUtf8Strings = _validateUtf8Strings;
 }
 
 void ServerFeature::start() {

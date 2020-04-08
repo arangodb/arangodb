@@ -429,12 +429,18 @@ void Validator::validateCompactObject(uint8_t const* ptr, std::size_t length) {
     // validate key
     validate(p, e - p, true);
     Slice key(p);
-    if (!key.isString() && !key.isInteger()) {
+    bool isString = key.isString();
+    if (!isString && !key.isInteger()) {
       throw Exception(Exception::ValidatorInvalidLength, "Invalid object key type");
+    }
+    ValueLength keySize = key.byteSize();
+    // validate key
+    if (isString && options->validateUtf8Strings) {
+      validate(p, keySize, true);
     }
 
     // validate value
-    p += key.byteSize();
+    p += keySize;
     validate(p, e - p, true);
     p += Slice(p).byteSize();
   }
@@ -528,11 +534,16 @@ void Validator::validateIndexedObject(uint8_t const* ptr, std::size_t length) {
     validate(member, indexTable - member, true);
 
     Slice key(member);
-    if (!key.isString() && !key.isInteger()) {
+    bool const isString = key.isString();
+    if (!isString && !key.isInteger()) {
       throw Exception(Exception::ValidatorInvalidLength, "Invalid object key type");
     }
 
     ValueLength const keySize = key.byteSize();
+    if (isString && options->validateUtf8Strings) {
+      validate(member, keySize, true);
+    }
+
     uint8_t const* value = member + keySize;
     if (value >= indexTable) {
       throw Exception(Exception::ValidatorInvalidLength, "Object value leaking into index table");
