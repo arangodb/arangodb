@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded to OpenSSL 1.1.1f.
+
 * Improve continuation behavior of AQL queries. We post the continuation handler
   on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
   of LOW.
