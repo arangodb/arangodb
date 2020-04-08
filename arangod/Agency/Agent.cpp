@@ -835,6 +835,7 @@ void Agent::advanceCommitIndex() {
   {
     WRITE_LOCKER(oLocker, _outputLock);
     if (index > _commitIndex) {
+
       CONDITION_LOCKER(guard, _waitForCV);
       LOG_TOPIC("e24a9", TRACE, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
@@ -1435,6 +1436,7 @@ void Agent::clearExpiredPolls() {
     VPackArrayBuilder a(empty.get());
   }
   std::lock_guard lck(_promLock);
+
   triggerPollsNoLock(empty, std::chrono::steady_clock::now());
 }
 
@@ -1452,16 +1454,25 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
     VPackArrayBuilder arr(qu.get());
   }
 
-  auto it = _promises.begin();
-  while (it != _promises.end()) {
-    if (it->first < tp) {
-      it->second.setValue(qu);
-      it = _promises.erase(it);
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  auto pit = _promises.begin();
+  while (pit != _promises.end()) {
+    if (pit->first < tp) {
+      auto pp = std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
+      bool queued = scheduler->queue(
+        RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
+      if (!queued) {
+        LOG_TOPIC("3647c", DEBUG, Logger::AGENCY) <<
+          "Failed to schedule logsForTrigger running in main thread";
+        pp->setValue(qu);
+      }
+      pit = _promises.erase(pit);
     } else {
-      break;
+      ++pit;
     }
   }
 }
+
 
 /// Send out append entries to followers regularly or on event
 void Agent::run() {
