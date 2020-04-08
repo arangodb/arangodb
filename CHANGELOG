@@ -1,9 +1,9 @@
 devel
 -----
 
-* Improve continuation behavior of AQL queries. We post the continuation
-  handler on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM
-  prio instead of LOW.
+* Improve continuation behavior of AQL queries. We post the continuation handler
+  on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
+  of LOW.
   
 * When relaying requests to other coordinators in a load-balanced setup, don't
   forward the "http/1.1" HTTP header from the remote response. Forwarding that
