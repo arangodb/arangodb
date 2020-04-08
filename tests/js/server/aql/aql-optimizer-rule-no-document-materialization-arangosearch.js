@@ -58,7 +58,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
         consolidationIntervalMsec: 5000,
         primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
         primarySortCompression: "none",
-        storedValues: ["obj.a.a1", {field:"obj.c", compression:"none"}, ["obj.d.d1", "obj.e.e1"], ["obj.f", "obj.g", "obj.h"]],
+        storedValues: [["obj.a.a1"], {fields:["obj.c"], compression:"none"}, ["obj.d.d1", "obj.e.e1"], ["obj.f", "obj.g", "obj.h"]],
         links: {
           [cn] : { includeAllFields: true },
           [cn1] : { includeAllFields: true },
@@ -76,7 +76,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       db._createView(vvn, "arangosearch", {
         consolidationIntervalMsec: 5000,
         primarySort: [],
-        storedValues: ["obj.a.a1", "obj.c", ["obj.d.d1", "obj.e.e1"], {field:["obj.f", "obj.g", "obj.h"], compression:"none"}],
+        storedValues: [["obj.a.a1"], ["obj.c"], ["obj.d.d1", "obj.e.e1"], {fields:["obj.f", "obj.g", "obj.h"], compression:"none"}],
         links: {
           [cn] : { includeAllFields: true },
           [cn1] : { includeAllFields: true }
@@ -85,7 +85,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       db._createView(systemvn, "arangosearch", {
         consolidationIntervalMsec: 5000,
         primarySort: [{"field": "_key", "direction": "asc"}, {"field": "_rev", "direction": "desc"}],
-        storedValues: ["_key", {field:["_id", "_key"], compression:"none"}, ["_from", "_to", "_id"]],
+        storedValues: [["_key"], {fields:["_id", "_key"], compression:"none"}, ["_from", "_to", "_id"]],
         links: {
           [cn] : { includeAllFields: true },
           [edgeIndexCollectionName] : { includeAllFields: true }

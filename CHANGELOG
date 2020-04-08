@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improve continuation behavior of AQL queries. We post the continuation handler
+  on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
+  of LOW.
+  
 * When relaying requests to other coordinators in a load-balanced setup, don't
   forward the "http/1.1" HTTP header from the remote response. Forwarding that
   header in the same way as any other header is not required, as each response
@@ -78,7 +82,7 @@ devel
 * Fixed a bug in the agency supervision, which could declare an already FAILED
   dbserver temporarily as GOOD again after an agency leader change.
 
-* Added INTERLEAVE AQL function.
+* Added `INTERLEAVE` AQL function.
 
 * Upgraded bundled RocksDB library to version 6.8.0.
 
