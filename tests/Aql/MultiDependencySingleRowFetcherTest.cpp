@@ -64,8 +64,8 @@ class MultiDependencySingleRowFetcherTest
   // Each will be initialized with the given deque of blocks
   // Note: Caller needs to make sure that ShadowRows are present in correct
   // order and correct amount in all deques
-  auto buildFetcher(std::vector<std::deque<SharedAqlItemBlockPtr>> inputData)
-      -> MultiDependencySingleRowFetcher {
+  auto buildFetcher(std::vector<std::deque<SharedAqlItemBlockPtr>> inputData,
+                    size_t subqueryDepth) -> MultiDependencySingleRowFetcher {
     // We need at least 1 dependency!
     TRI_ASSERT(!inputData.empty());
     WaitingExecutionBlockMock::WaitingBehaviour waiting =
@@ -74,7 +74,8 @@ class MultiDependencySingleRowFetcherTest
     for (auto blockDeque : inputData) {
       auto dep = std::make_unique<WaitingExecutionBlockMock>(fakedQuery->engine(),
                                                              generateNodeDummy(),
-                                                             std::move(blockDeque), waiting);
+                                                             std::move(blockDeque),
+                                                             waiting, subqueryDepth);
       _dependencies.emplace_back(dep.get());
       _blocks.emplace_back(std::move(dep));
     }
@@ -100,9 +101,9 @@ class MultiDependencySingleRowFetcherTest
     return set;
   }
 
-  auto testWaiting(MultiDependencySingleRowFetcher& testee, AqlCallSet const& set) {
+  auto testWaiting(MultiDependencySingleRowFetcher& testee, AqlCallStack stack,
+                   AqlCallSet const& set) {
     if (doesWait()) {
-      auto stack = makeStack();
       auto [state, skipped, ranges] = testee.execute(stack, set);
       EXPECT_EQ(state, ExecutionState::WAITING);
       EXPECT_TRUE(skipped.nothingSkipped());
@@ -228,12 +229,12 @@ TEST_P(MultiDependencySingleRowFetcherTest, no_blocks_upstream) {
     data.emplace_back(std::deque<SharedAqlItemBlockPtr>{});
   }
 
-  auto testee = buildFetcher(data);
+  auto testee = buildFetcher(data, 0);
 
   auto set = makeSameCallToAllDependencies(AqlCall{});
-  testWaiting(testee, set);
-
   auto stack = makeStack();
+  testWaiting(testee, stack, set);
+
   auto [state, skipped, ranges] = testee.execute(stack, set);
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_TRUE(skipped.nothingSkipped());
@@ -254,12 +255,12 @@ TEST_P(MultiDependencySingleRowFetcherTest, one_block_upstream_all_deps_equal) {
     data.emplace_back(std::move(blockDeque));
   }
 
-  auto testee = buildFetcher(data);
+  auto testee = buildFetcher(data, 0);
 
   auto set = makeSameCallToAllDependencies(AqlCall{});
-  testWaiting(testee, set);
-
   auto stack = makeStack();
+  testWaiting(testee, stack, set);
+
   auto [state, skipped, ranges] = testee.execute(stack, set);
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_TRUE(skipped.nothingSkipped());
@@ -281,12 +282,12 @@ TEST_P(MultiDependencySingleRowFetcherTest, one_block_upstream_all_deps_differ) 
     data.emplace_back(std::move(blockDeque));
   }
 
-  auto testee = buildFetcher(data);
+  auto testee = buildFetcher(data, 0);
 
   auto set = makeSameCallToAllDependencies(AqlCall{});
-  testWaiting(testee, set);
-
   auto stack = makeStack();
+  testWaiting(testee, stack, set);
+
   auto [state, skipped, ranges] = testee.execute(stack, set);
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_TRUE(skipped.nothingSkipped());
@@ -309,12 +310,12 @@ TEST_P(MultiDependencySingleRowFetcherTest, many_blocks_upstream_all_deps_equal)
     data.emplace_back(std::move(blockDeque));
   }
 
-  auto testee = buildFetcher(data);
+  auto testee = buildFetcher(data, 0);
 
   auto set = makeSameCallToAllDependencies(AqlCall{});
-  testWaiting(testee, set);
-
   auto stack = makeStack();
+  testWaiting(testee, stack, set);
+
   {
     // First Block
     auto [state, skipped, ranges] = testee.execute(stack, set);
@@ -371,12 +372,12 @@ TEST_P(MultiDependencySingleRowFetcherTest, many_blocks_upstream_all_deps_differ
     data.emplace_back(std::move(blockDeque));
   }
 
-  auto testee = buildFetcher(data);
+  auto testee = buildFetcher(data, 0);
 
   auto set = makeSameCallToAllDependencies(AqlCall{});
-  testWaiting(testee, set);
-
   auto stack = makeStack();
+  testWaiting(testee, stack, set);
+
   {
     // First Block
     auto [state, skipped, ranges] = testee.execute(stack, set);
@@ -434,12 +435,12 @@ TEST_P(MultiDependencySingleRowFetcherTest, many_blocks_upstream_all_deps_differ
     data.emplace_back(std::move(blockDeque));
   }
 
-  auto testee = buildFetcher(data);
+  auto testee = buildFetcher(data, 0);
   auto stack = makeStack();
   for (size_t dep = 0; dep < numberDependencies(); ++dep) {
     AqlCallSet set{};
     set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCallList{AqlCall{}}});
-    testWaiting(testee, set);
+    testWaiting(testee, stack, set);
 
     {
       // First Block
@@ -512,12 +513,14 @@ TEST_P(MultiDependencySingleRowFetcherTest,
     data.emplace_back(std::move(blockDeque));
   }
 
-  auto testee = buildFetcher(data);
+  auto testee = buildFetcher(data, 2);
   auto stack = makeStack();
+  stack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+  stack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
   for (size_t dep = 0; dep < numberDependencies(); ++dep) {
     AqlCallSet set{};
     set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCallList{AqlCall{}}});
-    testWaiting(testee, set);
+    testWaiting(testee, stack, set);
 
     {
       // First Block, split after shadowRow, we cannot overfetch
@@ -614,14 +617,16 @@ TEST_P(MultiDependencySingleRowFetcherTest,
     data.emplace_back(std::move(blockDeque));
   }
 
-  auto testee = buildFetcher(data);
+  auto testee = buildFetcher(data, 2);
   auto stack = makeStack();
+  stack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+  stack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
   for (size_t depCounter = numberDependencies(); depCounter > 0; --depCounter) {
     TRI_ASSERT(depCounter > 0);
     auto dep = depCounter - 1;
     AqlCallSet set{};
     set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCallList{AqlCall{}}});
-    testWaiting(testee, set);
+    testWaiting(testee, stack, set);
 
     {
       // First Block, split after shadowRow, we cannot overfetch
@@ -718,13 +723,16 @@ TEST_P(MultiDependencySingleRowFetcherTest,
     data.emplace_back(std::move(blockDeque));
   }
 
-  auto testee = buildFetcher(data);
+  auto testee = buildFetcher(data, 2);
   auto stack = makeStack();
+  stack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+  stack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+
   for (size_t dep = 0; dep < numberDependencies(); ++dep) {
     AqlCallSet set{};
     // offset 10
     set.calls.emplace_back(AqlCallSet::DepCallPair{dep, AqlCallList{AqlCall{10}}});
-    testWaiting(testee, set);
+    testWaiting(testee, stack, set);
 
     {
       // First Block, split after shadowRow, we cannot overfetch
