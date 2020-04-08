@@ -280,11 +280,13 @@ void ClusterInfo::triggerBackgroundGetIds() {
 void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   AgencyComm ac(_server);
-  AgencyCommResult ag = ac.getValues("/");
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = agencyCache(std::vector<std::string>{"/"});
+  auto res = acb.slice();
 
-  if (ag.successful()) {
+  if (!res.isNone) {
     LOG_TOPIC("fe8ce", INFO, Logger::CLUSTER) << "Agency dump:\n"
-                                              << ag.slice().toJson();
+                                              << ag.toJson();
   } else {
     LOG_TOPIC("e7e30", WARN, Logger::CLUSTER) << "Could not get agency dump!";
   }
@@ -2786,10 +2788,10 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 
   auto const view = acb->slice()[0].get<std::string>(
     {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID});
-  
+
   if (!view.isObject()) {
     logAgencyDump();
-    
+
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
@@ -2824,7 +2826,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
                                     AgencyPrecondition::Type::EMPTY, false);
 
-  
+
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.get(
     std::vector<std::string>{
@@ -3183,13 +3185,13 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             }
           }
         }
-        
+
         if (!found) {
           return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
                         "index was dropped during creation");
         }
       }
-    
+
       if (tmpRes == 0) {
         // Finally, in case all is good, remove the `isBuilding` flag
         // check that the index has appeared. Note that we have to have
@@ -3342,7 +3344,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
 
-  
+
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.get(
     std::vector<std::string>{AgencyCommManager::path(planCollKey)});
@@ -3560,7 +3562,7 @@ void ClusterInfo::loadServers() {
   if (result[0].hasKey(serversKnownPath)) {
     serversKnownSlice = result[0].get(serversKnownPath);
   }
-  
+
 
   if (serversRegistered.isObject()) {
     decltype(_servers) newServers;
@@ -3909,14 +3911,9 @@ void ClusterInfo::loadCurrentDBServers() {
   if (!result.isArray()) {
     return;
   }
-  
+
   // Now contact the agency:
-  //AgencyCommResult result = _agency.getValues(prefixCurrentDBServers);
-  //AgencyCommResult target = _agency.getValues(prefixTarget);
-  velocypack::Slice currentDBServers;
-  velocypack::Slice failedDBServers;
-  velocypack::Slice cleanedDBServers;
-  velocypack::Slice toBeCleanedDBServers;
+  VPackSlice currentDBServers, failedDBServers, cleanedDBServers, toBeCleanedDBServers;
 
   auto curDBServersPath = std::vector<std::string>{
     AgencyCommManager::path(), "Current", "DBServers"};
@@ -3933,13 +3930,13 @@ void ClusterInfo::loadCurrentDBServers() {
   if (result[0].hasKey(cleanedServersPath)) {
     cleanedDBServers = result[0].get(cleanedServersPath);
   }
-  
+
   auto toBeCleanedServersPath = std::vector<std::string>{
     AgencyCommManager::path(), "Target", "ToBeCleanedServers"};
   if (result[0].hasKey(toBeCleanedServersPath)) {
     toBeCleanedDBServers = result[0].get(toBeCleanedServersPath);
   }
-  
+
   if (currentDBServers.isObject() && failedDBServers.isObject()) {
     decltype(_DBServers) newDBServers;
 
@@ -4663,7 +4660,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
 
     auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
     auto [res, index] = agencyCache.get("Supervision/State/Mode");
-    
+
     if(!res->slice().isString()) {
       return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
