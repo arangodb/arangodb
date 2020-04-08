@@ -264,44 +264,43 @@ function ValidationBasicsSuite () {
       }
     },
 
-    testLevelModerateUpdateBadToGood : () => {
+    testLevelModerateModifyBadToGood : () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema" : validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
-      let  doc = testCollection.insert(badDoc, skipOptions);
+      let doc;
+
+      doc = testCollection.insert(badDoc, skipOptions);
       testCollection.update(doc._key, goodDoc);
-    },
 
-    testLevelModerateReplaceBadToGood : () => {
-      validatorJson.level = "moderate";
-      testCollection.properties({"schema" : validatorJson });
-      sleepInCluster();
-      assertEqual(testCollection.properties().schema.level, validatorJson.level);
-
-      let  doc = testCollection.insert(badDoc, skipOptions);
+      doc = testCollection.insert(badDoc, skipOptions);
       testCollection.replace(doc._key, goodDoc);
     },
 
-    testLevelModerateUpdateBadWithBad : () => {
+    testLevelModerateModifyBadWithBad : () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema" : validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
-      let  doc = testCollection.insert(badDoc, skipOptions);
+      let doc;
+      let query;
+
+      doc = testCollection.insert(badDoc, skipOptions);
       testCollection.update(doc._key, badDoc);
-    },
 
-    testLevelModerateReplaceBadWithBad : () => {
-      validatorJson.level = "moderate";
-      testCollection.properties({"schema" : validatorJson });
-      sleepInCluster();
-      assertEqual(testCollection.properties().schema.level, validatorJson.level);
-
-      let  doc = testCollection.insert(badDoc, skipOptions);
+      doc = testCollection.insert(badDoc, skipOptions);
       testCollection.replace(doc._key, badDoc);
+
+      doc = testCollection.insert(badDoc, skipOptions);
+      query = `UPDATE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+      db._query(query);
+
+      doc = testCollection.insert(badDoc, skipOptions);
+      query = `REPLACE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+      db._query(query);
     },
 
     testLevelModerateUpdateGoodToBad : () => {
@@ -311,6 +310,7 @@ function ValidationBasicsSuite () {
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let  doc = testCollection.insert(goodDoc);
+
       try {
         testCollection.update(doc._key, badDoc);
         fail();
@@ -318,6 +318,13 @@ function ValidationBasicsSuite () {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
 
+      try {
+        let query = `UPDATE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        db._query(query);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
     },
 
     testLevelModerateReplaceGoodToBad : () => {
@@ -329,6 +336,14 @@ function ValidationBasicsSuite () {
       let  doc = testCollection.insert(goodDoc);
       try {
         testCollection.replace(doc._key, badDoc);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+
+      try {
+        let query = `REPLACE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        db._query(query);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
@@ -359,6 +374,22 @@ function ValidationBasicsSuite () {
 
       try {
         testCollection.update(doc._key, badDoc);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+
+      try {
+        let query = `REPLACE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        db._query(query);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+
+      try {
+        let query = `UPDATE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        db._query(query);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
