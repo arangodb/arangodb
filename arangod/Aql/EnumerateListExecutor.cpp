@@ -74,11 +74,6 @@ RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
     : _infos(infos), _currentRow{CreateInvalidInputRowHint{}}, _inputArrayPosition(0), _inputArrayLength(0) {}
 
-std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
   if (_currentRow) {
     std::ignore = inputRange.nextDataRow();

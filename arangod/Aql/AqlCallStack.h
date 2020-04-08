@@ -141,6 +141,30 @@ class AqlCallStack {
    */
   auto modifyTopCall() -> AqlCall&;
 
+  /**
+   * @brief Test if this stack has at least 1 valid call
+   *        on every subquery depth. If not, we canot continue with this stack
+   *        but need to return.
+   *
+   * @return true We have all valid calls
+   * @return false We ahve at least on depth without a valid call
+   */
+  auto hasAllValidCalls() const noexcept -> bool;
+
+  /**
+   * @brief Tests if this requires at most an identical
+   *        amount of data as the other stack does.
+   *
+   *        Or in other words: Starting with the other stack,
+   *        is there a combination of didSkip/didProduce
+   *        calls to reach this state. (empty combination allowed)
+   *        This also checks if the depths of the stacks are identical
+   *
+   * @return true
+   * @return false
+   */
+  auto requestLessDataThan(AqlCallStack const& other) const noexcept -> bool;
+
  private:
   explicit AqlCallStack(std::vector<AqlCallList>&& operations);
 

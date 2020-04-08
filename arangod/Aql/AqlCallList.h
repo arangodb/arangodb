@@ -125,6 +125,20 @@ class AqlCallList {
   auto toVelocyPack(velocypack::Builder&) const -> void;
   auto toString() const -> std::string;
 
+  /**
+   * @brief Tests if this requires at most an identical
+   *        amount of data as the other list does.
+   *
+   *        Or in other words: Starting with the other stack,
+   *        is there a combination of didSkip/didProduce
+   *        calls to reach this state. (empty combination allowed)
+   *        This also checks if the depths of the stacks are identical
+   *
+   * @return true
+   * @return false
+   */
+  auto requestLessDataThan(AqlCallList const& other) const noexcept -> bool;
+
  private:
   /**
    * @brief A list of specific calls for subqueries.

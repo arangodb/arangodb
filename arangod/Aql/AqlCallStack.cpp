@@ -219,3 +219,26 @@ auto AqlCallStack::modifyTopCall() -> AqlCall& {
   TRI_ASSERT(!_operations.empty());
   return modifyCallAtDepth(0);
 }
+
+auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
+  return std::all_of(_operations.begin(), _operations.end(), [](AqlCallList const& list) {
+    if (!list.hasMoreCalls()) {
+      return false;
+    }
+    auto const& call = list.peekNextCall();
+    // We cannot continue if any of our calls has a softLimit reached.
+    return !(call.hasSoftLimit() && call.getLimit() == 0 && call.getOffset() == 0);
+  });
+}
+
+auto AqlCallStack::requestLessDataThan(AqlCallStack const& other) const noexcept -> bool {
+  if (_operations.size() != other._operations.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < _operations.size(); ++i) {
+    if (!_operations[i].requestLessDataThan(other._operations[i])) {
+      return false;
+    }
+  }
+  return true;
+}

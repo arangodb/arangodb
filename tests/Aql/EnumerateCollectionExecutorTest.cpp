@@ -348,7 +348,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
 
   uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
-  // auto vpackOptions = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
   EXPECT_EQ(vocbase.lookupCollection("UnitTestCollection")
                 ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked

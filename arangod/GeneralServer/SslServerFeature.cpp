@@ -119,7 +119,8 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new StringParameter(&_ecdhCurve));
 
   options->addOption("--ssl.prefer-http1-in-alpn",
-                     "Allows to let the server prefer HTTP/1.1 over HTTP/2 in ALPN protocol negotiations",
+                     "Allows to let the server prefer HTTP/1.1 over HTTP/2 in "
+                     "ALPN protocol negotiations",
                      new BooleanParameter(&_preferHttp11InAlpn));
 }
 
@@ -206,14 +207,14 @@ class BIOGuard {
 };
 }  // namespace
 
-static inline bool searchForProtocol(const unsigned char** out, unsigned char* outlen,
-                                     const unsigned char* in, unsigned int inlen,
-                                     const char* proto) {
+static inline bool searchForProtocol(const unsigned char** out,
+                                     unsigned char* outlen, const unsigned char* in,
+                                     unsigned int inlen, const char* proto) {
   size_t len = strlen(proto);
   size_t i = 0;
   while (i + len <= inlen) {
     if (memcmp(in + i, proto, len) == 0) {
-      *out = (const unsigned char *)(in + i + 1);
+      *out = (const unsigned char*)(in + i + 1);
       *outlen = proto[0];
       return true;
     }
@@ -226,7 +227,7 @@ static int alpn_select_proto_cb(SSL* ssl, const unsigned char** out,
                                 unsigned char* outlen, const unsigned char* in,
                                 unsigned int inlen, void* arg) {
   int rv = 0;
-  bool const* preferHttp11InAlpn = (bool*) arg;
+  bool const* preferHttp11InAlpn = (bool*)arg;
   if (*preferHttp11InAlpn) {
     if (!searchForProtocol(out, outlen, in, inlen, "\x8http/1.1")) {
       if (!searchForProtocol(out, outlen, in, inlen, "\x2h2")) {
@@ -234,7 +235,7 @@ static int alpn_select_proto_cb(SSL* ssl, const unsigned char** out,
       }
     }
   } else {
-    rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+    rv = nghttp2_select_next_protocol((unsigned char**)out, outlen, in, inlen);
   }
 
   if (rv < 0) {
@@ -375,7 +376,8 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(std::string key
 
     sslContext.set_verify_mode(SSL_VERIFY_NONE);
 
-    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, (void*) (&_preferHttp11InAlpn));
+    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb,
+                               (void*)(&_preferHttp11InAlpn));
 
     return sslContext;
   } catch (std::exception const& ex) {

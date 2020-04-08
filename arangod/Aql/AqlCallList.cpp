@@ -245,6 +245,44 @@ auto AqlCallList::toString() const -> std::string {
   return stream.str();
 }
 
+auto AqlCallList::requestLessDataThan(AqlCallList const& other) const noexcept -> bool {
+  if (other._defaultCall.has_value()) {
+    // Let is straightly check the default call.
+    // We do not know if we have already filled one specific call
+    if (!_defaultCall.has_value()) {
+      // We cannot lose the default call
+      return false;
+    }
+
+    if (!(_defaultCall.value() == other._defaultCall.value())) {
+      return false;
+    }
+
+    for (auto const& call : _specificCalls) {
+      if (!call.requestLessDataThan(other._defaultCall.value())) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (_defaultCall.has_value()) {
+    // We cannot reach a state with default call, if the original does not have one
+    return false;
+  }
+  // NOTE: For simplicity we only implemented this for the single specific call
+  // used up to now.
+  TRI_ASSERT(_specificCalls.size() <= 1);
+  TRI_ASSERT(other._specificCalls.size() <= 1);
+  if (!_specificCalls.empty()) {
+    if (other._specificCalls.empty()) {
+      // Cannot have generated a specific call
+      return false;
+    }
+    return _specificCalls[0].requestLessDataThan(other._specificCalls[0]);
+  }
+  return true;
+}
+
 bool arangodb::aql::operator==(AqlCallList const& left, AqlCallList const& right) {
   if (left._specificCalls.size() != right._specificCalls.size()) {
     return false;
@@ -262,7 +300,7 @@ bool arangodb::aql::operator==(AqlCallList const& left, AqlCallList const& right
 }
 
 auto arangodb::aql::operator<<(std::ostream& out, AqlCallList const& list) -> std::ostream& {
-  out << "specific: [ ";
+  out << "{specific: [ ";
   for (auto const& [index, call] : enumerate(list._specificCalls)) {
     if (index > 0) {
       out << ", ";
@@ -271,7 +309,8 @@ auto arangodb::aql::operator<<(std::ostream& out, AqlCallList const& list) -> st
   }
   out << " ]";
   if (list._defaultCall.has_value()) {
-    out << " default: " << list._defaultCall.value();
+    out << ", default: " << list._defaultCall.value();
   }
+  out << "}";
   return out;
 }
