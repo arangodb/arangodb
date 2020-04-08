@@ -163,7 +163,7 @@ class AqlCallStack {
    * @return true
    * @return false
    */
-  auto requestLessDataThen(AqlCallStack const& other) const noexcept -> bool;
+  auto requestLessDataThan(AqlCallStack const& other) const noexcept -> bool;
 
  private:
   explicit AqlCallStack(std::vector<AqlCallList>&& operations);

@@ -1359,10 +1359,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       // mind just because we told her to hold the line.
 
       // The client cannot request less data!
-      TRI_ASSERT(_clientRequest.requestLessDataThen(clientCall));
+      TRI_ASSERT(_clientRequest.requestLessDataThan(clientCall));
       clientCall = _clientRequest;
 
-      TRI_ASSERT(_stackBeforeWaiting.requestLessDataThen(stack));
+      TRI_ASSERT(_stackBeforeWaiting.requestLessDataThan(stack));
       stack = _stackBeforeWaiting;
     }
 

@@ -137,7 +137,7 @@ class AqlCallList {
    * @return true
    * @return false
    */
-  auto requestLessDataThen(AqlCallList const& other) const noexcept -> bool;
+  auto requestLessDataThan(AqlCallList const& other) const noexcept -> bool;
 
  private:
   /**

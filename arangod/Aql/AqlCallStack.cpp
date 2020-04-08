@@ -231,12 +231,12 @@ auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
   });
 }
 
-auto AqlCallStack::requestLessDataThen(AqlCallStack const& other) const noexcept -> bool {
+auto AqlCallStack::requestLessDataThan(AqlCallStack const& other) const noexcept -> bool {
   if (_operations.size() != other._operations.size()) {
     return false;
   }
   for (size_t i = 0; i < _operations.size(); ++i) {
-    if (!_operations[i].requestLessDataThen(other._operations[i])) {
+    if (!_operations[i].requestLessDataThan(other._operations[i])) {
       return false;
     }
   }

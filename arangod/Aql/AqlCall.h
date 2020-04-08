@@ -196,7 +196,7 @@ struct AqlCall {
     return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
   }
 
-  auto requestLessDataThen(AqlCall const& other) const noexcept -> bool;
+  auto requestLessDataThan(AqlCall const& other) const noexcept -> bool;
 };
 
 constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {

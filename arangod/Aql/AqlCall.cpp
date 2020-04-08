@@ -281,7 +281,7 @@ auto AqlCall::toString() const -> std::string {
   return stream.str();
 }
 
-auto AqlCall::requestLessDataThen(AqlCall const& other) const noexcept -> bool {
+auto AqlCall::requestLessDataThan(AqlCall const& other) const noexcept -> bool {
   if (getOffset() > other.getOffset()) {
     return false;
   }
