@@ -89,18 +89,18 @@ uint64_t AqlValue::hash(uint64_t seed) const {
     }
     case DOCVEC:
     case RANGE: {
-      size_t const n = _data.range->size();
+      uint64_t const n = _data.range->size();
       
       // simon: copied from VPackSlice::normalizedHash()
       // normalize arrays by hashing array length and iterating
       // over all array members
       uint64_t const tmp = n ^ 0xba5bedf00d;
-      uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(uint64_t), VPackSlice::defaultSeed);
+      uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(tmp), seed);
 
-      for (size_t i = 0; i < n; ++i) {
+      for (uint64_t i = 0; i < n; ++i) {
         // upcast integer values to double
         double v = static_cast<double>(_data.range->at(i));
-        value ^= VELOCYPACK_HASH(&v, sizeof(v), seed);
+        value ^= VELOCYPACK_HASH(&v, sizeof(v), value);
       }
       
       return value;

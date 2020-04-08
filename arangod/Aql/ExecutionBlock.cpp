@@ -159,7 +159,9 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
 }
 
 void ExecutionBlock::collectExecStats(ExecutionStats& stats) const {
-  stats.add(getPlanNode()->id(), _execNodeStats);
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    stats.add(getPlanNode()->id(), _execNodeStats);
+  }
 }
 
 bool ExecutionBlock::isInSplicedSubquery() const noexcept {
