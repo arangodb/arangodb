@@ -214,6 +214,13 @@ CollectionNameResolver const* transaction::Context::createResolver() {
   return _resolver;
 }
 
+std::shared_ptr<TransactionState> transaction::Context::createState(transaction::Options const& options) {
+  // now start our own transaction
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  return engine->createTransactionState(_vocbase, generateId(), options);
+}
+
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
 void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,

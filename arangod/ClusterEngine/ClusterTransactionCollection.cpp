@@ -38,9 +38,8 @@ using namespace arangodb;
 
 ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx,
                                                            TRI_voc_cid_t cid,
-                                                           AccessMode::Type accessType,
-                                                           int nestingLevel)
-    : TransactionCollection(trx, cid, accessType, nestingLevel) {}
+                                                           AccessMode::Type accessType)
+    : TransactionCollection(trx, cid, accessType) {}
 
 ClusterTransactionCollection::~ClusterTransactionCollection() = default;
 
@@ -60,11 +59,8 @@ bool ClusterTransactionCollection::canAccess(AccessMode::Type accessType) const 
   return true;
 }
 
-int ClusterTransactionCollection::use(int nestingLevel) {
-  if (_nestingLevel != nestingLevel) {
-    // only process our own collections
-    return TRI_ERROR_NO_ERROR;
-  }
+// simon: actually probably never called on coordinator
+int ClusterTransactionCollection::lockUsage() {
 
   if (_collection == nullptr) {
     // open the collection
@@ -83,13 +79,13 @@ int ClusterTransactionCollection::use(int nestingLevel) {
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
-      LOG_TRX("8154f", TRACE, _transaction, nestingLevel) << "using collection " << _cid;
+      LOG_TRX("8154f", TRACE, _transaction) << "using collection " << _cid;
     }
   }
 
   if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {
     // r/w lock the collection
-    int res = doLock(_accessType, nestingLevel);
+    int res = doLock(_accessType);
 
     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
     // operation has actually acquired the lock (and that the lock has not
@@ -102,21 +98,17 @@ int ClusterTransactionCollection::use(int nestingLevel) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void ClusterTransactionCollection::unuse(int nestingLevel) {
-  // nothing to do here. we're postponing the unlocking until release()
-}
-
-void ClusterTransactionCollection::release() {
+void ClusterTransactionCollection::releaseUsage() {
   if (isLocked()) {
     // unlock our own r/w locks
-    doUnlock(_accessType, 0);
+    doUnlock(_accessType);
     _lockType = AccessMode::Type::NONE;
   }
 
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX("1cb8d", TRACE, _transaction, 0) << "unusing collection " << _cid;
+    LOG_TRX("1cb8d", TRACE, _transaction) << "unusing collection " << _cid;
     _collection = nullptr;
   }
 }
@@ -125,7 +117,7 @@ void ClusterTransactionCollection::release() {
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
 /// no other error occurred returns any other error code otherwise
-int ClusterTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
+int ClusterTransactionCollection::doLock(AccessMode::Type type) {
   if (!AccessMode::isWriteOrExclusive(type)) {
     _lockType = type;
     return TRI_ERROR_NO_ERROR;
@@ -141,7 +133,7 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   TRI_ASSERT(!isLocked());
 
   TRI_ASSERT(_collection);
-  LOG_TRX("b4a05", TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
+  LOG_TRX("b4a05", TRACE, _transaction) << "write-locking collection " << _cid;
 
   _lockType = type;
   // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually
@@ -150,7 +142,7 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 }
 
 /// @brief unlock a collection
-int ClusterTransactionCollection::doUnlock(AccessMode::Type type, int nestingLevel) {
+int ClusterTransactionCollection::doUnlock(AccessMode::Type type) {
   if (!AccessMode::isWriteOrExclusive(type) || !AccessMode::isWriteOrExclusive(_lockType)) {
     _lockType = AccessMode::Type::NONE;
     return TRI_ERROR_NO_ERROR;
@@ -164,10 +156,6 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   TRI_ASSERT(_collection != nullptr);
 
   TRI_ASSERT(isLocked());
-  if (_nestingLevel < nestingLevel) {
-    // only process our own collections
-    return TRI_ERROR_NO_ERROR;
-  }
 
   if (!AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_lockType)) {
     // do not remove a write-lock if a read-unlock was requested!

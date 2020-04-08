@@ -32,16 +32,17 @@ namespace transaction {
   
 StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
   : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
-  
-/// @brief get parent transaction (if any)
-std::shared_ptr<TransactionState> StandaloneContext::getParentTransaction() const {
-  return _state;
-}
 
-/// @brief register the transaction,
-void StandaloneContext::registerTransaction(std::shared_ptr<TransactionState> const& state) {
-  TRI_ASSERT(_state == nullptr);
-  _state = state;
+/// @brief get transaction state, determine commit responsiblity
+/*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(transaction::Options const& options,
+                                                                              bool& responsibleForCommit) {
+  if (_state) {
+    responsibleForCommit = false;
+    return _state;
+  }
+  responsibleForCommit = true;
+  _state = transaction::Context::createState(options);
+  return _state;
 }
 
 /// @brief unregister the transaction

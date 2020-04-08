@@ -942,6 +942,9 @@ Result Query::finalizeSnippets(ExecutionStats& stats) {
     engine->collectExecutionStats(stats);
     engine->setShutdown(); // no need to pass through shutdown
   }
+  
+  TRI_ASSERT(commitResult.ok());
+  return commitResult;
 }
 
 /// @brief parse an AQL query
@@ -1148,13 +1151,13 @@ void Query::enterV8Context() {
       // register transaction and resolver in context
       TRI_ASSERT(_trx != nullptr);
 
-      ISOLATE;
-      TRI_GET_GLOBALS();
+//      ISOLATE;
+//      TRI_GET_GLOBALS();
       _preparedV8Context = false;
-      auto ctx = static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
-      if (ctx != nullptr) {
-        ctx->registerTransaction(_trx->stateShrdPtr());
-      }
+//      auto ctx = static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
+//      if (ctx != nullptr) {
+//        ctx->registerTransaction(_trx->stateShrdPtr());
+//      }
     }
     _preparedV8Context = false;
 
@@ -1168,12 +1171,12 @@ void Query::exitV8Context() {
   if (!_contextOwnedByExterior) {
     if (_V8Context != nullptr) {
       // unregister transaction and resolver in context
-      ISOLATE;
-      TRI_GET_GLOBALS();
-      auto ctx = static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
-      if (ctx != nullptr) {
-        ctx->unregisterTransaction();
-      }
+//      ISOLATE;
+//      TRI_GET_GLOBALS();
+//      auto ctx = static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
+//      if (ctx != nullptr) {
+//        ctx->unregisterTransaction();
+//      }
 
       TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       V8DealerFeature::DEALER->exitContext(_V8Context);

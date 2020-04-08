@@ -871,9 +871,9 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
 }
 
 std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollection(
-    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
+    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
-      new RocksDBTransactionCollection(&state, cid, accessType, nestingLevel));
+      new RocksDBTransactionCollection(&state, cid, accessType));
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {

@@ -40,17 +40,15 @@ using namespace arangodb;
 
 RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx,
                                                            TRI_voc_cid_t cid,
-                                                           AccessMode::Type accessType,
-                                                           int nestingLevel)
-    : TransactionCollection(trx, cid, accessType, nestingLevel),
-      _usageLocked(false),
-      _exclusiveWrites(trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites),
+                                                           AccessMode::Type accessType)
+    : TransactionCollection(trx, cid, accessType),
       _initialNumberDocuments(0),
       _revision(0),
       _numInserts(0),
       _numUpdates(0),
-      _numRemoves(0)
-      {}
+      _numRemoves(0),
+      _usageLocked(false),
+      _exclusiveWrites(trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites) {}
 
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
@@ -75,11 +73,7 @@ bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const 
   return true;
 }
 
-int RocksDBTransactionCollection::use(int nestingLevel) {
-  if (_nestingLevel != nestingLevel) {
-    // only process our own collections
-    return TRI_ERROR_NO_ERROR;
-  }
+int RocksDBTransactionCollection::lockUsage() {
 
   bool doSetup = false;
 
@@ -90,7 +84,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
 
-      LOG_TRX("b72bb", TRACE, _transaction, nestingLevel) << "using collection " << _cid;
+      LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid;
       TRI_set_errno(TRI_ERROR_NO_ERROR);  // clear error state so can get valid
                                           // error below
       _collection = _transaction->vocbase().useCollection(_cid, status);
@@ -115,9 +109,9 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {
+  if (/*AccessMode::isWriteOrExclusive(_accessType) &&*/!isLocked()) {
     // r/w lock the collection
-    int res = doLock(_accessType, nestingLevel);
+    int res = doLock(_accessType);
 
     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
     // operation has actually acquired the lock (and that the lock has not
@@ -136,11 +130,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void RocksDBTransactionCollection::unuse(int nestingLevel) {
-  // nothing to do here. we're postponing the unlocking until release()
-}
-
-void RocksDBTransactionCollection::release() {
+void RocksDBTransactionCollection::releaseUsage() {
   // questionable, but seems to work
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
       _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
@@ -151,15 +141,16 @@ void RocksDBTransactionCollection::release() {
 
   if (isLocked()) {
     // unlock our own r/w locks
-    doUnlock(_accessType, 0);
+    doUnlock(_accessType);
     _lockType = AccessMode::Type::NONE;
   }
 
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX("67a6b", TRACE, _transaction, 0) << "unusing collection " << _cid;
+    LOG_TRX("67a6b", TRACE, _transaction) << "unusing collection " << _cid;
 
+    TRI_ASSERT(_usageLocked); // simon: TODO make _usageLocked maintainer only
     if (_usageLocked) {
       _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
@@ -279,7 +270,7 @@ void RocksDBTransactionCollection::trackIndexRemove(IndexId iid, uint64_t hash) 
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
 /// no other error occurred returns any other error code otherwise
-int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
+int RocksDBTransactionCollection::doLock(AccessMode::Type type) {
 
   if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
     type = AccessMode::Type::EXCLUSIVE;
@@ -301,9 +292,9 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  double timeout = _transaction->timeout();
+  const double timeout = _transaction->lockTimeout();
 
-  LOG_TRX("f1246", TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
+  LOG_TRX("f1246", TRACE, _transaction) << "write-locking collection " << _cid;
   int res;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
@@ -333,7 +324,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 }
 
 /// @brief unlock a collection
-int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLevel) {
+int RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
     type = AccessMode::Type::EXCLUSIVE;
   }
@@ -350,12 +341,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(isLocked());
-
-  if (_nestingLevel < nestingLevel) {
-    // only process our own collections
-    return TRI_ERROR_NO_ERROR;
-  }
-
+  
   if (!AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_lockType)) {
     // do not remove a write-lock if a read-unlock was requested!
     return TRI_ERROR_NO_ERROR;
@@ -373,7 +359,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  LOG_TRX("372c0", TRACE, _transaction, nestingLevel) << "write-unlocking collection " << _cid;
+  LOG_TRX("372c0", TRACE, _transaction) << "write-unlocking collection " << _cid;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode

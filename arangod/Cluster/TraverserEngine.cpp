@@ -223,7 +223,7 @@ bool BaseEngine::lockCollection(std::string const& shard) {
   return true;
 }
 
-Result BaseEngine::lockAll() { return _trx->lockCollections(); }
+Result BaseEngine::lockAll() { return Result(); }
 
 std::shared_ptr<transaction::Context> BaseEngine::context() const {
   return _trx->transactionContext();

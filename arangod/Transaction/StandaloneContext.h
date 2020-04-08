@@ -42,11 +42,9 @@ struct StandaloneContext final : public SmartContext {
   
   explicit StandaloneContext(TRI_vocbase_t& vocbase);
   
-  /// @brief get parent transaction (if any)
-  std::shared_ptr<TransactionState> getParentTransaction() const override;
-  
-  /// @brief register the transaction,
-  void registerTransaction(std::shared_ptr<TransactionState> const&) override;
+  /// @brief get transaction state, determine commit responsiblity
+  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
+                                                 bool& responsibleForCommit) override;
   
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;

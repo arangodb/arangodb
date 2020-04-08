@@ -74,17 +74,13 @@ class SmartContext : public Context {
 struct ManagedContext final : public SmartContext {
   
   ManagedContext(TRI_voc_tid_t globalId, std::shared_ptr<TransactionState> state,
-                 AccessMode::Type mode);
+                 bool responsibleForCommit, bool cloned = false);
   
   ~ManagedContext();
   
-  /// @brief get parent transaction (if any)
-  std::shared_ptr<TransactionState> getParentTransaction() const override;
-
-  /// @brief register the transaction,
-  void registerTransaction(std::shared_ptr<TransactionState> const&) override {
-    TRI_ASSERT(false);
-  }
+  /// @brief get transaction state, determine commit responsiblity
+  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
+                                                 bool& responsibleForCommit) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
@@ -92,7 +88,8 @@ struct ManagedContext final : public SmartContext {
   std::shared_ptr<Context> clone() const override;
   
 private:
-  AccessMode::Type _mode;
+  const bool _responsibleForCommit;
+  const bool _cloned;
 };
 
 /// Used for a standalone AQL query. Always creates the state first.
@@ -102,11 +99,9 @@ struct AQLStandaloneContext final : public SmartContext {
   AQLStandaloneContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId)
     : SmartContext(vocbase, globalId, nullptr) {}
 
-  /// @brief get parent transaction (if any)
-  std::shared_ptr<TransactionState> getParentTransaction() const override;
-
-  /// @brief register the transaction,
-  void registerTransaction(std::shared_ptr<TransactionState> const&) override;
+  /// @brief get transaction state, determine commit responsiblity
+  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
+                                                 bool& responsibleForCommit) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;

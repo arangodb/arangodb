@@ -150,10 +150,11 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
   TRI_ASSERT(arangodb::transaction::Status::ABORTED == status ||
              arangodb::transaction::Status::COMMITTED == status ||
              arangodb::transaction::Status::RUNNING == status);
-  TRI_ASSERT(!trx.state()  // for embeded transactions status is not always updated
-             || (trx.state()->isTopLevelTransaction() && trx.state()->status() == status) ||
-             (!trx.state()->isTopLevelTransaction() &&
-              arangodb::transaction::Status::RUNNING == trx.state()->status()));
+//  TRI_ASSERT(!trx.state()  // for embeded transactions status is not always updated
+//             || (trx.state()->isTopLevelTransaction() && trx.state()->status() == status) ||
+//             (!trx.state()->isTopLevelTransaction() &&
+//              arangodb::transaction::Status::RUNNING == trx.state()->status()));
+  TRI_ASSERT(trx.isMainTransaction());
 
   auto* state = trx.state();
 
@@ -293,36 +294,29 @@ static bool findRefusal(std::vector<futures::Try<network::Response>> const& resp
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& transactionContext,
                               transaction::Options const& options)
     : _state(nullptr),
-      _transactionContext(transactionContext) {
+      _transactionContext(transactionContext),
+      _mainTransaction(false) {
   TRI_ASSERT(transactionContext != nullptr);
 
-  // brief initialize the transaction
-  // this will first check if the transaction is embedded in a parent
-  // transaction. if not, it will create a transaction of its own
-  // check in the context if we are running embedded
-  auto parent = _transactionContext->getParentTransaction();
-
-  if (parent != nullptr) {  // yes, we are embedded
-    if (!_transactionContext->isEmbeddable()) {
-      // we are embedded but this is disallowed...
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
-    }
-
-    _state = std::move(parent);
-    TRI_ASSERT(_state != nullptr);
-    _state->increaseNesting();
-  } else {  // non-embedded
-    // now start our own transaction
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-    _state = engine
-                 ->createTransactionState(_transactionContext->vocbase(),
-                                          _transactionContext->generateId(), options);
-    TRI_ASSERT(_state != nullptr && _state->isTopLevelTransaction());
-
-    // register the transaction in the context
-    _transactionContext->registerTransaction(_state);
-  }
+  // initialize the transaction
+  _state = _transactionContext->acquireState(options, _mainTransaction);
+//
+//        auto parent = _transactionContext->getParentTransaction();
+//
+//  if (parent != nullptr) {  // yes, we are embedded
+//    if (!_transactionContext->isEmbeddable()) {
+//      // we are embedded but this is disallowed...
+//      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
+//    }
+//
+//    _state = std::move(parent);
+//    TRI_ASSERT(_state != nullptr);
+//    _state->increaseNesting();
+//  } else {  // non-embedded
+//
+//    // register the transaction in the context
+//    _transactionContext->registerTransaction(_state);
+//  }
 
   TRI_ASSERT(_state != nullptr);
 }
@@ -358,7 +352,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 
 /// @brief destroy the transaction
 transaction::Methods::~Methods() {
-  if (_state->isTopLevelTransaction()) {  // _nestingLevel == 0
+  if (_mainTransaction) {  // _nestingLevel == 0
     // unregister transaction from context
     _transactionContext->unregisterTransaction();
 
@@ -381,8 +375,6 @@ transaction::Methods::~Methods() {
                                                 _state->isReadOnlyTransaction());
 
     _state = nullptr;
-  } else {
-    _state->decreaseNesting();  // return transaction
   }
 }
 
@@ -477,18 +469,22 @@ Result transaction::Methods::begin() {
                                    "invalid transaction state");
   }
 
+  if (_mainTransaction) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool a = _localHints.has(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
-  bool b = _localHints.has(transaction::Hints::Hint::GLOBAL_MANAGED);
-  TRI_ASSERT(!(a && b));
+    bool a = _localHints.has(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+    bool b = _localHints.has(transaction::Hints::Hint::GLOBAL_MANAGED);
+    TRI_ASSERT(!(a && b));
 #endif
 
-  auto res = _state->beginTransaction(_localHints);
-  if (res.fail()) {
-    return res;
-  }
+    auto res = _state->beginTransaction(_localHints);
+    if (res.fail()) {
+      return res;
+    }
 
-  applyStatusChangeCallbacks(*this, Status::RUNNING);
+    applyStatusChangeCallbacks(*this, Status::RUNNING);
+  } else {
+    TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+  }
 
   return Result();
 }
@@ -511,8 +507,12 @@ Future<Result> transaction::Methods::commitAsync() {
     }
   }
 
+  if (!_mainTransaction) {
+    return futures::makeFuture(Result());
+  }
+  
   auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
+  if (_state->isRunningInCluster()) {
     // first commit transaction on subordinate servers
     f = ClusterTrxMethods::commitTransaction(*this);
   }
@@ -540,9 +540,13 @@ Future<Result> transaction::Methods::abortAsync() {
     return Result(TRI_ERROR_TRANSACTION_INTERNAL,
                   "transaction not running on abort");
   }
+  
+  if (!_mainTransaction) {
+    return futures::makeFuture(Result());
+  }
 
   auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
+  if (_state->isRunningInCluster()) {
     // first commit transaction on subordinate servers
     f = ClusterTrxMethods::abortTransaction(*this);
   }
@@ -606,20 +610,15 @@ OperationResult transaction::Methods::anyCoordinator(std::string const&) {
 
 /// @brief fetches documents in a collection in random order, local
 OperationResult transaction::Methods::anyLocal(std::string const& collectionName) {
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
+  
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
     throwCollectionNotFound(collectionName.c_str());
   }
 
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
-
-  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
-
-  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    return OperationResult(lockResult);
-  }
 
   OperationCursor cursor(indexScan(collectionName, transaction::Methods::CursorType::ANY));
 
@@ -629,14 +628,6 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
         return true;
       },
       1);
-
-  if (lockResult.is(TRI_ERROR_LOCKED)) {
-    Result res = unlockRecursive(cid, AccessMode::Type::READ);
-
-    if (res.fail()) {
-      return OperationResult(res);
-    }
-  }
 
   resultBuilder.close();
 
@@ -649,7 +640,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
   auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
-    Result res = _state->addCollection(cid, cname, type, _state->nestingLevel(), true);
+    Result res = _state->addCollection(cid, cname, type, /*lockUsage*/true);
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -662,18 +653,15 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
     }
 
     res = applyDataSourceRegistrationCallbacks(*dataSource, *this);
-
-    if (res.ok()) {
-      res = _state->ensureCollections(_state->nestingLevel());
-    }
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
+    
     collection = trxCollection(cid);
-
     if (collection == nullptr) {
       throwCollectionNotFound(cname.c_str());
     }
+      
   } else {
     AccessMode::Type collectionAccessType = collection->accessType();
     if (AccessMode::isRead(collectionAccessType) && !AccessMode::isRead(type)) {
@@ -1311,7 +1299,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
                                                           OperationOptions& options,
                                                           TRI_voc_document_operation_e operation) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto const& collection = trxCollection(cid)->collection();
+  auto* trxColl = trxCollection(cid);
+  TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
+  auto const& collection = trxColl->collection();
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
@@ -1366,11 +1356,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
-  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
-
-  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    return OperationResult(lockResult);
-  }
+//  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
+//
+//  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+//    return OperationResult(lockResult);
+//  }
 
   VPackBuilder resultBuilder;  // building the complete result
   ManagedDocumentResult previous;
@@ -1540,10 +1530,11 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
                                                           VPackSlice const value,
                                                           OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto const& collection = trxCollection(cid)->collection();
+  auto* trxColl = trxCollection(cid);
+  TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
+  auto const& collection = trxColl->collection();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
-
   if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
@@ -1716,15 +1707,10 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
                                                uint64_t skip, uint64_t limit,
                                                OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::READ));
 
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
-
-  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
-
-  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    return OperationResult(lockResult);
-  }
 
   OperationCursor cursor(indexScan(collectionName, transaction::Methods::CursorType::ALL));
 
@@ -1733,14 +1719,6 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
     return true;
   };
   cursor.allDocuments(cb, 1000);
-
-  if (lockResult.is(TRI_ERROR_LOCKED)) {
-    Result res = unlockRecursive(cid, AccessMode::Type::READ);
-
-    if (res.ok()) {
-      return OperationResult(res);
-    }
-  }
 
   resultBuilder.close();
 
@@ -1776,7 +1754,6 @@ Future<OperationResult> transaction::Methods::truncateCoordinator(std::string co
 Future<OperationResult> transaction::Methods::truncateLocal(std::string const& collectionName,
                                                             OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-
   auto const& collection = trxCollection(cid)->collection();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1820,21 +1797,11 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     }
   }  // isDBServer - early block
 
-  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
-
-  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    return futures::makeFuture(OperationResult(lockResult));
-  }
-
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
   Result res = collection->truncate(*this, options);
 
   if (res.fail()) {
-    if (lockResult.is(TRI_ERROR_LOCKED)) {
-      unlockRecursive(cid, AccessMode::Type::WRITE);
-    }
-
     return futures::makeFuture(OperationResult(res));
   }
 
@@ -1905,10 +1872,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
         }
       }
     }
-  }
-
-  if (lockResult.is(TRI_ERROR_LOCKED)) {
-    res = unlockRecursive(cid, AccessMode::Type::WRITE);
   }
 
   return futures::makeFuture(OperationResult(res));
@@ -2004,26 +1967,27 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(std::string const& collectionName,
                                                  transaction::CountType type) {
+  
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
-  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
-
-  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    return OperationResult(lockResult);
-  }
+//  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
+//
+//  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+//    return OperationResult(lockResult);
+//  }
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this, type);
 
-  if (lockResult.is(TRI_ERROR_LOCKED)) {
-    Result res = unlockRecursive(cid, AccessMode::Type::READ);
-
-    if (res.fail()) {
-      return OperationResult(res);
-    }
-  }
+//  if (lockResult.is(TRI_ERROR_LOCKED)) {
+//    Result res = unlockRecursive(cid, AccessMode::Type::READ);
+//
+//    if (res.fail()) {
+//      return OperationResult(res);
+//    }
+//  }
 
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));
@@ -2069,6 +2033,8 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
   if (trxColl == nullptr) {
     throwCollectionNotFound(collectionName.c_str());
   }
+  TRI_ASSERT(trxColl->isLocked(AccessMode::Type::READ));
+
   std::shared_ptr<LogicalCollection> const& logical = trxColl->collection();
   TRI_ASSERT(logical != nullptr);
 
@@ -2138,7 +2104,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
         "cannot add collection to committed or aborted transaction");
   }
 
-  if (_state->isTopLevelTransaction() && status != transaction::Status::CREATED) {
+  if (_mainTransaction && status != transaction::Status::CREATED) {
     // transaction already started?
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_INTERNAL,
@@ -2150,8 +2116,10 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
     throwCollectionNotFound(cname.c_str());
   }
 
-  auto addCollectionCallback = [this, &cname, type](TRI_voc_cid_t cid) -> void {
-    auto res = _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
+  const bool lockUsage = !_mainTransaction;
+
+  auto addCollectionCallback = [this, &cname, type, lockUsage](TRI_voc_cid_t cid) -> void {
+    auto res = _state->addCollection(cid, cname, type, lockUsage);
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2209,9 +2177,10 @@ bool transaction::Methods::isLocked(LogicalCollection* document, AccessMode::Typ
 
   TransactionCollection* trxColl = trxCollection(document->id(), type);
   TRI_ASSERT(trxColl != nullptr);
-  return trxColl->isLocked(type, _state->nestingLevel());
+  return trxColl->isLocked(type);
 }
 
+#if 0
 /// @brief read- or write-lock a collection
 Result transaction::Methods::lockRecursive(TRI_voc_cid_t cid, AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
@@ -2220,7 +2189,7 @@ Result transaction::Methods::lockRecursive(TRI_voc_cid_t cid, AccessMode::Type t
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
-  return Result(trxColl->lockRecursive(type, _state->nestingLevel()));
+  return Result(trxColl->lockRecursive(type));
 }
 
 /// @brief read- or write-unlock a collection
@@ -2231,13 +2200,9 @@ Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid, AccessMode::Type
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
-  return Result(trxColl->unlockRecursive(type, _state->nestingLevel()));
+  return Result(trxColl->unlockRecursive(type));
 }
-
-/// @brief Lock all collections. Only works for selected sub-classes
-int transaction::Methods::lockCollections() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
+#endif
 
 Result transaction::Methods::resolveId(char const* handle, size_t length,
                                        std::shared_ptr<LogicalCollection>& collection,

@@ -52,6 +52,7 @@ class TransactionState;
 namespace transaction {
 
 class Methods;
+struct Options;
 
 class Context {
  public:
@@ -106,14 +107,12 @@ class Context {
   /// @brief get a custom type handler
   virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
 
-  /// @brief get parent transaction (if any) increase nesting
-  virtual std::shared_ptr<TransactionState> getParentTransaction() const = 0;
+  /// @brief get transaction state, determine commit responsiblity
+  virtual std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
+                                                         bool& responsibleForCommit) = 0;
 
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
-
-  /// @brief register the transaction in the context
-  virtual void registerTransaction(std::shared_ptr<TransactionState> const&) = 0;
 
   virtual CollectionNameResolver const& resolver() = 0;
 
@@ -134,6 +133,8 @@ class Context {
  protected:
   /// @brief create a resolver
   CollectionNameResolver const* createResolver();
+  
+  std::shared_ptr<TransactionState> createState(transaction::Options const& options);
 
  protected:
   TRI_vocbase_t& _vocbase;

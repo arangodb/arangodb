@@ -84,7 +84,7 @@ struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::transaction::Options const& opts)
       : Methods(ctx, opts) {
-    TRI_ASSERT(_state->isEmbeddedTransaction());
+    TRI_ASSERT(!isMainTransaction());
   }
 };
 }  // namespace
@@ -157,7 +157,7 @@ void Manager::ManagedTrx::updateExpiry() {
 }
 
 Manager::ManagedTrx::~ManagedTrx() {
-  if (type == MetaType::StandaloneAQL || state == nullptr || state->isEmbeddedTransaction()) {
+  if (type == MetaType::StandaloneAQL || state == nullptr) {
     return;  // not managed by us
   }
   if (!state->isRunning()) {
@@ -167,13 +167,10 @@ Manager::ManagedTrx::~ManagedTrx() {
   try {
     transaction::Options opts;
     auto ctx =
-        std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
+        std::make_shared<transaction::ManagedContext>(2, state, /*responsibleForCommit*/true);
     MGMethods trx(ctx, opts);  // own state now
-    Result res = trx.begin();
-    (void) res;
-    TRI_ASSERT(state->nestingLevel() == 1);
-    state->decreaseNesting();
-    TRI_ASSERT(state->isTopLevelTransaction());
+    TRI_ASSERT(trx.state()->status() == transaction::Status::RUNNING);
+    TRI_ASSERT(trx.isMainTransaction());
     trx.abort();
   } catch (...) {
     // obviously it is not good to consume all exceptions here,
@@ -190,7 +187,6 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
   if (_disallowInserts.load(std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  TRI_ASSERT(state->isTopLevelTransaction());
 
   TRI_ASSERT(state != nullptr);
   auto const tid = state->id();
@@ -358,22 +354,22 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
             if (theEdge == nullptr) {
               THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot cast collection to smart edge collection");
             }
-            res.reset(state->addCollection(theEdge->getLocalCid(), "_local_" + cname, mode, /*nestingLevel*/ 0, false));
+            res.reset(state->addCollection(theEdge->getLocalCid(), "_local_" + cname, mode,  /*lockUsage*/false));
             if (res.fail()) {
               return false;
             }
-            res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname, mode, /*nestingLevel*/ 0, false));
+            res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname, mode, /*lockUsage*/false));
             if (res.fail()) {
               return false;
             }
-            res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname, mode, /*nestingLevel*/ 0, false));
+            res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname, mode,  /*lockUsage*/  false));
             if (res.fail()) {
               return false;
             }
           }
         }
 #endif
-        res.reset(state->addCollection(cid, cname, mode, /*nestingLevel*/ 0, false));
+        res.reset(state->addCollection(cid, cname, mode, /*lockUsage*/ false));
       }
 
       if (res.fail()) {
@@ -487,15 +483,14 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   } while (true);
 
   if (state) {
-    int level = state->increaseNesting();
-    TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 1);
-    return std::make_shared<ManagedContext>(tid, std::move(state), mode);
+    TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode));
+    return std::make_shared<ManagedContext>(tid, std::move(state), /*responsibleForCommit*/false);
   }
   TRI_ASSERT(false);  // should be unreachable
   return nullptr;
 }
 
-void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcept {
+void Manager::returnManagedTrx(TRI_voc_tid_t tid) noexcept {
   const size_t bucket = getBucket(tid);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
@@ -509,22 +504,14 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
   }
 
   TRI_ASSERT(it->second.state != nullptr);
-  TRI_ASSERT(it->second.state->isEmbeddedTransaction());
-  int level = it->second.state->decreaseNesting();
-  TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 0);
 
   // garbageCollection might soft abort used transactions
   const bool isSoftAborted = it->second.expiryTime == 0;
   if (!isSoftAborted) {
     it->second.updateExpiry();
   }
-  if (AccessMode::isWriteOrExclusive(mode)) {
-    it->second.rwlock.unlockWrite();
-  } else if (mode == AccessMode::Type::READ) {
-    it->second.rwlock.unlockRead();
-  } else {
-    TRI_ASSERT(false);
-  }
+  
+  it->second.rwlock.unlock();
 
   if (isSoftAborted) {
     abortManagedTrx(tid);
@@ -668,11 +655,9 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
 
   transaction::Options trxOpts;
   MGMethods trx(std::make_shared<ManagedContext>(tid, std::move(state),
-                                                 AccessMode::Type::NONE), trxOpts);
+                                                 /*responsibleForCommit*/true), trxOpts);
   TRI_ASSERT(trx.state()->isRunning());
-  TRI_ASSERT(trx.state()->nestingLevel() == 1);
-  trx.state()->decreaseNesting();
-  TRI_ASSERT(trx.state()->isTopLevelTransaction());
+  TRI_ASSERT(trx.isMainTransaction());
   if (clearServers && !isCoordinator) {
     trx.state()->clearKnownServers();
   }
@@ -686,8 +671,8 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
     if (res.ok() && wasExpired) {
       res.reset(TRI_ERROR_TRANSACTION_ABORTED);
     }
-    TRI_ASSERT(!trx.state()->isRunning());
   }
+  TRI_ASSERT(!trx.state()->isRunning());
 
   return res;
 }
@@ -731,7 +716,7 @@ bool Manager::garbageCollect(bool abortAll) {
           TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
 
           if (tryGuard.isLocked()) {
-            TRI_ASSERT(mtrx.state->isRunning() && mtrx.state->isTopLevelTransaction());
+            TRI_ASSERT(mtrx.state->isRunning());
             TRI_ASSERT(it->first == mtrx.state->id());
             toAbort.emplace_back(mtrx.state->id());
           } else if (abortAll) {    // transaction is in
