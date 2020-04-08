@@ -84,56 +84,32 @@ var createBaseGraph = function() {
   });
 
   db[customerCollectionName].ensureIndex({
-    bestIndexedLevel: 17,
     fields: ["location"],
     geoJson: false,
-    id: "customer/173",
-    maxNumCoverCells: 8,
     name: "idx_1661521530578796544",
     sparse: true,
     type: "geo",
-    unique: false,
-    worstIndexedLevel: 4
+    unique: false
   });
 
   db._create(productCollectionName, {
     cacheEnabled: false,
-    globallyUniqueId: "h43A585CA1081/194",
-    isSmartChild: false,
-    isSystem: false,
     keyOptions: { allowUserKeys: true, type: "traditional", lastValue: 0 },
-    minRevision: 1661521530656391200,
-    objectId: "193",
-    statusString: "loaded",
-    usesRevisionsAsDocumentIds: true,
-    validation: null,
     waitForSync: false,
     writeConcern: 1
   });
   db[productCollectionName].ensureIndex({
-    bestIndexedLevel: 17,
     fields: ["location"],
     geoJson: false,
-    id: "product/199",
-    maxNumCoverCells: 8,
     name: "idx_1661521530657439744",
     sparse: true,
     type: "geo",
-    unique: false,
-    worstIndexedLevel: 4
+    unique: false
   });
 
   db._createEdgeCollection(ownsEdgeCollectionName, {
     cacheEnabled: false,
-    globallyUniqueId: "h43A585CA1081/218",
-    isSmartChild: false,
-    isSystem: false,
     keyOptions: { allowUserKeys: true, type: "traditional", lastValue: 0 },
-    minRevision: 1661521530664779800,
-    objectId: "217",
-    statusString: "loaded",
-    usesRevisionsAsDocumentIds: true,
-    validation: null,
     waitForSync: false,
     writeConcern: 1
   });
