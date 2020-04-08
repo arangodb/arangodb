@@ -86,19 +86,24 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   return *_resolver;
 }
 
-/// @brief get parent transaction (if any)
-std::shared_ptr<TransactionState> transaction::V8Context::getParentTransaction() const {
+/// @brief get transaction state, determine commit responsiblity
+/*virtual*/ std::shared_ptr<TransactionState> transaction::V8Context::acquireState(transaction::Options const& options,
+                                                                                   bool& responsibleForCommit) {
+  
   TRI_ASSERT(_sharedTransactionContext != nullptr);
-  return _sharedTransactionContext->_currentTransaction;
-}
-
-/// @brief register the transaction in the context
-void transaction::V8Context::registerTransaction(std::shared_ptr<TransactionState> const& trx) {
-  TRI_ASSERT(_sharedTransactionContext != nullptr);
-  TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
-  TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
-  _sharedTransactionContext->_currentTransaction = trx;
-  _sharedTransactionContext->_mainScope = this;
+   auto state = _sharedTransactionContext->_currentTransaction;
+  if (!state) {
+    state = transaction::Context::createState(options);
+    responsibleForCommit = true;
+    
+    // registerTransaction
+    TRI_ASSERT(_sharedTransactionContext != nullptr);
+    TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
+    TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
+    _sharedTransactionContext->_currentTransaction = state;
+    _sharedTransactionContext->_mainScope = this;
+  }
+  return state;
 }
 
 /// @brief unregister the transaction from the context

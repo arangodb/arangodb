@@ -124,9 +124,9 @@ std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(
-    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
+    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
-      new ClusterTransactionCollection(&state, cid, accessType, nestingLevel));
+      new ClusterTransactionCollection(&state, cid, accessType));
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {

@@ -993,7 +993,7 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
   appendMetric(result, std::to_string(rssp), "residentSizePercent");
   appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
   appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize");
-  appendMetric(result, std::to_string(serverInfo._uptime), "uptime");
+  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
 
   // _clientStatistics()
   appendMetric(result, std::to_string(httpConnections._count), "clientHttpConnections");
@@ -1158,7 +1158,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   // _serverStatistics()
   builder.add("server", VPackValue(VPackValueType::Object));
-  builder.add("uptime", VPackValue(serverInfo._uptime));
+  builder.add("uptime", VPackValue(serverInfo.uptime()));
   builder.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
   builder.add("transactions", VPackValue(VPackValueType::Object));
   builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted.load()));

@@ -51,10 +51,9 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase,
       _status(transaction::Status::CREATED),
       _arena(),
       _collections{_arena},  // assign arena to vector
-      _serverRole(ServerState::instance()->getRole()),
       _hints(),
       _options(options),
-      _nestingLevel(0),
+      _serverRole(ServerState::instance()->getRole()),
       _registeredTransaction(false) {}
 
 /// @brief free a transaction container
@@ -119,18 +118,12 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 
 /// @brief add a collection to a transaction
 Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
-                                       AccessMode::Type accessType,
-                                       int nestingLevel, bool force) {
-  LOG_TRX("ad6d0", TRACE, this, nestingLevel) << "adding collection " << cid;
+                                       AccessMode::Type accessType, bool lockUsage) {
   
   Result res;
 
   // upgrade transaction type if required
-  if (nestingLevel == 0) {
-    if (!force) {
-      TRI_ASSERT(_status == transaction::Status::CREATED);
-    }
-
+  if (_status == transaction::Status::CREATED) {
     if (AccessMode::isWriteOrExclusive(accessType) &&
         !AccessMode::isWriteOrExclusive(_type)) {
       // if one collection is written to, the whole transaction becomes a
@@ -148,6 +141,8 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
                       AccessMode::Type::READ < AccessMode::Type::WRITE &&
                       AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                   "AccessMode::Type total order fail");
+    LOG_TRX("ad6d0", TRACE, this) << "updating collection usage " << cid << ": '" << cname << "'";
+    
     // we may need to recheck permissions here
     if (trxColl->accessType() < accessType) {
       res.reset(checkCollectionPermission(cname, accessType));
@@ -157,12 +152,15 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
       }
     }
     // collection is already contained in vector
-    return res.reset(trxColl->updateUsage(accessType, nestingLevel));
+    return res.reset(trxColl->updateUsage(accessType));
   }
 
   // collection not found.
+  
+  LOG_TRX("ad6e1", TRACE, this) << "adding new collection " << cid << ": '" << cname << "'";
 
-  if (nestingLevel > 0 && AccessMode::isWriteOrExclusive(accessType)) {
+  if (_status != transaction::Status::CREATED &&
+      AccessMode::isWriteOrExclusive(accessType)) {
     // trying to write access a collection in an embedded transaction
     return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname + 
@@ -188,7 +186,7 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  trxColl = engine->createTransactionCollection(*this, cid, accessType, nestingLevel).release();
+  trxColl = engine->createTransactionCollection(*this, cid, accessType).release();
 
   TRI_ASSERT(trxColl != nullptr);
 
@@ -199,13 +197,13 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
     delete trxColl;
     return res.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
+  
+  if (lockUsage) {
+    TRI_ASSERT(!isRunning() || !AccessMode::isWriteOrExclusive(accessType));
+    res = trxColl->lockUsage();
+  }
 
   return res;
-}
-
-/// @brief make sure all declared collections are used & locked
-Result TransactionState::ensureCollections(int nestingLevel) {
-  return useCollections(nestingLevel);
 }
 
 /// @brief run a callback on all collections
@@ -222,37 +220,16 @@ void TransactionState::allCollections(                     // iterate
 }
   
 /// @brief use all participating collections of a transaction
-Result TransactionState::useCollections(int nestingLevel) {
+Result TransactionState::useCollections() {
   Result res;
   // process collections in forward order
-  for (auto& trxCollection : _collections) {
-    res = trxCollection->use(nestingLevel);
+  for (TransactionCollection* trxCollection : _collections) {
+    res = trxCollection->lockUsage();
     if (!res.ok()) {
       break;
     }
   }
   return res;
-}
-
-/// @brief release collection locks for a transaction
-int TransactionState::unuseCollections(int nestingLevel) {
-  // process collections in reverse order
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    (*it)->unuse(nestingLevel);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-int TransactionState::lockCollections() {
-  for (auto& trxCollection : _collections) {
-    int res = trxCollection->lockRecursive();
-
-    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_LOCKED) {
-      return res;
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief find a collection in the transaction's list of collections
@@ -353,7 +330,7 @@ Result TransactionState::checkCollectionPermission(std::string const& cname,
 void TransactionState::releaseCollections() {
   // process collections in reverse order
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    (*it)->release();
+    (*it)->releaseUsage();
   }
 }
 

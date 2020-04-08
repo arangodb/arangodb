@@ -67,8 +67,7 @@ class ClusterEngine final : public StorageEngine {
                                                            TRI_voc_tid_t tid,
                                                            transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-      int nestingLevel) override;
+      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(

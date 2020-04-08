@@ -145,7 +145,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
       inaccessible.insert(shard.copyString());
     }
     trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
-                                       true, std::move(inaccessible));
+                                      std::move(inaccessible));
   } else {
     trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
   }
@@ -223,7 +223,7 @@ bool BaseEngine::lockCollection(std::string const& shard) {
   return true;
 }
 
-Result BaseEngine::lockAll() { return _trx->lockCollections(); }
+Result BaseEngine::lockAll() { return Result(); }
 
 std::shared_ptr<transaction::Context> BaseEngine::context() const {
   return _trx->transactionContext();

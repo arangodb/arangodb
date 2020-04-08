@@ -82,52 +82,60 @@ TRI_voc_tid_t transaction::SmartContext::generateId() const {
   
 ManagedContext::ManagedContext(TRI_voc_tid_t globalId,
                                std::shared_ptr<TransactionState> state,
-                               AccessMode::Type mode)
-  : SmartContext(state->vocbase(), globalId, state), _mode(mode) {}
+                               bool responsibleForCommit, bool cloned)
+  : SmartContext(state->vocbase(), globalId, state),
+    _responsibleForCommit(responsibleForCommit), _cloned(cloned) {}
   
 ManagedContext::~ManagedContext() {
-  if (_state != nullptr) {
+  if (_state != nullptr && !_cloned) {
+    TRI_ASSERT(!_responsibleForCommit);
+    
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    mgr->returnManagedTrx(_globalId, _mode);
+    mgr->returnManagedTrx(_globalId);
     _state = nullptr;
   }
 }
 
-/// @brief get parent transaction (if any)
-std::shared_ptr<TransactionState> ManagedContext::getParentTransaction() const {
+/// @brief get transaction state, determine commit responsiblity
+/*virtual*/ std::shared_ptr<TransactionState> transaction::ManagedContext::acquireState(transaction::Options const& options,
+                                                                                        bool& responsibleForCommit) {
   TRI_ASSERT(_state);
   // single document transaction should never be leased out
   TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
+  responsibleForCommit = _responsibleForCommit;
   return _state;
 }
   
 void ManagedContext::unregisterTransaction() noexcept {
-  _state = nullptr; // delete is handled by transaction::Methods
+  TRI_ASSERT(_responsibleForCommit);
+  _state = nullptr;
 }
 
 std::shared_ptr<transaction::Context> ManagedContext::clone() const {
-  auto clone = std::make_shared<transaction::ManagedContext>(_globalId, _state, _mode);
+  // cloned transactions may never be responsible for commits
+  auto clone = std::make_shared<transaction::ManagedContext>(_globalId, _state,
+                                                             /*responsibleForCommit*/false, /*cloned*/true);
   clone->_state = _state;
   return clone;
 }
   
 // ============= AQLStandaloneContext =============
-  
-/// @brief get parent transaction (if any)
-std::shared_ptr<TransactionState> AQLStandaloneContext::getParentTransaction() const {
-  return _state;
-}
-    
-/// @brief register the transaction,
-void AQLStandaloneContext::registerTransaction(std::shared_ptr<TransactionState> const& state) {
-  TRI_ASSERT(_state == nullptr);
-  _state = state;
-  if (state) {
+
+/// @brief get transaction state, determine commit responsiblity
+/*virtual*/ std::shared_ptr<TransactionState> transaction::AQLStandaloneContext::acquireState(transaction::Options const& options,
+                                                                                              bool& responsibleForCommit) {
+  if (!_state) {
+    responsibleForCommit = true;
+    _state = transaction::Context::createState(options);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    mgr->registerAQLTrx(state);
+    mgr->registerAQLTrx(_state);
+  } else {
+    responsibleForCommit = false;
   }
+
+  return _state;
 }
 
 /// @brief unregister the transaction

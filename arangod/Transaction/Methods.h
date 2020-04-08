@@ -176,6 +176,11 @@ class Methods {
     return _transactionContext.get();
   }
   
+  // is this instance responsible for commit / abort
+  bool isMainTransaction() const {
+    return _mainTransaction;
+  }
+  
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
 
@@ -371,9 +376,6 @@ class Methods {
   
   /// @brief fetch the LogicalCollection by name
   arangodb::LogicalCollection* documentCollection(std::string const& name) const;
-
-  /// @brief Lock all collections. Only works for selected sub-classes
-  virtual int lockCollections();
   
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
@@ -470,12 +472,16 @@ class Methods {
 
   /// @brief add a collection by name
   Result addCollection(std::string const&, AccessMode::Type);
+  
+#if 0
 
   /// @brief read- or write-lock a collection
   ENTERPRISE_VIRT Result lockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
   /// @brief read- or write-unlock a collection
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
+  
+#endif
 
  protected:
   /// @brief the state
@@ -483,6 +489,16 @@ class Methods {
 
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
+  
+  bool _mainTransaction;
+  
+ private:
+  
+  Future<Result> replicateOperations(
+      LogicalCollection* collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
+      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);
 
  private:
   /// @brief transaction hints
@@ -493,12 +509,6 @@ class Methods {
     TRI_voc_cid_t cid = 0;
     std::string name;
   } _collectionCache;
-
-  Future<Result> replicateOperations(
-      LogicalCollection* collection,
-      std::shared_ptr<const std::vector<std::string>> const& followers,
-      OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
-      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);
 };
 
 }  // namespace transaction

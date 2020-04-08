@@ -132,7 +132,7 @@ class Manager final {
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TRI_voc_tid_t tid,
                                                         AccessMode::Type mode);
-  void returnManagedTrx(TRI_voc_tid_t, AccessMode::Type mode) noexcept;
+  void returnManagedTrx(TRI_voc_tid_t) noexcept;
 
   /// @brief get the meta transasction state
   transaction::Status getManagedTrxStatus(TRI_voc_tid_t) const;
