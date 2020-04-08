@@ -618,7 +618,7 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
   auto cursorId =
       static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool busy;
-  _cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
+  _cursor = cursors->find(cursorId, busy);
 
   if (_cursor == nullptr) {
     if (busy) {
@@ -655,7 +655,7 @@ RestStatus RestCursorHandler::deleteQueryCursor() {
 
   auto cursorId =
       static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
-  bool found = cursors->remove(cursorId, Cursor::CURSOR_VPACK);
+  bool found = cursors->remove(cursorId);
 
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);

@@ -68,13 +68,17 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Ex
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
                                                      std::deque<SharedAqlItemBlockPtr>&& data,
-                                                     WaitingBehaviour variant)
+                                                     WaitingBehaviour variant,
+                                                     size_t subqueryDepth)
     : ExecutionBlock(engine, node),
       _hasWaited(false),
       _variant{variant},
       _infos{::blocksToInfos(data)},
       _blockData{*engine, node, _infos} {
   SkipResult s;
+  for (size_t i = 0; i < subqueryDepth; ++i) {
+    s.incrementSubquery();
+  }
   for (auto const& b : data) {
     if (b != nullptr) {
       TRI_ASSERT(s.nothingSkipped());
