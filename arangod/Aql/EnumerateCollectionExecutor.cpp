@@ -135,13 +135,6 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher&, Infos& infos)
                                          ? transaction::Methods::CursorType::ANY
                                          : transaction::Methods::CursorType::ALL)));
 
-  if (!_infos.getEngine()->waitForSatellites(_infos.getCollection())) {
-    double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + _infos.getCollection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
   if (_infos.getProduceResult()) {
     _documentProducer =
         buildDocumentCallback<false, false>(_documentProducingFunctionContext);

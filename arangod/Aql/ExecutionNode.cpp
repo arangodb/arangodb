@@ -361,7 +361,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
       _plan(plan) {
   TRI_ASSERT(_registerPlan == nullptr);
   _registerPlan = std::make_shared<RegisterPlan>(slice, _depth);
-  
+
   VPackSlice regsToClearList = slice.get("regsToClear");
   if (!regsToClearList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -1000,11 +1000,11 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, size_t id)
-    : _id(id), 
-      _depth(0), 
-      _varUsageValid(false), 
+    : _id(id),
+      _depth(0),
+      _varUsageValid(false),
       _isInSplicedSubquery(false),
-      _plan(plan) {} 
+      _plan(plan) {}
 
 size_t ExecutionNode::id() const { return _id; }
 
@@ -1285,6 +1285,13 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
+  if (!engine.waitForSatellites(this->_collection)) {
+    double maxWait = engine.getQuery()->queryOptions().satelliteSyncWait;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+                                   "collection " + this->_collection->name() +
+                                   " did not come into sync in time (" +
+                                   std::to_string(maxWait) + ")");
+  }
   EnumerateCollectionExecutorInfos infos(
       variableToRegisterId(_outVariable),
       getRegisterPlan()->nrRegs[previousNode->getDepth()],

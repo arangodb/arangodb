@@ -27,6 +27,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -307,7 +308,7 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node,
     auto ast = _plan->getAst();
     auto array = _plan->getAst()->createNodeArray();
     array->addMember(node);
-   
+
     TRI_ASSERT(trx != nullptr);
 
     // Here it does not matter which index we choose for the isSorted/isSparse
@@ -318,7 +319,7 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "The index id cannot be empty.");
     }
-    
+
     if (idx->sparse() || idx->isSorted()) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
@@ -452,6 +453,14 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+
+  if (!engine.waitForSatellites(this->_collection)) {
+    double maxWait = engine.getQuery()->queryOptions().satelliteSyncWait;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+                                   "collection " + this->_collection->name() +
+                                   " did not come into sync in time (" +
+                                   std::to_string(maxWait) + ")");
+  }
 
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
 
