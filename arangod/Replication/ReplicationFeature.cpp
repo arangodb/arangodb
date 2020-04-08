@@ -56,7 +56,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _forceRequestTimeout(false),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
-      _syncByRevision(false),
+      _syncByRevision(true),
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0) {
   setOptional(true);

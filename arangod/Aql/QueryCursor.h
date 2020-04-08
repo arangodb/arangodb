@@ -53,8 +53,6 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   aql::QueryResult const* result() const { return &_result; }
 
-  CursorType type() const override final { return CURSOR_VPACK; }
-
   bool hasNext();
 
   arangodb::velocypack::Slice next();
@@ -94,8 +92,6 @@ class QueryStreamCursor final : public arangodb::Cursor {
                     std::shared_ptr<transaction::Context> ctx);
 
   ~QueryStreamCursor();
-
-  CursorType type() const override final { return CURSOR_VPACK; }
 
   void kill() override;
 
