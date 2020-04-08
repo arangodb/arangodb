@@ -211,11 +211,15 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _execState{ExecState::CHECKCALL},
       _upstreamRequest{},
       _clientRequest{},
+      _stackBeforeWaiting{AqlCallList{AqlCall{}}},
       _hasUsedDataRangeBlock{false} {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.try_emplace(node->id(), ExecutionStats::Node());
   }
+  // Break the stack before waiting.
+  // We should not use this here.
+  _stackBeforeWaiting.popCall();
 }
 
 template <class Executor>
@@ -1355,10 +1359,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       // mind just because we told her to hold the line.
 
       // The client cannot request less data!
-      TRI_ASSERT(_clientRequest.getOffset() <= clientCall.getOffset());
-      TRI_ASSERT(_clientRequest.getLimit() <= clientCall.getLimit());
-      TRI_ASSERT(_clientRequest.needsFullCount() == clientCall.needsFullCount());
+      TRI_ASSERT(_clientRequest.requestLessDataThen(clientCall));
       clientCall = _clientRequest;
+
+      TRI_ASSERT(_stackBeforeWaiting.requestLessDataThen(stack));
+      stack = _stackBeforeWaiting;
     }
 
     auto returnToState = ExecState::CHECKCALL;
@@ -1593,6 +1598,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // We need to persist the old call before we return.
             // We might have some local accounting to this call.
             _clientRequest = clientCall;
+            // We might also have some local accounting in this stack.
+            _stackBeforeWaiting = stack;
             // We do not return anything in WAITING state, also NOT skipped.
             return {_upstreamState, SkipResult{}, nullptr};
           }
