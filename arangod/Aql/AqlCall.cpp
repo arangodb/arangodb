@@ -281,6 +281,16 @@ auto AqlCall::toString() const -> std::string {
   return stream.str();
 }
 
+auto AqlCall::requestLessDataThen(AqlCall const& other) const noexcept -> bool {
+  if (getOffset() > other.getOffset()) {
+    return false;
+  }
+  if (getLimit() > other.getLimit()) {
+    return false;
+  }
+  return needsFullCount() == other.needsFullCount();
+}
+
 auto aql::operator<<(std::ostream& out, AqlCall::Limit const& limit) -> std::ostream& {
   return std::visit(overload{[&out](size_t const& i) -> std::ostream& {
                                return out << i;

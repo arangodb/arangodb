@@ -28,6 +28,7 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallSet.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
@@ -320,6 +321,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   bool _hasMemoizedCall{false};
 
   AqlCall _clientRequest;
+
+  AqlCallStack _stackBeforeWaiting;
 
   // Only used in passthrough variant.
   // We track if we have reference the range's block
