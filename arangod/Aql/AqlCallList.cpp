@@ -245,7 +245,7 @@ auto AqlCallList::toString() const -> std::string {
   return stream.str();
 }
 
-auto AqlCallList::requestLessDataThen(AqlCallList const& other) const noexcept -> bool {
+auto AqlCallList::requestLessDataThan(AqlCallList const& other) const noexcept -> bool {
   if (other._defaultCall.has_value()) {
     // Let is straightly check the default call.
     // We do not know if we have already filled one specific call
@@ -259,7 +259,7 @@ auto AqlCallList::requestLessDataThen(AqlCallList const& other) const noexcept -
     }
 
     for (auto const& call : _specificCalls) {
-      if (!call.requestLessDataThen(other._defaultCall.value())) {
+      if (!call.requestLessDataThan(other._defaultCall.value())) {
         return false;
       }
     }
@@ -278,7 +278,7 @@ auto AqlCallList::requestLessDataThen(AqlCallList const& other) const noexcept -
       // Cannot have generated a specific call
       return false;
     }
-    return _specificCalls[0].requestLessDataThen(other._specificCalls[0]);
+    return _specificCalls[0].requestLessDataThan(other._specificCalls[0]);
   }
   return true;
 }
