@@ -743,10 +743,25 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   return Result{};
 }
 
-LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
-                                             VPackSlice const& key) const {
-  TRI_ASSERT(key.isString());
-  return primaryIndex()->lookupKey(trx, arangodb::velocypack::StringRef(key));
+Result RocksDBCollection::lookupKey(transaction::Methods* trx,
+                                    VPackStringRef key,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const {
+  result.first.clear();
+  result.second = 0;
+  
+  // lookup the revision id in the primary index
+  if (!primaryIndex()->lookupRevision(trx, key, result.first, result.second)) {
+    // document not found
+    TRI_ASSERT(!result.first.isSet());
+    TRI_ASSERT(result.second == 0);
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  }
+
+  // document found, but revisionId may not have been present in the primary
+  // index. this can happen for "older" collections
+  TRI_ASSERT(result.first.isSet());
+  TRI_ASSERT(result.second != 0);
+  return Result();
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice const& key,
@@ -762,21 +777,15 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
     return false;
   }
 
-  // document found, but revisionId may not have been present in the primary
-  // index. this can happen for "older" collections
+  // document found, and we have a valid revisionId
   TRI_ASSERT(documentId.isSet());
-
-  // now look up the revision id in the actual document data
-
-  return readDocumentWithCallback(trx, documentId, [&revisionId](LocalDocumentId const&, VPackSlice doc) {
-    revisionId = transaction::helpers::extractRevFromDocument(doc);
-    return true;
-  });
+  TRI_ASSERT(revisionId != 0);
+  return true;
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result, bool /*lock*/) {
+                               ManagedDocumentResult& result) {
   Result res;
   do {
     LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
@@ -794,8 +803,8 @@ Result RocksDBCollection::read(transaction::Methods* trx,
       } // else value is already assigned
       result.setRevisionId(); // extracts id from buffer
     }
-  } while(res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
-          RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
+  } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+           RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
   return res;
 }
 
@@ -830,10 +839,7 @@ bool RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
 Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
-                                 OperationOptions& options,
-                                 bool /*lock*/, KeyLockInfo* /*keyLockInfo*/,
-                                 std::function<void()> const& cbDuringLock) {
-
+                                 OperationOptions& options) {
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
@@ -845,42 +851,26 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   }
 
   VPackSlice newSlice = builder->slice();
-  if(options.validate && options.isSynchronousReplicationFrom.empty()) {
+
+  if (options.validate && 
+      !options.isRestore && 
+      options.isSynchronousReplicationFrom.empty()) {
+    // only do schema validation when we are not restoring/replicating
     res = _logicalCollection.validate(newSlice, trx->transactionContextPtr()->getVPackOptions());
 
     if (res.fail()) {
       return res;
     }
   }
+    
+  
+  int r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection, newSlice);
 
-  if (options.overwrite) {
-    // special optimization for the overwrite case:
-    // in case the operation is a RepSert, we will first check if the specified
-    // primary key exists. we can abort this low-level insert early, before any
-    // modification to the data has been done. this saves us from creating a
-    // RocksDB transaction SavePoint. if we don't do the check here, we will
-    // always create a SavePoint first and insert the new document. when then
-    // inserting the key for the primary index and then detecting a unique
-    // constraint violation, the transaction would be rolled back to the
-    // SavePoint state, which will rebuild *all* data in the WriteBatch up to
-    // the SavePoint. this can be super-expensive for bigger transactions. to
-    // keep things simple, we are not checking for unique constraint violations
-    // in secondary indexes here, but defer it to the regular index insertion
-    // check
-    VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newSlice);
-    if (keySlice.isString()) {
-      LocalDocumentId const oldDocumentId =
-          primaryIndex()->lookupKey(trx, arangodb::velocypack::StringRef(keySlice));
-      if (oldDocumentId.isSet()) {
-        if (options.indexOperationMode == Index::OperationMode::internal) {
-          // need to return the key of the conflict document
-          return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
-                           keySlice.copyString());
-        }
-        return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-      }
-    }
+  if (r != TRI_ERROR_NO_ERROR) {
+    res.reset(r);
+    return res;
   }
+        
 
   LocalDocumentId const documentId = ::generateDocumentId(_logicalCollection, revisionId);
 
@@ -912,20 +902,16 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                               TRI_VOC_DOCUMENT_OPERATION_INSERT,
                               hasPerformedIntermediateCommit);
 
-    if (res.ok() && cbDuringLock != nullptr) {
-      cbDuringLock();
-    }
-
     guard.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
 }
 
-Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const newSlice,
+Result RocksDBCollection::update(transaction::Methods* trx,
+                                 velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
-                                 bool /*lock*/, ManagedDocumentResult& previousMdr) {
+                                 ManagedDocumentResult& previousMdr) {
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1030,6 +1016,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     auto result = state->addOperation(_logicalCollection.id(), revisionId,
                                       TRI_VOC_DOCUMENT_OPERATION_UPDATE,
                                       hasPerformedIntermediateCommit);
+
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
@@ -1041,9 +1028,9 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 }
 
 Result RocksDBCollection::replace(transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
+                                  velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
-                                  bool /*lock*/, ManagedDocumentResult& previousMdr) {
+                                  ManagedDocumentResult& previousMdr) {
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1151,8 +1138,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
-                                 std::function<void()> const& cbDuringLock) {
+                                 OperationOptions& options) {
   VPackSlice keySlice;
   if (slice.isString()) {
     keySlice = slice;
@@ -1175,20 +1161,18 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
     expectedId = LocalDocumentId::create(TRI_ExtractRevisionId(slice));
   }
 
-  return remove(trx, documentId, expectedId, previousMdr, options, cbDuringLock);
+  return remove(trx, documentId, expectedId, previousMdr, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
-                                 std::function<void()> const& cbDuringLock) {
-  return remove(trx, documentId, LocalDocumentId(), previousMdr, options, cbDuringLock);
+                                 OperationOptions& options) {
+  return remove(trx, documentId, LocalDocumentId(), previousMdr, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  LocalDocumentId expectedId, ManagedDocumentResult& previousMdr,
-                                 OperationOptions& options,
-                                 std::function<void()> const& cbDuringLock) {
+                                 OperationOptions& options) {
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
@@ -1238,10 +1222,6 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
     res = state->addOperation(_logicalCollection.id(), newRevisionId(),
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                               hasPerformedIntermediateCommit);
-
-    if (res.ok() && cbDuringLock != nullptr) {
-      cbDuringLock();
-    }
 
     guard.finish(hasPerformedIntermediateCommit);
   }

@@ -148,7 +148,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
           insertedDocs.emplace_back();
           auto const res =
-              logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt, false);
+              logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -169,7 +169,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
           insertedDocs.emplace_back();
           auto const res =
-              logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt, false);
+              logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
       }

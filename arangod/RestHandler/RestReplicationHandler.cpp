@@ -1067,8 +1067,6 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
 
-        // to turn off waitForSync!
-        trx.addHint(transaction::Hints::Hint::RECOVERY);
         trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
         trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
         res = trx.begin();
@@ -1441,8 +1439,6 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
 
-  trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
-
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -1748,7 +1744,8 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
-    options.overwrite = true;
+    options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+    
     double startTime = TRI_microtime();
     opRes = trx.insert(collectionName, requestSlice, options);
     double duration = TRI_microtime() - startTime;
@@ -2735,9 +2732,9 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
-  bool doSoftLock = VelocyPackHelper::getBooleanValue(body, "doSoftLockOnly", false);
+  bool doSoftLock = VelocyPackHelper::getBooleanValue(body, StaticStrings::ReplicationSoftLockOnly, false);
   AccessMode::Type lockType = AccessMode::Type::READ;
-  if (!doSoftLock && EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
+  if (!doSoftLock) {
     // With not doSoftLock we trigger RocksDB to stop writes on this shard.
     // With a softLock we only stop the WAL from being collected,
     // but still allow writes.
@@ -3433,7 +3430,6 @@ Result RestReplicationHandler::createBlockingTransaction(
   }
   auto trx = query->trx();
   TRI_ASSERT(trx != nullptr);
-  trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 

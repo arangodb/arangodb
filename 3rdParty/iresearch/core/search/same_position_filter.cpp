@@ -264,11 +264,11 @@ filter::prepared::ptr by_same_position::prepare(
   term_states.reserve(terms_.size());
 
   // prepare phrase stats (collector for each term)
-  std::vector<order::prepared::fixed_terms_collectors> term_stats;
+  std::vector<fixed_terms_collectors> term_stats;
   term_stats.reserve(terms_.size());
 
   for(auto size = terms_.size(); size; --size) {
-    term_stats.emplace_back(ord.fixed_prepare_collectors(1)); // 1 term per bstring because a range is treated as a disjunction
+    term_stats.emplace_back(ord, 1); // 1 term per bstring because a range is treated as a disjunction
   }
 
   for (const auto& segment : index) {

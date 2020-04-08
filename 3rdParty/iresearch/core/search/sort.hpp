@@ -65,7 +65,7 @@ typedef void(*score_f)(const score_ctx* ctx, byte_type*);
 ///        i.e. using +=
 ////////////////////////////////////////////////////////////////////////////////
 typedef void(*merge_f)(const order_bucket* ctx, byte_type* dst,
-                       const byte_type** src, const size_t count);
+                       const byte_type** src, size_t count);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
@@ -161,6 +161,22 @@ class IRESEARCH_API sort {
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @enum MergeType
+  /// @brief possible variants of merging multiple scores
+  ////////////////////////////////////////////////////////////////////////////////
+  enum class MergeType {
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief aggregate multiple scores
+    //////////////////////////////////////////////////////////////////////////////
+    AGGREGATE = 0,
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief find max among multiple scores
+    //////////////////////////////////////////////////////////////////////////////
+    MAX,
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @class sort::prepared
   /// @brief base class for all prepared(compiled) sort entries
   ////////////////////////////////////////////////////////////////////////////////
@@ -173,12 +189,34 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     static void noop_merge(
         const order_bucket*, byte_type*,
-        const byte_type**, const size_t) noexcept {
+        const byte_type**, size_t) noexcept {
       // NOOP
     }
 
-    explicit prepared(merge_f merge_func = &noop_merge) noexcept
-      : merge_func_(merge_func) {
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief helper function retuns merge function by a specified type
+    //////////////////////////////////////////////////////////////////////////////
+    template<MergeType type>
+#if IRESEARCH_CXX >= IRESEARCH_CXX_14
+    constexpr
+#endif
+    static merge_f merge_func(const prepared& bucket) noexcept {
+      switch (type) {
+        case MergeType::AGGREGATE:
+          return bucket.aggregate_func();
+        case MergeType::MAX:
+          return bucket.max_func();
+        default:
+          assert(false);
+          return noop_merge;
+      }
+    }
+
+    explicit prepared(
+        merge_f aggregate_func = &noop_merge,
+        merge_f max_func = &noop_merge) noexcept
+      : aggregate_func_(aggregate_func),
+        max_func_(max_func) {
     }
 
     virtual ~prepared() = default;
@@ -270,13 +308,20 @@ class IRESEARCH_API sort {
     virtual std::pair<size_t, size_t> stats_size() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief merge range of scores denoted by 'src_start' and 'size' at a
-    ///        specified 'offset' to 'dst', i.e. using +=
+    /// @brief aggregate range of scores denoted by 'src_start' and 'size' to 'dst',
+    ///        i.e. using +=
     ////////////////////////////////////////////////////////////////////////////////
-    merge_f merge_func() const noexcept { return merge_func_; }
+    merge_f aggregate_func() const noexcept { return aggregate_func_; }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief find max score within range of scores denoted by 'src_start' and
+    ///        'size' to 'dst', i.e. using std::max(...)
+    ////////////////////////////////////////////////////////////////////////////////
+    merge_f max_func() const noexcept { return max_func_; }
 
    protected:
-    merge_f merge_func_;
+    merge_f aggregate_func_;
+    merge_f max_func_;
   }; // prepared
 
   //////////////////////////////////////////////////////////////////////////////
@@ -361,13 +406,62 @@ struct score_traits {
     return const_cast<score_type&>(score_cast(const_cast<const byte_type*>(buf)));
   }
 
-  static void merge(const order_bucket* ctx, byte_type* dst,
-                    const byte_type** src_start, const size_t size) {
+  static void aggregate(const order_bucket* ctx, byte_type* dst,
+                        const byte_type** src_begin, size_t size) {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
     casted_dst = ScoreType();
-    for (size_t i = 0; i < size; ++i) {
-      casted_dst += score_cast(src_start[i] + offset);
+
+    const auto** src_end = src_begin + size;
+    const auto** src_next = src_begin + 4;
+    for (; src_next <= src_end; src_begin = src_next, src_next += 4) {
+      casted_dst += score_cast(src_begin[0] + offset)
+                 +  score_cast(src_begin[1] + offset)
+                 +  score_cast(src_begin[2] + offset)
+                 +  score_cast(src_begin[3] + offset);
+    }
+
+    switch (std::distance(src_end, src_next)) {
+      case 0:
+        break;
+      case 1:
+        casted_dst += score_cast(src_begin[0] + offset)
+                   +  score_cast(src_begin[1] + offset)
+                   +  score_cast(src_begin[2] + offset);
+        break;
+      case 2:
+        casted_dst += score_cast(src_begin[0] + offset)
+                   +  score_cast(src_begin[1] + offset);
+        break;
+      case 3:
+        casted_dst += score_cast(src_begin[0] + offset);
+        break;
+    }
+  }
+
+  static void max(const order_bucket* ctx, byte_type* dst,
+                  const byte_type** src_begin, size_t size) {
+    const auto offset = ctx->score_offset;
+    auto& casted_dst = score_cast(dst + offset);
+
+    switch (size) {
+      case 0:
+        casted_dst = ScoreType();
+        break;
+      case 1:
+        casted_dst = score_cast(src_begin[0] + offset);
+        break;
+      case 2:
+        casted_dst = std::max(score_cast(src_begin[0] + offset),
+                              score_cast(src_begin[1] + offset));
+        break;
+      default:
+        casted_dst = score_cast(*src_begin + offset);
+        const auto* src_end = src_begin + size;
+        for (++src_begin; src_begin != src_end; ) {
+          casted_dst = std::max(score_cast(*src_begin++ + offset), casted_dst);
+        }
+        break;
     }
   }
 };
@@ -395,7 +489,7 @@ template<typename ScoreType,
   }
 
   prepared_sort_base() noexcept
-    : sort::prepared(&traits_t::merge) {
+    : sort::prepared(&traits_t::aggregate, &traits_t::max) {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -451,7 +545,7 @@ class prepared_sort_base<ScoreType, void, TraitsType> : public sort::prepared {
   typedef void stats_t;
 
   prepared_sort_base() noexcept
-    : sort::prepared(&traits_t::merge) {
+    : sort::prepared(&traits_t::aggregate, &traits_t::max) {
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -635,129 +729,6 @@ class IRESEARCH_API order final {
     typedef std::vector<order_bucket> prepared_order_t;
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief a convinience class for filters to invoke collector functions
-    ///        on collectors in each order bucket
-    ////////////////////////////////////////////////////////////////////////////
-    template<typename T> using FixedContainer = std::vector<T>;
-    template<typename T> using VariadicContainer = std::vector<std::vector<T>>;
-
-    template<template<typename...> class T>
-    class IRESEARCH_API collectors: private util::noncopyable { // noncopyable required by MSVC
-     public:
-      collectors(const prepared& buckets);
-      collectors(collectors&& other) noexcept; // function definition explicitly required by MSVC
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief collect field related statistics, i.e. field used in the filter
-      /// @param segment the segment being processed (e.g. for columnstore)
-      /// @param field the field matched by the filter in the 'segment'
-      /// @note called once for every field matched by a filter per each segment
-      /// @note always called on each matched 'field' irrespective of if it
-      ///       contains a matching 'term'
-      //////////////////////////////////////////////////////////////////////////
-      void collect(const sub_reader& segment, const term_reader& field) const;
-
-      void empty_finish(byte_type* stats_buf, const index_reader& index) const;
-
-     protected:
-      IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-      const std::vector<order_bucket>& buckets_;
-      std::vector<sort::field_collector::ptr> field_collectors_; // size == buckets_.size()
-      mutable T<sort::term_collector::ptr> term_collectors_;
-      IRESEARCH_API_PRIVATE_VARIABLES_END
-    };
-
-    class IRESEARCH_API fixed_terms_collectors : public collectors<FixedContainer> {
-     public:
-      using collectors<FixedContainer>::collect;
-
-      fixed_terms_collectors(const prepared& buckets, size_t terms_count);
-      fixed_terms_collectors(fixed_terms_collectors&& other) noexcept; // function definition explicitly required by MSVC
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief collect term related statistics, i.e. term used in the filter
-      /// @param segment the segment being processed (e.g. for columnstore)
-      /// @param field the field matched by the filter in the 'segment'
-      /// @param term_offset offset of term, value < constructor 'terms_count'
-      /// @param term_attributes the attributes of the matched term in the field
-      /// @note called once for every term matched by a filter in the 'field'
-      ///       per each segment
-      /// @note only called on a matched 'term' in the 'field' in the 'segment'
-      //////////////////////////////////////////////////////////////////////////
-      void collect(
-        const sub_reader& segment,
-        const term_reader& field,
-        size_t term_offset,
-        const attribute_view& term_attrs
-      ) const;
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief store collected index statistics into 'stats' of the
-      ///        current 'filter'
-      /// @param stats out-parameter to store statistics for later use in
-      ///        calls to score(...)
-      /// @param index the full index to collect statistics on
-      /// @note called once on the 'index' for every term matched by a filter
-      ///       calling collect(...) on each of its segments
-      /// @note if not matched terms then called exactly once
-      //////////////////////////////////////////////////////////////////////////
-      void finish(byte_type* stats, const index_reader& index) const;
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief add collectors for another term
-      /// @return term_offset
-      //////////////////////////////////////////////////////////////////////////
-      size_t push_back();
-
-      // term_collectors_; size == buckets_.size() * terms_count, layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
-    };
-
-    class IRESEARCH_API variadic_terms_collectors : public collectors<VariadicContainer> {
-     public:
-      using collectors<VariadicContainer>::collect;
-
-      variadic_terms_collectors(const prepared& buckets, size_t terms_count);
-      variadic_terms_collectors(variadic_terms_collectors&& other) noexcept; // function definition explicitly required by MSVC
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief collect term related statistics, i.e. term used in the filter
-      /// @param segment the segment being processed (e.g. for columnstore)
-      /// @param field the field matched by the filter in the 'segment'
-      /// @param term_offset offset of term, value < constructor 'terms_count'
-      /// @param term_attributes the attributes of the matched term in the field
-      /// @note called once for every term matched by a filter in the 'field'
-      ///       per each segment
-      /// @note only called on a matched 'term' in the 'field' in the 'segment'
-      //////////////////////////////////////////////////////////////////////////
-      void collect(
-        const sub_reader& segment,
-        const term_reader& field,
-        size_t term_offset,
-        const attribute_view& term_attrs
-      ) const;
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief store collected index statistics into 'stats' of the
-      ///        current 'filter'
-      /// @param stats out-parameter to store statistics for later use in
-      ///        calls to score(...)
-      /// @param index the full index to collect statistics on
-      /// @note called once on the 'index' for every term matched by a filter
-      ///       calling collect(...) on each of its segments
-      /// @note if not matched terms then called exactly once
-      //////////////////////////////////////////////////////////////////////////
-      void finish(byte_type* stats, const index_reader& index) const;
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief add collectors for another term
-      /// @return term_offset
-      //////////////////////////////////////////////////////////////////////////
-      size_t push_back();
-
-      // term_collectors_; size == buckets_.size(), inner size == terms count
-    };
-
-    ////////////////////////////////////////////////////////////////////////////
     /// @brief a convinience class for doc_iterators to invoke scorer functions
     ///        on scorers in each order bucket
     ////////////////////////////////////////////////////////////////////////////
@@ -816,12 +787,24 @@ class IRESEARCH_API order final {
     ////////////////////////////////////////////////////////////////////////////
     class merger {
      public:
+      //////////////////////////////////////////////////////////////////////////
+      /// @brief merge range of scores denoted by 'src_start' and 'size' to
+      ///        'dst', using a merge function
+      //////////////////////////////////////////////////////////////////////////
       FORCE_INLINE void operator()(
           byte_type* score,
           const byte_type** rhs_start,
           const size_t count) const {
         assert(merge_func_);
         (*merge_func_)(bucket_, score, rhs_start, count);
+      }
+
+      FORCE_INLINE bool operator==(merge_f merge_func) const noexcept {
+        return merge_func == merge_func_;
+      }
+
+      FORCE_INLINE bool operator!=(merge_f merge_func) const noexcept {
+        return merge_func != merge_func_;
       }
 
      private:
@@ -880,19 +863,6 @@ class IRESEARCH_API order final {
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief create an index statistics compound collector for all buckets
-    /// @param terms_count number of term_collectors to allocate
-    ///        0 == collect only field level statistics e.g. by_column_existence
-    ////////////////////////////////////////////////////////////////////////////
-    fixed_terms_collectors fixed_prepare_collectors(size_t terms_count = 0) const {
-      return fixed_terms_collectors(*this, terms_count);
-    }
-
-    variadic_terms_collectors variadic_prepare_collectors(size_t terms_count = 0) const {
-      return variadic_terms_collectors(*this, terms_count);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
     /// @brief prepare empty collectors, i.e. call collect(...) on each of the
     ///        buckets without explicitly collecting field or term statistics,
     ///        e.g. for 'all' filter
@@ -902,33 +872,21 @@ class IRESEARCH_API order final {
     ////////////////////////////////////////////////////////////////////////////
     /// @return merger object to combine multiple scores
     ////////////////////////////////////////////////////////////////////////////
-    merger prepare_merger() const noexcept {
-      switch (order_.size()) {
-        case 0: return { };
-        case 1: return {
-            &order_[0],
-            order_[0].bucket->merge_func()
-          };
-        case 2: return {
-            &order_[0],
-            [](const order_bucket* ctx, byte_type* dst,
-               const byte_type** src_start, const size_t size) {
-                ctx[0].bucket->merge_func()(ctx,     dst, &(*src_start), size);
-                ctx[1].bucket->merge_func()(ctx + 1, dst, &(*src_start), size);
-          }};
-        default: return {
-            reinterpret_cast<const order_bucket*>(&order_),
-            [](const order_bucket* ctx, byte_type* dst,
-               const byte_type** src_start, const size_t size) {
-                auto& order = *reinterpret_cast<const order::prepared*>(ctx);
-                order.for_each([dst, src_start, size](const order_bucket& sort) {
-                  assert(sort.bucket);
-                  sort.bucket->merge_func()(&sort, dst, src_start, size);
-                });
-          }};
+    merger prepare_merger(sort::MergeType type) const noexcept {
+      switch (type) {
+        case sort::MergeType::AGGREGATE:
+          return prepare_merger<sort::MergeType::AGGREGATE>();
+        case sort::MergeType::MAX:
+          return prepare_merger<sort::MergeType::MAX>();
+        default:
+          assert(false);
+          return {};
       }
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return set of prepared scorer objects
+    ////////////////////////////////////////////////////////////////////////////
     prepared::scorers prepare_scorers(
         const sub_reader& segment,
         const term_reader& field,
@@ -969,9 +927,38 @@ class IRESEARCH_API order final {
     friend class order;
 
     template<typename Func>
-    inline void for_each(const Func& func) const {
+    void for_each(const Func& func) const {
       std::for_each(order_.begin(), order_.end(), func);
     }
+
+    template<sort::MergeType Type>
+    merger prepare_merger() const noexcept {
+      switch (order_.size()) {
+        case 0: return { };
+        case 1: return {
+            &order_[0],
+            sort::prepared::merge_func<Type>(*order_[0].bucket)
+          };
+        case 2: return {
+            &order_[0],
+            [](const order_bucket* ctx, byte_type* dst,
+               const byte_type** src_start, const size_t size) {
+                sort::prepared::merge_func<Type>(*ctx[0].bucket)(ctx,     dst, &(*src_start), size);
+                sort::prepared::merge_func<Type>(*ctx[1].bucket)(ctx + 1, dst, &(*src_start), size);
+          }};
+        default: return {
+            reinterpret_cast<const order_bucket*>(&order_),
+            [](const order_bucket* ctx, byte_type* dst,
+               const byte_type** src_start, const size_t size) {
+                auto& order = *reinterpret_cast<const order::prepared*>(ctx);
+                order.for_each([dst, src_start, size](const order_bucket& sort) {
+                  assert(sort.bucket);
+                  sort::prepared::merge_func<Type>(*sort.bucket)(&sort, dst, src_start, size);
+                });
+          }};
+      }
+    }
+
 
     IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     prepared_order_t order_;
@@ -1042,6 +1029,134 @@ class IRESEARCH_API order final {
   order_t order_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
+
+////////////////////////////////////////////////////////////////////////////
+/// @brief a convinience class for filters to invoke collector functions
+///        on collectors in each order bucket
+////////////////////////////////////////////////////////////////////////////
+template<typename T> using FixedContainer = std::vector<T>;
+template<typename T> using VariadicContainer = std::vector<std::vector<T>>;
+
+template<template<typename...> class T>
+class IRESEARCH_API collectors: private util::noncopyable { // noncopyable required by MSVC
+ public:
+  collectors(const order::prepared& buckets);
+  collectors(collectors&& other) noexcept; // function definition explicitly required by MSVC
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief collect field related statistics, i.e. field used in the filter
+  /// @param segment the segment being processed (e.g. for columnstore)
+  /// @param field the field matched by the filter in the 'segment'
+  /// @note called once for every field matched by a filter per each segment
+  /// @note always called on each matched 'field' irrespective of if it
+  ///       contains a matching 'term'
+  //////////////////////////////////////////////////////////////////////////
+  void collect(const sub_reader& segment, const term_reader& field) const;
+
+  void empty_finish(byte_type* stats_buf, const index_reader& index) const;
+
+ protected:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  const order::prepared& buckets_;
+  std::vector<sort::field_collector::ptr> field_collectors_; // size == buckets_.size()
+  mutable T<sort::term_collector::ptr> term_collectors_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+};
+
+////////////////////////////////////////////////////////////////////////////
+/// @brief create an index statistics compound collector for all buckets
+/// @param terms_count number of term_collectors to allocate
+///        0 == collect only field level statistics e.g. by_column_existence
+////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API fixed_terms_collectors : public collectors<FixedContainer> {
+ public:
+  using collectors<FixedContainer>::collect;
+
+  fixed_terms_collectors(const order::prepared& buckets, size_t terms_count);
+  fixed_terms_collectors(fixed_terms_collectors&& other) noexcept; // function definition explicitly required by MSVC
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief collect term related statistics, i.e. term used in the filter
+  /// @param segment the segment being processed (e.g. for columnstore)
+  /// @param field the field matched by the filter in the 'segment'
+  /// @param term_offset offset of term, value < constructor 'terms_count'
+  /// @param term_attributes the attributes of the matched term in the field
+  /// @note called once for every term matched by a filter in the 'field'
+  ///       per each segment
+  /// @note only called on a matched 'term' in the 'field' in the 'segment'
+  //////////////////////////////////////////////////////////////////////////
+  void collect(
+    const sub_reader& segment,
+    const term_reader& field,
+    size_t term_offset,
+    const attribute_view& term_attrs
+  ) const;
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief store collected index statistics into 'stats' of the
+  ///        current 'filter'
+  /// @param stats out-parameter to store statistics for later use in
+  ///        calls to score(...)
+  /// @param index the full index to collect statistics on
+  /// @note called once on the 'index' for every term matched by a filter
+  ///       calling collect(...) on each of its segments
+  /// @note if not matched terms then called exactly once
+  //////////////////////////////////////////////////////////////////////////
+  void finish(byte_type* stats, const index_reader& index) const;
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief add collectors for another term
+  /// @return term_offset
+  //////////////////////////////////////////////////////////////////////////
+  size_t push_back();
+
+  // term_collectors_; size == buckets_.size() * terms_count, layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
+};
+
+class IRESEARCH_API variadic_terms_collectors : public collectors<VariadicContainer> {
+ public:
+  using collectors<VariadicContainer>::collect;
+
+  variadic_terms_collectors(const order::prepared& buckets, size_t terms_count);
+  variadic_terms_collectors(variadic_terms_collectors&& other) noexcept; // function definition explicitly required by MSVC
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief collect term related statistics, i.e. term used in the filter
+  /// @param segment the segment being processed (e.g. for columnstore)
+  /// @param field the field matched by the filter in the 'segment'
+  /// @param term_offset offset of term, value < constructor 'terms_count'
+  /// @param term_attributes the attributes of the matched term in the field
+  /// @note called once for every term matched by a filter in the 'field'
+  ///       per each segment
+  /// @note only called on a matched 'term' in the 'field' in the 'segment'
+  //////////////////////////////////////////////////////////////////////////
+  void collect(
+    const sub_reader& segment,
+    const term_reader& field,
+    size_t term_offset,
+    const attribute_view& term_attrs
+  ) const;
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief store collected index statistics into 'stats' of the
+  ///        current 'filter'
+  /// @param stats out-parameter to store statistics for later use in
+  ///        calls to score(...)
+  /// @param index the full index to collect statistics on
+  /// @note called once on the 'index' for every term matched by a filter
+  ///       calling collect(...) on each of its segments
+  /// @note if not matched terms then called exactly once
+  //////////////////////////////////////////////////////////////////////////
+  void finish(byte_type* stats, const index_reader& index) const;
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief add collectors for another term
+  /// @return term_offset
+  //////////////////////////////////////////////////////////////////////////
+  size_t push_back();
+
+  // term_collectors_; size == buckets_.size(), inner size == terms count
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class filter_boost

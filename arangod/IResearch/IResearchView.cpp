@@ -136,6 +136,7 @@ void ensureImmutableProperties(
   dst._writebufferSizeMax = src._writebufferSizeMax;
   dst._primarySort = src._primarySort;
   dst._storedValues = src._storedValues;
+  dst._primarySortCompression = src._primarySortCompression;
 }
 
 }
@@ -388,8 +389,8 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     arangodb::velocypack::Builder sanitizedBuilder;
 
     sanitizedBuilder.openObject();
-
-    if (!_meta.json(sanitizedBuilder) ||
+    IResearchViewMeta::Mask mask(true);
+    if (!_meta.json(sanitizedBuilder, nullptr, &mask) ||
         !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
       return arangodb::Result(
           TRI_ERROR_INTERNAL,

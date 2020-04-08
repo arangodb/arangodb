@@ -1,7 +1,8 @@
 #!/bin/sh
+# Limitation - This script can not work with filenames containing spaces
 
 WD=$(pwd)
-if [ "x$@" = "x" ] ; then
+if [ -z "$*" ] ; then
   JAVASCRIPT_JSLINT="\
     $(find "${WD}/js/actions" -name "*.js") \
     $(find "${WD}/js/common/bootstrap" -name "*.js") \
@@ -29,7 +30,6 @@ if [ "x$@" = "x" ] ; then
     ${WD}/js/client/inspector.js \
     ${WD}/js/server/server.js \
     ${WD}/js/server/initialize.js \
-    ${WD}/js/server/arango-dfdb.js \
     \
   "
   if [ -d "${WD}/enterprise" ] ; then
@@ -40,11 +40,10 @@ if [ "x$@" = "x" ] ; then
       "
   fi
 else
-  JAVASCRIPT_JSLINT="$@"
+  JAVASCRIPT_JSLINT="$*"
 fi
 
 FILELIST=""
-
 for file in ${JAVASCRIPT_JSLINT}; do
   FILELIST="${FILELIST} --jslint ${file}";
 done
@@ -67,10 +66,12 @@ else
      fi
 fi
 
+# wordspitting is intentional here - no arrays in POSIX shells
+# shellcheck disable=2086
 exec $ARANGOSH \
     -c none \
     --log.level error \
     --log.file - \
     --server.password "" \
     --javascript.startup-directory "${JSDIR}" \
-    ${FILELIST} "$@"
+    ${FILELIST}

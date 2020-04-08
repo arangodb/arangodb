@@ -35,14 +35,13 @@ class Builder;
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() : _vpack(nullptr), _revisionId(0) {}
+  ManagedDocumentResult() : _revisionId(0) {}
 
   ManagedDocumentResult(ManagedDocumentResult const& other) = default;
   ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = default;
 
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other) noexcept {
     _string = std::move(other._string);
-    _vpack = other._vpack;
     _revisionId = other._revisionId;
     other.clear();
     return *this;
@@ -50,20 +49,16 @@ class ManagedDocumentResult {
 
   ManagedDocumentResult(ManagedDocumentResult&& other) noexcept
       : _string(std::move(other._string)),
-        _vpack(other._vpack),
         _revisionId(other._revisionId) {
     other.clear();
   }
 
-  /// @brief store pointer to a valid document, sets revisionid
-  void setUnmanaged(uint8_t const* vpack);
   /// @brief copy in a valid document, sets revisionid
   void setManaged(uint8_t const* vpack);
 
   /// @brief access the internal buffer, revisionId must be set manually
   std::string* setManaged() noexcept {
     _string.clear();
-    _vpack = nullptr;
     _revisionId = 0;
     return &_string;
   }
@@ -74,7 +69,6 @@ class ManagedDocumentResult {
 
   void clearData() noexcept {
     _string.clear();
-    _vpack = nullptr;
   }
   
   void clear() noexcept {
@@ -83,25 +77,17 @@ class ManagedDocumentResult {
   }
   
   inline uint8_t const* vpack() const noexcept {
-    if (_vpack == nullptr) {
-      return reinterpret_cast<uint8_t const*>(_string.data());
-    }
-    return _vpack;
+    return reinterpret_cast<uint8_t const*>(_string.data());
   }
 
   inline bool empty() const noexcept {
-    return (_vpack == nullptr && _string.empty());
+    return _string.empty();
   }
 
-  inline bool canUseInExternal() const noexcept {
-    return _vpack != nullptr;
-  }
-
-  void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
+  void addToBuilder(velocypack::Builder& builder) const;
 
  private:
   std::string _string;
-  uint8_t* _vpack;
   TRI_voc_rid_t _revisionId;
 };
 

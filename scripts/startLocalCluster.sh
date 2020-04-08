@@ -51,16 +51,7 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-if [ -z "$USE_ROCKSDB" ] ; then
-  #default engine is RocksDB
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-elif [ "$USE_ROCKSDB" == "0" ]; then 
-  #explicitly disable RocksDB engine, so use MMFiles
-  STORAGE_ENGINE="--server.storage-engine=mmfiles"
-else 
-  #any value other than "0" means RocksDB engine
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-fi
+STORAGE_ENGINE="--server.storage-engine=rocksdb"
 DEFAULT_REPLICATION=""
 
 if [ "$AUTOUPGRADE" == "1" ];then
@@ -161,6 +152,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --javascript.enabled false \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --server.statistics false \
+          --log.role true \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
@@ -188,6 +180,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --server.statistics false \
+        --log.role true \
         --log.file cluster/$PORT.log \
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
@@ -234,6 +227,7 @@ start() {
           --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --cluster.my-role $ROLE \
+          --log.role true \
           --log.file cluster/$PORT.log \
           --log.level $LOG_LEVEL \
           --server.statistics true \
@@ -257,6 +251,7 @@ start() {
         --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --cluster.my-role $ROLE \
+        --log.role true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
         --server.statistics true \

@@ -171,8 +171,6 @@ class ModificationExecutor {
   ModificationExecutor(FetcherType&, Infos&);
   ~ModificationExecutor() = default;
 
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
   [[nodiscard]] auto produceRows(typename FetcherType::DataRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
@@ -189,7 +187,6 @@ class ModificationExecutor {
   // WAITING
   ExecutionState _lastState;
   ModificationExecutorInfos& _infos;
-  FetcherType& _fetcher;
   ModifierType _modifier;
 };
 

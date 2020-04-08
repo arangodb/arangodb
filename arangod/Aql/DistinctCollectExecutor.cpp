@@ -35,9 +35,7 @@
 
 #include <utility>
 
-#define LOG_DEVEL_DISTINCT_COLLECT_ENABLED false
-#define LOG_DEVEL_DC \
-  LOG_DEVEL_IF(LOG_DEVEL_DISTINCT_COLLECT_ENABLED) << __FUNCTION__ << " "
+#define INTERNAL_LOG_DC LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -64,26 +62,14 @@ transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
   return _trxPtr;
 }
 
-DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
+DistinctCollectExecutor::DistinctCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
       _seen(1024, AqlValueGroupHash(_infos.getTransaction(), 1),
             AqlValueGroupEqual(_infos.getTransaction())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
 void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
-
-std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
-}
-
-std::pair<ExecutionState, size_t> DistinctCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  // This block cannot know how many elements will be returned exactly.
-  // but it is upper bounded by the input.
-  return _fetcher.preFetchNumberOfRows(atMost);
-}
 
 [[nodiscard]] auto DistinctCollectExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
@@ -119,20 +105,20 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutorState state = ExecutorState::HASMORE;
 
-  LOG_DEVEL_DC << output.getClientCall();
+  INTERNAL_LOG_DC << output.getClientCall();
 
   AqlValue groupValue;
 
   while (inputRange.hasDataRow()) {
-    LOG_DEVEL_DC << "output.isFull() = " << std::boolalpha << output.isFull();
+    INTERNAL_LOG_DC << "output.isFull() = " << std::boolalpha << output.isFull();
 
     if (output.isFull()) {
-      LOG_DEVEL_DC << "output is full";
+      INTERNAL_LOG_DC << "output is full";
       break;
     }
 
     std::tie(state, input) = inputRange.nextDataRow();
-    LOG_DEVEL_DC << "inputRange.nextDataRow() = " << state;
+    INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
     // for hashing simply re-use the aggregate registers, without cloning
@@ -149,7 +135,7 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  LOG_DEVEL_DC << "returning state " << state;
+  INTERNAL_LOG_DC << "returning state " << state;
   return {inputRange.upstreamState(), {}, {}};
 }
 
@@ -165,17 +151,17 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   AqlValue groupValue;
   size_t skipped = 0;
 
-  LOG_DEVEL_DC << call;
+  INTERNAL_LOG_DC << call;
 
   while (inputRange.hasDataRow()) {
-    LOG_DEVEL_DC << "call.needSkipMore() = " << std::boolalpha << call.needSkipMore();
+    INTERNAL_LOG_DC << "call.needSkipMore() = " << std::boolalpha << call.needSkipMore();
 
     if (!call.needSkipMore()) {
       return {ExecutorState::HASMORE, {}, skipped, {}};
     }
 
     std::tie(state, input) = inputRange.nextDataRow();
-    LOG_DEVEL_DC << "inputRange.nextDataRow() = " << state;
+    INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
     // for hashing simply re-use the aggregate registers, without cloning

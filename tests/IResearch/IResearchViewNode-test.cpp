@@ -30,6 +30,7 @@
 
 #include "Aql/TestExecutorHelper.h"
 #include "IResearch/common.h"
+#include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -45,6 +46,7 @@
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -54,7 +56,6 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
-#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -2509,7 +2510,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     EXPECT_TRUE(trx.begin().ok());
 
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt, false);
+    auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt);
     EXPECT_TRUE(res.ok());
 
     EXPECT_TRUE(trx.commit().ok());
@@ -2722,20 +2723,18 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterialized) {
                                               {});        // no sort condition
   node.addDependency(&singleton);
   node.setLateMaterialized(outNmColPtr, outNmDocId);
-  std::vector<arangodb::aql::RegisterId> nrRegsHere{ 0 };
-  std::vector<arangodb::aql::RegisterId> nrRegs{ 0 };
-  std::unordered_map<arangodb::aql::VariableId, arangodb::aql::VarInfo> varInfo;
-  unsigned int totalNrRegs = 0;
-  node.planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, 1);
-  EXPECT_EQ(2, totalNrRegs);
-  EXPECT_EQ(2, nrRegs.size());
-  EXPECT_EQ(2, nrRegs[1]);
-  EXPECT_EQ(2, nrRegsHere.size());
-  EXPECT_EQ(2, nrRegsHere[1]);
-  EXPECT_EQ(2, varInfo.size());
-  EXPECT_NE(varInfo.end(), varInfo.find(outNmColPtr.id));
-  EXPECT_NE(varInfo.end(), varInfo.find(outNmDocId.id));
-  EXPECT_EQ(varInfo.end(), varInfo.find(outVariable.id));
+
+  arangodb::aql::RegisterPlan registerPlan;
+  EXPECT_EQ(1, registerPlan.nrRegs.size());
+  registerPlan.increaseDepth();
+  EXPECT_EQ(2, registerPlan.nrRegs.size());
+  node.planNodeRegisters(registerPlan);
+  EXPECT_EQ(2, registerPlan.nrRegs.size());
+  EXPECT_EQ(2, registerPlan.nrRegs[1]);
+  EXPECT_EQ(2, registerPlan.varInfo.size());
+  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outNmColPtr.id));
+  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outNmDocId.id));
+  EXPECT_EQ(registerPlan.varInfo.end(), registerPlan.varInfo.find(outVariable.id));
 }
 
 TEST_F(IResearchViewNodeTest, registerPlanningLateMaterializedWitScore) {
@@ -2744,7 +2743,7 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterializedWitScore) {
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice());
-  ASSERT_TRUE((false == !logicalView));
+  ASSERT_NE(logicalView, nullptr);
 
   // dummy query
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
@@ -2772,21 +2771,17 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterializedWitScore) {
                                               std::vector<arangodb::iresearch::Scorer>{ {&scoreVariable, nullptr} });   //sort condition
   node.addDependency(&singleton);
   node.setLateMaterialized(outNmColPtr, outNmDocId);
-  std::vector<arangodb::aql::RegisterId> nrRegsHere{ 0 };
-  std::vector<arangodb::aql::RegisterId> nrRegs{ 0 };
-  std::unordered_map<arangodb::aql::VariableId, arangodb::aql::VarInfo> varInfo;
-  unsigned int totalNrRegs = 0;
-  node.planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, 1);
-  EXPECT_EQ(3, totalNrRegs);
-  EXPECT_EQ(2, nrRegs.size());
-  EXPECT_EQ(3, nrRegs[1]);
-  EXPECT_EQ(2, nrRegsHere.size());
-  EXPECT_EQ(3, nrRegsHere[1]);
-  EXPECT_EQ(3, varInfo.size());
-  EXPECT_NE(varInfo.end(), varInfo.find(outNmColPtr.id));
-  EXPECT_NE(varInfo.end(), varInfo.find(outNmDocId.id));
-  EXPECT_EQ(varInfo.end(), varInfo.find(outVariable.id));
-  EXPECT_NE(varInfo.end(), varInfo.find(scoreVariable.id));
+  
+  arangodb::aql::RegisterPlan registerPlan;
+  registerPlan.increaseDepth();
+  node.planNodeRegisters(registerPlan);
+  EXPECT_EQ(2, registerPlan.nrRegs.size());
+  EXPECT_EQ(3, registerPlan.nrRegs[1]);
+  EXPECT_EQ(3, registerPlan.varInfo.size());
+  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outNmColPtr.id));
+  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outNmDocId.id));
+  EXPECT_EQ(registerPlan.varInfo.end(), registerPlan.varInfo.find(outVariable.id));
+  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(scoreVariable.id));
 }
 
 TEST_F(IResearchViewNodeTest, registerPlanning) {
@@ -2819,18 +2814,14 @@ TEST_F(IResearchViewNodeTest, registerPlanning) {
                                               nullptr,  // no options
                                               {});        // no sort condition
   node.addDependency(&singleton);
-  std::vector<arangodb::aql::RegisterId> nrRegsHere{ 0 };
-  std::vector<arangodb::aql::RegisterId> nrRegs{ 0 };
-  std::unordered_map<arangodb::aql::VariableId, arangodb::aql::VarInfo> varInfo;
-  unsigned int totalNrRegs = 0;
-  node.planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, 1);
-  EXPECT_EQ(1, totalNrRegs);
-  EXPECT_EQ(2, nrRegs.size());
-  EXPECT_EQ(1, nrRegs[1]);
-  EXPECT_EQ(2, nrRegsHere.size());
-  EXPECT_EQ(1, nrRegsHere[1]);
-  EXPECT_EQ(1, varInfo.size());
-  EXPECT_NE(varInfo.end(), varInfo.find(outVariable.id));
+  
+  arangodb::aql::RegisterPlan registerPlan;
+  registerPlan.increaseDepth();
+  node.planNodeRegisters(registerPlan);
+  EXPECT_EQ(2, registerPlan.nrRegs.size());
+  EXPECT_EQ(1, registerPlan.nrRegs[1]);
+  EXPECT_EQ(1, registerPlan.varInfo.size());
+  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outVariable.id));
 }
 
 TEST_F(IResearchViewNodeTest, registerPlanningWithScore) {
@@ -2864,19 +2855,15 @@ TEST_F(IResearchViewNodeTest, registerPlanningWithScore) {
                                               nullptr,  // no options
                                               std::vector<arangodb::iresearch::Scorer>{ {&scoreVariable, nullptr} });        //sort condition
   node.addDependency(&singleton);
-  std::vector<arangodb::aql::RegisterId> nrRegsHere{ 0 };
-  std::vector<arangodb::aql::RegisterId> nrRegs{ 0 };
-  std::unordered_map<arangodb::aql::VariableId, arangodb::aql::VarInfo> varInfo;
-  unsigned int totalNrRegs = 0;
-  node.planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, 1);
-  EXPECT_EQ(2, totalNrRegs);
-  EXPECT_EQ(2, nrRegs.size());
-  EXPECT_EQ(2, nrRegs[1]);
-  EXPECT_EQ(2, nrRegsHere.size());
-  EXPECT_EQ(2, nrRegsHere[1]);
-  EXPECT_EQ(2, varInfo.size());
-  EXPECT_NE(varInfo.end(), varInfo.find(outVariable.id));
-  EXPECT_NE(varInfo.end(), varInfo.find(scoreVariable.id));
+  
+  arangodb::aql::RegisterPlan registerPlan;
+  registerPlan.increaseDepth();
+  node.planNodeRegisters(registerPlan);
+  EXPECT_EQ(2, registerPlan.nrRegs.size());
+  EXPECT_EQ(2, registerPlan.nrRegs[1]);
+  EXPECT_EQ(2, registerPlan.varInfo.size());
+  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outVariable.id));
+  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(scoreVariable.id));
 }
 
 class IResearchViewBlockTest
@@ -2927,7 +2914,7 @@ class IResearchViewBlockTest
       auto indexes = collection0->getIndexes();
       EXPECT_FALSE(indexes.empty());
       auto* l =
-          static_cast<arangodb::iresearch::IResearchMMFilesLink*>(indexes[0].get());
+          static_cast<arangodb::iresearch::IResearchLinkMock*>(indexes[0].get());
       for (size_t i = 2; i < 10; ++i) {
         l->insert(*trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::normal);
       }
@@ -2937,7 +2924,7 @@ class IResearchViewBlockTest
     arangodb::ManagedDocumentResult insertResult;
     arangodb::OperationOptions options;
     EXPECT_TRUE(collection0
-                    ->insert(trx.get(), aliveDoc->slice(), insertResult, options, false)
+                    ->insert(trx.get(), aliveDoc->slice(), insertResult, options)
                     .ok());
     EXPECT_TRUE(trx->commit().ok());
   }

@@ -30,11 +30,13 @@
 
 #include "analysis/analyzer.hpp"
 #include "utils/object_pool.hpp"
+#include "utils/compression.hpp"
 
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
+#include "IResearchCompression.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -186,23 +188,26 @@ struct IResearchLinkMeta : public FieldMeta {
       : FieldMeta::Mask(mask),
         _analyzerDefinitions(mask),
         _sort(mask),
-        _storedValues(mask) {
+        _storedValues(mask),
+        _sortCompression(mask) {
     }
 
     bool _analyzerDefinitions;
     bool _sort;
     bool _storedValues;
+    bool _sortCompression;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort; // sort condition associated with the link
   IResearchViewStoredValues _storedValues; // stored values associated with the link
+  irs::compression::type_id const* _sortCompression{&getDefaultCompression()};
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
   // NOTE: if adding fields don't forget to modify the init(...) function !!!
   // NOTE: if adding fields don't forget to modify the json(...) function !!!
-  // NOTE: if adding fields don't forget to modify the memSize() function !!!
+  // NOTE: if adding fields don't forget to modify the memory() function !!!
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;
