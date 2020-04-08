@@ -135,14 +135,14 @@ PlanCollectionReader::PlanCollectionReader(LogicalCollection const& collection) 
   auto& ac = collection.vocbase().server().getFeature<ClusterFeature>().agencyCache();
   std::vector<std::string> path { 
     AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)};
-  [tmp, idx] = ac.get(path);
+  auto [tmp, idx] = ac.get(path);
   _collection = tmp->slice()[0];
     
   std::vector<std::string> vpath(
     {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID});
   if (!_collection.hasKey(vpath)) {
     _state = Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
-                    "Could not retrieve " + path + " from agency");
+                    "Could not retrieve " + path.front() + " from agency");
     return;
   }
 
