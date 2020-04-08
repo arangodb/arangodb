@@ -379,9 +379,9 @@ class LogicalCollection : public LogicalDataSource {
 
   bool const _allowUserKeys;
 
-  std::atomic<bool> _syncByRevision;
-  
   std::atomic<bool> _usesRevisionsAsDocumentIds;
+  
+  std::atomic<bool> _syncByRevision;
 
   TRI_voc_rid_t const _minRevision;
 
