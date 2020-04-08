@@ -128,6 +128,36 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::methods;
 
+PlanCollectionReader::PlanCollectionReader(LogicalCollection const& collection) {
+  std::string databaseName = collection.vocbase().name();
+  std::string collectionID = std::to_string(collection.id());
+
+  auto& ac = collection.vocbase().server().getFeature<ClusterFeature>().agencyCache();
+  std::vector<std::string> path { 
+    AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)};
+  [tmp, idx] = ac.get(path);
+  _collection = tmp->slice()[0];
+    
+  std::vector<std::string> vpath(
+    {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID});
+  if (!_collection.hasKey(vpath)) {
+    _state = Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
+                    "Could not retrieve " + path + " from agency");
+    return;
+  }
+
+  _collection = _collection.get(
+    std::vector<std::string>(
+      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+    
+  if (!_collection.isObject()) {
+    _state = Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return;
+  }
+  _state = Result();
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a local helper to report errors and messages
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,12 +311,12 @@ void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   AgencyComm ac(_server);
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, idx] = agencyCache(std::vector<std::string>{"/"});
-  auto res = acb.slice();
+  auto [acb, idx] = agencyCache.get(std::vector<std::string>{"/"});
+  auto res = acb->slice();
 
-  if (!res.isNone) {
+  if (!res.isNone()) {
     LOG_TOPIC("fe8ce", INFO, Logger::CLUSTER) << "Agency dump:\n"
-                                              << ag.toJson();
+                                              << res.toJson();
   } else {
     LOG_TOPIC("e7e30", WARN, Logger::CLUSTER) << "Could not get agency dump!";
   }
