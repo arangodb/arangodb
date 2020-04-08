@@ -460,7 +460,15 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
     return true;
   }
 
+  if (_revisionTreeSerializedSeq.load() < _revisionTreeApplied.load()) {
+    return true;
+  }
+
   return false;
+}
+
+rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree() const {
+  return _revisionTreeSerializedSeq.load();
 }
 
 rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(

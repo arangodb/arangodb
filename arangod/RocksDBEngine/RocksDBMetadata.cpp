@@ -343,6 +343,10 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
         }
       }
     } else {
+      output.clear();
+      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
+      appliedSeq = std::min(appliedSeq, seq);
+      TRI_ASSERT(output.empty());
       key.constructRevisionTreeValue(rcoll->objectId());
       rocksdb::Status s = batch.Delete(cf, key.string());
       if (!s.ok() && !s.IsNotFound()) {
@@ -351,6 +355,9 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
         return res.reset(rocksutils::convertStatus(s));
       }
     }
+  } else {
+    rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree();
+    appliedSeq = std::min(appliedSeq, seq);
   }
 
   return res;
