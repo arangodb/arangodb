@@ -24,14 +24,12 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
-#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionNodeStats.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Result.h"
 
 #include <cstdint>
-#include <deque>
 #include <utility>
 #include <vector>
 
@@ -152,6 +150,9 @@ class ExecutionBlock {
   /// @brief the Result returned during the shutdown phase. Is kept for multiple
   ///        waiting phases.
   Result _shutdownResult;
+  
+  /// @brief profiling level
+  uint32_t _profile;
 
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
@@ -171,31 +172,9 @@ class ExecutionBlock {
   
   ExecutionNodeStats _execNodeStats;
 
-  /// @brief profiling level
-  uint32_t _profile;
-
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
-
-  /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
-  /// We keep the following invariant between this and the other two variables
-  /// _pos and _done: If _buffer.size() != 0, then 0 <= _pos <
-  /// _buffer[0]->size()
-  /// and _buffer[0][_pos] is the next item to be handed on. If _done is true,
-  /// then no more documents will ever be returned. _done will be set to
-  /// true if and only if we have no more data ourselves (i.e.
-  /// _buffer.size()==0)
-  /// and we have unsuccessfully tried to get another block from our dependency.
-#warning TODO is this used somewhere
-  std::deque<SharedAqlItemBlockPtr> _buffer;
-
-  /// @brief current working position in the first entry of _buffer
-  size_t _pos;
-
-  /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
-  /// be a member variable due to possible WAITING interruptions.
-  aql::BlockCollector _collector;
 };
 
 }  // namespace aql

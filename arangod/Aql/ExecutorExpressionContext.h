@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_EXECUTOR_EXPRESSION_CONTEXT_H 1
 
 #include "Aql/QueryExpressionContext.h"
+#include "Aql/Variable.h"
 #include "Aql/types.h"
 
 #include <vector>
@@ -48,8 +49,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
   size_t numRegisters() const override;
   
   bool isDataFromCollection(Variable const* variable) const override {
-#warning TODO perhaps that should be fixed?
-    return false;
+    return variable->isDataFromCollection;
   }
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,

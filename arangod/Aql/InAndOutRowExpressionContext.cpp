@@ -67,12 +67,15 @@ bool InAndOutRowExpressionContext::isDataFromCollection(Variable const* variable
   for (size_t i = 0; i < _vars.size(); ++i) {
     auto const& v = _vars[i];
     if (v->id == variable->id) {
+      if (variable->isDataFromCollection) {
+        return true;
+      }
       TRI_ASSERT(i < _regs.size());
-        if (i == _vertexVarIdx ||
-            i == _edgeVarIdx ||
-            i == _pathVarIdx) {
-          return true;
-        }
+      if (i == _vertexVarIdx ||
+          i == _edgeVarIdx ||
+          i == _pathVarIdx) {
+        return true;
+      }
     }
   }
   return false;

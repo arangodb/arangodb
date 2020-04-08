@@ -27,7 +27,6 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/AqlValue.h"
-#include "Aql/BlockCollector.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionEngine.h"

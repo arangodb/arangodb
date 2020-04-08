@@ -102,7 +102,7 @@ void SharedQueryState::queueHandler() {
     return;
   }
       
-  bool queued = scheduler->queue(RequestLane::CLIENT_AQL,
+  bool queued = scheduler->queue(RequestLane::CLUSTER_AQL,
                                  [self = shared_from_this(),
                                   cb = _wakeupCb,
                                   v = _cbVersion]() {

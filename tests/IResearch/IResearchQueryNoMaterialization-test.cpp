@@ -98,7 +98,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
           "\"name\": \"" + viewName + "\", \
            \"type\": \"arangosearch\", \
            \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}], \
-           \"storedValues\": [{\"field\":\"str\", \"compression\":\"none\"}, \"value\", \"_id\", [\"str\", \"value\"], \"exist\"] \
+           \"storedValues\": [{\"fields\":[\"str\"], \"compression\":\"none\"}, [\"value\"], [\"_id\"], [\"str\", \"value\"], [\"exist\"]] \
         }");
       view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
           vocbase().createView(createJson->slice()));
@@ -356,7 +356,8 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
         \"id\": 42, \
         \"name\": \"testView\", \
         \"type\": \"arangosearch\", \
-        \"storedValues\": [\"str\", \"foo\", \"value\", \"_id\", [\"str\", \"foo\", \"value\"]] \
+        \"storedValues\": [{\"fields\":[\"str\"]}, {\"fields\":[\"foo\"]}, {\"fields\":[\"value\"]},\
+                          {\"fields\":[\"_id\"]}, {\"fields\":[\"str\", \"foo\", \"value\"]}] \
       }");
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
       vocbase().createView(viewJson->slice()));
@@ -501,8 +502,8 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompressio
         \"id\": 42, \
         \"name\": \"testView\", \
         \"type\": \"arangosearch\", \
-        \"storedValues\": [{\"field\":\"str\", \"compression\":\"none\"}, \"foo\",\
-        {\"field\":[\"value\"], \"compression\":\"lz4\"}, \"_id\", {\"field\":[\"str\", \"foo\", \"value\"]}] \
+        \"storedValues\": [{\"fields\":[\"str\"], \"compression\":\"none\"}, [\"foo\"],\
+        {\"fields\":[\"value\"], \"compression\":\"lz4\"}, [\"_id\"], {\"fields\":[\"str\", \"foo\", \"value\"]}] \
       }");
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
     vocbase().createView(viewJson->slice()));

@@ -944,6 +944,7 @@ Result Query::finalizeSnippets(ExecutionStats& stats) {
   }
   
   TRI_ASSERT(commitResult.ok());
+  
   return commitResult;
 }
 
@@ -1030,6 +1031,7 @@ QueryResult Query::explain() {
 
           pln->findVarUsage();
           pln->planRegisters();
+          pln->findCollectionAccessVariables();
           pln->prepareTraversalOptions();
           pln->toVelocyPack(*result.data.get(), parser.ast(), _queryOptions.verbosePlans);
         }
@@ -1043,6 +1045,7 @@ QueryResult Query::explain() {
 
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
+      bestPlan->findCollectionAccessVariables();
       bestPlan->prepareTraversalOptions();
 
       result.data = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
@@ -1438,35 +1441,3 @@ ExecutionEngine* Query::rootEngine() const {
   return nullptr;
 }
  
-
-/// @brief return the transaction, if prepared
-//transaction::Methods* Query::trx() const {
-//  TRI_ASSERT(this->_execState != QueryExecutionState::ValueType::EXECUTION);
-//  return _trx.get();
-//}
-//
-//transaction::Methods* Query::readOnlyTrx() {
-//  TRI_ASSERT(this->_execState != QueryExecutionState::ValueType::EXECUTION);
-//  TRI_ASSERT(_trx != nullptr);
-//  if (!_isAsyncQuery) {
-//    return _trx.get();
-//  }
-//  TRI_ASSERT(_trx != nullptr);
-//  TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
-//  TRI_ASSERT(ServerState::instance()->isDBServer() ||
-//             ServerState::instance()->isSingleServer());
-//  TRI_ASSERT(!isModificationQuery() );
-//
-//  auto copy = _transactionContext->clone();
-//
-//  std::vector<std::string> empty;
-//  auto trxCopy = std::make_unique<transaction::Methods>(copy, empty, empty, empty, _queryOptions.transactionOptions);
-//  Result res = trxCopy->begin();
-//  if (res.fail()) {
-//    THROW_ARANGO_EXCEPTION(res);
-//  }
-//  TRI_ASSERT(!trxCopy->state()->isTopLevelTransaction());
-//  _copiedTrx.push_back(std::move(trxCopy));
-//
-//  return _copiedTrx.back().get();
-//}

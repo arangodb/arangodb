@@ -450,13 +450,13 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& 
       // - Key: 7 + 8-byte object ID of index + VPack array with index
       // value(s) + separator (NUL) byte
       // - Value: primary key
-      key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+      key.constructUniqueVPackIndexValue(objectId(), leased.slice());
     } else {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index
       // value(s) + revisionID
       // - Value: empty
-      key.constructVPackIndexValue(_objectId, leased.slice(), documentId);
+      key.constructVPackIndexValue(objectId(), leased.slice(), documentId);
       hashes.push_back(leased.slice().normalizedHash());
     }
   } else {
@@ -497,7 +497,7 @@ void RocksDBVPackIndex::addIndexValue(
     // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
     // - Value: primary key
     RocksDBKey key;
-    key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+    key.constructUniqueVPackIndexValue(objectId(), leased.slice());
     elements.emplace_back(std::move(key));
   } else {
     // Non-unique VPack index values are stored as follows:
@@ -505,7 +505,7 @@ void RocksDBVPackIndex::addIndexValue(
     // + primary key
     // - Value: empty
     RocksDBKey key;
-    key.constructVPackIndexValue(_objectId, leased.slice(), documentId);
+    key.constructVPackIndexValue(objectId(), leased.slice(), documentId);
     elements.emplace_back(std::move(key));
     hashes.push_back(leased.slice().normalizedHash());
   }
@@ -1022,8 +1022,8 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* t
   }
 
   RocksDBKeyBounds bounds =
-      _unique ? RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftBorder, rightBorder)
-              : RocksDBKeyBounds::VPackIndex(_objectId, leftBorder, rightBorder);
+      _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId(), leftBorder, rightBorder)
+              : RocksDBKeyBounds::VPackIndex(objectId(), leftBorder, rightBorder);
 
   if (reverse) {
     // reverse version

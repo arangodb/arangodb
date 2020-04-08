@@ -197,6 +197,9 @@ class ExecutionPlan {
   /// @brief static analysis
   void planRegisters() { _root->planRegisters(); }
 
+  /// @brief find all variables that are populated with data from collections
+  void findCollectionAccessVariables();
+
   void prepareTraversalOptions();
 
   /// @brief unlinkNodes, note that this does not delete the removed
