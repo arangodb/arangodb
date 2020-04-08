@@ -740,3 +740,24 @@ bool GraphNode::isSatelliteNode() const {
   return false;
 #endif
 }
+
+void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const *engine) const {
+#ifdef USE_ENTERPRISE
+  auto const* satelliteGraphNode = dynamic_cast<SatelliteGraphNode const*>(this);
+  if (satelliteGraphNode != nullptr && satelliteGraphNode->isUsedAsSatellite()) {
+    auto& collections = satelliteGraphNode->collections();
+
+    std::for_each(collections.begin(), collections.end(), [&](auto& collection) {
+      if (!engine->waitForSatellites(collection)) {
+        double maxWait = engine->getQuery()->queryOptions().satelliteSyncWait;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+                                       "collection " + collection->name() +
+                                       " did not come into sync in time (" +
+                                       std::to_string(maxWait) + ")");
+      }
+    });
+  }
+#else
+  return true;
+#endif
+}
