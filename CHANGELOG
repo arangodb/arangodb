@@ -1,8 +1,9 @@
 devel
 -----
+
 * Added JACCARD AQL function
 
-* storedValues property is removed from arngosearch link properties output.
+* storedValues property is removed from ArangoSearch View link properties output
 
 * Added primarySortCompression property to ArangoSearch Views
 
@@ -11,7 +12,7 @@ devel
 * Added feature: SatelliteGraphs
 
   SatelliteGraphs are a new type of graph, added in addition to the existing
-	ones, GeneralGrapsh and SmartGraphs.
+	ones, General Graphs and SmartGraphs.
 
 	When doing joins involving graph traversals, shortest path or k-shortest paths
 	computation in an ArangoDB cluster, data has to be exchanged between different
@@ -19,8 +20,8 @@ devel
 	because they need global information. This results in a lot of network traffic
 	and potentially slow query execution.
 
-  SatelliteGraphs are the natural extension of the concept of Satellite
-	collections to graphs. All of the usual benefits and caveats apply.
+  SatelliteGraphs are the natural extension of the concept of
+	SatelliteCollections to graphs. All of the usual benefits and caveats apply.
 	SatelliteGraphs are synchronously replicated to all DB-Servers that are part of
 	a cluster, which enables DB-Servers to execute graph traversals locally. This
 	includes (k-)shortest path(s) computation and possibly joins with traversals
@@ -38,8 +39,7 @@ devel
   field.
 
 * Fixed a bug in the agency supervision, which could declare an already FAILED
-  dbserver temporarily as GOOD again after an agency leader change.
-
+  DB-Server temporarily as GOOD again after an agency leader change.
 
 * Added INTERLEAVE AQL function.
 
@@ -76,7 +76,7 @@ devel
   "numberOfShards" for each new collection. The default values were "_graphs"
   and 1 and were not modified if the user did not alter them, but it was still
   possible to alter them.
-  This is now (silenly) ignored. Any attempt to set any value for
+  This is now (silently) ignored. Any attempt to set any value for
   "distributeShardsLike" or "numberOfShards" for new collections in a OneShard
   database will silently be ignored. The collection will automatically be
   sharded like the sharding prototype and will have a single shard.
