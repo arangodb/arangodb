@@ -125,6 +125,7 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
 
         doc.code.should eq(201)
+        did = doc.parsed_response['_id']
 
         # update document
         cmd = "/_api/document/#{did}"
@@ -135,9 +136,6 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['errorNum'].should eq(600)
         doc.parsed_response['code'].should eq(400)
-
-        ArangoDB.drop_collection(cn)
-
       end
     end
 

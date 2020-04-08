@@ -57,6 +57,7 @@
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1458,10 +1459,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 Result RestReplicationHandler::parseBatch(std::string const& collectionName,
                                           std::unordered_map<std::string, VPackValueLength>& latest,
                                           VPackBuilder& allMarkers) {
-  VPackOptions options = VPackOptions::Defaults;
-  options.validateUtf8Strings = true;
-  options.checkAttributeUniqueness = true;
-  VPackBuilder builder(&options);
+  VPackBuilder builder(&basics::VelocyPackHelper::requestValidationOptions);
 
   allMarkers.clear();
 

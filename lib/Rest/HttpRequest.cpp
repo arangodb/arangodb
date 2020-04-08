@@ -33,6 +33,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
@@ -45,8 +46,8 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
                          uint64_t mid, bool allowMethodOverride)
     : GeneralRequest(connectionInfo, mid),
       _allowMethodOverride(allowMethodOverride) {
-        _contentType = ContentType::UNSET;
-        _contentTypeResponse = ContentType::JSON;
+  _contentType = ContentType::UNSET;
+  _contentTypeResponse = ContentType::JSON;
 }
 
 // HACK HACK HACK
@@ -881,9 +882,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
   if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {
     if (!_payload.empty()) {
       if (!_vpackBuilder) {
-        VPackOptions validationOptions = *options;  // intentional copy
-        validationOptions.validateUtf8Strings = true;
-        VPackParser parser(&validationOptions);
+        VPackParser parser(&basics::VelocyPackHelper::requestValidationOptions);
         parser.parse(_payload.data(),
                      _payload.size());
         _vpackBuilder = parser.steal();
@@ -892,12 +891,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     }
     return VPackSlice::noneSlice();  // no body
   } else if (_contentType == ContentType::VPACK) {
-    VPackOptions validationOptions = *options;  // intentional copy
-    validationOptions.validateUtf8Strings = true;
-    validationOptions.checkAttributeUniqueness = true;
-    validationOptions.disallowExternals = true;
-    validationOptions.disallowCustom = true;
-    VPackValidator validator(&validationOptions);
+    VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
     if (!_validatedPayload) {
       _validatedPayload = validator.validate(_payload.data(), _payload.length()); // throws on error
     }
