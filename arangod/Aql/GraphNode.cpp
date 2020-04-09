@@ -410,12 +410,12 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                      std::vector<std::unique_ptr<Collection>> const& vertexColls,
                      TRI_edge_direction_e defaultDirection,
                      std::vector<TRI_edge_direction_e> directions,
-                     std::unique_ptr<BaseOptions> options)
+                     std::unique_ptr<graph::BaseOptions> options, Graph const* graph)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
-      _graphObj(nullptr),
+      _graphObj(graph),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
@@ -493,6 +493,8 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());
+  nodes.add("isSatelliteNode", VPackValue(isSatelliteNode()));
+  nodes.add("isUsedAsSatellite", VPackValue(isUsedAsSatellite()));
 
   // Graph Definition
   if (_graphObj != nullptr) {

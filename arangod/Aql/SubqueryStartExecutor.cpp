@@ -32,12 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos) {}
-
-std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
+SubqueryStartExecutor::SubqueryStartExecutor(Fetcher&, Infos&) {}
 
 auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
@@ -92,13 +87,6 @@ auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
     return true;
   }
   return false;
-}
-
-// TODO: remove me
-auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
-    -> std::pair<ExecutionState, size_t> {
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, 0};
 }
 
 [[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRowsNew(

@@ -1320,7 +1320,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
     auto write = arangodb::agency::envelope<VPackBuilder>::create(builder).write();
 
     VPackSlice numberOfCoordinators = body.get("numberOfCoordinators");
-    if (numberOfCoordinators.isNumber()) {
+    if (numberOfCoordinators.isNumber() || numberOfCoordinators.isNull()) {
       write = std::move(write).set(targetPath->numberOfCoordinators()->str(),
                                    numberOfCoordinators);
       hasThingsToDo = true;
@@ -1331,7 +1331,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
     }
 
     VPackSlice numberOfDBServers = body.get("numberOfDBServers");
-    if (numberOfDBServers.isNumber()) {
+    if (numberOfDBServers.isNumber() || numberOfDBServers.isNull()) {
       write = std::move(write).set(targetPath->numberOfDBServers()->str(), numberOfDBServers);
       hasThingsToDo = true;
     } else if (!numberOfDBServers.isNone()) {
@@ -1368,8 +1368,12 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
   }
 
   if (!hasThingsToDo) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "missing fields");
+    generateOk(rest::ResponseCode::OK, velocypack::Slice::noneSlice());
+    // TODO: the appropriate response would rather be
+    // generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+    //               "missing fields");
+    // but that would break API compatibility. Introduce this behavior
+    // in 4.0!!
     return RestStatus::DONE;
   }
 

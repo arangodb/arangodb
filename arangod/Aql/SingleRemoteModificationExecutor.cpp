@@ -64,16 +64,9 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
 template <typename Modifier>
 SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fetcher& fetcher,
                                                                              Infos& info)
-    : _info(info), _fetcher(fetcher), _upstreamState(ExecutionState::HASMORE) {
+    : _info(info), _upstreamState(ExecutionState::HASMORE) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
-
-template <typename Modifier>
-std::pair<ExecutionState, typename SingleRemoteModificationExecutor<Modifier>::Stats>
-SingleRemoteModificationExecutor<Modifier>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, Stats{}};
-}
 
 template <typename Modifier>
 [[nodiscard]] auto SingleRemoteModificationExecutor<Modifier>::produceRows(

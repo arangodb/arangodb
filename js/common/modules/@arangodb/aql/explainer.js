@@ -1184,6 +1184,7 @@ function processQuery(query, explain, planIndex) {
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
           `   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
           '   ' + annotation(indexAnnotation);
+
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1355,6 +1356,10 @@ function processQuery(query, explain, planIndex) {
           indexes.push(idx);
         });
 
+        if (node.isSatelliteNode) {
+          rc += annotation(' /* satellite node, ' + (node.isUsedAsSatellite ? '' : 'not ') + 'used as satellite */');
+        }
+
         return rc;
       case 'ShortestPathNode': {
         if (node.hasOwnProperty('vertexOutVariable')) {
@@ -1415,7 +1420,7 @@ function processQuery(query, explain, planIndex) {
               v.push(collection(vcn));
               vNames.push(vcn);
             });
-          } else {            
+          } else {
             node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
               v.push(collection(vcn));
               vNames.push(vcn);

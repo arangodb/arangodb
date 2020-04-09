@@ -153,7 +153,7 @@ struct Functions {
   static AqlValue NgramSimilarity(ExpressionContext*, transaction::Methods*,
                                   VPackFunctionParameters const&);
   static AqlValue NgramPositionalSimilarity(ExpressionContext* ctx,
-                                            transaction::Methods*, 
+                                            transaction::Methods*,
                                             VPackFunctionParameters const&);
   static AqlValue NgramMatch(ExpressionContext*, transaction::Methods*,
                              VPackFunctionParameters const&);
@@ -427,6 +427,8 @@ struct Functions {
                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue ReplaceNth(arangodb::aql::ExpressionContext*,
                              transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Interleave(arangodb::aql::ExpressionContext*,
+                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue NotNull(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue CurrentDatabase(arangodb::aql::ExpressionContext*,
@@ -470,6 +472,11 @@ struct Functions {
                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue CurrentUser(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
+
+  static AqlValue SchemaGet(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue SchemaValidate(arangodb::aql::ExpressionContext*,
+                                 transaction::Methods*, VPackFunctionParameters const&);
 
   /// @brief dummy function that will only throw an error when called
   static AqlValue NotImplemented(arangodb::aql::ExpressionContext*,
