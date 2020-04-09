@@ -525,7 +525,12 @@ class Agent final : public arangodb::Thread, public AgentInterface,
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
 
-  // @brief promises for poll interface and the guard (mvm-style
+  // @brief promises for poll interface and the guard
+  //        The map holds all current poll promises.
+  //        key,value: expiry time of this poll, the promise
+  //        When expired or when any change to commitIndex, promise is fullfilled
+  //        All rest handlers will receive the same vpack,
+  //        They need to sort out, what is sent to client
   std::mutex _promLock;
   index_t _lowestPromise;
   std::map<SteadyTimePoint, futures::Promise<query_t>> _promises;
