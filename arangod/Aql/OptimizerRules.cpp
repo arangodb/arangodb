@@ -7340,7 +7340,6 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::K_SHORTEST_PATHS:
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::RETURN:
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::SCATTER:
@@ -7360,6 +7359,9 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
       return false;
     case ExecutionNode::NORESULTS:
       // no results currently cannot work, as they do not fetch from above.
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+      // views must be excluded because they may instantiate NoResultsExecutors
+      // instead of view executors.
     case ExecutionNode::LIMIT:
       // limit blocks currently cannot work, both due to skipping and due to the
       // limit and passthrough, which forbids passing shadow rows.
