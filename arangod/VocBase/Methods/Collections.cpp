@@ -467,6 +467,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   }
   for (auto const& info : infos) {
     events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+    events::PropertyUpdateCollection(info.name, info.properties);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -666,7 +667,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
     SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 
-    if (!res.ok()) {
+    if (res.fail()) {
       return res;
     }
 
@@ -679,6 +680,8 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
     auto physical = collection.getPhysical();
     TRI_ASSERT(physical != nullptr);
+
+    events::PropertyUpdateCollection(collection.name(), props);
 
     return res;
   }
