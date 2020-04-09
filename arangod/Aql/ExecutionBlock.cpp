@@ -261,6 +261,6 @@ auto ExecutionBlock::printTypeInfo() const -> std::string const {
 auto ExecutionBlock::printBlockInfo() const -> std::string const {
   std::stringstream stream;
   ExecutionNode const* node = getPlanNode();
-  stream << printTypeInfo() << " this=" << (uintptr_t)this << " id=" << node->id();
+  stream << printTypeInfo() << " this=" << (uintptr_t)this << " id=" << node->id().id();
   return stream.str();
 }
