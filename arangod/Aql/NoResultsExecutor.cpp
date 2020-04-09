@@ -35,7 +35,7 @@ NoResultsExecutor::~NoResultsExecutor() = default;
 
 auto NoResultsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output) const
     noexcept -> std::tuple<ExecutorState, Stats, AqlCall> {
-  return {ExecutorState::DONE, NoStats{}, AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
+  return {input.upstreamState(), NoStats{}, AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 }
 
 auto NoResultsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const

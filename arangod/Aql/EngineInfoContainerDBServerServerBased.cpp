@@ -50,7 +50,7 @@ using namespace arangodb::aql;
 namespace {
 const double SETUP_TIMEOUT = 90.0;
 
-Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
+Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString());  // used as  a key in Json
   arangodb::velocypack::StringRef key(keySlice);
   size_t p = key.find(':');
@@ -59,8 +59,8 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string&
             "Unexpected response from DBServer during setup"};
   }
   arangodb::velocypack::StringRef remId = key.substr(0, p);
-  remoteId = basics::StringUtils::uint64(remId.begin(), remId.length());
-  if (remoteId == 0) {
+  remoteId = ExecutionNodeId{basics::StringUtils::uint64(remId.begin(), remId.length())};
+  if (remoteId == ExecutionNodeId{0}) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unexpected response from DBServer during setup"};
   }
@@ -197,8 +197,7 @@ EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Q
 void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* graphNode) {
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
-    std::map<std::string, Collection*> const* allCollections =
-        _query.collections()->collections();
+    auto* allCollections = _query.collections()->collections();
     auto& resolver = _query.resolver();
     for (auto const& it : *allCollections) {
       // If resolver cannot resolve this collection
@@ -215,7 +214,7 @@ void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* 
 // Insert a new node into the last engine on the stack
 // If this Node contains Collections, they will be added into the map
 // for ShardLocking
-void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
+void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node, bool pushToSingleServer) {
   TRI_ASSERT(node);
   TRI_ASSERT(!_snippetStack.empty());
 
@@ -236,12 +235,12 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
   }
 
   // Upgrade CollectionLocks if necessary
-  _shardLocking.addNode(node, _snippetStack.top()->id());
+  _shardLocking.addNode(node, _snippetStack.top()->id(), pushToSingleServer);
 }
 
 // Open a new snippet, which provides data for the given sink node (for now only RemoteNode allowed)
 void EngineInfoContainerDBServerServerBased::openSnippet(GatherNode const* sinkGatherNode,
-                                                         size_t sinkRemoteId) {
+                                                         ExecutionNodeId sinkRemoteId) {
   _snippetStack.emplace(std::make_shared<QuerySnippet>(sinkGatherNode, sinkRemoteId,
                                                        _lastSnippetId++));
 }
@@ -269,7 +268,8 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
-    MapRemoteToSnippet& queryIds, std::unordered_map<size_t, size_t>& nodeAliases) {
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+    MapRemoteToSnippet& queryIds, std::unordered_map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
@@ -318,7 +318,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
-    addSnippetPart(infoBuilder, _shardLocking, nodeAliases, server);
+    addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
     auto shardMapping = _shardLocking.getShardMapping();
     std::vector<bool> didCreateEngine =
@@ -409,13 +409,13 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
               "failover. Please check: " +
                   server};
     }
-    size_t remoteId = 0;
+    auto remoteId = ExecutionNodeId{0};
     std::string shardId = "";
     auto res = ExtractRemoteAndShard(resEntry.key, remoteId, shardId);
     if (!res.ok()) {
       return res;
     }
-    TRI_ASSERT(remoteId != 0);
+    TRI_ASSERT(remoteId != ExecutionNodeId{0});
     TRI_ASSERT(!shardId.empty());
     auto& remote = queryIds[remoteId];
     auto& thisServer = remote[serverDest];
@@ -520,7 +520,7 @@ void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
   node->prepareOptions();
   injectVertexCollections(node);
   // SnippetID does not matter on GraphNodes
-  _shardLocking.addNode(node, 0);
+  _shardLocking.addNode(node, 0, false);
   _graphNodes.emplace_back(node);
 }
 
@@ -573,13 +573,14 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
 
 // Insert the Snippets information into the message to be send to DBServers
 void EngineInfoContainerDBServerServerBased::addSnippetPart(
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
-    std::unordered_map<size_t, size_t>& nodeAliases, ServerID const& server) const {
+    std::unordered_map<ExecutionNodeId, ExecutionNodeId>& nodeAliases, ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("snippets"));
   builder.openObject();
   for (auto const& snippet : _closedSnippets) {
-    snippet->serializeIntoBuilder(server, shardLocking, nodeAliases, builder);
+    snippet->serializeIntoBuilder(server, nodesById, shardLocking, nodeAliases, builder);
   }
   builder.close();  // snippets
 }
