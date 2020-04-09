@@ -569,6 +569,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 }
 
 CostEstimate GraphNode::estimateCost() const {
+  TRI_ASSERT(_optionsBuilt);
   CostEstimate estimate = _dependencies.at(0)->getCost();
   size_t incoming = estimate.estimatedNrItems;
   estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems);
