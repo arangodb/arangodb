@@ -128,9 +128,7 @@ RevisionId RevisionId::fromString(char const* p, size_t len, bool& isOld, bool w
     return RevisionId{r};
   }
   isOld = false;
-  std::uint64_t decoded = basics::HybridLogicalClock::decodeTimeStamp(p, len);
-  return decoded == std::numeric_limits<std::uint64_t>::max() ? RevisionId::none()
-                                                              : RevisionId{decoded};
+  return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(p, len)};
 }
 
 /// @brief extract revision from slice; expects either an integer, or an object

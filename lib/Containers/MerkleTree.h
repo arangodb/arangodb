@@ -248,7 +248,7 @@ class MerkleTree {
   Node& node(std::size_t index) const;
   std::mutex& lock(std::size_t index) const;
   std::size_t index(std::uint64_t key, std::size_t depth) const;
-  void modify(std::size_t key, std::size_t value, bool isInsert);
+  void modify(std::uint64_t key, std::uint64_t value, bool isInsert);
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
   void modifyLocal(std::size_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert, bool doLock);

@@ -901,7 +901,7 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
               char const* p = r.getString(len);
               RevisionId cmp = RevisionId::fromString(p, len, false);
               RevisionId rid = RevisionId::fromSlice(builder.slice());
-              if (cmp.isSet() && cmp > rid) {
+              if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value
                 builder.clear();
                 builder.add(VPackValue(cmp.id()));
