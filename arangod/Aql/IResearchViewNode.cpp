@@ -517,7 +517,7 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
 
   TRI_ASSERT(cur);
   return cur->getType() == aql::ExecutionNode::SINGLETON &&
-         cur->id() != 1;  // SIGNLETON nodes in subqueries have id != 1
+         cur->id() != aql::ExecutionNodeId{1};  // SINGLETON nodes in subqueries have id != 1
 }
 
 /// negative value - value is dirty
@@ -839,7 +839,7 @@ namespace iresearch {
 
 const ptrdiff_t IResearchViewNode::SortColumnNumber = -1;
 
-IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
+IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id,
                                      TRI_vocbase_t& vocbase,
                                      std::shared_ptr<const LogicalView> const& view,
                                      aql::Variable const& outVariable,

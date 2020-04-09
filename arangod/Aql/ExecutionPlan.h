@@ -28,6 +28,7 @@
 
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -102,10 +103,12 @@ class ExecutionPlan {
   void disableRule(int rule);
 
   /// @brief return the next value for a node id
-  inline size_t nextId() { return ++_nextId; }
+  ExecutionNodeId nextId();
 
   /// @brief get a node by its id
-  ExecutionNode* getNodeById(size_t id) const;
+  ExecutionNode* getNodeById(ExecutionNodeId id) const;
+
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> const& getNodesById() const;
 
   /// @brief check if the node is the root node
   inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
@@ -352,7 +355,7 @@ class ExecutionPlan {
 
  private:
   /// @brief map from node id to the actual node
-  std::unordered_map<size_t, ExecutionNode*> _ids;
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> _ids;
 
   /// @brief root node of the plan
   ExecutionNode* _root;
@@ -378,7 +381,7 @@ class ExecutionPlan {
   int _nestingLevel;
 
   /// @brief auto-increment sequence for node ids
-  size_t _nextId;
+  ExecutionNodeId _nextId;
 
   /// @brief the ast
   Ast* _ast;
