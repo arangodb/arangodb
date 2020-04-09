@@ -20,23 +20,23 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_ACTIVE_FAILOVER_JOB_H
-#define ARANGOD_CONSENSUS_ACTIVE_FAILOVER_JOB_H 1
+#ifndef ARANGOD_AGENCY_JOB_ACTIVE_FAILOVER_H
+#define ARANGOD_AGENCY_JOB_ACTIVE_FAILOVER_H 1
 
-#include "Job.h"
-#include "Supervision.h"
+#include "Agency/Job.h"
+#include "Agency/Supervision.h"
 
 namespace arangodb {
 namespace consensus {
 
-struct ActiveFailoverJob final : public Job {
-  ActiveFailoverJob(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-                    std::string const& creator, std::string const& failed);
+struct ActiveFailover final : public Job {
+  ActiveFailover(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+                 std::string const& creator, std::string const& failed);
 
-  ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
-                    JOB_STATUS status, std::string const& jobId);
+  ActiveFailover(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+                 std::string const& jobId);
 
-  virtual ~ActiveFailoverJob();
+  virtual ~ActiveFailover();
 
   virtual JOB_STATUS status() override final;
   virtual void run(bool&) override final;

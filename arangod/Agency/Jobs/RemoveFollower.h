@@ -21,28 +21,28 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_ADDFOLLOWER_H
-#define ARANGOD_CONSENSUS_ADDFOLLOWER_H 1
+#ifndef ARANGOD_AGENCY_JOB_REMOVE_FOLLOWER_H
+#define ARANGOD_AGENCY_JOB_REMOVE_FOLLOWER_H 1
 
-#include "Job.h"
-#include "Supervision.h"
+#include "Agency/Job.h"
+#include "Agency/Supervision.h"
 
 namespace arangodb {
 namespace consensus {
 
-struct AddFollower : public Job {
-  AddFollower(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-              std::string const& creator, std::string const& database,
-              std::string const& collection, std::string const& shard);
+struct RemoveFollower : public Job {
+  RemoveFollower(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+                 std::string const& creator, std::string const& database,
+                 std::string const& collection, std::string const& shard);
 
-  AddFollower(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
-              std::string const& jobId);
+  RemoveFollower(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+                 std::string const& jobId);
 
-  virtual ~AddFollower();
+  virtual ~RemoveFollower();
 
   virtual JOB_STATUS status() override final;
   virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
-  virtual void run(bool&) override final;
+  virtual void run(bool& aborts) override final;
   virtual bool start(bool&) override final;
   virtual Result abort(std::string const& reason) override final;
 

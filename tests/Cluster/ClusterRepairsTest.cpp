@@ -31,9 +31,9 @@
 
 #include "Mocks/LogLevels.h"
 
-#include "Agency/AddFollower.h"
-#include "Agency/FailedLeader.h"
-#include "Agency/MoveShard.h"
+#include "Agency/Jobs/AddFollower.h"
+#include "Agency/Jobs/FailedLeader.h"
+#include "Agency/Jobs/MoveShard.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"

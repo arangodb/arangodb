@@ -20,7 +20,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AddFollower.h"
+#include "Agency/Jobs/AddFollower.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
@@ -171,9 +171,9 @@ bool AddFollower::start(bool&) {
       first = false;
     }
   }
-  size_t actualReplFactor
-      = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
-      // Leader plus good followers in plan
+  size_t actualReplFactor =
+      1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
+  // Leader plus good followers in plan
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
     return true;
@@ -242,8 +242,9 @@ bool AddFollower::start(bool&) {
       if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC("24c50", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("24c50", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -271,7 +272,8 @@ bool AddFollower::start(bool&) {
 
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [&trx, &chosen](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+                     [&trx, &chosen](Slice plan, Slice current,
+                                     std::string& planPath, std::string& curPath) {
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder serverList(&trx);
@@ -303,8 +305,9 @@ bool AddFollower::start(bool&) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
-    LOG_TOPIC("961a4", INFO, Logger::SUPERVISION) << "Finished: Addfollower(s) to shard "
-                                         << _shard << " in collection " << _collection;
+    LOG_TOPIC("961a4", INFO, Logger::SUPERVISION)
+        << "Finished: Addfollower(s) to shard " << _shard << " in collection "
+        << _collection;
     return true;
   }
 

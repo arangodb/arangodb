@@ -37,8 +37,8 @@
 
 #include "Mocks/LogLevels.h"
 
-#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AgentInterface.h"
+#include "Agency/Jobs/ActiveFailover.h"
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
@@ -98,14 +98,14 @@ inline static std::string typeName(Slice const& slice) {
   return std::string(slice.typeName());
 }
 
-class ActiveFailover : public ::testing::Test,
-                       public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
+class ActiveFailoverTest : public ::testing::Test,
+                           public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
   Builder base;
   std::string jobId;
   write_ret_t fakeWriteResult;
 
-  ActiveFailover()
+  ActiveFailoverTest()
       : jobId{"1"},
         fakeWriteResult{true, "", std::vector<apply_ret_t>{APPLIED},
                         std::vector<index_t>{1}} {
@@ -115,7 +115,7 @@ class ActiveFailover : public ::testing::Test,
   }
 };
 
-TEST_F(ActiveFailover, creating_a_job_should_create_a_job_in_todo) {
+TEST_F(ActiveFailoverTest, creating_a_job_should_create_a_job_in_todo) {
   Mock<AgentInterface> mockAgent;
 
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
@@ -146,13 +146,13 @@ TEST_F(ActiveFailover, creating_a_job_should_create_a_job_in_todo) {
 
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(base);
-  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "tests", LEADER);
+  ActiveFailover job(snapshot(PREFIX), &agent, jobId, "tests", LEADER);
 
   ASSERT_TRUE(job.create());
   Verify(Method(mockAgent, write));
 }
 
-TEST_F(ActiveFailover, the_state_is_already_good_and_failservers_is_still_in_the_snapshot) {
+TEST_F(ActiveFailoverTest, the_state_is_already_good_and_failservers_is_still_in_the_snapshot) {
   const char* tt = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}}}})=";
   VPackBuilder overw = createBuilder(tt);
   VPackBuilder mod = VPackCollection::merge(base.slice(), overw.slice(), true);
@@ -188,14 +188,14 @@ TEST_F(ActiveFailover, the_state_is_already_good_and_failservers_is_still_in_the
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(mod);
-  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
 
   ASSERT_FALSE(job.create());
   ASSERT_EQ(job.status(), JOB_STATUS::NOTFOUND);
   Verify(Method(mockAgent, write));
 }
 
-TEST_F(ActiveFailover, server_is_healthy_again_job_finishes) {
+TEST_F(ActiveFailoverTest, server_is_healthy_again_job_finishes) {
   const char* health = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}},
                                         "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
   VPackBuilder mod =
@@ -231,7 +231,7 @@ TEST_F(ActiveFailover, server_is_healthy_again_job_finishes) {
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(mod);  // snapshort contains GOOD leader
 
-  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
   ASSERT_EQ(job.status(), JOB_STATUS::TODO);
   Verify(Method(mockAgent, write)).Exactly(1);
@@ -251,7 +251,7 @@ TEST_F(ActiveFailover, server_is_healthy_again_job_finishes) {
   Verify(Method(mockAgent, write)).Exactly(2);
 }
 
-TEST_F(ActiveFailover, current_leader_is_different_from_server_in_job) {
+TEST_F(ActiveFailoverTest, current_leader_is_different_from_server_in_job) {
   const char* health = R"=({"arango":{"Plan":{"AsyncReplication":{"Leader":"SNGL-follower1"}},
     "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
   VPackBuilder mod =
@@ -287,7 +287,7 @@ TEST_F(ActiveFailover, current_leader_is_different_from_server_in_job) {
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(mod);  // snapshort contains different leader
 
-  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
   ASSERT_EQ(job.status(), JOB_STATUS::TODO);
   Verify(Method(mockAgent, write)).Exactly(1);
@@ -308,7 +308,7 @@ TEST_F(ActiveFailover, current_leader_is_different_from_server_in_job) {
 
 }  // SECTION
 
-TEST_F(ActiveFailover, no_in_sync_follower_found_job_retries) {
+TEST_F(ActiveFailoverTest, no_in_sync_follower_found_job_retries) {
   // follower follows wrong leader
   const char* noInSync =
       R"=({"arango":{"AsyncReplication":{"SNGL-follower1":{"leader":"abc","lastTick":9}}}})=";
@@ -345,7 +345,7 @@ TEST_F(ActiveFailover, no_in_sync_follower_found_job_retries) {
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(base);
 
-  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
   ASSERT_EQ(job.status(), JOB_STATUS::TODO);
   Verify(Method(mockAgent, write)).Exactly(1);
@@ -368,7 +368,7 @@ TEST_F(ActiveFailover, no_in_sync_follower_found_job_retries) {
   Verify(Method(mockAgent, write)).Exactly(Once);  // finish is not called
 }
 
-TEST_F(ActiveFailover, follower_with_best_tick_value_used) {
+TEST_F(ActiveFailoverTest, follower_with_best_tick_value_used) {
   // 2 in-sync followers, follower1 should be used
   trans_ret_t fakeTransient{true, "", 1, 0,
                             std::make_shared<Builder>(createBuilder(transient))};
@@ -403,7 +403,7 @@ TEST_F(ActiveFailover, follower_with_best_tick_value_used) {
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(base);
 
-  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
   ASSERT_EQ(job.status(), JOB_STATUS::TODO);
   Verify(Method(mockAgent, write)).Exactly(1);

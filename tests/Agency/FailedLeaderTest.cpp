@@ -38,8 +38,8 @@
 #include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
-#include "Agency/FailedLeader.h"
-#include "Agency/MoveShard.h"
+#include "Agency/Jobs/FailedLeader.h"
+#include "Agency/Jobs/MoveShard.h"
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"

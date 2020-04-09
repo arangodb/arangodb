@@ -21,7 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FailedFollower.h"
+#include "Agency/Jobs/FailedFollower.h"
 
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
@@ -110,14 +110,13 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   if (envelope == nullptr) {
-    _jb->close(); // object
-    _jb->close(); // array
+    _jb->close();  // object
+    _jb->close();  // array
     write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     return (res.accepted && res.indices.size() == 1 && res.indices[0]);
   }
 
   return true;
-
 }
 
 bool FailedFollower::start(bool& aborts) {
@@ -145,7 +144,7 @@ bool FailedFollower::start(bool& aborts) {
   Slice const& planned = plannedPair.first;
   if (!plannedPair.second) {
     finish("", _shard, true,
-        "Plan entry for collection " + _collection + " gone");
+           "Plan entry for collection " + _collection + " gone");
     return false;
   }
 
@@ -161,8 +160,9 @@ bool FailedFollower::start(bool& aborts) {
     }
   }
   if (!found) {
-    finish("", _shard, true, "Server no longer found in Plan for collection " +
-        _collection + ", our job is done.");
+    finish("", _shard, true,
+           "Server no longer found in Plan for collection " + _collection +
+               ", our job is done.");
     return false;
   }
 
@@ -190,8 +190,9 @@ bool FailedFollower::start(bool& aborts) {
       if (jobIdNode.second) {
         jobIdNode.first.toBuilder(todo);
       } else {
-        LOG_TOPIC("4571c", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("4571c", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -273,7 +274,8 @@ bool FailedFollower::start(bool& aborts) {
       return false;
     } else if (jobId.second) {
       aborts = true;
-      JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed follower requests abort");
+      JobContext(PENDING, jobId.first, _snapshot, _agent)
+          .abort("failed follower requests abort");
       return false;
     }
   }
@@ -283,7 +285,8 @@ bool FailedFollower::start(bool& aborts) {
 
   auto res = generalTransaction(_agent, job);
   if (!res.accepted) {  // lost leadership
-    LOG_TOPIC("f5b87", INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    LOG_TOPIC("f5b87", INFO, Logger::SUPERVISION)
+        << "Leadership lost! Job " << _jobId << " handed off.";
     return false;
   }
 

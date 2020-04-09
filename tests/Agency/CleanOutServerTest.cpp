@@ -34,7 +34,7 @@
 #include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
-#include "Agency/CleanOutServer.h"
+#include "Agency/Jobs/CleanOutServer.h"
 #include "Agency/Node.h"
 #include "Random/RandomGenerator.h"
 

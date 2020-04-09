@@ -21,7 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FailedLeader.h"
+#include "Agency/Jobs/FailedLeader.h"
 
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
@@ -116,7 +116,7 @@ void FailedLeader::rollback() {
     payload = std::make_shared<Builder>();
     {
       VPackArrayBuilder a(payload.get());
-      { // opers
+      {  // opers
         VPackObjectBuilder b(payload.get());
         for (auto const& c : cs) {
           payload->add(planColPrefix + _database + "/" + c.collection +
@@ -129,7 +129,6 @@ void FailedLeader::rollback() {
         addPreconditionCollectionStillThere(*payload.get(), _database, _collection);
       }
     }
-
   }
 
   finish("", _shard, false, "Timed out.", payload);
@@ -162,14 +161,13 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   }
 
   if (b == nullptr) {
-    _jb->close(); // object
-    _jb->close(); // array
+    _jb->close();  // object
+    _jb->close();  // array
     write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     return (res.accepted && res.indices.size() == 1 && res.indices[0]);
   }
 
   return true;
-
 }
 
 bool FailedLeader::start(bool& aborts) {
@@ -221,8 +219,9 @@ bool FailedLeader::start(bool& aborts) {
       if (jobIdNode.second) {
         jobIdNode.first.toBuilder(todo);
       } else {
-        LOG_TOPIC("96395", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("96395", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -318,7 +317,8 @@ bool FailedLeader::start(bool& aborts) {
       return false;
     } else if (jobId.second) {
       aborts = true;
-      JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed leader requests abort");
+      JobContext(PENDING, jobId.first, _snapshot, _agent)
+          .abort("failed leader requests abort");
       return false;
     }
   }
@@ -329,7 +329,8 @@ bool FailedLeader::start(bool& aborts) {
   trans_ret_t res = generalTransaction(_agent, pending);
 
   if (!res.accepted) {  // lost leadership
-    LOG_TOPIC("1f01f", INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    LOG_TOPIC("1f01f", INFO, Logger::SUPERVISION)
+        << "Leadership lost! Job " << _jobId << " handed off.";
     return false;
   }
 
@@ -385,8 +386,9 @@ bool FailedLeader::start(bool& aborts) {
     slice = result.get(
         std::vector<std::string>({agencyPrefix, "Supervision", "Shards", _shard}));
     if (!slice.isNone()) {
-      LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION) << "Shard  " << _shard << " meanwhile is blocked by job "
-                                           << slice.copyString();
+      LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION)
+          << "Shard  " << _shard << " meanwhile is blocked by job "
+          << slice.copyString();
     }
   }
 

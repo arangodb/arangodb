@@ -20,7 +20,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RemoveFollower.h"
+#include "Agency/Jobs/RemoveFollower.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
@@ -246,7 +246,8 @@ bool RemoveFollower::start(bool&) {
         << " does not have enough in sync followers to remove one, waiting, "
            "jobId="
         << _jobId;
-    finish("", "", false, "job no longer sensible, do not have few enough replicas");
+    finish("", "", false,
+           "job no longer sensible, do not have few enough replicas");
     return true;
   }
 
@@ -354,8 +355,9 @@ bool RemoveFollower::start(bool&) {
       if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC("4fac6", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("4fac6", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -383,7 +385,8 @@ bool RemoveFollower::start(bool&) {
 
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [&trx, &chosenToRemove](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+                     [&trx, &chosenToRemove](Slice plan, Slice current,
+                                             std::string& planPath, std::string& curPath) {
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder serverList(&trx);

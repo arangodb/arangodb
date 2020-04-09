@@ -23,15 +23,16 @@
 
 #include "JobContext.h"
 
-#include "Agency/ActiveFailoverJob.h"
-#include "Agency/AddFollower.h"
-#include "Agency/CleanOutServer.h"
-#include "Agency/FailedFollower.h"
-#include "Agency/FailedLeader.h"
-#include "Agency/FailedServer.h"
-#include "Agency/MoveShard.h"
-#include "Agency/RemoveFollower.h"
-#include "Agency/ResignLeadership.h"
+#include "Agency/Jobs/ActiveFailover.h"
+#include "Agency/Jobs/AddFollower.h"
+#include "Agency/Jobs/CleanOutServer.h"
+#include "Agency/Jobs/FailedFollower.h"
+#include "Agency/Jobs/FailedLeader.h"
+#include "Agency/Jobs/FailedServer.h"
+#include "Agency/Jobs/MoveShard.h"
+#include "Agency/Jobs/RemoveFollower.h"
+#include "Agency/Jobs/ResignLeadership.h"
+//#include "Agency/Jobs/UpgradeCollection.h"
 
 using namespace arangodb::consensus;
 
@@ -63,7 +64,9 @@ JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
   } else if (type == "removeFollower") {
     _job = std::make_unique<RemoveFollower>(snapshot, agent, status, id);
   } else if (type == "activeFailover") {
-    _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
+    _job = std::make_unique<ActiveFailover>(snapshot, agent, status, id);
+    //} else if (type == "upgradeCollection") {
+    //  _job = std::make_unique<UpgradeCollection>(snapshot, agent, status, id);
   } else {
     LOG_TOPIC("bb53f", ERR, Logger::AGENCY)
         << "Failed to run supervision job " << type << " with id " << id;

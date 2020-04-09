@@ -21,13 +21,13 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FailedServer.h"
-#include "JobContext.h"
+#include "Agency/Jobs/FailedServer.h"
 
 #include "Agency/AgentInterface.h"
-#include "Agency/FailedFollower.h"
-#include "Agency/FailedLeader.h"
 #include "Agency/Job.h"
+#include "Agency/JobContext.h"
+#include "Agency/Jobs/FailedFollower.h"
+#include "Agency/Jobs/FailedLeader.h"
 #include "Basics/StaticStrings.h"
 
 using namespace arangodb::consensus;

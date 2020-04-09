@@ -488,27 +488,27 @@ set (LIB_ARANGO_METRICS_SOURCES
   )
 
 set(LIB_ARANGO_AGENCY_SOURCES
-  Agency/ActiveFailoverJob.cpp
-  Agency/AddFollower.cpp
+  Agency/Jobs/ActiveFailover.cpp
+  Agency/Jobs/AddFollower.cpp
+  Agency/Jobs/CleanOutServer.cpp
+  Agency/Jobs/FailedFollower.cpp
+  Agency/Jobs/FailedLeader.cpp
+  Agency/Jobs/FailedServer.cpp
+  Agency/Jobs/MoveShard.cpp
+  Agency/Jobs/RemoveFollower.cpp
+  Agency/Jobs/ResignLeadership.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
   Agency/AsyncAgencyComm.cpp
-  Agency/CleanOutServer.cpp
   Agency/Compactor.cpp
   Agency/Constituent.cpp
-  Agency/ResignLeadership.cpp
-  Agency/FailedFollower.cpp
-  Agency/FailedLeader.cpp
-  Agency/FailedServer.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
   Agency/JobContext.cpp
-  Agency/MoveShard.cpp
   Agency/Node.cpp
-  Agency/RemoveFollower.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp

@@ -21,11 +21,11 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_FAILED_SERVER_H
-#define ARANGOD_CONSENSUS_FAILED_SERVER_H 1
+#ifndef ARANGOD_AGENCY_JOB_FAILED_SERVER_H
+#define ARANGOD_AGENCY_JOB_FAILED_SERVER_H 1
 
-#include "Job.h"
-#include "Supervision.h"
+#include "Agency/Job.h"
+#include "Agency/Supervision.h"
 
 namespace arangodb {
 namespace consensus {

@@ -899,6 +899,10 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
     return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
   }
 
+  if (ServerState::instance()->isCoordinator()) {
+    return upgradeOnCoordinator(vocbase, coll);
+  }
+
   if (!ServerState::instance()->isSingleServer()) {
     return futures::makeFuture(
         Result(TRI_ERROR_NOT_IMPLEMENTED,

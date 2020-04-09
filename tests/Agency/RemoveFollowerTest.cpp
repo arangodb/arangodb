@@ -30,10 +30,10 @@
 #include "fakeit.hpp"
 
 #include "Agency/AgentInterface.h"
-#include "Agency/FailedLeader.h"
-#include "Agency/MoveShard.h"
+#include "Agency/Jobs/FailedLeader.h"
+#include "Agency/Jobs/MoveShard.h"
+#include "Agency/Jobs/RemoveFollower.h"
 #include "Agency/Node.h"
-#include "Agency/RemoveFollower.h"
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
 

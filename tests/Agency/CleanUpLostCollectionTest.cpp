@@ -29,7 +29,7 @@
 #include "fakeit.hpp"
 
 #include "Agency/AgentInterface.h"
-#include "Agency/MoveShard.h"
+#include "Agency/Jobs/MoveShard.h"
 #include "Agency/Node.h"
 
 #include <velocypack/Slice.h>

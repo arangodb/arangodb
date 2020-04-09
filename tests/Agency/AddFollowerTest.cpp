@@ -37,8 +37,8 @@
 
 #include "Mocks/LogLevels.h"
 
-#include "Agency/AddFollower.h"
 #include "Agency/AgentInterface.h"
+#include "Agency/Jobs/AddFollower.h"
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"

@@ -21,7 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MoveShard.h"
+#include "Agency/Jobs/MoveShard.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
@@ -185,13 +185,14 @@ bool MoveShard::start(bool&) {
 
   // Check if the fromServer exists:
   if (!_snapshot.has(plannedServers + "/" + _from)) {
-    moveShardFinish(false,  false, "fromServer does not exist as DBServer in Plan");
+    moveShardFinish(false, false,
+                    "fromServer does not exist as DBServer in Plan");
     return false;
   }
 
   // Check if the toServer exists:
   if (!_snapshot.has(plannedServers + "/" + _to)) {
-    moveShardFinish(false,  false, "toServer does not exist as DBServer in Plan");
+    moveShardFinish(false, false, "toServer does not exist as DBServer in Plan");
     return false;
   }
 
@@ -203,8 +204,9 @@ bool MoveShard::start(bool&) {
   auto const& collection =
       _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
   if (collection.second && collection.first.has("distributeShardsLike")) {
-    moveShardFinish(false, false,
-           "collection must not have 'distributeShardsLike' attribute");
+    moveShardFinish(
+        false, false,
+        "collection must not have 'distributeShardsLike' attribute");
     return false;
   }
 
@@ -234,7 +236,7 @@ bool MoveShard::start(bool&) {
           << ", not starting MoveShard job " << _jobId;
       return false;
     } else {  // FAILED
-      moveShardFinish(false,  false, "toServer is FAILED");
+      moveShardFinish(false, false, "toServer is FAILED");
       return false;
     }
   }
@@ -251,7 +253,8 @@ bool MoveShard::start(bool&) {
   if (cleanedServers.isArray()) {
     for (VPackSlice x : VPackArrayIterator(cleanedServers)) {
       if (x.isString() && x.copyString() == _to) {
-        moveShardFinish(false,  false, "toServer must not be in `Target/CleanedServers`");
+        moveShardFinish(false, false,
+                        "toServer must not be in `Target/CleanedServers`");
         return false;
       }
     }
@@ -269,7 +272,8 @@ bool MoveShard::start(bool&) {
   if (failedServers.isObject()) {
     Slice found = failedServers.get(_to);
     if (!found.isNone()) {
-      moveShardFinish(false, false, "toServer must not be in `Target/FailedServers`");
+      moveShardFinish(false, false,
+                      "toServer must not be in `Target/FailedServers`");
       return false;
     }
   }
@@ -287,8 +291,8 @@ bool MoveShard::start(bool&) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
       if (!_isLeader) {
-        moveShardFinish(false,  false,
-               "toServer must not be planned for a following shard");
+        moveShardFinish(false, false,
+                        "toServer must not be planned for a following shard");
         return false;
       } else {
         _toServerIsFollower = true;
@@ -301,15 +305,17 @@ bool MoveShard::start(bool&) {
   }
   if ((_isLeader && found != 0) || (!_isLeader && found < 1)) {
     if (_isLeader) {
-      moveShardFinish(false, false, "fromServer must be the leader in plan for shard");
+      moveShardFinish(false, false,
+                      "fromServer must be the leader in plan for shard");
     } else {
-      moveShardFinish(false, false, "fromServer must be a follower in plan for shard");
+      moveShardFinish(false, false,
+                      "fromServer must be a follower in plan for shard");
     }
     return false;
   }
 
   if (!_isLeader && _remainsFollower) {
-    moveShardFinish(false,  false, "remainsFollower is invalid without isLeader");
+    moveShardFinish(false, false, "remainsFollower is invalid without isLeader");
     return false;
   }
 
@@ -559,7 +565,8 @@ JOB_STATUS MoveShard::pendingLeader() {
     {
       // Abort in to server no longer among replica for any shards like me
       for (auto const& sh : shardsLikeMe) {
-        auto const shardPath = curColPrefix + _database + "/" + sh.collection + "/" + sh.shard;
+        auto const shardPath =
+            curColPrefix + _database + "/" + sh.collection + "/" + sh.shard;
         auto const tmp = _snapshot.hasAsArray(shardPath + "/servers");
         if (tmp.second) {
           bool found = false;

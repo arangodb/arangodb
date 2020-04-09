@@ -855,6 +855,60 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
   return !Helper::equal(n, o, false);
 }
 
+namespace {
+std::string getExtendedIsoString(std::chrono::system_clock::time_point time_point) {
+  std::time_t time_t = std::chrono::system_clock::to_time_t(time_point);
+  char const* format = "%FT%TZ";
+  char timeString[100];
+  size_t bytesWritten =
+      std::strftime(timeString, sizeof(timeString), format, std::gmtime(&time_t));
+
+  TRI_ASSERT(bytesWritten > 0);
+  if (bytesWritten == 0) {
+    // This should never happen
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                   "strftime returned 0 - buffer too small?");
+  }
+
+  return std::string(timeString);
+}
+}  // namespace
+
+futures::Future<Result> upgradeOnCoordinator(TRI_vocbase_t& vocbase,
+                                             LogicalCollection const& collection) {
+  ClusterFeature& feature = vocbase.server().getFeature<ClusterFeature>();
+  ClusterInfo& ci = feature.clusterInfo();
+  std::uint64_t jobId = ci.uniqid();
+  auto timeCreated = std::chrono::system_clock::now();
+
+  velocypack::Builder job;
+  {
+    velocypack::ObjectBuilder guard(&job);
+    job.add("type", VPackValue("upgradeCollection"));
+    job.add("database", VPackValue(std::to_string(vocbase.id())));
+    job.add("collection", VPackValue(std::to_string(collection.id())));
+    job.add("jobId", VPackValue(std::to_string(jobId)));
+    job.add("timeCreated", VPackValue(getExtendedIsoString(timeCreated)));
+    job.add("creator", VPackValue(ServerState::instance()->getId()));
+  }
+
+  std::string const agencyKey = "Target/ToDo/" + std::to_string(jobId);
+
+  auto trx = AgencyWriteTransaction{
+      AgencyOperation{agencyKey, AgencyValueOperationType::SET, job.slice()},
+      AgencyPrecondition{agencyKey, AgencyPrecondition::Type::EMPTY, true}};
+
+  AgencyComm comm(vocbase.server());
+  AgencyCommResult result = comm.sendTransactionWithFailover(trx);
+  ci.loadPlan();
+  if (!result.successful()) {
+    return futures::makeFuture(
+        Result(TRI_ERROR_INTERNAL, "failed to send and execute transaction"));
+  }
+
+  return futures::makeFuture(Result());
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////

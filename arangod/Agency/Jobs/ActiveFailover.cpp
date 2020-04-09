@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActiveFailoverJob.h"
+#include "Agency/Jobs/ActiveFailover.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
@@ -32,13 +32,13 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
-                                     std::string const& jobId, std::string const& creator,
-                                     std::string const& failed)
+ActiveFailover::ActiveFailover(Node const& snapshot, AgentInterface* agent,
+                               std::string const& jobId, std::string const& creator,
+                               std::string const& failed)
     : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(failed) {}
 
-ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
-                                     JOB_STATUS status, std::string const& jobId)
+ActiveFailover::ActiveFailover(Node const& snapshot, AgentInterface* agent,
+                               JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
@@ -57,12 +57,13 @@ ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent
   }
 }
 
-ActiveFailoverJob::~ActiveFailoverJob() = default;
+ActiveFailover::~ActiveFailover() = default;
 
-void ActiveFailoverJob::run(bool& aborts) { runHelper(_server, "", aborts); }
+void ActiveFailover::run(bool& aborts) { runHelper(_server, "", aborts); }
 
-bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC("3f7ab", DEBUG, Logger::SUPERVISION) << "Todo: Handle failover for leader " + _server;
+bool ActiveFailover::create(std::shared_ptr<VPackBuilder> envelope) {
+  LOG_TOPIC("3f7ab", DEBUG, Logger::SUPERVISION)
+      << "Todo: Handle failover for leader " + _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -130,14 +131,14 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool ActiveFailoverJob::start(bool&) {
+bool ActiveFailover::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
   // Fail job, if Health back to not FAILED
   if (checkServerHealth(_snapshot, _server) != Supervision::HEALTH_STATUS_FAILED) {
     std::string reason = "Server " + _server + " is no longer failed. " +
-                         "Not starting ActiveFailoverJob job";
+                         "Not starting ActiveFailover job";
     LOG_TOPIC("b1d34", INFO, Logger::SUPERVISION) << reason;
     return finish(_server, "", true, reason);  // move to /Target/Finished
   }
@@ -155,7 +156,8 @@ bool ActiveFailoverJob::start(bool&) {
   if (jobId.second && !abortable(_snapshot, jobId.first)) {
     return false;
   } else if (jobId.second) {
-    JobContext(PENDING, jobId.first, _snapshot, _agent).abort("ActiveFailoverJob requests abort");
+    JobContext(PENDING, jobId.first, _snapshot, _agent)
+        .abort("ActiveFailover requests abort");
   }
 
   // Todo entry
@@ -166,8 +168,9 @@ bool ActiveFailoverJob::start(bool&) {
       try {
         _snapshot(toDoPrefix + _jobId).toBuilder(todo);
       } catch (std::exception const&) {
-        LOG_TOPIC("26fec", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("26fec", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -216,17 +219,16 @@ bool ActiveFailoverJob::start(bool&) {
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
     LOG_TOPIC("8c325", INFO, Logger::SUPERVISION)
-        << "Finished: ActiveFailoverJob server " << _server << " failover to "
-        << newLeader;
+        << "Finished: ActiveFailover server " << _server << " failover to " << newLeader;
     return true;
   }
 
   LOG_TOPIC("bcf05", INFO, Logger::SUPERVISION)
-      << "Precondition failed for ActiveFailoverJob " + _jobId;
+      << "Precondition failed for ActiveFailover " + _jobId;
   return false;
 }
 
-JOB_STATUS ActiveFailoverJob::status() {
+JOB_STATUS ActiveFailover::status() {
   if (_status != PENDING) {
     return _status;
   }
@@ -236,7 +238,7 @@ JOB_STATUS ActiveFailoverJob::status() {
   return _status;
 }
 
-arangodb::Result ActiveFailoverJob::abort(std::string const& reason) {
+arangodb::Result ActiveFailover::abort(std::string const& reason) {
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
     return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
@@ -255,7 +257,7 @@ arangodb::Result ActiveFailoverJob::abort(std::string const& reason) {
 
 typedef std::pair<std::string, TRI_voc_tick_t> ServerTick;
 /// Try to select the follower most in-sync with failed leader
-std::string ActiveFailoverJob::findBestFollower() {
+std::string ActiveFailover::findBestFollower() {
   std::vector<std::string> healthy = healthyServers(_snapshot);
   // the failed leader should never appear as healthy
   TRI_ASSERT(std::find(healthy.begin(), healthy.end(), _server) == healthy.end());
@@ -313,7 +315,8 @@ std::string ActiveFailoverJob::findBestFollower() {
     LOG_TOPIC("66318", ERR, Logger::SUPERVISION)
         << "could not determine follower: " << e.message();
   } catch (std::exception const& e) {
-    LOG_TOPIC("92baa", ERR, Logger::SUPERVISION) << "could not determine follower: " << e.what();
+    LOG_TOPIC("92baa", ERR, Logger::SUPERVISION)
+        << "could not determine follower: " << e.what();
   } catch (...) {
     LOG_TOPIC("567b2", ERR, Logger::SUPERVISION)
         << "internal error while determining best follower";

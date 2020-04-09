@@ -21,36 +21,40 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_RESIGN_LEADERSHIP_H
-#define ARANGOD_CONSENSUS_RESIGN_LEADERSHIP_H 1
+#ifndef ARANGOD_AGENCY_JOB_FAILED_FOLLOWER_H
+#define ARANGOD_AGENCY_JOB_FAILED_FOLLOWER_H 1
 
-#include "Job.h"
-#include "Supervision.h"
+#include "Agency/Job.h"
+#include "Agency/Supervision.h"
 
 namespace arangodb {
 namespace consensus {
 
-struct ResignLeadership : public Job {
-  ResignLeadership(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+struct FailedFollower : public Job {
+  FailedFollower(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
                  std::string const& creator = std::string(),
-                 std::string const& server = std::string());
+                 std::string const& database = std::string(),
+                 std::string const& collection = std::string(),
+                 std::string const& shard = std::string(),
+                 std::string const& from = std::string());
 
-  ResignLeadership(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+  FailedFollower(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
                  std::string const& jobId);
 
-  virtual ~ResignLeadership();
+  virtual ~FailedFollower();
 
-  virtual JOB_STATUS status() override final;
-  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
+  virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;
   virtual void run(bool&) override final;
   virtual bool start(bool&) override final;
+  virtual JOB_STATUS status() override final;
   virtual Result abort(std::string const& reason) override final;
 
-  // Check if all shards' have a follower
-  bool checkFeasibility();
-  bool scheduleMoveShards(std::shared_ptr<Builder>& trx);
-
-  std::string _server;
+  std::string _database;
+  std::string _collection;
+  std::string _shard;
+  std::string _from;
+  std::string _to;
+  std::chrono::system_clock::time_point _created;
 };
 }  // namespace consensus
 }  // namespace arangodb

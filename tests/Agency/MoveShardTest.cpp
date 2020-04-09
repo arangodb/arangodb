@@ -34,7 +34,7 @@
 #include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
-#include "Agency/MoveShard.h"
+#include "Agency/Jobs/MoveShard.h"
 #include "Agency/Node.h"
 
 using namespace arangodb;

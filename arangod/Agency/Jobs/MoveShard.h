@@ -21,11 +21,11 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_MOVE_SHARD_FROM_FOLLOWER_H
-#define ARANGOD_CONSENSUS_MOVE_SHARD_FROM_FOLLOWER_H 1
+#ifndef ARANGOD_AGENCY_JOB_MOVE_SHARD_H
+#define ARANGOD_AGENCY_JOB_MOVE_SHARD_H 1
 
-#include "Job.h"
-#include "Supervision.h"
+#include "Agency/Job.h"
+#include "Agency/Supervision.h"
 
 namespace arangodb {
 namespace consensus {
@@ -68,6 +68,7 @@ struct MoveShard : public Job {
     _parentJobId = std::move(parentId);
     return *this;
   }
+
  private:
   [[nodiscard]] bool isSubJob() const noexcept { return !_parentJobId.empty(); }
   void addMoveShardToServerLock(Builder& ops) const;

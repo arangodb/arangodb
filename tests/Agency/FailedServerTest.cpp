@@ -36,10 +36,10 @@
 
 #include "Mocks/LogLevels.h"
 
-#include "Agency/AddFollower.h"
 #include "Agency/AgentInterface.h"
-#include "Agency/FailedServer.h"
-#include "Agency/MoveShard.h"
+#include "Agency/Jobs/AddFollower.h"
+#include "Agency/Jobs/FailedServer.h"
+#include "Agency/Jobs/MoveShard.h"
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
 

@@ -25,14 +25,14 @@
 
 #include <thread>
 
-#include "Agency/ActiveFailoverJob.h"
-#include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
-#include "Agency/CleanOutServer.h"
-#include "Agency/FailedServer.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
-#include "Agency/RemoveFollower.h"
+#include "Agency/Jobs/ActiveFailover.h"
+#include "Agency/Jobs/AddFollower.h"
+#include "Agency/Jobs/CleanOutServer.h"
+#include "Agency/Jobs/FailedServer.h"
+#include "Agency/Jobs/RemoveFollower.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
@@ -465,7 +465,7 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot, HealthRecord& pers
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
-      ActiveFailoverJob(snapshot, agent, std::to_string(jobId), "supervision", serverID)
+      ActiveFailover(snapshot, agent, std::to_string(jobId), "supervision", serverID)
           .create(envelope);
     }
   }
