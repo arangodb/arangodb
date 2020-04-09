@@ -128,35 +128,58 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::methods;
 
-PlanCollectionReader::PlanCollectionReader(LogicalCollection const& collection) {
-  std::string databaseName = collection.vocbase().name();
-  std::string collectionID = std::to_string(collection.id());
+namespace {
+// Read the collection from Plan; this is an object to have a valid VPack
+// around to read from and to not have to carry around vpack builders.
+// Might want to do the error handling with throw/catch?
+class PlanCollectionReader {
+ public:
+  PlanCollectionReader(PlanCollectionReader const&&) = delete;
+  PlanCollectionReader(PlanCollectionReader const&) = delete;
+  explicit PlanCollectionReader(LogicalCollection const& collection) {
+    std::string databaseName = collection.vocbase().name();
+    std::string collectionID = std::to_string(collection.id());
+    std::vector<std::string> path{
+      AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)};
 
-  auto& ac = collection.vocbase().server().getFeature<ClusterFeature>().agencyCache();
-  std::vector<std::string> path { 
-    AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)};
-  auto [tmp, idx] = ac.get(path);
-  _collection = tmp->slice()[0];
-    
-  std::vector<std::string> vpath(
-    {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID});
-  if (!_collection.hasKey(vpath)) {
-    _state = Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
-                    "Could not retrieve " + path.front() + " from agency");
-    return;
-  }
+    auto& agencyCache =
+      collection.vocbase().server().getFeature<ClusterFeature>().agencyCache();
+    consensus::index_t idx = 0;
+    std::tie(_read, idx) = agencyCache.get(path);
 
-  _collection = _collection.get(
-    std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
-    
-  if (!_collection.isObject()) {
-    _state = Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return;
+    _collection = _read->slice()[0];
+
+    std::vector<std::string> vpath(
+      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID});
+
+    if (!_collection.hasKey(vpath)) {
+      _state = Result(
+        TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
+        "Could not retrieve " + path.front() + " from agency in version " + std::to_string(idx));
+      return;
+    }
+
+    _collection = _collection.get(
+      std::vector<std::string>(
+        {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+
+    if (!_collection.isObject()) {
+      _state = Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return;
+    }
+
+    _state = Result();
   }
-  _state = Result();
+  VPackSlice indexes();
+  VPackSlice slice() { return _collection; }
+  Result state() { return _state; }
+
+ private:
+  consensus::query_t _read;
+  Result _state;
+  velocypack::Slice _collection;
+};
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a local helper to report errors and messages
@@ -309,14 +332,12 @@ void ClusterInfo::triggerBackgroundGetIds() {
 /// @brief produces an agency dump and logs it
 void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  AgencyComm ac(_server);
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, idx] = agencyCache.get(std::vector<std::string>{"/"});
   auto res = acb->slice();
 
   if (!res.isNone()) {
-    LOG_TOPIC("fe8ce", INFO, Logger::CLUSTER) << "Agency dump:\n"
-                                              << res.toJson();
+    LOG_TOPIC("fe8ce", INFO, Logger::CLUSTER) << "Agency dump:\n" << res.toJson();
   } else {
     LOG_TOPIC("e7e30", WARN, Logger::CLUSTER) << "Could not get agency dump!";
   }

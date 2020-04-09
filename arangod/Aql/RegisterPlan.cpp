@@ -381,7 +381,7 @@ void RegisterPlan::after(ExecutionNode* en) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          std::string("missing variable #") +
                                              std::to_string(v->id) + " (" + v->name +
-                                             ") for node #" + std::to_string(en->id()) +
+                                             ") for node #" + std::to_string(en->id().id()) +
                                              " (" + en->getTypeString() +
                                              ") while planning registers");
         }

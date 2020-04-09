@@ -98,24 +98,6 @@ private:
   std::atomic<bool> _present;
 };
 
-// Read the collection from Plan; this is an object to have a valid VPack
-// around to read from and to not have to carry around vpack builders.
-// Might want to do the error handling with throw/catch?
-class PlanCollectionReader {
- public:
-  PlanCollectionReader(PlanCollectionReader const&&) = delete;
-  PlanCollectionReader(PlanCollectionReader const&) = delete;
-  explicit PlanCollectionReader(LogicalCollection const& collection);
-  VPackSlice indexes();
-  VPackSlice slice() { return _collection; }
-  Result state() { return _state; }
-
- private:
-
-  Result _state;
-  velocypack::Slice _collection;
-};
-
 class CollectionInfoCurrent {
   friend class ClusterInfo;
 

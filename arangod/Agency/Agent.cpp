@@ -390,7 +390,6 @@ void Agent::logsForTrigger() {
 
     TRI_ASSERT(!logs.empty());
     if (!logs.empty()) {
-      builder->add("accepted", VPackValue(true));
       builder->add(VPackValue("result"));
       VPackObjectBuilder e(builder.get());
       builder->add("firstIndex", VPackValue(logs.front().index));
@@ -887,7 +886,6 @@ futures::Future<query_t> Agent::poll(
     auto builder = std::make_shared<VPackBuilder>();
     {
       VPackObjectBuilder e(builder.get());
-      builder->add("accepted", VPackValue(true));
       builder->add(VPackValue("result"));
       VPackObjectBuilder r(builder.get());
       builder->add("commitIndex", VPackValue(commitIndex));
@@ -1427,7 +1425,6 @@ void Agent::clearExpiredPolls() {
   auto empty = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder obj(empty.get());
-    empty->add("accepted", VPackValue(true));
     empty->add(VPackValue("result"));
     VPackObjectBuilder res(empty.get());
     empty->add("firstIndex", VPackValue(commitIndex));
@@ -1449,7 +1446,6 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   if (qu == nullptr) { // We have resigned
     qu = std::make_shared<VPackBuilder>();
     VPackObjectBuilder qb(qu.get());
-    qu->add("accepted", VPackValue(false));
     qu->add(VPackValue("result"));
     VPackArrayBuilder arr(qu.get());
   }
@@ -1462,7 +1458,7 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
       bool queued = scheduler->queue(
         RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
       if (!queued) {
-        LOG_TOPIC("3647c", DEBUG, Logger::AGENCY) <<
+        LOG_TOPIC("3647c", WARN, Logger::AGENCY) <<
           "Failed to schedule logsForTrigger running in main thread";
         pp->setValue(qu);
       }
