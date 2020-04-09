@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added collection property changes into auditing.
+
 * Fixed a bug which occurred if a dbserver was shut down exactly
   when it was supposed to resign from its leadership for a shard.
 
@@ -248,11 +250,11 @@ devel
         RETURN { doc, sub1, sub2 }
 
 * Added JSON-Schema (draft-4) document validation. The validation can be
-  specified by providing the new `validation` collection property when creating a
+  specified by providing the new `schema` collection property when creating a
   new collection or when updating the properties of an existing collection:
 
       db.mycollection.properties({
-        validation: {
+        schema: {
           rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
           message : "Json-Schema validation failed"
         }
