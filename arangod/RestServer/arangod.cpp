@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <fuerte/FuerteLogger.h>
 #include "Basics/Common.h"
 
 #include "Basics/directories.h"
@@ -131,6 +132,11 @@
 #ifdef _WIN32
 #include <iostream>
 #endif
+
+
+namespace {
+void raus_damit_p(std::string msg) { LOG_DEVEL << msg; }
+}  // namespace
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -260,6 +266,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<SslServerFeature>();
 #endif
 
+    raus_damit = &raus_damit_p;
     server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     server.addFeature<arangodb::iresearch::IResearchFeature>();
 

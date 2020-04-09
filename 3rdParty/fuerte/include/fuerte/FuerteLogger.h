@@ -89,7 +89,26 @@
 #endif
 
 #if ENABLE_FUERTE_LOG_HTTPTRACE > 0
-#define FUERTE_LOG_HTTPTRACE std::cout << "[http] "
+#include <sstream>
+extern void (*raus_damit)(std::string str);
+
+struct RausDamitStream {
+  std::stringstream ss;
+
+  ~RausDamitStream() {
+    if (raus_damit) {
+      raus_damit(ss.str());
+    }
+  }
+
+  template <typename T>
+  RausDamitStream& operator<<(T&& t) {
+    ss << std::forward<T>(t);
+    return *this;
+  }
+};
+
+#define FUERTE_LOG_HTTPTRACE RausDamitStream{} << "[http] "
 #else
 #define FUERTE_LOG_HTTPTRACE \
   if (0) std::cout

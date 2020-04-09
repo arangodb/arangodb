@@ -25,6 +25,8 @@
 #include <fuerte/connection.h>
 #include <fuerte/waitgroup.h>
 
+void (*raus_damit)(std::string str);
+
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Deconstructor
 Connection::~Connection() {
@@ -65,11 +67,11 @@ std::unique_ptr<Response> Connection::sendRequest(std::unique_ptr<Request> reque
 
   return rv;
 }
-  
+
 std::string Connection::endpoint() const {
   std::string endpoint;
   endpoint.reserve(32);
-  // http/vst 
+  // http/vst
   endpoint.append(fuerte::to_string(_config._protocolType));
   endpoint.push_back('+');
   // tcp/ssl/unix
