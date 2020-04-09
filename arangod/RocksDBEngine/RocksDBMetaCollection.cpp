@@ -467,7 +467,32 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
   return false;
 }
 
-rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree() const {
+rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq) {
+  // first update so we don't under-report
+  std::unique_lock<std::mutex> guard(_revisionBufferLock);
+  rocksdb::SequenceNumber seq = maxCommitSeq;
+
+  if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() - 1 < seq) {
+    seq = *_revisionTruncateBuffer.begin() - 1;
+  }
+
+  if (!_revisionInsertBuffers.empty() && _revisionInsertBuffers.begin()->first - 1 < seq) {
+    seq = _revisionInsertBuffers.begin()->first - 1;
+  }
+
+  if (!_revisionRemovalBuffers.empty() && _revisionRemovalBuffers.begin()->first - 1 <= seq) {
+    seq = _revisionRemovalBuffers.begin()->first - 1;
+  }
+
+  if (_revisionTreeApplied.load() > _revisionTreeSerializedSeq.load() &&
+      _revisionTreeApplied.load() - 1 < seq) {
+    seq = _revisionTreeApplied.load() - 1;
+  }
+
+  if (seq > _revisionTreeSerializedSeq.load()) {
+    _revisionTreeSerializedSeq.store(seq);
+  }
+
   return _revisionTreeSerializedSeq.load();
 }
 

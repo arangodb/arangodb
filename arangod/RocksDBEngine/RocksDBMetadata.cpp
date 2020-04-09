@@ -328,7 +328,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
       output.clear();
       rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
       appliedSeq = std::min(appliedSeq, seq);
-
       if (!output.empty()) {
         rocksutils::uint64ToPersistent(output, seq);
 
@@ -356,7 +355,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
       }
     }
   } else {
-    rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree();
+    rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
     appliedSeq = std::min(appliedSeq, seq);
   }
 
