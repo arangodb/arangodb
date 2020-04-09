@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -46,7 +47,7 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
 
   /// @brief constructor with a vocbase and a collection and options
  protected:
-  ModificationNode(ExecutionPlan* plan, size_t id, Collection const* collection,
+  ModificationNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
                    ModificationOptions const& options,
                    Variable const* outVariableOld, Variable const* outVariableNew)
       : ExecutionNode(plan, id),
@@ -155,7 +156,7 @@ class RemoveNode : public ModificationNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  RemoveNode(ExecutionPlan* plan, size_t id, Collection const* collection,
+  RemoveNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
              ModificationOptions const& options, Variable const* inVariable,
              Variable const* outVariableOld)
       : ModificationNode(plan, id, collection, options, outVariableOld, nullptr),
@@ -202,7 +203,7 @@ class InsertNode : public ModificationNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  InsertNode(ExecutionPlan* plan, size_t id, Collection const* collection,
+  InsertNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
              ModificationOptions const& options, Variable const* inVariable,
              Variable const* outVariableOld, Variable const* outVariableNew)
       : ModificationNode(plan, id, collection, options, outVariableOld, outVariableNew),
@@ -249,7 +250,7 @@ class UpdateReplaceNode : public ModificationNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  UpdateReplaceNode(ExecutionPlan* plan, size_t id, Collection const* collection,
+  UpdateReplaceNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
                     ModificationOptions const& options,
                     Variable const* inDocVariable, Variable const* inKeyVariable,
                     Variable const* outVariableOld, Variable const* outVariableNew)
@@ -298,7 +299,7 @@ class UpdateNode : public UpdateReplaceNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  UpdateNode(ExecutionPlan* plan, size_t id, Collection const* collection,
+  UpdateNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
              ModificationOptions const& options, Variable const* inDocVariable,
              Variable const* inKeyVariable, Variable const* outVariableOld,
              Variable const* outVariableNew)
@@ -332,7 +333,7 @@ class ReplaceNode : public UpdateReplaceNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  ReplaceNode(ExecutionPlan* plan, size_t id, Collection const* collection,
+  ReplaceNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
               ModificationOptions const& options, Variable const* inDocVariable,
               Variable const* inKeyVariable, Variable const* outVariableOld,
               Variable const* outVariableNew)
@@ -366,7 +367,7 @@ class UpsertNode : public ModificationNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  UpsertNode(ExecutionPlan* plan, size_t id, Collection const* collection,
+  UpsertNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
              ModificationOptions const& options, Variable const* inDocVariable,
              Variable const* insertVariable, Variable const* updateVariable,
              Variable const* outVariableNew, bool isReplace)
