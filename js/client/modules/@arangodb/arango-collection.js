@@ -373,8 +373,8 @@ ArangoCollection.prototype.properties = function (properties) {
     'distributeShardsLike': false,
     'shardingStrategy': false,
     'cacheEnabled': true,
-    'schema' : null
     'syncByRevision': true,
+    'schema' : null
   };
   var a;
 
