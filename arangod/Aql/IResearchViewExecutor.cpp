@@ -705,6 +705,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
 template <typename Impl, typename Traits>
 void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(
     irs::document const& doc, size_t index) {
+  TRI_ASSERT(index < _storedValuesReaders.size());
   auto const& reader = _storedValuesReaders[index];
   TRI_ASSERT(reader);
   auto& storedValues = _indexReadBuffer.getStoredValues();
