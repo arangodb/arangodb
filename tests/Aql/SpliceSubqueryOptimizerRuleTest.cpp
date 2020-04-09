@@ -64,7 +64,7 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* en) final {
-    std::set<size_t> depids, otherdepids;
+    std::set<ExecutionNodeId> depids, otherdepids;
 
     if (!isSubqueryRelated(en)) {
       try {
@@ -85,7 +85,7 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
 
         EXPECT_EQ(depids, otherdepids);
       } catch (...) {
-        EXPECT_TRUE(false) << "expected node with id " << en->id() << " of type "
+        EXPECT_TRUE(false) << "expected node with id " << en->id().id() << " of type "
                            << en->getTypeString() << " to be present in optimized plan";
       }
     }
