@@ -107,7 +107,7 @@ class HybridLogicalClock {
   static std::string encodeTimeStamp(uint64_t t) {
     std::string r(11, '\x00');
     size_t pos = 11;
-    while (t > 0) {
+    while (pos > 0) {
       r[--pos] = encodeTable[static_cast<uint8_t>(t & 0x3ful)];
       t >>= 6;
     }
@@ -120,7 +120,7 @@ class HybridLogicalClock {
   /// the result buffer are returned
   static std::pair<size_t, size_t> encodeTimeStamp(uint64_t t, char* r) {
     size_t pos = 11;
-    while (t > 0) {
+    while (pos > 0) {
       r[--pos] = encodeTable[static_cast<uint8_t>(t & 0x3ful)];
       t >>= 6;
     }
