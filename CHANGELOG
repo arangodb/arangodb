@@ -1,8 +1,8 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
-* Fixed a bug which occurred if a dbserver was shut down exactly
-  when it was supposed to resign from its leadership for a shard.
+* Fixed a bug which occurred if a dbserver was shut down exactly when it was
+  supposed to resign from its leadership for a shard.
 
 * Improve continuation behavior of AQL queries. We post the continuation handler
   on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
