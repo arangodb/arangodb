@@ -187,7 +187,7 @@ RestStatus RestAgencyHandler::pollIndex(
             builder.add("readDB", slice.get("readDB"));
           }
         }
-        resetResponse(rest::ResponseCode::ACCEPTED);
+        resetResponse(rest::ResponseCode::OK);
         response()->setPayload(std::move(payload));
       } else {
         generateError(
