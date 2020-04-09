@@ -1,6 +1,9 @@
 v3.7.0-preview.2 (XXXX-XX-XX)
 -----------------------------
 
+* Fixed a bug which occurred if a dbserver was shut down exactly when it was
+  supposed to resign from its leadership for a shard.
+
 * Fix a bug in the agency supervision, which could declare an already FAILED
   dbserver temporarily as GOOD again after an agency leader change.
 
