@@ -51,9 +51,9 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
 
   if (!nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
-    for (std::pair<size_t const, ExecutionStats::Node> const& pair : nodes) {
+    for (auto const& pair : nodes) {
       builder.openObject();
-      builder.add("id", VPackValue(pair.first));
+      builder.add("id", VPackValue(pair.first.id()));
       builder.add("calls", VPackValue(pair.second.calls));
       builder.add("items", VPackValue(pair.second.items));
       builder.add("runtime", VPackValue(pair.second.runtime));
@@ -85,12 +85,12 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   // intentionally no modification of executionTime
 
   for (auto const& pair : summand.nodes) {
-    size_t nid = pair.first;
+    auto nid = pair.first;
     auto const& alias = _nodeAliases.find(nid);
     if (alias != _nodeAliases.end()) {
       nid = alias->second;
-      if (nid == std::numeric_limits<size_t>::max()) {
-        // ignore this value, it is an intenral node that we do not want to expose
+      if (nid.id() == std::numeric_limits<decltype(nid)::BaseType>::max()) {
+        // ignore this value, it is an internal node that we do not want to expose
         continue;
       }
     }
@@ -140,7 +140,7 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
   if (slice.hasKey("nodes")) {
     ExecutionStats::Node node;
     for (VPackSlice val : VPackArrayIterator(slice.get("nodes"))) {
-      size_t nid = val.get("id").getNumber<size_t>();
+      auto nid = ExecutionNodeId{val.get("id").getNumber<ExecutionNodeId::BaseType>()};
       node.calls = val.get("calls").getNumber<size_t>();
       node.items = val.get("items").getNumber<size_t>();
       node.runtime = val.get("runtime").getNumber<double>();
