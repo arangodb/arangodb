@@ -91,26 +91,36 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
                                                                                    bool& responsibleForCommit) {
   
   TRI_ASSERT(_sharedTransactionContext != nullptr);
-   auto state = _sharedTransactionContext->_currentTransaction;
+  
+  auto state = _sharedTransactionContext->_currentTransaction;
   if (!state) {
     state = transaction::Context::createState(options);
+    enterV8Context(state);
     responsibleForCommit = true;
-    
-    // registerTransaction
-    TRI_ASSERT(_sharedTransactionContext != nullptr);
-    TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
-    TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
-    _sharedTransactionContext->_currentTransaction = state;
-    _sharedTransactionContext->_mainScope = this;
+  } else {
+    responsibleForCommit = false;
   }
   return state;
 }
 
-/// @brief unregister the transaction from the context
-void transaction::V8Context::unregisterTransaction() noexcept {
+void transaction::V8Context::enterV8Context(std::shared_ptr<TransactionState> const& state) {
+  // registerTransaction
+  TRI_ASSERT(_sharedTransactionContext != nullptr);
+  TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
+  TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
+  _sharedTransactionContext->_currentTransaction = state;
+  _sharedTransactionContext->_mainScope = this;
+}
+
+void transaction::V8Context::exitV8Context() {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   _sharedTransactionContext->_currentTransaction = nullptr;
   _sharedTransactionContext->_mainScope = nullptr;
+}
+
+/// @brief unregister the transaction from the context
+void transaction::V8Context::unregisterTransaction() noexcept {
+  exitV8Context();
 }
 
 /// @brief whether or not the transaction is embeddable

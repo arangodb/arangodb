@@ -969,29 +969,46 @@ ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
   std::vector<futures::Future<futures::Unit>> futures;
   futures.reserve(_serverToQueryId.size());
   auto ss = sharedState();
-   for (auto const& [serverDst, queryId] : _serverToQueryId) {
-     
-     TRI_ASSERT(serverDst.substr(0, 7) == "server:");
-     auto f = network::sendRequest(pool, serverDst, fuerte::RestVerb::Delete,
-                          "/_api/aql/finish/" + std::to_string(queryId), body)
-     .thenValue([ss, this](network::Response&& res) {
-       if (res.ok() && ss->valid()) {
-         VPackSlice stats = res.slice().get("stats");
-         if (stats.isObject()) {
-           _execStats.add(ExecutionStats(stats));
-         }
-       }
-     });
-     
-     futures.emplace_back(std::move(f));
-     futures::collectAll(futures).thenFinal([ss, this](auto&& vals) {
-       ss->executeAndWakeup([&] {
-         // prevent a duplicate shutdown
-         _wasShutdown = true;
-         return true;
-       });
-     });
-   }
+  for (auto const& [serverDst, queryId] : _serverToQueryId) {
+
+    TRI_ASSERT(serverDst.substr(0, 7) == "server:");
+    auto f = network::sendRequest(pool, serverDst, fuerte::RestVerb::Delete,
+                         "/_api/aql/finish/" + std::to_string(queryId), body)
+    .thenValue([ss, this](network::Response&& res) {
+      if (res.ok() && ss->valid()) {
+        VPackSlice stats = res.slice().get("stats");
+        if (stats.isObject()) {
+          _execStats.add(ExecutionStats(stats));
+        }
+        // read "warnings" attribute if present and add it to our query
+        VPackSlice warnings = res.slice().get("warnings");
+        if (warnings.isArray()) {
+          for (VPackSlice it : VPackArrayIterator(warnings)) {
+            if (it.isObject()) {
+              VPackSlice code = it.get("code");
+              VPackSlice message = it.get("message");
+              if (code.isNumber() && message.isString()) {
+                _query.warnings().registerWarning(code.getNumericValue<int>(),
+                                                  message.copyString().c_str());
+              }
+            }
+          }
+        }
+      }
+    }).thenError<std::exception>([](std::exception ptr) {
+      // simon: we should maybe store this error
+    });
+
+    futures.emplace_back(std::move(f));
+  }
+  
+  futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
+    ss->executeAndWakeup([&] {
+      // prevent a duplicate shutdown
+      _wasShutdown = true;
+      return true;
+    });
+  });
   
   return ExecutionState::WAITING;
 }

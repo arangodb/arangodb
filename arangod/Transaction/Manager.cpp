@@ -83,9 +83,7 @@ namespace {
 struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::transaction::Options const& opts)
-      : Methods(ctx, opts) {
-    TRI_ASSERT(!isMainTransaction());
-  }
+      : Methods(ctx, opts) {}
 };
 }  // namespace
 
@@ -140,16 +138,6 @@ Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl,
 
 bool Manager::ManagedTrx::expired() const {
   return this->expiryTime < TRI_microtime();
-//  double now = TRI_microtime();
-//  if (type == Manager::MetaType::Tombstone) {
-//    return (now - usedTimeSecs) > tombstoneTTL;
-//  }
-//
-//  auto role = ServerState::instance()->getRole();
-//  if ((ServerState::isSingleServer(role) || ServerState::isCoordinator(role))) {
-//    return (now - usedTimeSecs) > idleTTL;
-//  }
-//  return (now - usedTimeSecs) > idleTTLDBServer;
 }
 
 void Manager::ManagedTrx::updateExpiry() {
@@ -483,7 +471,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   } while (true);
 
   if (state) {
-    TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode));
     return std::make_shared<ManagedContext>(tid, std::move(state), /*responsibleForCommit*/false);
   }
   TRI_ASSERT(false);  // should be unreachable

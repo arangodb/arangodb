@@ -522,7 +522,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   
   aql::Collection* coll = query.collections().get(params.collection);
   if (!coll) {
-    coll = query.collections().add(params.collection, AccessMode::Type::READ);
+    coll = addCollectionToQuery(query, params.collection);
   }
   
   for (auto& idx : coll->indexes()) {

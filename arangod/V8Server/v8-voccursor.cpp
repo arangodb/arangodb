@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Server/v8-voccursor.h"
+#include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
 #include "Aql/QueryResult.h"
 #include "Basics/StringUtils.h"
@@ -337,16 +338,17 @@ struct V8Cursor final {
     size_t batchSize =
         VelocyPackHelper::getNumericValue<size_t>(options->slice(), "batchSize", 1000);
 
-    const bool contextOwnedByExterior = transaction::V8Context::isEmbedded();
     TRI_vocbase_t* vocbase = v8g->_vocbase;
     TRI_ASSERT(vocbase != nullptr);
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
+    
+    auto q = std::make_unique<aql::Query>(transaction::V8Context::Create(*vocbase, true),
+                                          aql::QueryString(queryString), std::move(bindVars),
+                                          std::move(options));
+    
     // specify ID 0 so it uses the external V8 context
-    auto cc = cursors->createQueryStream(queryString, std::move(bindVars),
-                                         std::move(options), batchSize, ttl,
-                                         contextOwnedByExterior,
-                                         /*trxCtx*/ nullptr);
+    auto cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
     TRI_DEFER(cc->release());
     // args.Holder() is supposedly better than args.This()
     auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());
@@ -369,7 +371,6 @@ struct V8Cursor final {
 
   static void toArray(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
-    v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
     auto context = TRI_IGETC;
 

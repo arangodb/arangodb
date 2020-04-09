@@ -220,31 +220,28 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
                                                          _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  
+  auto query = std::make_unique<aql::Query>(createTransactionContext(),
+      arangodb::aql::QueryString(querySlice.copyString()),
+      bindVarsBuilder, _options);
 
   if (stream) {
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
       return RestStatus::DONE;
-    } else {
-      CursorRepository* cursors = _vocbase.cursorRepository();
-      TRI_ASSERT(cursors != nullptr);
-      _cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
-                                           _options, batchSize, ttl,
-                                           /*contextOwnedByExt*/ false,
-                                           createTransactionContext());
-      _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
-      
-      return generateCursorResult(rest::ResponseCode::CREATED);
     }
+    
+    CursorRepository* cursors = _vocbase.cursorRepository();
+    TRI_ASSERT(cursors != nullptr);
+    _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
+    _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+    
+    return generateCursorResult(rest::ResponseCode::CREATED);
   }
 
   // non-stream case. Execute query, then build a cursor
   //  with the entire result set.
-
-  auto query = std::make_unique<aql::Query>(createTransactionContext(),
-      arangodb::aql::QueryString(querySlice.copyString()),
-      bindVarsBuilder, _options);
 
   registerQuery(std::move(query));
   return processQuery(/*continuation*/false);
@@ -362,6 +359,8 @@ RestStatus RestCursorHandler::handleQueryResult() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     generateResult(rest::ResponseCode::CREATED, std::move(buffer), _queryResult.context);
+    generateResult(rest::ResponseCode::CREATED, std::move(buffer),
+                   _queryResult.context->getVPackOptionsForDump());
     // directly after returning from here, we will free the query's context and free the
     // resources it uses (e.g. leases for a managed transaction). this way the server
     // can send back the query result to the client and the client can make follow-up

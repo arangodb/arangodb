@@ -49,6 +49,9 @@ class V8Context final : public Context {
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
                                                  bool& responsibleForCommit) override;
+  
+  void enterV8Context(std::shared_ptr<TransactionState> const& state);
+  void exitV8Context();
 
   /// @brief return the resolver
   CollectionNameResolver const& resolver() override final;
