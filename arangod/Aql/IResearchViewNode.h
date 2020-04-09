@@ -26,6 +26,7 @@
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
 #include "IResearch/IResearchOrderFactory.h"
@@ -80,7 +81,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   };  // Options
 
-  IResearchViewNode(aql::ExecutionPlan& plan, size_t id, TRI_vocbase_t& vocbase,
+  IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
                     std::shared_ptr<const arangodb::LogicalView> const& view,
                     aql::Variable const& outVariable, aql::AstNode* filterCondition,
                     aql::AstNode* options, std::vector<Scorer>&& scorers);

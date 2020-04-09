@@ -149,7 +149,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -195,7 +195,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -278,15 +278,15 @@ TEST_F(IResearchViewNodeTest, construct) {
 
   // no options
   {
-    arangodb::aql::SingletonNode singleton(query.plan(), 0);
+    arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
-                                                42,             // id
-                                                vocbase,        // database
-                                                logicalView,    // view
-                                                outVariable,    // out variable
+                                                arangodb::aql::ExecutionNodeId{42},
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,  // out variable
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
-                                                {});        // no sort condition
+                                                {});      // no sort condition
     node.addDependency(&singleton);
 
     EXPECT_TRUE(node.empty());                // view has no links
@@ -298,7 +298,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, node.getType());
     EXPECT_EQ(&outVariable, &node.outVariable());
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -328,10 +328,10 @@ TEST_F(IResearchViewNodeTest, construct) {
     options.addMember(&attributeName);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
-                                                42,             // id
-                                                vocbase,        // database
-                                                logicalView,    // view
-                                                outVariable,    // out variable
+                                                arangodb::aql::ExecutionNodeId{42},
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,  // out variable
                                                 nullptr,  // no filter condition
                                                 &options, {});  // no sort condition
 
@@ -342,7 +342,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, node.getType());
     EXPECT_EQ(&outVariable, &node.outVariable());
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -375,12 +375,12 @@ TEST_F(IResearchViewNodeTest, construct) {
     options.addMember(&attributeName);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
-      42,             // id
-      vocbase,        // database
-      logicalView,    // view
-      outVariable,    // out variable
-      nullptr,  // no filter condition
-      &options, {});  // no sort condition
+                                                arangodb::aql::ExecutionNodeId{42},
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,  // out variable
+                                                nullptr,  // no filter condition
+                                                &options, {});  // no sort condition
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
@@ -389,7 +389,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, node.getType());
     EXPECT_EQ(&outVariable, &node.outVariable());
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -421,12 +421,12 @@ TEST_F(IResearchViewNodeTest, construct) {
     options.addMember(&attributeName);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
-      42,             // id
-      vocbase,        // database
-      logicalView,    // view
-      outVariable,    // out variable
-      nullptr,  // no filter condition
-      &options, {});  // no sort condition
+                                                arangodb::aql::ExecutionNodeId{42},
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,  // out variable
+                                                nullptr,  // no filter condition
+                                                &options, {});  // no sort condition
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
@@ -435,7 +435,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, node.getType());
     EXPECT_EQ(&outVariable, &node.outVariable());
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -467,12 +467,12 @@ TEST_F(IResearchViewNodeTest, construct) {
     options.addMember(&attributeName);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
-      42,             // id
-      vocbase,        // database
-      logicalView,    // view
-      outVariable,    // out variable
-      nullptr,  // no filter condition
-      &options, {});  // no sort condition
+                                                arangodb::aql::ExecutionNodeId{42},
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,  // out variable
+                                                nullptr,  // no filter condition
+                                                &options, {});  // no sort condition
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
@@ -481,7 +481,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, node.getType());
     EXPECT_EQ(&outVariable, &node.outVariable());
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -513,12 +513,12 @@ TEST_F(IResearchViewNodeTest, construct) {
     options.addMember(&attributeName);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
-      42,             // id
-      vocbase,        // database
-      logicalView,    // view
-      outVariable,    // out variable
-      nullptr,  // no filter condition
-      &options, {});  // no sort condition
+                                                arangodb::aql::ExecutionNodeId{42},
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,  // out variable
+                                                nullptr,  // no filter condition
+                                                &options, {});  // no sort condition
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
@@ -527,7 +527,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, node.getType());
     EXPECT_EQ(&outVariable, &node.outVariable());
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -559,10 +559,10 @@ TEST_F(IResearchViewNodeTest, construct) {
 
     EXPECT_ANY_THROW(
         arangodb::iresearch::IResearchViewNode(*query.plan(),  // plan
-                                               42,             // id
-                                               vocbase,        // database
-                                               logicalView,    // view
-                                               outVariable,    // out variable
+                                               arangodb::aql::ExecutionNodeId{42},
+                                               vocbase,      // database
+                                               logicalView,  // view
+                                               outVariable,  // out variable
                                                nullptr,  // no filter condition
                                                &options, {}));  // no sort condition
   }
@@ -581,13 +581,13 @@ TEST_F(IResearchViewNodeTest, construct) {
     options.addMember(&attributeName);
 
     EXPECT_ANY_THROW(
-      arangodb::iresearch::IResearchViewNode(*query.plan(),  // plan
-        42,             // id
-        vocbase,        // database
-        logicalView,    // view
-        outVariable,    // out variable
-        nullptr,  // no filter condition
-        &options, {}));  // no sort condition
+        arangodb::iresearch::IResearchViewNode(*query.plan(),  // plan
+                                               arangodb::aql::ExecutionNodeId{42},
+                                               vocbase,      // database
+                                               logicalView,  // view
+                                               outVariable,  // out variable
+                                               nullptr,  // no filter condition
+                                               &options, {}));  // no sort condition
   }
 
   // invalid option conditionOptimization non-string
@@ -604,13 +604,13 @@ TEST_F(IResearchViewNodeTest, construct) {
     options.addMember(&attributeName);
 
     EXPECT_ANY_THROW(
-      arangodb::iresearch::IResearchViewNode(*query.plan(),  // plan
-        42,             // id
-        vocbase,        // database
-        logicalView,    // view
-        outVariable,    // out variable
-        nullptr,  // no filter condition
-        &options, {}));  // no sort condition
+        arangodb::iresearch::IResearchViewNode(*query.plan(),  // plan
+                                               arangodb::aql::ExecutionNodeId{42},
+                                               vocbase,      // database
+                                               logicalView,  // view
+                                               outVariable,  // out variable
+                                               nullptr,  // no filter condition
+                                               &options, {}));  // no sort condition
   }
   // invalid options
   {
@@ -626,10 +626,10 @@ TEST_F(IResearchViewNodeTest, construct) {
     options.addMember(&attributeName);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
-                                                42,             // id
-                                                vocbase,        // database
-                                                logicalView,    // view
-                                                outVariable,    // out variable
+                                                arangodb::aql::ExecutionNodeId{42},
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,  // out variable
                                                 nullptr,  // no filter condition
                                                 &options, {});  // no sort condition
 
@@ -640,7 +640,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, node.getType());
     EXPECT_EQ(&outVariable, &node.outVariable());
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -765,7 +765,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -806,7 +806,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -847,7 +847,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -888,7 +888,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -931,7 +931,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -974,7 +974,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -1017,7 +1017,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -1060,7 +1060,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(outVariable.id, node.outVariable().id);
     EXPECT_EQ(outVariable.name, node.outVariable().name);
     EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
     EXPECT_EQ(logicalView, node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
@@ -1353,7 +1353,7 @@ TEST_F(IResearchViewNodeTest, clone) {
   // no filter condition, no sort condition, no shards, no options
   {
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -1372,7 +1372,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getType(), cloned.getType());
       EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
       EXPECT_EQ(node.plan(), cloned.plan());
-      EXPECT_EQ(nextId + 1, cloned.id());
+      EXPECT_EQ(arangodb::aql::ExecutionNodeId{nextId.id() + 1}, cloned.id());
       EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
       EXPECT_EQ(node.view(), cloned.view());
       EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
@@ -1452,7 +1452,7 @@ TEST_F(IResearchViewNodeTest, clone) {
     options.addMember(&attributeName);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -1471,7 +1471,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getType(), cloned.getType());
       EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
       EXPECT_EQ(node.plan(), cloned.plan());
-      EXPECT_EQ(nextId + 1, cloned.id());
+      EXPECT_EQ(arangodb::aql::ExecutionNodeId{nextId.id() + 1}, cloned.id());
       EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
       EXPECT_EQ(node.view(), cloned.view());
       EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
@@ -1541,7 +1541,7 @@ TEST_F(IResearchViewNodeTest, clone) {
   // no filter condition, no sort condition, with shards, no options
   {
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -1567,7 +1567,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getType(), cloned.getType());
       EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
       EXPECT_EQ(node.plan(), cloned.plan());
-      EXPECT_EQ(nextId + 1, cloned.id());
+      EXPECT_EQ(arangodb::aql::ExecutionNodeId{nextId.id() + 1}, cloned.id());
       EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
       EXPECT_EQ(node.view(), cloned.view());
       EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
@@ -1645,7 +1645,7 @@ TEST_F(IResearchViewNodeTest, clone) {
   {
     arangodb::iresearch::IResearchViewSort sort;
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -1672,7 +1672,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getType(), cloned.getType());
       EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
       EXPECT_EQ(node.plan(), cloned.plan());
-      EXPECT_EQ(nextId + 1, cloned.id());
+      EXPECT_EQ(arangodb::aql::ExecutionNodeId{nextId.id() + 1}, cloned.id());
       EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
       EXPECT_EQ(node.view(), cloned.view());
       EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
@@ -1749,7 +1749,7 @@ TEST_F(IResearchViewNodeTest, clone) {
   // with late materialization
   {
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -1774,7 +1774,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getType(), cloned.getType());
       EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
       EXPECT_EQ(node.plan(), cloned.plan());
-      EXPECT_EQ(nextId + 1, cloned.id());
+      EXPECT_EQ(arangodb::aql::ExecutionNodeId{nextId.id() + 1}, cloned.id());
       EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
       EXPECT_EQ(node.view(), cloned.view());
       EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
@@ -1879,7 +1879,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
   // no filter condition, no sort condition
   {
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -1961,7 +1961,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     options.addMember(&attributeName);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -2032,7 +2032,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
   // with late materialization
   {
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -2140,7 +2140,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
   // no filter condition, no sort condition
   {
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -2226,7 +2226,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     options.addMember(&attributeName);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -2300,7 +2300,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
   // with late materialization
   {
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -2449,7 +2449,7 @@ TEST_F(IResearchViewNodeTest, collections) {
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                              42,           // id
+                                              arangodb::aql::ExecutionNodeId{42},
                                               vocbase,      // database
                                               logicalView,  // view
                                               outVariable,
@@ -2535,9 +2535,9 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 
   // no filter condition, no sort condition
   {
-    arangodb::aql::SingletonNode singleton(query.plan(), 0);
+    arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,           // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
                                                 outVariable,
@@ -2615,12 +2615,12 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(query, arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::SingletonNode singleton(query.plan(), 0);
+  arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                              42,           // id
+                                              arangodb::aql::ExecutionNodeId{42},
                                               vocbase,      // database
                                               logicalView,  // view
                                               outVariable,
@@ -2660,14 +2660,14 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(query, arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::SingletonNode singleton(query.plan(), 0);
+  arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
   arangodb::aql::Variable const outVariable("variable", 0);
   arangodb::aql::Variable const outNmColPtr("variable100", 100);
   arangodb::aql::Variable const outNmDocId("variable101", 101);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                              42,           // id
+                                              arangodb::aql::ExecutionNodeId{42},
                                               vocbase,      // database
                                               logicalView,  // view
                                               outVariable,
@@ -2707,14 +2707,14 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterialized) {
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(query, arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::SingletonNode singleton(query.plan(), 0);
+  arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
   arangodb::aql::Variable const outVariable("variable", 0);
   arangodb::aql::Variable const outNmColPtr("variable100", 100);
   arangodb::aql::Variable const outNmDocId("variable101", 101);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                              42,           // id
+                                              arangodb::aql::ExecutionNodeId{42},
                                               vocbase,      // database
                                               logicalView,  // view
                                               outVariable,
@@ -2754,7 +2754,7 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterializedWitScore) {
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(query, arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::SingletonNode singleton(query.plan(), 0);
+  arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
   arangodb::aql::Variable const outVariable("variable", 0);
   arangodb::aql::Variable const outNmColPtr("variable100", 100);
   arangodb::aql::Variable const outNmDocId("variable101", 101);
@@ -2762,7 +2762,7 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterializedWitScore) {
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                              42,           // id
+                                              arangodb::aql::ExecutionNodeId{42},
                                               vocbase,      // database
                                               logicalView,  // view
                                               outVariable,
@@ -2801,12 +2801,12 @@ TEST_F(IResearchViewNodeTest, registerPlanning) {
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(query, arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::SingletonNode singleton(query.plan(), 0);
+  arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                              42,           // id
+                                              arangodb::aql::ExecutionNodeId{42},
                                               vocbase,      // database
                                               logicalView,  // view
                                               outVariable,
@@ -2841,13 +2841,13 @@ TEST_F(IResearchViewNodeTest, registerPlanningWithScore) {
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(query, arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::SingletonNode singleton(query.plan(), 0);
+  arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
   arangodb::aql::Variable const outVariable("variable", 0);
   arangodb::aql::Variable const scoreVariable("score", 100);
  
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                              42,           // id
+                                              arangodb::aql::ExecutionNodeId{42},
                                               vocbase,      // database
                                               logicalView,  // view
                                               outVariable,

@@ -41,7 +41,8 @@ using namespace arangodb::aql;
 std::set<ShardID> const ShardLocking::EmptyShardList{};
 std::unordered_set<ShardID> const ShardLocking::EmptyShardListUnordered{};
 
-void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
+void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
+                           bool pushToSingleServer) {
   TRI_ASSERT(baseNode != nullptr);
   // If we have ever accessed the server lists,
   // we cannot insert Nodes anymore.
@@ -60,16 +61,19 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unable to cast node to GraphNode");
       }
-      auto const useAsSatellite = graphNode->isUsedAsSatellite();
+      auto const graphIsUsedAsSatellite = graphNode->isUsedAsSatellite();
+      auto const isUsedAsSatellite = [&](auto const& col) {
+        return graphIsUsedAsSatellite || (pushToSingleServer && col->isSatellite());
+      };
       // Add all Edge Collections to the Transactions, Traversals do never write
       for (auto const& col : graphNode->edgeColls()) {
-        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, useAsSatellite);
+        updateLocking(col, AccessMode::Type::READ, snippetId, {}, isUsedAsSatellite(col));
       }
 
       // Add all Vertex Collections to the Transactions, Traversals do never
       // write, the collections have been adjusted already
       for (auto const& col : graphNode->vertexColls()) {
-        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, useAsSatellite);
+        updateLocking(col, AccessMode::Type::READ, snippetId, {}, isUsedAsSatellite(col));
       }
       break;
     }
@@ -310,7 +314,7 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
   return _shardMapping;
 }
 
-std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(size_t snippetId,
+std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(QuerySnippet::Id snippetId,
                                                                   Collection const* col) {
   auto const& lockInfo = _collectionLocking.find(col);
 
