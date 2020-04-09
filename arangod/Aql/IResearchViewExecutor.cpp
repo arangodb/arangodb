@@ -749,8 +749,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
     // if stored values exist
     if (columnFieldsRegs != columnsFieldsRegs.cend()) {
       auto const& columns = _infos.storedValues().columns();
+      TRI_ASSERT(!columns.empty());
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-        TRI_ASSERT(!columns.empty());
         TRI_ASSERT(IResearchViewNode::SortColumnNumber < columnFieldsRegs->first);
         auto const storedColumnNumber = static_cast<size_t>(columnFieldsRegs->first);
         TRI_ASSERT(storedColumnNumber < columns.size());
