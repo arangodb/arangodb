@@ -91,21 +91,21 @@ struct TraverserOptions : public graph::BaseOptions {
   UniquenessLevel uniqueEdges;
 
   std::vector<std::string> vertexCollections;
-
+  
   std::vector<std::string> edgeCollections;
 
   explicit TraverserOptions(aql::Query* query);
 
   TraverserOptions(aql::Query* query, arangodb::velocypack::Slice const& definition);
-
+  
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  ///        When allowAlreadyBuiltCopy is true, the constructor also works
-  ///        after the planning phase; however, the options have to be prepared
-  ///        again (see TraversalNode::prepareOptions())
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
+  ///        the planning phase; however, the options have to be prepared again
+  ///        (see TraversalNode::prepareOptions())
   TraverserOptions(TraverserOptions const& other, bool allowAlreadyBuiltCopy = false);
   TraverserOptions& operator=(TraverserOptions const&) = delete;
 
@@ -120,7 +120,7 @@ struct TraverserOptions : public graph::BaseOptions {
   /// @brief Build a velocypack containing all relevant information
   ///        for DBServer traverser engines.
   void buildEngineInfo(arangodb::velocypack::Builder&) const override;
-
+  
   /// @brief Whether or not the edge collection shall be excluded
   bool shouldExcludeEdgeCollection(std::string const& name) const override;
 
@@ -128,7 +128,7 @@ struct TraverserOptions : public graph::BaseOptions {
   void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth);
-
+  
   bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 
   bool vertexHasFilter(uint64_t) const;
@@ -138,14 +138,15 @@ struct TraverserOptions : public graph::BaseOptions {
   bool hasVertexCollectionRestrictions() const;
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
-                              arangodb::velocypack::StringRef vertexId, uint64_t, size_t);
+                              arangodb::velocypack::StringRef vertexId,
+                              uint64_t, size_t);
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
 
   bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
-
+  
   std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
   double estimateCost(size_t& nrItems) const override;
@@ -160,8 +161,6 @@ struct TraverserOptions : public graph::BaseOptions {
     TRI_ASSERT(usesPrune());
     return _pruneExpression.get();
   }
-
-  auto estimateDepth() const noexcept -> uint64_t override;
 };
 }  // namespace traverser
 }  // namespace arangodb

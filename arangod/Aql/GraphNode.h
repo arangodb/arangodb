@@ -83,7 +83,7 @@ class GraphNode : public ExecutionNode {
   GraphNode(ExecutionPlan& plan, GraphNode const& other,
             std::unique_ptr<graph::BaseOptions> options);
 
-  struct THIS_THROWS_WHEN_CALLED {};
+  struct THIS_THROWS_WHEN_CALLED{};
   explicit GraphNode(THIS_THROWS_WHEN_CALLED);
 
   std::string const& collectionToShardName(std::string const& collName) const;
