@@ -1,6 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Updated OpenSSL to 1.1.1f.
+
 * Don't invoke collection key ranges compaction after performing a truncate
   operation on a RocksDB storage engine collection via the REST API's truncate
   endpoint.
