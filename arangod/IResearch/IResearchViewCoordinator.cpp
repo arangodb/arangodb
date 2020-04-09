@@ -189,12 +189,13 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
   static const std::function<bool(irs::string_ref const&)> linkPropertiesAcceptor =
     [](irs::string_ref const& key) -> bool {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField
-          && key != iresearch::StaticStrings::PrimarySortField;
+          && key != iresearch::StaticStrings::PrimarySortField
+          && key != iresearch::StaticStrings::StoredValuesField;
   };
 
   auto* acceptor = &propertiesAcceptor;
 
-  if (context == Serialization::Persistence || 
+  if (context == Serialization::Persistence ||
       context == Serialization::PersistenceWithInProgress) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 
@@ -253,9 +254,6 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
   VPackBuilder sanitizedBuilder;
   sanitizedBuilder.openObject();
   IResearchViewMeta::Mask mask(true);
-  if (context == Serialization::Properties) {
-    mask._storedValues = false;
-  }
   if (!_meta.json(sanitizedBuilder, nullptr, &mask) ||
       !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
     return { TRI_ERROR_INTERNAL,

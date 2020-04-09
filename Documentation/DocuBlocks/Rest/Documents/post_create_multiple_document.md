@@ -53,6 +53,8 @@ This option supersedes *overwrite* and offers the following modes:
   flag is set to *true*.
 - `"update"`: if a document with the specified *_key* value exists already,
   it will be patched (partially updated) with the specified document value.
+  The overwrite mode can be further controlled via the *keepNull* and
+  *mergeObjects* parameters.
 - `"conflict"`: if a document with the specified *_key* value exists already,
   return a unique constraint violation error so that the insert operation
   fails. This is also the default behavior in case the overwrite mode is

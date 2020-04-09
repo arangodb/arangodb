@@ -165,7 +165,7 @@ Cursor* CursorRepository::createQueryStream(std::string const& query,
 /// @brief remove a cursor by id
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
+bool CursorRepository::remove(CursorId id) {
   arangodb::Cursor* cursor = nullptr;
 
   {
@@ -181,11 +181,6 @@ bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
 
     if (cursor->isDeleted()) {
       // already deleted
-      return false;
-    }
-
-    if (cursor->type() != type) {
-      // wrong type
       return false;
     }
 
@@ -211,7 +206,7 @@ bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
 /// it must be returned later using release()
 ////////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::find(CursorId id, Cursor::CursorType type, bool& busy) {
+Cursor* CursorRepository::find(CursorId id, bool& busy) {
   arangodb::Cursor* cursor = nullptr;
   busy = false;
 
@@ -228,11 +223,6 @@ Cursor* CursorRepository::find(CursorId id, Cursor::CursorType type, bool& busy)
 
     if (cursor->isDeleted()) {
       // already deleted
-      return nullptr;
-    }
-
-    if (cursor->type() != type) {
-      // wrong cursor type
       return nullptr;
     }
 

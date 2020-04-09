@@ -23,13 +23,14 @@
 #include "MockTypedNode.h"
 
 #include "Basics/Exceptions.h"
+#include "Aql/ExecutionNodeId.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
-MockTypedNode::MockTypedNode(::arangodb::aql::ExecutionPlan* plan, size_t id, NodeType type)
+MockTypedNode::MockTypedNode(ExecutionPlan* plan, ExecutionNodeId id, NodeType type)
     : ExecutionNode(plan, id), _mockedType(type) {}
 
 ExecutionNode* MockTypedNode::clone(ExecutionPlan* plan, bool withDependencies,

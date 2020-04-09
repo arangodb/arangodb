@@ -401,7 +401,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"storedValues\": { \"field\":\"nested.field\", \"compression\": \"lz4\" }}");
+      "{ \"storedValues\": { \"fields\":[\"nested.field\"], \"compression\": \"lz4\" }}");
     EXPECT_TRUE(metaState.init(json->slice(), errorField));
     EXPECT_FALSE(meta.init(json->slice(), errorField));
     EXPECT_EQ("storedValues", errorField);
@@ -409,20 +409,40 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"storedValues\": [ { \"field\":\"nested.field\", \"compression\": \"lz4\" }, { "
-      "\"field\":1, \"compression\":\"none\" } ] }");
+      "{ \"storedValues\": [ { \"fields\":[\"nested.field\"], \"compression\": \"lz4\" }, { "
+      "\"fields\":1, \"compression\":\"none\" } ] }");
     EXPECT_TRUE(metaState.init(json->slice(), errorField));
     EXPECT_FALSE(meta.init(json->slice(), errorField));
-    EXPECT_EQ("storedValues[1].field", errorField);
+    EXPECT_EQ("storedValues[1].fields", errorField);
   }
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"storedValues\": [ { \"field\":\"nested.field\", \"compression\": \"lz4\" }, { "
-      "\"field\":\"1\", \"compression\":\"InVaLid\" } ] }");
+      "{ \"storedValues\": [ { \"fields\":[\"nested.field\"], \"compression\": \"lz4\" }, { "
+      "\"fields\":[\"1\"], \"compression\":\"InVaLid\" } ] }");
     EXPECT_TRUE(metaState.init(json->slice(), errorField));
     EXPECT_FALSE(meta.init(json->slice(), errorField));
     EXPECT_EQ("storedValues[1].compression", errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"storedValues\": [ { \"fields\":\"nested.field\", \"compression\": \"lz4\" }, { "
+      "\"fields\":\"1\"} ] }");
+    EXPECT_TRUE(metaState.init(json->slice(), errorField));
+    EXPECT_FALSE(meta.init(json->slice(), errorField));
+    EXPECT_EQ("storedValues[0].fields", errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"storedValues\": [ { \"fields\":[\"nested.field\"], \"compression\": \"lz4\" }, { "
+      "\"field\":\"1\"} ] }");
+    EXPECT_TRUE(metaState.init(json->slice(), errorField));
+    EXPECT_FALSE(meta.init(json->slice(), errorField));
+    EXPECT_EQ("storedValues[1]", errorField);
   }
 
   // .............................................................................
@@ -642,7 +662,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
           arangodb::basics::AttributeName(VPackStringRef("field"))},
       false);
   meta._primarySortCompression = &irs::compression::none::type();
-  auto storedValuesJSON = arangodb::velocypack::Parser::fromJson("[[], \"\", [\"\"], \"test.t\", {\"field\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}]");
+  auto storedValuesJSON = arangodb::velocypack::Parser::fromJson("[[], [\"\"], [\"\"], [\"test.t\"], {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}]");
   std::string error;
   meta._storedValues.fromVelocyPack(storedValuesJSON->slice(), error);
   EXPECT_TRUE(error.empty());
@@ -719,7 +739,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   EXPECT_TRUE(tmpSlice.isArray());
   EXPECT_EQ(2, tmpSlice.length());
   auto expectedStoredValue = arangodb::velocypack::Parser::fromJson(
-    "[{\"field\":[\"test.t\"], \"compression\":\"lz4\"}, {\"field\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}]");
+    "[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}]");
   EXPECT_TRUE(arangodb::basics::VelocyPackHelper::equal(expectedStoredValue->slice(), tmpSlice, true));
 }
 
@@ -746,7 +766,7 @@ TEST_F(IResearchViewMetaTest, test_readMaskAll) {
     \"writebufferSizeMax\": 12, \
     \"primarySort\":[{\"field\":\"aaa\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"none\",\
-    \"storedValues\":[{\"field\":\"foo\", \"compression\":\"lz4\"}]\
+    \"storedValues\":[{\"fields\":[\"foo\"], \"compression\":\"lz4\"}]\
   }");
   EXPECT_TRUE(meta.init(json->slice(), errorField,
                                 arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));

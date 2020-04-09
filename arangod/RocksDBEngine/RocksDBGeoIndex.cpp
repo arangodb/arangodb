@@ -398,7 +398,7 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   TRI_ASSERT(!_unique);
 
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
+    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
     TRI_ASSERT(key->containsLocalDocumentId(documentId));
  
     rocksdb::Status s = mthd->PutUntracked(RocksDBColumnFamily::geo(), key.ref(), val.string());
@@ -441,7 +441,7 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
+    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
     rocksdb::Status s = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
