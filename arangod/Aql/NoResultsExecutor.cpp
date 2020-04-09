@@ -22,9 +22,6 @@
 
 #include "NoResultsExecutor.h"
 
-#include "Aql/AqlItemMatrix.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 
 using namespace arangodb;
@@ -33,6 +30,6 @@ using namespace arangodb::aql;
 NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos) {}
 NoResultsExecutor::~NoResultsExecutor() = default;
 
-std::pair<ExecutionState, NoStats> NoResultsExecutor::produceRows(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> NoResultsExecutor::produceRows(OutputAqlItemRow&) {
   return {ExecutionState::DONE, NoStats{}};
 }

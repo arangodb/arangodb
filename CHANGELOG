@@ -4,6 +4,12 @@ v3.6.3 (XXXX-XX-XX)
 * Fixed a bug which occurred if a dbserver was shut down exactly when it was
   supposed to resign from its leadership for a shard.
 
+* Fixed internal issue ES-544.2: non-terminating queries could occur when an
+  ArangoSearch view would be accessed inside a spliced subquery with no indexed
+  documents on one DBServer that was part of the query.
+
+* Updated OpenSSL to 1.1.1f.
+
 * Improve continuation behavior of AQL queries. We post the continuation handler
   on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
   of LOW.
