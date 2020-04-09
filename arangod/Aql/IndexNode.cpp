@@ -28,6 +28,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
@@ -49,7 +50,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief constructor
-IndexNode::IndexNode(ExecutionPlan* plan, size_t id,
+IndexNode::IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
                      Collection const* collection, Variable const* outVariable,
                      std::vector<transaction::Methods::IndexHandle> const& indexes,
                      std::unique_ptr<Condition> condition, IndexIteratorOptions const& opts)
@@ -102,7 +103,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   auto trx = plan->getAst()->query()->trx();
   for (VPackSlice it : VPackArrayIterator(indexes)) {
     std::string iid = it.get("id").copyString();
-    _indexes.emplace_back(trx->getIndexByIdentifier(_collection->name(), iid));
+    _indexes.emplace_back(trx->getIndexByIdentifier(collection()->name(), iid));
   }
 
   VPackSlice condition = base.get("condition");
@@ -512,7 +513,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            firstOutputRegister,
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                           calcRegsToKeep(), &engine, this->_collection, _outVariable,
+                           calcRegsToKeep(), &engine, this->collection(), _outVariable,
                            isProduceResult(),
                            this->_filter.get(), this->projections(),
                            this->coveringIndexAttributePositions(),
@@ -540,7 +541,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
   }
 
-  auto c = std::make_unique<IndexNode>(plan, _id, _collection, outVariable, _indexes,
+  auto c = std::make_unique<IndexNode>(plan, _id, collection(), outVariable, _indexes,
                                        std::unique_ptr<Condition>(_condition->clone()),
                                        _options);
 
@@ -565,7 +566,7 @@ CostEstimate IndexNode::estimateCost() const {
 
   transaction::Methods* trx = _plan->getAst()->query()->trx();
   // estimate for the number of documents in the collection. may be outdated...
-  size_t const itemsInCollection = _collection->count(trx);
+  size_t const itemsInCollection = collection()->count(trx);
   size_t totalItems = 0;
   double totalCost = 0.0;
 
