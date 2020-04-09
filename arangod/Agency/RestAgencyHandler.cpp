@@ -162,8 +162,8 @@ RestStatus RestAgencyHandler::pollIndex(
     _agent->poll(start, timeout)
     .thenValue([this, start](std::shared_ptr<VPackBuilder> rb) {
       VPackSlice res = rb->slice();
-      if (res.hasKey("accepted")) {
-        TRI_ASSERT(res.hasKey("result"));
+      TRI_ASSERT(res.hasKey("result"));
+      if (res.hasKey("result")) {
         VPackBuffer<uint8_t> payload;
         VPackBuilder builder(payload);
         {
