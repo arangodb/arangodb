@@ -25,9 +25,13 @@
 
 namespace arangodb {
 
-bool IndexId::isNone() const {
-  return id() == std::numeric_limits<BaseType>::max();
+/// @brief whether or not the id is set (not none())
+bool IndexId::isSet() const noexcept {
+  return id() != std::numeric_limits<BaseType>::max();
 }
+
+/// @brief whether or not the identifier is unset (equal to none())
+bool IndexId::empty() const noexcept { return !isSet(); }
 
 bool IndexId::isPrimary() const { return id() == 0; }
 
