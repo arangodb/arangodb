@@ -97,8 +97,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
    * @param  inserts  Vector of revisions to insert
    * @param  removals Vector of revisions to remove
    */
-  void bufferUpdates(rocksdb::SequenceNumber seq, std::vector<std::size_t>&& inserts,
-                     std::vector<std::size_t>&& removals);
+  void bufferUpdates(rocksdb::SequenceNumber seq, std::vector<std::uint64_t>&& inserts,
+                     std::vector<std::uint64_t>&& removals);
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
