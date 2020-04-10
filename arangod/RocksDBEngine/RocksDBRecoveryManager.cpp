@@ -318,8 +318,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         coll->meta().loadInitialNumberDocuments();
       }
       if (coll) {
-        std::vector<std::size_t> inserts;
-        std::vector<std::size_t> removes;
+        std::vector<std::uint64_t> inserts;
+        std::vector<std::uint64_t> removes;
         inserts.emplace_back(RocksDBKey::documentId(key).id());
         coll->bufferUpdates(_currentSequence, std::move(inserts), std::move(removes));
       }
