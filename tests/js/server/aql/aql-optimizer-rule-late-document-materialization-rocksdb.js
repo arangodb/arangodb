@@ -233,6 +233,11 @@ function lateDocumentMaterializationRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
+    testNotAppliedDueToSeveralIndexesPrimary() {
+      let query = "FOR d IN " + severalIndexesCollectionName + " FILTER d._key == 'c0' OR d.a == 'a_val' SORT d._key DESC LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
     testNotAppliedDueToProjectionsCoveredByIndex() {
       let query = "FOR d IN " + projectionsCoveredByIndexCollectionName + " FILTER d.a == 'a_val' SORT d.c LIMIT 10 RETURN d.b";
       let plan = AQL_EXPLAIN(query).plan;

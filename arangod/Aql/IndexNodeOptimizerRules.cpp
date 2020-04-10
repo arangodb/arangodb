@@ -46,13 +46,13 @@ namespace {
         }
         auto indexId = index->id();
         // use one index only
-        if (commonIndexId != 0 && commonIndexId != indexId) {
+        if (commonIndexId != std::numeric_limits<TRI_idx_iid_t>::max() && commonIndexId != indexId) {
           continue;
         }
         size_t indexFieldNum = 0;
         for (auto const& field : index->fields()) {
           if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
-            if (commonIndexId == 0) {
+            if (std::numeric_limits<TRI_idx_iid_t>::max() == commonIndexId) {
               commonIndexId = indexId;
             }
             nodeAttr.afData.fieldNumber = indexFieldNum;
@@ -61,7 +61,7 @@ namespace {
           }
           ++indexFieldNum;
         }
-        if (commonIndexId != 0 || nodeAttr.afData.field != nullptr) {
+        if (commonIndexId != std::numeric_limits<TRI_idx_iid_t>::max() || nodeAttr.afData.field != nullptr) {
           break;
         }
       }
@@ -133,7 +133,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       bool stickToSortNode = false;
       auto const* var = indexNode->outVariable();
       std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>> nodesToChange;
-      TRI_idx_iid_t commonIndexId = 0; // use one index only
+      TRI_idx_iid_t commonIndexId = std::numeric_limits<TRI_idx_iid_t>::max(); // use one index only
       while (current != loop) {
         auto valid = true;
         auto type = current->getType();
