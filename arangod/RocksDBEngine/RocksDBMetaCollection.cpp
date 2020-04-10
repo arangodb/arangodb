@@ -656,8 +656,8 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
 
   rocksdb::SequenceNumber appliedSeq = 0;
   Result res = basics::catchVoidToResult([&]() -> void {
-    std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator insertIt;
-    std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator removeIt;
+    decltype(_revisionInsertBuffers)::const_iterator insertIt;
+    decltype(_revisionRemovalBuffers)::const_iterator removeIt;
     {
       std::unique_lock<std::mutex> guard(_revisionBufferLock);
       insertIt = _revisionInsertBuffers.begin();
@@ -748,8 +748,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
   }
 
   Result res = basics::catchVoidToResult([&]() -> void {
-    std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator insertIt;
-    std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator removeIt;
+    decltype(_revisionInsertBuffers)::const_iterator insertIt;
+    decltype(_revisionRemovalBuffers)::const_iterator removeIt;
     {
       std::unique_lock<std::mutex> guard(_revisionBufferLock);
       insertIt = _revisionInsertBuffers.begin();
