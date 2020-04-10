@@ -2,17 +2,23 @@ devel
 -----
 
 * Added startup option `--server.validate-utf8-strings`.
+
   This option controls whether strings in incoming JSON or VPack requests are
   validated for UTF-8 conformity. If set to `true` (which is the default value),
   all strings are validated, and requests containing invalid UTF-8 data will be
   rejected. Setting the option to `false` will turn off the UTF-8 string
-  validation for incoming requests. This mode should only be used for deployments
-  that are known to already contain invalid UTF-8 data and to keep them 
-  operational until the wrong string encoding is fixed in the data.
+  validation for incoming requests. This mode should only be used for
+  deployments that are known to already contain invalid UTF-8 data and to keep
+  them operational until the wrong string encoding is fixed in the data.
 
-* Improve continuation behavior of AQL queries. We post the continuation handler
-  on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
-  of LOW.
+* Updated OpenSSL to 1.1.1f.
+
+* Fixed a bug which occurred if a dbserver was shut down exactly
+  when it was supposed to resign from its leadership for a shard.
+
+* Improve continuation behavior of AQL queries. We post the continuation
+  handler on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM
+  prio instead of LOW.
   
 * When relaying requests to other coordinators in a load-balanced setup, don't
   forward the "http/1.1" HTTP header from the remote response. Forwarding that
