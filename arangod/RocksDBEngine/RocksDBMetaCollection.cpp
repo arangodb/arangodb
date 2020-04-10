@@ -534,7 +534,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     ro.iterate_upper_bound = &end;
     ro.fill_cache = false;
 
-    std::vector<std::size_t> revisions;
+    std::vector<std::uint64_t> revisions;
     auto* db = rocksutils::globalRocksDB();
     auto iter = db->NewIterator(ro, documentBounds.columnFamily());
     for (iter->Seek(documentBounds.start());
@@ -690,8 +690,8 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
     }
 
     while (true) {
-      std::vector<std::size_t> inserts;
-      std::vector<std::size_t> removals;
+      std::vector<std::uint64_t> inserts;
+      std::vector<std::uint64_t> removals;
       // find out if we have buffers to apply
       {
         bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
@@ -781,8 +781,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
     }
 
     while (true) {
-      std::vector<std::size_t> const* inserts = nullptr;
-      std::vector<std::size_t> const* removals = nullptr;
+      std::vector<std::uint64_t> const* inserts = nullptr;
+      std::vector<std::uint64_t> const* removals = nullptr;
       // find out if we have buffers to apply
       {
         bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
