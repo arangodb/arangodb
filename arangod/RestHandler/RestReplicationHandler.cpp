@@ -52,6 +52,7 @@
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1424,9 +1425,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 Result RestReplicationHandler::parseBatch(std::string const& collectionName,
                                           std::unordered_map<std::string, VPackValueLength>& latest,
                                           VPackBuilder& allMarkers) {
-  VPackOptions options = VPackOptions::Defaults;
-  options.checkAttributeUniqueness = true;
-  VPackBuilder builder(&options);
+  VPackBuilder builder(&basics::VelocyPackHelper::requestValidationOptions);
 
   allMarkers.clear();
 
@@ -1467,6 +1466,11 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         Result res =
             restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
         if (res.fail()) {
+          if (res.errorNumber() == TRI_ERROR_HTTP_CORRUPTED_JSON) {
+            using namespace std::literals::string_literals;
+            auto data = std::string(ptr, pos);
+            res.appendErrorMessage(" in message '"s + data + "'");
+          }
           return res;
         }
 

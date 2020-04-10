@@ -186,6 +186,8 @@ struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
     return "hello from CustomTypeHandler";
   }
 };
+  
+/*static*/ arangodb::velocypack::Options VelocyPackHelper::requestValidationOptions;
 
 /// @brief static initializer for all VPack values
 void VelocyPackHelper::initialize() {
@@ -220,6 +222,15 @@ void VelocyPackHelper::initialize() {
   
   ::optionsWithUniquenessCheck = VPackOptions::Defaults;
   ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+
+  // set up options for validating incoming requests
+  requestValidationOptions = VPackOptions::Defaults;
+  requestValidationOptions.checkAttributeUniqueness = true;
+  // note: this value may be overriden by configuration!
+  requestValidationOptions.validateUtf8Strings = true;
+  requestValidationOptions.disallowExternals = true;
+  requestValidationOptions.disallowCustom = true;
+  requestValidationOptions.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
