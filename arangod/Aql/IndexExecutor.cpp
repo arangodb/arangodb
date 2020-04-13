@@ -126,7 +126,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
         return AqlValue(AqlValueHintDocumentNoCopy(s.start()));
       };
 
-      if (!context.checkFilterByIndex(getValue, &fc)) {
+      if (!context.checkFilter(getValue, &fc)) {
         context.incrFiltered();
         return false;
       }

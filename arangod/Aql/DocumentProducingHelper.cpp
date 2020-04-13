@@ -361,13 +361,12 @@ bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
   return checkFilter(ctx);
 }
 
-bool DocumentProducingFunctionContext::checkFilterByIndex(
+bool DocumentProducingFunctionContext::checkFilter(
     AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
     void const* filterContext) {
   DocumentIndexExpressionContext ctx(_query, getValue, filterContext);
   return checkFilter(ctx);
 }
-
 
 bool DocumentProducingFunctionContext::checkFilter(ExpressionContext& ctx) {
   bool mustDestroy;  // will get filled by execution

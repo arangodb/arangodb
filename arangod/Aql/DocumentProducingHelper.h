@@ -103,11 +103,11 @@ struct DocumentProducingFunctionContext {
   RegisterId getOutputRegister() const noexcept;
 
   bool checkUniqueness(LocalDocumentId const& token);
-  
+
   bool checkFilter(velocypack::Slice slice);
 
-  bool checkFilterByIndex(AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
-                          void const* filterContext);
+  bool checkFilter(AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+                   void const* filterContext);
 
   void reset();
 
