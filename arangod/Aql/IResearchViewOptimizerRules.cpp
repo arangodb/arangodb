@@ -275,40 +275,6 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
 }
 
-bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
-              std::vector<arangodb::basics::AttributeName> const& attrs,
-              bool ignoreExpansionInLast,
-              std::vector<std::string>& postfix) {
-  TRI_ASSERT(postfix.empty());
-  if (prefix.size() > attrs.size()) {
-    return false;
-  }
-
-  size_t i = 0;
-  for (; i < prefix.size(); ++i) {
-    if (prefix[i].name != attrs[i].name) {
-      return false;
-    }
-    if (prefix[i].shouldExpand != attrs[i].shouldExpand) {
-      if (!ignoreExpansionInLast) {
-        return false;
-      }
-      if (i != prefix.size() - 1) {
-        return false;
-      }
-    }
-  }
-  if (i < attrs.size()) {
-    postfix.reserve(attrs.size() - i);
-    std::transform(attrs.cbegin() + static_cast<ptrdiff_t>(i),
-                   attrs.cend(), std::back_inserter(postfix), [](auto const& attr) {
-      return attr.name;
-    });
-  }
-
-  return true;
-}
-
 struct ColumnVariant {
   latematerialized::AstAndColumnFieldData* afData;
   size_t fieldNum;
@@ -324,7 +290,7 @@ struct ColumnVariant {
 };
 
 bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredValues const& storedValues,
-                     latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>& node,
+                     latematerialized::NodeWithAttrsColumn& node,
                      std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>>& usedColumnsCounter) {
   // check all node attributes to be in sort
   for (auto& nodeAttr : node.attrs) {
@@ -334,7 +300,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     size_t fieldNum = 0;
     for (auto const& field : primarySort.fields()) {
       std::vector<std::string> postfix;
-      if (isPrefix(field, nodeAttr.attr, false, postfix)) {
+      if (latematerialized::isPrefix(field, nodeAttr.attr, false, postfix)) {
         usedColumnsCounter[IResearchViewNode::SortColumnNumber].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field, std::move(postfix)));
         found = true;
         break;
@@ -347,7 +313,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
       fieldNum = 0;
       for (auto const& field : column.fields) {
         std::vector<std::string> postfix;
-        if (isPrefix(field.second, nodeAttr.attr, false, postfix)) {
+        if (latematerialized::isPrefix(field.second, nodeAttr.attr, false, postfix)) {
           usedColumnsCounter[columnNum].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix)));
           found = true;
           break;
@@ -396,7 +362,7 @@ void setAttributesMaxMatchedColumns(std::unordered_map<ptrdiff_t, std::vector<Co
 
 void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
                                   arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
-  std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>> nodesToChange;
+  std::vector<latematerialized::NodeWithAttrsColumn> nodesToChange;
   std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>> usedColumnsCounter;
   for (auto* vNode : viewNodes) {
     TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
@@ -414,7 +380,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
       auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
       auto astNode = calcNode.expression()->nodeForModification();
-      latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData> node;
+      latematerialized::NodeWithAttrsColumn node;
       node.node = &calcNode;
       // find attributes referenced to view node out variable
       if (latematerialized::getReferencedAttributes(astNode, &var, node)) {

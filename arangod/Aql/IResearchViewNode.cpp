@@ -1579,7 +1579,7 @@ bool IResearchViewNode::OptimizationState::canVariablesBeReplaced(aql::Calculati
   return _nodesToChange.find(calclulationNode) != _nodesToChange.cend(); // contains()
 }
 
-void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs<aql::latematerialized::AstAndColumnFieldData>> const& nodesToChange) {
+void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrsColumn> const& nodesToChange) {
   TRI_ASSERT(!nodesToChange.empty());
   TRI_ASSERT(_nodesToChange.empty());
   _nodesToChange.clear();
