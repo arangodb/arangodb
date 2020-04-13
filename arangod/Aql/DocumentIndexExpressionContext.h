@@ -25,8 +25,6 @@
 
 #include "Aql/QueryExpressionContext.h"
 
-#include <velocypack/Slice.h>
-
 namespace arangodb {
 namespace aql {
 class Query;
