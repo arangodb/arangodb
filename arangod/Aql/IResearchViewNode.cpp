@@ -1532,7 +1532,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
     for (auto const& fieldsVars : columnFieldsVars.second) {
       auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
-      auto it = varInfos.find(fieldsVars.var->id);
+      auto const it = varInfos.find(fieldsVars.var->id);
       TRI_ASSERT(it != varInfos.cend());
       fields.emplace(fieldsVars.fieldNum, it->second.registerId);
     }
@@ -1598,7 +1598,8 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
   TRI_ASSERT(!calcNodes.empty());
   ViewVarsInfo uniqueVariables;
   // at first use variables from simple expressions
-  for (auto calcNode : calcNodes) {
+  for (auto* calcNode : calcNodes) {
+    TRI_ASSERT(calcNode);
     // a node is already unlinked
     if (calcNode->getParents().empty()) {
       continue;
@@ -1616,9 +1617,11 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
       }
     }
   }
-  auto ast = calcNodes.back()->expression()->ast();
+  auto* ast = calcNodes.back()->expression()->ast();
+  TRI_ASSERT(ast);
   // create variables for complex expressions
-  for (auto calcNode : calcNodes) {
+  for (auto* calcNode : calcNodes) {
+    TRI_ASSERT(calcNode);
     // a node is already unlinked
     if (calcNode->getParents().empty()) {
       continue;
@@ -1634,7 +1637,8 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
       }
     }
   }
-  for (auto calcNode : calcNodes) {
+  for (auto* calcNode : calcNodes) {
+    TRI_ASSERT(calcNode);
     // a node is already unlinked
     if (calcNode->getParents().empty()) {
       continue;
@@ -1642,11 +1646,13 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
     auto const& calcNodeData = _nodesToChange[calcNode];
     for (auto const& afData : calcNodeData) {
-      auto it = uniqueVariables.find(afData.field);
+      auto const it = uniqueVariables.find(afData.field);
       TRI_ASSERT(it != uniqueVariables.cend());
-      auto newNode = ast->createNodeReference(it->second.var);
+      auto* newNode = ast->createNodeReference(it->second.var);
+      TRI_ASSERT(newNode);
       if (!afData.postfix.empty()) {
         newNode = ast->createNodeAttributeAccess(newNode, afData.postfix);
+        TRI_ASSERT(newNode);
       }
       if (afData.parentNode != nullptr) {
         TEMPORARILY_UNLOCK_NODE(afData.parentNode);
@@ -1682,7 +1688,8 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
       }
     }
   }
-  auto ast = _nodesToChange.begin()->first->expression()->ast();
+  auto* ast = _nodesToChange.begin()->first->expression()->ast();
+  TRI_ASSERT(ast);
   // create variables for complex expressions
   for (auto calcNode : _nodesToChange) {
     // a node is already unlinked
@@ -1704,11 +1711,13 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
       continue;
     }
     for (auto const& afData : calcNode.second) {
-      auto it = uniqueVariables.find(afData.field);
+      auto const it = uniqueVariables.find(afData.field);
       TRI_ASSERT(it != uniqueVariables.cend());
-      auto newNode = ast->createNodeReference(it->second.var);
+      auto* newNode = ast->createNodeReference(it->second.var);
+      TRI_ASSERT(newNode);
       if (!afData.postfix.empty()) {
         newNode = ast->createNodeAttributeAccess(newNode, afData.postfix);
+        TRI_ASSERT(newNode);
       }
       if (afData.parentNode != nullptr) {
         TEMPORARILY_UNLOCK_NODE(afData.parentNode);

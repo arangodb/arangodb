@@ -107,8 +107,11 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
       auto getValue = [](void const* ctx, Variable const* var, bool doCopy) {
         TRI_ASSERT(ctx && var);
         auto const& fc = *reinterpret_cast<filterContext const*>(ctx);
-        auto it = fc.outNonMaterializedIndVars.second.find(var);
-        TRI_ASSERT(it != fc.outNonMaterializedIndVars.second.cend());
+        auto const it = fc.outNonMaterializedIndVars.second.find(var);
+        TRI_ASSERT(fc.outNonMaterializedIndVars.second.cend() != it);
+        if (ADB_UNLIKELY(fc.outNonMaterializedIndVars.second.cend() == it)) {
+          return AqlValue();
+        }
         velocypack::Slice s;
         // hash/skiplist/edge
         if (fc.slice.isArray()) {

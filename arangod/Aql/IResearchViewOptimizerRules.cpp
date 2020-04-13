@@ -336,8 +336,8 @@ void setAttributesMaxMatchedColumns(std::unordered_map<ptrdiff_t, std::vector<Co
   columnVariants.assign(std::make_move_iterator(usedColumnsCounter.begin()), std::make_move_iterator(usedColumnsCounter.end()));
   // first is max size one
   std::sort(columnVariants.begin(), columnVariants.end(), [](auto const& lhs, auto const& rhs) {
-    auto lSize = lhs.second.size();
-    auto rSize = rhs.second.size();
+    auto const lSize = lhs.second.size();
+    auto const rSize = rhs.second.size();
     // column contains more fields or
     // columns sizes == 1 and postfix is less (less column size) or
     // less column number (sort column priority)
@@ -379,7 +379,8 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
     for (auto* cNode : calcNodes) {
       TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
       auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
-      auto astNode = calcNode.expression()->nodeForModification();
+      auto* astNode = calcNode.expression()->nodeForModification();
+      TRI_ASSERT(astNode);
       latematerialized::NodeWithAttrsColumn node;
       node.node = &calcNode;
       // find attributes referenced to view node out variable
@@ -405,7 +406,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
 
 bool noDocumentMaterialization(arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes,
                                arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
-  bool modified = false;
+  auto modified = false;
   ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
   for (auto* node : viewNodes) {
     TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
@@ -414,7 +415,7 @@ bool noDocumentMaterialization(arangodb::containers::SmallVector<ExecutionNode*>
     if (!(viewNode.options().noMaterialization && viewNodeState.isNoDocumentMaterializationPossible())) {
       continue; // can not optimize
     }
-    auto current = node;
+    auto* current = node;
     current = current->getFirstParent();
     TRI_ASSERT(current);
     auto const& var = viewNode.outVariable();
@@ -430,8 +431,9 @@ bool noDocumentMaterialization(arangodb::containers::SmallVector<ExecutionNode*>
           isCalcNodesFound = true;
           break;
         case ExecutionNode::SUBQUERY: {
-          auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
-          auto subquery = subqueryNode->getSubquery();
+          auto& subqueryNode = *ExecutionNode::castTo<SubqueryNode*>(current);
+          auto* subquery = subqueryNode.getSubquery();
+          TRI_ASSERT(subquery);
           // check calculation nodes in the plan of a subquery
           CalculationNodeVarExistenceFinder finder(&var);
           valid = !subquery->walk(finder);
@@ -475,8 +477,8 @@ namespace iresearch {
 void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
                      std::unique_ptr<ExecutionPlan> plan,
                      OptimizerRule const& rule) {
-  bool modified = false;
-  auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
+  auto modified = false;
+  auto const addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
   // arangosearch view node supports late materialization
@@ -492,25 +494,26 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
-  for (auto limitNode : nodes) {
-    auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
+  for (auto* limitNode : nodes) {
+    auto* loop = const_cast<ExecutionNode*>(limitNode->getLoop());
     if (loop != nullptr && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
       if (viewNode.noMaterialization() || viewNode.isLateMaterialized()) {
         continue; // loop is already optimized
       }
-      ExecutionNode* current = limitNode->getFirstDependency();
+      auto* current = limitNode->getFirstDependency();
+      TRI_ASSERT(current);
       ExecutionNode* sortNode = nullptr;
       // examining plan. We are looking for SortNode closest to lowest LimitNode
       // without document body usage before that node.
       // this node could be appended with materializer
-      bool stopSearch = false;
-      bool stickToSortNode = false;
+      auto stopSearch = false;
+      auto stickToSortNode = false;
       auto const& var = viewNode.outVariable();
       std::vector<aql::CalculationNode*> calcNodes; // nodes variables can be replaced
       auto& viewNodeState = viewNode.state();
       while (current != loop) {
-        auto type = current->getType();
+        auto const type = current->getType();
         switch (type) {
           case ExecutionNode::SORT:
             if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
@@ -536,7 +539,8 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             auto valid = false;
             switch (type) {
             case ExecutionNode::CALCULATION: {
-              auto calcNode = ExecutionNode::castTo<CalculationNode*>(current);
+              auto* calcNode = ExecutionNode::castTo<CalculationNode*>(current);
+              TRI_ASSERT(calcNode);
               if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                 calcNodes.emplace_back(calcNode);
                 valid = true;
@@ -544,20 +548,22 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
               break;
             }
             case ExecutionNode::SUBQUERY: {
-              auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
-              auto subquery = subqueryNode->getSubquery();
+              auto& subqueryNode = *ExecutionNode::castTo<SubqueryNode*>(current);
+              auto* subquery = subqueryNode.getSubquery();
+              TRI_ASSERT(subquery);
               ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
               ::arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
               // find calculation nodes in the plan of a subquery
               CalculationNodeVarFinder finder(&var, subqueryCalcNodes);
               valid = !subquery->walk(finder);
               if (valid) { // if the finder did not stop
-                for (auto scn : subqueryCalcNodes) {
-                  TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
+                for (auto* scn : subqueryCalcNodes) {
+                  TRI_ASSERT(scn && scn->getType() == ExecutionNode::CALCULATION);
                   currentUsedVars.clear();
                   scn->getVariablesUsedHere(currentUsedVars);
                   if (currentUsedVars.find(&var) != currentUsedVars.end()) {
-                    auto calcNode = ExecutionNode::castTo<CalculationNode*>(scn);
+                    auto* calcNode = ExecutionNode::castTo<CalculationNode*>(scn);
+                    TRI_ASSERT(calcNode);
                     if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                       calcNodes.emplace_back(calcNode);
                     } else {
@@ -606,18 +612,23 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         }
         // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
         // 3. We need to add materializer after limit node to do materialization
-        Ast* ast = plan->getAst();
+        auto* ast = plan->getAst();
+        TRI_ASSERT(ast);
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
+        TRI_ASSERT(localDocIdTmp);
         auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
+        TRI_ASSERT(localColPtrTmp);
         viewNode.setLateMaterialized(*localColPtrTmp, *localDocIdTmp);
         // insert a materialize node
-        auto materializeNode =
+        auto* materializeNode =
             plan->registerNode(std::make_unique<materialize::MaterializeMultiNode>(
               plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, var));
+        TRI_ASSERT(materializeNode);
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible
-        auto materializeDependency = ServerState::instance()->isCoordinator() || stickToSortNode ? sortNode : limitNode;
+        auto* materializeDependency = ServerState::instance()->isCoordinator() || stickToSortNode ? sortNode : limitNode;
+        TRI_ASSERT(materializeDependency);
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
         dependencyParent->replaceDependency(materializeDependency, materializeNode);
