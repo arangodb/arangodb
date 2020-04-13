@@ -37,10 +37,6 @@ size_t DocumentIndexExpressionContext::numRegisters() const {
 
 AqlValue DocumentIndexExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                           bool& mustDestroy) const {
-  if (doCopy) {
-    mustDestroy = true;  // as we are copying
-  } else {
-    mustDestroy = false;
-  }
+  mustDestroy = doCopy;  // as we are copying
   return _getValue(_ctx, variable, doCopy);
 }
