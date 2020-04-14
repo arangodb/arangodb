@@ -333,7 +333,7 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node,
   return node;
 }
 
-void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,
+void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                                std::vector<RegisterId>& inRegs,
                                std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                                transaction::Methods* trxPtr) const {

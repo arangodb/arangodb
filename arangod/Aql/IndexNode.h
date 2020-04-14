@@ -147,7 +147,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                            IndexVarsInfo const& indexVariables);
 
  private:
-  void initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,
+  void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                       std::vector<RegisterId>& inRegs,
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                       transaction::Methods* trxPtr) const;
