@@ -386,7 +386,7 @@ function agencyTestSuite () {
 
       ret = request({url: agencyLeader + "/_api/agency/poll",
                          method: "GET", followRedirect: true});
-      if (ret.statusCode === 202) {
+      if (ret.statusCode === 200) {
         ret.bodyParsed = JSON.parse(ret.body);
       }
       assertTrue(ret.bodyParsed.hasOwnProperty("result"));
@@ -400,7 +400,7 @@ function agencyTestSuite () {
 
       ret = request({url: agencyLeader + "/_api/agency/poll?index=0",
                      method: "GET", followRedirect: true});
-      if (ret.statusCode === 202) {
+      if (ret.statusCode === 200) {
         ret.bodyParsed = JSON.parse(ret.body);
       }
       assertTrue(ret.bodyParsed.hasOwnProperty("result"));
@@ -414,7 +414,7 @@ function agencyTestSuite () {
 
       ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
                      method: "GET", followRedirect: true});
-      if (ret.statusCode === 202) {
+      if (ret.statusCode === 200) {
         ret.bodyParsed = JSON.parse(ret.body);
       }
       assertTrue(ret.bodyParsed.hasOwnProperty("result"));
@@ -427,7 +427,7 @@ function agencyTestSuite () {
 
       ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
                      method: "GET", followRedirect: true});
-      if (ret.statusCode === 202) {
+      if (ret.statusCode === 200) {
         ret.bodyParsed = JSON.parse(ret.body);
       }
       assertTrue(ret.bodyParsed.hasOwnProperty("result"));
@@ -440,7 +440,7 @@ function agencyTestSuite () {
 
       ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
                      method: "GET", followRedirect: true});
-      if (ret.statusCode === 202) {
+      if (ret.statusCode === 200) {
         ret.bodyParsed = JSON.parse(ret.body);
       }
       assertTrue(ret.bodyParsed.hasOwnProperty("result"));
@@ -455,7 +455,7 @@ function agencyTestSuite () {
 
       ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
                      method: "GET", followRedirect: true});
-      if (ret.statusCode === 202) {
+      if (ret.statusCode === 200) {
         ret.bodyParsed = JSON.parse(ret.body);
       }
       assertTrue(ret.bodyParsed.hasOwnProperty("result"));
@@ -482,7 +482,7 @@ function agencyTestSuite () {
                      method: "GET", followRedirect: true});
       assertEqual(ret.statusCode, 200);
       ret = request({url: agencyLeader + "/_api/job/" + job, method: "PUT"});
-      assertEqual(ret.statusCode, 202);
+      assertEqual(ret.statusCode, 200);
       ret.bodyParsed = JSON.parse(ret.body);
       result = ret.bodyParsed.result;
 
@@ -502,7 +502,7 @@ function agencyTestSuite () {
           bodyParsed.results[0];
       ret = request({url: agencyLeader + "/_api/job/" + job,
                      method: "PUT", followRedirect: true, body: {}});
-      assertEqual(ret.statusCode, 202);
+      assertEqual(ret.statusCode, 200);
       ret.bodyParsed = JSON.parse(ret.body);
       result = ret.bodyParsed.result;
       assertEqual(result.firstIndex, ci+1);

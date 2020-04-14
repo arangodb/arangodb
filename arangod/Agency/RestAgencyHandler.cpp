@@ -160,35 +160,36 @@ RestStatus RestAgencyHandler::pollIndex(
   index_t const& start, double const& timeout) {
   return waitForFuture(
     _agent->poll(start, timeout)
-    .thenValue([this, start](std::shared_ptr<VPackBuilder> rb) {
+    .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
       VPackSlice res = rb->slice();
+
       TRI_ASSERT(res.hasKey("result"));
       if (res.hasKey("result")) {
-        VPackBuffer<uint8_t> payload;
-        VPackBuilder builder(payload);
-        {
-          VPackObjectBuilder ob(&builder);
-          builder.add(StaticStrings::Error, VPackValue(false));
-          builder.add("code", VPackValue(int(ResponseCode::OK)));
-          builder.add(VPackValue("result"));
-          VPackObjectBuilder r(&builder);
-          VPackSlice slice = res.get("result");
-          auto const firstIndex = slice.get("firstIndex");
-          builder.add("commitIndex", slice.get("commitIndex"));
-          builder.add("firstIndex", firstIndex);
-          if (slice.hasKey("log")) {
+        resetResponse(rest::ResponseCode::OK);
+        VPackSlice slice = res.get("result");
+        
+        if (slice.hasKey("log")) {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder ob(&builder);
+            builder.add(StaticStrings::Error, VPackValue(false));
+            builder.add("code", VPackValue(int(ResponseCode::OK)));
+            builder.add(VPackValue("result"));
+            VPackObjectBuilder r(&builder);
+            auto const firstIndex = slice.get("firstIndex");
+            builder.add("commitIndex", slice.get("commitIndex"));
+            builder.add("firstIndex", firstIndex);
             VPackSlice logs = slice.get("log");
             builder.add(VPackValue("log"));
             VPackArrayBuilder a(&builder);
             for (size_t i = start - firstIndex.getNumber<uint64_t>(); i < logs.length(); i++) {
               builder.add(logs[i]);
             }
-          } else {
-            builder.add("readDB", slice.get("readDB"));
           }
+          response()->setPayload(std::move(*builder.steal()));
+        } else {
+          response()->setPayload(std::move(*rb->steal()));
         }
-        resetResponse(rest::ResponseCode::ACCEPTED);
-        response()->setPayload(std::move(payload));
       } else {
         generateError(
           rest::ResponseCode::SERVICE_UNAVAILABLE,
