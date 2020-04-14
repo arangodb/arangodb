@@ -807,7 +807,7 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
     std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
     Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
-    if (res.ok() && !iid.isNone()) {
+    if (res.ok() && iid.isSet()) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);
       auto byDef = physical->lookupIndex(idxDef);
