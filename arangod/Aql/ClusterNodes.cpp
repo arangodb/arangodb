@@ -422,8 +422,16 @@ CostEstimate DistributeNode::estimateCost() const {
 /*static*/ Collection const* GatherNode::findCollection(GatherNode const& root) noexcept {
   ExecutionNode const* node = root.getFirstDependency();
 
+  auto remotesSeen = 0;
+
   while (node) {
     switch (node->getType()) {
+      case UPDATE:
+      case REMOVE:
+      case INSERT:
+      case UPSERT:
+      case REPLACE:
+      case MATERIALIZE:
       case TRAVERSAL:
       case SHORTEST_PATH:
       case K_SHORTEST_PATHS:
@@ -435,9 +443,27 @@ CostEstimate DistributeNode::estimateCost() const {
         }
         break;
       }
+      case ENUMERATE_IRESEARCH_VIEW:
+        // Views are instantiated per DBServer, not per Shard, and are not
+        // CollectionAccessingNodes. And we don't know the number of DBServers
+        // at this point.
+        return nullptr;
+      case REMOTE:
+        ++remotesSeen;
+        if (remotesSeen > 1) {
+          TRI_ASSERT(false);
+          return nullptr;  // diamond boundary
+        }
+        break;
       case SCATTER:
+      case DISTRIBUTE:
         TRI_ASSERT(false);
         return nullptr;  // diamond boundary
+      case REMOTESINGLE:
+        // While being a CollectionAccessingNode, it lives on the Coordinator.
+        // However it should thus not be encountered here.
+        TRI_ASSERT(false);
+        return nullptr;
       default:
         break;
     }

@@ -83,7 +83,7 @@ class LogicalCollection : public LogicalDataSource {
                     bool isAStub, uint64_t planVersion = 0);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
-  virtual ~LogicalCollection();
+  ~LogicalCollection() override;
 
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
