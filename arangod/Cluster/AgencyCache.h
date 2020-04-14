@@ -42,14 +42,14 @@ public:
 
   /// @brief 1. Long poll from agency's Raft log
   ///        2. Entertain local cache of agency's read db
-  void run() override final;
+  virtual void run() override final;
 
   /// @brief Start thread
   bool start();
 
   /// @brief Start orderly shutdown of threads
   // cppcheck-suppress virtualCallInConstructor
-  void beginShutdown() override final;
+  virtual void beginShutdown() override final;
 
   /// @brief Read from local readDB cache at path
   arangodb::consensus::Node const& read(std::string const& path) const;
