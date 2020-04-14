@@ -260,7 +260,7 @@
     changeValidation: function (validation, callback) {
       var result = false;
       if (!validation) {
-        validation = {};
+        validation = null;
       }
 
       var data = {

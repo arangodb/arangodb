@@ -1168,7 +1168,6 @@
         this.documentView.resize();
       }
       if (this.validationView && Backbone.history.getFragment().indexOf('cSchema') > -1) {
-        // TODO the resize does not work :( -- kittens die -- Heiko Help:)
         this.validationView.resize();
       }
     },
