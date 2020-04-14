@@ -87,9 +87,9 @@ static TRI_edge_direction_e parseDirection(AstNode const* node) {
   return uint64ToDirection(dirNum);
 }
 
-GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-                     AstNode const* direction, AstNode const* graph,
-                     std::unique_ptr<BaseOptions> options)
+GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
+                     TRI_vocbase_t* vocbase, AstNode const* direction,
+                     AstNode const* graph, std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -343,11 +343,12 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   VPackSlice dirList = base.get("directions");
   if (!dirList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-        "graph needs an array of directions.");
+                                   "graph needs an array of directions.");
   }
 
   if (edgeCollections.length() != dirList.length()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_BAD_JSON_PLAN,
         "graph needs the same number of edge collections and directions.");
   }
 
@@ -375,7 +376,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     TRI_edge_direction_e d = uint64ToDirection(dir);
     // Only TRI_EDGE_IN and TRI_EDGE_OUT allowed here
     TRI_ASSERT(d == TRI_EDGE_IN || d == TRI_EDGE_OUT);
-    std::string e = arangodb::basics::VelocyPackHelper::getStringValue(*edgeIt, "");
+    std::string e =
+        arangodb::basics::VelocyPackHelper::getStringValue(*edgeIt, "");
     auto* aqlCollection = getAqlCollectionFromName(e);
     addEdgeCollection(aqlCollection, d);
   }
@@ -600,10 +602,35 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 }
 
 CostEstimate GraphNode::estimateCost() const {
-  TRI_ASSERT(_optionsBuilt);
   CostEstimate estimate = _dependencies.at(0)->getCost();
   size_t incoming = estimate.estimatedNrItems;
-  estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems);
+  if (_optionsBuilt) {
+    // We know which indexes are in use.
+    estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems);
+  } else {
+    // Some hard-coded value, this is identical to build lookupInfos
+    // if no index estimate is availble (and it is not as long as the options are not built)
+    double baseCost = 1;
+    size_t baseNumItems = 0;
+    for (auto& e : _edgeColls) {
+      auto count = e->count(_options->trx());
+      // Assume an estimate if 10% hit rate
+      baseCost *= count / 10;
+      baseNumItems += std::ceil(count / 10);
+    }
+
+    size_t estDepth = _options->estimateDepth();
+    double tmpNrItems = incoming * std::pow(baseNumItems, estDepth);
+    // Protect against size_t overflow, just to be sure.
+    if (tmpNrItems > std::numeric_limits<size_t>::max()) {
+      // This will be an expensive query...
+      estimate.estimatedNrItems = std::numeric_limits<size_t>::max();
+    } else {
+      estimate.estimatedNrItems += static_cast<size_t>(tmpNrItems);
+    }
+    estimate.estimatedCost += incoming * std::pow(baseCost, estDepth);
+  }
+
   return estimate;
 }
 
