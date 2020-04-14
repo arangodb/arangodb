@@ -3700,7 +3700,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
         deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
       continue;
     }
-    
+
     auto const nodeType = node->getType();
     bool scatterOnly = false;
 
@@ -3708,21 +3708,21 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
     // in case of local joins we want to avoid inserting scatter..gather of course.
     if (plan->shouldExcludeFromScatterGather(node)) {
       // this must be a node that is supposed to be executed on a DB server
-      TRI_ASSERT(nodeType == ExecutionNode::ENUMERATE_COLLECTION || nodeType == ExecutionNode::INDEX ||
-                 nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::UPDATE ||
-                 nodeType == ExecutionNode::REPLACE || nodeType == ExecutionNode::REMOVE ||
-                 nodeType == ExecutionNode::UPSERT);
+      TRI_ASSERT(nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
+                 nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::INSERT ||
+                 nodeType == ExecutionNode::UPDATE || nodeType == ExecutionNode::REPLACE ||
+                 nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPSERT);
 
-      // look for other nodes north of us, to check if any of them require running
-      // on a coordinator
+      // look for other nodes north of us, to check if any of them require
+      // running on a coordinator
       bool eligible = true;
       auto current = deps[0];
       while (current != nullptr) {
-        if (current->getType() == ExecutionNode::ENUMERATE_COLLECTION || 
+        if (current->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
             current->getType() == ExecutionNode::INDEX ||
-            current->getType() == ExecutionNode::INSERT || 
+            current->getType() == ExecutionNode::INSERT ||
             current->getType() == ExecutionNode::UPDATE ||
-            current->getType() == ExecutionNode::REPLACE || 
+            current->getType() == ExecutionNode::REPLACE ||
             current->getType() == ExecutionNode::REMOVE ||
             current->getType() == ExecutionNode::UPSERT) {
           // these nodes are definitely run on a DB server too.
@@ -3730,10 +3730,10 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
           TRI_ASSERT(eligible);
           break;
         }
-        
-        if (current->getType() == ExecutionNode::TRAVERSAL || 
+
+        if (current->getType() == ExecutionNode::TRAVERSAL ||
             current->getType() == ExecutionNode::SHORTEST_PATH ||
-            current->getType() == ExecutionNode::K_SHORTEST_PATHS || 
+            current->getType() == ExecutionNode::K_SHORTEST_PATHS ||
             current->getType() == ExecutionNode::REMOTESINGLE) {
           // these nodes must be executed on coordinators
           eligible = false;
@@ -3751,18 +3751,18 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       }
 
       if (eligible) {
-        // no need to insert scatter..gather at all! 
+        // no need to insert scatter..gather at all!
         // move on to the next node
         continue;
-      } 
+      }
 
-      // smart-joins rule has marked this node as being part of a local join, but
-      // there is still a coordinator-based node north of us. so we need to be careful 
-      // to insert at least the scatter part here (though there is no need to insert
-      // the gather part).
+      // smart-joins rule has marked this node as being part of a local join,
+      // but there is still a coordinator-based node north of us. so we need to
+      // be careful to insert at least the scatter part here (though there is no
+      // need to insert the gather part).
       scatterOnly = true;
     }
-      
+
     auto const isRootNode = plan->isRoot(node);
 
     // extract database and collection from plan node
@@ -3822,26 +3822,14 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       TRI_ASSERT(plan->shouldExcludeFromScatterGather(node));
 
       ExecutionNode* remoteNode =
-        new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
+          new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
       plan->registerNode(remoteNode);
       plan->insertBefore(node, remoteNode);
 
       auto* scatterNode =
-        new ScatterNode(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD);
+          new ScatterNode(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD);
       plan->registerNode(scatterNode);
       plan->insertBefore(remoteNode, scatterNode);
-
-      // check if south of us we see a scatter..remote combination
-      // if yes, we must remove it in order to get a valid plan
-      auto* directParent = node->getFirstParent();
-      if (directParent != nullptr && directParent->getType() == ExecutionNode::SCATTER) {
-        auto* indirectParent = directParent->getFirstParent();
-        if (indirectParent != nullptr && indirectParent->getType() == ExecutionNode::REMOTE) {
-          plan->unlinkNode(directParent, true);
-          plan->unlinkNode(indirectParent, true);
-        }
-      }
-      
     } else {
       // we need to insert the full scatter...gather thing
       plan->unlinkNode(node, true);
@@ -3849,6 +3837,17 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       size_t numberOfShards = collection->numberOfShards();
       createScatterGatherSnippet(*plan, vocbase, node, isRootNode, deps, parents,
                                  elements, numberOfShards, subqueries, collection);
+    }
+
+    // check if south of us we see a scatter..remote combination
+    // if yes, we must remove it in order to get a valid plan
+    auto* directParent = node->getFirstParent();
+    if (directParent != nullptr && directParent->getType() == ExecutionNode::SCATTER) {
+      auto* indirectParent = directParent->getFirstParent();
+      if (indirectParent != nullptr && indirectParent->getType() == ExecutionNode::REMOTE) {
+        plan->unlinkNode(directParent, true);
+        plan->unlinkNode(indirectParent, true);
+      }
     }
     wasModified = true;
   }
