@@ -60,9 +60,6 @@ bool RocksDBTransactionCollection::hasOperations() const {
   return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
 }
 
-void RocksDBTransactionCollection::freeOperations(transaction::Methods* /*activeTrx*/,
-                                                  bool /*mustRollback*/) {}
-
 bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const {
   if (!_collection) {
     return false;  // not opened. probably a mistake made by the caller

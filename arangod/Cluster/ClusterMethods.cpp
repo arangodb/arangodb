@@ -32,9 +32,9 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -62,6 +62,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/ticks.h"
 
@@ -1273,12 +1274,11 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
            .param(StaticStrings::KeepNullString, (options.keepNull ? "true" : "false"))
            .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
-           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"))
            .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"));
-    if(options.overwriteModeUpdate) {
-      reqOpts.parameters.insert_or_assign(StaticStrings::OverWriteMode,  "update" );
+    if (options.isOverwriteModeSet()) {
+      reqOpts.parameters.insert_or_assign(StaticStrings::OverwriteMode, 
+                                          OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
-
 
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();

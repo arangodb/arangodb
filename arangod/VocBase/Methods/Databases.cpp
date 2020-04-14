@@ -410,7 +410,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
         // If we are a coordinator in a cluster, we have to behave differently:
         res = ::dropDBCoordinator(dbName);
       } else {
-        res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
+        res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
 
         if (res.fail()) {
           events::DropDatabase(dbName, res.errorNumber());
@@ -438,7 +438,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
       // If we are a coordinator in a cluster, we have to behave differently:
       res = ::dropDBCoordinator(dbName);
     } else {
-      res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
+      res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
     }
   }
 

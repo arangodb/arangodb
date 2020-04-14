@@ -885,7 +885,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
       "{ \
         \"name\": \"testView\", \
         \"type\": \"arangosearch\", \
-        \"storedValues\": [\"str\", \"value\", \"_id\"] \
+        \"storedValues\": [{\"fields\":[\"str\"]}, {\"fields\":[\"value\"]}, {\"fields\":[\"_id\"]}] \
       }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));

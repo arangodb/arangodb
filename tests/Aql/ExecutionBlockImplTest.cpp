@@ -42,6 +42,7 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/SubqueryStartExecutor.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -86,7 +87,7 @@ class SharedExecutionBlockImplTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   ExecutionNode* generateNodeDummy() {
-    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
+    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -94,6 +95,12 @@ class SharedExecutionBlockImplTest {
 
   AqlCallStack buildStack(AqlCall call) {
     return AqlCallStack{AqlCallList{call}};
+  }
+
+  AqlCallStack buildStack(AqlCall subqueryCall, AqlCall call) {
+    AqlCallStack stack{AqlCallList{subqueryCall}};
+    stack.pushCall(AqlCallList{call});
+    return stack;
   }
 
   /**
@@ -343,6 +350,25 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     return res;
   }
 
+  std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
+                                                      RegisterId nrRegs) {
+    auto readableIn = make_shared_unordered_set({});
+    auto writeableOut = make_shared_unordered_set({});
+    std::unordered_set<RegisterId> registersToClear{};
+    std::unordered_set<RegisterId> registersToKeep{};
+    for (RegisterId r = 1; r <= nrRegs; ++r) {
+      // NrReg and usedRegs are off-by-one...
+      readableIn->emplace(r - 1);
+      registersToKeep.emplace(r - 1);
+    }
+
+    auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
+        fakedQuery->engine(), generateNodeDummy(),
+        ExecutorInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
+    res->addDependency(dependency);
+    return res;
+  }
+
   /**
    * @brief Generic test runner. Creates Lambda Executors, and returns ExecutionBlockImpl.execute(call),
    *
@@ -548,17 +574,19 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_relevant_shadowrow_does_not_f
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}, {}}, {{1, 0}});
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+  auto subqueryStart = createSubqueryStart(singleton.get(), 0);
   // Produce one full block. The shadowRow has no space left
-  auto testee = onceLinesProducer(singleton.get(), ExecutionBlock::DefaultBatchSize);
+  auto testee = onceLinesProducer(subqueryStart.get(), ExecutionBlock::DefaultBatchSize);
 
   AqlCall fullCall{};
   auto stack = buildStack(fullCall);
+  stack.pushCall(AqlCallList{fullCall});
   {
     // First call. Fetch all rows (data only)
     auto const& [state, skipped, block] = testee->execute(stack);
@@ -590,18 +618,24 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_in_
   }
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
-    SharedAqlItemBlockPtr block = buildBlock<0>(fakedQuery->engine()->itemBlockManager(),
-                                                {{}, {}, {}}, {{1, 0}, {2, 1}});
+    SharedAqlItemBlockPtr block =
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-  // Produce one full block. The shadowRow has no space left
-  auto testee = onceLinesProducer(singleton.get(), ExecutionBlock::DefaultBatchSize);
+
+  auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
+  auto subqueryInnerStart = createSubqueryStart(subqueryOuterStart.get(), 0);
+  // Produce one full block. The shadowRows have no space left
+  auto testee = onceLinesProducer(subqueryInnerStart.get(), ExecutionBlock::DefaultBatchSize);
 
   AqlCall fullCall{};
   auto stack = buildStack(fullCall);
+  stack.pushCall(AqlCallList{fullCall});
+  stack.pushCall(AqlCallList{fullCall});
+
   {
     // First call. Fetch all rows (data only)
     auto const& [state, skipped, block] = testee->execute(stack);
@@ -640,18 +674,25 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
   }
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
-    SharedAqlItemBlockPtr block = buildBlock<0>(fakedQuery->engine()->itemBlockManager(),
-                                                {{}, {}, {}}, {{1, 0}, {2, 1}});
+    SharedAqlItemBlockPtr block =
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-  // Produce one full block. The shadowRow has no space left
-  auto testee = onceLinesProducer(singleton.get(), ExecutionBlock::DefaultBatchSize - 1);
+
+  auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
+  auto subqueryInnerStart = createSubqueryStart(subqueryOuterStart.get(), 0);
+  // Produce one full block. The second shadowRow have no space left
+  auto testee = onceLinesProducer(subqueryInnerStart.get(),
+                                  ExecutionBlock::DefaultBatchSize - 1);
 
   AqlCall fullCall{};
   auto stack = buildStack(fullCall);
+  stack.pushCall(AqlCallList{fullCall});
+  stack.pushCall(AqlCallList{fullCall});
+
   {
     // First call. Fetch all rows (data + relevant shadow row)
     auto const& [state, skipped, block] = testee->execute(stack);
@@ -1232,6 +1273,25 @@ class ExecutionBlockImplExecuteIntegrationTest
     return producer;
   }
 
+  std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
+                                                      RegisterId nrRegs) {
+    auto readableIn = make_shared_unordered_set({});
+    auto writeableOut = make_shared_unordered_set({});
+    std::unordered_set<RegisterId> registersToClear{};
+    std::unordered_set<RegisterId> registersToKeep{};
+    for (RegisterId r = 1; r <= nrRegs; ++r) {
+      // NrReg and usedRegs are off-by-one...
+      readableIn->emplace(r - 1);
+      registersToKeep.emplace(r - 1);
+    }
+
+    auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
+        fakedQuery->engine(), generateNodeDummy(),
+        ExecutorInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
+    res->addDependency(dependency);
+    return res;
+  }
+
   void ValidateSkipMatches(AqlCall const& call, size_t dataLength, size_t actual) const {
     size_t expected = 0;
     // Skip Offset, but not more then available
@@ -1766,7 +1826,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
   builder.openArray();
   for (size_t i = 0; i < 3; ++i) {
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{i}}, {{0, 0}});
+        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{i}});
     blockDeque.push_back(std::move(block));
     builder.add(VPackValue(0));
   }
@@ -1778,6 +1838,31 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
+  auto subqueryStart = createSubqueryStart(producer.get(), 1);
+  auto filterAllCallback =
+      [](AqlItemBlockInputRange& inputRange,
+         OutputAqlItemRow& output) -> std::tuple<ExecutorState, NoStats, AqlCall> {
+    while (inputRange.hasDataRow()) {
+      std::ignore = inputRange.nextDataRow();
+    }
+    return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
+  };
+  auto skipAllCallback = [](AqlItemBlockInputRange& input,
+                            AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+    while (call.needSkipMore() && input.skippedInFlight() > 0) {
+      if (call.getOffset() > 0) {
+        call.didSkip(input.skip(call.getOffset()));
+      } else {
+        call.didSkip(input.skipAll());
+      }
+    }
+    return {input.upstreamState(), NoStats{}, call.getSkipCount(), call};
+  };
+  auto filterData = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+      fakedQuery->engine(), generateNodeDummy(),
+      makeSkipInfos(std::move(filterAllCallback), std::move(skipAllCallback), 0, 0));
+  filterData->addDependency(subqueryStart.get());
+
   RegisterId outReg = 0;
   // We ask:
   // Empty input
@@ -1786,13 +1871,13 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
   size_t maxCalls = doesWaiting() ? 9 : 6;
   NoneAsserter getAsserter{getCall(), maxCalls};
   NoneAsserter skipAsserter{getCall(), maxCalls};
-  auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
+  auto testee = forwardBlock(getAsserter, skipAsserter, filterData.get(), outReg);
 
   for (size_t i = 0; i < 3; ++i) {
     // We always take a new call. We do not want the call to be modified cross
     // subqueries, this would not be done by Executors.
     auto const& call = getCall();
-    auto stack = buildStack(call);
+    auto stack = buildStack(AqlCall{}, call);
     // We cannot group shadowRows within a single call.
     // So we end up with 3 results, each 1 shadowRow, no matter what the call is
     auto [state, skipped, block] = testee->execute(stack);
@@ -1828,13 +1913,15 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}, {}}, {{1, 0}});
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  auto subqueryStart = createSubqueryStart(singleton.get(), 0);
 
   auto builder = std::make_shared<VPackBuilder>();
   {
@@ -1846,14 +1933,14 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
   }
 
   RegisterId outReg = 0;
-  auto producer = produceBlock(singleton.get(), builder, outReg);
+  auto producer = produceBlock(subqueryStart.get(), builder, outReg);
 
   CallAsserter getAsserter{getCall()};
   SkipCallAsserter skipAsserter{getCall()};
   auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
 
   auto const& call = getCall();
-  auto stack = buildStack(call);
+  auto stack = buildStack(AqlCall{}, call);
   if (doesWaiting()) {
     auto const [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1879,14 +1966,18 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRow) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
-    SharedAqlItemBlockPtr block = buildBlock<0>(fakedQuery->engine()->itemBlockManager(),
-                                                {{}, {}, {}}, {{1, 0}, {2, 1}});
+    SharedAqlItemBlockPtr block =
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
+
+  auto subqueryInnerStart = createSubqueryStart(subqueryOuterStart.get(), 0);
 
   auto builder = std::make_shared<VPackBuilder>();
   {
@@ -1898,14 +1989,15 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRo
   }
 
   RegisterId outReg = 0;
-  auto producer = produceBlock(singleton.get(), builder, outReg);
+  auto producer = produceBlock(subqueryInnerStart.get(), builder, outReg);
 
   CallAsserter getAsserter{getCall()};
   SkipCallAsserter skipAsserter{getCall()};
   auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
 
   auto const& call = getCall();
-  auto stack = buildStack(call);
+  auto stack = buildStack(AqlCall{}, AqlCall{});
+  stack.pushCall(AqlCallList{call});
   if (doesWaiting()) {
     auto const [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1934,20 +2026,25 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     // First subquery
-    SharedAqlItemBlockPtr block = buildBlock<1>(fakedQuery->engine()->itemBlockManager(),
-                                                {{1}, {3}, {4}}, {{1, 0}, {2, 1}});
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{1}});
     blockDeque.push_back(std::move(block));
   }
   {
     // Second subquery
-    SharedAqlItemBlockPtr block = buildBlock<1>(fakedQuery->engine()->itemBlockManager(),
-                                                {{2}, {5}, {6}}, {{1, 0}, {2, 1}});
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{2}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  auto subqueryOuterStart = createSubqueryStart(singleton.get(), 1);
+
+  auto subqueryInnerStart = createSubqueryStart(subqueryOuterStart.get(), 1);
+
   size_t dataRowCount = 250;
   auto builder = std::make_shared<VPackBuilder>();
   {
@@ -1959,7 +2056,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
   }
 
   RegisterId outReg = 1;
-  auto producer = produceBlock(singleton.get(), builder, outReg);
+  auto producer = produceBlock(subqueryInnerStart.get(), builder, outReg);
 
   CallAsserter getAsserter{getCall()};
   SkipCallAsserter skipAsserter{getCall()};
@@ -1974,7 +2071,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
     }
     subqueryData->close();
     auto const& call = getCall();
-    auto stack = buildStack(call);
+    auto stack = buildStack(AqlCall{}, AqlCall{});
+    stack.pushCall(AqlCallList{call});
     if (doesWaiting()) {
       auto const [state, skipped, block] = testee->execute(stack);
       EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1995,7 +2093,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
         AqlCall forwardCall{};
         forwardCall.hardLimit = 0;
         forwardCall.fullCount = false;
-        auto forwardStack = buildStack(forwardCall);
+
+        auto forwardStack = buildStack(AqlCall{}, AqlCall{});
+        forwardStack.pushCall(AqlCallList{forwardCall});
+
         auto const [forwardState, forwardSkipped, forwardBlock] =
             testee->execute(forwardStack);
         // We do not care for any data left
@@ -2039,9 +2140,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     // 1 query with 0 row + 1 ShadowRows (depth 0)
     // 1 query with 0 row + 2 ShadowRow (depth 0, depth 1)
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(),
-                      {{1}, {2}, {3}, {4}, {5}, {6}},
-                      {{1, 0}, {2, 1}, {3, 0}, {4, 0}, {5, 1}});
+        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{3}, {6}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
@@ -2049,13 +2148,105 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ONCE
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
-  RegisterId outReg = 0;
+  auto subqueryOuterStart = createSubqueryStart(singleton.get(), 1);
+
+  RegisterId outReg = 2;
+  RegisterId depth1Reg = 1;
+  RegisterId depth0Reg = 0;
+
+  auto produceDepth0 = [depth0Reg, depth1Reg](AqlItemBlockInputRange& inputRange,
+                                              OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, NoStats, AqlCall> {
+    while (inputRange.hasDataRow()) {
+      auto [state, row] = inputRange.nextDataRow();
+      auto val = row.getValue(depth0Reg).toInt64();
+      if (val == 3) {
+        // Write one Row here
+        AqlValue v(AqlValueHintInt{2});
+        AqlValueGuard guard(v, true);
+        output.moveValueInto(depth1Reg, row, guard);
+        output.advanceRow();
+      }
+      if (val == 6) {
+        // Write two rows here
+        {
+          AqlValue v(AqlValueHintInt{4});
+          AqlValueGuard guard(v, true);
+          output.moveValueInto(depth1Reg, row, guard);
+          output.advanceRow();
+        }
+        {
+          AqlValue v(AqlValueHintInt{5});
+          AqlValueGuard guard(v, true);
+          output.moveValueInto(depth1Reg, row, guard);
+          output.advanceRow();
+        }
+      }
+    }
+    return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
+  };
+
+  auto skipDepth0 = [](AqlItemBlockInputRange& input,
+                       AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+    // We have a defined outer call, that always does unlimited produce.
+    // So skip will never be called
+    TRI_ASSERT(false);
+    return {input.upstreamState(), NoStats{}, call.getSkipCount(), call};
+  };
+
+  auto producerDepth0 = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+      fakedQuery->engine(), generateNodeDummy(),
+      makeSkipInfos(std::move(produceDepth0), std::move(skipDepth0), 0, 1));
+  producerDepth0->addDependency(subqueryOuterStart.get());
+
+  auto subqueryInnerStart = createSubqueryStart(producerDepth0.get(), 2);
+
+  auto produceDepth1 =
+      [depth1Reg, outReg](AqlItemBlockInputRange& inputRange,
+                          OutputAqlItemRow& output) -> std::tuple<ExecutorState, NoStats, AqlCall> {
+    while (inputRange.hasDataRow()) {
+      auto [state, row] = inputRange.nextDataRow();
+      auto val = row.getValue(depth1Reg).toInt64();
+      if (val == 2) {
+        // Write one Row here
+        AqlValue v(AqlValueHintInt{1});
+        AqlValueGuard guard(v, true);
+        output.moveValueInto(outReg, row, guard);
+        output.advanceRow();
+      }
+      // drop all other dataRows
+    }
+    return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
+  };
+
+  auto skipDepth1 = [](AqlItemBlockInputRange& input,
+                       AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+    // Never order to skip.
+    TRI_ASSERT(input.skippedInFlight() == 0);
+    while (input.hasDataRow()) {
+      auto [state, row] = input.nextDataRow();
+      auto val = row.getValue(1).toInt64();
+      if (val == 2) {
+        // Skip one row here
+        call.didSkip(1);
+      }
+      // drop all other dataRows
+    }
+    return {input.upstreamState(), NoStats{}, call.getSkipCount(), AqlCall{}};
+  };
+
+  auto producerDepth1 = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+      fakedQuery->engine(), generateNodeDummy(),
+      makeSkipInfos(std::move(produceDepth1), std::move(skipDepth1), 1, 2));
+  producerDepth1->addDependency(subqueryInnerStart.get());
+
   CallAsserter getAsserter{getCall()};
   SkipCallAsserter skipAsserter{getCall()};
-  auto testee = forwardBlock(getAsserter, skipAsserter, singleton.get(), outReg);
+  auto testee = forwardBlock(getAsserter, skipAsserter, producerDepth1.get(), outReg);
 
   if (doesWaiting()) {
-    AqlCallStack stack{AqlCallList{getCall()}};
+    auto stack = buildStack(AqlCall{}, AqlCall{});
+    stack.pushCall(AqlCallList{getCall()});
     // we only wait exactly once, only one block upstream that is not sliced.
     auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -2066,7 +2257,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   bool skip = call.getOffset() > 0 || (call.getLimit() == 0 && call.needsFullCount());
   {
     // First subquery
-    AqlCallStack stack{AqlCallList{getCall()}};
+    auto stack = buildStack(AqlCall{}, AqlCall{});
+    stack.pushCall(AqlCallList{getCall()});
     auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     ASSERT_NE(block, nullptr);
@@ -2084,10 +2276,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
       row++;
     }
     AssertIsShadowRowOfDepth(block, row, 0);
-    AssertValueEquals(block, row, outReg, 2);
+    AssertValueEquals(block, row, depth1Reg, 2);
     row++;
     AssertIsShadowRowOfDepth(block, row, 1);
-    AssertValueEquals(block, row, outReg, 3);
+    AssertValueEquals(block, row, depth0Reg, 3);
     if (skip) {
       // first empty input, then we skip input
       EXPECT_EQ(skipAsserter.getNumberCalls(), 2);
@@ -2105,7 +2297,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   {
     // Second subquery
-    AqlCallStack stack{AqlCallList{getCall()}};
+    auto stack = buildStack(AqlCall{}, AqlCall{});
+    stack.pushCall(AqlCallList{getCall()});
     auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     ASSERT_NE(block, nullptr);
@@ -2113,7 +2306,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     EXPECT_EQ(block->size(), 1);
     size_t row = 0;
     AssertIsShadowRowOfDepth(block, row, 0);
-    AssertValueEquals(block, row, outReg, 4);
+    AssertValueEquals(block, row, depth1Reg, 4);
     if (skip) {
       // wo do not have empty input, we can skip
       EXPECT_EQ(skipAsserter.getNumberCalls(), 2);
@@ -2131,7 +2324,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   {
     // Third subquery
-    AqlCallStack stack{AqlCallList{getCall()}};
+    auto stack = buildStack(AqlCall{}, AqlCall{});
+    stack.pushCall(AqlCallList{getCall()});
     auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(block, nullptr);
@@ -2139,10 +2333,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     EXPECT_EQ(block->size(), 2);
     size_t row = 0;
     AssertIsShadowRowOfDepth(block, row, 0);
-    AssertValueEquals(block, row, outReg, 5);
+    AssertValueEquals(block, row, depth1Reg, 5);
     row++;
     AssertIsShadowRowOfDepth(block, row, 1);
-    AssertValueEquals(block, row, outReg, 6);
+    AssertValueEquals(block, row, depth0Reg, 6);
     if (skip) {
       // wo do have empty input, we can skip
       EXPECT_EQ(skipAsserter.getNumberCalls(), 2);

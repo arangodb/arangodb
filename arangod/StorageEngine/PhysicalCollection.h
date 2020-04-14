@@ -59,11 +59,9 @@ class PhysicalCollection {
 
   // path to logical collection
   virtual std::string const& path() const = 0;
-  virtual void setPath(std::string const&) = 0;  // should be set during collection creation
   // creation happens atm in engine->createCollection
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
                                             bool doSync) = 0;
-  virtual arangodb::Result persistProperties() = 0;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
@@ -78,9 +76,6 @@ class PhysicalCollection {
 
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
-
-  /// @brief opens an existing collection
-  virtual void open(bool ignoreErrors) = 0;
 
   void drop();
 
@@ -165,9 +160,10 @@ class PhysicalCollection {
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
   virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
-
-  virtual LocalDocumentId lookupKey(transaction::Methods*,
-                                    arangodb::velocypack::Slice const&) const = 0;
+  
+  virtual Result lookupKey(transaction::Methods*,
+                           arangodb::velocypack::StringRef,
+                           std::pair<LocalDocumentId, TRI_voc_rid_t>&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
                       ManagedDocumentResult& result) = 0;
@@ -221,6 +217,10 @@ class PhysicalCollection {
   virtual void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
 
   TRI_voc_rid_t newRevisionId() const;
+
+  virtual Result upgrade();
+  virtual bool didPartialUpgrade();
+  virtual Result cleanupAfterUpgrade();
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

@@ -373,7 +373,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'distributeShardsLike': false,
     'shardingStrategy': false,
     'cacheEnabled': true,
-    'usesRevisionsAsDocumentIds': false,
+    'syncByRevision': true,
     'validation' : null
   };
   var a;
@@ -930,25 +930,11 @@ ArangoCollection.prototype.save =
       url = appendSyncParameter(url, options.waitForSync);
     }
 
-    if (options.skipDocumentValidation) {
-      url = appendBoolParameter(url, 'skipDocumentValidation', options.skipDocumentValidation);
-    }
-
-    if (options.returnNew) {
-      url = appendBoolParameter(url, 'returnNew', options.returnNew);
-    }
-
-    if (options.returnOld) {
-      url = appendBoolParameter(url, 'returnOld', options.returnOld);
-    }
-
-    if (options.silent) {
-      url = appendBoolParameter(url, 'silent', options.silent);
-    }
-
-    if (options.overwrite) {
-      url = appendBoolParameter(url, 'overwrite', options.overwrite);
-    }
+    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function(key) {
+      if (options[key]) {
+        url = appendBoolParameter(url, key, options[key]);
+      }
+    });
 
     if (options.overwriteMode) {
       url = appendOverwriteModeParameter(url, options.overwriteMode);

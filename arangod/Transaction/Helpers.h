@@ -156,18 +156,14 @@ inline bool isFollowerTransactionId(TRI_voc_tid_t tid) {
   return (tid % 4) == 2;
 }
 
-inline bool isLeaderTransactionId(TRI_voc_tid_t tid) {
-  return (tid % 4) == 1;
-}
-  
+inline bool isLeaderTransactionId(TRI_voc_tid_t tid) { return (tid % 4) == 1; }
+
 inline bool isChildTransactionId(TRI_voc_tid_t tid) {
   return isLeaderTransactionId(tid) || isFollowerTransactionId(tid);
 }
 
-inline bool isLegacyTransactionId(TRI_voc_tid_t tid) {
-  return (tid % 4) == 3;
-}
-  
+inline bool isLegacyTransactionId(TRI_voc_tid_t tid) { return (tid % 4) == 3; }
+
 }  // namespace transaction
 }  // namespace arangodb
 

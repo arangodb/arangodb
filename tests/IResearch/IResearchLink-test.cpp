@@ -855,7 +855,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
     "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
@@ -865,7 +865,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
@@ -950,7 +950,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
     "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
@@ -960,7 +960,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"}, {\"field\":\"abc2\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
@@ -1048,9 +1048,9 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
     "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
@@ -1060,9 +1060,9 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
@@ -1147,9 +1147,9 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
@@ -1160,9 +1160,9 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out)->irs::bytes_ref {
@@ -1255,9 +1255,9 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     "\"includeAllFields\": true,\
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
     }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\" }");
@@ -1268,9 +1268,9 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     \"type\": \"arangosearch\", \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
-    \"storedValues\":[{\"field\":\"abc\", \"compression\":\"test\"},\
-                      {\"field\":\"abc2\", \"compression\":\"lz4\"},\
-                      {\"field\":\"ghi\", \"compression\":\"test\"}]\
+    \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
+                      {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
+                      {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressed_values;
   irs::compression::mock::test_compressor::functions().compress_mock = [&compressed_values]

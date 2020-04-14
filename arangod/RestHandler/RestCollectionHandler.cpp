@@ -335,7 +335,7 @@ void RestCollectionHandler::handleCommandPost() {
 
   // for some "security" a whitelist of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
-      body, std::unordered_set<std::string>{"doCompact",
+      body, std::unordered_set<std::string>{StaticStrings::DoCompact,
                                             StaticStrings::DataSourceSystem,
                                             StaticStrings::DataSourceId,
                                             "isVolatile",
@@ -616,6 +616,21 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           standardResponse();
         }));
 
+  } else if (sub == "upgrade") {
+    return waitForFuture(
+        methods::Collections::upgrade(_vocbase, *coll).thenValue([this, coll](Result&& res) {
+          if (res.fail()) {
+            generateTransactionError(coll->name(), res, "");
+            return;
+          }
+
+          {
+            VPackObjectBuilder obj(&_builder, true);
+            obj->add("result", VPackValue(res.ok()));
+          }
+
+          standardResponse();
+        }));
   }
 
   res = handleExtraCommandPut(*coll, sub, _builder);

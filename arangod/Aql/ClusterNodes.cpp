@@ -36,6 +36,7 @@
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
@@ -474,7 +475,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       VelocyPackHelper::getStringValue(base, "parellelism", "")));
 }
 
-GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode,
+GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id, SortMode sortMode,
                        Parallelism parallelism) noexcept
     : ExecutionNode(plan, id),
       _vocbase(&(plan->getAst()->query()->vocbase())),
@@ -655,7 +656,7 @@ GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
-    ExecutionPlan* plan, size_t id, NodeType mode, bool replaceIndexNode,
+    ExecutionPlan* plan, ExecutionNodeId id, NodeType mode, bool replaceIndexNode,
     std::string const& key, Collection const* collection,
     ModificationOptions const& options, Variable const* in, Variable const* out,
     Variable const* OLD, Variable const* NEW)
@@ -706,7 +707,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
-      _collection, ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      collection(), ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,
       this->hasParent(), this->_replaceIndexNode);

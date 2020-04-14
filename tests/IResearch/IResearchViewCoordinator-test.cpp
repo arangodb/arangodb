@@ -281,7 +281,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      EXPECT_EQ(14, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                    slice.get("globallyUniqueId").isString() &&
                    false == slice.get("globallyUniqueId").copyString().empty()));
@@ -1001,7 +1001,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     "      \"includeAllFields\":true, "
     "      \"analyzers\": [\"inPlace\"], "
     "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-    "      \"storedValues\":[[], [\"\"], \"\", \"test.t\", {\"field\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
+    "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
     "    } "
     "  } }");
 
@@ -1052,7 +1052,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(14, slice.length());
+    EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
@@ -1087,14 +1087,16 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     EXPECT_EQ(0, tmpSlice.length());
     tmpSlice = slice.get("primarySortCompression");
     EXPECT_TRUE(tmpSlice.isString());
-    EXPECT_FALSE(slice.hasKey("storedValues"));
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
     { // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(7, tmpSlice2.length());
+      EXPECT_EQ(6, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1102,6 +1104,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
       EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
       EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_FALSE(tmpSlice2.hasKey("storedValues"));
     }
   }
 
@@ -5766,12 +5769,12 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
                                arangodb::aql::PART_MAIN);
     query.prepare(arangodb::QueryRegistryFeature::registry(), arangodb::aql::SerializationFormat::SHADOWROWS);
 
-    arangodb::aql::SingletonNode singleton(query.plan(), 0);
+    arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
 
     arangodb::aql::Variable const outVariable("variable", 0);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,        // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 *vocbase,  // database
                                                 view,      // view
                                                 outVariable,

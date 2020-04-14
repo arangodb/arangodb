@@ -95,7 +95,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
 
-  LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
+  /// @brief returns the LocalDocumentId and the revision id for the document with the 
+  /// specified key.
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
 
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       TRI_voc_rid_t& revisionId) const;
@@ -130,6 +133,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;
+
+  Result upgrade() override;
+  bool didPartialUpgrade() override;
+  Result cleanupAfterUpgrade() override;
 
  protected:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,

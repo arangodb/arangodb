@@ -152,6 +152,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --javascript.enabled false \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --server.statistics false \
+          --log.role true \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
@@ -179,6 +180,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --server.statistics false \
+        --log.role true \
         --log.file cluster/$PORT.log \
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
@@ -225,6 +227,7 @@ start() {
           --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --cluster.my-role $ROLE \
+          --log.role true \
           --log.file cluster/$PORT.log \
           --log.level $LOG_LEVEL \
           --server.statistics true \
@@ -248,6 +251,7 @@ start() {
         --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --cluster.my-role $ROLE \
+        --log.role true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
         --server.statistics true \
