@@ -110,15 +110,13 @@ void AgencyCache::run() {
   //     wait ever longer until success
 
   while (!this->isStopping()) {
-
+    
     rb.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
-
     auto ret = sendTransaction(rb)
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
-
-          if (rb.ok() && rb.statusCode() == 202) {
+          if (rb.ok() && rb.statusCode() == 200) {
             auto tmp = VPackParser::fromJson(rb.payloadAsString());
             auto slc = tmp->slice();
             wait = 0.;

@@ -310,7 +310,6 @@ void MaintenanceFeature::beginShutdown() {
             cf->agencyCache().get(std::vector<std::string>{
                 AgencyCommManager::path("Target/" + path + "/" + std::to_string(jobId))});
           auto result = acb->slice();
-          LOG_DEVEL << result.toJson();
           if (!result.isNone()) {
             VPackSlice value = result[0].get(
               std::vector<std::string>{

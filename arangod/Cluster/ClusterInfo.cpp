@@ -588,7 +588,6 @@ void ClusterInfo::loadPlan() {
   if (!planSlice.isObject()) {
     LOG_TOPIC("bc8e1", ERR, Logger::CLUSTER)
         << "\"Plan\" is not an object in agency";
-
     return;
   }
 
