@@ -892,7 +892,7 @@ futures::Future<query_t> Agent::poll(
       VPackArrayBuilder ls(builder.get());
       for (auto const& l : logs) {
         VPackObjectBuilder o(builder.get());
-        builder->add("query", VPackValue(l.index));
+        builder->add("index", VPackValue(l.index));
         builder->add("query", VPackSlice(l.entry->data()));
       }
     }
