@@ -59,13 +59,13 @@
 #define FUERTE_LOG_ERROR \
   if (0) std::cout
 #endif
-
+/*
 #if ENABLE_FUERTE_LOG_DEBUG > 0
 #define FUERTE_LOG_DEBUG std::cout
 #else
 #define FUERTE_LOG_DEBUG \
   if (0) std::cout
-#endif
+#endif*/
 
 #if ENABLE_FUERTE_LOG_TRACE > 0
 #define FUERTE_LOG_TRACE std::cout
@@ -109,6 +109,7 @@ struct RausDamitStream {
 };
 
 #define FUERTE_LOG_HTTPTRACE RausDamitStream{} << "[http] "
+#define FUERTE_LOG_DEBUG RausDamitStream{} << "[debug] "
 #else
 #define FUERTE_LOG_HTTPTRACE \
   if (0) std::cout
