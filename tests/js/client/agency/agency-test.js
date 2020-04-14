@@ -386,9 +386,10 @@ function agencyTestSuite () {
 
       ret = request({url: agencyLeader + "/_api/agency/poll",
                          method: "GET", followRedirect: true});
-      if (ret.statusCode === 200) {
-        ret.bodyParsed = JSON.parse(ret.body);
-      }
+      assertEqual(ret.statusCode, 200);
+      ret.bodyParsed = JSON.parse(ret.body);
+      console.warn(ret.body);
+      console.warn(ret.bodyParsed);
       assertTrue(ret.bodyParsed.hasOwnProperty("result"));
       result = ret.bodyParsed.result;
       assertTrue(result.hasOwnProperty("readDB"));
