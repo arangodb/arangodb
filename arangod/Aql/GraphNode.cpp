@@ -616,7 +616,7 @@ CostEstimate GraphNode::estimateCost() const {
       auto count = e->count(_options->trx());
       // Assume an estimate if 10% hit rate
       baseCost *= count / 10;
-      baseNumItems += std::ceil(count / 10);
+      baseNumItems += static_cast<size_t>(std::ceil(count / 10));
     }
 
     size_t estDepth = _options->estimateDepth();
