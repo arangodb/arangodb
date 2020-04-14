@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,23 +17,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
+/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VocBase/Identifiers/IndexId.h"
+#include "DocumentIndexExpressionContext.h"
+#include "Aql/AqlValue.h"
 
-namespace arangodb {
+using namespace arangodb::aql;
 
-/// @brief whether or not the id is set (not none())
-bool IndexId::isSet() const noexcept {
-  return id() != std::numeric_limits<BaseType>::max();
+DocumentIndexExpressionContext::DocumentIndexExpressionContext(
+    Query* query, AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+    void const* ctx)
+  : QueryExpressionContext(query), _getValue(getValue), _ctx(ctx) {}
+
+size_t DocumentIndexExpressionContext::numRegisters() const {
+  // hard-coded
+  return 1;
 }
 
-/// @brief whether or not the identifier is unset (equal to none())
-bool IndexId::empty() const noexcept { return !isSet(); }
-
-bool IndexId::isPrimary() const { return id() == 0; }
-
-bool IndexId::isEdge() const { return id() == 1 || id() == 2; }
-
-}  // namespace arangodb
+AqlValue DocumentIndexExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+                                                          bool& mustDestroy) const {
+  mustDestroy = doCopy;  // as we are copying
+  return _getValue(_ctx, variable, doCopy);
+}

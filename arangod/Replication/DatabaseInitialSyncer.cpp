@@ -593,13 +593,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
     
-    VPackOptions options;
-    options.validateUtf8Strings = true;
-    options.disallowExternals = true;
-    options.disallowCustom = true;
-    options.checkAttributeUniqueness = true;
-    options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
-    VPackValidator validator(&options);
+    VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
 
     try {
       while (p < end) {
@@ -631,8 +625,9 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
     TRI_ASSERT(*end == '\0');
     LOG_TOPIC("bad5d", DEBUG, Logger::REPLICATION) << "using json for chunk contents";
 
+
     VPackBuilder builder;
-    VPackParser parser(builder);
+    VPackParser parser(builder, &basics::VelocyPackHelper::requestValidationOptions);
 
     while (p < end) {
       char const* q = strchr(p, '\n');

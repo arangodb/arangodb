@@ -938,8 +938,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 /// @brief Drop an index with the given iid.
 bool RocksDBCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
-  if (iid.isPrimary() || iid.isNone()) {
-    // invalid index id or primary index
+  if (iid.empty() || iid.isPrimary()) {
     return true;
   }
 
@@ -1231,7 +1230,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 Result RocksDBCollection::lookupKey(transaction::Methods* trx,
                                     VPackStringRef key,
                                     std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const {
-  result.first.clear();
+  result.first = LocalDocumentId::none();
   result.second = 0;
   
   // lookup the revision id in the primary index
