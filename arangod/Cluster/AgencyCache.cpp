@@ -147,14 +147,14 @@ void AgencyCache::run() {
             if (wait <= 1.9) {
               wait += 0.1;
             }
-            LOG_TOPIC("9a9e3", DEBUG, Logger::CLUSTER) <<
+            LOG_TOPIC("9a93e", DEBUG, Logger::CLUSTER) <<
               "Failed to get poll result from agency.";
           }
           return futures::makeFuture();
         })
       .thenError<VPackException>(
         [&wait](VPackException const& e) {
-          LOG_TOPIC("9a9e3", ERR, Logger::CLUSTER) <<
+          LOG_TOPIC("9a9f3", ERR, Logger::CLUSTER) <<
             "Failed to parse poll result from agency: " << e.what();
           if (wait <= 1.9) {
             wait += 0.1;
