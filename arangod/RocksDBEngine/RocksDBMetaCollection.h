@@ -114,7 +114,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
-  rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
+  void applyUpdates(rocksdb::SequenceNumber commitSeq);
 
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;

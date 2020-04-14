@@ -443,7 +443,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
 
 bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const {
   if (!_logicalCollection.syncByRevision()) {
-    return maxCommitSeq < _revisionTreeApplied.load();
+    return maxCommitSeq > _revisionTreeApplied.load();
   }
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
@@ -461,6 +461,10 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
   }
 
   if (_revisionTreeSerializedSeq.load() < _revisionTreeApplied.load()) {
+    return true;
+  }
+
+  if (_revisionTreeSerializedSeq.load() == 0) {
     return true;
   }
 
@@ -500,7 +504,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     std::string& output, rocksdb::SequenceNumber commitSeq) {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (_logicalCollection.syncByRevision()) {
-    auto appliedSeq = applyUpdates(commitSeq);  // always apply updates...
+    applyUpdates(commitSeq);  // always apply updates...
     bool neverDone = _revisionTreeSerializedSeq.load() == 0;
     bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
     bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
@@ -508,7 +512,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
                                 .count();
     if (neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
       _revisionTree->serializeBinary(output, true);
-      _revisionTreeSerializedSeq.store(appliedSeq);
+      _revisionTreeSerializedSeq.store(commitSeq);
       _revisionTreeSerializedTime = std::chrono::steady_clock::now();
     }
     return _revisionTreeSerializedSeq.load();
@@ -681,13 +685,12 @@ Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
   return res;
 }
 
-rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
+void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
   if (!_logicalCollection.syncByRevision()) {
-    return 0;
+    return;
   }
   TRI_ASSERT(_revisionTree);
 
-  rocksdb::SequenceNumber appliedSeq = 0;
   Result res = basics::catchVoidToResult([&]() -> void {
     std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator insertIt;
     std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator removeIt;
@@ -707,7 +710,6 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
         ignoreSeq = *it;
         TRI_ASSERT(ignoreSeq != 0);
         foundTruncate = true;
-        appliedSeq = std::max(appliedSeq, ignoreSeq);
         it = _revisionTruncateBuffer.erase(it);
       }
       if (foundTruncate) {
@@ -718,7 +720,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
         while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= ignoreSeq) {
           removeIt = _revisionRemovalBuffers.erase(removeIt);
         }
-        _revisionTree->clear();  // clear estimates
+        _revisionTree->clear();  // clear out any revision structure, now empty
       }
     }
 
@@ -740,14 +742,12 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
         if (applyInserts) {
           std::unique_lock<std::mutex> guard(_revisionBufferLock);
           inserts = std::move(insertIt->second);
-          appliedSeq = std::max(appliedSeq, insertIt->first);
           insertIt = _revisionInsertBuffers.erase(insertIt);
         }
         // check for removals
         if (applyRemovals) {
           std::unique_lock<std::mutex> guard(_revisionBufferLock);
           removals = std::move(removeIt->second);
-          appliedSeq = std::max(appliedSeq, removeIt->first);
           removeIt = _revisionRemovalBuffers.erase(removeIt);
         }
       }
@@ -768,10 +768,11 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
         _revisionTree->remove(removals);
         removals.clear();
       }
-    }  // </while(true)>
+    }
   });
-  _revisionTreeApplied.store(appliedSeq);
-  return appliedSeq;
+  if (commitSeq > _revisionTreeApplied.load()) {
+    _revisionTreeApplied.store(commitSeq);
+  }
 }
 
 Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTree& tree,

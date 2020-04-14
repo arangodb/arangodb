@@ -1628,9 +1628,6 @@ std::vector<std::string> RocksDBEngine::currentWalFiles() const {
 
   for (size_t current = 0; current < files.size(); current++) {
     auto f = files[current].get();
-    if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-      continue;
-    }
     try {
       names.push_back(f->PathName());
     } catch (...) {
