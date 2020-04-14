@@ -37,7 +37,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
