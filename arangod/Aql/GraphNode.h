@@ -26,6 +26,7 @@
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "Cluster/ClusterTypes.h"
@@ -58,7 +59,7 @@ namespace aql {
 class GraphNode : public ExecutionNode {
  protected:
   /// @brief constructor with a vocbase and a collection name
-  GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase, AstNode const* direction,
+  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase, AstNode const* direction,
             AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -71,9 +72,9 @@ class GraphNode : public ExecutionNode {
 
  protected:
   /// @brief Internal constructor to clone the node.
-  GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-            std::vector<std::unique_ptr<Collection>> const& edgeColls,
-            std::vector<std::unique_ptr<Collection>> const& vertexColls,
+  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+            std::vector<Collection*> const& edgeColls,
+            std::vector<Collection*> const& vertexColls,
             TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> directions,
             std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
 
@@ -146,18 +147,22 @@ class GraphNode : public ExecutionNode {
   /// @brief Returns a reference to the engines. (CLUSTER ONLY)
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines() const;
 
-  std::vector<std::unique_ptr<aql::Collection>> const& edgeColls() const;
+  std::vector<aql::Collection*> const& edgeColls() const;
 
-  std::vector<std::unique_ptr<aql::Collection>> const& vertexColls() const;
+  std::vector<aql::Collection*> const& vertexColls() const;
 
   virtual void getConditionVariables(std::vector<Variable const*>&) const;
 
-  /// @brief return any of the collections
+  /// @brief return any of the collections.
+  /// Note that GraphNode::collection() is different from
+  /// LocalGraphNode::collection(), which comes from
+  /// CollectionAccessingNode::collection(). It may return a different
+  /// collection!
   Collection const* collection() const;
 
-  void injectVertexCollection(aql::Collection const* other);
+  void injectVertexCollection(aql::Collection* other);
 
-  std::vector<aql::Collection const*> const collections() const;
+  std::vector<aql::Collection const*> collections() const;
   void setCollectionToShard(std::map<std::string, std::string> const& map) {
     _collectionToShard = map;
   }
@@ -169,10 +174,11 @@ class GraphNode : public ExecutionNode {
   graph::Graph const* graph() const noexcept;
 
  private:
-  void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);
+  void addEdgeCollection(aql::Collection* collection, TRI_edge_direction_e dir);
+  void addVertexCollection(aql::Collection* collection);
 
-  void setGraphInfoAndCopyColls(std::vector<std::unique_ptr<Collection>> const& edgeColls,
-                                std::vector<std::unique_ptr<Collection>> const& vertexColls);
+  void setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeColls,
+                                std::vector<Collection*> const& vertexColls);
 
  protected:
   /// @brief the database
@@ -200,11 +206,11 @@ class GraphNode : public ExecutionNode {
   arangodb::velocypack::Builder _graphInfo;
 
   /// @brief the edge collection names
-  std::vector<std::unique_ptr<aql::Collection>> _edgeColls;
+  std::vector<aql::Collection*> _edgeColls;
 
   /// @brief the vertex collection names (can also be edge collections
   /// as an edge can also point to another edge, instead of a vertex).
-  std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
+  std::vector<aql::Collection*> _vertexColls;
 
   /// @brief The default direction given in the query
   TRI_edge_direction_e const _defaultDirection;

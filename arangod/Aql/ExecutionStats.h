@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_EXECUTION_STATS_H
 #define ARANGOD_AQL_EXECUTION_STATS_H 1
 
+#include "Aql/ExecutionNodeId.h"
+
 #include <cstdint>
 #include <map>
 #include <unordered_map>
@@ -67,7 +69,7 @@ struct ExecutionStats {
 
   void clear();
 
-  void addAliases(std::unordered_map<size_t, size_t>&& aliases) {
+  void addAliases(std::unordered_map<ExecutionNodeId, ExecutionNodeId>&& aliases) {
     _nodeAliases = std::move(aliases);
   }
 
@@ -103,14 +105,14 @@ struct ExecutionStats {
   size_t peakMemoryUsage;
 
   ///  @brief statistics per ExecutionNodes
-  std::map<size_t, ExecutionStats::Node> nodes;
+  std::map<aql::ExecutionNodeId, ExecutionStats::Node> nodes;
 
  private:
   /// @brief Node aliases, source => target.
   ///        Every source node in the this aliases list
   ///        will be counted as the target instead
   ///        within nodes.
-  std::unordered_map<size_t, size_t> _nodeAliases;
+  std::unordered_map<ExecutionNodeId, ExecutionNodeId> _nodeAliases;
 };
 }  // namespace aql
 }  // namespace arangodb

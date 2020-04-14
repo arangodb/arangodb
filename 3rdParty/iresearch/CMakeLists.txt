@@ -274,6 +274,12 @@ if (USE_PVS_STUDIO)
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
+  set_target_properties(
+    ${PVS_STUDIO_TARGET_NAME}
+    PROPERTIES
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+  )
+
   pvs_studio_add_target(
     TARGET ${PVS_STUDIO_TARGET_NAME}-html ALL
     FORMAT fullhtml
@@ -283,6 +289,12 @@ if (USE_PVS_STUDIO)
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
+  set_target_properties(
+    ${PVS_STUDIO_TARGET_NAME}-html
+    PROPERTIES
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+  )
+
   pvs_studio_add_target(
     TARGET ${PVS_STUDIO_TARGET_NAME}-xml ALL
     FORMAT xml
@@ -290,6 +302,12 @@ if (USE_PVS_STUDIO)
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}-xml.err
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
+  )
+
+  set_target_properties(
+    ${PVS_STUDIO_TARGET_NAME}-xml
+    PROPERTIES
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 endif()
 

@@ -23,6 +23,7 @@
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 #include "search/levenshtein_filter.hpp"
+#include "utils/levenshtein_default_pdp.hpp"
 
 class levenshtein_filter_test_case : public tests::filter_test_case_base { };
 
@@ -164,6 +165,39 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   check_query(irs::by_edit_distance().max_distance(4).field("title").with_transpositions(true), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_edit_distance().max_distance(5).field("title").with_transpositions(true), docs_t{}, costs_t{0}, rdr);
 }
+
+#ifndef IRESEARCH_DLL
+TEST_P(by_edit_distance_test_case, visit) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
+  tests::empty_filter_visitor visitor;
+  std::string fld = "prefix";
+  irs::string_ref field = irs::string_ref(fld);
+  auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+  // read segment
+  auto index = open_reader();
+  for (const auto& segment : index) {
+    // get term dictionary for field
+    const auto* reader = segment.field(field);
+    ASSERT_TRUE(reader != nullptr);
+
+    irs::by_edit_distance::visit(*reader, term, 0, irs::default_pdp, false, visitor);
+    ASSERT_EQ(1, visitor.prepare_calls_counter());
+    ASSERT_EQ(1, visitor.visit_calls_counter());
+    visitor.reset();
+
+    irs::by_edit_distance::visit(*reader, term, 1, irs::default_pdp, false, visitor);
+    ASSERT_EQ(1, visitor.prepare_calls_counter());
+    ASSERT_EQ(3, visitor.visit_calls_counter());
+    visitor.reset();
+  }
+}
+#endif
 
 INSTANTIATE_TEST_CASE_P(
   by_edit_distance_test,

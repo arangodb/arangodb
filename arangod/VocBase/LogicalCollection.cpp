@@ -87,7 +87,8 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   }
 
   auto version = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-      info, "version", static_cast<uint32_t>(LogicalCollection::currentVersion()));
+      info, StaticStrings::Version,
+      static_cast<uint32_t>(LogicalCollection::currentVersion()));
 
   // predictable UUID for legacy collections
   if (static_cast<LogicalCollection::Version>(version) < LogicalCollection::Version::v33 && info.isObject()) {
@@ -143,7 +144,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
-          info, "version", static_cast<uint32_t>(currentVersion())))),
+          info, StaticStrings::Version, static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
                                                          TRI_COL_TYPE_UNKNOWN)),
@@ -156,13 +157,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 #endif
       _usesRevisionsAsDocumentIds(
           Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
-      _minRevision(isSmartChild()
-                       ? 0
-                       : Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision,
-                                                                0)),
       _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
       _syncByRevision(determineSyncByRevision()),
+      _minRevision((system() || isSmartChild())
+                       ? 0
+                       : Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision,
+                                                                0)),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
@@ -259,6 +260,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   TRI_ASSERT(_physical != nullptr);
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
+
+  if (_physical->didPartialUpgrade()) {
+    _physical->cleanupAfterUpgrade();
+  }
 
   prepareIndexes(info.get("indexes"));
 }
@@ -472,7 +477,13 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
 }
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const {
-  return _usesRevisionsAsDocumentIds;
+  return _usesRevisionsAsDocumentIds.load();
+}
+
+void LogicalCollection::setUsesRevisionsAsDocumentIds(bool usesRevisions) {
+  if (!_usesRevisionsAsDocumentIds.load() && usesRevisions && _version >= Version::v37) {
+    _usesRevisionsAsDocumentIds.store(true);
+  }
 }
 
 TRI_voc_rid_t LogicalCollection::minRevision() const {
@@ -483,16 +494,25 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-bool LogicalCollection::syncByRevision() const { return _syncByRevision; }
+bool LogicalCollection::syncByRevision() const {
+  return _syncByRevision.load();
+}
+
+void LogicalCollection::setSyncByRevision(bool usesRevisions) {
+  if (!_syncByRevision.load() && _usesRevisionsAsDocumentIds.load() && usesRevisions) {
+    _syncByRevision.store(true);
+  }
+}
 
 bool LogicalCollection::determineSyncByRevision() const {
-  if (!system() && version() >= LogicalCollection::Version::v37) {
+  if (version() >= LogicalCollection::Version::v37) {
     auto& server = vocbase().server();
     if (server.hasFeature<EngineSelectorFeature>() &&
         server.hasFeature<ReplicationFeature>()) {
       auto& engine = server.getFeature<EngineSelectorFeature>();
       auto& replication = server.getFeature<ReplicationFeature>();
-      return engine.isRocksDB() && replication.syncByRevision();
+      return engine.isRocksDB() && replication.syncByRevision() &&
+             usesRevisionsAsDocumentIds();
     }
   }
   return false;
@@ -611,9 +631,6 @@ arangodb::Result LogicalCollection::drop() {
   this->close();
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  engine->destroyCollection(vocbase(), *this);
   deleted(true);
   _physical->drop();
 
@@ -638,9 +655,14 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   result.openObject();
   result.add(VPackValue("parameters"));
 
-  std::unordered_set<std::string> ignoreKeys{
-      "allowUserKeys",        "cid",      "count",  "statusString", "version",
-      "distributeShardsLike", "objectId", "indexes"};
+  std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
+                                             "cid",
+                                             "count",
+                                             "statusString",
+                                             StaticStrings::Version,
+                                             "distributeShardsLike",
+                                             StaticStrings::ObjectId,
+                                             StaticStrings::Indexes};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, Serialization::List);
   {
     VPackObjectBuilder guard(&result);
@@ -692,7 +714,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
   result.add("statusString", VPackValue(::translateStatus(_status)));
-  result.add("version", VPackValue(static_cast<uint32_t>(_version)));
+  result.add(StaticStrings::Version, VPackValue(static_cast<uint32_t>(_version)));
 
   // Collection Flags
   result.add("waitForSync", VPackValue(_waitForSync));
@@ -961,12 +983,6 @@ futures::Future<OperationResult> LogicalCollection::figures() const {
   return getPhysical()->figures();
 }
 
-/// @brief opens an existing collection
-void LogicalCollection::open(bool ignoreErrors) {
-  getPhysical()->open(ignoreErrors);
-  TRI_UpdateTickServer(id());
-}
-
 /// SECTION Indexes
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(IndexId idxId) const {
@@ -1025,9 +1041,7 @@ void LogicalCollection::persistPhysicalCollection() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto path = engine->createCollection(vocbase(), *this);
-
-  getPhysical()->setPath(path);
+  engine->createCollection(vocbase(), *this);
 }
 
 basics::ReadWriteLock& LogicalCollection::statusLock() {
@@ -1066,6 +1080,11 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
 /// @brief compact-data operation
 Result LogicalCollection::compact() { return getPhysical()->compact(); }
+
+Result LogicalCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const { 
+  return getPhysical()->lookupKey(trx, key, result);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection

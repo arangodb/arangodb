@@ -53,6 +53,8 @@ struct range {
   }
 }; // range
 
+struct filter_visitor;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
 /// @brief user-side term range filter
@@ -62,16 +64,34 @@ class IRESEARCH_API by_range : public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
+  typedef range<bstring> range_t;
+
+  static prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const range_t& rng,
+    size_t scored_terms_limit);
+
+  static void visit(
+    const term_reader& reader,
+    const range_t& rng,
+    filter_visitor& visitor);
+
   by_range() noexcept;
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& /*ctx*/
+  ) const override {
+    return prepare(index, ord, this->boost()*boost,
+                   field(), rng_, scored_terms_limit_);
+  }
 
   by_range& field(std::string fld) {
     fld_ = std::move(fld); 
@@ -148,7 +168,6 @@ class IRESEARCH_API by_range : public filter {
   virtual bool equals(const filter& rhs) const noexcept override;
 
  private: 
-  typedef range<bstring> range_t;
   template<Bound B> struct get;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

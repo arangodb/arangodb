@@ -179,7 +179,7 @@ class QueryTimeWatcher extends CoordinatorValueWatcher {
 
   afterCoordinator(metrics) {
     const after =  metrics[this._metric];
-    expect(after).to.be.greaterThan(this._before + this._minChange);
+    expect(after).to.be.at.least(this._before + this._minChange);
   };
 }
 
