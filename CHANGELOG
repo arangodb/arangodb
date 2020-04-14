@@ -1,6 +1,10 @@
 devel
 -----
 
+* Show some index details in index overview of the web interface, e.g. the 
+  `minLength` attribute for fulltext indexes or the `expireAfter` attribute for
+  TTL indexes.
+
 * Added startup option `--server.validate-utf8-strings`.
 
   This option controls whether strings in incoming JSON or VPack requests are
