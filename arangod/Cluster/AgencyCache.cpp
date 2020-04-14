@@ -116,7 +116,7 @@ void AgencyCache::run() {
     auto ret = sendTransaction(rb)
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
-          if (rb.ok() && rb.statusCode() == 200) {
+          if (rb.ok() && rb.statusCode() == arangodb::fuerte::StatusOK) {
             auto tmp = VPackParser::fromJson(rb.payloadAsString());
             auto slc = tmp->slice();
             wait = 0.;
