@@ -82,9 +82,9 @@
 
           this.model.changeValidation(newprops, (err, data) => {
             if (err) {
-              arangoHelper.arangoError('Error', 'Could not update schema for: ' + this.model.get('name') + '.');
+              arangoHelper.arangoError('Error', 'Could not save schema for: ' + this.model.get('name') + '.');
             } else {
-              arangoHelper.arangoNotification('Saved schema for collection: ' + this.model.get('name') + '. ' + data);
+              arangoHelper.arangoNotification('Saved schema for collection: ' + this.model.get('name') + '.');
             }
           });
 
