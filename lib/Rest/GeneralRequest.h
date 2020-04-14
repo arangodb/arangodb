@@ -64,8 +64,6 @@ class GeneralRequest {
  public:
   GeneralRequest(GeneralRequest&&) = default;
 
- public:
-
   // translate an RequestType enum value into an "HTTP method string"
   static std::string translateMethod(RequestType);
 
@@ -94,7 +92,7 @@ class GeneralRequest {
         _contentTypeResponse(ContentType::UNSET),
         _acceptEncoding(EncodingType::UNSET),
         _isRequestContextOwner(false),
-  _authenticated(false) {}
+        _authenticated(false) {}
         
   virtual ~GeneralRequest();
 
