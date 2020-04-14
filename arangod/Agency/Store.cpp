@@ -734,11 +734,6 @@ query_t Store::clearExpired() const {
   return tmp;
 }
 
-void Store::dumpToPollBuilder(Builder& builder) const {
-  MUTEX_LOCKER(storeLocker, _storeLock);
-  toBuilder(builder, true);  
-}
-
 /// Dump internal data to builder
 void Store::dumpToBuilder(Builder& builder) const {
   MUTEX_LOCKER(storeLocker, _storeLock);

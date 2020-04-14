@@ -900,7 +900,7 @@ futures::Future<query_t> Agent::poll(
       return futures::makeFuture(std::move(builder));
     }
   }
-  
+
   std::lock_guard guard(_promLock);
   auto tp = steady_clock::now() +
     duration_cast<milliseconds>(duration<double>(timeout));
