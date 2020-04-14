@@ -767,7 +767,7 @@ bool GraphNode::isEligibleAsSatelliteTraversal() const {
 
 bool GraphNode::isSatelliteNode() const {
 #ifdef USE_ENTERPRISE
-  return nullptr != dynamic_cast<SatelliteGraphNode const*>(this);
+  return nullptr != dynamic_cast<LocalGraphNode const*>(this);
 #else
   return false;
 #endif
