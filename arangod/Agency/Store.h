@@ -118,6 +118,9 @@ class Store {
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
+  /// @brief Dump for poll result
+  void dumpToPollBuilder(Builder&) const;
+
   /// @brief Notify observers
   void notifyObservers() const;
 

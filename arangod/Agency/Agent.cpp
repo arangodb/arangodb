@@ -867,48 +867,41 @@ futures::Future<query_t> Agent::poll(
 
   using namespace std::chrono;
 
-  index_t commitIndex;
   std::vector<log_t> logs;
-  query_t readDB = nullptr;
+  query_t builder;
   {
     READ_LOCKER(oLocker, _outputLock);
-    commitIndex = _commitIndex;
     if (index == 0 || index < _state.firstIndex()) {  // deliver as if index = 0
-      readDB = std::make_shared<VPackBuilder>();
-      VPackArrayBuilder r(readDB.get());
-      _readDB.get().toBuilder(*readDB, true);
-    } else if (index <= commitIndex) {   // deliver immediately all logs since index
-      logs = _state.get(index, commitIndex);
-    }
-  }
-
-  if (!logs.empty() || readDB != nullptr) {
-    auto builder = std::make_shared<VPackBuilder>();
-    {
-      VPackObjectBuilder e(builder.get());
-      builder->add(VPackValue("result"));
+      builder = std::make_shared<VPackBuilder>();
       VPackObjectBuilder r(builder.get());
-      builder->add("commitIndex", VPackValue(commitIndex));
-      if (!logs.empty()) {
-        builder->add("firstIndex", VPackValue(logs.front().index));
-        builder->add(VPackValue("log"));
-        VPackArrayBuilder ls(builder.get());
-        for (auto const& i : logs) {
-          VPackObjectBuilder l(builder.get());
-          builder->add("index", VPackValue(i.index));
-          builder->add("query", VPackSlice(i.entry->data()));
-        }
-      } else {
-        builder->add("firstIndex", VPackValue(0));
-        builder->add("readDB", readDB->slice()[0]);
+      builder->add(VPackValue("result"));
+      VPackObjectBuilder r2(builder.get());
+      builder->add("commitIndex", VPackValue(_commitIndex));
+      builder->add("firstIndex", VPackValue(0));
+      builder->add(VPackValue("readDB"));
+      _readDB.get().toBuilder(*builder, true);
+    } else if (index <= _commitIndex) {   // deliver immediately all logs since index
+      builder = std::make_shared<VPackBuilder>();
+      VPackObjectBuilder r(builder.get());
+      builder->add(VPackValue("result"));
+      VPackObjectBuilder r2(builder.get());
+      logs = _state.get(index, _commitIndex);
+      builder->add("commitIndex", VPackValue(_commitIndex));
+      builder->add("firstIndex", VPackValue(logs.front().index));
+      builder->add(VPackValue("log"));
+      VPackArrayBuilder ls(builder.get());
+      for (auto const& l : logs) {
+        VPackObjectBuilder o(builder.get());
+        builder->add("query", VPackValue(l.index));
+        builder->add("query", VPackSlice(l.entry->data()));
       }
     }
-    return futures::makeFuture(std::move(builder));
+    if (builder != nullptr) {
+      return futures::makeFuture(std::move(builder));
+    }
   }
-
+  
   std::lock_guard guard(_promLock);
-
-
   auto tp = steady_clock::now() +
     duration_cast<milliseconds>(duration<double>(timeout));
   auto res = _promises.try_emplace(tp, futures::Promise<query_t>());
