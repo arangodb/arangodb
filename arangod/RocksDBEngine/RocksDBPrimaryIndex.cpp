@@ -549,7 +549,7 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
                                          arangodb::velocypack::StringRef keyRef,
                                          LocalDocumentId& documentId,
                                          TRI_voc_rid_t& revisionId) const {
-  documentId.clear();
+  documentId = LocalDocumentId::none();
   revisionId = 0;
 
   RocksDBKeyLeaser key(trx);

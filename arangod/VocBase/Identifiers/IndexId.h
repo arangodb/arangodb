@@ -36,7 +36,12 @@ class IndexId : public arangodb::basics::Identifier {
   constexpr explicit IndexId(BaseType id) noexcept : Identifier(id) {}
 
  public:
-  bool isNone() const;
+  /// @brief whether or not the id is set (not none())
+  bool isSet() const noexcept;
+
+  /// @brief whether or not the identifier is unset (equal to none())
+  bool empty() const noexcept;
+
   bool isPrimary() const;
   bool isEdge() const;
 
@@ -49,14 +54,11 @@ class IndexId : public arangodb::basics::Identifier {
   /// @brief create an id for a primary index
   static constexpr IndexId primary() { return IndexId{0}; }
 
-  /// @brief create an id for an edge _from index (rocksdb)
+  /// @brief create an id for an edge _from index
   static constexpr IndexId edgeFrom() { return IndexId{1}; }
 
-  /// @brief create an id for an edge _to index (rocksdb)
+  /// @brief create an id for an edge _to index
   static constexpr IndexId edgeTo() { return IndexId{2}; }
-
-  /// @brief create an id for an edge index (mmfiles)
-  static constexpr IndexId edge() { return IndexId{1}; }
 };
 
 static_assert(sizeof(IndexId) == sizeof(IndexId::BaseType),

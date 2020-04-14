@@ -387,6 +387,8 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Utils/DatabaseGuard.cpp
   Utils/SingleCollectionTransaction.cpp
   VocBase/Identifiers/IndexId.cpp
+  VocBase/Identifiers/LocalDocumentId.cpp
+  VocBase/Identifiers/ServerId.cpp
   VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
