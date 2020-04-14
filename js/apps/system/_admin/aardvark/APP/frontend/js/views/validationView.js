@@ -70,7 +70,7 @@
       var saveCallback = function (error, isCoordinator) {
         void (isCoordinator);
         if (error) {
-          arangoHelper.arangoError('Error', 'Could not save schma.');
+          arangoHelper.arangoError('Error', 'Could not save schema.');
         } else {
           var newprops;
           try {
@@ -82,9 +82,9 @@
 
           this.model.changeValidation(newprops, (err, data) => {
             if (err) {
-              arangoHelper.arangoError('Error', 'Could not save schema for: ' + this.model.get('name') + '.');
+              arangoHelper.arangoError('Error', 'Could not save schema for collection ' + this.model.get('name') + ': ' + data.responseJSON.errorMessage);
             } else {
-              arangoHelper.arangoNotification('Saved schema for collection: ' + this.model.get('name') + '.');
+              arangoHelper.arangoNotification('Saved schema for collection ' + this.model.get('name') + '.');
             }
           });
 
