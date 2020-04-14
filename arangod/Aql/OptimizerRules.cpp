@@ -3735,7 +3735,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             current->getType() == ExecutionNode::SHORTEST_PATH ||
             current->getType() == ExecutionNode::K_SHORTEST_PATHS ||
             current->getType() == ExecutionNode::REMOTESINGLE) {
-          // these nodes must be executed on coordinators
+          // we consider these nodes as having to be executed on coordinators.
+	  // note that the satellite graphs optimizer rule might yet move them
+	  // to a DBServer later in the optimization process.
           eligible = false;
           break;
         } else if (current->getType() == ExecutionNode::CALCULATION) {
