@@ -1162,11 +1162,23 @@ arangodb::Result PhysicalCollectionMock::insert(
   return arangodb::Result();
 }
 
-arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(
-    arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {
+arangodb::Result PhysicalCollectionMock::lookupKey(
+    arangodb::transaction::Methods*, arangodb::velocypack::StringRef key,
+    std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t>& result) const {
   before();
-  TRI_ASSERT(false);
-  return arangodb::LocalDocumentId();
+    
+  auto it = _documents.find(arangodb::velocypack::StringRef{key});
+  if (it != _documents.end()) {
+    if (_documents.find(arangodb::velocypack::StringRef{key}) != _documents.end()) {
+      result.first = it->second.docId();
+      result.second = result.first.id();
+      return arangodb::Result();
+    }
+  }
+
+  result.first.clear();
+  result.second = 0;
+  return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 size_t PhysicalCollectionMock::memory() const {

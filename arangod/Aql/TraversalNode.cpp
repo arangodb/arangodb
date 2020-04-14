@@ -98,7 +98,7 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& bu
   _modCondition->toVelocyPack(builder, verbose);
 }
 
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                              AstNode const* direction, AstNode const* start,
                              AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
                              std::unique_ptr<BaseOptions> options)
@@ -163,9 +163,9 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
 }
 
 /// @brief Internal constructor to clone the node.
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                             std::vector<std::unique_ptr<Collection>> const& edgeColls,
-                             std::vector<std::unique_ptr<Collection>> const& vertexColls,
+TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+                             std::vector<Collection*> const& edgeColls,
+                             std::vector<Collection*> const& vertexColls,
                              Variable const* inVariable, std::string const& vertexId,
                              TRI_edge_direction_e defaultDirection,
                              std::vector<TRI_edge_direction_e> const& directions,
@@ -278,7 +278,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 #endif
 }
 
-// This constructor is only used from SatelliteTraversalNode, and GraphNode
+// This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
 TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
                              bool const allowAlreadyBuiltCopy)

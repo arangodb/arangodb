@@ -304,19 +304,15 @@ bool ClusterCollection::dropIndex(IndexId iid) {
   return false;
 }
 
-std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* trx) const {
+std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Methods* trx) const {
+std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Methods* /*trx*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-////////////////////////////////////
-// -- SECTION DML Operations --
-///////////////////////////////////
-
-Result ClusterCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
+Result ClusterCollection::truncate(transaction::Methods& /*trx*/, OperationOptions& /*options*/) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -325,28 +321,28 @@ Result ClusterCollection::compact() {
   return {};
 }
 
-LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,
-                                             VPackSlice const& key) const {
+Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result) {
+Result ClusterCollection::read(transaction::Methods* /*trx*/,
+                               arangodb::velocypack::StringRef const& /*key*/,
+                               ManagedDocumentResult& /*result*/) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
-bool ClusterCollection::readDocument(transaction::Methods* trx,
-                                     LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result) const {
+bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
+                                     LocalDocumentId const& /*documentId*/,
+                                     ManagedDocumentResult& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
-bool ClusterCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 LocalDocumentId const& documentId,
-                                                 IndexIterator::DocumentCallback const& cb) const {
+bool ClusterCollection::readDocumentWithCallback(transaction::Methods* /*trx*/,
+                                                 LocalDocumentId const& /*documentId*/,
+                                                 IndexIterator::DocumentCallback const& /*cb*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

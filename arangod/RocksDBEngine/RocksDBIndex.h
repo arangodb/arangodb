@@ -63,7 +63,8 @@ class RocksDBIndex : public Index {
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type) const override;
 
-  uint64_t objectId() const { return _objectId; }
+  uint64_t objectId() const { return _objectId.load(); }
+  uint64_t tempObjectId() const { return _tempObjectId.load(); }
 
   /// @brief if true this index should not be shown externally
   virtual bool isHidden() const override {
@@ -111,9 +112,11 @@ class RocksDBIndex : public Index {
 
   rocksdb::Comparator const* comparator() const;
 
-  RocksDBKeyBounds getBounds() const {
-    return RocksDBIndex::getBounds(type(), _objectId, _unique);
+  RocksDBKeyBounds getBounds(std::uint64_t objectId) const {
+    return RocksDBIndex::getBounds(type(), objectId, _unique);
   }
+
+  RocksDBKeyBounds getBounds() const { return getBounds(_objectId); }
 
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 
@@ -124,11 +127,13 @@ class RocksDBIndex : public Index {
 
   bool isPersistent() const override final { return true; }
 
+  Result setObjectIds(std::uint64_t plannedObjectId, std::uint64_t plannedTempObjectId);
+
  protected:
   RocksDBIndex(IndexId id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
-               uint64_t objectId, bool useCache);
+               uint64_t objectId, uint64_t tempObjectId, bool useCache);
 
   RocksDBIndex(IndexId id, LogicalCollection& collection,
                arangodb::velocypack::Slice const& info,
@@ -141,11 +146,14 @@ class RocksDBIndex : public Index {
   };
 
  protected:
-  uint64_t _objectId;
   rocksdb::ColumnFamilyHandle* _cf;
 
   mutable std::shared_ptr<cache::Cache> _cache;
   bool _cacheEnabled;
+
+ private:
+  std::atomic<uint64_t> _objectId;
+  std::atomic<uint64_t> _tempObjectId;
 };
 }  // namespace arangodb
 

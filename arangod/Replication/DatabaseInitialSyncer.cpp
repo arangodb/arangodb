@@ -110,6 +110,7 @@ arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  options.waitForSync = false;
 
   for (std::size_t rid : toRemove) {
     double t = TRI_microtime();
@@ -149,8 +150,10 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  options.validate = false; // no validation during replication
   options.indexOperationMode = arangodb::Index::OperationMode::internal;
   options.ignoreUniqueConstraints = true;
+  options.waitForSync = false; // no waitForSync during replication
   if (!state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = state.leaderId;
   }
@@ -590,13 +593,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
     
-    VPackOptions options;
-    options.validateUtf8Strings = true;
-    options.disallowExternals = true;
-    options.disallowCustom = true;
-    options.checkAttributeUniqueness = true;
-    options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
-    VPackValidator validator(&options);
+    VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
 
     try {
       while (p < end) {
@@ -628,8 +625,9 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
     TRI_ASSERT(*end == '\0');
     LOG_TOPIC("bad5d", DEBUG, Logger::REPLICATION) << "using json for chunk contents";
 
+
     VPackBuilder builder;
-    VPackParser parser(builder);
+    VPackParser parser(builder, &basics::VelocyPackHelper::requestValidationOptions);
 
     while (p < end) {
       char const* q = strchr(p, '\n');

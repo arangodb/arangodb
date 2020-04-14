@@ -160,9 +160,10 @@ class PhysicalCollection {
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
   virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
-
-  virtual LocalDocumentId lookupKey(transaction::Methods*,
-                                    arangodb::velocypack::Slice const&) const = 0;
+  
+  virtual Result lookupKey(transaction::Methods*,
+                           arangodb::velocypack::StringRef,
+                           std::pair<LocalDocumentId, TRI_voc_rid_t>&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
                       ManagedDocumentResult& result) = 0;
@@ -216,6 +217,10 @@ class PhysicalCollection {
   virtual void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
 
   TRI_voc_rid_t newRevisionId() const;
+
+  virtual Result upgrade();
+  virtual bool didPartialUpgrade();
+  virtual Result cleanupAfterUpgrade();
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

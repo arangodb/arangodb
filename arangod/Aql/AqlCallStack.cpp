@@ -159,9 +159,9 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
   AqlCallStack res{*this};
   // We can always overfetch the next subquery here.
   // We gonna need all data anyways.
-  std::replace_if(
-      res._operations.begin(), res._operations.end(),
-      [](auto const&) -> bool { return true; }, AqlCallList{AqlCall{}, AqlCall{}});
+  for (auto& op : res._operations) {
+    op.createEquivalentFetchAllRowsCall();
+  }
   return res;
 }
 
@@ -198,6 +198,11 @@ auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
   return callList.modifyNextCall();
 }
 
+auto AqlCallStack::modifyCallListAtDepth(size_t depth) -> AqlCallList& {
+  TRI_ASSERT(_operations.size() > depth);
+  return *(_operations.rbegin() + depth);
+}
+
 auto AqlCallStack::modifyTopCall() -> AqlCall& {
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
   if (is36Compatible() && _operations.empty()) {
@@ -213,4 +218,27 @@ auto AqlCallStack::modifyTopCall() -> AqlCall& {
   }
   TRI_ASSERT(!_operations.empty());
   return modifyCallAtDepth(0);
+}
+
+auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
+  return std::all_of(_operations.begin(), _operations.end(), [](AqlCallList const& list) {
+    if (!list.hasMoreCalls()) {
+      return false;
+    }
+    auto const& call = list.peekNextCall();
+    // We cannot continue if any of our calls has a softLimit reached.
+    return !(call.hasSoftLimit() && call.getLimit() == 0 && call.getOffset() == 0);
+  });
+}
+
+auto AqlCallStack::requestLessDataThan(AqlCallStack const& other) const noexcept -> bool {
+  if (_operations.size() != other._operations.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < _operations.size(); ++i) {
+    if (!_operations[i].requestLessDataThan(other._operations[i])) {
+      return false;
+    }
+  }
+  return true;
 }

@@ -2021,6 +2021,37 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
   }
 }
 
+#ifndef IRESEARCH_DLL
+TEST_P(granular_range_filter_test_case, visit) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
+  tests::empty_filter_visitor visitor;
+  std::string fld = "prefix";
+  irs::string_ref field = irs::string_ref(fld);
+  irs::by_granular_range::range_t rng;
+  rng.min = {{0, irs::ref_cast<irs::byte_type>(irs::string_ref("abc"))}};
+  rng.max = {{1, irs::ref_cast<irs::byte_type>(irs::string_ref("abcd"))}};
+  rng.min_type = irs::BoundType::INCLUSIVE;
+  rng.max_type = irs::BoundType::INCLUSIVE;
+  // read segment
+  auto index = open_reader();
+  for (const auto& segment : index) {
+    // get term dictionary for field
+    const auto* reader = segment.field(field);
+    ASSERT_TRUE(reader != nullptr);
+
+    irs::by_granular_range::visit(*reader, rng, visitor);
+    ASSERT_EQ(2, visitor.prepare_calls_counter());
+    ASSERT_EQ(2, visitor.visit_calls_counter());
+    visitor.reset();
+  }
+}
+#endif
 
 INSTANTIATE_TEST_CASE_P(
   granular_range_filter_test,
