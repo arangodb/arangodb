@@ -54,6 +54,7 @@ class QueryExpressionContext : public ExpressionContext {
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms
   transaction::Methods& trx() const override final;
+  bool killed() const override final;
   
  private:
   transaction::Methods& _trx;

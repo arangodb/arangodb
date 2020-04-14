@@ -431,7 +431,7 @@ void BaseOptions::ensureCache() {
 }
 
 void BaseOptions::activateCache(bool enableDocumentCache,
-                                std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
+                                std::unordered_map<ServerID, aql::EngineId> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
   _cache.reset(CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));

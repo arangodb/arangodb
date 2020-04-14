@@ -115,9 +115,7 @@ class QueryContext {
   virtual std::shared_ptr<transaction::Context> newTrxContext() const = 0;
   
   virtual transaction::Methods& trxForOptimization() = 0;
-  
-  virtual Result commitOperations() = 0;
-  
+    
   virtual bool killed() const = 0;
 
   virtual void setKilled() = 0;

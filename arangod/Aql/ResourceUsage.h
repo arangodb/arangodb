@@ -53,8 +53,6 @@ struct ResourceUsage final {
 
 struct ResourceMonitor final {
   ResourceMonitor() : currentResources(), maxMemoryUsage(0) {}
-//  explicit ResourceMonitor(ResourceUsage const& maxResources)
-//      : currentResources(), maxResources(maxResources) {}
 
   void setMemoryLimit(size_t value) { maxMemoryUsage.store(value, std::memory_order_relaxed); }
 

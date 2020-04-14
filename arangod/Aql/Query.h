@@ -60,11 +60,10 @@ class Graph;
 
 namespace aql {
 
-struct AstNode;
 class Ast;
+struct AstNode;
 class ExecutionEngine;
 struct ExecutionStats;
-class Query;
 struct QueryCacheResultEntry;
 struct QueryProfile;
 enum class SerializationFormat;
@@ -121,12 +120,6 @@ class Query : public QueryContext {
 
   void prepareQuery(SerializationFormat format);
   
-  void prepareQuerySnippets(SerializationFormat format,
-                            arangodb::velocypack::Slice collections,
-                            arangodb::velocypack::Slice variables,
-                            arangodb::velocypack::Slice snippets,
-                            velocypack::Builder& answer);
-
   /// @brief execute an AQL query
   aql::ExecutionState execute(QueryResult& res);
 
@@ -142,8 +135,6 @@ class Query : public QueryContext {
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
   ExecutionState finalize(QueryResult&);
-  
-  Result finalizeSnippets(ExecutionStats& stats);
 
   /// @brief parse an AQL query
   QueryResult parse();
@@ -186,9 +177,6 @@ class Query : public QueryContext {
   /// @brief return the query's shared state
   std::shared_ptr<SharedQueryState> sharedState() const;
   ExecutionEngine* rootEngine() const;
-  SnippetList const& snippets() const {
-    return _snippets;
-  }
   
   Ast* ast() {
     return _ast.get();
@@ -209,15 +197,13 @@ public:
   virtual velocypack::Options const& vpackOptions() const override;
   
   virtual transaction::Methods& trxForOptimization() override;
-  
-  virtual Result commitOperations() override;
 
- private:
+ protected:
   /// @brief initializes the query
   void init();
 
   /// @brief calculate a hash for the query, once
-  uint64_t hash() const;
+  uint64_t hash();
 
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
@@ -245,7 +231,7 @@ public:
   ExecutionState cleanupPlanAndEngine(int errorCode,
                                       velocypack::Builder* statsBuilder = nullptr);
 
- private:
+ protected:
   
   AqlItemBlockManager _itemBlockMananger;
   
@@ -318,7 +304,38 @@ public:
   bool _preparedV8Context;
 
   /// @brief whether or not the hash was already calculated
-  mutable bool _queryHashCalculated;
+  bool _queryHashCalculated;
+};
+
+// additonally allows TraversalEngines
+class ClusterQuery final : public Query {
+ public:
+  
+  /// Used to construct a full query
+  ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
+               std::shared_ptr<arangodb::velocypack::Builder> const& options);
+  ~ClusterQuery();
+  
+  SnippetList const& snippets() const {
+    return _snippets;
+  }
+  
+  traverser::GraphEngineList const& traversers() const {
+    return _traversers;
+  }
+  
+  void prepareClusterQuery(SerializationFormat format,
+                           arangodb::velocypack::Slice collections,
+                           arangodb::velocypack::Slice variables,
+                           arangodb::velocypack::Slice snippets,
+                           arangodb::velocypack::Slice traversals,
+                           arangodb::velocypack::Builder& answer);
+  
+  Result finalizeClusterQuery(ExecutionStats& stats);
+
+ private:
+  /// @brief first one should be the local one
+  traverser::GraphEngineList _traversers;
 };
 
 }  // namespace aql

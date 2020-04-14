@@ -54,7 +54,7 @@ struct ExecutionStats {
 
   /// @brief sumarize two sets of ExecutionStats
   void add(ExecutionStats const& summand);
-  void add(size_t id, ExecutionNodeStats const&);
+  void addNode(size_t id, ExecutionNodeStats const&);
   void addAliases(std::map<size_t, size_t>&& aliases) {
     _nodeAliases = std::move(aliases);
   }

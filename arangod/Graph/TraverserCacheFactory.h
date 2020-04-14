@@ -23,9 +23,9 @@
 #ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H
 #define ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H 1
 
+#include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/TraverserEngineRegistry.h"
 
 namespace arangodb {
 namespace aql {
@@ -37,7 +37,7 @@ struct BaseOptions;
 
 namespace CacheFactory {
 TraverserCache* CreateCache(arangodb::aql::QueryContext& query, bool activateDocumentCache,
-                            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                            std::unordered_map<ServerID, aql::EngineId> const* engines,
                             BaseOptions* opts);
 
 }  // namespace cacheFactory

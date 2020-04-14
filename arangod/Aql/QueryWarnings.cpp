@@ -77,12 +77,6 @@ void QueryWarnings::registerWarning(int code, char const* details) {
   }
 }
 
-//void QueryWarnings::operator+=(QueryWarnings const& other) {
-//  std::lock_guard<std::mutex> guard(_mutex);
-//  std::lock_guard<std::mutex> guard(other._mutex);
-//  _list.insert(_list.end(), other._list.begin(), other._list.end());
-//}
-
 void QueryWarnings::toVelocyPack(arangodb::velocypack::Builder& b) const {
   TRI_ASSERT(b.isOpenObject());
   

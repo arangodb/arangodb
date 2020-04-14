@@ -160,7 +160,7 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
 
 void ExecutionBlock::collectExecStats(ExecutionStats& stats) const {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    stats.add(getPlanNode()->id(), _execNodeStats);
+    stats.addNode(getPlanNode()->id(), _execNodeStats);
   }
 }
 
@@ -238,7 +238,6 @@ auto ExecutionBlock::printTypeInfo() const -> std::string const {
   std::stringstream stream;
   ExecutionNode const* node = getPlanNode();
   stream << "type=" << node->getTypeString();
-  ;
   return stream.str();
 }
 

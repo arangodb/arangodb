@@ -41,7 +41,7 @@ using namespace arangodb::graph;
 
 ClusterTraverserCache::ClusterTraverserCache(
     aql::QueryContext& query,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, 
+    std::unordered_map<ServerID, aql::EngineId> const* engines,
     BaseOptions* options)
     : TraverserCache(query, options), 
       _engines(engines) {}

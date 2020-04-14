@@ -40,7 +40,6 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
 
   ~SharedQueryState() = default;
 
-  bool valid();
   void invalidate();
 
   /// @brief executeAndWakeup is to be called on the query object to
@@ -65,8 +64,17 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
     }
 
     if (std::forward<F>(cb)()) {
-      execute();
+      notifyWaiter();
     }
+  }
+  
+  template <typename F>
+  void executeLocked(F&& cb) {
+    std::lock_guard<std::mutex> guard(_mutex);
+    if (!_valid) {
+      return;
+    }
+    std::forward<F>(cb)();
   }
 
   /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
@@ -96,7 +104,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
         } catch(...) {}
         
         std::lock_guard<std::mutex> guard(self->_mutex);
-        self->execute();
+        self->notifyWaiter();
       }
       
       self->_numTasks.fetch_sub(1);
@@ -105,7 +113,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
 
  private:
   /// execute the _continueCallback. must hold _mutex
-  void execute();
+  void notifyWaiter();
   void queueHandler();
   
   bool queueAsyncTask(std::function<void()> const&);

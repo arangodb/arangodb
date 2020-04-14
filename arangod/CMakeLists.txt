@@ -155,7 +155,6 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/TraverserEngine.cpp
-  Cluster/TraverserEngineRegistry.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
@@ -179,7 +178,6 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserOptions.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
-  RestServer/TraverserEngineRegistryFeature.cpp
 )
 
 set(LIB_ARANGO_PREGEL_SOURCES

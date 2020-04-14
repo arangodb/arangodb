@@ -32,11 +32,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
-namespace traverser {
-class TraverserEngineRegistry;
-}
-
 namespace aql {
 class Query;
 class QueryRegistry;
@@ -45,8 +40,8 @@ enum class SerializationFormat;
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*,
-                 std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>*);
+  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*,
+                 GeneralResponse*, QueryRegistry*);
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
@@ -142,11 +137,11 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 //                        std::shared_ptr<transaction::Context> const& ctx,
 //                        double const ttl, aql::SerializationFormat format,
 //                        bool& needToLock, arangodb::velocypack::Builder& answer);
-
-  bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
-                                std::shared_ptr<transaction::Context> const& ctx,
-                                double const ttl, bool& needToLock,
-                                arangodb::velocypack::Builder& answer);
+//
+//  bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
+//                                std::shared_ptr<transaction::Context> const& ctx,
+//                                double const ttl, bool& needToLock,
+//                                arangodb::velocypack::Builder& answer);
 
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
@@ -163,9 +158,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // our query registry
   QueryRegistry* _queryRegistry;
-
-  // our traversal engine registry
-  traverser::TraverserEngineRegistry* _traverserRegistry;
 
   aql::ExecutionEngine* _engine;
 

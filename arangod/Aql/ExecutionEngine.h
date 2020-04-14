@@ -174,7 +174,9 @@ class ExecutionEngine {
   std::map<std::string, QueryId> _serverToQueryId;
   
   ExecutionStats _execStats;
-
+  
+  Result _shutdownResult;
+  
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
 

@@ -66,3 +66,7 @@ TRI_vocbase_t& QueryExpressionContext::vocbase() const {
 transaction::Methods& QueryExpressionContext::trx() const {
   return _trx;
 }
+
+bool QueryExpressionContext::killed() const  {
+  return _query.killed();
+}

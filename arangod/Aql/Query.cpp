@@ -42,6 +42,7 @@
 #include "Basics/fasthash.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "Graph/Graph.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -158,6 +159,7 @@ Query::~Query() {
 
   exitV8Context();
   
+  _plans.clear(); // simon: must be before AST
   _ast.reset();
 
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
@@ -190,22 +192,6 @@ void Query::injectTransaction(std::unique_ptr<transaction::Methods> trx) {
    _trx = std::move(trx);
    init();
  }
-
-//void Query::setExecutionTime() {
-//#warning fix
-////  if (_engine != nullptr) {
-////    _engine->_stats.setPeakMemoryUsage(_resourceMonitor.currentResources.peakMemoryUsage);
-////    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-////  }
-//}
-
-/// @brief increase number of HTTP requests. this is normally
-/// called during the setup of a query
-//void Query::incHttpRequests(size_t requests) {
-//  if (_engine != nullptr) {
-//    _engine->_stats.requests += requests;
-//  }
-//}
 
 void Query::prepareQuery(SerializationFormat format) {
 
@@ -248,84 +234,6 @@ void Query::prepareQuery(SerializationFormat format) {
     registry->registerEngines(_snippets);
   }
   
-  enterState(QueryExecutionState::ValueType::EXECUTION);
-}
-
-
-void Query::prepareQuerySnippets(SerializationFormat format,
-                                 VPackSlice collections,
-                                 VPackSlice variables,
-                                 VPackSlice snippets,
-                                 VPackBuilder& answerBuilder) {
-  LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                             << "Query::prepareQuerySnippets"
-                                             << " this: " << (uintptr_t)this;
-  
-  init();
-  enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
-  
-  ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
-  _ast->variables()->fromVelocyPack(variables);
-  // creating the plan may have produced some collections
-  // we need to add them to the transaction now (otherwise the query will
-  // fail)
-
-  TRI_ASSERT(_trx == nullptr);
-  // needs to be created after the AST collected all collections
-  std::unordered_set<std::string> inaccessibleCollections;
-#ifdef USE_ENTERPRISE
-  // TODO: Remove once we have cluster wide transactions
-  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
-    inaccessibleCollections = _queryOptions.inaccessibleCollections;
-  }
-#endif
-  
-  _trx = AqlTransaction::create(_transactionContext, _collections.collections(),
-                                _queryOptions.transactionOptions,
-                                std::move(inaccessibleCollections));
-  // create the transaction object, but do not start it yet
-  _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
-
-  Result res = _trx->begin();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  enterState(QueryExecutionState::ValueType::PARSING);
-  
-  auto instantiateSnippet = [&](VPackSlice snippet) {
-    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
-    if (plan == nullptr) {  // oops
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "could not create plan from vpack");
-    }
-
-    plan->findVarUsage();
-
-    _isAsyncQuery = _isAsyncQuery || plan->contains(ExecutionNode::ASYNC);
-    TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
-    
-    res = ExecutionEngine::instantiateFromPlan(*this, _itemBlockMananger, *plan,
-                                               /*planRegisters*/!_queryString.empty(),
-                                               format, _snippets);
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    _plans.push_back(std::move(plan));
-  };
-  
-  for (auto pair : VPackObjectIterator(snippets, /*sequential*/true)) {
-    instantiateSnippet(pair.value);
-    
-    TRI_ASSERT(_snippets.back().first == 0);
-    const QueryId qId = _trx->state()->isRunningInCluster() ? TRI_NewTickServer() : 0;
-    _snippets.back().first = qId;
-
-    answerBuilder.add(pair.key);
-    answerBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(qId)));
-  }
-  
-  TRI_ASSERT(_trx != nullptr);
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
@@ -913,41 +821,6 @@ ExecutionState Query::finalize(QueryResult& result) {
   return ExecutionState::DONE;
 }
 
-Result Query::finalizeSnippets(ExecutionStats& stats) {
-  TRI_ASSERT(_trx);
-  TRI_ASSERT(ServerState::instance()->isDBServer());
-  
-  LOG_TOPIC("fc33c", DEBUG, Logger::QUERIES)
-       << TRI_microtime() - _startTime << " "
-       << "Query::finalizeSnippets: before _trx->commit"
-       << " this: " << (uintptr_t)this;
-
-   Result commitResult = _trx->commit();
-   if (commitResult.fail()) {
-     return commitResult;
-   }
-
-   LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
-       << TRI_microtime() - _startTime << " "
-       << "Query::finalizeSnippets: before cleanupPlanAndEngine"
-       << " this: " << (uintptr_t)this;
-
-  enterState(QueryExecutionState::ValueType::FINALIZATION);
-  
-  stats.requests += _numRequests.load(std::memory_order_relaxed);
-  stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
-  stats.setExecutionTime(TRI_microtime() - _startTime);
-  
-  for (auto& [eId, engine] : _snippets) {
-    engine->collectExecutionStats(stats);
-    engine->setShutdown(); // no need to pass through shutdown
-  }
-  
-  TRI_ASSERT(commitResult.ok());
-  
-  return commitResult;
-}
-
 /// @brief parse an AQL query
 QueryResult Query::parse() {
   try {
@@ -1209,7 +1082,7 @@ void Query::init() {
 }
 
 /// @brief calculate a hash for the query, once
-uint64_t Query::hash() const {
+uint64_t Query::hash() {
   if (!_queryHashCalculated) {
     _queryHash = calculateHash();
     _queryHashCalculated = true;
@@ -1345,6 +1218,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
     
     for (auto& [eId, engine] : _snippets) {
       engine->collectExecutionStats(stats);
+      engine->setShutdown();
     }
 
     statsBuilder->add(VPackValue("stats"));
@@ -1409,20 +1283,6 @@ transaction::Methods& Query::trxForOptimization() {
   return *_trx;
 }
 
-Result Query::commitOperations() {
-  if (_trx->status() == transaction::Status::RUNNING) {
-    Result res = _trx->commit();
-    // simon: do not pass-through shutdown request
-    if (ServerState::instance()->isDBServer()) {
-      for (auto& [eId, engine] : _snippets) {
-        engine->setShutdown();
-      }
-    }
-    return res;
-  }
-  return Result();
-}
-
 /// @brief return the query's shared state
 std::shared_ptr<SharedQueryState> Query::sharedState() const {
   if (!_snippets.empty()) {
@@ -1440,4 +1300,146 @@ ExecutionEngine* Query::rootEngine() const {
   }
   return nullptr;
 }
- 
+
+ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
+                           std::shared_ptr<arangodb::velocypack::Builder> const& options)
+: Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options) {}
+
+ClusterQuery::~ClusterQuery() try {
+  _traversers.clear();
+} catch(...) {}
+
+void ClusterQuery::prepareClusterQuery(SerializationFormat format,
+                                       VPackSlice collections,
+                                       VPackSlice variables,
+                                       VPackSlice snippets,
+                                       VPackSlice travererSlice,
+                                       VPackBuilder& answerBuilder) {
+  LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
+                                             << "Query::prepareQuerySnippets"
+                                             << " this: " << (uintptr_t)this;
+  
+  init();
+  enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
+  
+  ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
+  _ast->variables()->fromVelocyPack(variables);
+  // creating the plan may have produced some collections
+  // we need to add them to the transaction now (otherwise the query will fail)
+
+  TRI_ASSERT(_trx == nullptr);
+  // needs to be created after the AST collected all collections
+  std::unordered_set<std::string> inaccessibleCollections;
+#ifdef USE_ENTERPRISE
+  // TODO: Remove once we have cluster wide transactions
+  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
+    inaccessibleCollections = _queryOptions.inaccessibleCollections;
+  }
+#endif
+  
+  _trx = AqlTransaction::create(_transactionContext, _collections.collections(),
+                                _queryOptions.transactionOptions,
+                                std::move(inaccessibleCollections));
+  // create the transaction object, but do not start it yet
+  _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
+
+  Result res = _trx->begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  enterState(QueryExecutionState::ValueType::PARSING);
+  
+  auto instantiateSnippet = [&](VPackSlice snippet) {
+    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
+    if (plan == nullptr) {  // oops
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "could not create plan from vpack");
+    }
+
+    plan->findVarUsage();
+
+    _isAsyncQuery = _isAsyncQuery || plan->contains(ExecutionNode::ASYNC);
+    TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
+    
+    res = ExecutionEngine::instantiateFromPlan(*this, _itemBlockMananger, *plan,
+                                               /*planRegisters*/!_queryString.empty(),
+                                               format, _snippets);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    _plans.push_back(std::move(plan));
+  };
+  
+  answerBuilder.add("snippets", VPackValue(VPackValueType::Object));
+  for (auto pair : VPackObjectIterator(snippets, /*sequential*/true)) {
+    instantiateSnippet(pair.value);
+    
+    TRI_ASSERT(_snippets.back().first == 0);
+    const QueryId qId = _trx->state()->isRunningInCluster() ? TRI_NewTickServer() : 0;
+    _snippets.back().first = qId;
+
+    answerBuilder.add(pair.key);
+    answerBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(qId)));
+  }
+  answerBuilder.close(); // snippets
+  
+  if (travererSlice.isArray()) {
+    // used to be RestAqlHandler::registerTraverserEngines
+    answerBuilder.add("traverserEngines", VPackValue(VPackValueType::Array));
+    for (auto const& te : VPackArrayIterator(travererSlice)) {
+      
+      aql::EngineId eId = TRI_NewTickServer();
+      auto engine = traverser::BaseEngine::BuildEngine(_vocbase, *this, te);
+      
+      _traversers.emplace_back(eId, std::move(engine));
+
+      answerBuilder.add(VPackValue(eId));
+    }
+    answerBuilder.close();  // traverserEngines
+  }
+
+  TRI_ASSERT(_trx != nullptr);
+  enterState(QueryExecutionState::ValueType::EXECUTION);
+}
+
+Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats) {
+  TRI_ASSERT(_trx);
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+  
+  LOG_TOPIC("fc33c", DEBUG, Logger::QUERIES)
+       << TRI_microtime() - _startTime << " "
+       << "Query::finalizeSnippets: before _trx->commit"
+       << " this: " << (uintptr_t)this;
+
+  Result commitResult;
+  if (_trx->status() == transaction::Status::RUNNING) {
+    commitResult = _trx->commit();
+    if (commitResult.fail()) {
+      return commitResult;
+    }
+  }
+
+   LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
+       << TRI_microtime() - _startTime << " "
+       << "Query::finalizeSnippets: before cleanupPlanAndEngine"
+       << " this: " << (uintptr_t)this;
+
+  enterState(QueryExecutionState::ValueType::FINALIZATION);
+  
+  stats.requests += _numRequests.load(std::memory_order_relaxed);
+  stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
+  stats.setExecutionTime(TRI_microtime() - _startTime);
+  
+  for (auto& [eId, engine] : _snippets) {
+    engine->collectExecutionStats(stats);
+    engine->setShutdown(); // no need to pass through shutdown
+  }
+  
+  TRI_ASSERT(commitResult.ok());
+  _snippets.clear();
+  _traversers.clear();
+  
+  return commitResult;
+}
+

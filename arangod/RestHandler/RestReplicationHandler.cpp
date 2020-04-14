@@ -3425,6 +3425,8 @@ Result RestReplicationHandler::createBlockingTransaction(
     exc.push_back(col.name());
   }
   
+  TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
+  
   transaction::Options opts;
   opts.lockTimeout = ttl; // not sure if appropriate ?
   Result res = mgr->createManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
@@ -3432,8 +3434,6 @@ Result RestReplicationHandler::createBlockingTransaction(
   if (res.fail()) {
     return res;
   }
-
-  TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
   ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
@@ -3480,7 +3480,7 @@ Result RestReplicationHandler::createBlockingTransaction(
   }
 
   TRI_ASSERT(isLockHeld(id).ok());
-  TRI_ASSERT(isLockHeld(id).get() == false);
+  TRI_ASSERT(isLockHeld(id).get() == true);
 
   return Result();
 }
@@ -3512,7 +3512,11 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
   if (res.ok()) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     if (mgr) {
-      return mgr->abortManagedTrx(id);
+      auto isAborted = mgr->abortManagedTrx(id);
+      if (isAborted.ok()) { // lock was held
+        return ResultT<bool>::success(true);
+      }
+      return ResultT<bool>::error(isAborted);
     }
   } else {
     registerTombstone(id);

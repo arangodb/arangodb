@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
@@ -29,6 +30,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
@@ -72,7 +74,7 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insertQuery(std::unique_ptr<Query> query, double ttl) {
+void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->state() != QueryExecutionState::ValueType::INITIALIZATION);
   LOG_TOPIC("77778", DEBUG, arangodb::Logger::AQL)
@@ -100,8 +102,15 @@ void QueryRegistry::insertQuery(std::unique_ptr<Query> query, double ttl) {
         if (pair.first != 0) { // skip the root snippet
           auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), nullptr));
           TRI_ASSERT(result.second);
+          TRI_ASSERT(result.first->second._type == EngineType::Execution);
           p->_numEngines++;
         }
+      }
+      for (auto& pair : p->_query->traversers()) {
+        auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), nullptr));
+        TRI_ASSERT(result.second);
+        TRI_ASSERT(result.first->second._type == EngineType::Graph);
+        p->_numEngines++;
       }
 
       auto result = _queries[vocbase.name()].try_emplace(qId, std::move(p));
@@ -115,6 +124,10 @@ void QueryRegistry::insertQuery(std::unique_ptr<Query> query, double ttl) {
       for (auto& pair : p->_query->snippets()) {
         _engines.erase(pair.first);
       }
+      for (auto& pair : p->_query->traversers()) {
+        _engines.erase(pair.first);
+      }
+      // no need to revert last insert
       throw;
     }
   }
@@ -139,7 +152,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<Query> query, double ttl) {
 //}
 
 /// @brief open
-ExecutionEngine* QueryRegistry::openEngine(QueryId id) {
+void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "Open query with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(writeLocker, _lock);
@@ -152,6 +165,13 @@ ExecutionEngine* QueryRegistry::openEngine(QueryId id) {
   }
   
   EngineInfo& ei = it->second;
+  
+  if (ei._type != type) {
+    LOG_TOPIC("c3af5", DEBUG, arangodb::Logger::AQL)
+    << "Engine with id " << id << " has other type";
+    return nullptr;
+  }
+  
   if (ei._isOpen) {
     LOG_TOPIC("7c2a3", DEBUG, arangodb::Logger::AQL)
         << "Engine with id " << id << " is already in open";
@@ -171,20 +191,20 @@ ExecutionEngine* QueryRegistry::openEngine(QueryId id) {
 }
 
 /// @brief close
-void QueryRegistry::closeEngine(QueryId id) {
-  LOG_TOPIC("3f0c9", DEBUG, arangodb::Logger::AQL) << "returning engine with id " << id;
+void QueryRegistry::closeEngine(EngineId engineId) {
+  LOG_TOPIC("3f0c9", DEBUG, arangodb::Logger::AQL) << "returning engine with id " << engineId;
   WRITE_LOCKER(writeLocker, _lock);
   
-  auto it = _engines.find(id);
+  auto it = _engines.find(engineId);
   if (it == _engines.end()) {
     LOG_TOPIC("c3ae4", DEBUG, arangodb::Logger::AQL)
-    << "Found no engine with id " << id;
+    << "Found no engine with id " << engineId;
     return;
   }
   
   EngineInfo& ei = it->second;
   if (!ei._isOpen) {
-    LOG_TOPIC("b342e", DEBUG, arangodb::Logger::AQL) << "engine id " << id << " was not open.";
+    LOG_TOPIC("b342e", DEBUG, arangodb::Logger::AQL) << "engine id " << engineId << " was not open.";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "engine with given vocbase and id is not open");
   }
@@ -198,13 +218,13 @@ void QueryRegistry::closeEngine(QueryId id) {
   }
 
   LOG_TOPIC("ae981", DEBUG, arangodb::Logger::AQL)
-  << "query with id " << id << " is now returned.";
+  << "query with id " << engineId << " is now returned.";
 }
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
-std::unique_ptr<Query> QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
-                                                   int errorCode, bool ignoreOpened) {
+std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
+                                                          int errorCode, bool ignoreOpened) {
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -214,7 +234,7 @@ std::unique_ptr<Query> QueryRegistry::destroyQuery(std::string const& vocbase, Q
 
     if (m == _queries.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
+          TRI_ERROR_BAD_PARAMETER, "vocbase not found in query registry");
     }
 
     auto q = m->second.find(id);
@@ -242,32 +262,19 @@ std::unique_ptr<Query> QueryRegistry::destroyQuery(std::string const& vocbase, Q
     for (auto const& pair : queryInfo->_query->snippets()) {
       _engines.erase(pair.first);
     }
+    for (auto& pair : queryInfo->_query->traversers()) {
+      _engines.erase(pair.first);
+    }
 
     if (m->second.empty()) {
       // clear empty entries in database-to-queries map
       _queries.erase(m);
-    }
-    
-    for (auto& pair : queryInfo->_query->snippets()) {
-      _engines.erase(pair.first);
     }
   }
 
   TRI_ASSERT(queryInfo != nullptr);
   TRI_ASSERT(queryInfo->_numOpen == 0);
 
-  // If the query was open, we can delete it right away, if not, we need
-  // to register the transaction with the current context and adjust
-  // the debugging counters for transactions:
-  if (errorCode == TRI_ERROR_NO_ERROR) {
-    // commit the operation if necessary
-    auto res = queryInfo->_query->commitOperations();
-    if (res.fail()) {
-      // not much we can do here except logging the error
-      LOG_TOPIC("440a1", ERR, arangodb::Logger::AQL)
-        << "unable to commit query with id " << id << ": " << res.errorMessage();
-    }
-  }
   LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL)
       << "query with id " << id << " is now destroyed";
   
@@ -276,7 +283,7 @@ std::unique_ptr<Query> QueryRegistry::destroyQuery(std::string const& vocbase, Q
 
 
 /// used for a legacy shutdown
-bool QueryRegistry::destroyEngine(QueryId engineId, int errorCode) {
+bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
   std::string vocbase;
   QueryId qId = 0;
   
@@ -301,7 +308,7 @@ bool QueryRegistry::destroyEngine(QueryId engineId, int errorCode) {
       ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       TRI_ASSERT(ei._queryInfo->_numEngines > 0);
       ei._queryInfo->_numEngines--;
-      if (ei._queryInfo->_numEngines == 0) {
+      if (ei._queryInfo->_numEngines == 0) { // shutdown Query
         qId = ei._queryInfo->_query->id();
         vocbase = ei._queryInfo->_query->vocbase().name();
       }
@@ -310,7 +317,7 @@ bool QueryRegistry::destroyEngine(QueryId engineId, int errorCode) {
     _engines.erase(it);
   }
 
-  if (qId) {
+  if (qId != 0 && !vocbase.empty()) {  // simon: old shutdown case
     destroyQuery(vocbase, qId, errorCode, false);
   }
   
@@ -338,29 +345,6 @@ void QueryRegistry::destroy(std::string const& vocbase) {
 
   expireQueries();
 }
-
-#if 0
-ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t* vocbase, QueryId id) {
-  LOG_TOPIC("d9870", DEBUG, arangodb::Logger::AQL)
-      << "Test if query with id " << id << " is in use.";
-
-  READ_LOCKER(readLocker, _lock);
-
-  auto m = _queries.find(vocbase->name());
-  if (m == _queries.end()) {
-    LOG_TOPIC("22107", DEBUG, arangodb::Logger::AQL)
-        << "Found no queries for DB: " << vocbase->name();
-    return ResultT<bool>::error(TRI_ERROR_QUERY_NOT_FOUND);
-  }
-  auto q = m->second.find(id);
-  if (q == m->second.end()) {
-    LOG_TOPIC("48f28", DEBUG, arangodb::Logger::AQL)
-        << "Query id " << id << " not found in registry";
-    return ResultT<bool>::error(TRI_ERROR_QUERY_NOT_FOUND);
-  }
-  return ResultT<bool>::success(q->second->_isOpen);
-}
-#endif
 
 /// @brief expireQueries
 void QueryRegistry::expireQueries() {
@@ -481,11 +465,12 @@ void QueryRegistry::unregisterEngines(SnippetList const& snippets) {
   }
 }
 
-QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<Query> query, double ttl)
+QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl)
     : _vocbase(&(query->vocbase())),
       _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
-      _numEngines(0) {}
+      _numEngines(0),
+      _numOpen(0) {}
 
 QueryRegistry::QueryInfo::~QueryInfo() = default;

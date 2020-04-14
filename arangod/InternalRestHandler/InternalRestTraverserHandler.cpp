@@ -23,13 +23,12 @@
 
 #include "InternalRestTraverserHandler.h"
 
+#include "Aql/QueryRegistry.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Rest/GeneralResponse.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 
 using namespace arangodb;
@@ -38,7 +37,7 @@ using namespace arangodb::rest;
 
 InternalRestTraverserHandler::InternalRestTraverserHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response, TraverserEngineRegistry* engineRegistry)
+    GeneralResponse* response, aql::QueryRegistry* engineRegistry)
     : RestVocbaseBaseHandler(server, request, response), _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);
 }
@@ -82,33 +81,8 @@ RestStatus InternalRestTraverserHandler::execute() {
 }
 
 void InternalRestTraverserHandler::createEngine() {
-  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  if (!suffixes.empty()) {
-    // POST does not allow path parameters
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected POST " + INTERNAL_TRAVERSER_PATH);
-    return;
-  }
-
-  bool parseSuccess = true;
-  VPackSlice body = this->parseVPackBody(parseSuccess);
-
-  if (!parseSuccess) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "Expected an object with traverser information as body parameter");
-    return;
-  }
-
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  auto id = _registry->createNew(_vocbase, std::move(ctx), body, 600.0, true);
-
-  TRI_ASSERT(id != 0);
-  VPackBuilder resultBuilder;
-  resultBuilder.add(VPackValue(id));
-
-  // and generate a response
-  generateResult(ResponseCode::OK, resultBuilder.slice());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "API traversal engine creation no longer supported");
 }
 
 void InternalRestTraverserHandler::queryEngine() {
@@ -122,14 +96,13 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   std::string const& option = suffixes[0];
-  auto engineId =
-      static_cast<TraverserEngineID>(basics::StringUtils::uint64(suffixes[1]));
+  auto engineId = static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[1]));
   if (engineId == 0) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected TraveserEngineId to be an integer number");
     return;
   }
-  BaseEngine* engine = _registry->get(engineId);
+  traverser::BaseEngine* engine = _registry->openGraphEngine(engineId);
   if (engine == nullptr) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid TraverserEngineId");
@@ -137,23 +110,13 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   auto& registry = _registry;  // For the guard
-  auto cleanup = [registry, &engineId]() { registry->returnEngine(engineId); };
-  TRI_DEFER(cleanup());
+  auto cleanup = scopeGuard([registry, &engineId]() {
+    registry->closeEngine(engineId);
+  });
 
   if (option == "lock") {
-    if (count != 3) {
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expected PUT " + INTERNAL_TRAVERSER_PATH +
-                        "/lock/<TraverserEngineId>/<shardId>");
-      return;
-    }
-    if (!engine->lockCollection(suffixes[2])) {
-      generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "lock lead to an exception");
-      return;
-    }
-    generateResult(ResponseCode::OK, arangodb::velocypack::Slice::trueSlice());
-    return;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "API for traversal engine locking no longer supported");
   }
 
   if (count != 2) {
@@ -266,6 +229,7 @@ void InternalRestTraverserHandler::queryEngine() {
   generateResult(ResponseCode::OK, result.slice(), engine->context());
 }
 
+// simon: this API will no longer be used in 3.7
 void InternalRestTraverserHandler::destroyEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {
@@ -276,7 +240,7 @@ void InternalRestTraverserHandler::destroyEngine() {
     return;
   }
 
-  TraverserEngineID id = basics::StringUtils::uint64(suffixes[0]);
-  _registry->destroy(id);
-  generateResult(ResponseCode::OK, arangodb::velocypack::Slice::trueSlice());
+  auto engineId = static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[1]));
+  bool found = _registry->destroyEngine(engineId, TRI_ERROR_NO_ERROR);
+  generateResult(ResponseCode::OK, VPackSlice::booleanSlice(found));
 }

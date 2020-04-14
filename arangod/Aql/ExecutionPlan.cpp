@@ -277,7 +277,6 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
-#if 0
   // On coordinator there are temporary nodes injected into the Plan, that are NOT part
   // of the full execution tree. This is in order to reuse a lot of the nodes
   // for each DBServer instead of having all nodes copy everything once again.
@@ -297,7 +296,6 @@ ExecutionPlan::~ExecutionPlan() {
       // should not happen...
     }
   }
-#endif
   
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // we are in the destructor here already. decreasing the memory usage counters

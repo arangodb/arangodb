@@ -575,13 +575,13 @@ CostEstimate GraphNode::estimateCost() const {
   return estimate;
 }
 
-void GraphNode::addEngine(TraverserEngineID const& engine, ServerID const& server) {
+void GraphNode::addEngine(aql::EngineId engineId, ServerID const& server) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-  _engines.try_emplace(server, engine);
+  _engines.try_emplace(server, engineId);
 }
 
 /// @brief Returns a reference to the engines. (CLUSTER ONLY)
-std::unordered_map<ServerID, traverser::TraverserEngineID> const* GraphNode::engines() const {
+std::unordered_map<ServerID, aql::EngineId> const* GraphNode::engines() const {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   return &_engines;
 }

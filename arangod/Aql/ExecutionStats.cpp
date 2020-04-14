@@ -95,9 +95,13 @@ void ExecutionStats::add(ExecutionStats const& summand) {
       result.first->second += pair.second;
     }
   }
+  // simon: TODO optimize away
+  for (auto const& pair : summand._nodeAliases) {
+    _nodeAliases.try_emplace(pair.first, pair.second);
+  }
 }
 
-void ExecutionStats::add(size_t id, ExecutionNodeStats const& stats) {
+void ExecutionStats::addNode(size_t id, ExecutionNodeStats const& stats) {
   auto it = _nodes.find(id);
   if (it != _nodes.end()) {
     it->second += stats;

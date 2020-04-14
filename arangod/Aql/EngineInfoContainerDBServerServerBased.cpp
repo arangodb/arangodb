@@ -270,7 +270,7 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
     MapRemoteToSnippet& snippetIds, std::map<std::string, QueryId>& serverToQueryId,
-    std::map<size_t, size_t> nodeAliases) {
+    std::map<size_t, size_t>& nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
@@ -457,7 +457,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
                   "failover. Please check; " +
                       server};
         }
-        _graphNodes[i]->addEngine(idIter.value().getNumber<traverser::TraverserEngineID>(),
+        _graphNodes[i]->addEngine(idIter.value().getNumber<aql::EngineId>(),
                                   server);
         idIter.next();
       }

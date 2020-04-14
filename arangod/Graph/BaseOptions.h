@@ -29,7 +29,6 @@
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
@@ -149,7 +148,7 @@ struct BaseOptions {
   void ensureCache();
 
   void activateCache(bool enableDocumentCache,
-                     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
+                     std::unordered_map<ServerID, aql::EngineId> const* engines);
 
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
   

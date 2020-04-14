@@ -40,7 +40,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Transaction/Context.h"
@@ -57,14 +56,12 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
                                GeneralRequest* request, GeneralResponse* response,
-                               std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>* registries)
+                               QueryRegistry* qr)
     : RestVocbaseBaseHandler(server, request, response),
-      _queryRegistry(registries->first),
-      _traverserRegistry(registries->second),
+      _queryRegistry(qr),
       _engine(nullptr),
       _qId(0) {
   TRI_ASSERT(_queryRegistry != nullptr);
-  TRI_ASSERT(_traverserRegistry != nullptr);
 }
 
 // POST method for /_api/aql/setup (internal)
@@ -243,7 +240,7 @@ void RestAqlHandler::setupClusterQuery() {
 
   // creates a StandaloneContext or a leased context
   auto ctx = createTransactionContext();
-  auto query = std::make_unique<Query>(ctx, aql::QueryString(), nullptr, options);
+  auto query = std::make_unique<ClusterQuery>(ctx, std::move(options));
   
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
@@ -254,22 +251,20 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
   
   answerBuilder.add("queryId", VPackValue(query->id()));
-  answerBuilder.add(VPackValue("snippets"));
-  answerBuilder.openObject();
-  query->prepareQuerySnippets(format, collectionBuilder.slice(),
-                              variablesSlice, snippetsSlice, answerBuilder);
-  answerBuilder.close(); // snippets
+  query->prepareClusterQuery(format, collectionBuilder.slice(),
+                             variablesSlice, snippetsSlice,
+                             traverserSlice, answerBuilder);
 
-  if (!traverserSlice.isNone()) {
-    bool needLocking = false;
-    bool res = registerTraverserEngines(traverserSlice, ctx, ttl, needLocking, answerBuilder);
-
-    if (!res) {
-      // TODO we need to trigger cleanup here??
-      // Registering the traverser engines failed.
-      return;
-    }
-  }
+//  if (!traverserSlice.isNone()) {
+//    bool needLocking = false;
+//    bool res = registerTraverserEngines(traverserSlice, ctx, ttl, needLocking, answerBuilder);
+//
+//    if (!res) {
+//      // TODO we need to trigger cleanup here??
+//      // Registering the traverser engines failed.
+//      return;
+//    }
+//  }
   answerBuilder.close(); // result
   answerBuilder.close();
   
@@ -369,7 +364,6 @@ bool RestAqlHandler::registerSnippets(
 
   return true;
 }
-#endif
 
 bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
                                               std::shared_ptr<transaction::Context> const& ctx,
@@ -405,11 +399,12 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
   // Everything went well
   return true;
 }
+#endif
 
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
 bool RestAqlHandler::killQuery(std::string const& idString) {
   _qId = arangodb::basics::StringUtils::uint64(idString);
-  return _queryRegistry->destroyEngine(_qId, TRI_ERROR_QUERY_KILLED);//(&_vocbase, _qId);
+  return _queryRegistry->destroyEngine(_qId, TRI_ERROR_QUERY_KILLED);
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
@@ -509,7 +504,7 @@ RestStatus RestAqlHandler::execute() {
                       std::move(msg));
         return RestStatus::DONE;
       }
-      if (suffixes[0] == "finalize") {
+      if (suffixes[0] == "finish") {
         handleFinishQuery(suffixes[1]);
       } else if (suffixes[0] == "kill" && killQuery(suffixes[1])) {
         VPackBuilder answerBody;
@@ -592,7 +587,7 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
   // probably need to cycle here until we can get hold of the query
   while (++iterations < MaxIterations) {
     try {
-      q = _queryRegistry->openEngine(_qId);
+      q = _queryRegistry->openExecutionEngine(_qId);
       // we got the query (or it was not found - at least no one else
       // can now have access to the same query)
       break;
@@ -927,14 +922,14 @@ void RestAqlHandler::handleFinishQuery(std::string const& idString) {
   }
     
   ExecutionStats stats;
-  auto res = query->finalizeSnippets(stats);
+  auto res = query->finalizeClusterQuery(stats);
   
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
   answerBuilder.openObject(/*unindexed*/true);
   answerBuilder.add(VPackValue("stats"));
   
-  stats.toVelocyPack(answerBuilder, _engine->getQuery().queryOptions().fullCount);
+  stats.toVelocyPack(answerBuilder, query->queryOptions().fullCount);
   // return warnings if present
   query->warnings().toVelocyPack(answerBuilder);
   

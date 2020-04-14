@@ -54,6 +54,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
@@ -667,12 +668,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(),
-                             std::make_shared<VPackBuilder>(), options);
+  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true), options);
   
   VPackSlice collections = queryBuilder->slice().get("collections");
   VPackSlice variables = queryBuilder->slice().get("variables");
   
+  // simon: hack to get the behaviour of old second aql::Query constructor
   VPackBuilder snippetBuilder; // simon: hack to make format conform
   snippetBuilder.openObject();
   snippetBuilder.add("0", VPackValue(VPackValueType::Object));
@@ -681,8 +682,8 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   snippetBuilder.close();
 
   VPackBuilder ignoreResponse;
-  query.prepareQuerySnippets(aql::SerializationFormat::SHADOWROWS, collections, variables,
-                             snippetBuilder.slice(), ignoreResponse);
+  query.prepareClusterQuery(aql::SerializationFormat::SHADOWROWS, collections, variables,
+                             snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse);
   
   aql::QueryResult queryResult = query.executeSync();
 

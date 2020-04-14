@@ -71,6 +71,7 @@ class ExpressionContext {
 
   virtual TRI_vocbase_t& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;
+  virtual bool killed() const = 0;
 };
 }  // namespace aql
 }  // namespace arangodb

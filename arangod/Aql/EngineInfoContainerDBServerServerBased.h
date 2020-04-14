@@ -127,7 +127,7 @@ class EngineInfoContainerDBServerServerBased {
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
   Result buildEngines(MapRemoteToSnippet& snippetIds,
                       std::map<std::string, QueryId>& ServerToQueryId,
-                      std::map<size_t, size_t> nodeAliases);
+                      std::map<size_t, size_t>& nodeAliases);
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of

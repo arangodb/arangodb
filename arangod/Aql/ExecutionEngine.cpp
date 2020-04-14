@@ -500,7 +500,6 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
 
     if (res.ok()) {
       cleanupGuard.cancel();
-      
       TRI_ASSERT(snippets.size() > 0);
       TRI_ASSERT(snippets[0].first == 0);
       snippets[0].second->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));
@@ -954,11 +953,14 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
   TRI_ASSERT(!_wasShutdown);
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
-   network::ConnectionPool* pool = nf.pool();
-   if (pool == nullptr) {
-     return ExecutionState::DONE;
-   }
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    return ExecutionState::DONE;
+  }
   
+  network::RequestOptions options;
+  options.database = _query.vocbase().name();
+  options.timeout = network::Timeout(60.0);  // Picked arbitrarily
 
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
@@ -972,10 +974,19 @@ ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
   for (auto const& [serverDst, queryId] : _serverToQueryId) {
 
     TRI_ASSERT(serverDst.substr(0, 7) == "server:");
+    
     auto f = network::sendRequest(pool, serverDst, fuerte::RestVerb::Delete,
-                         "/_api/aql/finish/" + std::to_string(queryId), body)
+                         "/_api/aql/finish/" + std::to_string(queryId), body, options)
     .thenValue([ss, this](network::Response&& res) {
-      if (res.ok() && ss->valid()) {
+      ss->executeLocked([&] {
+        if (res.fail()) {
+          _shutdownResult = network::fuerteToArangoErrorCode(res);
+          return;
+        } else if (!res.slice().isObject()) {
+          _shutdownResult.reset(TRI_ERROR_INTERNAL, "shutdown response is malformed");
+          return;
+        }
+        
         VPackSlice stats = res.slice().get("stats");
         if (stats.isObject()) {
           _execStats.add(ExecutionStats(stats));
@@ -989,12 +1000,15 @@ ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
               VPackSlice message = it.get("message");
               if (code.isNumber() && message.isString()) {
                 _query.warnings().registerWarning(code.getNumericValue<int>(),
-                                                  message.copyString().c_str());
+                                                  message.copyString());
               }
             }
           }
         }
-      }
+        if (res.slice().hasKey("code") && _shutdownResult.ok()) {
+          _shutdownResult.reset(res.slice().get("code").getNumericValue<int>());
+        }
+      });
     }).thenError<std::exception>([](std::exception ptr) {
       // simon: we should maybe store this error
     });
