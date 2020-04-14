@@ -94,10 +94,10 @@ class Store {
   std::vector<apply_ret_t> applyTransactions(
       query_t const& query,
       AgentInterface::WriteMode const& wmode = AgentInterface::WriteMode());
-  
+
   index_t applyTransactions(std::vector<log_t> const& queries);
 
-  
+
 
   /// @brief Apply single transaction in query, here query is an array and the
   /// first entry is a write transaction (i.e. an array of length 1, 2 or 3),
@@ -117,9 +117,6 @@ class Store {
 
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
-
-  /// @brief Dump for poll result
-  void dumpToPollBuilder(Builder&) const;
 
   /// @brief Notify observers
   void notifyObservers() const;
