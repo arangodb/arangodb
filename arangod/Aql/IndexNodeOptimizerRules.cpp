@@ -48,14 +48,14 @@ bool attributesMatch(arangodb::IndexId& commonIndexId, IndexNode const* indexNod
       }
       auto const indexId = index->id();
       // use one index only
-      if (!commonIndexId.isNone() && commonIndexId != indexId) {
+      if (!commonIndexId.empty() && commonIndexId != indexId) {
         continue;
       }
       size_t indexFieldNum = 0;
       for (auto const& field : index->fields()) {
         TRI_ASSERT(nodeAttr.afData.postfix.empty());
         if (latematerialized::isPrefix(field, nodeAttr.attr, false, nodeAttr.afData.postfix)) {
-          if (commonIndexId.isNone()) {
+          if (commonIndexId.empty()) {
             commonIndexId = indexId;
           }
           nodeAttr.afData.fieldNumber = indexFieldNum;
@@ -64,7 +64,7 @@ bool attributesMatch(arangodb::IndexId& commonIndexId, IndexNode const* indexNod
         }
         ++indexFieldNum;
       }
-      if (!commonIndexId.isNone() || nodeAttr.afData.field != nullptr) {
+      if (!commonIndexId.empty() || nodeAttr.afData.field != nullptr) {
         break;
       }
     }
