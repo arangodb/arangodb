@@ -44,12 +44,6 @@ class Identifier {
   Identifier(Identifier&& other) noexcept = default;
   Identifier& operator=(Identifier&& other) noexcept = default;
 
-  /// @brief whether or not the id is set (not 0)
-  bool isSet() const noexcept;
-
-  /// @brief whether or not the identifier is unset (equal to 0)
-  bool empty() const noexcept;
-
   /// @brief return the document id
   BaseType id() const noexcept;
 
@@ -76,9 +70,6 @@ class Identifier {
 
   /// @brief check if this identifier is at least another
   bool operator>=(Identifier const& other) const;
-
-  /// @brief unset the identifier (set to 0)
-  void clear();
 
  private:
   BaseType _id;

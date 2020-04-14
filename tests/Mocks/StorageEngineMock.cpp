@@ -1176,7 +1176,7 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
     }
   }
 
-  result.first.clear();
+  result.first = arangodb::LocalDocumentId::none();
   result.second = 0;
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
