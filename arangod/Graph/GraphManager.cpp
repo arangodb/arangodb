@@ -1021,7 +1021,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
         return res;
       }
     }
-    return Graph::fromUserInput(graphName, input, input.get(StaticStrings::GraphOptions));
+    return Graph::fromUserInput(_vocbase, graphName, input, input.get(StaticStrings::GraphOptions));
   } catch (arangodb::basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (...) {
