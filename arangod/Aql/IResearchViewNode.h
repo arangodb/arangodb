@@ -180,32 +180,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
-  std::unordered_set<aql::VariableId> getOutputVariables() const final {
-    std::unordered_set<aql::VariableId> vars;
-    // plan registers for output scores
-
-    for (auto const& scorer : _scorers) {
-      vars.insert(scorer.var->id);
-    }
-
-    if (isLateMaterialized() || noMaterialization()) {
-      if (isLateMaterialized()) {
-        vars.insert(_outNonMaterializedColPtr->id);
-        vars.insert(_outNonMaterializedDocId->id);
-      } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
-        // there is no variable if noMaterialization()
-        // registerPlan.addRegister(); TODO what is this?????
-      }
-      for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
-        for (auto const& fieldVar : columnFieldsVars.second) {
-          vars.insert(fieldVar.var->id);
-        }
-      }
-    } else {  // plan register for document-id only block
-      vars.insert(_outVariable->id);
-    }
-    return vars;
-  }
+  std::unordered_set<aql::VariableId> getOutputVariables() const final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(

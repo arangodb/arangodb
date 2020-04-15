@@ -187,7 +187,7 @@ class CollectNode : public ExecutionNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const final;
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const override;
+  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
 
  private:
   /// @brief options for the aggregation

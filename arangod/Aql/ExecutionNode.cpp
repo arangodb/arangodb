@@ -826,14 +826,6 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
     }
   }
   walker.reset();
-
-  // Just for debugging:
-  /*
-  std::cout << std::endl;
-  RegisterPlanningDebugger debugger;
-  walk(debugger);
-  std::cout << std::endl;
-  */
 }
 
 RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
@@ -1270,6 +1262,10 @@ SingletonNode::SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
+std::unordered_set<VariableId> SingletonNode::getOutputVariables() const {
+  return {};
+}
+
 EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -1340,6 +1336,10 @@ bool EnumerateCollectionNode::isDeterministic() { return !_random; }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
+}
+
+std::unordered_set<VariableId> EnumerateCollectionNode::getOutputVariables() const {
+  return {_outVariable->id};
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -2530,4 +2530,9 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan, bool withDepend
                                                    *inNonMaterializedDocId, *outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+auto materialize::MaterializeNode::getOutputVariables() const
+    -> std::unordered_set<VariableId> {
+  return {_outVariable->id};
 }

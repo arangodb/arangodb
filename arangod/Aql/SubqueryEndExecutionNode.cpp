@@ -167,3 +167,7 @@ bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
 bool SubqueryEndNode::isModificationNode() const {
   return _isModificationSubquery;
 }
+
+std::unordered_set<VariableId> SubqueryEndNode::getOutputVariables() const {
+    return {_outVariable->id};
+}

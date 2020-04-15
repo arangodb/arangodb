@@ -126,7 +126,7 @@ class SortNode : public ExecutionNode {
   // geo-index
   bool _reinsertInCluster;
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final { return {}; }
+  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
  private:
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)

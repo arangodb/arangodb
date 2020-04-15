@@ -132,7 +132,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return isProduceResult() && coveringIndexAttributePositions().empty();
   }
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const override;
+  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
 
   struct IndexVariable {
     size_t indexFieldNum;

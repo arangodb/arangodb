@@ -523,7 +523,7 @@ class ExecutionNode {
 };
 
 /// @brief class SingletonNode
-class SingletonNode : public virtual ExecutionNode {
+class SingletonNode : public ExecutionNode {
   friend class ExecutionBlock;
 
   /// @brief constructor with an id
@@ -554,9 +554,7 @@ class SingletonNode : public virtual ExecutionNode {
   /// @brief the cost of a singleton is 1
   CostEstimate estimateCost() const override final;
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const override {
-    return {};
-  }
+  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
 };
 
 /// @brief class EnumerateCollectionNode
@@ -606,9 +604,7 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const override {
-    return {_outVariable->id};
-  }
+  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
 
  private:
   /// @brief whether or not we want random iteration
@@ -661,7 +657,7 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief return out variable
   Variable const* outVariable() const;
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const override;
+  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
 
  private:
   /// @brief input variable to read from
@@ -770,7 +766,7 @@ class CalculationNode : public ExecutionNode {
 
   bool isDeterministic() override final;
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const override;
+  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
 
  private:
   /// @brief output variable to write to
@@ -839,7 +835,7 @@ class SubqueryNode : public ExecutionNode {
   bool isConst();
   bool mayAccessCollections();
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const override;
+  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
 
  private:
   /// @brief we need to have an expression and where to write the result
@@ -1030,9 +1026,7 @@ class MaterializeNode : public ExecutionNode {
     return *_outVariable;
   }
 
-  std::unordered_set<VariableId> getOutputVariables() const override {
-    return {_outVariable->id};
-  }
+  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
 
  protected:
   /// @brief input variable non-materialized document ids
