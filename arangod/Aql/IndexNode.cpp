@@ -286,15 +286,6 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
     VPackArrayBuilder arrayScope(&builder, "indexValuesVars");
     for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
       VPackObjectBuilder objectScope(&builder);
-<<<<<<< HEAD
-      builder.add("fieldNumber", VPackValue(fieldVar.first));
-      builder.add("id", VPackValue(fieldVar.second->id));
-      builder.add("name", VPackValue(fieldVar.second->name));  // for explainer.js
-      std::string fieldName;
-      TRI_ASSERT(fieldVar.first < fields.size());
-      basics::TRI_AttributeNamesToString(fields[fieldVar.first], fieldName, true);
-      builder.add("field", VPackValue(fieldName));  // for explainer.js
-=======
       builder.add("fieldNumber", VPackValue(fieldVar.second));
       builder.add("id", VPackValue(fieldVar.first->id));
       builder.add("name", VPackValue(fieldVar.first->name)); // for explainer.js
@@ -302,7 +293,6 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
       TRI_ASSERT(fieldVar.second < fields.size());
       basics::TRI_AttributeNamesToString(fields[fieldVar.second], fieldName, true);
       builder.add("field", VPackValue(fieldName)); // for explainer.js
->>>>>>> origin/devel
     }
   }
 
@@ -639,16 +629,11 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
   vars.reserve(1 + _outNonMaterializedIndVars.second.size());
   vars.emplace_back(_outNonMaterializedDocId);
   std::transform(_outNonMaterializedIndVars.second.cbegin(),
-<<<<<<< HEAD
-                 _outNonMaterializedIndVars.second.cend(), std::back_inserter(vars),
-                 [](auto const& indVar) { return indVar.second; });
-=======
                  _outNonMaterializedIndVars.second.cend(),
                  std::back_inserter(vars),
                  [](auto const& indVar) {
     return indVar.first;
   });
->>>>>>> origin/devel
 
   return vars;
 }
