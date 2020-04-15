@@ -172,8 +172,10 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
 
-  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
-      &engine, this, std::move(infos), server(), getDistributeId(), queryId(), api());
+  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(&engine, this,
+                                                              std::move(infos), server(),
+                                                              getDistributeId(),
+                                                              queryId(), api());
 }
 
 /// @brief toVelocyPack, for RemoteNode
@@ -206,9 +208,7 @@ CostEstimate RemoteNode::estimateCost() const {
   return estimate;
 }
 
-auto RemoteNode::api() const noexcept -> Api {
-  return _apiToUse;
-}
+auto RemoteNode::api() const noexcept -> Api { return _apiToUse; }
 
 auto RemoteNode::apiToVpack(Api const api) -> velocypack::Value {
   return VPackValue(static_cast<std::underlying_type_t<Api>>(api));
@@ -470,8 +470,8 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       VelocyPackHelper::getStringValue(base, "parellelism", "")));
 }
 
-GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id, SortMode sortMode,
-                       Parallelism parallelism) noexcept
+GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id,
+                       SortMode sortMode, Parallelism parallelism) noexcept
     : ExecutionNode(plan, id),
       _vocbase(&(plan->getAst()->query()->vocbase())),
       _sortmode(sortMode),
@@ -638,13 +638,21 @@ void GatherNode::setParallelism(GatherNode::Parallelism value) {
 
 GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
                                                   size_t shardsRequiredForHeapMerge) noexcept {
-  return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap
-                                                      : SortMode::MinElement;
+  return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap : SortMode::MinElement;
+}
+
+GatherNode::Parallelism GatherNode::evaluateParallelism(Collection const& collection) noexcept {
+  // single-sharded collections don't require any parallelism. collections with more than
+  // one shard are eligible for later parallelization (the Undefined allows this)
+  return (((collection.isSmart() && collection.type() == TRI_COL_TYPE_EDGE) ||
+           (collection.numberOfShards() <= 1 && !collection.isSatellite()))
+              ? Parallelism::Serial
+              : Parallelism::Undefined);
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
-    ExecutionPlan* plan, ExecutionNodeId id, NodeType mode, bool replaceIndexNode,
-    std::string const& key, Collection const* collection,
+    ExecutionPlan* plan, ExecutionNodeId id, NodeType mode,
+    bool replaceIndexNode, std::string const& key, Collection const* collection,
     ModificationOptions const& options, Variable const* in, Variable const* out,
     Variable const* OLD, Variable const* NEW)
     : ExecutionNode(plan, id),

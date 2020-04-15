@@ -42,7 +42,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
@@ -65,7 +65,8 @@ class RemoteNode final : public DistributeConsumerNode {
 
   /// @brief constructor with an id
   RemoteNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-             std::string server, std::string const& ownName, std::string queryId, Api = Api::EXECUTE)
+             std::string server, std::string const& ownName,
+             std::string queryId, Api = Api::EXECUTE)
       : DistributeConsumerNode(plan, id, ownName),
         _vocbase(vocbase),
         _server(std::move(server)),
@@ -220,10 +221,10 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief constructor with an id
  public:
-  DistributeNode(ExecutionPlan* plan, ExecutionNodeId id, ScatterNode::ScatterType type,
-                 Collection const* collection, Variable const* variable,
-                 Variable const* alternativeVariable, bool createKeys,
-                 bool allowKeyConversionToObject)
+  DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
+                 ScatterNode::ScatterType type, Collection const* collection,
+                 Variable const* variable, Variable const* alternativeVariable,
+                 bool createKeys, bool allowKeyConversionToObject)
       : ScatterNode(plan, id, type),
         CollectionAccessingNode(collection),
         _variable(variable),
@@ -319,6 +320,8 @@ class GatherNode final : public ExecutionNode {
   static SortMode evaluateSortMode(size_t numberOfShards,
                                    size_t shardsRequiredForHeapMerge = 5) noexcept;
 
+  static Parallelism evaluateParallelism(Collection const& collection) noexcept;
+
   /// @brief constructor with an id
   GatherNode(ExecutionPlan* plan, ExecutionNodeId id, SortMode sortMode,
              Parallelism parallelism = Parallelism::Undefined) noexcept;
@@ -370,9 +373,9 @@ class GatherNode final : public ExecutionNode {
   size_t constrainedSortLimit() const noexcept;
 
   bool isSortingGather() const noexcept;
-  
+
   void setParallelism(Parallelism value);
-  
+
   /// no modification nodes, ScatterNodes etc
   bool isParallelizable() const;
 
@@ -386,7 +389,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief sorting mode
   SortMode _sortmode;
-  
+
   /// @brief parallelism
   Parallelism _parallelism;
 
