@@ -93,6 +93,49 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   }
 }
 
+void AgencyCallback::refetchAndUpdate2(bool needToAcquireMutex, bool forceCheck) {
+
+  if (!_needsValue) {
+    // no need to pass any value to the callback
+    if (needToAcquireMutex) {
+      CONDITION_LOCKER(locker, _cv);
+      executeEmpty();
+    } else {
+      executeEmpty();
+    }
+    return;
+  }
+
+  auto& _cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = _cache.get(std::vector<std::string>{AgencyCommManager::path(key)});
+  auto result = acb->slice();
+
+  if (!result.isArray()) {
+    if (!_agency.server().isStopping()) {
+      // only log errors if we are not already shutting down...
+      // in case of shutdown this error is somewhat expected
+      LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
+        << "Callback getValues to agency was not successful: we got " << result.toJson();
+    }
+    return;
+  }
+
+  
+  std::vector<std::string> kv =
+      basics::StringUtils::split(AgencyCommManager::path(key), '/');
+  kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
+
+  auto newData = std::make_shared<VPackBuilder>();
+  newData->add(result[0].get(kv));
+
+  if (needToAcquireMutex) {
+    CONDITION_LOCKER(locker, _cv);
+    checkValue(std::move(newData), forceCheck);
+  } else {
+    checkValue(std::move(newData), forceCheck);
+  }
+}
+
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!

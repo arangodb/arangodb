@@ -28,9 +28,11 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
@@ -42,11 +44,11 @@ using namespace arangodb;
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
                                                std::string const& callbackBasePath)
-    : _agency(server), _callbackBasePath(callbackBasePath) {}
+  : _agency(server), _callbackBasePath(callbackBasePath) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
-bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb) {
+bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
   uint32_t rand;
   {
     WRITE_LOCKER(locker, _lock);
@@ -58,9 +60,15 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
     }
   }
 
+  
   bool ok = false;
   try {
-    ok = _agency.registerCallback(cb->key, getEndpointUrl(rand)).successful();
+    if (local) {
+      auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+      ok = cache.registerCallback(cb->key, rand);
+    } else {
+      ok = _agency.registerCallback(cb->key, getEndpointUrl(rand)).successful();
+    }
     if (!ok) {
       LOG_TOPIC("b88f4", ERR, Logger::CLUSTER) << "Registering callback failed";
     }
@@ -87,7 +95,7 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id)
   return (*it).second;
 }
 
-bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
+bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
   bool found = false;
   uint32_t endpointToDelete = 0;
   {
@@ -95,7 +103,12 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
 
     for (auto const& it : _endpoints) {
       if (it.second.get() == cb.get()) {
-        _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
+        if (local) {
+          auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+          cache.unregisterCallback(cb->key);
+        } else {
+          _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
+        }
         endpointToDelete = it.first;
         found = true;
         break;

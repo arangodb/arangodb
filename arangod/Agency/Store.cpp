@@ -286,8 +286,9 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                 MUTEX_LOCKER(storeLocker, _storeLock);
                 auto ret = _observedTable.equal_range(uri);
                 for (auto it = ret.first; it != ret.second; ++it) {
-                  in.emplace(it->second,
-                             std::make_shared<notify_t>(it->first, j.key.copyString(), oper));
+                  in.emplace(
+                    it->second,
+                    std::make_shared<notify_t>(it->first, j.key.copyString(), oper));
                 }
               }
               size_t pos = uri.find_last_of('/');

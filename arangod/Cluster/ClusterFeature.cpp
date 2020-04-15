@@ -531,7 +531,7 @@ void ClusterFeature::start() {
   // any collection:
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
     _agencyCache =
-      std::make_unique<AgencyCache>(server());
+      std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
     _agencyCache->start();
   }
 

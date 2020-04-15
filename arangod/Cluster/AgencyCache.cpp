@@ -27,8 +27,11 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-AgencyCache::AgencyCache(application_features::ApplicationServer& server)
-  : Thread(server, "AgencyCache"), _commitIndex(0),  _readDB(server, nullptr, "raadDB") {}
+AgencyCache::AgencyCache(
+  application_features::ApplicationServer& server,
+  AgencyCallbackRegistry& callbackRegistry)
+  : Thread(server, "AgencyCache"), _commitIndex(0),
+    _readDB(server, nullptr, "raadDB"), _callbackRegistry(callbackRegistry) {}
 
 
 AgencyCache::~AgencyCache() {}
@@ -85,7 +88,7 @@ void AgencyCache::run() {
   _readDB.clear();
   double wait = 0.0;
   VPackBuilder rb;
-
+  std::vector<uint32_t> toCall;
   // Long poll to agency
   auto sendTransaction =
     [&](VPackBuilder& r) {
@@ -112,6 +115,7 @@ void AgencyCache::run() {
   while (!this->isStopping()) {
     
     rb.clear();
+    toCall.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
     auto ret = sendTransaction(rb)
       .thenValue(
@@ -128,12 +132,21 @@ void AgencyCache::run() {
             TRI_ASSERT(rs.get("firstIndex").isNumber());
             index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
             index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
-            std::lock_guard g(_storeLock);
             if (firstIndex > 0) {
               TRI_ASSERT(rs.hasKey("log"));
               TRI_ASSERT(rs.get("log").isArray());
+              std::lock_guard g(_storeLock);
               for (auto const& i : VPackArrayIterator(rs.get("log"))) {
                 _readDB.applyTransaction(i); // apply logs
+                for (auto const& q : VPackObjectIterator(i.get("query"))) {
+                  auto const& key = q.key.copyString();
+                  std::lock_guard g(_callbacksLock);
+                  for (auto i : _callbacks) {
+                    if (key.rfind(i.first, 0) == 0) {
+                      toCall.push_back(i.second);
+                    }
+                  }
+                }
               }
               _commitIndex = commitIndex;
             } else {
@@ -141,6 +154,20 @@ void AgencyCache::run() {
               _readDB = rs;                  // overwrite
               _commitIndex = commitIndex;
             }
+            for (auto i : toCall) {
+              auto cb = _callbackRegistry.getCallback(i);
+              if (cb.get() != nullptr) {
+                LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+                  << "Agency callback " << i << " has been triggered. refetching!";
+                try {
+                  cb->refetchAndUpdate2(true, false);
+                } catch (arangodb::basics::Exception const& e) {
+                  LOG_TOPIC("c3910", WARN, Logger::AGENCYCOMM)
+                    << "Error executing callback: " << e.message();
+                }
+              }
+            }
+
           } else {
             if (wait <= 1.9) {
               wait += 0.1;
@@ -173,9 +200,25 @@ void AgencyCache::run() {
 }
 
 
+/// Register local call back
+bool AgencyCache::registerCallback(std::string const& key, uint32_t const& id) {
+  LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER)
+    << "Registering callback for " <<  AgencyCommManager::path(key);
+  std::lock_guard g(_callbacksLock);
+  _callbacks.try_emplace(AgencyCommManager::path(key),id);
+  return true;
+}
+
+/// Register local call back
+bool AgencyCache::unregisterCallback(std::string const& key) {
+  LOG_TOPIC("cc768", DEBUG, Logger::CLUSTER)
+    << "Registering callback for " <<  AgencyCommManager::path(key);
+  std::lock_guard g(_callbacksLock);
+  _callbacks.erase(AgencyCommManager::path(key));
+  return true;
+}
+
 /// Orderly shutdown
 void AgencyCache::beginShutdown() {
   Thread::beginShutdown();
 }
-
-

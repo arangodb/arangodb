@@ -84,7 +84,7 @@ class CollectionWatcher {
 
   bool isPresent() {
     // Make sure we did not miss a callback
-    _agencyCallback->refetchAndUpdate(true, false);
+    _agencyCallback->refetchAndUpdate2(true, false);
     return _present.load();
   };
 

@@ -1571,7 +1571,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
                                        dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
-      [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
+    [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
   // Waits for the database to turn up in Current/Databases
   {
@@ -1788,7 +1788,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
-    _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+                              _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   });
 
   // Transact to agency
@@ -2393,7 +2393,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           // Let us check if we skipped other callbacks as well
           for (; i < infos.size(); ++i) {
             if (infos[i].state == ClusterCollectionCreationState::INIT) {
-              agencyCallbacks[i]->refetchAndUpdate(true, false);
+              agencyCallbacks[i]->refetchAndUpdate2(true, false);
             }
           }
         }
@@ -2485,8 +2485,9 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
-  auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
-    _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  auto cbGuard = scopeGuard(
+    [this, &agencyCallback]() -> void {
+      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   });
 
   size_t numberOfShards = 0;
@@ -3159,7 +3160,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
-      [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
+    [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
@@ -3514,7 +3515,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
-      [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
+    [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
   AgencyOperation planErase(planIndexesKey, AgencyValueOperationType::ERASE, indexToRemove);
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);

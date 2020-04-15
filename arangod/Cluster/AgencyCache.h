@@ -25,6 +25,7 @@
 
 #include "Agency/Store.h"
 #include "Basics/Thread.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
 
@@ -36,7 +37,9 @@ class AgencyCache final : public arangodb::Thread {
 
 public:
   /// @brief start off with our server
-  explicit AgencyCache(application_features::ApplicationServer& server);
+  explicit AgencyCache(
+    application_features::ApplicationServer& server,
+    AgencyCallbackRegistry& callbackRegistry);
 
   /// @brief Clean up
   virtual ~AgencyCache();
@@ -66,8 +69,13 @@ public:
   /// @brief Get current commit index
   consensus::index_t index() const;
 
-private:
+  /// @brief Register local callback
+  bool registerCallback(std::string const& key, uint32_t const& id);
 
+  /// @brief Register local callback
+  bool unregisterCallback(std::string const& key);
+
+private:
 
   /// @brief Guard for _readDB
   mutable std::mutex _storeLock;
@@ -78,6 +86,12 @@ private:
   /// @brief Local copy of the read DB from the agency
   arangodb::consensus::Store _readDB;
 
+  /// @brief Agency callback registry
+  AgencyCallbackRegistry& _callbackRegistry;
+
+  /// @brief Stored call backs key -> callback registry's id
+  mutable std::mutex _callbacksLock;
+  std::unordered_map<std::string, uint32_t> _callbacks;
 };
 
 } // namespace

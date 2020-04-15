@@ -110,6 +110,7 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
 
   void refetchAndUpdate(bool needToAcquireMutex, bool forceCheck);
+  void refetchAndUpdate2(bool needToAcquireMutex, bool forceCheck);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait until a callback is received or a timeout has happened
