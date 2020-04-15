@@ -272,14 +272,6 @@ void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
-void createScatterGatherSnippet(ExecutionPlan& plan, TRI_vocbase_t* vocbase,
-                                ExecutionNode* node, bool isRootNode,
-                                std::vector<ExecutionNode*> const& nodeDependencies,
-                                std::vector<ExecutionNode*> const& nodeParents,
-                                SortElementVector const& elements, size_t numberOfShards,
-                                std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
-                                Collection const* collection);
-
 }  // namespace aql
 }  // namespace arangodb
 
