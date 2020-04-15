@@ -2946,7 +2946,7 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
     iid = IndexId{arangodb::basics::StringUtils::uint64(idSlice.copyString())};
   }
 
-  if (iid.isNone()) {  // no id set, create a new one!
+  if (iid.empty()) {  // no id set, create a new one!
     iid = IndexId{uniqid()};
   }
 

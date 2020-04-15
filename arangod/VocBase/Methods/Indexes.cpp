@@ -508,7 +508,7 @@ arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType 
 static bool ExtractIndexHandle(VPackSlice const& arg,
                                std::string& collectionName, IndexId& iid) {
   TRI_ASSERT(collectionName.empty());
-  TRI_ASSERT(iid.isNone());
+  TRI_ASSERT(iid.empty());
 
   if (arg.isNumber()) {
     // numeric index id
@@ -629,7 +629,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
       return res;
     }
 
-    if (iid.isNone() && !name.empty()) {
+    if (iid.empty() && !name.empty()) {
       VPackBuilder builder;
       res = methods::Indexes::getIndex(collection, indexArg, builder, trx);
       if (!res.ok()) {
@@ -692,7 +692,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     }
 
     std::shared_ptr<Index> idx = collection->lookupIndex(iid);
-    if (!idx || idx->id().isNone() || idx->id().isPrimary()) {
+    if (!idx || idx->id().empty() || idx->id().isPrimary()) {
       events::DropIndex(collection->vocbase().name(), collection->name(),
                         std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
       return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
