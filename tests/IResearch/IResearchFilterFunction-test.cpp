@@ -4881,6 +4881,26 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         vocbase(), "FOR d IN myView FILTER starts_with(d.name, 'abc') RETURN d", expected);
   }
 
+  // without scoring limit via []
+  {
+    irs::Or expected;
+    auto& orFilter = expected.add<irs::Or>();
+    orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
+    auto& prefix0 = orFilter.add<irs::by_prefix>();
+    prefix0.field(mangleStringIdentity("name")).term("abc");
+    prefix0.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+
+    auto& prefix1 = orFilter.add<irs::by_prefix>();
+    prefix1.field(mangleStringIdentity("name")).term("def");
+    prefix1.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc', 'def']) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER starts_with(d.name, ['abc', 'def']) RETURN d", expected);
+  }
+
   // dynamic complex attribute field
   {
     ExpressionContextMock ctx;
@@ -5115,6 +5135,49 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         expected, &ctx);
   }
 
+  // without scoring limit, complex name with offset, prefix as an expression via []
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
+
+    irs::Or expected;
+    auto& orFilter = expected.add<irs::Or>();
+    orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
+    auto& prefix0 = orFilter.add<irs::by_prefix>();
+    prefix0.field(mangleStringIdentity("obj[400].properties[3].name"))
+        .term("abc");
+    prefix0.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    auto& prefix1 = orFilter.add<irs::by_prefix>();
+    prefix1.field(mangleStringIdentity("obj[400].properties[3].name"))
+        .term("def");
+    prefix1.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+
+    assertFilterSuccess(
+        vocbase(),
+        "LET prefix='ab' FOR d IN myView FILTER "
+        "starts_with(d['obj'][400]['properties'][3]['name'], [CONCAT(prefix, "
+        "'c'), 'def']) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET prefix='ab' FOR d IN myView FILTER "
+        "starts_with(d.obj[400]['properties[3]']['name'], [CONCAT(prefix, 'c'), 'def']) "
+        "RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET prefix='ab' FOR d IN myView FILTER "
+        "starts_with(d.obj[400]['properties[3]'].name, [CONCAT(prefix, 'c'), 'def']) "
+        "RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET prefix='ab' FOR d IN myView FILTER "
+        "starts_with(d.obj[400].properties[3].name, [CONCAT(prefix, 'c'), 'def']) "
+        "RETURN d",
+        expected, &ctx);
+  }
+
   // without scoring limit, complex name with offset, prefix as an expression of invalid type
   {
     ExpressionContextMock ctx;
@@ -5143,6 +5206,34 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         &ctx);
   }
 
+  // without scoring limit, complex name with offset, prefix as an expression of invalid type via []
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("prefix",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET prefix=false FOR d IN myView FILTER "
+        "starts_with(d['obj'][400]['properties'][3]['name'], [prefix, 'def']) RETURN d",
+        &ctx);
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET prefix=false FOR d IN myView FILTER "
+        "starts_with(d.obj[400]['properties[3]']['name'], [prefix, 'def']) RETURN d",
+        &ctx);
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET prefix=false FOR d IN myView FILTER "
+        "starts_with(d.obj[400]['properties[3]'].name, [prefix, 'def']) RETURN d",
+        &ctx);
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET prefix=false FOR d IN myView FILTER "
+        "starts_with(d.obj[400].properties[3].name, [prefix, 'def']) RETURN d",
+        &ctx);
+  }
+
   // with scoring limit (int)
   {
     irs::Or expected;
@@ -5156,6 +5247,40 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER starts_with(d.name, 'abc', 1024) RETURN d", expected);
+  }
+
+  // with min match count (int) via[]
+  {
+    irs::Or expected;
+    auto& orFilter = expected.add<irs::Or>();
+    orFilter.min_match_count(2);
+    auto& prefix = orFilter.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("name")).term("abc");
+    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2) RETURN d", expected);
+  }
+
+  // with scoring limit with min match count (int) via[]
+  {
+    irs::Or expected;
+    auto& orFilter = expected.add<irs::Or>();
+    orFilter.min_match_count(2);
+    auto& prefix = orFilter.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("name")).term("abc");
+    prefix.scored_terms_limit(1024);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2, 1024) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2, 1024) RETURN d", expected);
   }
 
   // with scoring limit (double)
@@ -5173,13 +5298,47 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         "FOR d IN myView FILTER starts_with(d.name, 'abc', 100.5) RETURN d", expected);
   }
 
+  // with min match count (double) via[]
+  {
+    irs::Or expected;
+    auto& orFilter = expected.add<irs::Or>();
+    orFilter.min_match_count(2);
+    auto& prefix = orFilter.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("name")).term("abc");
+    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2.5) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2.5) RETURN d", expected);
+  }
+
+  // with scoring limit with min match count (double) via[]
+  {
+    irs::Or expected;
+    auto& orFilter = expected.add<irs::Or>();
+    orFilter.min_match_count(2);
+    auto& prefix = orFilter.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("name")).term("abc");
+    prefix.scored_terms_limit(100);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2.5, 100.5) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2.5, 100.5) RETURN d", expected);
+  }
+
   // with scoring limit (double), boost
   {
     irs::Or expected;
+    expected.boost(3.1f);
     auto& prefix = expected.add<irs::by_prefix>();
     prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(100);
-    prefix.boost(3.1f);
 
     assertFilterSuccess(
         vocbase(),
@@ -5189,6 +5348,28 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER BooST(starts_with(d.name, 'abc', 100.5), 3.1) "
+        "RETURN d",
+        expected);
+  }
+
+  // with scoring limit with min match count (double), boost
+  {
+    irs::Or expected;
+    expected.boost(3.1f);
+    auto& orFilter = expected.add<irs::Or>();
+    orFilter.min_match_count(2);
+    auto& prefix = orFilter.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("name")).term("abc");
+    prefix.scored_terms_limit(100);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER boost(starts_with(d['name'], ['abc'], 2, 100.5), "
+        "0.1+3) RETURN d",
+        expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BooST(starts_with(d.name, ['abc'], 2, 100.5), 3.1) "
         "RETURN d",
         expected);
   }
@@ -5349,12 +5530,51 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         &ctx);
   }
 
+  // with min match count and scoring limit (int) via[]
+  {
+    irs::Or expected;
+    auto& orFilter = expected.add<irs::Or>();
+    auto& prefix = orFilter.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("name")).term("abc");
+    prefix.scored_terms_limit(1024);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 1, 1024) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, 1024) RETURN d", expected);
+  }
+
+  // with min match count as an expression via[]
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("minMatchCount",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+
+    irs::Or expected;
+    auto& orFilter = expected.add<irs::Or>();
+    orFilter.min_match_count(5);
+    auto& prefix = orFilter.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("name")).term("abc");
+    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+
+    assertFilterSuccess(
+        vocbase(),
+        "LET minMatchCount=5 FOR d IN myView FILTER starts_with(d['name'], ['abc'], minMatchCount) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET minMatchCount=5 FOR d IN myView FILTER starts_with(d.name, ['abc'], minMatchCount) RETURN d",
+        expected, &ctx);
+  }
+
   // wrong number of arguments
   assertFilterParseFail(vocbase(),
                         "FOR d IN myView FILTER starts_with() RETURN d");
   assertFilterParseFail(
       vocbase(),
-      "FOR d IN myView FILTER starts_with(d.name, 'abc', 100, 'abc') RETURN d");
+      "FOR d IN myView FILTER starts_with(d.name, 'abc', 100, 100, 'abc') RETURN d");
 
   // invalid attribute access
   assertFilterFail(vocbase(),
@@ -5414,6 +5634,40 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
       vocbase(), "FOR d IN myView FILTER starts_with(d.name, 'abc', d) RETURN d",
       &ExpressionContextMock::EMPTY);
 
+  // invalid min match count
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], '1024') RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], true) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], null) RETURN d");
+  assertFilterExecutionFail(
+      vocbase(), "FOR d IN myView FILTER starts_with(d.name, ['abc'], d) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // invalid scoring limit with min match count
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, '1024') RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, true) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, null) RETURN d");
+  assertFilterExecutionFail(
+      vocbase(), "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, d) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
   // non-deterministic arguments
   assertFilterFail(
       vocbase(),
@@ -5426,6 +5680,14 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER starts_with(d.name, 'abc', RAND() ? 128 : 10) "
+      "RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], RAND() ? 128 : 10) "
+      "RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, RAND() ? 128 : 10) "
       "RETURN d");
 }
 
