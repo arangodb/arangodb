@@ -140,7 +140,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   };
 
   using IndexValuesVars =
-      std::pair<IndexId, std::vector<std::pair<size_t, Variable const*>>>;
+      std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
 
   using IndexValuesRegisters = std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
 
@@ -150,7 +150,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                            IndexVarsInfo const& indexVariables);
 
  private:
-  void initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,
+  void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                       std::vector<RegisterId>& inRegs,
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                       transaction::Methods* trxPtr) const;

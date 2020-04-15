@@ -35,12 +35,14 @@ let isCluster = require("internal").isCluster();
 function lateDocumentMaterializationRuleTestSuite () {
   const ruleName = "late-document-materialization";
   const projectionRuleName = "reduce-extraction-to-projection";
+  const earlyPruningRuleName = "move-filters-into-enumerate";
   const numOfCollectionIndexes = 2;
   const numOfExpCollections = 2;
   const primaryIndexCollectionName = "UnitTestsPrimCollection";
   const edgeIndexCollectionName = "UnitTestsEdgeCollection";
   const severalIndexesCollectionName = "UnitTestsSeveralIndexesCollection";
   const projectionsCoveredByIndexCollectionName = "ProjectionsCoveredByIndexCollection";
+  const prefixIndexCollectionName = "PrefixIndexCollection";
   let collectionNames = [];
   let expCollectionNames = [];
   var i;
@@ -63,6 +65,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       db._drop(edgeIndexCollectionName);
       db._drop(severalIndexesCollectionName);
       db._drop(projectionsCoveredByIndexCollectionName);
+      db._drop(prefixIndexCollectionName);
 
       var collections = [];
       var expCollections = [];
@@ -76,6 +79,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       var edgeCollection = db._createEdgeCollection(edgeIndexCollectionName, { numberOfShards: 3 });
       var severalIndexesCollection = db._create(severalIndexesCollectionName, { numberOfShards: 3 });
       var projectionsCoveredByIndexCollection = db._create(projectionsCoveredByIndexCollectionName, { numberOfShards: 3 });
+      var prefixIndexCollection = db._create(prefixIndexCollectionName, { numberOfShards: 3 });
 
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let type;
@@ -100,6 +104,8 @@ function lateDocumentMaterializationRuleTestSuite () {
       severalIndexesCollection.ensureIndex({type: "hash", fields: ["b"]});
 
       projectionsCoveredByIndexCollection.ensureIndex({type: "hash", fields: ["a", "b", "c"]});
+
+      prefixIndexCollection.ensureIndex({type: "hash", fields: ["obj.a", "obj.b"]});
 
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         collections[i].save({_key: 'c0',  "obj": {"a": "a_val", "b": "b_val", "c": "c_val", "d": "d_val"}});
@@ -127,6 +133,9 @@ function lateDocumentMaterializationRuleTestSuite () {
       severalIndexesCollection.save({_key: "c0", a: "a_val", b: "b_val"});
 
       projectionsCoveredByIndexCollection.save({_key: "c0", a: "a_val", b: "b_val", c: "c_val"});
+
+      prefixIndexCollection.save({_key: "c0", obj: {a: {sa: "a_val_0"}, b: {sb: "b_val_0"}}});
+      prefixIndexCollection.save({_key: "c1", obj: {a: {sa: "a_val_1"}, b: {sb: "b_val_1"}}});
     },
 
     tearDownAll : function () {
@@ -140,6 +149,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       try { db._drop(edgeIndexCollectionName); } catch(e) {}
       try { db._drop(severalIndexesCollectionName); } catch(e) {}
       try { db._drop(projectionsCoveredByIndexCollectionName); } catch(e) {}
+      try { db._drop(prefixIndexCollectionName); } catch(e) {}
     },
     testIssue10845() {
       // this tests a regression described in https://github.com/arangodb/arangodb/issues/10845#issuecomment-575723029:
@@ -228,8 +238,27 @@ function lateDocumentMaterializationRuleTestSuite () {
         }
       }
     },
+    testNotAppliedDueToEarlyPruningAndNotInIndex() {
+      for (i = 0; i < numOfCollectionIndexes; ++i) {
+        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' AND d.obj.d SORT d.obj.c LIMIT 10 RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+        assertNotEqual(-1, plan.rules.indexOf(earlyPruningRuleName));
+      }
+    },
+    testNotAppliedDueToPrefixEarlyPruningAndNotInIndex() {
+      let query = "FOR d IN " + prefixIndexCollectionName + " FILTER d.obj.b == {sb: 'b_val_0'} AND d.obj.c SORT d.obj.b LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+      assertNotEqual(-1, plan.rules.indexOf(earlyPruningRuleName));
+    },
     testNotAppliedDueToSeveralIndexes() {
       let query = "FOR d IN " + severalIndexesCollectionName + " FILTER d.a == 'a_val' OR d.b == 'b_val' SORT NOOPT(d.b) DESC LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
+    testNotAppliedDueToSeveralIndexesPrimary() {
+      let query = "FOR d IN " + severalIndexesCollectionName + " FILTER d._key == 'c0' OR d.a == 'a_val' SORT d._key DESC LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
@@ -383,12 +412,7 @@ function lateDocumentMaterializationRuleTestSuite () {
         assertTrue(materializeNodeFound);
         let result = AQL_EXECUTE(query);
         assertEqual(1, result.json.length);
-        let expectedKeys = new Set(['c2']);
-        result.json.forEach(function(doc) {
-          assertTrue(expectedKeys.has(doc._key));
-          expectedKeys.delete(doc._key);
-        });
-        assertEqual(0, expectedKeys.size);
+        assertEqual(result.json[0]._key, 'c2');
       }
     },
     testQueryResultsWithAfterCalc() {
@@ -453,12 +477,7 @@ function lateDocumentMaterializationRuleTestSuite () {
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
         assertEqual(1, result.json.length);
-        let expected = new Set(['c1']);
-        result.json.forEach(function(doc) {
-          assertTrue(expected.has(doc._key));
-          expected.delete(doc._key);
-        });
-        assertEqual(0, expected.size);
+        assertEqual(result.json[0]._key, 'c1');
       }
     },
     testQueryResultsInOuterSubquery() {
@@ -469,12 +488,7 @@ function lateDocumentMaterializationRuleTestSuite () {
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
         assertEqual(1, result.json.length);
-        let expected = new Set(['c1']);
-        result.json.forEach(function(doc) {
-          assertTrue(expected.has(doc._key));
-          expected.delete(doc._key);
-        });
-        assertEqual(0, expected.size);
+        assertEqual(result.json[0]._key, 'c1');
       }
     },
     testQueryResultsMultipleLimits() {
@@ -535,12 +549,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
       assertEqual(1, result.json.length);
-      let expectedKeys = new Set(['c1']);
-      result.json.forEach(function(doc) {
-        assertTrue(expectedKeys.has(doc._key));
-        expectedKeys.delete(doc._key);
-      });
-      assertEqual(0, expectedKeys.size);
+      assertEqual(result.json[0]._key, 'c1');
     },
     testQueryResultsEdgeIndex() {
       let query = "FOR d IN " + edgeIndexCollectionName + " FILTER d._from == 'testVertices/c0' SORT NOOPT(d._from) DESC LIMIT 10 RETURN d";
@@ -554,6 +563,50 @@ function lateDocumentMaterializationRuleTestSuite () {
         expectedKeys.delete(doc._key);
       });
       assertEqual(0, expectedKeys.size);
+    },
+    testQueryResultsPrefixIndex() {
+      let query = "FOR d IN " + prefixIndexCollectionName + " FILTER d.obj.a == {sa: 'a_val_0'} SORT d.obj.b.sb LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(1, result.json.length);
+      assertEqual(1, result.json.length);
+      assertEqual(result.json[0]._key, 'c0');
+    },
+    testQueryResultsPrefixIndexWithVariable() {
+      let query = "FOR d IN " + prefixIndexCollectionName + " FILTER d.obj.a == {sa: 'a_val_0'} " +
+                  "LET c = CONCAT(d.obj.a.sa, d.obj.b.sb) " +
+                  "SORT c LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(1, result.json.length);
+      assertEqual(result.json[0]._key, 'c0');
+    },
+    testQueryResultsEarlyPruning() {
+      for (i = 0; i < numOfCollectionIndexes; ++i) {
+        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' AND d.obj.c IN ['c_val', 'c_val_2'] SORT d.obj.c LIMIT 10 RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        assertNotEqual(-1, plan.rules.indexOf(earlyPruningRuleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(2, result.json.length);
+        let expected = new Set(['c0', 'c2']);
+        result.json.forEach(function(doc) {
+          assertTrue(expected.has(doc._key));
+          expected.delete(doc._key);
+        });
+        assertEqual(0, expected.size);
+      }
+    },
+    testQueryResultsPrefixEarlyPruning() {
+      let query = "FOR d IN " + prefixIndexCollectionName + " FILTER d.obj.b == {sb: 'b_val_0'} SORT d.obj.b LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertNotEqual(-1, plan.rules.indexOf(earlyPruningRuleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(1, result.json.length);
+      assertEqual(result.json[0]._key, 'c0');
     }
   };
 }
