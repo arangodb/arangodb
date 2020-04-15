@@ -3591,6 +3591,8 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(Optimizer* opt,
 }
 
 // For nodes that store a vocbase, extract and return a pointer to it
+// TODO: this should of course be a method in ExecutionNode that asserts
+//       if one tries to extract vocbase from a node that doesn't have one
 auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   auto const nodeType = at->getType();
 
@@ -3640,8 +3642,8 @@ void insertScatterGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, GatherNo
   auto const nodeDependencies = at->getDependencies();
   auto const nodeParents = at->getParents();
 
-  // Unlink node from plan
-  plan.unlinkNode(at);
+  // Unlink node from plan, note that we allow removing the root node
+  plan.unlinkNode(at, true);
 
   auto* scatterNode =
       new ScatterNode(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
