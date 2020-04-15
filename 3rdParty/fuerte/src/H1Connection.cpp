@@ -227,6 +227,8 @@ void H1Connection<ST>::finishConnect() {
   auto exp = Connection::State::Connecting;
   if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
     startWriting();  // starts writing queue if non-empty
+  } else {
+    FUERTE_LOG_HTTPTRACE << "finishConnect this=" << this << " state=" << int(exp) << "\n";
   }
 }
 
@@ -355,7 +357,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   FUERTE_ASSERT(_item.get() == nullptr);
   FUERTE_ASSERT(ptr != nullptr);
   FUERTE_ASSERT(q > 0);
-  
+
   _item.reset(ptr);
   setTimeout(_item->request->timeout());
 
@@ -434,7 +436,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     return;
   }
   FUERTE_ASSERT(_item != nullptr);
-  
+
   // Inspect the data we've received so far.
   size_t nparsed = 0;
   auto buffers = this->_receiveBuffer.data();  // no copy
@@ -454,7 +456,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
 
   // Remove consumed data from receive buffer.
   this->_receiveBuffer.consume(nparsed);
-  
+
   if (_messageComplete) {
     this->_proto.timer.cancel();  // got response in time
 
