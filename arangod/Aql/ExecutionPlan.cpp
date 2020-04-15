@@ -442,14 +442,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
 
   // set up collections
   builder.add(VPackValue("collections"));
-  builder.openArray();
-  for (auto const& c : *ast->query().collections().collections()) {
-    builder.openObject();
-    builder.add("name", VPackValue(c.first));
-    builder.add("type", VPackValue(AccessMode::typeString(c.second->accessType())));
-    builder.close();
-  }
-  builder.close();
+  ast->query().collections().toVelocyPack(builder);
 
   // set up variables
   builder.add(VPackValue("variables"));
@@ -815,14 +808,14 @@ ModificationOptions ExecutionPlan::createModificationOptions(AstNode const* node
       // its unclear which collections the traversal will access
       isReadWrite = true;
     } else {
-      auto const& collections = _ast->query().collections();
-
-      for (auto const& it : *(collections.collections())) {
-        if (it.second->isReadWrite()) {
+      _ast->query().collections().visit([&isReadWrite](std::string const&, aql::Collection* collection) {
+        if (collection->isReadWrite()) {
+          // stop iterating
           isReadWrite = true;
-          break;
+          return false;
         }
-      }
+        return true;
+      });
     }
 
     if (!isReadWrite) {

@@ -161,22 +161,18 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
 
   // we replaced the rocksdb export cursor with a stream AQL query
   // for this case we need to support printing the collection "count"
-#warning FIXME
-#if 0
-  if (_query->optionsSlice().hasKey("exportCollection")) {
-    std::string cname = _query->optionsSlice().get("exportCollection").copyString();
-    TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
-    OperationResult opRes = _query->trx()->count(cname, transaction::CountType::Normal);
-    if (opRes.fail()) {
-      THROW_ARANGO_EXCEPTION(opRes.result);
-    }
-    _exportCount = opRes.slice().getInt();
+  // this is a hack for the export API only
+  auto const& exportCollection = _query->queryOptions().exportCollection;
+  if (!exportCollection.empty()) {
+    _exportCount = _query->countResult();
     VPackSlice limit = _query->bindParameters()->slice().get("limit");
     if (limit.isInteger()) {
       _exportCount = (std::min)(limit.getInt(), _exportCount);
     }
   }
         
+#warning FIXME
+#if 0
   // ensures the cursor is cleaned up as soon as the outer transaction ends
   // otherwise we just get issues because we might still try to use the trx
   TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);

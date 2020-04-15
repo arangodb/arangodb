@@ -208,6 +208,11 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     }
   }
 #endif
+  
+  value = slice.get("exportCollection");
+  if (value.isString()) {
+    exportCollection = value.copyString();
+  }
 
   // also handle transaction options
   transactionOptions.fromVelocyPack(slice);
@@ -266,6 +271,8 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     builder.close();  // inaccessibleCollections
   }
 #endif
+
+  // "exportCollection" is only used internally and not exposed via toVelocyPack 
 
   // also handle transaction options
   transactionOptions.toVelocyPack(builder);

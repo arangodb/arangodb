@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_COLLECTION_H 1
 
 #include "Cluster/ClusterTypes.h"
+#include "Transaction/CountCache.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
@@ -69,7 +70,7 @@ struct Collection {
   TRI_col_type_e type() const;
 
   /// @brief count the number of documents in the collection
-  size_t count(transaction::Methods* trx) const;
+  size_t count(transaction::Methods* trx, transaction::CountType type) const;
 
   /// @brief returns the collection's plan id
   TRI_voc_cid_t getPlanId() const;

@@ -197,17 +197,16 @@ EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Q
 void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* graphNode) {
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
-    auto* allCollections = _query.collections().collections();
     auto& resolver = _query.resolver();
-    for (auto const& it : *allCollections) {
+    _query.collections().visit([&resolver, graphNode](std::string const& name, aql::Collection* collection) {
       // If resolver cannot resolve this collection
       // it has to be a view.
-      if (!resolver.getCollection(it.first)) {
-        continue;
+      if (resolver.getCollection(name)) {
+        // All known edge collections will be ignored by this call!
+        graphNode->injectVertexCollection(collection);
       }
-      // All known edge collections will be ignored by this call!
-      graphNode->injectVertexCollection(it.second);
-    }
+      return true;
+    });
   }
 }
 

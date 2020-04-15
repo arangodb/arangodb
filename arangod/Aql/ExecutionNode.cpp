@@ -70,6 +70,7 @@
 #include "Meta/static_assert_size.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 
@@ -1347,7 +1348,7 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedNrItems *= collection()->count(&trx);
+  estimate.estimatedNrItems *= collection()->count(&trx, transaction::CountType::TryCache);
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not

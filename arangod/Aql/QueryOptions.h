@@ -80,8 +80,17 @@ struct QueryOptions {
   bool count;
   bool verboseErrors;
   bool inspectSimplePlans;
+
+  /// @brief hack to be used only for /_api/export, contains the name of
+  /// the target collection
+  std::string exportCollection;
+  
+  /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
+  
+  /// @brief manual restriction to certain shards
   std::unordered_set<std::string> restrictToShards;
+
 #ifdef USE_ENTERPRISE
   // TODO: remove as soon as we have cluster wide transactions
   std::unordered_set<std::string> inaccessibleCollections;

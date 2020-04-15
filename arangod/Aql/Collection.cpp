@@ -65,9 +65,8 @@ TRI_voc_cid_t Collection::id() const { return getCollection()->id(); }
 TRI_col_type_e Collection::type() const { return getCollection()->type(); }
 
 /// @brief count the number of documents in the collection
-size_t Collection::count(transaction::Methods* trx) const {
-  // estimate for the number of documents in the collection. may be outdated...
-  OperationResult res = trx->count(_name, transaction::CountType::TryCache);
+size_t Collection::count(transaction::Methods* trx, transaction::CountType type) const {
+  OperationResult res = trx->count(_name, type); 
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }

@@ -26,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
@@ -77,7 +78,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              std::shared_ptr<VPackBuilder> const& options)
     : QueryContext(ctx->vocbase()),
-      _itemBlockMananger(&_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
       _V8Context(nullptr),
@@ -92,7 +93,8 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _killed(false),
       _isAsyncQuery(false),
       _preparedV8Context(false),
-      _queryHashCalculated(false) {
+      _queryHashCalculated(false),
+      _countResult(0) {
   if (_contextOwnedByExterior) {
     // copy transaction options from global state into our local query options
     auto state = transaction::V8Context::getParentState();
@@ -189,9 +191,9 @@ void Query::kill() {
 }
 
 void Query::injectTransaction(std::unique_ptr<transaction::Methods> trx) {
-   _trx = std::move(trx);
-   init();
- }
+  _trx = std::move(trx);
+  init();
+}
 
 void Query::prepareQuery(SerializationFormat format) {
 
@@ -217,15 +219,9 @@ void Query::prepareQuery(SerializationFormat format) {
   // own _engine attribute (the instanciation procedure may modify us
   // by calling our engine(ExecutionEngine*) function
   // this is confusing and should be fixed!
-  auto res = ExecutionEngine::instantiateFromPlan(*this, _itemBlockMananger, *plan,
+  auto res = ExecutionEngine::instantiateFromPlan(*this, _itemBlockManager, *plan,
                                                   /*planRegisters*/!_queryString.empty(),
                                                   format, _snippets);
-
-//  if (_engine == nullptr) {
-//    _engine = std::move(engine);
-//  } else {
-//    engine.release();
-//  }
 
   _plans.push_back(std::move(plan));
   
@@ -266,7 +262,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   }
 #endif
 
-  _trx = AqlTransaction::create(_transactionContext, _collections.collections(),
+  _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet
@@ -308,7 +304,17 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // return the V8 context if we are in one
   exitV8Context();
+ 
 
+  // determine count value for collection
+  // this is a hack for /_api/export only
+  if (!_queryOptions.exportCollection.empty()) {
+    aql::Collection* c = collections().get(_queryOptions.exportCollection);
+    if (c != nullptr) {
+      _countResult = c->count(_trx.get(), transaction::CountType::Normal);
+    }
+  }
+  
   return plan;
 }
 
@@ -519,7 +525,7 @@ QueryResult Query::executeSync() {
   std::shared_ptr<SharedQueryState> ss;
 
   QueryResult queryResult;
-  while (true) {
+  do {
     auto state = execute(queryResult);
     if (state != aql::ExecutionState::WAITING) {
       TRI_ASSERT(state == aql::ExecutionState::DONE);
@@ -532,7 +538,7 @@ QueryResult Query::executeSync() {
     }
     
     ss->waitForAsyncWakeup();
-  }
+  } while (true);
 }
 
 // execute an AQL query: may only be called with an active V8 handle scope
@@ -859,7 +865,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
     // create the transaction object, but do not start it yet
-    _trx = AqlTransaction::create(_transactionContext, _collections.collections(),
+    _trx = AqlTransaction::create(_transactionContext, _collections,
                                   _queryOptions.transactionOptions);
 
     // we have an AST
@@ -1337,7 +1343,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   }
 #endif
   
-  _trx = AqlTransaction::create(_transactionContext, _collections.collections(),
+  _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet
@@ -1362,7 +1368,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     _isAsyncQuery = _isAsyncQuery || plan->contains(ExecutionNode::ASYNC);
     TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
     
-    res = ExecutionEngine::instantiateFromPlan(*this, _itemBlockMananger, *plan,
+    res = ExecutionEngine::instantiateFromPlan(*this, _itemBlockManager, *plan,
                                                /*planRegisters*/!_queryString.empty(),
                                                format, _snippets);
     if (res.fail()) {
