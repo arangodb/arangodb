@@ -829,8 +829,8 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, 
 
   if (!cname.empty()) {
     coll = query.collections().add(cname, AccessMode::Type::READ);
-
-#warning TODO fixme ?
+    // simon: code below is used for FULLTEXT(), WITHIN(), NEAR(), ..
+    // could become unnecessary if the AST takes care of adding the collections
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
       coll->setCollection(query.vocbase().lookupCollection(cname));

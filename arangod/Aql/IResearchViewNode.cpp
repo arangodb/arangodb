@@ -1222,7 +1222,7 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 
   auto visitor = [&viewCollections, &collections](TRI_voc_cid_t cid) -> bool {
     auto const id = basics::StringUtils::itoa(cid);
-           auto const* collection = collections.get(id);
+    auto const* collection = collections.get(id);
 
     if (collection) {
       viewCollections.push_back(*collection);
@@ -1410,9 +1410,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                                              std::move(infos));
   }
 
-#warning FIXME
- auto* trx = &engine.getQuery().trxForOptimization();
-
+  auto* trx = &engine.getQuery().trxForOptimization();
   if (!trx) {
     LOG_TOPIC("7c905", WARN, arangodb::iresearch::TOPIC)
         << "failed to get transaction while creating IResearchView "

@@ -321,31 +321,6 @@ bool RestAqlHandler::registerSnippets(
     }
 
     try {
-//#warning NECESSARY?
-      /*if (needToLock) {
-        // Directly try to lock only the first snippet is required to be locked.
-        // For all others locking is pointless
-        needToLock = false;
-
-        try {
-          int res = query->trx()->lockCollections();
-          if (res != TRI_ERROR_NO_ERROR) {
-            generateError(rest::ResponseCode::SERVER_ERROR, res, TRI_errno_string(res));
-            return false;
-          }
-        } catch (basics::Exception const& e) {
-          generateError(rest::ResponseCode::SERVER_ERROR, e.code(), e.message());
-          return false;
-        } catch (...) {
-          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                        "Unable to lock all collections.");
-          return false;
-        }
-        // If we get here we successfully locked the collections.
-        // If we bail out up to this point nothing is kept alive.
-        // No need to cleanup...
-      }*/
-
       QueryId qId = query->id();
       TRI_ASSERT(qId > 0);
       _queryRegistry->insert(qId, query.get(), ttl, true, false);
