@@ -396,7 +396,14 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
     // advance
     bool operator()(const size_t i) const {
       assert(i < itrs_.get().size());
-      return itrs_.get()[i].first->next();
+      auto& doc_it = itrs_.get()[i];
+      auto const& map = *doc_it.second;
+      while (doc_it.first->next()) {
+        if (!irs::doc_limits::eof(map(doc_it.first->value()))) {
+          return true;
+        }
+      }
+      return false;
     }
 
     // compare
