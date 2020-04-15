@@ -530,6 +530,14 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
   Result res = basics::catchToResult([this]() -> Result {
     auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
     SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
+    Result res = trx.begin();
+    if (res.fail()) {
+      LOG_TOPIC("d1e53", WARN, arangodb::Logger::ENGINES)
+          << "failed to begin transaction to rebuild revision tree "
+             "for collection '"
+          << _logicalCollection.id() << "'";
+      return res;
+    }
     auto* state = RocksDBTransactionState::toState(&trx);
 
     std::vector<std::size_t> revisions;
@@ -549,6 +557,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
         _revisionTree->insert(revisions);
         revisions.clear();
       }
+      it.next();
     }
     if (!revisions.empty()) {
       _revisionTree->insert(revisions);
