@@ -389,28 +389,33 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::st
   _graph.toPersistence(builder);
   builder.close();
 
-  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  {
+    SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+                                    AccessMode::Type::WRITE);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  res = trx.begin();
+    res = trx.begin();
 
-  if (!res.ok()) {
-    return OperationResult(res);
+    if (!res.ok()) {
+      return OperationResult(res);
+    }
+    OperationOptions options;
+    options.waitForSync = waitForSync;
+
+    result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
+    res = trx.finish(result.result);
   }
-  OperationOptions options;
-  options.waitForSync = waitForSync;
-
-  result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
-  res = trx.finish(result.result);
 
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
     GraphManager gmngr{_vocbase};
-    gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
+    res = gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved).result;
+      
+    if (res.fail()) {
+      return OperationResult(res);
+    }
 
     for (auto const& cname : collectionsToBeRemoved) {
-      
       std::shared_ptr<LogicalCollection> coll;
       res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {

@@ -65,7 +65,7 @@ namespace {
 static bool ArrayContainsCollection(VPackSlice array, std::string const& colName) {
   TRI_ASSERT(array.isArray());
   for (VPackSlice it : VPackArrayIterator(array)) {
-    if (it.copyString() == colName) {
+    if (it.stringRef() == colName) {
       return true;
     }
   }
@@ -593,27 +593,19 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 }
 
 bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
-  bool onlySatellites = true;
-
   for (auto const& cname : graph->vertexCollections()) {
     if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
-      onlySatellites = false;
-    }
-    if (!onlySatellites) {
-      break; // quick exit
+      return false;
     }
   }
 
   for (auto const& cname : graph->edgeCollections()) {
     if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
-      onlySatellites = false;
-    }
-    if (!onlySatellites) {
-      break; // quick exit
+      return false;
     }
   }
 
-  return onlySatellites;
+  return true;
 }
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder) const {
@@ -628,7 +620,7 @@ OperationResult GraphManager::readGraphKeys(velocypack::Builder& builder) const 
 }
 
 OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
-                                               std::string queryStr) const {
+                                               std::string const& queryStr) const {
   arangodb::aql::Query query(ctx(), arangodb::aql::QueryString(queryStr),
                              nullptr, nullptr);
 
@@ -648,7 +640,8 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
 
   if (graphsSlice.isNone()) {
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
-  } else if (!graphsSlice.isArray()) {
+  } 
+  if (!graphsSlice.isArray()) {
     LOG_TOPIC("338b7", ERR, arangodb::Logger::GRAPHS)
         << "cannot read graphs from _graphs collection";
   }
@@ -875,7 +868,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
 }
 
 OperationResult GraphManager::pushCollectionIfMayBeDropped(
-    const std::string& colName, const std::string& graphName,
+    std::string const& colName, std::string const& graphName,
     std::unordered_set<std::string>& toBeRemoved) {
   VPackBuilder graphsBuilder;
   OperationResult result = readGraphs(graphsBuilder);
@@ -898,7 +891,7 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
       // Short circuit
       break;
     }
-    if (graph.get(StaticStrings::KeyString).copyString() == graphName) {
+    if (graph.get(StaticStrings::KeyString).stringRef() == graphName) {
       continue;
     }
 
@@ -907,15 +900,16 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
     if (edgeDefinitions.isArray()) {
       for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
         // edge collection
-        std::string collection = edgeDefinition.get("collection").copyString();
-        if (collection == colName) {
+        if (edgeDefinition.get("collection").stringRef() == colName) {
           collectionUnused = false;
+          break;
         }
         // from's
         if (::ArrayContainsCollection(edgeDefinition.get(StaticStrings::GraphFrom), colName)) {
           collectionUnused = false;
           break;
         }
+        // to's
         if (::ArrayContainsCollection(edgeDefinition.get(StaticStrings::GraphTo), colName)) {
           collectionUnused = false;
           break;

@@ -66,7 +66,7 @@ class GraphManager {
   OperationResult readGraphKeys(velocypack::Builder& builder) const;
 
   OperationResult readGraphByQuery(velocypack::Builder& builder,
-                                   std::string queryStr) const;
+                                   std::string const& queryStr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find and return a collections if available
