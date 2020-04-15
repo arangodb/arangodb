@@ -47,7 +47,8 @@ class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
 class Expression;
-struct RegisterPlan;
+template<typename T> struct RegisterPlanT;
+using RegisterPlan = RegisterPlanT<ExecutionNode>;
 
 /// @brief struct to hold the member-indexes in the _condition node
 struct NonConstExpression {
@@ -130,6 +131,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   bool canApplyLateDocumentMaterializationRule() const {
     return isProduceResult() && coveringIndexAttributePositions().empty();
   }
+
+  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const override;
 
   struct IndexVariable {
     size_t indexFieldNum;

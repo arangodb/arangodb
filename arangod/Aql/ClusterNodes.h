@@ -198,6 +198,7 @@ class ScatterNode : public ExecutionNode {
 
   void setScatterType(ScatterType targetType) { _type = targetType; }
 
+  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final { return {}; }
  protected:
   void writeClientsToVelocyPack(velocypack::Builder& builder) const;
   bool readClientsFromVelocyPack(velocypack::Slice base);
@@ -370,12 +371,13 @@ class GatherNode final : public ExecutionNode {
   size_t constrainedSortLimit() const noexcept;
 
   bool isSortingGather() const noexcept;
-  
+
   void setParallelism(Parallelism value);
-  
+
   /// no modification nodes, ScatterNodes etc
   bool isParallelizable() const;
 
+  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final { return {}; }
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -386,7 +388,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief sorting mode
   SortMode _sortmode;
-  
+
   /// @brief parallelism
   Parallelism _parallelism;
 
@@ -470,6 +472,14 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   CostEstimate estimateCost() const override final;
 
   std::string const& key() const { return _key; }
+
+  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const override {
+    std::unordered_set<VariableId> vars;
+    for (auto const& it : getVariablesSetHere()) {
+      vars.insert(it->id);
+    }
+    return vars;
+  }
 
  private:
   // whether we replaced an index node
