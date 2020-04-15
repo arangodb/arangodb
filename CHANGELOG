@@ -9,6 +9,14 @@ devel
   on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
   of LOW.
 
+* Fix creation of example graphs when `--cluster.min-replication-factor` is set
+  and no replication factor was specified for a graph. In this case, the new
+  graph will use the configured minimum replication factor.
+
+* Show some index details in index overview of the web interface, e.g. the 
+  `minLength` attribute for fulltext indexes or the `expireAfter` attribute for
+  TTL indexes.
+
 * Added startup option `--server.validate-utf8-strings`.
 
   This option controls whether strings in incoming JSON or VPack requests are

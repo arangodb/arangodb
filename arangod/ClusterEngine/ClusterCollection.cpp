@@ -283,8 +283,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
 /// @brief Drop an index with the given iid.
 bool ClusterCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
-  if (iid.isPrimary() || iid.isNone()) {
-    // invalid index id or primary index
+  if (iid.empty() || iid.isPrimary()) {
     return true;
   }
 
