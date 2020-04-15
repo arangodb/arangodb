@@ -4800,7 +4800,7 @@ VPackSlice PlanCollectionReader::indexes() {
 
 CollectionWatcher::~CollectionWatcher() {
   try {
-    _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
+    _agencyCallbackRegistry->unregisterCallback(_agencyCallback, true);
   } catch (std::exception const& ex) {
     LOG_TOPIC("42af2", WARN, Logger::CLUSTER) << "caught unexpected exception in CollectionWatcher: " << ex.what();
   }

@@ -49,7 +49,7 @@ std::tuple <query_t, index_t> const AgencyCache::get(
   std::lock_guard g(_storeLock);
   auto ret = std::make_shared<VPackBuilder>();
   if (_commitIndex > 0) {
-    _readDB.get("/arango/" + path).toBuilder(*ret);
+    _readDB.get("arango/" + path).toBuilder(*ret);
   }
   return std::tuple(ret, _commitIndex);
 }
@@ -113,7 +113,7 @@ void AgencyCache::run() {
   //     wait ever longer until success
 
   while (!this->isStopping()) {
-    
+
     rb.clear();
     toCall.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
