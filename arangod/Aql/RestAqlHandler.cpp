@@ -489,7 +489,8 @@ RestStatus RestAqlHandler::execute() {
         }
         generateResult(rest::ResponseCode::OK, answerBody.slice());
       } else {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
+                      "query with id " + suffixes[1] + " not found");
       }
       
       break;
@@ -577,7 +578,8 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
     LOG_TOPIC_IF("baef6", ERR, Logger::AQL, iterations == MaxIterations)
         << "Timeout waiting for query " << _qId;
     _qId = 0;
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
+                  "query ID " + idString + " not found");
     return q;
   }
 
