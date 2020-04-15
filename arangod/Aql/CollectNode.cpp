@@ -834,7 +834,7 @@ std::unordered_set<VariableId> CollectNode::getOutputVariables() const {
     vars.insert(p.first->id);
   }
   if (hasOutVariable()) {
-    vars.insert(_outVariable->id);
+    vars.insert(outVariable()->id);
   }
 
   return vars;

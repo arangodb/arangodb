@@ -77,7 +77,7 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
 template <typename T>
 struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T>> {
 
-  friend class RegisterPlanWalkerT<T>;
+  friend struct RegisterPlanWalkerT<T>;
   // The following are collected for global usage in the ExecutionBlock,
   // although they are stored here in the node:
 

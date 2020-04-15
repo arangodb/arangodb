@@ -128,16 +128,7 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   /// in SmartGraph case
   void disableStatistics() { _countStats = false; }
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const {
-    std::unordered_set<VariableId> vars;
-    if (_outVariableOld != nullptr) {
-      vars.insert(_outVariableOld->id);
-    }
-    if (_outVariableNew!= nullptr) {
-      vars.insert(_outVariableNew->id);
-    }
-    return vars;
-  }
+  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
 
  protected:
   void cloneCommon(ModificationNode*) const;

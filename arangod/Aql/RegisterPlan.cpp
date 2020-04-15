@@ -44,7 +44,7 @@ using namespace arangodb::aql;
 // Requires RegisterPlan to be defined
 VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
-  TRI_ASSERT(registerId < RegisterPlan::MaxRegisterId);
+  TRI_ASSERT(registerId < RegisterPlanT<ExecutionNode>::MaxRegisterId);
 }
 
 template <typename T>
@@ -58,7 +58,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   for (VariableId const& v : en->getOutputVariables()) {
     if (v != RegisterPlanT<T>::MaxRegisterId) {
       plan->registerVariable(v);
-
     }  else {
       plan->addRegister();
     }
