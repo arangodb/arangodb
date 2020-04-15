@@ -25,7 +25,6 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterInfo.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;

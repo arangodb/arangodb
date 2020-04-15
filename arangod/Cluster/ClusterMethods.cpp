@@ -884,12 +884,12 @@ futures::Future<Result> upgradeOnCoordinator(TRI_vocbase_t& vocbase,
   velocypack::Builder job;
   {
     velocypack::ObjectBuilder guard(&job);
-    job.add("type", VPackValue("upgradeCollection"));
-    job.add("database", VPackValue(std::to_string(vocbase.id())));
-    job.add("collection", VPackValue(std::to_string(collection.id())));
-    job.add("jobId", VPackValue(std::to_string(jobId)));
-    job.add("timeCreated", VPackValue(getExtendedIsoString(timeCreated)));
-    job.add("creator", VPackValue(ServerState::instance()->getId()));
+    job.add("type", velocypack::Value("upgradeCollection"));
+    job.add("database", velocypack::Value(vocbase.name()));
+    job.add("collection", velocypack::Value(std::to_string(collection.id())));
+    job.add("jobId", velocypack::Value(std::to_string(jobId)));
+    job.add("timeCreated", velocypack::Value(getExtendedIsoString(timeCreated)));
+    job.add("creator", velocypack::Value(ServerState::instance()->getId()));
   }
 
   std::string const agencyKey = "Target/ToDo/" + std::to_string(jobId);

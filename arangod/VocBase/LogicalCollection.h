@@ -25,6 +25,12 @@
 #ifndef ARANGOD_VOCBASE_LOGICAL_COLLECTION_H
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
+#include <unordered_map>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -37,10 +43,6 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 namespace arangodb {
 typedef std::string ServerID;  // ID of a server
@@ -87,6 +89,31 @@ class LogicalCollection : public LogicalDataSource {
 
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
+  class UpgradeStatus {
+    public:
+      enum class State : std::uint8_t {
+        ToDo = 0,
+        Upgrade = 1,
+        Cleanup = 2
+      };
+      using Map = std::unordered_map<std::string, State>;
+
+    public:
+     explicit UpgradeStatus(LogicalCollection&);
+     UpgradeStatus(LogicalCollection&, Map const&);
+
+     Map const& map() const;
+     void set(Map::key_type const&, Map::mapped_type const&);
+     void remove(Map::key_type const&);
+
+    public:
+     static UpgradeStatus fetch(LogicalCollection&);
+
+    private:
+     LogicalCollection& _collection;
+     Map _map;
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
   //////////////////////////////////////////////////////////////////////////////
@@ -121,6 +148,8 @@ class LogicalCollection : public LogicalDataSource {
 
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
+
+  UpgradeStatus& upgradeStatus();
 
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
   void executeWhileStatusLocked(std::function<void()> const& callback);
@@ -409,6 +438,8 @@ class LogicalCollection : public LogicalDataSource {
   // `_validators` must be used with atomic accessors only!!
   // We use relaxed access (load/store) as we only care about atomicity.
   std::shared_ptr<ValidatorVec> _validators;
+
+  UpgradeStatus _upgradeStatus;
 };
 
 }  // namespace arangodb

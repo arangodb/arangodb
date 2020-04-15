@@ -24,7 +24,7 @@
 
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/Maintenance/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 

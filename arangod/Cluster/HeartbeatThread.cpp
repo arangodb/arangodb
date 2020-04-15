@@ -37,7 +37,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/DBServerAgencySync.h"
+#include "Cluster/Maintenance/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/AuthenticationFeature.h"

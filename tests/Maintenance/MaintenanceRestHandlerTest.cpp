@@ -32,7 +32,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringBuffer.h"
-#include "Cluster/MaintenanceRestHandler.h"
+#include "Cluster/Maintenance/MaintenanceRestHandler.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 

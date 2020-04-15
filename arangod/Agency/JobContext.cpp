@@ -32,7 +32,7 @@
 #include "Agency/Jobs/MoveShard.h"
 #include "Agency/Jobs/RemoveFollower.h"
 #include "Agency/Jobs/ResignLeadership.h"
-//#include "Agency/Jobs/UpgradeCollection.h"
+#include "Agency/Jobs/UpgradeCollection.h"
 
 using namespace arangodb::consensus;
 
@@ -65,8 +65,8 @@ JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
     _job = std::make_unique<RemoveFollower>(snapshot, agent, status, id);
   } else if (type == "activeFailover") {
     _job = std::make_unique<ActiveFailover>(snapshot, agent, status, id);
-    //} else if (type == "upgradeCollection") {
-    //  _job = std::make_unique<UpgradeCollection>(snapshot, agent, status, id);
+  } else if (type == "upgradeCollection") {
+    _job = std::make_unique<UpgradeCollection>(snapshot, agent, status, id);
   } else {
     LOG_TOPIC("bb53f", ERR, Logger::AGENCY)
         << "Failed to run supervision job " << type << " with id " << id;

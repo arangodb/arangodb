@@ -168,7 +168,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
-      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
+      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)),
+      _upgradeStatus(*this) {
 
   TRI_ASSERT(info.isObject());
 
@@ -302,6 +303,31 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
 }
 
 LogicalCollection::~LogicalCollection() = default;
+
+LogicalCollection::UpgradeStatus::UpgradeStatus(LogicalCollection& c) : _collection(c) {}
+
+LogicalCollection::UpgradeStatus::UpgradeStatus(LogicalCollection& c, Map const& m) : _collection(c), _map(m) {}
+
+LogicalCollection::UpgradeStatus::Map const& LogicalCollection::UpgradeStatus::map() const {
+  return _map;
+}
+
+void LogicalCollection::UpgradeStatus::set(Map::key_type const& key, Map::mapped_type const& value) {
+  _map[key] = value;
+}
+
+void LogicalCollection::UpgradeStatus::remove(Map::key_type const& key) {
+  decltype(_map)::iterator it = _map.find(key);
+  if (it != _map.end()) {
+    _map.erase(it);
+  }
+}
+
+LogicalCollection::UpgradeStatus LogicalCollection::UpgradeStatus::fetch(LogicalCollection& collection) {
+  auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
+  auto& ci = feature.clusterInfo();
+  return ci.getCurrentShardUpgradeStatus(collection);
+}
 
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {
@@ -437,6 +463,10 @@ TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
 TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
   READ_LOCKER(readLocker, _statusLock);
   return _status;
+}
+
+LogicalCollection::UpgradeStatus& LogicalCollection::upgradeStatus() {
+  return _upgradeStatus;
 }
 
 void LogicalCollection::executeWhileStatusWriteLocked(std::function<void()> const& callback) {

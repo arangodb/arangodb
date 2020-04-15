@@ -778,6 +778,8 @@ class ClusterInfo final {
 
   std::shared_ptr<VPackBuilder> getCurrent();
 
+  LogicalCollection::UpgradeStatus getCurrentShardUpgradeStatus(LogicalCollection& collection);
+
   std::vector<std::string> getFailedServers() {
     MUTEX_LOCKER(guard, _failedServersMutex);
     return _failedServers;

@@ -29,7 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Cluster/Maintenance.h"
+#include "Cluster/Maintenance/Maintenance.h"
 #include "Mocks/Servers.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"

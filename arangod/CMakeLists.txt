@@ -497,6 +497,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/Jobs/MoveShard.cpp
   Agency/Jobs/RemoveFollower.cpp
   Agency/Jobs/ResignLeadership.cpp
+  Agency/Jobs/UpgradeCollection.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
@@ -559,9 +560,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Auth/TokenCache.cpp
   Auth/User.cpp
   Auth/UserManager.cpp
-  Cluster/Action.cpp
-  Cluster/ActionBase.cpp
-  Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
@@ -573,31 +571,35 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterUpgradeFeature.cpp
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
-  Cluster/CreateCollection.cpp
-  Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
-  Cluster/DBServerAgencySync.cpp
-  Cluster/DropCollection.cpp
-  Cluster/DropDatabase.cpp
-  Cluster/DropIndex.cpp
-  Cluster/EnsureIndex.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
-  Cluster/Maintenance.cpp
-  Cluster/MaintenanceFeature.cpp
-  Cluster/MaintenanceRestHandler.cpp
-  Cluster/MaintenanceWorker.cpp
-  Cluster/NonAction.cpp
+  Cluster/Maintenance/Action.cpp
+  Cluster/Maintenance/ActionBase.cpp
+  Cluster/Maintenance/ActionDescription.cpp
+  Cluster/Maintenance/Actions/CreateCollection.cpp
+  Cluster/Maintenance/Actions/CreateDatabase.cpp
+  Cluster/Maintenance/Actions/DropCollection.cpp
+  Cluster/Maintenance/Actions/DropDatabase.cpp
+  Cluster/Maintenance/Actions/DropIndex.cpp
+  Cluster/Maintenance/Actions/EnsureIndex.cpp
+  Cluster/Maintenance/Actions/NonAction.cpp
+  Cluster/Maintenance/Actions/ResignShardLeadership.cpp
+  Cluster/Maintenance/Actions/SynchronizeShard.cpp
+  Cluster/Maintenance/Actions/TakeoverShardLeadership.cpp
+  Cluster/Maintenance/Actions/UpdateCollection.cpp
+  Cluster/Maintenance/Actions/UpgradeCollection.cpp
+  Cluster/Maintenance/DBServerAgencySync.cpp
+  Cluster/Maintenance/Maintenance.cpp
+  Cluster/Maintenance/MaintenanceFeature.cpp
+  Cluster/Maintenance/MaintenanceRestHandler.cpp
+  Cluster/Maintenance/MaintenanceWorker.cpp
   Cluster/PathComponent.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
-  Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
-  Cluster/SynchronizeShard.cpp
-  Cluster/TakeoverShardLeadership.cpp
-  Cluster/UpdateCollection.cpp
   Cluster/v8-cluster.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp

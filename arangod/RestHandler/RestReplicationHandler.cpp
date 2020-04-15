@@ -41,7 +41,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
-#include "Cluster/ResignShardLeadership.h"
+#include "Cluster/Maintenance/Actions/ResignShardLeadership.h"
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"

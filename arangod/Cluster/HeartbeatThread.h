@@ -24,18 +24,18 @@
 #ifndef ARANGOD_CLUSTER_HEARTBEAT_THREAD_H
 #define ARANGOD_CLUSTER_HEARTBEAT_THREAD_H 1
 
-#include "Basics/Thread.h"
+#include <chrono>
+
+#include <velocypack/Slice.h>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/CriticalThread.h"
-#include "Cluster/DBServerAgencySync.h"
+#include "Cluster/Maintenance/DBServerAgencySync.h"
 #include "RestServer/MetricsFeature.h"
-
-#include <velocypack/Slice.h>
-#include <chrono>
 
 namespace arangodb {
 namespace application_features {

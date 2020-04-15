@@ -22,11 +22,11 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FollowerInfo.h"
+#include "Cluster/FollowerInfo.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/MaintenanceStrings.h"
+#include "Cluster/Maintenance/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
