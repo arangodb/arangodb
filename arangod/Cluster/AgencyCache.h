@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
 
+#include <map>
 #include <mutex>
 
 namespace arangodb {
@@ -73,7 +74,7 @@ public:
   bool registerCallback(std::string const& key, uint32_t const& id);
 
   /// @brief Register local callback
-  bool unregisterCallback(std::string const& key);
+  bool unregisterCallback(std::string const& key, uint32_t const& id);
 
 private:
 
@@ -91,7 +92,7 @@ private:
 
   /// @brief Stored call backs key -> callback registry's id
   mutable std::mutex _callbacksLock;
-  std::unordered_map<std::string, uint32_t> _callbacks;
+  std::multimap<std::string, uint32_t> _callbacks;
 };
 
 } // namespace

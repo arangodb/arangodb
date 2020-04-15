@@ -103,13 +103,13 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
 
     for (auto const& it : _endpoints) {
       if (it.second.get() == cb.get()) {
+        endpointToDelete = it.first;
         if (local) {
           auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-          cache.unregisterCallback(cb->key);
+          cache.unregisterCallback(cb->key, endpointToDelete);
         } else {
-          _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
+          _agency.unregisterCallback(cb->key, getEndpointUrl(endpointToDelete));
         }
-        endpointToDelete = it.first;
         found = true;
         break;
       }

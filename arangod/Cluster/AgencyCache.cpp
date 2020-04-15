@@ -117,6 +117,7 @@ void AgencyCache::run() {
     rb.clear();
     toCall.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
+    
     auto ret = sendTransaction(rb)
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
@@ -205,16 +206,24 @@ bool AgencyCache::registerCallback(std::string const& key, uint32_t const& id) {
   LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER)
     << "Registering callback for " <<  AgencyCommManager::path(key);
   std::lock_guard g(_callbacksLock);
-  _callbacks.try_emplace(AgencyCommManager::path(key),id);
+  _callbacks.emplace(AgencyCommManager::path(key),id);
   return true;
 }
 
 /// Register local call back
-bool AgencyCache::unregisterCallback(std::string const& key) {
+bool AgencyCache::unregisterCallback(std::string const& key, uint32_t const& id) {
   LOG_TOPIC("cc768", DEBUG, Logger::CLUSTER)
     << "Registering callback for " <<  AgencyCommManager::path(key);
   std::lock_guard g(_callbacksLock);
-  _callbacks.erase(AgencyCommManager::path(key));
+  auto range = _callbacks.equal_range(key);
+  for (auto it = range.first; it != range.second;) {
+    if (it->second == id) {
+      it = _callbacks.erase(it);
+      break;
+    } else {
+      ++it;
+    }
+  }
   return true;
 }
 
