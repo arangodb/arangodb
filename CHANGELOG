@@ -1,7 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue #686 'docs out of order' error while ArangoSearch consolidation
+* Fixed internal issue #686: 'docs out of order' error during ArangoSearch
+  consolidation.
 
 * Updated OpenSSL to 1.1.1f.
 
