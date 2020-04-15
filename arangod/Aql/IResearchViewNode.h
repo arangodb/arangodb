@@ -242,7 +242,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     bool _noDocMaterStatus = true;
 
    public:
-    void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs<aql::latematerialized::AstAndColumnFieldData>> const& nodesToChange);
+    void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrsColumn> const& nodesToChange);
 
     bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
 

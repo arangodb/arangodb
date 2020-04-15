@@ -379,13 +379,13 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isSmartChild;
 #endif
 
-  std::atomic<bool> _usesRevisionsAsDocumentIds;
-
   // SECTION: Properties
   bool _waitForSync;
 
   bool const _allowUserKeys;
 
+  std::atomic<bool> _usesRevisionsAsDocumentIds;
+  
   std::atomic<bool> _syncByRevision;
 
   TRI_voc_rid_t const _minRevision;
