@@ -99,7 +99,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   result.data = builder;
   result.cached = false;
-  result.context = transaction::V8Context::Create(vocbase, false);
+  result.context = transaction::V8Context::CreateWhenRequired(vocbase, false);
 
   TRI_ASSERT(builder.get() != nullptr);
 
@@ -343,7 +343,7 @@ struct V8Cursor final {
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
     
-    auto q = std::make_unique<aql::Query>(transaction::V8Context::Create(*vocbase, true),
+    auto q = std::make_unique<aql::Query>(transaction::V8Context::CreateWhenRequired(*vocbase, true),
                                           aql::QueryString(queryString), std::move(bindVars),
                                           std::move(options));
     

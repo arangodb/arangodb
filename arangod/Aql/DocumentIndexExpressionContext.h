@@ -43,7 +43,7 @@ class DocumentIndexExpressionContext final : public QueryExpressionContext {
   
   /// true if the variable we are referring to is set by
   /// a collection enumeration/index enumeration
-  virtual bool isDataFromCollection(Variable const* variable) const {
+  virtual bool isDataFromCollection(Variable const* variable) const override {
     return false;
   }
 

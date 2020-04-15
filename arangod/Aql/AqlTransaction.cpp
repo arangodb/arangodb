@@ -80,6 +80,7 @@ AqlTransaction::AqlTransaction(
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection* collection) {
   Result res;
+  LOG_DEVEL << "process collection " << collection->name();
 
   if (_state->isCoordinator()) {
     auto cid = resolver()->getCollectionId(collection->name());

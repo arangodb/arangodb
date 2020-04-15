@@ -372,7 +372,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         }
 
         // will throw if it fails
-        if (!_ast) { // simon: hack for EXECUTE_JSON
+        if (!_ast) { // simon: hack for AQL_EXECUTEJSON
           prepareQuery(SerializationFormat::SHADOWROWS);
         }
 
@@ -1374,6 +1374,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
+    
     _plans.push_back(std::move(plan));
   };
   
@@ -1381,14 +1382,26 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   for (auto pair : VPackObjectIterator(snippets, /*sequential*/true)) {
     instantiateSnippet(pair.value);
     
-    TRI_ASSERT(_snippets.back().first == 0);
-    const QueryId qId = _trx->state()->isRunningInCluster() ? TRI_NewTickServer() : 0;
-    _snippets.back().first = qId;
+    QueryId qId = _snippets.back().first;
+    if (_trx->state()->isDBServer()) {
+      qId = TRI_NewTickServer();
+      _snippets.back().first = qId;
+    }
+    TRI_ASSERT(!_trx->state()->isDBServer() || qId != 0);
 
     answerBuilder.add(pair.key);
     answerBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(qId)));
   }
   answerBuilder.close(); // snippets
+  
+  if (_snippets.size() > 0) {
+    TRI_ASSERT(_trx->state()->isDBServer() || _snippets[0].first == 0);
+    // simon: for AQL_EXECUTEJSON
+    if (_trx->state()->isCoordinator()) {  // register coordinator snippets
+      TRI_ASSERT(_trx->state()->isCoordinator());
+      QueryRegistryFeature::registry()->registerEngines(_snippets);
+    }
+  }
   
   if (travererSlice.isArray()) {
     // used to be RestAqlHandler::registerTraverserEngines

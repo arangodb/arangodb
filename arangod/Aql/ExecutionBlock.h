@@ -120,6 +120,9 @@ class ExecutionBlock {
   virtual void collectExecStats(ExecutionStats&) const;
   [[nodiscard]] bool isInSplicedSubquery() const noexcept;
   
+  [[nodiscard]] auto printBlockInfo() const -> std::string const;
+  [[nodiscard]] auto printTypeInfo() const -> std::string const;
+  
  protected:
   
   // Trace the start of a getSome call
@@ -139,9 +142,6 @@ class ExecutionBlock {
   // Trace the end of a execute call, potentially with result
   void traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
                        std::string const& clientId = "");
-
-  [[nodiscard]] auto printBlockInfo() const -> std::string const;
-  [[nodiscard]] auto printTypeInfo() const -> std::string const;
 
  protected:
   /// @brief the execution engine

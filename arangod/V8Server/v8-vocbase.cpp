@@ -680,7 +680,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   snippetBuilder.add("nodes", queryBuilder->slice().get("nodes"));
   snippetBuilder.close();
   snippetBuilder.close();
+  
 
+  TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
   query.prepareClusterQuery(aql::SerializationFormat::SHADOWROWS, collections, variables,
                              snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse);
