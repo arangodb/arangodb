@@ -1,4 +1,4 @@
-v3.6.3 (XXXX-XX-XX)
+v3.6.3 (2020-04-15)
 -------------------
 
 * Fixed internal issue #686: 'docs out of order' error during ArangoSearch
