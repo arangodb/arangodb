@@ -24,6 +24,7 @@
 #define ARANGOD_CLUSTER_AGENCY_CACHE 1
 
 #include "Agency/Store.h"
+#include "Basics/Thread.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
 
@@ -31,7 +32,7 @@
 
 namespace arangodb {
 
-class AgencyCache : public arangodb::Thread {
+class AgencyCache final : public arangodb::Thread {
 
 public:
   /// @brief start off with our server
@@ -42,14 +43,14 @@ public:
 
   /// @brief 1. Long poll from agency's Raft log
   ///        2. Entertain local cache of agency's read db
-  virtual void run() override final;
+  void run() override;
 
   /// @brief Start thread
   bool start();
 
   /// @brief Start orderly shutdown of threads
   // cppcheck-suppress virtualCallInConstructor
-  virtual void beginShutdown() override final;
+  void beginShutdown() override;
 
   /// @brief Read from local readDB cache at path
   arangodb::consensus::Node const& read(std::string const& path) const;
