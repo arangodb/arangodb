@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_AQL_TRANSACTION_H
 #define ARANGOD_AQL_AQL_TRANSACTION_H 1
 
-#include "Aql/types.h"
+#include "Aql/Collections.h"
 #include "Transaction/Methods.h"
 
-#include <map>
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace velocypack {
@@ -48,35 +48,25 @@ class AqlTransaction : public transaction::Methods {
   /// from the query context
   static std::unique_ptr<AqlTransaction>
     create(std::shared_ptr<transaction::Context> const& transactionContext,
-            AqlCollectionMap const* collections,
-            transaction::Options const& options,
-            std::unordered_set<std::string> inaccessibleCollections =
-                std::unordered_set<std::string>());
+           aql::Collections const& collections,
+           transaction::Options const& options,
+           std::unordered_set<std::string> inaccessibleCollections =
+               std::unordered_set<std::string>());
 
   /// @brief end the transaction
   ~AqlTransaction() override = default;
-
-  /// @brief add a list of collections to the transaction
-  Result addCollections(AqlCollectionMap const& collections);
-
-  /// @brief documentCollection
-  LogicalCollection* documentCollection(TRI_voc_cid_t cid);
-
+  
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
                  transaction::Options const& options);
 
   /// protected so we can create different subclasses
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
-                 AqlCollectionMap const* collections,
+                 aql::Collections const& collections,
                  transaction::Options const& options);
 
+ private:
   /// @brief add a collection to the transaction
   Result processCollection(aql::Collection*);
-
- protected:
-  /// @brief keep a copy of the collections, this is needed for the clone
-  /// operation
-  AqlCollectionMap _collections;
 };
 }  // namespace aql
 }  // namespace arangodb

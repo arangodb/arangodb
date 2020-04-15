@@ -24,8 +24,7 @@
 #include "AqlTransaction.h"
 
 #include "Aql/Collection.h"
-#include "Logger/Logger.h"
-#include "StorageEngine/TransactionCollection.h"
+#include "Aql/Collections.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -39,7 +38,7 @@ using namespace arangodb::aql;
 
 std::unique_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    AqlCollectionMap const* collections, transaction::Options const& options,
+    aql::Collections const& collections, transaction::Options const& options,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
@@ -51,17 +50,31 @@ std::unique_ptr<AqlTransaction> AqlTransaction::create(
   return std::make_unique<AqlTransaction>(transactionContext, collections, options);
 }
 
-/// @brief add a list of collections to the transaction
-Result AqlTransaction::addCollections(AqlCollectionMap const& collections) {
-  Result res;
-  for (auto const& it : collections) {
-    res = processCollection(it.second);
+AqlTransaction::AqlTransaction(
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    transaction::Options const& options)
+    : transaction::Methods(transactionContext, options) {
+  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+}
 
-    if (!res.ok()) {
-      break;
+  /// protected so we can create different subclasses
+AqlTransaction::AqlTransaction(
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    aql::Collections const& collections,
+    transaction::Options const& options)
+    : transaction::Methods(transactionContext, options) { 
+  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+
+  Result res;
+  collections.visit([this, &res](std::string const&, aql::Collection* collection) {
+    res = processCollection(collection);
+
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
-  }
-  return res;
+
+    return true;
+  });
 }
 
 /// @brief add a collection to the transaction
@@ -91,31 +104,4 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
   }
 
   return res;
-}
-
-LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
-  TransactionCollection* trxColl = this->trxCollection(cid);
-  TRI_ASSERT(trxColl != nullptr);
-  return trxColl->collection().get();
-}
-
-AqlTransaction::AqlTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
-    transaction::Options const& options)
-    : transaction::Methods(transactionContext, options) {
-  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-}
-
-  /// protected so we can create different subclasses
-AqlTransaction::AqlTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
-    AqlCollectionMap const* collections,
-    transaction::Options const& options)
-    : transaction::Methods(transactionContext, options), _collections(*collections) {
-  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-
-  Result res = addCollections(*collections);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
 }

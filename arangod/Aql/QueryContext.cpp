@@ -53,7 +53,6 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
       _collections(&vocbase),
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
-      _ast(),
       _numRequests(0) {
   if (!AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);

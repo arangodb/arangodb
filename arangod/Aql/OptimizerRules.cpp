@@ -67,6 +67,7 @@
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
@@ -3069,7 +3070,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       
       Collection const* coll = enumerateCollectionNode->collection();
       TRI_ASSERT(coll != nullptr);
-      size_t numDocs = coll->count(&_plan->getAst()->query().trxForOptimization());
+      size_t numDocs = coll->count(&_plan->getAst()->query().trxForOptimization(), transaction::CountType::TryCache);
       
       bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(*coll,
           &sortCondition, outVariable, numDocs,

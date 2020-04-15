@@ -38,6 +38,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -627,7 +628,7 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
     itemsInIndex = 1024;
   } else {
     // estimate for the number of documents in the index. may be outdated...
-    itemsInIndex = coll.count(&trx);
+    itemsInIndex = coll.count(&trx, transaction::CountType::TryCache);
   }
   if (_root == nullptr) {
     size_t dummy;

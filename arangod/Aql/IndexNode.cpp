@@ -42,6 +42,7 @@
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
@@ -569,7 +570,7 @@ CostEstimate IndexNode::estimateCost() const {
 
   transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
   // estimate for the number of documents in the collection. may be outdated...
-  size_t const itemsInCollection = collection()->count(&trx);
+  size_t const itemsInCollection = collection()->count(&trx, transaction::CountType::TryCache);
   size_t totalItems = 0;
   double totalCost = 0.0;
 
