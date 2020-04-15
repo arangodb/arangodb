@@ -124,14 +124,7 @@ auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   }
   call.didSkip(skipped);
   // TODO: Do we need to do counting here?
-  return {inputRange.upstreamState(), stats, skipped, call};
-}
-
-template <class UsedFetcher>
-std::tuple<ExecutionState, typename IdExecutor<UsedFetcher>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;

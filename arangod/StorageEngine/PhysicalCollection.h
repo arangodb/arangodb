@@ -41,7 +41,6 @@
 
 namespace arangodb {
 
-struct KeyLockInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -60,11 +59,9 @@ class PhysicalCollection {
 
   // path to logical collection
   virtual std::string const& path() const = 0;
-  virtual void setPath(std::string const&) = 0;  // should be set during collection creation
   // creation happens atm in engine->createCollection
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
                                             bool doSync) = 0;
-  virtual arangodb::Result persistProperties() = 0;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
@@ -79,9 +76,6 @@ class PhysicalCollection {
 
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
-
-  /// @brief opens an existing collection
-  virtual void open(bool ignoreErrors) = 0;
 
   void drop();
 
@@ -166,12 +160,13 @@ class PhysicalCollection {
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
   virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
-
-  virtual LocalDocumentId lookupKey(transaction::Methods*,
-                                    arangodb::velocypack::Slice const&) const = 0;
+  
+  virtual Result lookupKey(transaction::Methods*,
+                           arangodb::velocypack::StringRef,
+                           std::pair<LocalDocumentId, TRI_voc_rid_t>&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result, bool lock) = 0;
+                      ManagedDocumentResult& result) = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
@@ -185,40 +180,27 @@ class PhysicalCollection {
    * @brief Perform document insert, may generate a '_key' value
    * If (options.returnNew == false && !options.silent) result might
    * just contain an object with the '_key' field
-   * @param callbackDuringLock Called immediately after a successful insert.
-   *        If the insert wasn't successful, it isn't called. May be nullptr.
    */
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
-                        std::function<void()> const& cbDuringLock) = 0;
-
-  Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options, bool lock) {
-    return insert(trx, newSlice, result, options, lock, nullptr, nullptr);
-  }
+                        OperationOptions& options) = 0;
 
   virtual Result update(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         ManagedDocumentResult& result, OperationOptions& options,
-                        bool lock, ManagedDocumentResult& previous) = 0;
+                        ManagedDocumentResult& previous) = 0;
 
   virtual Result replace(arangodb::transaction::Methods* trx,
                          arangodb::velocypack::Slice newSlice,
                          ManagedDocumentResult& result, OperationOptions& options,
-                         bool lock, ManagedDocumentResult& previous) = 0;
+                         ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                        ManagedDocumentResult& previous, OperationOptions& options,
-                        bool lock, KeyLockInfo* keyLockInfo,
-                        std::function<void()> const& cbDuringLock) = 0;
+                        ManagedDocumentResult& previous, OperationOptions& options) = 0;
 
   virtual Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                        ManagedDocumentResult& previous, OperationOptions& options,
-                        bool lock, KeyLockInfo* keyLockInfo,
-                        std::function<void()> const& cbDuringLock);
+                        ManagedDocumentResult& previous, OperationOptions& options);
 
   /// @brief new object for insert, value must have _key set correctly.
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
@@ -235,6 +217,10 @@ class PhysicalCollection {
   virtual void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
 
   TRI_voc_rid_t newRevisionId() const;
+
+  virtual Result upgrade();
+  virtual bool didPartialUpgrade();
+  virtual Result cleanupAfterUpgrade();
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

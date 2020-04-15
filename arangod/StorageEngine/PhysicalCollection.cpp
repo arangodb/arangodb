@@ -184,6 +184,18 @@ TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
   return TRI_HybridLogicalClock();
 }
 
+Result PhysicalCollection::upgrade() {
+  return Result{TRI_ERROR_NOT_IMPLEMENTED,
+                "collection upgrade not supported on this type of collection"};
+}
+
+bool PhysicalCollection::didPartialUpgrade() { return false; }
+
+Result PhysicalCollection::cleanupAfterUpgrade() {
+  return Result{TRI_ERROR_NOT_IMPLEMENTED,
+                "collection upgrade not supported on this type of collection"};
+}
+
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 Result PhysicalCollection::mergeObjectsForUpdate(
@@ -630,9 +642,7 @@ std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
 void PhysicalCollection::adjustNumberDocuments(transaction::Methods&, int64_t) {}
 
 Result PhysicalCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
-                                  ManagedDocumentResult& previous, OperationOptions& options,
-                                  bool lock, KeyLockInfo* keyLockInfo,
-                                  std::function<void()> const& cbDuringLock) {
+                                  ManagedDocumentResult& previous, OperationOptions& options) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

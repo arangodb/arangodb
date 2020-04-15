@@ -111,8 +111,7 @@ function ahuacatlProfilerTestSuite () {
 
           const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
 
-          // This is more complex due to two reasons:
-          // - mmfiles lies about hasMore and may result in +1
+          // This is more complex due to the following reason
           // - the current EnumerateCollectionBlock::getSome implementation
           //   stops after iterating over the whole collection.
           // The second point in turn means that
@@ -132,10 +131,6 @@ function ahuacatlProfilerTestSuite () {
 
           // Number of batches at the return node
           let endBatches = optimalBatches;
-          if (db._engine().name === 'mmfiles') {
-            endBatches = [optimalBatches, optimalBatches + 1];
-          }
-
 
           const expected = [
             {type: SingletonBlock, items: 1, calls: 1},

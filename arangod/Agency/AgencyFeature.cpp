@@ -36,7 +36,6 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/FrontendFeature.h"
@@ -260,17 +259,13 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // turn off the following features, as they are not needed in an agency:
-  // - MMFilesPersistentIndex: not needed by agency even if MMFiles is
-  //   the selected storage engine
-  // - ArangoSearch: not needed by agency even if MMFiles is the selected
-  //   storage engine
+  // - ArangoSearch: not needed by agency 
   // - IResearchAnalyzer: analyzers are not needed by agency
   // - Statistics: turn off statistics gathering for agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
   std::vector<std::type_index> disabledFeatures(
-      {std::type_index(typeid(MMFilesPersistentIndexFeature)),
-       std::type_index(typeid(iresearch::IResearchFeature)),
+      {std::type_index(typeid(iresearch::IResearchFeature)),
        std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
        std::type_index(typeid(ActionFeature)),
        std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxQueuesFeature)),

@@ -241,16 +241,7 @@ void UpgradeFeature::upgradeLocalDatabase() {
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
-  bool ignoreDatafileErrors = false;
-  {
-    VPackBuilder options = server().options([](std::string const& name) {
-      return (name.find("database.ignore-datafile-errors") != std::string::npos);
-    });
-    VPackSlice s = options.slice();
-    if (s.get("database.ignore-datafile-errors").isBoolean()) {
-      ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
-    }
-  }
+  bool ignoreDatafileErrors = databaseFeature.ignoreDatafileErrors();
 
   for (auto& name : databaseFeature.getDatabaseNames()) {
     TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);

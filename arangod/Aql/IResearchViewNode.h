@@ -26,6 +26,7 @@
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
 #include "IResearch/IResearchOrderFactory.h"
@@ -40,6 +41,7 @@ namespace aql {
 struct Collection;
 class ExecutionBlock;
 class ExecutionEngine;
+struct RegisterPlan;
 struct VarInfo;
 }  // namespace aql
 
@@ -79,7 +81,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   };  // Options
 
-  IResearchViewNode(aql::ExecutionPlan& plan, size_t id, TRI_vocbase_t& vocbase,
+  IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
                     std::shared_ptr<const arangodb::LogicalView> const& view,
                     aql::Variable const& outVariable, aql::AstNode* filterCondition,
                     aql::AstNode* options, std::vector<Scorer>&& scorers);
@@ -173,10 +175,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ///       sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
-                         std::vector<aql::RegisterId>& nrRegs,
-                         std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
-                         unsigned int& totalNrRegs, unsigned int depth) const;
+  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
@@ -243,7 +242,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     bool _noDocMaterStatus = true;
 
    public:
-    void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs<aql::latematerialized::AstAndColumnFieldData>> const& nodesToChange);
+    void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrsColumn> const& nodesToChange);
 
     bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
 

@@ -101,9 +101,10 @@ class conjunction : public doc_iterator_base<doc_iterator>, score_ctx {
 
   conjunction(
       doc_iterators_t&& itrs,
-      const order::prepared& ord = order::prepared::unordered())
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : itrs_(std::move(itrs)),
-      merger_(ord.prepare_merger()) {
+      merger_(ord.prepare_merger(merge_type)) {
     assert(!itrs_.empty());
 
     // sort subnodes in ascending order by their cost

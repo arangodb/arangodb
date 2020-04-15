@@ -42,11 +42,12 @@ AqlExecutorTestCase<enableQueryTrace>::~AqlExecutorTestCase() {
 
 template <bool enableQueryTrace>
 auto AqlExecutorTestCase<enableQueryTrace>::generateNodeDummy() -> ExecutionNode* {
-  auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
+  auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()});
   auto res = dummy.get();
   _execNodes.emplace_back(std::move(dummy));
   return res;
 }
+
 template <bool enableQueryTrace>
 auto AqlExecutorTestCase<enableQueryTrace>::manager() const -> AqlItemBlockManager& {
   return fakedQuery->engine()->itemBlockManager();

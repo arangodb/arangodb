@@ -63,12 +63,14 @@
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/TypeTraits.h"
+#include "Basics/Identifier.h"
 #include "Containers/HashSet.h"
 
 namespace arangodb {
@@ -173,7 +175,8 @@ class ExecutionNode {
  public:
 
   /// @brief constructor using an id
-  ExecutionNode(ExecutionPlan* plan, size_t id);
+  ExecutionNode(ExecutionPlan* plan, size_t id) { TRI_ASSERT(false); }
+  ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   /// @brief constructor using a VPackSlice
   ExecutionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
@@ -215,7 +218,7 @@ class ExecutionNode {
   }
 
   /// @brief return the node's id
-  size_t id() const;
+  ExecutionNodeId id() const;
 
   /// @brief return the type of the node
   virtual NodeType getType() const = 0;
@@ -432,7 +435,7 @@ class ExecutionNode {
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
-  void setId(size_t id);
+  void setId(ExecutionNodeId id);
 
   /// @brief this actually estimates the costs as well as the number of items
   /// coming out of the node
@@ -467,7 +470,7 @@ class ExecutionNode {
 
  protected:
   /// @brief node id
-  size_t _id;
+  ExecutionNodeId _id;
 
   /// @brief our dependent nodes
   std::vector<ExecutionNode*> _dependencies;
@@ -493,6 +496,8 @@ class ExecutionNode {
 
   /// @brief whether or not _varsUsedLater and _varsValid are actually valid
   bool _varUsageValid;
+  
+  bool _isInSplicedSubquery;
 
   /// @brief _plan, the ExecutionPlan object
   ExecutionPlan* _plan;
@@ -505,8 +510,6 @@ class ExecutionNode {
   /// the static analysis for each node using the variable usage in the plan.
   std::unordered_set<RegisterId> _regsToClear;
 
-  bool _isInSplicedSubquery;
-
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
@@ -518,7 +521,7 @@ class SingletonNode : public ExecutionNode {
 
   /// @brief constructor with an id
  public:
-  SingletonNode(ExecutionPlan* plan, size_t id);
+  SingletonNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -554,7 +557,7 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  EnumerateCollectionNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
+  EnumerateCollectionNode(ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
                           Variable const* outVariable, bool random, IndexHint const& hint);
 
   EnumerateCollectionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -606,7 +609,7 @@ class EnumerateListNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  EnumerateListNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
+  EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
                     Variable const* outVariable);
 
   EnumerateListNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -655,7 +658,7 @@ class LimitNode : public ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  LimitNode(ExecutionPlan* plan, size_t id, size_t offset, size_t limit);
+  LimitNode(ExecutionPlan* plan, ExecutionNodeId id, size_t offset, size_t limit);
 
   LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -707,7 +710,7 @@ class CalculationNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  CalculationNode(ExecutionPlan* plan, size_t id, std::unique_ptr<Expression> expr, Variable const* outVariable);
+  CalculationNode(ExecutionPlan* plan, ExecutionNodeId id, std::unique_ptr<Expression> expr, Variable const* outVariable);
 
   CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -762,7 +765,7 @@ class SubqueryNode : public ExecutionNode {
  public:
   SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  SubqueryNode(ExecutionPlan* plan, size_t id, ExecutionNode* subquery, Variable const* outVariable);
+  SubqueryNode(ExecutionPlan* plan, ExecutionNodeId id, ExecutionNode* subquery, Variable const* outVariable);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -827,7 +830,7 @@ class FilterNode : public ExecutionNode {
 
   /// @brief constructors for various arguments, always with offset and limit
  public:
-  FilterNode(ExecutionPlan* plan, size_t id, Variable const* inVariable);
+  FilterNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable);
 
   FilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -886,7 +889,7 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief constructors for various arguments, always with offset and limit
  public:
-  ReturnNode(ExecutionPlan* plan, size_t id, Variable const* inVariable);
+  ReturnNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable);
 
   ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -932,7 +935,7 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief constructor with an id
  public:
-  NoResultsNode(ExecutionPlan* plan, size_t id);
+  NoResultsNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   NoResultsNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -959,7 +962,7 @@ class NoResultsNode : public ExecutionNode {
 namespace materialize {
 class MaterializeNode : public ExecutionNode {
  protected:
-  MaterializeNode(ExecutionPlan* plan, size_t id, aql::Variable const& inDocId, aql::Variable const& outVariable);
+  MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id, aql::Variable const& inDocId, aql::Variable const& outVariable);
 
   MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -1003,7 +1006,7 @@ class MaterializeNode : public ExecutionNode {
 
 class MaterializeMultiNode : public MaterializeNode {
  public:
-  MaterializeMultiNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
+  MaterializeMultiNode(ExecutionPlan* plan, ExecutionNodeId id, aql::Variable const& inColPtr,
                        aql::Variable const& inDocId, aql::Variable const& outVariable);
 
   MaterializeMultiNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -1031,7 +1034,7 @@ class MaterializeMultiNode : public MaterializeNode {
 
 class MaterializeSingleNode : public MaterializeNode, public CollectionAccessingNode {
  public:
-  MaterializeSingleNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
+  MaterializeSingleNode(ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
                         aql::Variable const& inDocId, aql::Variable const& outVariable);
 
   MaterializeSingleNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);

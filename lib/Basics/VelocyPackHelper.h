@@ -385,6 +385,8 @@ class VelocyPackHelper {
       bool sanitizeExternals = true, bool sanitizeCustom = true);
 
   static uint64_t extractIdValue(VPackSlice const& slice);
+    
+  static arangodb::velocypack::Options requestValidationOptions;
 
   static uint8_t const KeyAttribute = 0x31;
   static uint8_t const RevAttribute = 0x32;

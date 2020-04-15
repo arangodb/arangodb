@@ -24,6 +24,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/DocumentExpressionContext.h"
+#include "Aql/DocumentIndexExpressionContext.h"
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
@@ -40,19 +41,14 @@ using namespace arangodb::aql;
 
 void aql::handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
                             transaction::Methods const* trxPtr, VPackSlice slice,
-                            VPackBuilder& b, bool useRawDocumentPointers) {
+                            VPackBuilder& b) {
   for (auto const& it : projections) {
     if (it.first == ProjectionType::IdAttribute) {
       b.add(it.second, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), slice, slice)));
       continue;
     } else if (it.first == ProjectionType::KeyAttribute) {
       VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
-      if (useRawDocumentPointers) {
-        b.add(VPackValue(it.second));
-        b.addExternal(found.begin());
-      } else {
-        b.add(it.second, found);
-      }
+      b.add(it.second, found);
       continue;
     }
 
@@ -61,12 +57,7 @@ void aql::handleProjections(std::vector<std::pair<ProjectionType, std::string>> 
       // attribute not found
       b.add(it.second, VPackValue(VPackValueType::Null));
     } else {
-      if (useRawDocumentPointers) {
-        b.add(VPackValue(it.second));
-        b.addExternal(found.begin());
-      } else {
-        b.add(it.second, found);
-      }
+      b.add(it.second, found);
     }
   }
 }
@@ -99,7 +90,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     b->openObject(true);
 
     handleProjections(context.getProjections(), context.getTrxPtr(), slice,
-                      *b.get(), context.getUseRawDocumentPointers());
+                      *b.get());
 
     b->close();
     
@@ -225,12 +216,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(DocumentProducingFunc
   }
 
   // return the document as is
-  if (context.getUseRawDocumentPointers()) {
-    return getCallback<checkUniqueness, skip>(DocumentProducingCallbackVariant::DocumentWithRawPointer{},
-                                              context);
-  } else {
-    return getCallback<checkUniqueness, skip>(DocumentProducingCallbackVariant::DocumentCopy{}, context);
-  }
+  return getCallback<checkUniqueness, skip>(DocumentProducingCallbackVariant::DocumentCopy{}, context);
 }
 
 template <bool checkUniqueness>
@@ -266,7 +252,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     Query* query, Expression* filter,
     std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
-    bool allowCoveringIndexOptimization, bool useRawDocumentPointers, bool checkUniqueness)
+    bool allowCoveringIndexOptimization, bool checkUniqueness)
     : _inputRow(inputRow),
       _outputRow(outputRow),
       _query(query),
@@ -276,7 +262,6 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _numFiltered(0),
       _outputRegister(outputRegister),
       _produceResult(produceResult),
-      _useRawDocumentPointers(useRawDocumentPointers),
       _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
       _isLastIndex(false),
       _checkUniqueness(checkUniqueness) {
@@ -316,10 +301,6 @@ std::vector<size_t> const& DocumentProducingFunctionContext::getCoveringIndexAtt
 
 bool DocumentProducingFunctionContext::getAllowCoveringIndexOptimization() const noexcept {
   return _allowCoveringIndexOptimization;
-}
-
-bool DocumentProducingFunctionContext::getUseRawDocumentPointers() const noexcept {
-  return _useRawDocumentPointers;
 }
 
 void DocumentProducingFunctionContext::setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization) noexcept {
@@ -377,7 +358,17 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
   DocumentExpressionContext ctx(_query, slice);
+  return checkFilter(ctx);
+}
 
+bool DocumentProducingFunctionContext::checkFilter(
+    AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+    void const* filterContext) {
+  DocumentIndexExpressionContext ctx(_query, getValue, filterContext);
+  return checkFilter(ctx);
+}
+
+bool DocumentProducingFunctionContext::checkFilter(ExpressionContext& ctx) {
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _filter->execute(getTrxPtr(), &ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
@@ -450,18 +441,13 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
           // attribute not found
           b->add(it.second, VPackValue(VPackValueType::Null));
         } else {
-          if (context.getUseRawDocumentPointers()) {
-            b->add(VPackValue(it.second));
-            b->addExternal(found.begin());
-          } else {
-            b->add(it.second, found);
-          }
+          b->add(it.second, found);
         }
       }
     } else {
       // projections from a "real" document
       handleProjections(context.getProjections(), context.getTrxPtr(), slice,
-                        *b.get(), context.getUseRawDocumentPointers());
+                        *b.get());
     }
 
     b->close();

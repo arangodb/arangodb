@@ -25,48 +25,36 @@
 #define ARANGOD_AQL_MODIFICATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#include "Utils/OperationOptions.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
 namespace aql {
 
 /// @brief ModificationOptions
-struct ModificationOptions {
+struct ModificationOptions : OperationOptions {
   /// @brief constructor, using default values
   explicit ModificationOptions(arangodb::velocypack::Slice const&);
 
-  ModificationOptions()
-      : ignoreErrors(false),
-        waitForSync(false),
-        validate(true),
-        nullMeansRemove(false),
-        mergeObjects(true),
+  ModificationOptions() 
+      : OperationOptions(),
+        ignoreErrors(false),
         ignoreDocumentNotFound(false),
         readCompleteInput(true),
-        useIsRestore(false),
         consultAqlWriteFilter(false),
-        exclusive(false),
-        overwrite(false),
-        overwriteModeUpdate(false),
-        ignoreRevs(true) {}
+        exclusive(false) {}
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   bool ignoreErrors;
-  bool waitForSync;
-  bool validate;
-  bool nullMeansRemove;
-  bool mergeObjects;
   bool ignoreDocumentNotFound;
   bool readCompleteInput;
-  bool useIsRestore;
   bool consultAqlWriteFilter;
   bool exclusive;
-  bool overwrite;
-  bool overwriteModeUpdate;
-  bool ignoreRevs;
 };
 
 }  // namespace aql

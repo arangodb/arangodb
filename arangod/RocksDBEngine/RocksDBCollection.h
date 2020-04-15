@@ -95,13 +95,16 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
 
-  LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
+  /// @brief returns the LocalDocumentId and the revision id for the document with the 
+  /// specified key.
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
 
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       TRI_voc_rid_t& revisionId) const;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result, bool) override;
+              ManagedDocumentResult& result) override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
@@ -111,36 +114,34 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                 IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options,
-                bool lock, KeyLockInfo* /*keyLockInfo*/,
-                std::function<void()> const& cbDuringLock) override;
+                arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 ManagedDocumentResult& resultMdr, OperationOptions& options,
-                bool lock, ManagedDocumentResult& previousMdr) override;
+                ManagedDocumentResult& previousMdr) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& resultMdr, OperationOptions& options,
-                 bool lock, ManagedDocumentResult& previousMdr) override;
+                 ManagedDocumentResult& previousMdr) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock, KeyLockInfo* keyLockInfo,
-                std::function<void()> const& cbDuringLock) override;
+                ManagedDocumentResult& previous, OperationOptions& options) override;
 
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                ManagedDocumentResult& previous, OperationOptions& options,
-                bool lock, KeyLockInfo* keyLockInfo,
-                std::function<void()> const& cbDuringLock) override;
+                ManagedDocumentResult& previous, OperationOptions& options) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;
 
+  Result upgrade() override;
+  bool didPartialUpgrade() override;
+  Result cleanupAfterUpgrade() override;
+
  protected:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                 LocalDocumentId expectedId, ManagedDocumentResult& previous,
-                OperationOptions& options, std::function<void()> const& cbDuringLock);
+                OperationOptions& options);
 
  private:
   /// @brief return engine-specific figures

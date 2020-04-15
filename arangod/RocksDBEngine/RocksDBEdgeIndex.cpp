@@ -307,7 +307,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void lookupInRocksDB(VPackStringRef fromTo) {
     // Bad case read from RocksDB
-    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
+    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->objectId(), fromTo);
     resetInplaceMemory();
     rocksdb::Comparator const* cmp = _index->comparator();
     auto end = _bounds.end();
@@ -398,7 +398,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
                                                         : StaticStrings::IndexNameEdgeTo),
                    std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
-                   basics::VelocyPackHelper::stringUInt64(info, "objectId"),
+                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
+                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
                    !ServerState::instance()->isCoordinator() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
@@ -416,7 +417,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
   }
   // edge indexes are always created with ID 1 or 2
   TRI_ASSERT(iid.isEdge());
-  TRI_ASSERT(_objectId != 0);
+  TRI_ASSERT(objectId() != 0);
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() = default;
@@ -456,7 +457,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   auto fromToRef = arangodb::velocypack::StringRef(fromTo);
   RocksDBKeyLeaser key(&trx);
 
-  key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
+  key->constructEdgeIndexValue(objectId(), fromToRef, documentId);
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
 
   VPackSlice toFrom = _isFromIndex
@@ -493,7 +494,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   auto fromToRef = arangodb::velocypack::StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
   RocksDBKeyLeaser key(&trx);
-  key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
+  key->constructEdgeIndexValue(objectId(), fromToRef, documentId);
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -597,7 +598,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
 
   auto rocksColl = toRocksDBCollection(_collection);
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
+  auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());
 
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
   expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
@@ -911,7 +912,7 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
-  auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
+  auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());
   rocksdb::Slice const end = bounds.end();
   rocksdb::ReadOptions options;
   options.iterate_upper_bound = &end;    // safe to use on rocksb::DB directly

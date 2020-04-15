@@ -53,8 +53,7 @@
 #include <utility>
 
 // Set this to true to activate devel logging
-#define LOG_DEVEL_INDEX_ENABLED false
-#define LOG_DEVEL_IDX LOG_DEVEL_IF(LOG_DEVEL_INDEX_ENABLED)
+#define INTERNAL_LOG_IDX LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -77,9 +76,10 @@ static void resolveFCallConstAttributes(AstNode* fcall) {
 template <bool checkUniqueness>
 IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& context,
                                             transaction::Methods::IndexHandle const& index,
+                                            IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
                                             IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
-  return [&context, &index, &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                                        VPackSlice slice) {
+  return [&context, &index, &outNonMaterializedIndVars, &outNonMaterializedIndRegs](LocalDocumentId const& token,
+                                                                                    VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -89,8 +89,47 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
 
     context.incrScanned();
 
+    auto indexId = index->id();
+    TRI_ASSERT(indexId == outNonMaterializedIndRegs.first &&
+               indexId == outNonMaterializedIndVars.first);
+    if (ADB_UNLIKELY(indexId != outNonMaterializedIndRegs.first ||
+                     indexId != outNonMaterializedIndVars.first)) {
+      return false;
+    }
+
     if (context.hasFilter()) {
-      if (!context.checkFilter(slice)) {
+      struct filterContext {
+        IndexNode::IndexValuesVars const& outNonMaterializedIndVars;
+        velocypack::Slice slice;
+      };
+      filterContext fc{outNonMaterializedIndVars, slice};
+
+      auto getValue = [](void const* ctx, Variable const* var, bool doCopy) {
+        TRI_ASSERT(ctx && var);
+        auto const& fc = *reinterpret_cast<filterContext const*>(ctx);
+        auto const it = fc.outNonMaterializedIndVars.second.find(var);
+        TRI_ASSERT(fc.outNonMaterializedIndVars.second.cend() != it);
+        if (ADB_UNLIKELY(fc.outNonMaterializedIndVars.second.cend() == it)) {
+          return AqlValue();
+        }
+        velocypack::Slice s;
+        // hash/skiplist/edge
+        if (fc.slice.isArray()) {
+          TRI_ASSERT(it->second < fc.slice.length());
+          if (ADB_UNLIKELY(it->second >= fc.slice.length())) {
+            return AqlValue();
+          }
+          s = fc.slice.at(it->second);
+        } else {  // primary
+          s = fc.slice;
+        }
+        if (doCopy) {
+          return AqlValue(AqlValueHintCopy(s.start()));
+        }
+        return AqlValue(AqlValueHintDocumentNoCopy(s.start()));
+      };
+
+      if (!context.checkFilter(getValue, &fc)) {
         context.incrFiltered();
         return false;
       }
@@ -106,11 +145,6 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     TRI_ASSERT(!output.isFull());
     output.moveValueInto(registerId, input, guard);
 
-    auto indexId = index->id();
-    TRI_ASSERT(indexId == outNonMaterializedIndRegs.first);
-    if (ADB_UNLIKELY(indexId != outNonMaterializedIndRegs.first)) {
-      return false;
-    }
     // hash/skiplist/edge
     if (slice.isArray()) {
       for (auto const& indReg : outNonMaterializedIndRegs.second) {
@@ -148,7 +182,7 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
   return DocumentProducingFunctionContext(
       inputRow, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
       infos.getQuery(), infos.getFilter(), infos.getProjections(),
-      infos.getCoveringIndexAttributePositions(), false, infos.getUseRawDocumentPointers(),
+      infos.getCoveringIndexAttributePositions(), false, 
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions());
 }
 }  // namespace
@@ -162,12 +196,13 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
+    std::vector<size_t> const& coveringIndexAttributePositions, 
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
-    IndexIteratorOptions options, IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
+    IndexIteratorOptions options, IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
+    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
     : ExecutorInfos(make_shared_unordered_set(), writableOutputRegisters,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
@@ -185,9 +220,9 @@ IndexExecutorInfos::IndexExecutorInfos(
       _expInRegs(std::move(expInRegs)),
       _nonConstExpression(std::move(nonConstExpression)),
       _outputRegisterId(outputRegister),
+      _outNonMaterializedIndVars(outNonMaterializedIndVars),
       _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
       _hasMultipleExpansions(false),
-      _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _hasV8Expression(hasV8Expression) {
   if (_condition != nullptr) {
@@ -274,10 +309,6 @@ bool IndexExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
 }
 
-bool IndexExecutorInfos::getUseRawDocumentPointers() const noexcept {
-  return _useRawDocumentPointers;
-}
-
 std::vector<transaction::Methods::IndexHandle> const& IndexExecutorInfos::getIndexes() const
     noexcept {
   return _indexes;
@@ -356,8 +387,8 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
     case Type::LateMaterialized:
       _documentProducer =
           checkUniqueness
-              ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndRegs())
-              : ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
+              ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs())
+              : ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs());
       break;
     default:
       _documentProducer = checkUniqueness
@@ -651,16 +682,6 @@ bool IndexExecutor::advanceCursor() {
   return false;
 }
 
-std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows(size_t toSkip) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 IndexExecutor::CursorReader& IndexExecutor::getCursor() {
   TRI_ASSERT(_currentIndex < _cursors.size());
   return _cursors[_currentIndex];
@@ -682,7 +703,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
   _documentProducingFunctionContext.setOutputRow(&output);
 
   AqlCall clientCall = output.getClientCall();
-  LOG_DEVEL_IDX << "IndexExecutor::produceRows " << clientCall;
+  INTERNAL_LOG_IDX << "IndexExecutor::produceRows " << clientCall;
 
   /*
    * Logic of this executor is as follows:
@@ -692,19 +713,19 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
    */
 
   while (!output.isFull()) {
-    LOG_DEVEL_IDX << "IndexExecutor::produceRows output.numRowsLeft() == "
+    INTERNAL_LOG_IDX << "IndexExecutor::produceRows output.numRowsLeft() == "
                   << output.numRowsLeft();
     if (!_input.isInitialized()) {
       std::tie(_state, _input) = inputRange.peekDataRow();
-      LOG_DEVEL_IDX
+      INTERNAL_LOG_IDX
           << "IndexExecutor::produceRows input not initialized, peek next row: " << _state
           << " " << std::boolalpha << _input.isInitialized();
 
       if (_input.isInitialized()) {
-        LOG_DEVEL_IDX << "IndexExecutor::produceRows initIndexes";
+        INTERNAL_LOG_IDX << "IndexExecutor::produceRows initIndexes";
         initIndexes(_input);
         if (!advanceCursor()) {
-          LOG_DEVEL_IDX << "IndexExecutor::produceRows failed to advanceCursor "
+          INTERNAL_LOG_IDX << "IndexExecutor::produceRows failed to advanceCursor "
                            "after init";
           std::ignore = inputRange.nextDataRow();
           _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -720,11 +741,11 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
     TRI_ASSERT(_input.isInitialized());
     // Short Loop over the output block here for performance!
     while (!output.isFull()) {
-      LOG_DEVEL_IDX << "IndexExecutor::produceRows::innerLoop hasMore = " << std::boolalpha
+      INTERNAL_LOG_IDX << "IndexExecutor::produceRows::innerLoop hasMore = " << std::boolalpha
                     << getCursor().hasMore() << " " << output.numRowsLeft();
 
       if (!getCursor().hasMore() && !advanceCursor()) {
-        LOG_DEVEL_IDX << "IndexExecutor::produceRows::innerLoop cursor does "
+        INTERNAL_LOG_IDX << "IndexExecutor::produceRows::innerLoop cursor does "
                          "not have more and advancing failed";
         std::ignore = inputRange.nextDataRow();
         _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -737,7 +758,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
       bool more = getCursor().readIndex(output);
       TRI_ASSERT(more == getCursor().hasMore());
 
-      LOG_DEVEL_IDX
+      INTERNAL_LOG_IDX
           << "IndexExecutor::produceRows::innerLoop output.numRowsWritten() == "
           << output.numRowsWritten();
       // NOTE: more => output.isFull() does not hold, if we do uniqness checks.
@@ -754,7 +775,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
 
   AqlCall upstreamCall;
 
-  LOG_DEVEL_IDX << "IndexExecutor::produceRows reporting state " << returnState();
+  INTERNAL_LOG_IDX << "IndexExecutor::produceRows reporting state " << returnState();
   return {returnState(), stats, upstreamCall};
 }
 
@@ -769,25 +790,25 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange " << clientCall;
+  INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange " << clientCall;
 
   IndexStats stats{};
 
   while (clientCall.needSkipMore()) {
-    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipped " << _skipped << " "
+    INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange skipped " << _skipped << " "
                   << clientCall.getOffset();
     // get an input row first, if necessary
     if (!_input.isInitialized()) {
       std::tie(_state, _input) = inputRange.peekDataRow();
-      LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange input not initialized, "
+      INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange input not initialized, "
                        "peek next row: "
                     << _state << " " << std::boolalpha << _input.isInitialized();
 
       if (_input.isInitialized()) {
-        LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange initIndexes";
+        INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange initIndexes";
         initIndexes(_input);
         if (!advanceCursor()) {
-          LOG_DEVEL_IDX
+          INTERNAL_LOG_IDX
               << "IndexExecutor::skipRowsRange failed to advanceCursor "
                  "after init";
           std::ignore = inputRange.nextDataRow();
@@ -802,7 +823,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     }
 
     if (!getCursor().hasMore() && !advanceCursor()) {
-      LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange cursor does not "
+      INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange cursor does not "
                        "have more and advancing failed";
       std::ignore = inputRange.nextDataRow();
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -815,9 +836,9 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
       toSkip = ExecutionBlock::SkipAllSize();
     }
     TRI_ASSERT(toSkip > 0);
-    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipIndex(" << toSkip << ")";
+    INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange skipIndex(" << toSkip << ")";
     size_t skippedNow = getCursor().skipIndex(toSkip);
-    LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipIndex(...) == " << skippedNow;
+    INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange skipIndex(...) == " << skippedNow;
 
     stats.incrScanned(skippedNow);
     _skipped += skippedNow;
@@ -829,7 +850,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
 
   AqlCall upstreamCall;
 
-  LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange returning " << returnState()
+  INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange returning " << returnState()
                 << " " << skipped << " " << upstreamCall;
   return {returnState(), stats, skipped, upstreamCall};
 }

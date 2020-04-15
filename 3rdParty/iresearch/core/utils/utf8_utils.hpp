@@ -128,7 +128,7 @@ inline uint32_t next(const byte_type*& it) noexcept {
   return cp;
 }
 
-#ifdef IRESEARCH_CXX14
+#if IRESEARCH_CXX >= IRESEARCH_CXX_14
 constexpr
 #endif
 FORCE_INLINE size_t utf32_to_utf8(uint32_t cp, byte_type* begin) noexcept {

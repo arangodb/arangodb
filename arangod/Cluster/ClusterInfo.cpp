@@ -2627,6 +2627,9 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   temp.add(StaticStrings::ReplicationFactor, VPackValue(info->replicationFactor()));
   temp.add(StaticStrings::MinReplicationFactor, VPackValue(info->writeConcern())); // deprecated in 3.6
   temp.add(StaticStrings::WriteConcern, VPackValue(info->writeConcern()));
+  temp.add(StaticStrings::UsesRevisionsAsDocumentIds,
+           VPackValue(info->usesRevisionsAsDocumentIds()));
+  temp.add(StaticStrings::SyncByRevision, VPackValue(info->syncByRevision()));
   temp.add(VPackValue(StaticStrings::Validation));
   info->validatorsToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);
@@ -2943,7 +2946,7 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
     iid = IndexId{arangodb::basics::StringUtils::uint64(idSlice.copyString())};
   }
 
-  if (iid.isNone()) {  // no id set, create a new one!
+  if (iid.empty()) {  // no id set, create a new one!
     iid = IndexId{uniqid()};
   }
 

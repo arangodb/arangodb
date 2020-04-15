@@ -56,7 +56,7 @@ TEST(EngineInfoContainerTest, it_should_always_start_with_an_open_snippet) {
 TEST(EngineInfoContainerTest, it_should_be_able_to_add_more_snippets) {
   EngineInfoContainerCoordinator testee;
 
-  size_t remote = 1;
+  auto remote = ExecutionNodeId{1};
   testee.openSnippet(remote);
   testee.openSnippet(remote);
 
@@ -166,7 +166,7 @@ TEST(EngineInfoContainerTest,
   std::unordered_set<std::string> const restrictToShards;
   MapRemoteToSnippet queryIds;
 
-  size_t remoteId = 1337;
+  auto const remoteId = ExecutionNodeId{1337};
   QueryId secondId = 0;
   std::string dbname = "TestDB";
 
@@ -332,8 +332,8 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   std::unordered_set<std::string> const restrictToShards;
   MapRemoteToSnippet queryIds;
 
-  size_t remoteId = 1337;
-  size_t secondRemoteId = 42;
+  auto const remoteId = ExecutionNodeId{1337};
+  auto const secondRemoteId = ExecutionNodeId{42};
   QueryId secondId = 0;
   QueryId thirdId = 0;
   std::string dbname = "TestDB";
@@ -575,7 +575,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
   std::unordered_set<std::string> const restrictToShards;
   MapRemoteToSnippet queryIds;
 
-  size_t remoteId = 1337;
+  auto const remoteId = ExecutionNodeId{1337};
   QueryId secondId = 0;
   std::string dbname = "TestDB";
 
@@ -740,7 +740,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
   std::unordered_set<std::string> const restrictToShards;
   MapRemoteToSnippet queryIds;
 
-  size_t remoteId = 1337;
+  auto const remoteId = ExecutionNodeId{1337};
   QueryId secondId = 0;
   std::string dbname = "TestDB";
 

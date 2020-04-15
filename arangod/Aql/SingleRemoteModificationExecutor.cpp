@@ -64,16 +64,9 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
 template <typename Modifier>
 SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fetcher& fetcher,
                                                                              Infos& info)
-    : _info(info), _fetcher(fetcher), _upstreamState(ExecutionState::HASMORE) {
+    : _info(info), _upstreamState(ExecutionState::HASMORE) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
-
-template <typename Modifier>
-std::pair<ExecutionState, typename SingleRemoteModificationExecutor<Modifier>::Stats>
-SingleRemoteModificationExecutor<Modifier>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, Stats{}};
-}
 
 template <typename Modifier>
 [[nodiscard]] auto SingleRemoteModificationExecutor<Modifier>::produceRows(
@@ -149,7 +142,7 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   if (isIndex) {
     result = _info._trx->document(_info._aqlCollection->name(), inSlice, _info._options);
   } else if (isInsert) {
-    if (options.returnOld && !options.overwrite) {
+    if (options.returnOld && !options.isOverwriteModeUpdateReplace()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
           "OLD is only available when using INSERT with the overwrite option");

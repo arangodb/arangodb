@@ -66,10 +66,9 @@ class StaticStrings {
   static std::string const IsSynchronousReplicationString;
   static std::string const Group;
   static std::string const Namespace;
-  static std::string const ReplaceExisting;
   static std::string const Prefix;
-  static std::string const OverWrite;
-  static std::string const OverWriteMode;
+  static std::string const Overwrite;
+  static std::string const OverwriteMode;
   static std::string const PreserveRevisionIds;
 
   // replication headers
@@ -208,25 +207,29 @@ class StaticStrings {
   static std::string const EncodingDeflate;
 
   // collection attributes
-  static std::string const NumberOfShards;
+  static std::string const CacheEnabled;
+  static std::string const DistributeShardsLike;
+  static std::string const DoCompact;
+  static std::string const IndexBuckets;
+  static std::string const Indexes;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
-  static std::string const DistributeShardsLike;
-  static std::string const CacheEnabled;
-  static std::string const IndexBuckets;
   static std::string const JournalSize;
-  static std::string const DoCompact;
-  static std::string const ReplicationFactor;
   static std::string const MinReplicationFactor;
   static std::string const MinRevision;
+  static std::string const NumberOfShards;
+  static std::string const ObjectId;
+  static std::string const ReplicationFactor;
+  static std::string const Satellite;
   static std::string const ShardKeys;
+  static std::string const Sharding;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
-  static std::string const Sharding;
-  static std::string const Satellite;
   static std::string const SyncByRevision;
+  static std::string const TempObjectId;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Validation;
+  static std::string const Version;
   static std::string const WriteConcern;
 
   // graph attribute names

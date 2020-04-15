@@ -57,6 +57,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::graph;
@@ -97,7 +98,7 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& bu
   _modCondition->toVelocyPack(builder, verbose);
 }
 
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                              AstNode const* direction, AstNode const* start,
                              AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
                              std::unique_ptr<BaseOptions> options)
@@ -162,15 +163,16 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
 }
 
 /// @brief Internal constructor to clone the node.
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                             std::vector<std::unique_ptr<Collection>> const& edgeColls,
-                             std::vector<std::unique_ptr<Collection>> const& vertexColls,
+TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+                             std::vector<Collection*> const& edgeColls,
+                             std::vector<Collection*> const& vertexColls,
                              Variable const* inVariable, std::string const& vertexId,
                              TRI_edge_direction_e defaultDirection,
                              std::vector<TRI_edge_direction_e> const& directions,
-                             std::unique_ptr<BaseOptions> options)
+                             std::unique_ptr<graph::BaseOptions> options,
+                             graph::Graph const* graph)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
-                directions, std::move(options)),
+                directions, std::move(options), graph),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(vertexId),
@@ -276,7 +278,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 #endif
 }
 
-// This constructor is only used from SatelliteTraversalNode, and GraphNode
+// This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
 TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
                              bool const allowAlreadyBuiltCopy)
@@ -548,7 +550,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts, true);
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
-                                           _directions, std::move(tmp));
+                                           _directions, std::move(tmp), _graphObj);
 
   traversalCloneHelper(*plan, *c, withProperties);
 

@@ -64,7 +64,7 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* en) final {
-    std::set<size_t> depids, otherdepids;
+    std::set<ExecutionNodeId> depids, otherdepids;
 
     if (!isSubqueryRelated(en)) {
       try {
@@ -85,7 +85,7 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
 
         EXPECT_EQ(depids, otherdepids);
       } catch (...) {
-        EXPECT_TRUE(false) << "expected node with id " << en->id() << " of type "
+        EXPECT_TRUE(false) << "expected node with id " << en->id().id() << " of type "
                            << en->getTypeString() << " to be present in optimized plan";
       }
     }
@@ -524,7 +524,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
                                                               noCollections, opts);
   ASSERT_EQ(1, collection->numberDocuments(trx.get(), transaction::CountType::Normal));
   auto mdr = ManagedDocumentResult{};
-  auto result = collection->read(trx.get(), VPackStringRef{"myKey"}, mdr, false);
+  auto result = collection->read(trx.get(), VPackStringRef{"myKey"}, mdr);
   ASSERT_TRUE(result.ok());
   ASSERT_NE(nullptr, mdr.vpack());
   auto const document = VPackSlice{mdr.vpack()};

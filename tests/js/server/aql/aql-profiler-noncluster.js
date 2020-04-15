@@ -96,13 +96,6 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR d IN @@col RETURN d.value`;
 
       const genNodeList = (rows, batches) => {
-        if (db._engine().name === 'mmfiles') {
-          // mmfiles lies about hasMore when asked for exactly the number of
-          // arguments left in the collection, so we have 1 more call when
-          // defaultBatchSize divides the actual number of rows.
-          // rocksdb on the other hand is exact.
-          batches = Math.floor(rows / defaultBatchSize) + 1;
-        }
         return [
           {type: SingletonBlock, calls: 1, items: 1},
           {type: EnumerateCollectionBlock, calls: batches, items: rows},

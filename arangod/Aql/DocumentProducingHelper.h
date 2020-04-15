@@ -43,10 +43,12 @@ class Builder;
 class Slice;
 }
 namespace aql {
+struct AqlValue;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
+class ExpressionContext;
 
 enum class ProjectionType : uint32_t {
   IdAttribute,
@@ -56,7 +58,7 @@ enum class ProjectionType : uint32_t {
 
 void handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
                        transaction::Methods const* trxPtr, velocypack::Slice slice,
-                       velocypack::Builder& b, bool useRawDocumentPointers);
+                       velocypack::Builder& b);
 
 struct DocumentProducingFunctionContext {
  public:
@@ -66,7 +68,7 @@ struct DocumentProducingFunctionContext {
                                    std::vector<std::string> const& projections,
                                    std::vector<size_t> const& coveringIndexAttributePositions,
                                    bool allowCoveringIndexOptimization,
-                                   bool useRawDocumentPointers, bool checkUniqueness);
+                                   bool checkUniqueness);
 
   DocumentProducingFunctionContext() = delete;
 
@@ -83,8 +85,6 @@ struct DocumentProducingFunctionContext {
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
 
   bool getAllowCoveringIndexOptimization() const noexcept;
-
-  bool getUseRawDocumentPointers() const noexcept;
 
   void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization) noexcept;
 
@@ -103,8 +103,11 @@ struct DocumentProducingFunctionContext {
   RegisterId getOutputRegister() const noexcept;
 
   bool checkUniqueness(LocalDocumentId const& token);
-  
+
   bool checkFilter(velocypack::Slice slice);
+
+  bool checkFilter(AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+                   void const* filterContext);
 
   void reset();
 
@@ -113,6 +116,8 @@ struct DocumentProducingFunctionContext {
   bool hasFilter() const noexcept;
 
  private:
+  bool checkFilter(ExpressionContext& ctx);
+
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
   Query* const _query;
@@ -127,7 +132,6 @@ struct DocumentProducingFunctionContext {
 
   RegisterId const _outputRegister;
   bool const _produceResult;
-  bool const _useRawDocumentPointers;
   bool _allowCoveringIndexOptimization;
   /// @brief Flag if the current index pointer is the last of the list.
   ///        Used in uniqueness checks.

@@ -32,9 +32,9 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -62,6 +62,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/ticks.h"
 
@@ -122,76 +123,7 @@ T addFigures(VPackSlice const& v1, VPackSlice const& v2,
   return value;
 }
 
-void recursiveAddMMFiles(VPackSlice const& value, VPackBuilder& builder) {
-  TRI_ASSERT(value.isObject());
-  TRI_ASSERT(builder.slice().isObject());
-  TRI_ASSERT(builder.isClosed());
-
-  VPackBuilder updated;
-
-  updated.openObject();
-
-  updated.add("alive", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"alive", "count"})));
-  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                    {"alive", "size"})));
-  updated.close();
-
-  updated.add("dead", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"dead", "count"})));
-  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                    {"dead", "size"})));
-  updated.add("deletion", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                        {"dead", "deletion"})));
-  updated.close();
-
-  updated.add("indexes", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"indexes", "count"})));
-  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                    {"indexes", "size"})));
-  updated.close();
-
-  updated.add("datafiles", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"datafiles", "count"})));
-  updated.add("fileSize",
-              VPackValue(addFigures<size_t>(value, builder.slice(),
-                                            {"datafiles", "fileSize"})));
-  updated.close();
-
-  updated.add("journals", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"journals", "count"})));
-  updated.add("fileSize",
-              VPackValue(addFigures<size_t>(value, builder.slice(),
-                                            {"journals", "fileSize"})));
-  updated.close();
-
-  updated.add("compactors", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"compactors", "count"})));
-  updated.add("fileSize",
-              VPackValue(addFigures<size_t>(value, builder.slice(),
-                                            {"compactors", "fileSize"})));
-  updated.close();
-
-  updated.add("documentReferences",
-              VPackValue(addFigures<size_t>(value, builder.slice(), {"documentReferences"})));
-
-  updated.close();
-
-  TRI_ASSERT(updated.slice().isObject());
-  TRI_ASSERT(updated.isClosed());
-
-  builder = VPackCollection::merge(builder.slice(), updated.slice(), true, false);
-  TRI_ASSERT(builder.slice().isObject());
-  TRI_ASSERT(builder.isClosed());
-}
-
-void recursiveAddRocksDB(VPackSlice const& value, VPackBuilder& builder) {
+void recursiveAdd(VPackSlice const& value, VPackBuilder& builder) {
   TRI_ASSERT(value.isObject());
   TRI_ASSERT(builder.slice().isObject());
   TRI_ASSERT(builder.isClosed());
@@ -1056,9 +988,6 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(300.0);
-  bool isRocksDB = static_cast<ClusterEngine*>
-    (EngineSelectorFeature::ENGINE)->engineType() ==
-    ClusterEngineType::RocksDBEngine;
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
@@ -1076,18 +1005,14 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [isRocksDB](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
-    auto handler = [isRocksDB](Result& result, VPackBuilder& builder, ShardID&,
+  auto cb = [](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+    auto handler = [](Result& result, VPackBuilder& builder, ShardID&,
                       VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
         // add to the total
         if (figures.isObject()) {
-          if (isRocksDB) {
-            recursiveAddRocksDB(figures, builder);
-          } else {
-            recursiveAddMMFiles(figures, builder);
-          }
+          recursiveAdd(figures, builder);
         }
       } else {
         // didn't get the expected response
@@ -1349,12 +1274,11 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
            .param(StaticStrings::KeepNullString, (options.keepNull ? "true" : "false"))
            .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
-           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"))
            .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"));
-    if(options.overwriteModeUpdate) {
-      reqOpts.parameters.insert_or_assign(StaticStrings::OverWriteMode,  "update" );
+    if (options.isOverwriteModeSet()) {
+      reqOpts.parameters.insert_or_assign(StaticStrings::OverwriteMode, 
+                                          OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
-
 
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
