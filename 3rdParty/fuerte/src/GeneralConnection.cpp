@@ -53,7 +53,7 @@ void GeneralConnection<ST>::cancel() {
 template <SocketType ST>
 void GeneralConnection<ST>::start() {
   asio_ns::post(*this->_io_context, [self = Connection::shared_from_this()] {
-    FUERTE_LOG_HTTPTRACE << "GeneralConnection<ST>::start in IO\n";
+    //FUERTE_LOG_HTTPTRACE << "GeneralConnection<ST>::start in IO\n";
     static_cast<GeneralConnection<ST>&>(*self).startConnection();
   });
 }
@@ -148,7 +148,7 @@ void GeneralConnection<ST>::tryConnect(
       me.finishConnect();
       return;
     }
-    FUERTE_LOG_HTTPTRACE << "connecting failed: " << ec.message() << "\n";
+    FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
       auto end = std::min(
           std::chrono::steady_clock::now() + me._config._connectRetryPause,
