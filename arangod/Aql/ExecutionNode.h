@@ -91,6 +91,8 @@ class ExecutionPlan;
 class ExecutorInfos;
 class Expression;
 class RedundantCalculationsReplacer;
+template<typename T> struct RegisterPlanWalkerT;
+using RegisterPlanWalker = RegisterPlanWalkerT<ExecutionNode>;
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
@@ -122,7 +124,7 @@ class ExecutionNode {
   /// @brief node type
   friend class ExecutionBlock;
   // Needs to inject sensitive RegisterInformation
-  friend RegisterPlan;
+  friend RegisterPlanWalkerT<ExecutionNode>;
   // We need this to replan the registers within the QuerySnippet.
   // otherwise the local gather node might delete the sorting register...
   friend class QuerySnippet;

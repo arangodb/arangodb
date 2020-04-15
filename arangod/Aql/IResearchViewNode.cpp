@@ -45,6 +45,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "RegisterPlan.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -1585,7 +1586,7 @@ std::unordered_set<aql::VariableId> IResearchViewNode::getOutputVariables() cons
             vars.insert(_outNonMaterializedDocId->id);
         } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
             // there is no variable if noMaterialization()
-            // registerPlan.addRegister(); TODO what is this?????
+            vars.insert(aql::RegisterPlan::MaxRegisterId);
         }
         for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
             for (auto const& fieldVar : columnFieldsVars.second) {

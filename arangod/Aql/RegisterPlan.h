@@ -61,12 +61,12 @@ template <typename T>
 struct RegisterPlanT;
 
 template <typename T>
-struct RegisterPlanWalker final : public WalkerWorker<T> {
-  explicit RegisterPlanWalker(std::shared_ptr<RegisterPlanT<T>> plan)
+struct RegisterPlanWalkerT final : public WalkerWorker<T> {
+  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlanT<T>> plan)
       : plan(std::move(plan)) {}
-  virtual ~RegisterPlanWalker() noexcept = default;
+  virtual ~RegisterPlanWalkerT() noexcept = default;
 
-  void after(T* eb) final { plan->analyzeNode(eb); }
+  void after(T* eb) final;
   bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
     return false;  // do not walk into subquery
   }
@@ -75,7 +75,9 @@ struct RegisterPlanWalker final : public WalkerWorker<T> {
 };
 
 template <typename T>
-struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlan> {
+struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T>> {
+
+  friend class RegisterPlanWalkerT<T>;
   // The following are collected for global usage in the ExecutionBlock,
   // although they are stored here in the node:
 
@@ -103,11 +105,11 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlan> {
   ~RegisterPlanT() = default;
 
   std::shared_ptr<RegisterPlanT> clone();
-  void analyzeNode(T* node);
 
   void registerVariable(VariableId v);
   void increaseDepth();
   void addRegister();
+  void addSubqueryNode(ExecutionNode* subquery);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
