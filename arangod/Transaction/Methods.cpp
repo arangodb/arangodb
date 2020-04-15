@@ -297,27 +297,9 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
       _transactionContext(transactionContext),
       _mainTransaction(false) {
   TRI_ASSERT(transactionContext != nullptr);
-
+    
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);
-//
-//        auto parent = _transactionContext->getParentTransaction();
-//
-//  if (parent != nullptr) {  // yes, we are embedded
-//    if (!_transactionContext->isEmbeddable()) {
-//      // we are embedded but this is disallowed...
-//      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
-//    }
-//
-//    _state = std::move(parent);
-//    TRI_ASSERT(_state != nullptr);
-//    _state->increaseNesting();
-//  } else {  // non-embedded
-//
-//    // register the transaction in the context
-//    _transactionContext->registerTransaction(_state);
-//  }
-
   TRI_ASSERT(_state != nullptr);
 }
 

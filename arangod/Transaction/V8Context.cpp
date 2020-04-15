@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Context.h"
-
+#include "Basics/Exceptions.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -48,6 +48,7 @@ transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
 /// @brief order a custom type handler for the collection
 VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
+    // TODO: replace with resolver()
     transaction::V8Context* main = _sharedTransactionContext->_mainScope;
 
     if (main != nullptr && main != this && !main->isGlobal()) {
@@ -98,8 +99,13 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
     enterV8Context(state);
     responsibleForCommit = true;
   } else {
+    if (!isEmbeddable()) {
+      // we are embedded but this is disallowed...
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
+    }
     responsibleForCommit = false;
   }
+
   return state;
 }
 
@@ -108,6 +114,7 @@ void transaction::V8Context::enterV8Context(std::shared_ptr<TransactionState> co
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
   TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
+
   _sharedTransactionContext->_currentTransaction = state;
   _sharedTransactionContext->_mainScope = this;
 }
