@@ -25,7 +25,6 @@
 #include "AqlItemBlockHelper.h"
 #include "Mocks/Servers.h"
 #include "TestEmptyExecutorHelper.h"
-#include "TestExecutorHelper.h"
 #include "TestLambdaExecutor.h"
 #include "WaitingExecutionBlockMock.h"
 #include "fakeit.hpp"

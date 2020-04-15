@@ -146,7 +146,7 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query(),
-      std::move(options), _collection, ProducesResults(producesResults()),
+      std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -172,7 +172,7 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = std::make_unique<RemoveNode>(plan, _id, _collection, _options,
+  auto c = std::make_unique<RemoveNode>(plan, _id, collection(), _options,
                                         inVariable, outVariableOld);
   ModificationNode::cloneCommon(c.get());
 
@@ -226,7 +226,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query(),
-      std::move(options), _collection, ProducesResults(producesResults()),
+      std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -256,7 +256,7 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = std::make_unique<InsertNode>(plan, _id, _collection, _options,
+  auto c = std::make_unique<InsertNode>(plan, _id, collection(), _options,
                                         inVariable, outVariableOld, outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
@@ -326,7 +326,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query(),
-      std::move(options), _collection, ProducesResults(producesResults()),
+      std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -361,7 +361,7 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
-  auto c = std::make_unique<UpdateNode>(plan, _id, _collection, _options, inDocVariable,
+  auto c = std::make_unique<UpdateNode>(plan, _id, collection(), _options, inDocVariable,
                                         inKeyVariable, outVariableOld, outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
@@ -402,7 +402,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query(),
-      std::move(options), _collection, ProducesResults(producesResults()),
+      std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(true), IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
@@ -436,7 +436,7 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
-  auto c = std::make_unique<ReplaceNode>(plan, _id, _collection, _options, inDocVariable,
+  auto c = std::make_unique<ReplaceNode>(plan, _id, collection(), _options, inDocVariable,
                                          inKeyVariable, outVariableOld, outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
@@ -503,7 +503,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query(),
-      std::move(options), _collection, ProducesResults(producesResults()),
+      std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(_isReplace) /*(needed by upsert)*/,
@@ -532,7 +532,7 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
     updateVariable = plan->getAst()->variables()->createVariable(updateVariable);
   }
 
-  auto c = std::make_unique<UpsertNode>(plan, _id, _collection, _options,
+  auto c = std::make_unique<UpsertNode>(plan, _id, collection(), _options,
                                         inDocVariable, insertVariable,
                                         updateVariable, outVariableNew, _isReplace);
   ModificationNode::cloneCommon(c.get());

@@ -328,7 +328,7 @@ IndexId IndexFactory::validateSlice(arangodb::velocypack::Slice info,
         TRI_ERROR_INTERNAL, "cannot restore index without index identifier");
   }
 
-  if (iid.isNone() && !isClusterConstructor) {
+  if (iid.empty() && !isClusterConstructor) {
     // Restore is not allowed to generate an id
     VPackSlice type = info.get(StaticStrings::IndexType);
     // dont generate ids for indexes of type "primary"

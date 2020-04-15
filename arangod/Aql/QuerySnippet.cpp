@@ -34,6 +34,10 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/LocalGraphNode.h"
+#endif
+
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -92,12 +96,15 @@ void QuerySnippet::addNode(ExecutionNode* node) {
   }
 }
 
-void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& shardLocking,
-                                        std::map<size_t, size_t>& nodeAliases,
-                                        VPackBuilder& infoBuilder) {
+void QuerySnippet::serializeIntoBuilder(
+    ServerID const& server,
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+    ShardLocking& shardLocking,
+    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+    VPackBuilder& infoBuilder) {
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(!_expansions.empty());
-  auto firstBranchRes = prepareFirstBranch(server, shardLocking);
+  auto firstBranchRes = prepareFirstBranch(server, nodesById, shardLocking);
   if (!firstBranchRes.ok()) {
     // We have at least one expansion that has no shard on this server.
     // we do not need to write this snippet here.
@@ -160,9 +167,8 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
 
   // The Key is required to build up the queryId mapping later
   infoBuilder.add(VPackValue(
-      arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode) + ":" + server));
+      arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode.id()) + ":" + server));
   if (!localExpansions.empty()) { // one expansion
-    
     // We have Expansions to permutate, guaranteed they have
     // all identical lengths.
     size_t numberOfShardsToPermutate = localExpansions.begin()->second.size();
@@ -177,7 +183,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
     TRI_ASSERT(plan == _sinkNode->plan());
     // Clone the sink node, we do not need dependencies (second bool)
     // And we do not need variables
-    GatherNode* internalGather =
+    auto* internalGather =
         ExecutionNode::castTo<GatherNode*>(_sinkNode->clone(plan, false, false));
     // Use the same elements for sorting
     internalGather->elements(_sinkNode->elements());
@@ -186,7 +192,8 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
     // it needs to expose it's input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLater());
     internalGather->setRegsToClear({});
-    nodeAliases.try_emplace(internalGather->id(), std::numeric_limits<size_t>::max());
+    auto const reservedId = ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
+    nodeAliases.try_emplace(internalGather->id(), reservedId);
 
     ScatterNode* internalScatter = nullptr;
     if (lastIsRemote) {  // RemoteBlock talking to coordinator snippet
@@ -198,7 +205,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
       internalScatter->addDependency(lastNode);
       // Let the local Scatter node distribute data by SHARD
       internalScatter->setScatterType(ScatterNode::ScatterType::SHARD);
-      nodeAliases.try_emplace(internalScatter->id(), std::numeric_limits<size_t>::max());
+      nodeAliases.try_emplace(internalScatter->id(), reservedId);
 
       if (_globalScatter->getType() == ExecutionNode::DISTRIBUTE) {
         {
@@ -323,7 +330,9 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
 }
 
 ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::prepareFirstBranch(
-    ServerID const& server, ShardLocking& shardLocking) {
+    ServerID const& server,
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+    ShardLocking& shardLocking) {
   size_t numberOfShardsToPermutate = 0;
   std::unordered_map<ExecutionNode*, std::set<ShardID>> localExpansions;
   std::unordered_map<ShardID, ServerID> const& shardMapping =
@@ -354,70 +363,93 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
     } else if (exp.node->getType() == ExecutionNode::TRAVERSAL ||
                exp.node->getType() == ExecutionNode::SHORTEST_PATH ||
                exp.node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+#ifndef USE_ENTERPRISE
+      // These can only ever be LocalGraphNodes, which are only available in
+      // Enterprise. This should never happen without enterprise optimization,
+      // either.
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+#else
       // the same translation is copied to all servers
       // there are no local expansions
 
-      auto* graphNode = ExecutionNode::castTo<GraphNode*>(exp.node);
-      graphNode->setCollectionToShard({});  // clear previous information
+      auto* localGraphNode = ExecutionNode::castTo<LocalGraphNode*>(exp.node);
+      localGraphNode->setCollectionToShard({});  // clear previous information
 
-      TRI_ASSERT(graphNode->isUsedAsSatellite() == exp.isSatellite);
+      TRI_ASSERT(localGraphNode->isUsedAsSatellite() == exp.isSatellite);
 
-      if (!exp.isSatellite) {
-        // This is either one shard or a single satellite graph which is not used
-        // as satellite graph.
-        uint64_t numShards = 0;
-        for (auto* aqlCollection : graphNode->collections()) {
-          auto const& shards = aqlCollection->shardIds();
-          TRI_ASSERT(!shards->empty());
-          for (std::string const& shard : *shards) {
-            auto found = shardMapping.find(shard);
-            if (found != shardMapping.end() && found->second == server) {
-              // provide a correct translation from collection to shard
-              // to be used in toVelocyPack methods of classes derived
-              // from GraphNode
-              graphNode->addCollectionToShard(aqlCollection->name(), shard);
+      // Check whether `servers` is the leader for any of the shards of the
+      // prototype collection.
+      // We want to instantiate this snippet here exactly iff this is the case.
+      auto needInstanceHere = std::invoke([&]() {
+        auto const* const protoCol = localGraphNode->isUsedAsSatellite()
+                ? ExecutionNode::castTo<CollectionAccessingNode*>(
+                      localGraphNode->getSatelliteOf(nodesById))
+                      ->collection()
+                : localGraphNode->collection();
 
-              numShards++;
-            }
-          }
-        }
+        auto const& shards = shardLocking.shardsForSnippet(id(), protoCol);
 
-        if (numShards == 0) {
-          return {TRI_ERROR_CLUSTER_NOT_LEADER};
-        }
+        return std::any_of(shards.begin(), shards.end(),
+                           [&shardMapping, &server](auto const& shard) {
+                             auto mappedServerIt = shardMapping.find(shard);
+                             // If we find a shard here that is not in this mapping,
+                             // we have 1) a problem with locking before that should have thrown
+                             // 2) a problem with shardMapping lookup that should have thrown before
+                             TRI_ASSERT(mappedServerIt != shardMapping.end());
+                             return mappedServerIt->second == server;
+                           });
+      });
 
-        bool foundEnoughShards = numShards == graphNode->collections().size();
-        TRI_ASSERT(foundEnoughShards);
-        if (!foundEnoughShards) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
-        }
-      } else {
-        TRI_ASSERT(graphNode->isUsedAsSatellite());
-#ifndef USE_ENTERPRISE
-        TRI_ASSERT(false);
-#endif
+      if (!needInstanceHere) {
+        return {TRI_ERROR_CLUSTER_NOT_LEADER};
+      }
 
-        for (auto* aqlCollection : graphNode->collections()) {
-          auto const& shards = shardLocking.shardsForSnippet(id(), aqlCollection);
-          TRI_ASSERT(shards.size() == 1);
-          for (auto const& shard : shards) {
-            // If we find a shard here that is not in this mapping,
-            // we have 1) a problem with locking before that should have thrown
-            // 2) a problem with shardMapping lookup that should have thrown before
-            TRI_ASSERT(shardMapping.find(shard) != shardMapping.end());
-            // Could we replace the outer if/else on isSatellite with this
-            // branch here, and remove the upper part?
-            //   if (check->second == server || exp.isSatellite) {...}
+      // This is either one shard or a single satellite graph which is not used
+      // as satellite graph.
+      uint64_t numShards = 0;
+      for (auto* aqlCollection : localGraphNode->collections()) {
+        auto const& shards = shardLocking.shardsForSnippet(id(), aqlCollection);
+        TRI_ASSERT(!shards.empty());
+        for (auto const& shard : shards) {
+          auto found = shardMapping.find(shard);
+          TRI_ASSERT(found != shardMapping.end());
+          // We should never have shards on other servers, except for satellite
+          // graphs which are used that way, or satellite collections (in a
+          // OneShard case) because local graphs (on DBServers) only ever occur
+          // in either OneShard or SatelliteGraphs.
+          TRI_ASSERT(found->second == server || localGraphNode->isUsedAsSatellite() ||
+                     aqlCollection->isSatellite());
+          // provide a correct translation from collection to shard
+          // to be used in toVelocyPack methods of classes derived
+          // from GraphNode
+          localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
 
-            graphNode->addCollectionToShard(aqlCollection->name(), shard);
-            // This case currently does not exist and is not handled here.
-            TRI_ASSERT(!exp.doExpand);
-          }
+          numShards++;
         }
       }
 
+      TRI_ASSERT(numShards > 0);
+      if (numShards == 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Could not find a shard to instantiate for graph node when expected to");
+      }
+
+      auto foundEnoughShards = numShards == localGraphNode->collections().size();
+      TRI_ASSERT(foundEnoughShards);
+      if (!foundEnoughShards) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+      }
+#endif
     } else {
       // exp.node is now either an enumerate collection, index, or modification.
+      TRI_ASSERT(exp.node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+                 exp.node->getType() == ExecutionNode::INDEX ||
+                 exp.node->getType() == ExecutionNode::INSERT ||
+                 exp.node->getType() == ExecutionNode::UPDATE ||
+                 exp.node->getType() == ExecutionNode::REMOVE ||
+                 exp.node->getType() == ExecutionNode::REPLACE ||
+                 exp.node->getType() == ExecutionNode::UPSERT ||
+                 exp.node->getType() == ExecutionNode::MATERIALIZE);
 
       // It is of utmost importance that this is an ordered set of Shards.
       // We can only join identical indexes of shards for each collection

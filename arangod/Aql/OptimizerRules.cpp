@@ -2901,7 +2901,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findEndNodes(nodes, true);
 
-  std::unordered_map<size_t, ExecutionNode*> changes;
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> changes;
 
   auto cleanupChanges = [&changes]() -> void {
     for (auto& v : changes) {

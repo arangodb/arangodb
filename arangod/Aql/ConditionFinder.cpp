@@ -268,7 +268,7 @@ void ConditionFinder::handleSortCondition(ExecutionNode* en, Variable const* out
 }
 
 ConditionFinder::ConditionFinder(ExecutionPlan* plan,
-                                 std::unordered_map<size_t, ExecutionNode*>* changes,
+                                 std::unordered_map<ExecutionNodeId, ExecutionNode*>* changes,
                                  bool* hasEmptyResult, bool viewMode)
     : _plan(plan),
       _variableDefinitions(),

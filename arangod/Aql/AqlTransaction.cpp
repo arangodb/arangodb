@@ -39,8 +39,7 @@ using namespace arangodb::aql;
 
 std::unique_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    std::map<std::string, aql::Collection*> const* collections,
-    transaction::Options const& options,
+    AqlCollectionMap const* collections, transaction::Options const& options,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
@@ -53,7 +52,7 @@ std::unique_ptr<AqlTransaction> AqlTransaction::create(
 }
 
 /// @brief add a list of collections to the transaction
-Result AqlTransaction::addCollections(std::map<std::string, aql::Collection*> const& collections) {
+Result AqlTransaction::addCollections(AqlCollectionMap const& collections) {
   Result res;
   for (auto const& it : collections) {
     res = processCollection(it.second);
@@ -109,7 +108,7 @@ AqlTransaction::AqlTransaction(
   /// protected so we can create different subclasses
 AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    std::map<std::string, aql::Collection*> const* collections,
+    AqlCollectionMap const* collections,
     transaction::Options const& options)
     : transaction::Methods(transactionContext, options), _collections(*collections) {
   addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);

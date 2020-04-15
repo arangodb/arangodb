@@ -24,12 +24,17 @@
 #ifndef ARANGOD_AQL_TYPES_H
 #define ARANGOD_AQL_TYPES_H 1
 
+#include "Aql/ExecutionNodeId.h"
+
+#include <map>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace arangodb {
 namespace aql {
+struct Collection;
 
 /// @brief type for variable ids
 typedef uint32_t VariableId;
@@ -43,7 +48,7 @@ typedef uint64_t QueryId;
 typedef uint64_t EngineId;
 
 // Map RemoteID->ServerID->[SnippetId]
-typedef std::unordered_map<size_t, std::unordered_map<std::string, std::vector<std::string>>> MapRemoteToSnippet;
+using MapRemoteToSnippet = std::unordered_map<ExecutionNodeId, std::unordered_map<std::string, std::vector<std::string>>>;
 
 // Enable/Disable block passthrough in fetchers
 enum class BlockPassthrough { Disable, Enable };
@@ -51,6 +56,9 @@ enum class BlockPassthrough { Disable, Enable };
 class ExecutionEngine;
 // list of snippets on coordinators
 using SnippetList = std::vector<std::pair<QueryId, std::unique_ptr<ExecutionEngine>>>;
+
+using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
+
 }  // namespace aql
 
 namespace traverser {

@@ -27,6 +27,7 @@
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/Query.h"
@@ -695,7 +696,7 @@ CostEstimate CollectNode::estimateCost() const {
 }
 
 CollectNode::CollectNode(
-    ExecutionPlan* plan, size_t id, CollectOptions const& options,
+    ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
     std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
     std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
     Variable const* expressionVariable, Variable const* outVariable,

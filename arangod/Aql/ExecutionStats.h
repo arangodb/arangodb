@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_EXECUTION_STATS_H
 #define ARANGOD_AQL_EXECUTION_STATS_H 1
 
+#include "Aql/ExecutionNodeId.h"
+
 #include <cstdint>
 #include <map>
 
@@ -54,8 +56,8 @@ struct ExecutionStats {
 
   /// @brief sumarize two sets of ExecutionStats
   void add(ExecutionStats const& summand);
-  void addNode(size_t id, ExecutionNodeStats const&);
-  void addAliases(std::map<size_t, size_t>&& aliases) {
+  void addNode(aql::ExecutionNodeId id, ExecutionNodeStats const&);
+  void addAliases(std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
     _nodeAliases = std::move(aliases);
   }
 
@@ -97,10 +99,10 @@ struct ExecutionStats {
   ///        Every source node in the this aliases list
   ///        will be counted as the target instead
   ///        within nodes.
-  std::map<size_t, size_t> _nodeAliases;
+  std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> _nodeAliases;
   
   ///  @brief statistics per ExecutionNodes
-  std::map<size_t, ExecutionNodeStats> _nodes;
+  std::map<aql::ExecutionNodeId, ExecutionNodeStats> _nodes;
 };
 }  // namespace aql
 }  // namespace arangodb

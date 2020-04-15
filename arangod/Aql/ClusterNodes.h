@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DistributeConsumerNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -63,7 +64,7 @@ class RemoteNode final : public DistributeConsumerNode {
   enum class Api { GET_SOME = 0, EXECUTE = 1 };
 
   /// @brief constructor with an id
-  RemoteNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  RemoteNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
              std::string server, std::string const& ownName, std::string queryId, Api = Api::EXECUTE)
       : DistributeConsumerNode(plan, id, ownName),
         _vocbase(vocbase),
@@ -144,7 +145,7 @@ class ScatterNode : public ExecutionNode {
   enum ScatterType { SERVER = 0, SHARD = 1 };
 
   /// @brief constructor with an id
-  ScatterNode(ExecutionPlan* plan, size_t id, ScatterType type)
+  ScatterNode(ExecutionPlan* plan, ExecutionNodeId id, ScatterType type)
       : ExecutionNode(plan, id), _type(type) {}
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -219,7 +220,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief constructor with an id
  public:
-  DistributeNode(ExecutionPlan* plan, size_t id, ScatterNode::ScatterType type,
+  DistributeNode(ExecutionPlan* plan, ExecutionNodeId id, ScatterNode::ScatterType type,
                  Collection const* collection, Variable const* variable,
                  Variable const* alternativeVariable, bool createKeys,
                  bool allowKeyConversionToObject)
@@ -248,9 +249,10 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(), _collection,
-                                              _variable, _alternativeVariable,
-                                              _createKeys, _allowKeyConversionToObject);
+    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
+                                              collection(), _variable,
+                                              _alternativeVariable, _createKeys,
+                                              _allowKeyConversionToObject);
     c->copyClients(clients());
     CollectionAccessingNode::cloneInto(*c);
 
@@ -323,7 +325,7 @@ class GatherNode final : public ExecutionNode {
                                    size_t shardsRequiredForHeapMerge = 5) noexcept;
 
   /// @brief constructor with an id
-  GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, 
+  GatherNode(ExecutionPlan* plan, ExecutionNodeId id, SortMode sortMode,
              Parallelism parallelism = Parallelism::Undefined) noexcept;
 
   GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
@@ -407,7 +409,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   friend class SingleRemoteOperationBlock;
   /// @brief constructor with an id
  public:
-  SingleRemoteOperationNode(ExecutionPlan* plan, size_t id, NodeType mode,
+  SingleRemoteOperationNode(ExecutionPlan* plan, ExecutionNodeId id, NodeType mode,
                             bool replaceIndexNode, std::string const& key,
                             aql::Collection const* collection,
                             ModificationOptions const& options,

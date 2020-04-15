@@ -24,6 +24,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/DocumentExpressionContext.h"
+#include "Aql/DocumentIndexExpressionContext.h"
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
@@ -358,7 +359,17 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
   DocumentExpressionContext ctx(_trx, _query, _regexCache, slice);
+  return checkFilter(ctx);
+}
 
+bool DocumentProducingFunctionContext::checkFilter(
+    AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+    void const* filterContext) {
+  DocumentIndexExpressionContext ctx(_trx, _query, _regexCache, getValue, filterContext);
+  return checkFilter(ctx);
+}
+
+bool DocumentProducingFunctionContext::checkFilter(ExpressionContext& ctx) {
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _filter->execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);

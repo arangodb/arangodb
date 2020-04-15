@@ -107,7 +107,7 @@ struct ExecutorTestHelper {
         _unorderedSkippedRows{0},
         _query(query),
         _itemBlockManager(itemBlockManager),
-        _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
+        _dummyNode{std::make_unique<SingletonNode>(_query.plan(), ExecutionNodeId{42})} {}
 
   auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
     _callStack = stack;
@@ -352,7 +352,8 @@ struct ExecutorTestHelper {
                        ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecBlock {
     auto& testeeNode = _execNodes.emplace_back(
-        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType));
+        std::make_unique<MockTypedNode>(_query.plan(),
+                                        ExecutionNodeId{_execNodes.size()}, nodeType));
     return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
                                                    std::move(infos));
   }

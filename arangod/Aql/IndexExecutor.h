@@ -71,6 +71,7 @@ class IndexExecutorInfos : public ExecutorInfos {
       bool hasV8Expression, AstNode const* condition,
       std::vector<std::shared_ptr<Index>> indexes, Ast* ast,
       IndexIteratorOptions options,
+      IndexNode::IndexValuesVars const& _outNonMaterializedIndVars,
       IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs);
 
   IndexExecutorInfos() = delete;
@@ -108,6 +109,10 @@ class IndexExecutorInfos : public ExecutorInfos {
 
   bool isLateMaterialized() const noexcept {
     return !_outNonMaterializedIndRegs.second.empty();
+  }
+
+  IndexNode::IndexValuesVars const& getOutNonMaterializedIndVars() const noexcept {
+    return _outNonMaterializedIndVars;
   }
 
   IndexNode::IndexValuesRegisters const& getOutNonMaterializedIndRegs() const noexcept {
@@ -148,6 +153,7 @@ class IndexExecutorInfos : public ExecutorInfos {
 
   RegisterId _outputRegisterId;
 
+  IndexNode::IndexValuesVars const& _outNonMaterializedIndVars;
   IndexNode::IndexValuesRegisters _outNonMaterializedIndRegs;
 
   /// @brief true if one of the indexes uses more than one expanded attribute,

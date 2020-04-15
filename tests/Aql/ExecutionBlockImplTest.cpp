@@ -28,7 +28,6 @@
 #include "AqlItemBlockHelper.h"
 #include "Mocks/Servers.h"
 #include "TestEmptyExecutorHelper.h"
-#include "TestExecutorHelper.h"
 #include "TestLambdaExecutor.h"
 #include "WaitingExecutionBlockMock.h"
 
@@ -87,7 +86,7 @@ class SharedExecutionBlockImplTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   ExecutionNode* generateNodeDummy() {
-    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
+    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;

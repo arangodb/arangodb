@@ -81,14 +81,14 @@ class SharedScatterExecutionBlockTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   auto generateNodeDummy() -> ExecutionNode* {
-    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
+    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
   }
 
   auto generateScatterNode() -> ScatterNode* {
-    auto dummy = std::make_unique<ScatterNode>(fakedQuery->plan(), _execNodes.size(),
+    auto dummy = std::make_unique<ScatterNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()},
                                                ScatterNode::ScatterType::SHARD);
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));

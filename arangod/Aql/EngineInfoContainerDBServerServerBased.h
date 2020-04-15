@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 
+#include "Aql/QuerySnippet.h"
 #include "Aql/ShardLocking.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
@@ -103,11 +104,11 @@ class EngineInfoContainerDBServerServerBased {
   // Insert a new node into the last engine on the stack
   // If this Node contains Collections, they will be added into the map
   // for ShardLocking
-  void addNode(ExecutionNode* node);
+  void addNode(ExecutionNode* node, bool pushToSingleServer);
 
   // Open a new snippet, this snippt will be used to produce data
   // for the given sinkNode (RemoteNode only for now)
-  void openSnippet(GatherNode const* sinkGatherNode, size_t idOfSinkNode);
+  void openSnippet(GatherNode const* sinkGatherNode, ExecutionNodeId idOfSinkNode);
 
   // Closes the given snippet and let it use
   // the given queryid of the coordinator as data provider.
@@ -125,9 +126,10 @@ class EngineInfoContainerDBServerServerBased {
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
-  Result buildEngines(MapRemoteToSnippet& snippetIds,
+  Result buildEngines(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                      MapRemoteToSnippet& snippetIds,
                       std::map<std::string, QueryId>& ServerToQueryId,
-                      std::map<size_t, size_t>& nodeAliases);
+                      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -161,8 +163,9 @@ class EngineInfoContainerDBServerServerBased {
   void addVariablesPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the Snippets information into the message to be send to DBServers
-  void addSnippetPart(arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
-                      std::map<size_t, size_t>& nodeAliases,
+  void addSnippetPart(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                      arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
+                      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
                       ServerID const& server) const;
 
   // Insert the TraversalEngine information into the message to be send to DBServers
@@ -192,7 +195,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // @brief A local counter for snippet IDs within this Engine.
   // used to make collection locking clear.
-  size_t _lastSnippetId;
+  QuerySnippet::Id _lastSnippetId;
 };
 
 }  // namespace aql

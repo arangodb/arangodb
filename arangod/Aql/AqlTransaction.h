@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_AQL_TRANSACTION_H
 #define ARANGOD_AQL_AQL_TRANSACTION_H 1
 
+#include "Aql/types.h"
 #include "Transaction/Methods.h"
 
 #include <map>
@@ -47,7 +48,7 @@ class AqlTransaction : public transaction::Methods {
   /// from the query context
   static std::unique_ptr<AqlTransaction>
     create(std::shared_ptr<transaction::Context> const& transactionContext,
-            std::map<std::string, aql::Collection*> const* collections,
+            AqlCollectionMap const* collections,
             transaction::Options const& options,
             std::unordered_set<std::string> inaccessibleCollections =
                 std::unordered_set<std::string>());
@@ -56,7 +57,7 @@ class AqlTransaction : public transaction::Methods {
   ~AqlTransaction() override = default;
 
   /// @brief add a list of collections to the transaction
-  Result addCollections(std::map<std::string, aql::Collection*> const& collections);
+  Result addCollections(AqlCollectionMap const& collections);
 
   /// @brief documentCollection
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
@@ -66,7 +67,7 @@ class AqlTransaction : public transaction::Methods {
 
   /// protected so we can create different subclasses
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
-                 std::map<std::string, aql::Collection*> const* collections,
+                 AqlCollectionMap const* collections,
                  transaction::Options const& options);
 
   /// @brief add a collection to the transaction
@@ -75,7 +76,7 @@ class AqlTransaction : public transaction::Methods {
  protected:
   /// @brief keep a copy of the collections, this is needed for the clone
   /// operation
-  std::map<std::string, aql::Collection*> _collections;
+  AqlCollectionMap _collections;
 };
 }  // namespace aql
 }  // namespace arangodb
