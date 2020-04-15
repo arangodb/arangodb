@@ -1220,7 +1220,7 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 
   std::vector<std::reference_wrapper<aql::Collection const>> viewCollections;
 
-  auto visitor = [&viewCollections, collections](TRI_voc_cid_t cid) -> bool {
+  auto visitor = [&viewCollections, &collections](TRI_voc_cid_t cid) -> bool {
     auto const id = basics::StringUtils::itoa(cid);
            auto const* collection = collections.get(id);
 

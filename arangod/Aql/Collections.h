@@ -40,6 +40,7 @@ struct Collection;
 
 class Collections {
  public:
+  Collections(Collections const& other) = delete;
   Collections& operator=(Collections const& other) = delete;
 
   explicit Collections(TRI_vocbase_t*);

@@ -255,7 +255,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* voc
         continue;
       }
 
-      auto collections = plan->getAst()->query().collections();
+      auto& collections = plan->getAst()->query().collections();
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci.getCollection(_vocbase->name(), n);
         if (!c->isSmart()) {
@@ -279,7 +279,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* voc
       }
     }
 
-    auto collections = plan->getAst()->query().collections();
+    auto& collections = plan->getAst()->query().collections();
     auto vColls = _graphObj->vertexCollections();
     length = vColls.size();
     if (length == 0) {
