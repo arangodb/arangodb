@@ -1,6 +1,8 @@
 v3.6.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #686 'docs out of order' error while ArangoSearch consolidation
+
 * Fixed a bug which occurred if a dbserver was shut down exactly when it was
   supposed to resign from its leadership for a shard.
 
