@@ -149,7 +149,7 @@ int RocksDBMetaCollection::lockWrite(double timeout) {
     }
     
     if (now > startTime + timeout) {
-      LOG_TOPIC("d1e53", TRACE, arangodb::Logger::ENGINES)
+      LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
       << "timed out after " << timeout << " s waiting for write-lock on collection '"
       << _logicalCollection.name() << "'";
       
