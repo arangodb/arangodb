@@ -1422,7 +1422,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
-Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats) {
+Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
   
@@ -1431,11 +1431,17 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats) {
        << "Query::finalizeSnippets: before _trx->commit"
        << " this: " << (uintptr_t)this;
 
-  Result commitResult;
+  Result finishResult;
   if (_trx->status() == transaction::Status::RUNNING) {
-    commitResult = _trx->commit();
-    if (commitResult.fail()) {
-      return commitResult;
+    if (errorCode == TRI_ERROR_NO_ERROR) {
+      // no error. we need to commit the transaction
+      finishResult = _trx->commit();
+      if (finishResult.fail()) {
+        return finishResult;
+      }
+    } else {
+      // got an error. we need to abort the transaction
+      finishResult = _trx->abort();
     }
   }
 
@@ -1455,10 +1461,8 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats) {
     engine->setShutdown(); // no need to pass through shutdown
   }
   
-  TRI_ASSERT(commitResult.ok());
   _snippets.clear();
   _traversers.clear();
   
-  return commitResult;
+  return finishResult;
 }
-

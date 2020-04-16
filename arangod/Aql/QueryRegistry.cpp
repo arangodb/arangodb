@@ -281,7 +281,6 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
   return std::move(queryInfo->_query);
 }
 
-
 /// used for a legacy shutdown
 bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
   std::string vocbase;
