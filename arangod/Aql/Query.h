@@ -141,8 +141,6 @@ class Query : public QueryContext {
 
   /// @brief explain an AQL query
   QueryResult explain();
-  
-  size_t countResult() const { return _countResult; }
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const;
@@ -305,9 +303,6 @@ class Query : public QueryContext {
 
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
-
-  /// @brief stored count result for a collection, hack only used for /_api/export
-  size_t _countResult;
 };
 
 // additonally allows TraversalEngines

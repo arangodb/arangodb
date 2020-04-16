@@ -158,36 +158,39 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
   _ctx = _query->newTrxContext();
+        
+  transaction::Methods trx(_ctx);
+  TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
   // we replaced the rocksdb export cursor with a stream AQL query
   // for this case we need to support printing the collection "count"
   // this is a hack for the export API only
   auto const& exportCollection = _query->queryOptions().exportCollection;
   if (!exportCollection.empty()) {
-    _exportCount = _query->countResult();
+     OperationResult opRes = trx.count(exportCollection, transaction::CountType::Normal);
+    if (opRes.fail()) {
+      THROW_ARANGO_EXCEPTION(opRes.result);
+    }
+    _exportCount = opRes.slice().getInt();
     VPackSlice limit = _query->bindParameters()->slice().get("limit");
     if (limit.isInteger()) {
       _exportCount = (std::min)(limit.getInt(), _exportCount);
     }
   }
-        
-#warning FIXME
-#if 0
+   
   // ensures the cursor is cleaned up as soon as the outer transaction ends
   // otherwise we just get issues because we might still try to use the trx
-  TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
-  int level = _query->trx()->state()->nestingLevel();  // should be level 0 or 1
+  TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
   // things break if the Query outlives a V8 transaction
-  _stateChangeCb = [this, level](transaction::Methods& trx, transaction::Status status) {
-    if (trx.state()->nestingLevel() == level &&
-        (status == transaction::Status::COMMITTED || status == transaction::Status::ABORTED)) {
+  _stateChangeCb = [this](transaction::Methods& trx, transaction::Status status) {
+    if (status == transaction::Status::COMMITTED ||
+        status == transaction::Status::ABORTED) {
       this->setDeleted();
     }
   };
-  if (!_query->trx()->addStatusChangeCallback(&_stateChangeCb)) {
+  if (!trx.addStatusChangeCallback(&_stateChangeCb)) {
     _stateChangeCb = nullptr;
   }
-#endif
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
@@ -449,7 +452,11 @@ ExecutionState QueryStreamCursor::prepareDump() {
     }
   }
 
-  if (state == ExecutionState::WAITING) {
+  if (state != ExecutionState::WAITING) {
+    if (_query) {
+      _query->exitV8Context();
+    }
+  } else {
     // TODO add all results to the builder before going to sleep
   }
 

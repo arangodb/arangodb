@@ -342,8 +342,8 @@ struct V8Cursor final {
     TRI_ASSERT(vocbase != nullptr);
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
-    
-    auto q = std::make_unique<aql::Query>(transaction::V8Context::CreateWhenRequired(*vocbase, true),
+        
+    auto q = std::make_unique<aql::Query>(transaction::V8Context::Create(*vocbase, true),
                                           aql::QueryString(queryString), std::move(bindVars),
                                           std::move(options));
     
