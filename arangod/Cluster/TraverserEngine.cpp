@@ -161,6 +161,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
 //  _trx = trx.get();
 //  _query->injectTransaction(std::move(trx));
 
+#if 0
 #warning TODO this might be unneccessary
   VPackSlice variablesSlice = info.get(VARIABLES);
   if (!variablesSlice.isNone()) {
@@ -170,9 +171,12 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
                                          " has to be an array.");
     }
     for (VPackSlice v : VPackArrayIterator(variablesSlice)) {
+      arangodb::aql::VariableId id = arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<arangodb::aql::VariableId>(v, "id");
+      TRI_ASSERT(_query.ast()->variables()->getVariable(id) != nullptr);
       _query.ast()->variables()->createVariable(v);
     }
   }
+#endif
 
   // We begin the transaction before we lock.
   // We also setup indexes before we lock.
