@@ -110,46 +110,6 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
 }
 
 template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::DocumentWithRawPointer,
-                                                 DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice) {
-    if constexpr (checkUniqueness) {
-      if (!context.checkUniqueness(token)) {
-        // Document already found, skip it
-        return false;
-      }
-    }
-
-    context.incrScanned();
-
-    if (context.hasFilter()) {
-      if (!context.checkFilter(slice)) {
-        context.incrFiltered();
-        return false;
-      }
-    }
-    
-    if constexpr (skip) {
-      return true;
-    }
-
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
-    uint8_t const* vpack = slice.begin();
-    // With NoCopy we do not clone
-    TRI_ASSERT(!output.isFull());
-    AqlValue v{AqlValueHintDocumentNoCopy{vpack}};
-    AqlValueGuard guard{v, false};
-    output.moveValueInto(registerId, input, guard);
-    TRI_ASSERT(output.produced());
-    output.advanceRow();
-
-    return true;
-  };
-}
-
-template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::DocumentCopy,
                                                  DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token, VPackSlice slice) {
@@ -483,11 +443,6 @@ template IndexIterator::DocumentCallback aql::getCallback<false, false>(Document
 template IndexIterator::DocumentCallback aql::getCallback<true, false>(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex, DocumentProducingFunctionContext& context);
 template IndexIterator::DocumentCallback aql::getCallback<false, true>(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex, DocumentProducingFunctionContext& context);
 template IndexIterator::DocumentCallback aql::getCallback<true, true>(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex, DocumentProducingFunctionContext& context);
-
-template IndexIterator::DocumentCallback aql::getCallback<false, false>(DocumentProducingCallbackVariant::DocumentWithRawPointer, DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, false>(DocumentProducingCallbackVariant::DocumentWithRawPointer, DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<false, true>(DocumentProducingCallbackVariant::DocumentWithRawPointer, DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, true>(DocumentProducingCallbackVariant::DocumentWithRawPointer, DocumentProducingFunctionContext& context);
 
 template IndexIterator::DocumentCallback aql::getCallback<false, false>(DocumentProducingCallbackVariant::DocumentCopy, DocumentProducingFunctionContext& context);
 template IndexIterator::DocumentCallback aql::getCallback<true, false>(DocumentProducingCallbackVariant::DocumentCopy, DocumentProducingFunctionContext& context);

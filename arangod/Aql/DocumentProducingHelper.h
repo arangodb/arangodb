@@ -152,7 +152,6 @@ struct DocumentProducingFunctionContext {
 namespace DocumentProducingCallbackVariant {
 struct WithProjectionsCoveredByIndex {};
 struct WithProjectionsNotCoveredByIndex {};
-struct DocumentWithRawPointer {};
 struct DocumentCopy {};
 }  // namespace DocumentProducingCallbackVariant
 
@@ -162,10 +161,6 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::Wi
 
 template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
-                                            DocumentProducingFunctionContext& context);
-
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::DocumentWithRawPointer,
                                             DocumentProducingFunctionContext& context);
 
 template <bool checkUniqueness, bool skip>
