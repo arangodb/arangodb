@@ -2962,7 +2962,7 @@ function testCompleteGraphKShortestPathLimit3(testGraph) {
       `;
 
   const allowedPaths = [
-    ["A", "C"], ["A", "B", "C"], ["A", "D", "C"]
+    ["A", "C"], ["A", "B", "C"], ["A", "D", "C"], ["A", "E", "C"]
   ];
 
   const res = db._query(query);
