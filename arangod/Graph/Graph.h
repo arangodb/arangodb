@@ -24,11 +24,7 @@
 #define ARANGOD_GRAPH_GRAPH_H
 
 #include <velocypack/Buffer.h>
-<<<<<<< HEAD
 #include <chrono>
-=======
-#include <utility>
->>>>>>> devel
 #include <set>
 #include <utility>
 
@@ -115,15 +111,13 @@ class Graph {
    */
   static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase, std::string&& name,
                                               velocypack::Slice collectionInformation,
-                                              velocypack::Slice options,
-                                              TRI_vocbase_t& vocbase);
+                                              velocypack::Slice options);
 
   // Wrapper for Move constructor
   static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase,
                                               std::string const& name,
                                               velocypack::Slice collectionInformation,
-                                              velocypack::Slice options,
-                                              TRI_vocbase_t& vocbase);
+                                              velocypack::Slice options);
 
  protected:
   /**

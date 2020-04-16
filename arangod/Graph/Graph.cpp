@@ -131,15 +131,9 @@ Graph::Graph(velocypack::Slice const& slice, struct ServerDefaults serverDefault
 }
 
 // From user input
-<<<<<<< HEAD
-Graph::Graph(std::string&& graphName, VPackSlice const& info,
-             VPackSlice const& options, TRI_vocbase_t& vocbase)
-    : _graphName(graphName),
-=======
 Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
              VPackSlice const& info, VPackSlice const& options)
     : _graphName(std::move(graphName)),
->>>>>>> devel
       _vertexColls(),
       _edgeColls(),
       _numberOfShards(1),
