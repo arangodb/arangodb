@@ -67,7 +67,8 @@ Variable* VariableGenerator::createVariable(std::string name, bool isUserDefined
 
   TRI_ASSERT(!isUserDefined || variable->isUserDefined());
 
-  auto [it, inserted] = _variables.emplace(variable->id, std::move(variable));
+  VariableId const id = variable->id;
+  auto [it, inserted] = _variables.emplace(id, std::move(variable));
   TRI_ASSERT(inserted);
   return (*it).second.get();
 }
@@ -77,7 +78,8 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
   std::unique_ptr<Variable> variable(original->clone());
 
   // check if insertion into the table actually works.
-  auto [it, inserted] = _variables.emplace(variable->id, std::move(variable));
+  VariableId const id = variable->id;
+  auto [it, inserted] = _variables.emplace(id, std::move(variable));
   if (!inserted) {
     // variable was already present. this is unexpected...
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -90,16 +92,9 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
 /// @brief generate a variable from VelocyPack
 Variable* VariableGenerator::createVariable(VPackSlice slice) {
   auto variable = std::make_unique<Variable>(slice);
+  VariableId const id = variable->id;
 
-  auto existing = getVariable(variable->id);
-
-  if (existing != nullptr) {
-    // variable already existed.
-    return existing;
-  }
-
-  auto [it, inserted] = _variables.emplace(variable->id, std::move(variable));
-  TRI_ASSERT(inserted);
+  auto it = _variables.try_emplace(id, std::move(variable)).first;
   return (*it).second.get();
 }
 
