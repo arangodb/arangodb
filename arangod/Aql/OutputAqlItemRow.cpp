@@ -408,7 +408,9 @@ void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissin
     adjustShadowRowDepth(sourceRow);
   } else {
     TRI_ASSERT(_baseIndex > 0);
-    block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
+    if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {
+      block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
+    }
   }
 
   _inputRowCopied = true;
