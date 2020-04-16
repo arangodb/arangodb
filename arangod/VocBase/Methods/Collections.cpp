@@ -661,7 +661,12 @@ Result Collections::updateProperties(LogicalCollection& collection,
       return res;
     }
 
-    return info->properties(props, partialUpdate);
+    auto rv = info->properties(props, partialUpdate);
+    if (rv.ok()) {
+      events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
+    }
+    return rv;
+
   } else {
     auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
     SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::EXCLUSIVE);
@@ -680,9 +685,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
     auto physical = collection.getPhysical();
     TRI_ASSERT(physical != nullptr);
-
     events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
-
     return res;
   }
 }
