@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -127,6 +128,8 @@ class ExecutionEngine {
   TEST_VIRTUAL AqlItemBlockManager& itemBlockManager();
 
   auto getStats() const noexcept -> ExecutionStats const&;
+
+  bool waitForSatellites(Collection const* collection) const;
 
  public:
   /// @brief execution statistics for the query

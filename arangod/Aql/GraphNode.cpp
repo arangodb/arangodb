@@ -87,9 +87,9 @@ static TRI_edge_direction_e parseDirection(AstNode const* node) {
   return uint64ToDirection(dirNum);
 }
 
-GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-                     AstNode const* direction, AstNode const* graph,
-                     std::unique_ptr<BaseOptions> options)
+GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
+                     TRI_vocbase_t* vocbase, AstNode const* direction,
+                     AstNode const* graph, std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -343,11 +343,12 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   VPackSlice dirList = base.get("directions");
   if (!dirList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-        "graph needs an array of directions.");
+                                   "graph needs an array of directions.");
   }
 
   if (edgeCollections.length() != dirList.length()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_BAD_JSON_PLAN,
         "graph needs the same number of edge collections and directions.");
   }
 
@@ -375,7 +376,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     TRI_edge_direction_e d = uint64ToDirection(dir);
     // Only TRI_EDGE_IN and TRI_EDGE_OUT allowed here
     TRI_ASSERT(d == TRI_EDGE_IN || d == TRI_EDGE_OUT);
-    std::string e = arangodb::basics::VelocyPackHelper::getStringValue(*edgeIt, "");
+    std::string e =
+        arangodb::basics::VelocyPackHelper::getStringValue(*edgeIt, "");
     auto* aqlCollection = getAqlCollectionFromName(e);
     addEdgeCollection(aqlCollection, d);
   }
@@ -746,29 +748,18 @@ std::vector<aql::Collection*> const& GraphNode::vertexColls() const {
 
 graph::Graph const* GraphNode::graph() const noexcept { return _graphObj; }
 
-bool GraphNode::isUsedAsSatellite() const {
-#ifndef USE_ENTERPRISE
-  return false;
-#else
-  auto const* collectionAccessingNode =
-      dynamic_cast<CollectionAccessingNode const*>(this);
-  TRI_ASSERT((collectionAccessingNode != nullptr) ==
-             (nullptr != dynamic_cast<LocalTraversalNode const*>(this) ||
-              nullptr != dynamic_cast<LocalShortestPathNode const*>(this) ||
-              nullptr != dynamic_cast<LocalKShortestPathsNode const*>(this)));
-  return collectionAccessingNode != nullptr &&
-         collectionAccessingNode->isUsedAsSatellite();
-#endif
-}
-
 bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
 
-bool GraphNode::isSatelliteNode() const {
-#ifdef USE_ENTERPRISE
-  return nullptr != dynamic_cast<LocalGraphNode const*>(this);
-#else
-  return false;
+/* Enterprise features */
+
+#ifndef USE_ENTERPRISE
+
+bool GraphNode::isUsedAsSatellite() const { return false; }
+
+bool GraphNode::isSatelliteNode() const { return false; }
+
+void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const* engine) const {}
+
 #endif
-}

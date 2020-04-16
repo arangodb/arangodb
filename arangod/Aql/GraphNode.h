@@ -55,6 +55,7 @@ namespace aql {
 //        * traverser-engine creation
 //        * option preparation
 //        * Smart Graph Handling
+class ExecutionEngine;
 
 class GraphNode : public ExecutionNode {
  protected:
@@ -67,6 +68,7 @@ class GraphNode : public ExecutionNode {
  public:
   bool isUsedAsSatellite() const;
   bool isSatelliteNode() const;
+  void waitForSatelliteIfRequired(ExecutionEngine const *engine) const;
 
   bool isEligibleAsSatelliteTraversal() const;
 
