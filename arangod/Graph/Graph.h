@@ -95,8 +95,8 @@ class Graph {
    *
    * @return A graph object corresponding to this document
    */
-  static std::unique_ptr<Graph> fromPersistence(velocypack::Slice document,
-                                                TRI_vocbase_t& vocbase);
+  static std::unique_ptr<Graph> fromPersistence(TRI_vocbase_t& vocbase,
+                                                velocypack::Slice document);
 
   /**
    * @brief Create graph from user input.

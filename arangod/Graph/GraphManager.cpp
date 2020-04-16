@@ -372,7 +372,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(std::string cons
     res.reset(res.errorNumber(), ss.str());
     return {res};
   }
-  return {Graph::fromPersistence(result.slice(), _vocbase)};
+  return {Graph::fromPersistence(_vocbase, result.slice())};
 }
 
 OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync) const {
@@ -480,7 +480,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
   for (VPackSlice it : VPackArrayIterator(graphsSlice)) {
     std::unique_ptr<Graph> graph;
     try {
-      graph = Graph::fromPersistence(it.resolveExternals(), _vocbase);
+      graph = Graph::fromPersistence(_vocbase, it.resolveExternals());
     } catch (basics::Exception const& e) {
       return {e.code(), e.message()};
     }

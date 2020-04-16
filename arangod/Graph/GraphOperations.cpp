@@ -276,7 +276,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
 
   for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
     std::unique_ptr<Graph> graph =
-        Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
+        Graph::fromPersistence(_vocbase, singleGraph.resolveExternals());
     if (graph->hasEdgeCollection(edgeDefinition.getName())) {
       // only try to modify the edgeDefinition if it's available.
       result = changeEdgeDefinitionForGraph(*(graph.get()), edgeDefinition, waitForSync, trx);
