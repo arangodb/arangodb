@@ -89,12 +89,11 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _startTime(TRI_microtime()),
       _queryHash(DontCache),
       _executionPhase(ExecutionPhase::INITIALIZE),
-      _contextOwnedByExterior(ctx->isV8Context() /*&& transaction::V8Context::isEmbedded()*/),
+      _contextOwnedByExterior(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
       _killed(false),
       _isAsyncQuery(false),
       _preparedV8Context(false),
-      _queryHashCalculated(false),
-      _countResult(0) {
+      _queryHashCalculated(false) {
   if (_contextOwnedByExterior) {
     // copy transaction options from global state into our local query options
     auto state = transaction::V8Context::getParentState();
@@ -304,16 +303,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // return the V8 context if we are in one
   exitV8Context();
- 
-
-  // determine count value for collection
-  // this is a hack for /_api/export only
-  if (!_queryOptions.exportCollection.empty()) {
-    aql::Collection* c = collections().get(_queryOptions.exportCollection);
-    if (c != nullptr) {
-      _countResult = c->count(_trx.get(), transaction::CountType::Normal);
-    }
-  }
   
   return plan;
 }
@@ -1301,7 +1290,8 @@ std::shared_ptr<SharedQueryState> Query::sharedState() const {
 
 ExecutionEngine* Query::rootEngine() const {
   if (!_snippets.empty()) {
-    TRI_ASSERT(_snippets[0].first == 0);
+    TRI_ASSERT(!ServerState::instance()->isDBServer() ||
+               _snippets[0].first == 0);
     return _snippets[0].second.get();
   }
   return nullptr;

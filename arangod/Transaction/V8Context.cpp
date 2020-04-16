@@ -84,10 +84,15 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   
+  if (_currentTransaction) {
+    responsibleForCommit = false;
+    return _currentTransaction;
+  }
+  
   auto state = _sharedTransactionContext->_currentTransaction;
   if (!state) {
     state = transaction::Context::createState(options);
-    enterV8Context(state);
+    _currentTransaction = state;
     responsibleForCommit = true;
   } else {
     if (!isEmbeddable()) {
