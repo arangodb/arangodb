@@ -760,8 +760,6 @@ bool GraphNode::isUsedAsSatellite() const { return false; }
 
 bool GraphNode::isSatelliteNode() const { return false; }
 
-void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const* engine) const {
-  return true;
-}
+void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const* engine) const {}
 
 #endif
