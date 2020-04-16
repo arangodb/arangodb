@@ -48,16 +48,7 @@ transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
 /// @brief order a custom type handler for the collection
 VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
-    // TODO: replace with resolver()
-    transaction::V8Context* main = _sharedTransactionContext->_mainScope;
-
-    if (main != nullptr && main != this && !main->isGlobal()) {
-      _customTypeHandler = transaction::Context::createCustomTypeHandler(_vocbase, main->resolver());
-    } else {
-      _customTypeHandler =
-          transaction::Context::createCustomTypeHandler(_vocbase, resolver());
-    }
-
+    _customTypeHandler = transaction::Context::createCustomTypeHandler(_vocbase, resolver());
     _options.customTypeHandler = _customTypeHandler.get();
     _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
