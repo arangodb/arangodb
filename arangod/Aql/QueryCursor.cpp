@@ -379,7 +379,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
       std::shared_ptr<SharedQueryState> ss = _query->sharedState();
       ss->resetWakeupHandler();
 
-      // cleanup before transaction is committet
+      // cleanup before transaction is committed
       cleanupStateCallback();
 
       // TODO: perhaps run this differently ?
