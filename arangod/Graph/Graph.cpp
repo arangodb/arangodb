@@ -51,11 +51,13 @@ using namespace arangodb::graph;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
-size_t getWriteConcern(VPackSlice slice) {
+size_t getWriteConcern(VPackSlice slice, struct ServerDefaults serverDefaults) {
   if (slice.hasKey(StaticStrings::WriteConcern)) {
-    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern, 1);
+    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern,
+                                             serverDefaults.writeConcern);
   }
-  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor, 1);
+  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor,
+                                           serverDefaults.writeConcern);
 }
 }  // namespace
 
