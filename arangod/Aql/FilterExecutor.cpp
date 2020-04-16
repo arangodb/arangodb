@@ -28,9 +28,9 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlockInputRange.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
@@ -45,7 +45,7 @@ FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nr
                                          std::unordered_set<RegisterId> registersToClear,
                                          // cppcheck-suppress passedByValue
                                          std::unordered_set<RegisterId> registersToKeep)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
+    : RegisterInfos(std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
                     nullptr, nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister) {}

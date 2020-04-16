@@ -27,8 +27,8 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SubqueryStartExecutor.h"
@@ -73,14 +73,11 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
 
-  // The const_cast has been taken from previous implementation.
-  ExecutorInfos infos(inputRegisters, outputRegisters,
-                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                      calcRegsToKeep());
+  auto registerInfos = createRegisterInfos({}, {});
+
   // On purpose exclude the _subqueryOutVariable
-  return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(&engine, this,
-                                                                     std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(&engine, this, registerInfos,
+                                                                     RegisterInfos{registerInfos});
 }
 
 ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependencies,

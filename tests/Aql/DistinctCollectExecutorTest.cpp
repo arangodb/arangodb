@@ -72,12 +72,16 @@ class DistinctCollectExecutorTest
   VPackBuilder input;
   NoStats stats;
 
-  DistinctCollectExecutorInfos infos;
+  RegisterInfos registerInfos;
+  DistinctCollectExecutorInfos executorInfos;
 
   DistinctCollectExecutorTest()
       : trx(fakedQuery->trx()),
-        infos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+        registerInfos(std::make_shared<decltype(readableInputRegisters)>(readableInputRegisters),
+                      std::make_shared<decltype(readableInputRegisters)>(writeableOutputRegisters), 1, 2,
+                      regToClear, regToKeep),
+        executorInfos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
+                      std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::make_pair<RegisterId, RegisterId>(1, 0), trx) {}
 };
 
@@ -85,7 +89,7 @@ TEST_P(DistinctCollectExecutorTest, split_1) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<DistinctCollectExecutor>(std::move(infos))
+      .addConsumer<DistinctCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
@@ -99,7 +103,7 @@ TEST_P(DistinctCollectExecutorTest, split_3) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<DistinctCollectExecutor>(std::move(infos))
+      .addConsumer<DistinctCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 2, 1, 2, 5, 4, 3, 3, 1, 2)
       .setInputSplitType(split)
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
@@ -113,7 +117,7 @@ TEST_P(DistinctCollectExecutorTest, split_2) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<DistinctCollectExecutor>(std::move(infos))
+      .addConsumer<DistinctCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, 2, true})

@@ -26,8 +26,8 @@
 #include "CountCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 
 #include <utility>
@@ -41,7 +41,7 @@ CountCollectExecutorInfos::CountCollectExecutorInfos(
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
+    : RegisterInfos(std::make_shared<std::unordered_set<RegisterId>>(),
                     make_shared_unordered_set({collectRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

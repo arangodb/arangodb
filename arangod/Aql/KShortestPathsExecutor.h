@@ -26,8 +26,8 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 
 #include <velocypack/Builder.h>
 
@@ -55,7 +55,7 @@ class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
 
-class KShortestPathsExecutorInfos : public ExecutorInfos {
+class KShortestPathsExecutorInfos : public RegisterInfos {
  public:
   struct InputVertex {
     enum class Type { CONSTANT, REGISTER };

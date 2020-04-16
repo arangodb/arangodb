@@ -59,7 +59,7 @@ ShortestPathExecutorInfos::ShortestPathExecutorInfos(
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
     std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
+    : RegisterInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _finder(std::move(finder)),

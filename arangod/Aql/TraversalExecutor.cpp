@@ -45,7 +45,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
     std::string fixedSource, RegisterId inputRegister,
     std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
+    : RegisterInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _traverser(std::move(traverser)),

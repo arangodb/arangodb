@@ -38,7 +38,6 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
@@ -47,6 +46,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
@@ -169,8 +169,8 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   // i.e. before sending it over the network.
   TRI_ASSERT(regsToClear.empty());
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                      std::move(regsToKeep));
+  auto infos = RegisterInfos({}, {}, nrInRegs, nrOutRegs,
+                             std::move(regsToClear), std::move(regsToKeep));
 
   return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
       &engine, this, std::move(infos), server(), getDistributeId(), queryId(), api());
@@ -240,10 +240,13 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
-  ScatterExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                             std::move(regsToKeep), _clients);
+  auto registerInfos = createRegisterInfos({}, {});
+  auto executorInfos = ScatterExecutorInfos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                           std::move(regsToKeep), _clients);
+
   return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this,
-                                                               std::move(infos));
+                                                               std::move(registerInfos),
+                                                               std::move(executorInfos));
 }
 
 /// @brief toVelocyPack, for ScatterNode
@@ -368,13 +371,16 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   if (alternativeRegId != RegisterPlan::MaxRegisterId) {
     inAndOutRegs->emplace(alternativeRegId);
   }
-  DistributeExecutorInfos infos(inAndOutRegs, inAndOutRegs, nrInRegs, nrOutRegs,
-                                std::move(regsToClear), std::move(regsToKeep),
-                                clients(), collection(), regId, alternativeRegId,
-                                _allowSpecifiedKeys, _allowKeyConversionToObject,
-                                _createKeys, getScatterType());
+  auto registerInfos = createRegisterInfos(inAndOutRegs, inAndOutRegs);
+  auto infos =
+      DistributeExecutorInfos(inAndOutRegs, inAndOutRegs, nrInRegs, nrOutRegs,
+                              std::move(regsToClear), std::move(regsToKeep),
+                              clients(), collection(), regId, alternativeRegId,
+                              _allowSpecifiedKeys, _allowKeyConversionToObject,
+                              _createKeys, getScatterType());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
+                                                                  std::move(registerInfos),
                                                                   std::move(infos));
 }
 
@@ -520,20 +526,22 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+  auto registerInfos = createRegisterInfos({}, {});
   if (_elements.empty()) {
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
     if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
-      ParallelUnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                                                calcRegsToKeep(), getRegsToClear());
+      auto executorInfos =
+          ParallelUnsortedGatherExecutorInfos(getRegisterPlan()->nrRegs[getDepth()],
+                                              calcRegsToKeep(), getRegsToClear());
       return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
-          &engine, this, std::move(infos));
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     } else {
-      IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                            calcRegsToKeep(), getRegsToClear(), false);
+      auto executorInfos = IdExecutorInfos(getRegisterPlan()->nrRegs[getDepth()],
+                                           calcRegsToKeep(), getRegsToClear(), false);
 
-      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
-                                                                          std::move(infos));
+      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
   }
 
@@ -544,16 +552,15 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
-  SortingGatherExecutorInfos infos(make_shared_unordered_set(),
-                                   make_shared_unordered_set(),
-                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                   getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                   calcRegsToKeep(), std::move(sortRegister),
-                                   _plan->getAst()->query()->trx(), sortMode(),
-                                   constrainedSortLimit(), p);
+  auto executorInfos = SortingGatherExecutorInfos(
+      make_shared_unordered_set(), make_shared_unordered_set(),
+      getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
+      std::move(sortRegister), _plan->getAst()->query()->trx(), sortMode(),
+      constrainedSortLimit(), p);
 
-  return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
-                                                                     std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief estimateCost
@@ -689,7 +696,12 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
-  SingleRemoteModificationInfos infos(
+  auto readableInputRegisters = make_shared_unordered_set({in});
+  auto writableOutputRegisters = make_shared_unordered_set({outputNew, outputOld, out});
+
+  auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
+
+  auto executorInfos = SingleRemoteModificationInfos(
       in, outputNew, outputOld, out,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
@@ -701,22 +713,22 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
 
   if (_mode == NodeType::INDEX) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::INSERT) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::REMOVE) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::REPLACE) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::UPDATE) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::UPSERT) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
     TRI_ASSERT(false);
     return nullptr;

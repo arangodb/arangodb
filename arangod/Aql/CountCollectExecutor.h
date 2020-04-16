@@ -29,7 +29,7 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -40,14 +40,14 @@ namespace aql {
 
 class InputAqlItemRow;
 class NoStats;
-class ExecutorInfos;
+class RegisterInfos;
 class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 struct AqlCall;
 class AqlItemBlockInputRange;
 
-class CountCollectExecutorInfos : public ExecutorInfos {
+class CountCollectExecutorInfos : public RegisterInfos {
  public:
   CountCollectExecutorInfos(RegisterId collectRegister, RegisterId nrInputRegisters,
                             RegisterId nrOutputRegisters,

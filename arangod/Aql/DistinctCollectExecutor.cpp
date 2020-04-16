@@ -26,9 +26,9 @@
 #include "DistinctCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Logger/LogMacros.h"
@@ -47,7 +47,7 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
     std::unordered_set<RegisterId>&& readableInputRegisters,
     std::unordered_set<RegisterId>&& writeableInputRegisters,
     std::pair<RegisterId, RegisterId> groupRegister, transaction::Methods* trxPtr)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
+    : RegisterInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
                     std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

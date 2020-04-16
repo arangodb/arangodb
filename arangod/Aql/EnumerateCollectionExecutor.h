@@ -27,8 +27,8 @@
 #define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "DocumentProducingHelper.h"
 
 #include <memory>
@@ -48,7 +48,7 @@ class AqlItemBlockInputRange;
 struct Collection;
 class EnumerateCollectionStats;
 class ExecutionEngine;
-class ExecutorInfos;
+class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
@@ -57,7 +57,7 @@ struct Variable;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class EnumerateCollectionExecutorInfos : public ExecutorInfos {
+class EnumerateCollectionExecutorInfos : public RegisterInfos {
  public:
   EnumerateCollectionExecutorInfos(
       RegisterId outputRegister, RegisterId nrInputRegisters,

@@ -30,9 +30,9 @@
 #include "VelocyPackHelper.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/LimitExecutor.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
@@ -318,13 +318,15 @@ TEST_P(LimitExecutorTest, testSuite) {
         return std::make_tuple(skipped, output, stats, state);
       });
 
-  auto infos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
+  auto registerInfos = RegisterInfos{{}, {}, 1, 1, {}, {0}};
+  auto executorInfos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
 
   auto expectedStats = ExecutionStats{};
   expectedStats += expectedLimitStats;
 
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<LimitExecutor>(std::move(infos), ExecutionNode::LIMIT)
+      .addConsumer<LimitExecutor>(std::move(registerInfos),
+                                  std::move(executorInfos), ExecutionNode::LIMIT)
       .setInputFromRowNum(numInputRows)
       .setInputSplitType(inputLengths)
       .setCall(clientCall)

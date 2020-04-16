@@ -46,7 +46,7 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep, velocypack::Options const* const options,
     RegisterId inReg, RegisterId outReg, bool isModificationSubquery)
-    : ExecutorInfos(std::move(readableInputRegisters),
+    : RegisterInfos(std::move(readableInputRegisters),
                     std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
       _vpackOptions(options),

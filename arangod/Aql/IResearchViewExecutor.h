@@ -25,9 +25,9 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
@@ -60,12 +60,12 @@ class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class IResearchViewExecutorInfos : public ExecutorInfos {
+class IResearchViewExecutorInfos : public RegisterInfos {
  public:
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
   IResearchViewExecutorInfos(
-      ExecutorInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
+      RegisterInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
       RegisterId firstOutputRegister, RegisterId numScoreRegisters,
       Query& query, std::vector<iresearch::Scorer> const& scorers,
       std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,

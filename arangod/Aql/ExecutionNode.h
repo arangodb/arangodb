@@ -64,6 +64,7 @@
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
@@ -87,7 +88,7 @@ struct Collection;
 class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
-class ExecutorInfos;
+class RegisterInfos;
 class Expression;
 class RedundantCalculationsReplacer;
 struct RegisterPlan;
@@ -458,9 +459,9 @@ class ExecutionNode {
 
   RegisterId variableToRegisterOptionalId(Variable const* var) const;
 
-  virtual ExecutorInfos createRegisterInfos(
-      std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
-      std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const;
+  RegisterInfos createRegisterInfos(
+      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+      std::shared_ptr<std::unordered_set<RegisterId>> writableOutputRegisters) const;
 
   RegisterId getNrInputRegisters() const;
 
@@ -995,6 +996,10 @@ class MaterializeNode : public ExecutionNode {
   arangodb::aql::Variable const& outVariable() const noexcept {
     return *_outVariable;
   }
+ protected:
+  template <typename T>
+  auto getReadableInputRegisters(T collectionSource, RegisterId inNmDocId) const
+      -> std::shared_ptr<std::unordered_set<RegisterId>>;
 
  protected:
   /// @brief input variable non-materialized document ids
@@ -1003,6 +1008,18 @@ class MaterializeNode : public ExecutionNode {
   /// @brief the variable produced by materialization
   Variable const* _outVariable;
 };
+
+template <typename T>
+auto MaterializeNode::getReadableInputRegisters(T const collectionSource,
+                                                RegisterId const inNmDocId) const
+    -> std::shared_ptr<std::unordered_set<RegisterId>> {
+  if constexpr (std::is_same_v<T, RegisterId>) {
+    return make_shared_unordered_set(
+        std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
+  } else {
+    return make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId}));
+  }
+}
 
 class MaterializeMultiNode : public MaterializeNode {
  public:

@@ -26,8 +26,8 @@
 #include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Containers/SmallVector.h"
 
 namespace arangodb {
@@ -44,7 +44,7 @@ class MultiDependencySingleRowFetcher;
 class NoStats;
 class OutputAqlItemRow;
 
-class ParallelUnsortedGatherExecutorInfos : public ExecutorInfos {
+class ParallelUnsortedGatherExecutorInfos : public RegisterInfos {
  public:
   ParallelUnsortedGatherExecutorInfos(RegisterId nrInOutRegisters,
                                       std::unordered_set<RegisterId> registersToKeep,

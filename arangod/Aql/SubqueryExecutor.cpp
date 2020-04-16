@@ -41,7 +41,7 @@ SubqueryExecutorInfos::SubqueryExecutorInfos(
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId>&& registersToKeep, ExecutionBlock& subQuery,
     RegisterId outReg, bool subqueryIsConst)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+    : RegisterInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
       _subQuery(subQuery),
       _outReg(outReg),

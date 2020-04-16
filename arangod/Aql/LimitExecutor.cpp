@@ -26,8 +26,8 @@
 #include "LimitExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Logger/LogMacros.h"
@@ -43,7 +43,7 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
                                        // cppcheck-suppress passedByValue
                                        std::unordered_set<RegisterId> registersToKeep,
                                        size_t offset, size_t limit, bool fullCount)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
+    : RegisterInfos(std::make_shared<std::unordered_set<RegisterId>>(),
                     std::make_shared<std::unordered_set<RegisterId>>(),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

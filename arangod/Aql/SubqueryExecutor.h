@@ -26,8 +26,8 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Basics/Result.h"
 
@@ -39,7 +39,7 @@ class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class SubqueryExecutorInfos : public ExecutorInfos {
+class SubqueryExecutorInfos : public RegisterInfos {
  public:
   SubqueryExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
                         std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,

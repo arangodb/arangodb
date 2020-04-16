@@ -28,9 +28,9 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
@@ -56,7 +56,7 @@ EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep)
-    : ExecutorInfos(make_shared_unordered_set({inputRegister}),
+    : RegisterInfos(make_shared_unordered_set({inputRegister}),
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

@@ -32,9 +32,9 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -46,11 +46,11 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class SortedCollectExecutorInfos : public ExecutorInfos {
+class SortedCollectExecutorInfos : public RegisterInfos {
  public:
   SortedCollectExecutorInfos(
       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,

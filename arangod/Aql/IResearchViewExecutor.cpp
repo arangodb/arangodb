@@ -100,7 +100,7 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
 ///////////////////////////////////////////////////////////////////////////////
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    ExecutorInfos&& infos, std::shared_ptr<const IResearchView::Snapshot> reader,
+    RegisterInfos&& infos, std::shared_ptr<const IResearchView::Snapshot> reader,
     RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
     std::vector<Scorer> const& scorers,
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
@@ -108,7 +108,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
     int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
-    : ExecutorInfos(std::move(infos)),
+    : RegisterInfos(std::move(infos)),
       _firstOutputRegister(firstOutputRegister),
       _numScoreRegisters(numScoreRegisters),
       _reader(std::move(reader)),

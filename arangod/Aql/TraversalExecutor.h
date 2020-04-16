@@ -26,8 +26,8 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/TraversalStats.h"
 #include "Aql/Variable.h"
 
@@ -42,11 +42,11 @@ namespace aql {
 
 class Query;
 class OutputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class TraversalExecutorInfos : public ExecutorInfos {
+class TraversalExecutorInfos : public RegisterInfos {
  public:
   enum OutputName { VERTEX, EDGE, PATH };
   struct OutputNameHash {

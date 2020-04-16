@@ -30,9 +30,9 @@
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
@@ -44,7 +44,7 @@ struct OperationCursor;
 namespace aql {
 
 class ExecutionEngine;
-class ExecutorInfos;
+class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class Query;
@@ -56,7 +56,7 @@ struct AstNode;
 struct Collection;
 struct NonConstExpression;
 
-class IndexExecutorInfos : public ExecutorInfos {
+class IndexExecutorInfos : public RegisterInfos {
  public:
   IndexExecutorInfos(
       std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,

@@ -50,7 +50,7 @@ DistributeExecutorInfos::DistributeExecutorInfos(
     std::vector<std::string> clientIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys, ScatterNode::ScatterType type)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+    : RegisterInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
       ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
@@ -127,20 +127,19 @@ auto DistributeExecutorInfos::createKey(VPackSlice input) const -> std::string {
 
 DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                                                      ScatterNode const* node,
-                                                     ExecutorInfos const& scatterInfos)
-    : _blockManager(engine.itemBlockManager()), _infos(scatterInfos) {
+                                                     RegisterInfos const& registerInfos)
+    : _blockManager(engine.itemBlockManager()), registerInfos(registerInfos) {
   // We only get shared ptrs to const data. so we need to copy here...
-  IdExecutorInfos infos{scatterInfos.numberOfInputRegisters(),
-                        *scatterInfos.registersToKeep(),
-                        *scatterInfos.registersToClear(),
-                        false,
-                        0,
-                        "",
-                        false};
+  auto executorInfos = IdExecutorInfos{registerInfos.numberOfInputRegisters(),
+                                       *registerInfos.registersToKeep(),
+                                       *registerInfos.registersToClear(),
+                                       false,
+                                       0,
+                                       "",
+                                       false};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
-  _executor =
-      std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, node,
-                                                                     std::move(infos));
+  _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
+      &engine, node, registerInfos, std::move(executorInfos));
 }
 
 auto DistributeExecutor::ClientBlockData::clear() -> void {
@@ -190,11 +189,12 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
   }
 
   SharedAqlItemBlockPtr newBlock =
-      _blockManager.requestBlock(numRows, _infos.numberOfOutputRegisters());
+      _blockManager.requestBlock(numRows, registerInfos.numberOfOutputRegisters());
   // We create a block, with correct register information
   // but we do not allow outputs to be written.
   OutputAqlItemRow output{newBlock, make_shared_unordered_set(),
-                          _infos.registersToKeep(), _infos.registersToClear()};
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear()};
   while (!output.isFull()) {
     // If the queue is empty our sizing above would not be correct
     TRI_ASSERT(!_queue.empty());
@@ -397,8 +397,10 @@ auto DistributeExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex)
 
 ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                            DistributeNode const* node,
-                                                           DistributeExecutorInfos&& infos)
-    : BlocksWithClientsImpl(engine, node, std::move(infos)) {}
+                                                           RegisterInfos registerInfos,
+                                                           DistributeExecutorInfos&& executorInfos)
+    : BlocksWithClientsImpl(engine, node, std::move(registerInfos),
+                            std::move(executorInfos)) {}
 
 /*
 /// @brief getOrSkipSomeForShard

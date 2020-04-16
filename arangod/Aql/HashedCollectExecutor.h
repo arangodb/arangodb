@@ -28,8 +28,8 @@
 
 #include "Aql/AqlValueGroup.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -42,12 +42,12 @@ namespace aql {
 struct AqlCall;
 class AqlItemBlockInputRange;
 class OutputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 struct Aggregator;
 
-class HashedCollectExecutorInfos : public ExecutorInfos {
+class HashedCollectExecutorInfos : public RegisterInfos {
  public:
   /**
    * @brief Construct a new Hashed Collect Executor Infos object

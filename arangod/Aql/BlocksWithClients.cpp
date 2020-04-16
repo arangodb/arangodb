@@ -79,17 +79,19 @@ auto ClientsExecutorInfos::clientIds() const noexcept -> std::vector<std::string
 template <class Executor>
 BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
                                                        ExecutionNode const* ep,
-                                                       typename Executor::Infos infos)
+                                                       RegisterInfos registerInfos,
+                                                       typename Executor::Infos executorInfos)
     : ExecutionBlock(engine, ep),
       BlocksWithClients(),
-      _nrClients(infos.nrClients()),
+      _nrClients(executorInfos.nrClients()),
       _type(ScatterNode::ScatterType::SHARD),
-      _infos(std::move(infos)),
-      _executor{_infos},
+      _registerInfos(std::move(registerInfos)),
+      _executorInfos(std::move(executorInfos)),
+      _executor{_executorInfos},
       _clientBlockData{},
       _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
-  auto const& shardIds = _infos.clientIds();
+  auto const& shardIds = _executorInfos.clientIds();
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.try_emplace(shardIds[i], i);
   }
@@ -101,7 +103,7 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
   _clientBlockData.reserve(shardIds.size());
 
   for (auto const& id : shardIds) {
-    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _infos});
+    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _executorInfos});
   }
 }
 

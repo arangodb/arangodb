@@ -27,8 +27,8 @@
 #include "SortedCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ConditionalDeleter.h"
@@ -134,7 +134,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     std::vector<std::pair<std::string, RegisterId>>&& variables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     transaction::Methods* trxPtr, bool count)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
+    : RegisterInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
                     std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

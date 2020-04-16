@@ -27,8 +27,8 @@
 #define ARANGOD_AQL_TEST_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -38,11 +38,11 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class TestExecutorHelperInfos : public ExecutorInfos {
+class TestExecutorHelperInfos : public RegisterInfos {
  public:
   TestExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                           RegisterId nrOutputRegisters,

@@ -47,7 +47,12 @@ using CountCollectParamType = std::tuple<CountCollectSplitType>;
 class CountCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<CountCollectParamType, false> {
  protected:
-  auto MakeInfos(RegisterId outReg) -> CountCollectExecutorInfos {
+  auto MakeCountCollectRegisterInfos(RegisterId outReg) -> RegisterInfos {
+    return RegisterInfos({}, make_shared_unordered_set({outReg}), outReg,
+                         outReg + 1, {}, {});
+  }
+
+  auto MakeCountCollectExecutorInfos(RegisterId outReg) -> CountCollectExecutorInfos {
     return CountCollectExecutorInfos{
         outReg, outReg /*inputRegisters*/, outReg + 1 /*outputRegisters*/, {}, {}};
   }
@@ -56,20 +61,33 @@ class CountCollectExecutorTest
     return split;
   }
 
-  auto MakeSubqueryStartInfos() -> SubqueryStartExecutor::Infos {
+  auto MakeSubqueryStartRegisterInfos() -> RegisterInfos {
     auto inputRegisterSet = make_shared_unordered_set({0});
     auto outputRegisterSet = make_shared_unordered_set({});
 
     auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
 
-    return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet,
-                                        inputRegisterSet->size(),
-                                        inputRegisterSet->size() +
-                                            outputRegisterSet->size(),
-                                        {}, toKeepRegisterSet);
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrOutputRegisters =
+        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+    return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
+                         nrOutputRegisters, {}, toKeepRegisterSet);
   }
 
-  auto MakeSubqueryEndInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
+  auto MakeSubqueryStartExecutorInfos() -> SubqueryStartExecutor::Infos {
+    auto inputRegisterSet = make_shared_unordered_set({0});
+    auto outputRegisterSet = make_shared_unordered_set({});
+
+    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrOutputRegisters =
+        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+    return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
+                                        nrOutputRegisters, {}, toKeepRegisterSet);
+  }
+
+  auto MakeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
     auto const outputRegister = RegisterId{inputRegister + 1};
     auto inputRegisterSet = make_shared_unordered_set({});
     for (RegisterId r = 0; r <= inputRegister; ++r) {
@@ -78,16 +96,44 @@ class CountCollectExecutorTest
     auto outputRegisterSet = make_shared_unordered_set({outputRegister});
     auto toKeepRegisterSet = std::unordered_set<RegisterId>{};
 
-    return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet,
-                                      inputRegisterSet->size(),
-                                      inputRegisterSet->size() +
-                                          outputRegisterSet->size(),
-                                      {}, toKeepRegisterSet, nullptr,
-                                      inputRegister, outputRegister, false);
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrOutputRegisters =
+        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+    return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
+                         nrOutputRegisters, {}, toKeepRegisterSet);
   }
 
-  auto MakeRemoveAllLinesInfos() -> LambdaExe::Infos {
-    auto numRegs = size_t{1};
+  auto MakeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
+    auto const outputRegister = RegisterId{inputRegister + 1};
+    auto inputRegisterSet = make_shared_unordered_set({});
+    for (RegisterId r = 0; r <= inputRegister; ++r) {
+      inputRegisterSet->emplace(r);
+    }
+    auto outputRegisterSet = make_shared_unordered_set({outputRegister});
+    auto toKeepRegisterSet = std::unordered_set<RegisterId>{};
+
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrOutputRegisters =
+        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+
+    return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
+                                      nrOutputRegisters, {}, toKeepRegisterSet,
+                                      nullptr, inputRegister, outputRegister, false);
+  }
+
+  auto MakeRemoveAllLinesRegisterInfos() -> RegisterInfos {
+    auto numRegs = RegisterCount{1};
+
+    std::unordered_set<RegisterId> toKeep;
+    for (RegisterId r = 0; r < numRegs; ++r) {
+      toKeep.emplace(r);
+    }
+
+    return RegisterInfos({}, {}, numRegs, numRegs, {}, std::move(toKeep));
+  }
+
+  auto MakeRemoveAllLinesExecutorInfos() -> LambdaExe::Infos {
+    auto numRegs = RegisterCount{1};
 
     auto inRegisterList = make_shared_unordered_set({});
     auto outRegisterList = make_shared_unordered_set({});
@@ -129,7 +175,9 @@ INSTANTIATE_TEST_CASE_P(CountCollectExecutor, CountCollectExecutorTest,
 
 TEST_P(CountCollectExecutorTest, empty_input) {
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({})
@@ -142,7 +190,9 @@ TEST_P(CountCollectExecutorTest, empty_input) {
 
 TEST_P(CountCollectExecutorTest, count_input) {
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -155,7 +205,9 @@ TEST_P(CountCollectExecutorTest, count_input) {
 
 TEST_P(CountCollectExecutorTest, empty_input_skip) {
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({})
@@ -168,7 +220,9 @@ TEST_P(CountCollectExecutorTest, empty_input_skip) {
 
 TEST_P(CountCollectExecutorTest, count_input_skip) {
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -181,7 +235,9 @@ TEST_P(CountCollectExecutorTest, count_input_skip) {
 
 TEST_P(CountCollectExecutorTest, empty_input_fullCount) {
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({})
@@ -194,7 +250,9 @@ TEST_P(CountCollectExecutorTest, empty_input_fullCount) {
 
 TEST_P(CountCollectExecutorTest, count_input_fullCount) {
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -207,7 +265,9 @@ TEST_P(CountCollectExecutorTest, count_input_fullCount) {
 
 TEST_P(CountCollectExecutorTest, count_input_softlimit) {
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -222,10 +282,17 @@ TEST_P(CountCollectExecutorTest, count_in_empty_subquery) {
   auto helper = makeExecutorTestHelper<1, 1>();
 
   helper
-      .addConsumer<SubqueryStartExecutor>(MakeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<LambdaExe>(MakeRemoveAllLinesInfos(), ExecutionNode::FILTER)
-      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
-      .addConsumer<SubqueryEndExecutor>(MakeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryStartExecutor>(MakeSubqueryStartRegisterInfos(),
+                                          MakeSubqueryStartExecutorInfos(),
+                                          ExecutionNode::SUBQUERY_START)
+      .addConsumer<LambdaExe>(MakeRemoveAllLinesRegisterInfos(),
+                              MakeRemoveAllLinesExecutorInfos(), ExecutionNode::FILTER)
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
+      .addConsumer<SubqueryEndExecutor>(MakeSubqueryEndRegisterInfos(1),
+                                        MakeSubqueryEndExecutorInfos(1),
+                                        ExecutionNode::SUBQUERY_END)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})
@@ -240,9 +307,15 @@ TEST_P(CountCollectExecutorTest, count_in_subquery) {
   auto helper = makeExecutorTestHelper<1, 1>();
 
   helper
-      .addConsumer<SubqueryStartExecutor>(MakeSubqueryStartInfos(), ExecutionNode::SUBQUERY_START)
-      .addConsumer<CountCollectExecutor>(MakeInfos(1), ExecutionNode::COLLECT)
-      .addConsumer<SubqueryEndExecutor>(MakeSubqueryEndInfos(1), ExecutionNode::SUBQUERY_END)
+      .addConsumer<SubqueryStartExecutor>(MakeSubqueryStartRegisterInfos(),
+                                          MakeSubqueryStartExecutorInfos(),
+                                          ExecutionNode::SUBQUERY_START)
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
+      .addConsumer<SubqueryEndExecutor>(MakeSubqueryEndRegisterInfos(1),
+                                        MakeSubqueryEndExecutorInfos(1),
+                                        ExecutionNode::SUBQUERY_END)
       .expectedStats(ExecutionStats{})
       .setInputSplitType(GetSplit())
       .setInputValue({{0}, {1}, {2}, {3}})

@@ -973,16 +973,16 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
 }
 
 // This is the general case and will not work if e.g. there is no predecessor.
-ExecutorInfos ExecutionNode::createRegisterInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const {
+RegisterInfos ExecutionNode::createRegisterInfos(
+    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>> writableOutputRegisters) const {
   RegisterId const nrOutRegs = getNrOutputRegisters();
   RegisterId const nrInRegs = getNrInputRegisters();
 
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
-  return ExecutorInfos{std::move(readableInputRegisters),
+  return RegisterInfos{std::move(readableInputRegisters),
                        std::move(writableOutputRegisters),
                        nrInRegs,
                        nrOutRegs,
@@ -1207,22 +1207,30 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
   // That is why we do not use `calcRegsToKeep()`
   RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
 
-  std::unordered_set<RegisterId> toKeep;
+  std::unordered_set<RegisterId> regsToKeep;
   if (isInSubquery()) {
     for (auto const& var : this->getVarsUsedLater()) {
       auto val = variableToRegisterId(var);
       if (val < nrRegs) {
-        auto rv = toKeep.insert(val);
+        auto rv = regsToKeep.insert(val);
         TRI_ASSERT(rv.second);
       }
     }
   }
 
-  IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear(), false);
+  auto regsToClear = getRegsToClear();
 
-  auto res =
-      std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this,
-                                                                     std::move(infos));
+  auto registerInfos = RegisterInfos{make_shared_unordered_set(),
+                                     make_shared_unordered_set(),
+                                     nrRegs,
+                                     nrRegs,
+                                     regsToClear,
+                                     regsToKeep};
+
+  IdExecutorInfos infos(nrRegs, regsToKeep, regsToClear, false);
+
+  auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
+      &engine, this, std::move(registerInfos), std::move(infos));
   std::ignore = res->initializeCursor(InputAqlItemRow{CreateInvalidInputRowHint{}});
   return res;
 }
@@ -1287,15 +1295,16 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   auto const produceResult = this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
-  EnumerateCollectionExecutorInfos infos(
-      variableToRegisterId(_outVariable),
-      getRegisterPlan()->nrRegs[previousNode->getDepth()],
+  auto outputRegister = variableToRegisterId(_outVariable);
+  auto registerInfos = createRegisterInfos(make_shared_unordered_set(),
+                                           make_shared_unordered_set({outputRegister}));
+  auto executorInfos = EnumerateCollectionExecutorInfos(
+      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
       &engine, collection(), _outVariable, produceResult, this->_filter.get(),
-      this->projections(), this->coveringIndexAttributePositions(),
-      this->_random);
-  return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
-                                                                           std::move(infos));
+      this->projections(), this->coveringIndexAttributePositions(), this->_random);
+  return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1372,12 +1381,15 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
   RegisterId outRegister = variableToRegisterId(_outVariable);
-  EnumerateListExecutorInfos infos(inputRegister, outRegister,
-                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                   getRegisterPlan()->nrRegs[getDepth()],
-                                   getRegsToClear(), calcRegsToKeep());
-  return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this,
-                                                                     std::move(infos));
+  auto registerInfos = createRegisterInfos(make_shared_unordered_set({inputRegister}),
+                                           make_shared_unordered_set({outRegister}));
+  auto executorInfos =
+      EnumerateListExecutorInfos(inputRegister, outRegister,
+                                 getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                 getRegisterPlan()->nrRegs[getDepth()],
+                                 getRegsToClear(), calcRegsToKeep());
+  return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1485,11 +1497,15 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   // Fullcount must only be enabled on the last limit node on the main level
   TRI_ASSERT(!_fullCount || !isInSubquery());
 
-  LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                           calcRegsToKeep(), _offset, _limit, _fullCount);
+  auto registerInfos = createRegisterInfos({}, {});
+
+  auto executorInfos =
+      LimitExecutorInfos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                         getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                         calcRegsToKeep(), _offset, _limit, _fullCount);
   return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
-                                                             std::move(infos));
+                                                             std::move(registerInfos),
+                                                             std::move(executorInfos));
 }
 
 // @brief toVelocyPack, for LimitNode
@@ -1635,7 +1651,11 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(engine.getQuery() != nullptr);
   TRI_ASSERT(expression() != nullptr);
 
-  CalculationExecutorInfos infos(
+  auto registerInfos =
+      createRegisterInfos(make_shared_unordered_set(expInRegs.begin(), expInRegs.end()),
+                          make_shared_unordered_set({outputRegister}));
+
+  auto executorInfos = CalculationExecutorInfos(
       outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
       *engine.getQuery() /* used for v8 contexts and in expression */,
@@ -1644,13 +1664,13 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   if (isReference) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
-        &engine, this, std::move(infos));
+        &engine, this,std::move(registerInfos), std::move(executorInfos));
   } else if (!willUseV8) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
-        &engine, this, std::move(infos));
+        &engine, this,std::move(registerInfos), std::move(executorInfos));
   } else {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
 
@@ -1823,18 +1843,21 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
   RegisterId outReg = outVar->second.registerId;
   outputRegisters->emplace(outReg);
 
+  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
+
   // The const_cast has been taken from previous implementation.
-  SubqueryExecutorInfos infos(inputRegisters, outputRegisters,
-                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                              getRegisterPlan()->nrRegs[getDepth()],
-                              getRegsToClear(), calcRegsToKeep(), *subquery,
-                              outReg, const_cast<SubqueryNode*>(this)->isConst());
+  auto executorInfos =
+      SubqueryExecutorInfos(inputRegisters, outputRegisters,
+                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                            getRegisterPlan()->nrRegs[getDepth()],
+                            getRegsToClear(), calcRegsToKeep(), *subquery,
+                            outReg, const_cast<SubqueryNode*>(this)->isConst());
   if (isModificationSubquery()) {
-    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(&engine, this,
-                                                                        std::move(infos));
+    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<false>>>(&engine, this,
-                                                                         std::move(infos));
+    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<false>>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
 
@@ -2012,12 +2035,17 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  FilterExecutorInfos infos(inputRegister,
-                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                            getRegisterPlan()->nrRegs[getDepth()],
-                            getRegsToClear(), calcRegsToKeep());
+  auto registerInfos = createRegisterInfos(make_shared_unordered_set({inputRegister}),
+                                           make_shared_unordered_set());
+
+  auto executorInfos =
+      FilterExecutorInfos(inputRegister,
+                          getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                          getRegisterPlan()->nrRegs[getDepth()],
+                          getRegsToClear(), calcRegsToKeep());
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
-                                                              std::move(infos));
+                                                              std::move(registerInfos),
+                                                              std::move(executorInfos));
 }
 
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -2104,20 +2132,28 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
   if (returnInheritedResults) {
-    // TODO Check for keep and clear registers.
-    // As we are passthrough i think they do not matter
-    IdExecutorInfos infos(numberInputRegisters, {}, {}, _count, inputRegister);
+    auto executorInfos =
+        IdExecutorInfos(numberInputRegisters, {}, {}, _count, inputRegister);
+    auto registerInfos = createRegisterInfos({}, {});
     return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
     TRI_ASSERT(!returnInheritedResults);
+    // TODO We should be able to remove this special case when the new
+    //      register planning is ready.
     // The Return Executor only writes to register 0.
     RegisterId const numberOutputRegisters = 1;
-    ReturnExecutorInfos infos(inputRegister, numberInputRegisters,
-                              numberOutputRegisters, _count);
+    constexpr auto outputRegister = RegisterId{0};
+
+    auto registerInfos =
+        createRegisterInfos(make_shared_unordered_set({inputRegister}),
+                            make_shared_unordered_set({outputRegister}));
+    auto executorInfos = ReturnExecutorInfos(inputRegister, numberInputRegisters,
+                                             numberOutputRegisters, _count);
 
     return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
-                                                                std::move(infos));
+                                                                std::move(registerInfos),
+                                                                std::move(executorInfos));
   }
 }
 
@@ -2179,13 +2215,11 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                      arangodb::aql::make_shared_unordered_set(),
-                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                      calcRegsToKeep());
-  return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
-                                                                 std::move(infos));
+
+  auto registerInfos = createRegisterInfos({}, {});
+  auto executorInfos = registerInfos;
+  return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
@@ -2385,12 +2419,19 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
   }
   TRI_ASSERT(engine.getQuery());
 
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(inNmColPtrRegId)>>>(
-      &engine, this,
+  auto const readableInputRegisters = getReadableInputRegisters(inNmColPtrRegId, inNmDocIdRegId);
+  auto const writableOutputRegisters = make_shared_unordered_set(std::initializer_list<RegisterId>({outDocumentRegId}));
+
+  auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
+
+  auto executorInfos =
       MaterializerExecutorInfos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                calcRegsToKeep(), inNmColPtrRegId, inNmDocIdRegId,
-                                outDocumentRegId, engine.getQuery()->trx()));
+                                getRegisterPlan()->nrRegs[getDepth()],
+                                inNmColPtrRegId, inNmDocIdRegId,
+                                outDocumentRegId, engine.getQuery()->trx());
+
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(inNmColPtrRegId)>>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -2464,13 +2505,18 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
   TRI_ASSERT(engine.getQuery());
   auto const& name = collection()->name();
 
+  auto const readableInputRegisters = getReadableInputRegisters(name, inNmDocIdRegId);
+  auto const writableOutputRegisters =
+      make_shared_unordered_set(std::initializer_list<RegisterId>({outDocumentRegId}));
+
+  auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
+
+  auto executorInfos = MaterializerExecutorInfos<decltype(name)>(
+      getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], name, inNmDocIdRegId,
+      outDocumentRegId, engine.getQuery()->trx());
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(
-      &engine, this,
-      MaterializerExecutorInfos<decltype(name)>(
-          getRegisterPlan()->nrRegs[previousNode->getDepth()],
-          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-          calcRegsToKeep(), collection()->name(), inNmDocIdRegId,
-          outDocumentRegId, engine.getQuery()->trx()));
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan, bool withDependencies,

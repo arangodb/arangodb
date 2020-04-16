@@ -29,8 +29,8 @@
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 
 #include <cstddef>
 #include <memory>
@@ -45,13 +45,13 @@ namespace aql {
 struct AqlCall;
 class AqlItemBlockInputMatrix;
 class AllRowsFetcher;
-class ExecutorInfos;
+class RegisterInfos;
 class NoStats;
 class OutputAqlItemRow;
 class AqlItemBlockManager;
 struct SortRegister;
 
-class SortExecutorInfos : public ExecutorInfos {
+class SortExecutorInfos : public RegisterInfos {
  public:
   SortExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager, RegisterId nrInputRegisters,

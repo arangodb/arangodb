@@ -31,10 +31,10 @@
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "AqlCall.h"
@@ -61,7 +61,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     Expression* filter, std::vector<std::string> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool random)
-    : ExecutorInfos(make_shared_unordered_set(),
+    : RegisterInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

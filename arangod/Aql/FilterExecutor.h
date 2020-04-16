@@ -27,7 +27,7 @@
 #define ARANGOD_AQL_FILTER_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -38,12 +38,12 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 class FilterStats;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class FilterExecutorInfos : public ExecutorInfos {
+class FilterExecutorInfos : public RegisterInfos {
  public:
   FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                       RegisterId nrOutputRegisters,

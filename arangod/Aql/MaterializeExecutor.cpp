@@ -57,17 +57,9 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::c
 
 template <typename T>
 arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, T const collectionSource,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters, T const collectionSource,
     RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
-    : ExecutorInfos(getReadableInputRegisters(collectionSource, inNmDocId),
-                    make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _collectionSource(collectionSource),
+    : _collectionSource(collectionSource),
       _inNonMaterializedDocRegId(inNmDocId),
       _outMaterializedDocumentRegId(outDocRegId),
       _trx(trx) {}

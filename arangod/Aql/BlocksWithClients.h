@@ -27,6 +27,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/RegisterInfos.h"
 #include "Basics/Result.h"
 
 #include <velocypack/Builder.h>
@@ -110,7 +111,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
 
  public:
   BlocksWithClientsImpl(ExecutionEngine* engine, ExecutionNode const* ep,
-                        typename Executor::Infos infos);
+                        RegisterInfos registerInfos, typename Executor::Infos executorInfos);
 
   ~BlocksWithClientsImpl() override = default;
 
@@ -179,12 +180,14 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   ScatterNode::ScatterType _type;
 
  private:
+  RegisterInfos _registerInfos;
+
   /**
    * @brief This is the working party of this implementation
    *        the template class needs to implement the logic
    *        to produce a single row from the upstream information.
    */
-  Infos _infos;
+  Infos _executorInfos;
 
   Executor _executor;
 

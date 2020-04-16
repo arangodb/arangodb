@@ -26,8 +26,8 @@
 #include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 
 #include <optional>
 
@@ -47,7 +47,7 @@ class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
-class SortingGatherExecutorInfos : public ExecutorInfos {
+class SortingGatherExecutorInfos : public RegisterInfos {
  public:
   SortingGatherExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                              std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,

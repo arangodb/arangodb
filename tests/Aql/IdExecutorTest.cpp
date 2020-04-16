@@ -32,11 +32,11 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 
@@ -75,7 +75,11 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
     return doCount;
   }
 
-  auto makeInfos() -> IdExecutorInfos {
+  auto makeRegisterInfos() -> RegisterInfos {
+    return RegisterInfos{{}, {}, 1, 1, {0}, {}};
+  }
+
+  auto makeExecutorInfos() -> IdExecutorInfos {
     return IdExecutorInfos{1, {0}, {}, doCount()};
   }
 
@@ -127,9 +131,9 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
   auto getOutput() -> MatrixBuilder<1> {
     MatrixBuilder<1> res;
     auto call = getCall();
-    int available = std::min(getInput(), call.getOffset() + call.getLimit());
-    for (int i = call.getOffset(); i < available; ++i) {
-      res.emplace_back(RowBuilder<1>{i});
+    auto available = std::min(getInput(), call.getOffset() + call.getLimit());
+    for (auto i = call.getOffset(); i < available; ++i) {
+      res.emplace_back(RowBuilder<1>{static_cast<int>(i)});
     }
     return res;
   }
@@ -207,7 +211,7 @@ TEST_P(IdExecutorTestCombiner, test_produce_datarange_constFetcher) {
 TEST_P(IdExecutorTestCombiner, test_produce_datarange_singleRowFetcher) {
   makeExecutorTestHelper<1, 1>()
       .addConsumer<IdExecutor<SingleRowFetcher<::arangodb::aql::BlockPassthrough::Enable>>>(
-          makeInfos(), ExecutionNode::SINGLETON)
+          makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SINGLETON)
       .setInputFromRowNum(getInput())
       .setCall(getCall())
       .expectedState(getExpectedState())
@@ -265,10 +269,12 @@ class IdExecutionBlockTest : public AqlExecutorTestCase<> {};
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
-  IdExecutorInfos infos{1, {0}, {}, false};
+  RegisterInfos registerInfos{{}, {}, 1, 1, {0}, {}};
+  IdExecutorInfos executorInfos{1, {0}, {}, false};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
                                                       generateNodeDummy(),
-                                                      std::move(infos)};
+                                                      std::move(registerInfos),
+                                                      std::move(executorInfos)};
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
 
   for (size_t i = 0; i < inputBlock->size(); ++i) {
@@ -307,10 +313,12 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
-  IdExecutorInfos infos{1, {0}, {}, false};
+  RegisterInfos registerInfos{{}, {}, 1, 1, {0}, {}};
+  IdExecutorInfos executorInfos{1, {0}, {}, false};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
                                                       generateNodeDummy(),
-                                                      std::move(infos)};
+                                                      std::move(registerInfos),
+                                                      std::move(executorInfos)};
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
 
   for (size_t i = 0; i < inputBlock->size(); ++i) {
@@ -347,10 +355,12 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
-  IdExecutorInfos infos{1, {0}, {}, false};
+  RegisterInfos registerInfos{{}, {}, 1, 1, {0}, {}};
+  IdExecutorInfos executorInfos{1, {0}, {}, false};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
                                                       generateNodeDummy(),
-                                                      std::move(infos)};
+                                                      std::move(registerInfos),
+                                                      std::move(executorInfos)};
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
 
   for (size_t i = 0; i < inputBlock->size(); ++i) {
@@ -388,9 +398,10 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
 }
 
 TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
-  IdExecutorInfos infos{1, {0}, {}, false};
+  RegisterInfos registerInfos{{}, {}, 1, 1, {0}, {}};
+  IdExecutorInfos executorInfos{1, {0}, {}, false};
   makeExecutorTestHelper()
-      .addConsumer<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(infos))
+      .addConsumer<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 2, 3, 4, 5, 6)
       .setCall(AqlCall{0, AqlCall::Infinity{}, 2, false})
       .expectOutput({0}, {{1}, {2}})
@@ -409,10 +420,12 @@ TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
 class BlockOverloadTest : public AqlExecutorTestCaseWithParam<bool> {
  protected:
   auto getTestee() -> ExecutionBlockImpl<IdExecutor<ConstFetcher>> {
-    IdExecutorInfos infos{1, {0}, {}, false};
+    RegisterInfos registerInfos{{}, {}, 1, 1, {0}, {}};
+    IdExecutorInfos executorInfos{1, {0}, {}, false};
     return ExecutionBlockImpl<IdExecutor<ConstFetcher>>{fakedQuery->engine(),
                                                         generateNodeDummy(),
-                                                        std::move(infos)};
+                                                        std::move(registerInfos),
+                                                        std::move(executorInfos)};
   }
 
   auto useFullCount() -> bool { return GetParam(); }

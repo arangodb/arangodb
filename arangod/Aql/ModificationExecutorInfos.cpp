@@ -56,7 +56,7 @@ ModificationExecutorInfos::ModificationExecutorInfos(
     ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
     IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
     IgnoreDocumentNotFound ignoreDocumentNotFound)
-    : ExecutorInfos(makeSet({input1RegisterId, input2RegisterId, input3RegisterId}) /*input registers*/,
+    : RegisterInfos(makeSet({input1RegisterId, input2RegisterId, input3RegisterId}) /*input registers*/,
                     makeSet({outputOldRegisterId, outputNewRegisterId, outputRegisterId}) /*output registers*/,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

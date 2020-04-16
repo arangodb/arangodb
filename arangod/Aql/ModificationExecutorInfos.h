@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_MODIFICATION_EXECUTOR_INFOS_H
 
 #include "Aql/Collection.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
@@ -61,7 +61,7 @@ struct IgnoreDocumentNotFound : BoolWrapper {
   explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b) {}
 };
 
-struct ModificationExecutorInfos : public ExecutorInfos {
+struct ModificationExecutorInfos : public RegisterInfos {
   ModificationExecutorInfos(
       RegisterId input1RegisterId, RegisterId input2RegisterId, RegisterId input3RegisterId,
       RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,

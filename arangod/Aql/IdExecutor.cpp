@@ -47,7 +47,7 @@ IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                                  std::unordered_set<RegisterId> registersToClear,
                                  bool doCount, RegisterId outputRegister,
                                  std::string distributeId, bool isResponsibleForInitializeCursor)
-    : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
+    : RegisterInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _doCount(doCount),

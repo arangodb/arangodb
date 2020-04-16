@@ -32,12 +32,12 @@
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
@@ -167,7 +167,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options, IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
-    : ExecutorInfos(make_shared_unordered_set(), writableOutputRegisters,
+    : RegisterInfos(make_shared_unordered_set(), writableOutputRegisters,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _indexes(std::move(indexes)),

@@ -941,7 +941,8 @@ class SortedCollectExecutorTestSplit
   std::vector<std::pair<std::string, RegisterId>> variables;
   bool count;
 
-  SortedCollectExecutorInfos infos;
+  RegisterInfos registerInfos;
+  SortedCollectExecutorInfos executorInfos;
 
   SortedCollectExecutorTestSplit()
       : trx(fakedQuery->trx()),
@@ -953,18 +954,22 @@ class SortedCollectExecutorTestSplit
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        infos(1, nrOutputRegister, regToClear, regToKeep,
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-              std::move(groupRegisters), collectRegister, expressionRegister,
-              expressionVariable, std::move(aggregateTypes),
-              std::move(variables), std::move(aggregateRegisters), trx, count) {}
+        registerInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
+                      std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
+                      1, nrOutputRegister, regToClear, regToKeep),
+        executorInfos(1, nrOutputRegister, regToClear, regToKeep,
+                      std::move(readableInputRegisters),
+                      std::move(writeableOutputRegisters), std::move(groupRegisters),
+                      collectRegister, expressionRegister, expressionVariable,
+                      std::move(aggregateTypes), std::move(variables),
+                      std::move(aggregateRegisters), trx, count) {}
 };
 
 TEST_P(SortedCollectExecutorTestSplit, split_1) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<SortedCollectExecutor>(std::move(infos))
+      .addConsumer<SortedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
@@ -978,7 +983,7 @@ TEST_P(SortedCollectExecutorTestSplit, split_2) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<SortedCollectExecutor>(std::move(infos))
+      .addConsumer<SortedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, 2, AqlCall::Infinity{}, false})
@@ -992,7 +997,7 @@ TEST_P(SortedCollectExecutorTestSplit, split_3) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<SortedCollectExecutor>(std::move(infos))
+      .addConsumer<SortedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 2, 3, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{1, AqlCall::Infinity{}, 10, true})

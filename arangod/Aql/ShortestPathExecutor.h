@@ -26,8 +26,8 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathResult.h"
 
@@ -56,7 +56,7 @@ class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
 
-class ShortestPathExecutorInfos : public ExecutorInfos {
+class ShortestPathExecutorInfos : public RegisterInfos {
  public:
   struct InputVertex {
     enum class Type { CONSTANT, REGISTER };

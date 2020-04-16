@@ -27,8 +27,8 @@
 #define ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -41,7 +41,7 @@ class InputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class TestEmptyExecutorHelperInfos : public ExecutorInfos {
+class TestEmptyExecutorHelperInfos : public RegisterInfos {
  public:
   TestEmptyExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                                RegisterId nrOutputRegisters,
@@ -62,7 +62,7 @@ class TestEmptyExecutorHelper {
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = ExecutorInfos;
+  using Infos = RegisterInfos;
   using Stats = FilterStats;
 
   TestEmptyExecutorHelper() = delete;

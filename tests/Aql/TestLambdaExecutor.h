@@ -24,7 +24,7 @@
 #define ARANGOD_AQL_TEST_LAMBDA_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
@@ -62,7 +62,7 @@ using ResetCall = std::function<void()>;
  *        Contains basice RegisterPlanning information, and a ProduceCall.
  *        This produceCall will be executed whenever the LambdaExecutor is called with produceRows
  */
-class LambdaExecutorInfos : public ExecutorInfos {
+class LambdaExecutorInfos : public RegisterInfos {
  public:
   LambdaExecutorInfos(
       std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
@@ -91,7 +91,7 @@ class LambdaExecutorInfos : public ExecutorInfos {
  *        The produceCall will be executed whenever the LambdaExecutor is called with produceRows
  *        The skipCall will be executed whenever the LambdaExecutor is called with skipRowsInRange
  */
-class LambdaSkipExecutorInfos : public ExecutorInfos {
+class LambdaSkipExecutorInfos : public RegisterInfos {
  public:
   LambdaSkipExecutorInfos(
       std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,

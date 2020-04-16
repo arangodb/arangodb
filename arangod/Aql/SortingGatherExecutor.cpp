@@ -180,7 +180,7 @@ SortingGatherExecutorInfos::SortingGatherExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep,
     std::vector<SortRegister>&& sortRegister, arangodb::transaction::Methods* trx,
     GatherNode::SortMode sortMode, size_t limit, GatherNode::Parallelism p)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
+    : RegisterInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _sortRegister(std::move(sortRegister)),

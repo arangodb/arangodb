@@ -53,6 +53,7 @@
 
 #include <velocypack/velocypack-aliases.h>
 #include <functional>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -105,13 +106,13 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         engine(fakedQuery->engine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep, engine,
-              &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
-              coveringIndexAttributePositions, random),
+        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
+              engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
+              projections, coveringIndexAttributePositions, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
-    } catch (std::exception const& e) {
+    } catch (std::exception const&) {
       // ignore, already created the collection
     }
   }
@@ -282,13 +283,25 @@ class EnumerateCollectionExecutorTestProduce
         engine(fakedQuery.get()->engine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
-              projections, coveringIndexAttributePositions, random) {}
+        infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater,
+              nullptr, projections, coveringIndexAttributePositions, random) {}
 
-  auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                 RegisterId nrOutputRegister = 1,
-                 std::unordered_set<RegisterId> regToClear = {},
-                 std::unordered_set<RegisterId> regToKeep = {})
+  auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
+                         RegisterId nrOutputRegister = 1,
+                         std::unordered_set<RegisterId> regToClear = {},
+                         std::unordered_set<RegisterId> regToKeep = {}) -> RegisterInfos {
+    auto inputRegisters = make_shared_unordered_set({});
+    auto outputRegisters = make_shared_unordered_set({outputRegister});
+    RegisterInfos registerInfos{inputRegisters,        outputRegisters,
+                                nrInputRegister,       nrOutputRegister,
+                                std::move(regToClear), std::move(regToKeep)};
+    return registerInfos;
+  }
+
+  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
+                         RegisterId nrOutputRegister = 1,
+                         std::unordered_set<RegisterId> regToClear = {},
+                         std::unordered_set<RegisterId> regToKeep = {})
       -> EnumerateCollectionExecutorInfos {
     EnumerateCollectionExecutorInfos infos{
         outputRegister, nrInputRegister, nrOutputRegister,
@@ -369,7 +382,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
                               {R"(null)"},
                               {R"(null)"}})*/
       .expectedState(ExecutionState::DONE)
-      .addConsumer<EnumerateCollectionExecutor>(makeInfos())
+      .addConsumer<EnumerateCollectionExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .run();
 }
 
@@ -390,7 +403,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
       .expectSkipped(0)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::HASMORE)
-      .addConsumer<EnumerateCollectionExecutor>(makeInfos())
+      .addConsumer<EnumerateCollectionExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .run();
 }
 
@@ -410,7 +423,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default
       .expectSkipped(5)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::DONE)
-      .addConsumer<EnumerateCollectionExecutor>(makeInfos())
+      .addConsumer<EnumerateCollectionExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .run();
 }
 

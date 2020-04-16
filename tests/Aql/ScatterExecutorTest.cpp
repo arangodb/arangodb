@@ -32,8 +32,8 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ScatterExecutor.h"
 
 using namespace arangodb;
@@ -95,7 +95,13 @@ class SharedScatterExecutionBlockTest {
     return res;
   }
 
-  auto generateInfos() const -> ScatterExecutorInfos {
+  auto generateRegisterInfos() const -> RegisterInfos {
+    auto inputRegs = make_shared_unordered_set({0});
+    auto outputRegs = make_shared_unordered_set({});
+    return RegisterInfos{inputRegs, outputRegs, 1, 1, {}, {0}};
+  }
+
+  auto generateExecutorInfos() const -> ScatterExecutorInfos {
     auto inputRegs = make_shared_unordered_set({0});
     auto outputRegs = make_shared_unordered_set({});
     return {inputRegs, outputRegs, 1, 1, {}, {0}, clientIds};
@@ -169,7 +175,9 @@ TEST_P(RandomOrderTest, all_clients_should_get_the_block) {
   auto producer = createProducer(inputBlock);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   for (auto const& client : getCallOrder()) {
@@ -188,7 +196,9 @@ TEST_P(RandomOrderTest, all_clients_can_skip_the_block) {
   auto producer = createProducer(inputBlock);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   for (auto const& client : getCallOrder()) {
@@ -209,7 +219,9 @@ TEST_P(RandomOrderTest, all_clients_can_fullcount_the_block) {
   auto producer = createProducer(inputBlock);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   for (auto const& client : getCallOrder()) {
@@ -231,7 +243,9 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
   auto producer = createProducer(inputBlock);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   for (auto const& client : getCallOrder()) {
@@ -291,7 +305,9 @@ TEST_P(RandomOrderTest, get_does_not_jump_over_shadowrows) {
   auto producer = createProducer(inputBlock, subqueryDepth);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. reach first shadowrow, but do not jump over it, we do not know
@@ -331,7 +347,9 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_produce) {
   auto producer = createProducer(inputBlock, subqueryDepth);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. reach first shadowrow, but do not jump over it, we do not know
@@ -370,7 +388,9 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_skip) {
   auto producer = createProducer(inputBlock, subqueryDepth);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. reach first shadowrow, but do not jump over it, we do not know
@@ -408,7 +428,9 @@ TEST_P(RandomOrderTest, handling_of_consecutive_shadow_rows) {
   auto producer = createProducer(inputBlock, subqueryDepth);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. actually there are only shadowRows following, we would be able
@@ -447,7 +469,9 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
   auto producer = createProducer(inputBlock, subqueryDepth);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. desired to be stopped at shadowRow
@@ -582,7 +606,9 @@ TEST_F(ScatterExecutionBlockTest, any_ordering_of_calls_is_fine) {
   do {
     auto producer = createProducer(blockDeque);
     ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                               generateScatterNode(), generateInfos()};
+                                               generateScatterNode(),
+                                               generateRegisterInfos(),
+                                               generateExecutorInfos()};
     testee.addDependency(&producer);
     for (auto& [c, pair] : expected) {
       // Reset seen position

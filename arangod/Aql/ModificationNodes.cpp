@@ -140,7 +140,11 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
-  ModificationExecutorInfos infos(
+  auto registerInfos =
+      createRegisterInfos(make_shared_unordered_set({inDocRegister}),
+                          make_shared_unordered_set({outputNew, outputOld}));
+
+  auto executorInfos = ModificationExecutorInfos(
       inDocRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
@@ -153,9 +157,13 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
 
   if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsRemoveExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<AllRowsRemoveExecutionBlock>(&engine, this,
+                                                         std::move(registerInfos),
+                                                         std::move(executorInfos));
   } else {
-    return std::make_unique<SingleRowRemoveExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<SingleRowRemoveExecutionBlock>(&engine, this,
+                                                           std::move(registerInfos),
+                                                           std::move(executorInfos));
   }
 }
 
@@ -220,6 +228,10 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
+  auto registerInfos =
+      createRegisterInfos(make_shared_unordered_set({inputRegister}),
+                          make_shared_unordered_set({outputNew, outputOld}));
+
   ModificationExecutorInfos infos(
       inputRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
@@ -233,9 +245,13 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
 
   if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsInsertExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<AllRowsInsertExecutionBlock>(&engine, this,
+                                                         std::move(registerInfos),
+                                                         std::move(infos));
   } else {
-    return std::make_unique<SingleRowInsertExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<SingleRowInsertExecutionBlock>(&engine, this,
+                                                           std::move(registerInfos),
+                                                           std::move(infos));
   }
 }
 
@@ -317,10 +333,14 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
+  auto registerInfos =
+      createRegisterInfos(make_shared_unordered_set({inDocRegister, inKeyRegister}),
+                          make_shared_unordered_set({outputNew, outputOld}));
+
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
-  ModificationExecutorInfos infos(
+  auto executorInfos = ModificationExecutorInfos(
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
       outputOld, RegisterPlan::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
@@ -333,10 +353,11 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
     return std::make_unique<AllRowsUpdateReplaceExecutionBlock>(&engine, this,
-                                                                std::move(infos));
+                                                                std::move(registerInfos),
+                                                                std::move(executorInfos));
   } else {
-    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(&engine, this,
-                                                                  std::move(infos));
+    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
 
@@ -393,10 +414,14 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
 
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
+  auto registerInfos =
+      createRegisterInfos(make_shared_unordered_set({inDocRegister, inKeyRegister}),
+                          make_shared_unordered_set({outputNew, outputOld}));
+
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
-  ModificationExecutorInfos infos(
+  auto executorInfos = ModificationExecutorInfos(
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
       outputOld, RegisterPlan::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
@@ -408,10 +433,11 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       IsReplace(true), IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
     return std::make_unique<AllRowsUpdateReplaceExecutionBlock>(&engine, this,
-                                                                std::move(infos));
+                                                                std::move(registerInfos),
+                                                                std::move(executorInfos));
   } else {
-    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(&engine, this,
-                                                                  std::move(infos));
+    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
 
@@ -495,10 +521,14 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
+  auto registerInfos =
+      createRegisterInfos(make_shared_unordered_set({inDoc, insert, update}),
+                          make_shared_unordered_set({outputNew, outputOld}));
+
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
-  ModificationExecutorInfos infos(
+  auto executorInfos = ModificationExecutorInfos(
       inDoc, insert, update, outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
@@ -509,9 +539,13 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
       IsReplace(_isReplace) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsUpsertExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<AllRowsUpsertExecutionBlock>(&engine, this,
+                                                         std::move(registerInfos),
+                                                         std::move(executorInfos));
   } else {
-    return std::make_unique<SingleRowUpsertExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<SingleRowUpsertExecutionBlock>(&engine, this,
+                                                           std::move(registerInfos),
+                                                           std::move(executorInfos));
   }
 }
 
