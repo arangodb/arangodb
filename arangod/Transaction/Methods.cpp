@@ -2061,7 +2061,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(std::strin
   auto trxColl = trxCollection(name, AccessMode::Type::READ);
   if (trxColl == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "could not find collection");
+                                   std::string("could not find collection '") + name + "'");
   }
 
   TRI_ASSERT(trxColl != nullptr);

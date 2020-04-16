@@ -71,7 +71,7 @@ GraphStore<V, E>::~GraphStore() {
 }
 
 static const char* shardError =
-    "Collections need to have the same number of shards"
+    "Collections need to have the same number of shards,"
     " use distributeShardsLike";
 
 template <typename V, typename E>

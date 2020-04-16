@@ -26,6 +26,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
+#include "VocBase/AccessMode.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -50,7 +51,8 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
   
   /// @brief index used for iteration
   transaction::Methods::IndexHandle indexId;
-  
+ 
+  _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
   auto doc = _trx->documentCollection(_collectionName);
   
   for (std::shared_ptr<arangodb::Index> const& idx : doc->getIndexes()) {
