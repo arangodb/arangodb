@@ -1001,11 +1001,7 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id)
-    : _id(id), 
-      _depth(0), 
-      _varUsageValid(false), 
-      _isInSplicedSubquery(false),
-      _plan(plan) {}
+    : _id(id), _depth(0), _varUsageValid(false), _isInSplicedSubquery(false), _plan(plan) {}
 
 ExecutionNodeId ExecutionNode::id() const { return _id; }
 
@@ -1286,12 +1282,12 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  if (!engine.waitForSatellites(this->_collection)) {
+  if (!engine.waitForSatellites(collection())) {
     double maxWait = engine.getQuery()->queryOptions().satelliteSyncWait;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + this->_collection->name() +
-                                   " did not come into sync in time (" +
-                                   std::to_string(maxWait) + ")");
+                                   "collection " + collection()->name() +
+                                       " did not come into sync in time (" +
+                                       std::to_string(maxWait) + ")");
   }
   auto const produceResult = this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
   EnumerateCollectionExecutorInfos infos(
@@ -1299,8 +1295,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
       &engine, collection(), _outVariable, produceResult, this->_filter.get(),
-      this->projections(), this->coveringIndexAttributePositions(),
-      this->_random);
+      this->projections(), this->coveringIndexAttributePositions(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));
 }
@@ -2035,7 +2030,8 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  return cloneHelper(std::make_unique<FilterNode>(plan, _id, inVariable), withDependencies, withProperties);
+  return cloneHelper(std::make_unique<FilterNode>(plan, _id, inVariable),
+                     withDependencies, withProperties);
 }
 
 /// @brief estimateCost
