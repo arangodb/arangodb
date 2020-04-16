@@ -484,26 +484,22 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     TRI_ASSERT(false);
     return ExecutionState::DONE;
   } catch (arangodb::basics::Exception const& ex) {
-//    setExecutionTime();
     cleanupPlanAndEngineSync(ex.code());
     queryResult.reset(Result(ex.code(), "AQL: " + ex.message() +
                                             QueryExecutionState::toStringWithPrefix(_execState)));
     return ExecutionState::DONE;
   } catch (std::bad_alloc const&) {
-//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
     queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY,
                              TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
                                  QueryExecutionState::toStringWithPrefix(_execState)));
     return ExecutionState::DONE;
   } catch (std::exception const& ex) {
-//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
     return ExecutionState::DONE;
   } catch (...) {
-//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              TRI_errno_string(TRI_ERROR_INTERNAL) +
@@ -709,23 +705,19 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       state = finalize(queryResult);
     }
   } catch (arangodb::basics::Exception const& ex) {
-//    setExecutionTime();
     cleanupPlanAndEngineSync(ex.code());
     queryResult.reset(Result(ex.code(), "AQL: " + ex.message() +
                                             QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (std::bad_alloc const&) {
-//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
     queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY,
                              TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
                                  QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (std::exception const& ex) {
-//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (...) {
-//    setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              TRI_errno_string(TRI_ERROR_INTERNAL) +
@@ -1142,7 +1134,7 @@ uint64_t Query::calculateHash() const {
 
 /// @brief whether or not the query cache can be used for the query
 bool Query::canUseQueryCache() const {
-  if (_queryString.size() < 8 /*|| isModificationQuery()*/  || _queryOptions.silent) {
+  if (_queryString.size() < 8 || _queryOptions.silent) {
     return false;
   }
 
@@ -1200,7 +1192,6 @@ void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) 
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
-  
   auto* engine = rootEngine();
   if (engine) {
     try {
@@ -1436,9 +1427,6 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
     if (errorCode == TRI_ERROR_NO_ERROR) {
       // no error. we need to commit the transaction
       finishResult = _trx->commit();
-      if (finishResult.fail()) {
-        return finishResult;
-      }
     } else {
       // got an error. we need to abort the transaction
       finishResult = _trx->abort();
