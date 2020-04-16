@@ -305,7 +305,7 @@ CostEstimate ScatterNode::estimateCost() const {
   return estimate;
 }
 
-auto ScatterNode::getOutputVariables() const -> std::unordered_set<VariableId> {
+auto ScatterNode::getOutputVariables() const -> VariableIdSet {
   return {};
 }
 
@@ -645,7 +645,7 @@ GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
   return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap : SortMode::MinElement;
 }
 
-auto GatherNode::getOutputVariables() const -> std::unordered_set<VariableId> { return {}; }
+auto GatherNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 void GatherNode::getVariablesUsedHere(containers::HashSet<const Variable*>& vars) const {
   for (auto const& p : _elements) {
@@ -792,8 +792,8 @@ CostEstimate SingleRemoteOperationNode::estimateCost() const {
   return estimate;
 }
 
-std::unordered_set<VariableId> SingleRemoteOperationNode::getOutputVariables() const {
-  std::unordered_set<VariableId> vars;
+VariableIdSet SingleRemoteOperationNode::getOutputVariables() const {
+  VariableIdSet vars;
   for (auto const& it : getVariablesSetHere()) {
     vars.insert(it->id);
   }

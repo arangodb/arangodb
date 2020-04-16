@@ -168,6 +168,6 @@ bool SubqueryEndNode::isModificationNode() const {
   return _isModificationSubquery;
 }
 
-std::unordered_set<VariableId> SubqueryEndNode::getOutputVariables() const {
+VariableIdSet SubqueryEndNode::getOutputVariables() const {
     return {_outVariable->id};
 }

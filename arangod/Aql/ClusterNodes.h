@@ -198,7 +198,7 @@ class ScatterNode : public ExecutionNode {
 
   void setScatterType(ScatterType targetType) { _type = targetType; }
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  protected:
   void writeClientsToVelocyPack(velocypack::Builder& builder) const;
   bool readClientsFromVelocyPack(velocypack::Slice base);
@@ -373,7 +373,7 @@ class GatherNode final : public ExecutionNode {
   /// no modification nodes, ScatterNodes etc
   bool isParallelizable() const;
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -451,7 +451,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
   std::string const& key() const { return _key; }
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   // whether we replaced an index node

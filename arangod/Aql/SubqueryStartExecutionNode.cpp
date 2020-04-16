@@ -100,7 +100,7 @@ bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
   }
 }
 
-auto SubqueryStartNode::getOutputVariables() const -> std::unordered_set<VariableId> { return {}; }
+auto SubqueryStartNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 }  // namespace aql
 }  // namespace arangodb

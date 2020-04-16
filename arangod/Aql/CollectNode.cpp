@@ -816,8 +816,8 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
   return v;
 }
 
-std::unordered_set<VariableId> CollectNode::getOutputVariables() const {
-  std::unordered_set<VariableId> vars;
+VariableIdSet CollectNode::getOutputVariables() const {
+  VariableIdSet vars;
 
   for (auto const& p : groupVariables()) {
     // p is std::pair<Variable const*,Variable const*>

@@ -1262,7 +1262,7 @@ SingletonNode::SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
-std::unordered_set<VariableId> SingletonNode::getOutputVariables() const {
+VariableIdSet SingletonNode::getOutputVariables() const {
   return {};
 }
 
@@ -1338,7 +1338,7 @@ std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() cons
   return std::vector<Variable const*>{_outVariable};
 }
 
-std::unordered_set<VariableId> EnumerateCollectionNode::getOutputVariables() const {
+VariableIdSet EnumerateCollectionNode::getOutputVariables() const {
   return {_outVariable->id};
 }
 
@@ -1487,7 +1487,7 @@ Variable const* EnumerateListNode::inVariable() const { return _inVariable; }
 
 Variable const* EnumerateListNode::outVariable() const { return _outVariable; }
 
-std::unordered_set<VariableId> EnumerateListNode::getOutputVariables() const {
+VariableIdSet EnumerateListNode::getOutputVariables() const {
   return {_outVariable->id};
 }
 
@@ -1561,7 +1561,7 @@ size_t LimitNode::offset() const { return _offset; }
 
 size_t LimitNode::limit() const { return _limit; }
 
-auto LimitNode::getOutputVariables() const -> std::unordered_set<VariableId> {
+auto LimitNode::getOutputVariables() const -> VariableIdSet {
   return {};
 }
 
@@ -1729,7 +1729,7 @@ bool CalculationNode::isDeterministic() {
   return _expression->isDeterministic();
 }
 
-std::unordered_set<VariableId> CalculationNode::getOutputVariables() const {
+VariableIdSet CalculationNode::getOutputVariables() const {
   return {_outVariable->id};
 }
 
@@ -2017,7 +2017,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
 }
 
-std::unordered_set<VariableId> SubqueryNode::getOutputVariables() const {
+VariableIdSet SubqueryNode::getOutputVariables() const {
   return {_outVariable->id};
 }
 
@@ -2096,7 +2096,7 @@ void FilterNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Vari
 
 Variable const* FilterNode::inVariable() const { return _inVariable; }
 
-auto FilterNode::getOutputVariables() const -> std::unordered_set<VariableId> { return {}; }
+auto FilterNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -2200,7 +2200,7 @@ Variable const* ReturnNode::inVariable() const { return _inVariable; }
 
 void ReturnNode::inVariable(Variable const* v) { _inVariable = v; }
 
-auto ReturnNode::getOutputVariables() const -> std::unordered_set<VariableId> { return {}; }
+auto ReturnNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 /// @brief toVelocyPack, for NoResultsNode
 void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -2247,7 +2247,7 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
                      withDependencies, withProperties);
 }
 
-auto NoResultsNode::getOutputVariables() const -> std::unordered_set<VariableId> { return {}; }
+auto NoResultsNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 SortElement::SortElement(Variable const* v, bool asc)
     : var(v), ascending(asc) {}
@@ -2533,6 +2533,6 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan, bool withDepend
 }
 
 auto materialize::MaterializeNode::getOutputVariables() const
-    -> std::unordered_set<VariableId> {
+    -> VariableIdSet {
   return {_outVariable->id};
 }

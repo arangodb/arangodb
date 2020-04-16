@@ -44,6 +44,7 @@ class ExecutionBlock;
 class ExecutionEngine;
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
+struct VariableIdSet;
 struct VarInfo;
 }  // namespace aql
 
@@ -180,7 +181,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
-  std::unordered_set<aql::VariableId> getOutputVariables() const final;
+  [[nodiscard]] auto getOutputVariables() const -> aql::VariableIdSet final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(

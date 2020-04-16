@@ -73,7 +73,7 @@ class SubqueryEndNode : public ExecutionNode {
   void replaceOutVariable(Variable const* var);
   bool isModificationNode() const override;
 
-  std::unordered_set<VariableId> getOutputVariables() const final;
+  VariableIdSet getOutputVariables() const final;
 
  private:
   Variable const* _inVariable;

@@ -119,6 +119,17 @@ struct SortElement {
 
 typedef std::vector<SortElement> SortElementVector;
 
+struct VariableIdSet {
+
+  VariableIdSet() = default;
+  VariableIdSet(std::initializer_list<VariableId> list) : _set(list) {}
+  void insert(VariableId id) {
+    _set.push_back(id);
+  }
+
+  std::vector<VariableId> _set;
+};
+
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {
   /// @brief node type
@@ -440,7 +451,7 @@ class ExecutionNode {
   void setIsInSplicedSubquery(bool) noexcept;
 
   [[nodiscard]] bool isIncreaseDepth() const;
-  [[nodiscard]] virtual std::unordered_set<VariableId> getOutputVariables() const = 0;
+  [[nodiscard]] virtual VariableIdSet getOutputVariables() const = 0;
   //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;
 
  protected:
@@ -556,7 +567,7 @@ class SingletonNode : public ExecutionNode {
   /// @brief the cost of a singleton is 1
   CostEstimate estimateCost() const override final;
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
+  [[nodiscard]] VariableIdSet getOutputVariables() const final;
 };
 
 /// @brief class EnumerateCollectionNode
@@ -606,7 +617,7 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
+  [[nodiscard]] VariableIdSet getOutputVariables() const final;
 
  private:
   /// @brief whether or not we want random iteration
@@ -659,7 +670,7 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief return out variable
   Variable const* outVariable() const;
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
+  [[nodiscard]] VariableIdSet getOutputVariables() const final;
 
  private:
   /// @brief input variable to read from
@@ -708,7 +719,7 @@ class LimitNode : public ExecutionNode {
   /// @brief return the limit value
   size_t limit() const;
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief the offset
@@ -768,7 +779,7 @@ class CalculationNode : public ExecutionNode {
 
   bool isDeterministic() override final;
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief output variable to write to
@@ -837,7 +848,7 @@ class SubqueryNode : public ExecutionNode {
   bool isConst();
   bool mayAccessCollections();
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief we need to have an expression and where to write the result
@@ -882,7 +893,7 @@ class FilterNode : public ExecutionNode {
 
   Variable const* inVariable() const;
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief input variable to read from
@@ -949,7 +960,7 @@ class ReturnNode : public ExecutionNode {
   void inVariable(Variable const* v);
 
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief the variable produced by Return
@@ -987,7 +998,7 @@ class NoResultsNode : public ExecutionNode {
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
 namespace materialize {
@@ -1028,7 +1039,7 @@ class MaterializeNode : public ExecutionNode {
     return *_outVariable;
   }
 
-  [[nodiscard]] auto getOutputVariables() const -> std::unordered_set<VariableId> final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  protected:
   /// @brief input variable non-materialized document ids

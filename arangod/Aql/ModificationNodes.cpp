@@ -103,8 +103,8 @@ void ModificationNode::cloneCommon(ModificationNode* c) const {
   CollectionAccessingNode::cloneInto(*c);
 }
 
-std::unordered_set<VariableId> ModificationNode::getOutputVariables() const {
-  std::unordered_set<VariableId> vars;
+VariableIdSet ModificationNode::getOutputVariables() const {
+  VariableIdSet vars;
   if (_outVariableOld != nullptr) {
     vars.insert(getOutVariableOld()->id);
   }

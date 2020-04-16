@@ -642,10 +642,6 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
     TRI_ASSERT(!slice.isNone());
     AqlValue v(slice);
     AqlValueGuard guard{v, true};
-    LOG_DEVEL << "writeStoredValue regId = " << registerId;
-    VPackBuilder builder;
-    ctx.outputRow._block->rowToSimpleVPack(0, nullptr, builder);
-    LOG_DEVEL << builder.toJson();
     ctx.outputRow.moveValueInto(registerId, ctx.inputRow, guard);
   }
   return true;
@@ -685,6 +681,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   } else if constexpr (Traits::MaterializeType == MaterializeType::NotMaterialize && !Traits::Ordered) {
     AqlValue v(VPackSlice::noneSlice());
     AqlValueGuard guard{v, true};
+
     ctx.outputRow.moveValueInto(infos().getOutputRegister(), ctx.inputRow, guard);
   }
   // in the ordered case we have to write scores as well as a document
@@ -694,6 +691,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
       TRI_ASSERT(infos().isScoreReg(scoreReg));
       AqlValueGuard guard{it, false};
+
       ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
       ++scoreReg;
     }

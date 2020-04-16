@@ -1552,18 +1552,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   ViewValuesRegisters outNonMaterializedViewRegs;
-  for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
-    LOG_DEVEL << "columnFieldsVars.first = " << columnFieldsVars.first;
-    for (auto const& fieldsVars : columnFieldsVars.second) {
-      LOG_DEVEL << "fieldNum = " << fieldsVars.fieldNum
-                << " name = " << fieldsVars.var->name
-                << " id = " << fieldsVars.var->id;
 
+  for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
+    for (auto const& fieldsVars : columnFieldsVars.second) {
       auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
       auto const it = varInfos.find(fieldsVars.var->id);
       TRI_ASSERT(it != varInfos.cend());
 
-      LOG_DEVEL << "register-id = " << it->second.registerId;
       fields.emplace(fieldsVars.fieldNum, it->second.registerId);
     }
   }
@@ -1606,8 +1601,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 }
 
-std::unordered_set<aql::VariableId> IResearchViewNode::getOutputVariables() const {
-  std::unordered_set<aql::VariableId> vars;
+aql::VariableIdSet IResearchViewNode::getOutputVariables() const {
+  aql::VariableIdSet vars;
   // plan registers for output scores
 
   for (auto const& scorer : _scorers) {
@@ -1621,7 +1616,6 @@ std::unordered_set<aql::VariableId> IResearchViewNode::getOutputVariables() cons
     } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
       // there is no variable if noMaterialization()
       vars.insert(aql::RegisterPlan::MaxRegisterId);
-      LOG_DEVEL << "no var for noMater.";
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldVar : columnFieldsVars.second) {

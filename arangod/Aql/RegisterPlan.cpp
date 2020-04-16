@@ -55,7 +55,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     plan->increaseDepth();
   }
 
-  for (VariableId const& v : en->getOutputVariables()) {
+  for (VariableId const& v : en->getOutputVariables()._set) {
     if (v != RegisterPlanT<T>::MaxRegisterId) {
       plan->registerVariable(v);
     }  else {

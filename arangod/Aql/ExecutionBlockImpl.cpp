@@ -538,7 +538,6 @@ void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call,
     if (_outputItemRow->_block != nullptr) {
       VPackBuilder builder;
       _outputItemRow->_block->rowToSimpleVPack(0, nullptr, builder);
-      LOG_DEVEL << "ensureOutputBlock " << builder.toJson();
     }
   } else {
     _outputItemRow->setCall(std::move(call));

@@ -654,8 +654,8 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId 
   }
 }
 
-std::unordered_set<VariableId> IndexNode::getOutputVariables() const {
-  std::unordered_set<VariableId> vars;
+VariableIdSet IndexNode::getOutputVariables() const {
+  VariableIdSet vars;
   if (isLateMaterialized()) {
     TRI_ASSERT(_outNonMaterializedDocId != nullptr);
     vars.insert(_outNonMaterializedDocId->id);

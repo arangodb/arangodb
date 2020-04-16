@@ -170,7 +170,7 @@ class GraphNode : public ExecutionNode {
     _collectionToShard.emplace(coll, shard);
   }
 
-  [[nodiscard]] std::unordered_set<VariableId> getOutputVariables() const final;
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  public:
   graph::Graph const* graph() const noexcept;

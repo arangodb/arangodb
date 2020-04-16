@@ -724,7 +724,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
   plan.findVarUsage();
   if (planRegisters) {
     plan.planRegisters();
-    plan.show();
   }
 
   std::unique_ptr<ExecutionEngine> engine;
