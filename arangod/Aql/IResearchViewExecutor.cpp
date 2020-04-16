@@ -642,6 +642,10 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
     TRI_ASSERT(!slice.isNone());
     AqlValue v(slice);
     AqlValueGuard guard{v, true};
+    LOG_DEVEL << "writeStoredValue regId = " << registerId;
+    VPackBuilder builder;
+    ctx.outputRow._block->rowToSimpleVPack(0, nullptr, builder);
+    LOG_DEVEL << builder.toJson();
     ctx.outputRow.moveValueInto(registerId, ctx.inputRow, guard);
   }
   return true;

@@ -535,6 +535,11 @@ void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call,
                                                      DataRange const& inputRange) {
   if (_outputItemRow == nullptr || !_outputItemRow->isInitialized()) {
     _outputItemRow = allocateOutputBlock(std::move(call), inputRange);
+    if (_outputItemRow->_block != nullptr) {
+      VPackBuilder builder;
+      _outputItemRow->_block->rowToSimpleVPack(0, nullptr, builder);
+      LOG_DEVEL << "ensureOutputBlock " << builder.toJson();
+    }
   } else {
     _outputItemRow->setCall(std::move(call));
   }
@@ -1753,8 +1758,7 @@ auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const noexcept -> bool 
 
 template <>
 template <>
-RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const
-    noexcept {
+RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const noexcept {
   return _infos.getOutputRegister();
 }
 
@@ -1776,8 +1780,8 @@ void ExecutionBlockImpl<Executor>::initOnce() {
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const
-    noexcept -> bool {
+auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const noexcept
+    -> bool {
   if constexpr (isMultiDepExecutor<Executor>) {
     // call is an AqlCallSet. We need to call upstream if it's not empty.
     return !call.empty();

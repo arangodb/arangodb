@@ -52,10 +52,9 @@ struct VarInfo {
   unsigned int depth;
   RegisterId registerId;
 
-  VarInfo() = delete;
+  VarInfo() = default;
   VarInfo(unsigned int depth, RegisterId registerId);
 };
-
 
 template <typename T>
 struct RegisterPlanT;
@@ -76,7 +75,6 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
 
 template <typename T>
 struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T>> {
-
   friend struct RegisterPlanWalkerT<T>;
   // The following are collected for global usage in the ExecutionBlock,
   // although they are stored here in the node:
@@ -118,6 +116,26 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   unsigned int depth;
   unsigned int totalNrRegs;
 };
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r) {
+  // level -> variable, info
+  std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
+
+  for (auto [id, info] : r.varInfo) {
+    frames[info.depth][id] = info;
+  }
+
+  for (auto [depth, vars] : frames) {
+    os << "depth " << depth << std::endl;
+    os << "------------------------------------" << std::endl;
+
+    for (auto [id, info] : vars) {
+      os << "id = " << id << " register = " << info.registerId << std::endl;
+    }
+  }
+  return os;
+}
 
 }  // namespace arangodb::aql
 
