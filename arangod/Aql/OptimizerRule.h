@@ -303,6 +303,9 @@ struct OptimizerRule {
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
+    // reduce a sorted gather to an unsorted gather if only a single shard is affected
+    decayUnnecessarySortedGatherRule,
+
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
     // needs to take into account query distribution across cluster nodes

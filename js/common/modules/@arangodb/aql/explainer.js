@@ -1421,7 +1421,7 @@ function processQuery(query, explain, planIndex) {
               v.push(collection(vcn));
               vNames.push(vcn);
             });
-          } else {            
+          } else {
             node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
               v.push(collection(vcn));
               vNames.push(vcn);
@@ -1812,6 +1812,9 @@ function processQuery(query, explain, planIndex) {
         }
         if (node.sortmode !== 'unset') {
           gatherAnnotations.push('sort mode: ' + node.sortmode);
+        }
+        if (node.elements.length === 0) {
+          gatherAnnotations.push('unsorted');
         }
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
           if (node.path && node.path.length) {

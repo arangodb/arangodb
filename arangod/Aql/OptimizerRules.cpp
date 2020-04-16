@@ -4542,16 +4542,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
             plan->insertDependency(rn, inspectNode);
           }
 
-          auto const* collection = GatherNode::findCollection(*gatherNode);
-
-          // For views (when 'collection == nullptr') we don't need
-          // to check number of shards
-          // On SmartEdge collections we have 0 shards and we need the elements
-          // to be injected here as well. So do not replace it with > 1
-          if (!collection || collection->numberOfShards() != 1) {
-            gatherNode->elements(thisSortNode->elements());
-          }
-
+          gatherNode->elements(thisSortNode->elements());
           modified = true;
           // ready to rumble!
           break;
@@ -7621,5 +7612,34 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     TRI_ASSERT(sq->getParents().empty());
   }
 
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+void arangodb::aql::decayUnnecessarySortedGather(Optimizer* opt,
+                                                 std::unique_ptr<ExecutionPlan> plan,
+                                                 OptimizerRule const& rule) {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::GATHER, true);
+
+  bool modified = false;
+
+  for (auto& n : nodes) {
+    auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
+    if (gatherNode->elements().empty()) {
+      continue;
+    }
+
+    auto const* collection = GatherNode::findCollection(*gatherNode);
+
+    // For views (when 'collection == nullptr') we don't need
+    // to check number of shards
+    // On SmartEdge collections we have 0 shards and we need the elements
+    // to be injected here as well. So do not replace it with > 1
+    if (collection && collection->numberOfShards() == 1) {
+      modified = true;
+      gatherNode->elements().clear();
+    }
+  }
   opt->addPlan(std::move(plan), rule, modified);
 }

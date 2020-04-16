@@ -272,6 +272,9 @@ void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
+//// @brief reduces a sorted gather to an unsorted gather if only one shard is involved
+void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
 void createScatterGatherSnippet(ExecutionPlan& plan, TRI_vocbase_t* vocbase,
                                 ExecutionNode* node, bool isRootNode,
                                 std::vector<ExecutionNode*> const& nodeDependencies,
