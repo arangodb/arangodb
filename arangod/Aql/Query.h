@@ -329,7 +329,7 @@ class ClusterQuery final : public Query {
                            arangodb::velocypack::Slice traversals,
                            arangodb::velocypack::Builder& answer);
   
-  Result finalizeClusterQuery(ExecutionStats& stats);
+  Result finalizeClusterQuery(ExecutionStats& stats, int errorCode);
 
  private:
   /// @brief first one should be the local one

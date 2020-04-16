@@ -889,8 +889,7 @@ void RestAqlHandler::handleFinishQuery(std::string const& idString) {
     return;
   }
   
-  int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code,
-  TRI_ERROR_INTERNAL);
+  int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
   
   auto query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode, false);
   if (!query) {
@@ -899,7 +898,7 @@ void RestAqlHandler::handleFinishQuery(std::string const& idString) {
   }
     
   ExecutionStats stats;
-  auto res = query->finalizeClusterQuery(stats);
+  auto res = query->finalizeClusterQuery(stats, errorCode);
   
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
