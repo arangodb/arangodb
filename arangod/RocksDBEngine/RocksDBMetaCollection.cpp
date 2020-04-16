@@ -460,11 +460,11 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
     return true;
   }
 
-  if (_revisionTreeSerializedSeq.load() < _revisionTreeApplied.load()) {
+  if (_revisionTreeSerializedSeq < _revisionTreeApplied.load()) {
     return true;
   }
 
-  if (_revisionTreeSerializedSeq.load() == 0) {
+  if (_revisionTreeSerializedSeq == 0) {
     return true;
   }
 
@@ -488,16 +488,16 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
     seq = _revisionRemovalBuffers.begin()->first - 1;
   }
 
-  if (_revisionTreeApplied.load() > _revisionTreeSerializedSeq.load() &&
-      _revisionTreeApplied.load() - 1 < seq) {
-    seq = _revisionTreeApplied.load() - 1;
+  rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
+  if (applied > _revisionTreeSerializedSeq && applied - 1 < seq) {
+    seq = applied - 1;
   }
 
-  if (seq > _revisionTreeSerializedSeq.load()) {
-    _revisionTreeSerializedSeq.store(seq);
+  if (seq > _revisionTreeSerializedSeq) {
+    _revisionTreeSerializedSeq = seq;
   }
 
-  return _revisionTreeSerializedSeq.load();
+  return _revisionTreeSerializedSeq;
 }
 
 rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
@@ -505,17 +505,17 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (_logicalCollection.syncByRevision()) {
     applyUpdates(commitSeq);  // always apply updates...
-    bool neverDone = _revisionTreeSerializedSeq.load() == 0;
+    bool neverDone = _revisionTreeSerializedSeq == 0;
     bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
     bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
                                 std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
                                 .count();
     if (neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
       _revisionTree->serializeBinary(output, true);
-      _revisionTreeSerializedSeq.store(commitSeq);
+      _revisionTreeSerializedSeq = commitSeq;
       _revisionTreeSerializedTime = std::chrono::steady_clock::now();
     }
-    return _revisionTreeSerializedSeq.load();
+    return _revisionTreeSerializedSeq;
   }
   // mark as don't persist again, tree should be deleted now
   _revisionTreeApplied.store(std::numeric_limits<rocksdb::SequenceNumber>::max());
@@ -779,8 +779,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
       }
     }
   });
-  if (commitSeq > _revisionTreeApplied.load()) {
-    _revisionTreeApplied.store(commitSeq);
+  rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
+  while (commitSeq > applied) {
+    _revisionTreeApplied.compare_exchange_strong(applied, commitSeq);
   }
 }
 
