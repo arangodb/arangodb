@@ -59,8 +59,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions,
-    bool random)
+    std::vector<size_t> const& coveringIndexAttributePositions, bool random)
     : ExecutorInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
@@ -286,9 +285,3 @@ void EnumerateCollectionExecutor::initializeCursor() {
   _cursorHasMore = false;
   _cursor->reset();
 }
-#ifndef USE_ENTERPRISE
-bool EnumerateCollectionExecutor::waitForSatellites(ExecutionEngine* engine,
-                                                    Collection const* collection) const {
-  return true;
-}
-#endif
