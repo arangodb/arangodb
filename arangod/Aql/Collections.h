@@ -24,10 +24,12 @@
 #ifndef ARANGOD_AQL_COLLECTIONS_H
 #define ARANGOD_AQL_COLLECTIONS_H 1
 
+#include "Aql/types.h"
 #include "VocBase/AccessMode.h"
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 struct TRI_vocbase_t;
@@ -45,22 +47,22 @@ class Collections {
   ~Collections();
 
  public:
-  Collection* get(std::string const& name) const;
+  Collection* get(std::string_view name) const;
 
   Collection* add(std::string const& name, AccessMode::Type accessType);
 
   std::vector<std::string> collectionNames() const;
 
-  std::map<std::string, Collection*>* collections();
+  AqlCollectionMap* collections();
 
-  std::map<std::string, Collection*> const* collections() const;
+  AqlCollectionMap const* collections() const;
 
   bool empty() const;
 
  private:
   TRI_vocbase_t* _vocbase;
 
-  std::map<std::string, Collection*> _collections;
+  AqlCollectionMap _collections;
 
   static size_t const MaxCollections = 2048;
 };

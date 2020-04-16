@@ -433,18 +433,18 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
     options = &NopNode;
   }
 
-  bool overwrite = false;
+  bool returnOld = false;
   if (options->type == NODE_TYPE_OBJECT) {
     auto ops = ExecutionPlan::parseModificationOptions(options);
-    overwrite = ops.overwrite;
+    returnOld = ops.isOverwriteModeUpdateReplace();
   }
 
-  node->reserve(overwrite ? 5 : 4);
+  node->reserve(returnOld ? 5 : 4);
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
   node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
-  if (overwrite) {
+  if (returnOld) {
     node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false));
   }
 

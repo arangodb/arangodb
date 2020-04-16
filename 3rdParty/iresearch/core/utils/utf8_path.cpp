@@ -74,8 +74,8 @@ inline bool append_path(std::string& buf, const wstring_ref& value) {
     value.c_str(),
     value.c_str() + value.size(),
     from_next,
-    &buf[start],
-    &buf[buf.size()],
+    const_cast<char*>(buf.c_str() + start),
+    const_cast<char*>(buf.c_str() + buf.size()),
     to_next
   );
 
@@ -106,8 +106,8 @@ inline bool append_path(std::wstring& buf, const irs::string_ref& value) {
     value.c_str(),
     value.c_str() + value.size(),
     from_next,
-    &buf[start],
-    &buf[buf.size()],
+    const_cast<wchar_t*>(buf.c_str() + start),
+    const_cast<wchar_t*>(buf.c_str() + buf.size()),
     to_next
   );
 

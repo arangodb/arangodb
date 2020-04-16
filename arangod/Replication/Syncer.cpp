@@ -148,9 +148,8 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
       // on with a replace.
       if (keySlice.isString()) {
-        arangodb::LocalDocumentId const oldDocumentId =
-            coll->getPhysical()->lookupKey(&trx, keySlice);
-        if (oldDocumentId.isSet()) {
+        std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
           useReplace = true;
           opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
         }
@@ -808,7 +807,7 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
     std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
     Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
-    if (res.ok() && !iid.isNone()) {
+    if (res.ok() && iid.isSet()) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);
       auto byDef = physical->lookupIndex(idxDef);

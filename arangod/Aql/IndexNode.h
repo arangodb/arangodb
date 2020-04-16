@@ -30,6 +30,7 @@
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Containers/HashSet.h"
@@ -61,7 +62,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   friend class ExecutionBlock;
 
  public:
-  IndexNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
+  IndexNode(ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
             Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
             std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
@@ -136,7 +137,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   };
 
   using IndexValuesVars =
-      std::pair<IndexId, std::vector<std::pair<size_t, Variable const*>>>;
+      std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
 
   using IndexValuesRegisters = std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
 
@@ -146,7 +147,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                            IndexVarsInfo const& indexVariables);
 
  private:
-  void initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,
+  void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                       std::vector<RegisterId>& inRegs,
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                       transaction::Methods* trxPtr) const;

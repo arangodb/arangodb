@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,22 +17,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionKeys.h"
-#include "VocBase/ticks.h"
+#include "DocumentIndexExpressionContext.h"
+#include "Aql/AqlValue.h"
 
-using namespace arangodb;
+using namespace arangodb::aql;
 
-CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, double ttl)
-    : _vocbase(vocbase),
-      _collection(nullptr),
-      _id(0),
-      _ttl(ttl),
-      _expires(0.0),
-      _isDeleted(false),
-      _isUsed(false) {
-  _id = TRI_NewTickServer();
-  _expires = TRI_microtime() + _ttl;
+DocumentIndexExpressionContext::DocumentIndexExpressionContext(
+    Query* query, AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+    void const* ctx)
+  : QueryExpressionContext(query), _getValue(getValue), _ctx(ctx) {}
+
+size_t DocumentIndexExpressionContext::numRegisters() const {
+  // hard-coded
+  return 1;
+}
+
+AqlValue DocumentIndexExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+                                                          bool& mustDestroy) const {
+  mustDestroy = doCopy;  // as we are copying
+  return _getValue(_ctx, variable, doCopy);
 }

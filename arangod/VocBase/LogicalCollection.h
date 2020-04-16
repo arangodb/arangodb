@@ -95,7 +95,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief hard-coded minimum version number for collections
   static constexpr Version minimumVersion() { return Version::v30; }
   /// @brief current version for collections
-  static constexpr Version currentVersion() { return Version::v34; }
+  static constexpr Version currentVersion() { return Version::v37; }
 
   // SECTION: Meta Information
   Version version() const { return _version; }
@@ -146,11 +146,10 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmartChild() const { return false; }
 #endif
   bool usesRevisionsAsDocumentIds() const;
+  void setUsesRevisionsAsDocumentIds(bool);
   TRI_voc_rid_t minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
-  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
-  bool isClusterGlobal() const { return _isAStub; }
 
   bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
 
@@ -245,9 +244,6 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief return the figures for a collection
   virtual futures::Future<OperationResult> figures() const;
 
-  /// @brief opens an existing collection
-  void open(bool ignoreErrors);
-
   /// @brief closes an open collection
   int close();
 
@@ -278,6 +274,9 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief compact-data operation
   Result compact();
+
+  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const;
 
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options);
@@ -328,6 +327,7 @@ class LogicalCollection : public LogicalDataSource {
   std::unique_ptr<FollowerInfo> const& followers() const;
 
   bool syncByRevision() const;
+  void setSyncByRevision(bool);
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
@@ -374,16 +374,16 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isSmartChild;
 #endif
 
-  bool const _usesRevisionsAsDocumentIds;
-
-  TRI_voc_rid_t const _minRevision;
-
   // SECTION: Properties
   bool _waitForSync;
 
   bool const _allowUserKeys;
 
-  bool _syncByRevision;
+  std::atomic<bool> _usesRevisionsAsDocumentIds;
+  
+  std::atomic<bool> _syncByRevision;
+
+  TRI_voc_rid_t const _minRevision;
 
   std::string _smartJoinAttribute;
 

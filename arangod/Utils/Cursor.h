@@ -47,8 +47,6 @@ typedef TRI_voc_tick_t CursorId;
 
 class Cursor {
  public:
-  enum CursorType { CURSOR_VPACK, CURSOR_EXPORT };
-
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
@@ -92,8 +90,6 @@ class Cursor {
     TRI_ASSERT(_isUsed);
     _isUsed = false;
   }
-
-  virtual CursorType type() const = 0;
 
   virtual void kill() {}
 

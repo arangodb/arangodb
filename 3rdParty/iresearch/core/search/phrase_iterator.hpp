@@ -24,8 +24,6 @@
 #define IRESEARCH_PHRASE_ITERATOR_H
 
 #include "disjunction.hpp"
-#include "score_doc_iterators.hpp"
-#include "shared.hpp"
 
 NS_ROOT
 
@@ -144,52 +142,52 @@ class variadic_phrase_frequency {
  private:
   static bool inner_visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
     assert(ctx);
-    auto* ivc = reinterpret_cast<inner_visitor_ctx*>(ctx);
+    auto& ivc = *reinterpret_cast<inner_visitor_ctx*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
-    const auto seeked = p->seek(ivc->term_position);
+    const auto seeked = p->seek(ivc.term_position);
     if (pos_limits::eof(seeked)) {
       return true;
-    } else if (seeked != ivc->term_position) {
-      if (seeked < ivc->min_seeked) {
-        ivc->min_seeked = seeked;
+    } else if (seeked != ivc.term_position) {
+      if (seeked < ivc.min_seeked) {
+        ivc.min_seeked = seeked;
       }
       return true;
     }
-    ivc->match = true;
+    ivc.match = true;
     return false;
   }
 
   static bool visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
     assert(ctx);
-    auto* vc = reinterpret_cast<visitor_ctx*>(ctx);
-    const auto end = vc->pos->end();
+    auto& vc = *reinterpret_cast<visitor_ctx*>(ctx);
+    const auto end = vc.pos->end();
     auto* lead = lead_adapter.position;
     lead->next();
     position::value_t base_position = pos_limits::eof();
     while (!pos_limits::eof(base_position = lead->value())) {
-      vc->in_vis_ctx.match = true;
-      assert(vc->pos);
-      for (auto it = vc->pos->begin() + 1; it != end; ++it) {
-        vc->in_vis_ctx.match = false;
-        vc->in_vis_ctx.term_position = base_position + it->second;
-        if (!pos_limits::valid(vc->in_vis_ctx.term_position)) {
+      vc.in_vis_ctx.match = true;
+      assert(vc.pos);
+      for (auto it = vc.pos->begin() + 1; it != end; ++it) {
+        vc.in_vis_ctx.match = false;
+        vc.in_vis_ctx.term_position = base_position + it->second;
+        if (!pos_limits::valid(vc.in_vis_ctx.term_position)) {
           return false; // invalid for all
         }
-        vc->in_vis_ctx.min_seeked = pos_limits::eof();
-        assert(vc->in_vis);
-        it->first->visit(&vc->in_vis_ctx, vc->in_vis);
-        if (!vc->in_vis_ctx.match) {
-          if (!pos_limits::eof(vc->in_vis_ctx.min_seeked)) {
-            lead->seek(vc->in_vis_ctx.min_seeked - it->second);
+        vc.in_vis_ctx.min_seeked = pos_limits::eof();
+        assert(vc.in_vis);
+        it->first->visit(&vc.in_vis_ctx, vc.in_vis);
+        if (!vc.in_vis_ctx.match) {
+          if (!pos_limits::eof(vc.in_vis_ctx.min_seeked)) {
+            lead->seek(vc.in_vis_ctx.min_seeked - it->second);
             break;
           }
           return true; // eof for all
         }
       }
-      if (vc->in_vis_ctx.match) {
-        ++vc->freq;
-        if (vc->is_order_empty) {
+      if (vc.in_vis_ctx.match) {
+        ++vc.freq;
+        if (vc.is_order_empty) {
           return false;
         }
         lead->next();
@@ -242,7 +240,7 @@ class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
 
   virtual bool next() override {
     bool next = false;
-    while ((next = approx_.next()) && !(phrase_freq_.value = this->phrase_freq())) {}
+    while ((next = approx_.next()) && !doc_limits::valid(phrase_freq_.value = this->phrase_freq())) {}
 
     return next;
   }
@@ -252,7 +250,7 @@ class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
       return target;
     }
 
-    if (doc_limits::eof(value()) || (phrase_freq_.value = this->phrase_freq())) {
+    if (doc_limits::eof(value()) || doc_limits::valid(phrase_freq_.value = this->phrase_freq())) {
       return value();
     }
 

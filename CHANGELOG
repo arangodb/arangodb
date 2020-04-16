@@ -1,13 +1,95 @@
 devel
 -----
 
-* Added JACCARD AQL function
+* Fix creation of example graphs when `--cluster.min-replication-factor` is set
+  and no replication factor was specified for a graph. In this case, the new
+  graph will use the configured minimum replication factor.
 
-* storedValues property is removed from ArangoSearch View link properties output
+* Show some index details in index overview of the web interface, e.g. the 
+  `minLength` attribute for fulltext indexes or the `expireAfter` attribute for
+  TTL indexes.
 
-* Added primarySortCompression property to ArangoSearch Views
+* Added startup option `--server.validate-utf8-strings`.
 
-* Added compression property to ArangoSearch View storedValues
+  This option controls whether strings in incoming JSON or VPack requests are
+  validated for UTF-8 conformity. If set to `true` (which is the default value),
+  all strings are validated, and requests containing invalid UTF-8 data will be
+  rejected. Setting the option to `false` will turn off the UTF-8 string
+  validation for incoming requests. This mode should only be used for
+  deployments that are known to already contain invalid UTF-8 data and to keep
+  them operational until the wrong string encoding is fixed in the data.
+
+* Updated OpenSSL to 1.1.1f.
+
+* Fixed a bug which occurred if a dbserver was shut down exactly
+  when it was supposed to resign from its leadership for a shard.
+
+* Improve continuation behavior of AQL queries. We post the continuation
+  handler on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM
+  prio instead of LOW.
+  
+* When relaying requests to other coordinators in a load-balanced setup, don't
+  forward the "http/1.1" HTTP header from the remote response. Forwarding that
+  header in the same way as any other header is not required, as each response
+  will store and set its status separately anyway. Adding it to the headers
+  again will only cause confusion and some client applications to choke.
+
+* Fixed issue #11104: `ANALYZER` function doesn't correctly process `!= OR`
+  queries.
+
+* Obsoleted startup option `--database.maximal-journal-size`. This option was
+  useful for the MMFiles storage engine only, but did not have an effect with
+  the RocksDB engine. Using this startup option is not an error, but has
+  no effect anymore.
+
+* Added `JACCARD` AQL function.
+
+* storedValues property is removed from ArangoSearch link properties output.
+
+* Added primarySortCompression property to ArangoSearch Views.
+
+* Added compression property to ArangoSearch View storedValues.
+
+* Added overwrite mode "ignore" for document inserts. This mode allows 
+  ignoring primary key conflicts on insert when the target document already
+  exists.
+  
+  The following overwrite modes now exist:
+
+  * "ignore": if a document with the specified `_key` value exists already,
+    nothing will be done and no write operation will be carried out. The
+    insert operation will return success in this case. This mode does not
+    support returning the old document version using the `returnOld`
+    attribute. `returnNew` will only set the `new` attribute in the response
+    if a new document was inserted.
+  * "replace": if a document with the specified `_key` value exists already,
+    it will be overwritten with the specified document value. This mode will
+    also be used when no overwrite mode is specified but the `overwrite`
+    flag is set to `true`.
+  * "update": if a document with the specified `_key` value exists already,
+    it will be patched (partially updated) with the specified document value.
+  * "conflict": if a document with the specified `_key` value exists already,
+    return a unique constraint violation error so that the insert operation
+    fails. This is also the default behavior in case the overwrite mode is
+    not set, and the *overwrite* flag is *false* or not set either.
+
+  The overwrite mode "ignore" can also be used from AQL INSERT operations
+  by specifying it in the INSERT's `OPTIONS`, e.g.
+
+      INSERT { _key: ..., .... } INTO collection OPTIONS { overwriteMode: "ignore" }
+
+  Again, when the overwrite mode "ignore" is used from AQL, it does not
+  support returning the old document version. Using "RETURN OLD" in 
+  an INSERT operation that uses the "ignore" overwrite mode will trigger
+  a parse error, as there will be no old version to return. "RETURN NEW"
+  will only return the document in case it was inserted. In case the
+  document already existed, "RETURN NEW" will return "null".
+
+  The main use case of inserting documents with overwrite mode "ignore" is
+  to make sure that certain documents exist in the cheapest possible way.
+  In case the target document already exists, the "ignore" mode is most
+  efficient, as it will not retrieve the existing document from storage and
+  not write any updates to it.
 
 * Added feature: SatelliteGraphs
 
@@ -41,7 +123,7 @@ devel
 * Fixed a bug in the agency supervision, which could declare an already FAILED
   DB-Server temporarily as GOOD again after an agency leader change.
 
-* Added INTERLEAVE AQL function.
+* Added `INTERLEAVE` AQL function.
 
 * Upgraded bundled RocksDB library to version 6.8.0.
 

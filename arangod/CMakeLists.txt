@@ -251,6 +251,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
+  Aql/CollectionAccess.cpp
   Aql/CollectionAccessingNode.cpp
   Aql/Collections.cpp
   Aql/Condition.cpp
@@ -264,6 +265,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentExpressionContext.cpp
+  Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
@@ -274,6 +276,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ExecutionBlockImpl.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
+  Aql/ExecutionNodeId.cpp
   Aql/ExecutionPlan.cpp
   Aql/ExecutionState.cpp
   Aql/ExecutionStats.cpp
@@ -386,6 +389,8 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Utils/DatabaseGuard.cpp
   Utils/SingleCollectionTransaction.cpp
   VocBase/Identifiers/IndexId.cpp
+  VocBase/Identifiers/LocalDocumentId.cpp
+  VocBase/Identifiers/ServerId.cpp
   VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
@@ -409,11 +414,10 @@ set(LIB_ARANGO_VOCBASE_SOURCES
 )
 
 set(LIB_ARANGO_UTILS_SOURCES
-  Utils/CollectionKeys.cpp
-  Utils/CollectionKeysRepository.cpp
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
+  Utils/OperationOptions.cpp
   Utils/UrlHelper.cpp
   ${ENTERPRISE_FILES}
 )

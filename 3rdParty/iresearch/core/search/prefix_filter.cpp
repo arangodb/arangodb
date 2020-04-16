@@ -25,10 +25,48 @@
 #include <boost/functional/hash.hpp>
 
 #include "shared.hpp"
+#include "filter_visitor.hpp"
 #include "multiterm_query.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
+
+NS_LOCAL
+
+using namespace irs;
+
+template<typename Visitor>
+void visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    Visitor& visitor) {
+  // find term
+  auto terms = reader.iterator();
+
+  // seek to prefix
+  if (IRS_UNLIKELY(!terms) || SeekResult::END == terms->seek_ge(prefix)) {
+    return;
+  }
+
+  const auto& value = terms->value();
+  if (starts_with(value, prefix)) {
+    terms->read();
+
+    visitor.prepare(*terms);
+
+    do {
+      visitor.visit();
+
+      if (!terms->next()) {
+        break;
+      }
+
+      terms->read();
+    } while (starts_with(value, prefix));
+  }
+}
+
+NS_END
 
 NS_ROOT
 
@@ -42,62 +80,36 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
     const string_ref& field,
     const bytes_ref& prefix,
     size_t scored_terms_limit) {
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
 
   // iterate over the segments
   for (const auto& segment: index) {
     // get term dictionary for field
-    const term_reader* reader = segment.field(field);
+    const auto* reader = segment.field(field);
 
     if (!reader) {
       continue;
     }
 
-    seek_term_iterator::ptr terms = reader->iterator();
+    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
 
-    // seek to prefix
-    if (SeekResult::END == terms->seek_ge(prefix)) {
-      continue;
-    }
-
-    auto& value = terms->value();
-
-    // get term metadata
-    auto& meta = terms->attributes().get<term_meta>();
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-
-    // NOTE: we can't use reference to 'docs_count' here, like
-    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
-    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
-    // probably due to broken optimization
-    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
-
-    if (starts_with(value, prefix)) {
-      terms->read();
-
-      // get state for current segment
-      auto& state = states.insert(segment);
-      state.reader = reader;
-
-      do {
-        // fill scoring candidates
-        scorer.collect(*docs_count, state.count++, state, segment, *terms);
-        state.estimation += *docs_count; // collect cost
-
-        if (!terms->next()) {
-          break;
-        }
-
-        terms->read();
-      } while (starts_with(value, prefix));
-    }
+    ::visit(*reader, prefix, mtv);
   }
 
   std::vector<bstring> stats;
-  scorer.score(index, ord, stats);
+  collector.score(index, ord, stats);
 
-  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
+  return memory::make_shared<multiterm_query>(
+    std::move(states), std::move(stats),
+    boost, sort::MergeType::AGGREGATE);
+}
+
+/*static*/ void by_prefix::visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor) {
+  ::visit(reader, prefix, visitor);
 }
 
 by_prefix::by_prefix() noexcept : by_prefix(by_prefix::type()) { }

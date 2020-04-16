@@ -35,6 +35,8 @@ class boolean_filter;  // forward declaration
 }  // namespace iresearch
 
 namespace arangodb {
+class Result;
+
 namespace aql {
 
 struct AstNode;  // forward declaration

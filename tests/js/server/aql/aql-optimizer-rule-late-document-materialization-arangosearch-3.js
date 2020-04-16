@@ -50,7 +50,7 @@ function lateDocumentMaterializationArangoSearch3RuleTestSuite () {
         consolidationIntervalMsec: 5000,
         primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
         primarySortCompression: "none",
-        storedValues: ["obj.a.a1", {field:"obj.c", compression:"none"}, {field:["obj.d.d1", "obj.e.e1"], compression:"lz4"}, ["obj.f", "obj.g", "obj.h"]],
+        storedValues: [["obj.a.a1"], {fields:["obj.c"], compression:"none"}, {fields:["obj.d.d1", "obj.e.e1"], compression:"lz4"}, ["obj.f", "obj.g", "obj.h"]],
         links: {
           [cn] : { includeAllFields: true },
           [cn1] : { includeAllFields: true }

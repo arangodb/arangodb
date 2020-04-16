@@ -44,36 +44,11 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 using Helper = arangodb::basics::VelocyPackHelper;
-
-#ifndef USE_ENTERPRISE
-// Factory methods
-std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t& vocbase) {
-  if (document.isExternal()) {
-    document = document.resolveExternal();
-  }
-  std::unique_ptr<Graph> result{new Graph{document, vocbase}};
-  return result;
-}
-
-std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document,
-                                            VPackSlice options, TRI_vocbase_t& vocbase) {
-  if (document.isExternal()) {
-    document = document.resolveExternal();
-  }
-  std::unique_ptr<Graph> result{new Graph{std::move(name), document, options, vocbase}};
-  return result;
-}
-#endif
-
-std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name, velocypack::Slice document,
-                                            velocypack::Slice options,
-                                            TRI_vocbase_t& vocbase) {
-  return Graph::fromUserInput(std::string{name}, document, options, vocbase);
-}
 
 namespace {
 size_t getWriteConcern(VPackSlice slice, struct ServerDefaults serverDefaults) {
@@ -85,6 +60,31 @@ size_t getWriteConcern(VPackSlice slice, struct ServerDefaults serverDefaults) {
                                            serverDefaults.writeConcern);
 }
 }  // namespace
+
+#ifndef USE_ENTERPRISE
+// Factory methods
+std::unique_ptr<Graph> Graph::fromPersistence(TRI_vocbase_t& vocbase, VPackSlice document) {
+  if (document.isExternal()) {
+    document = document.resolveExternal();
+  }
+  std::unique_ptr<Graph> result{new Graph{document, vocbase}};
+  return result;
+}
+
+std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase, std::string&& name,
+                                            VPackSlice document, VPackSlice options) {
+  if (document.isExternal()) {
+    document = document.resolveExternal();
+  }
+  std::unique_ptr<Graph> result{new Graph{vocbase, std::move(name), document, options}};
+  return result;
+}
+#endif
+
+std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase, std::string const& name,
+                                            VPackSlice document, VPackSlice options) {
+  return Graph::fromUserInput(vocbase, std::string{name}, document, options);
+}
 
 // From persistence
 Graph::Graph(velocypack::Slice const& slice, struct ServerDefaults serverDefaults)
@@ -100,14 +100,14 @@ Graph::Graph(velocypack::Slice const& slice, struct ServerDefaults serverDefault
       _rev(Helper::getStringValue(slice, StaticStrings::RevString, "")),
       _isSatellite(Helper::getStringRef(slice, StaticStrings::ReplicationFactor,
                                         velocypack::StringRef("")) == StaticStrings::Satellite) {
-  // If this happens we have a document without an _key Attribute.
+  // If this happens we have a document without a _key attribute.
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Persisted graph is invalid. It does not "
                                    "have a _key set. Please contact support.");
   }
 
-  // If this happens we have a document without an _rev Attribute.
+  // If this happens we have a document without a _rev attribute.
   if (_rev.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Persisted graph is invalid. It does not "
@@ -133,12 +133,13 @@ Graph::Graph(velocypack::Slice const& slice, struct ServerDefaults serverDefault
 }
 
 // From user input
-Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& options, TRI_vocbase_t& vocbase)
-    : _graphName(graphName),
+Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
+             VPackSlice const& info, VPackSlice const& options)
+    : _graphName(std::move(graphName)),
       _vertexColls(),
       _edgeColls(),
       _numberOfShards(1),
-      _replicationFactor(1),
+      _replicationFactor(vocbase.replicationFactor()),
       _writeConcern(1),
       _rev("") {
   if (_graphName.empty()) {
@@ -162,7 +163,8 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
       setReplicationFactor(0);
     } else {
       _replicationFactor =
-          Helper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
+          Helper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor,
+                                            _replicationFactor);
       if (_replicationFactor < 1) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        StaticStrings::ReplicationFactor +

@@ -292,12 +292,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
+    bool isSystem = vocbase.IsSystemName(info.name);
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
       bool isSmartChild =
           Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-      TRI_voc_rid_t minRev = isSmartChild ? 0 : TRI_HybridLogicalClock();
+      TRI_voc_rid_t minRev = (isSystem || isSmartChild) ? 0 : TRI_HybridLogicalClock();
       helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
     }
 
@@ -305,14 +306,14 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
-        if (factor > 0 && vocbase.IsSystemName(info.name)) {
+        if (factor > 0 && isSystem) {
           auto& cl = vocbase.server().getFeature<ClusterFeature>();
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       }
 
-      if (!vocbase.IsSystemName(info.name)) {
+      if (!isSystem) {
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
@@ -487,7 +488,6 @@ void Collections::createSystemCollectionProperties(std::string const& collection
     VPackObjectBuilder scope(&bb);
     bb.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
     bb.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
-    bb.add(StaticStrings::JournalSize, VPackValue(1024 * 1024));
     bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplicationFactor));
     bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultWriteConcern));  // deprecated
     bb.add(StaticStrings::WriteConcern, VPackValue(defaultWriteConcern));
@@ -680,7 +680,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
     auto physical = collection.getPhysical();
     TRI_ASSERT(physical != nullptr);
 
-    return physical->persistProperties();
+    return res;
   }
 }
 
@@ -888,6 +888,30 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   } else {
     return futures::makeFuture(Result(queue->status()));
   }
+
+  return futures::makeFuture(res);
+}
+
+futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
+                                             LogicalCollection const& coll) {
+  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
+  if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
+    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
+  }
+
+  if (!ServerState::instance()->isSingleServer()) {
+    return futures::makeFuture(
+        Result(TRI_ERROR_NOT_IMPLEMENTED,
+               "collection upgrade in cluster not supported yet"));
+  }
+
+  Result res;
+  PhysicalCollection* physical = coll.getPhysical();
+  if (!physical) {
+    res.reset(TRI_ERROR_INTERNAL, "collection not found");
+    return futures::makeFuture(res);
+  }
+  res = physical->upgrade();
 
   return futures::makeFuture(res);
 }
