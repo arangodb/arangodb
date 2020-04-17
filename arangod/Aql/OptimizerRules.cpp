@@ -3608,6 +3608,106 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   }
 }
 
+// Sets up a Gather node for scatterInClusterRule.
+//
+// Each of EnumerateCollectionNode, IndexNode, IResearchViewNode, and
+// ModificationNode needs slightly different treatment.
+//
+// In an ideal world the node itself would know how to compute these parameters
+// for GatherNode (sortMode, parallelism, and elements), and we'd just ask it.
+auto insertGatherNode(ExecutionPlan& plan, ExecutionNode* node,
+                      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries)
+    -> GatherNode* {
+  TRI_ASSERT(node);
+
+  GatherNode* gatherNode{nullptr};
+
+  auto nodeType = node->getType();
+  switch (nodeType) {
+    case ExecutionNode::ENUMERATE_COLLECTION: {
+      auto collection =
+          ExecutionNode::castTo<EnumerateCollectionNode const*>(node)->collection();
+      auto numberOfShards = collection->numberOfShards();
+
+      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+      auto parallelism = GatherNode::evaluateParallelism(*collection);
+
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode, parallelism);
+    } break;
+    case ExecutionNode::INDEX: {
+      auto elements = SortElementVector{};
+      auto idxNode = ExecutionNode::castTo<IndexNode const*>(node);
+      auto collection = idxNode->collection();
+      TRI_ASSERT(collection != nullptr);
+      auto numberOfShards = collection->numberOfShards();
+
+      Variable const* sortVariable = idxNode->outVariable();
+      bool isSortAscending = idxNode->options().ascending;
+      auto allIndexes = idxNode->getIndexes();
+      TRI_ASSERT(!allIndexes.empty());
+
+      // Using Index for sort only works if all indexes are equal.
+      auto const& first = allIndexes[0];
+      // also check if we actually need to bother about the sortedness of the
+      // result, or if we use the index for filtering only
+      if (first->isSorted() && idxNode->needsGatherNodeSort()) {
+        for (auto const& path : first->fieldNames()) {
+          elements.emplace_back(sortVariable, isSortAscending, path);
+        }
+        for (auto const& it : allIndexes) {
+          if (first != it) {
+            elements.clear();
+            break;
+          }
+        }
+      }
+
+      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+      auto parallelism = GatherNode::evaluateParallelism(*collection);
+
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode, parallelism);
+
+      if (!elements.empty() && numberOfShards != 1) {
+        gatherNode->elements(elements);
+      }
+      return gatherNode;
+    } break;
+    case ExecutionNode::INSERT:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::UPSERT: {
+      auto collection = ExecutionNode::castTo<ModificationNode*>(node)->collection();
+
+      if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
+        // Note that in the REPLACE or UPSERT case we are not getting here,
+        // since the distributeInClusterRule fires and a DistributionNode is
+        // used.
+        auto* modNode = ExecutionNode::castTo<ModificationNode*>(node);
+        modNode->getOptions().ignoreDocumentNotFound = true;
+      }
+
+      auto numberOfShards = collection->numberOfShards();
+      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+      auto parallelism = GatherNode::evaluateParallelism(*collection);
+
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode, parallelism);
+    } break;
+    default: {
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(),
+                                               GatherNode::SortMode::Default);
+
+    } break;
+  }
+
+  auto it = subqueries.find(node);
+  if (it != subqueries.end()) {
+    ExecutionNode::castTo<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
+  }
+
+  return gatherNode;
+}
+
 // replace
 //
 // A -> at -> B
@@ -3623,7 +3723,8 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
 // uses a list of subqueries which are precomputed at the beginning
 // of the optimizer rule; once that list is gone the configuration of the
 // gather node can be moved into this function.
-void insertScatterGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, GatherNode* gatherNode) {
+void insertScatterGatherSnippet(ExecutionPlan& plan, ExecutionNode* at,
+                                SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries) {
   // TODO: necessary?
   TRI_vocbase_t* vocbase = extractVocbaseFromNode(at);
   auto const isRootNode = plan.isRoot(at);
@@ -3654,8 +3755,9 @@ void insertScatterGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, GatherNo
   TRI_ASSERT(at);
   remoteNode->addDependency(at);
 
-  // insert GATHER
-  plan.registerNode(gatherNode);
+  // GATHER needs some setup, so this happens in a separate function
+  auto gatherNode = insertGatherNode(plan, at, subqueries);
+  TRI_ASSERT(gatherNode);
   TRI_ASSERT(remoteNode);
   gatherNode->addDependency(remoteNode);
 
@@ -3722,96 +3824,6 @@ void findSubqueriesInPlan(ExecutionPlan& plan,
   }
 }
 
-// Sets up a Gather node for scatterInClusterRule.
-//
-// Each of EnumerateCollectionNode, IndexNode, IResearchViewNode, and
-// ModificationNode needs slightly different treatment.
-//
-// In an ideal world the node itself would know how to compute these parameters
-// for GatherNode (sortMode, parallelism, and elements), and we'd just ask it.
-auto configureGatherNode(ExecutionPlan& plan, ExecutionNode* node) -> GatherNode* {
-  TRI_ASSERT(node);
-
-  auto nodeType = node->getType();
-  switch (nodeType) {
-    case ExecutionNode::ENUMERATE_COLLECTION: {
-      auto collection =
-          ExecutionNode::castTo<EnumerateCollectionNode const*>(node)->collection();
-      auto numberOfShards = collection->numberOfShards();
-
-      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
-      auto parallelism = GatherNode::evaluateParallelism(*collection);
-
-      return new GatherNode(&plan, plan.nextId(), sortMode, parallelism);
-    } break;
-    case ExecutionNode::INDEX: {
-      auto elements = SortElementVector{};
-      auto idxNode = ExecutionNode::castTo<IndexNode const*>(node);
-      auto collection = idxNode->collection();
-      TRI_ASSERT(collection != nullptr);
-      auto numberOfShards = collection->numberOfShards();
-
-      Variable const* sortVariable = idxNode->outVariable();
-      bool isSortAscending = idxNode->options().ascending;
-      auto allIndexes = idxNode->getIndexes();
-      TRI_ASSERT(!allIndexes.empty());
-
-      // Using Index for sort only works if all indexes are equal.
-      auto const& first = allIndexes[0];
-      // also check if we actually need to bother about the sortedness of the
-      // result, or if we use the index for filtering only
-      if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        for (auto const& path : first->fieldNames()) {
-          elements.emplace_back(sortVariable, isSortAscending, path);
-        }
-        for (auto const& it : allIndexes) {
-          if (first != it) {
-            elements.clear();
-            break;
-          }
-        }
-      }
-
-      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
-      auto parallelism = GatherNode::evaluateParallelism(*collection);
-
-      auto gatherNode = new GatherNode(&plan, plan.nextId(), sortMode, parallelism);
-      if (!elements.empty() && numberOfShards != 1) {
-        gatherNode->elements(elements);
-      }
-      return gatherNode;
-    } break;
-    case ExecutionNode::INSERT:
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::REMOVE:
-    case ExecutionNode::UPSERT: {
-      auto collection = ExecutionNode::castTo<ModificationNode*>(node)->collection();
-
-      if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
-        // Note that in the REPLACE or UPSERT case we are not getting here,
-        // since the distributeInClusterRule fires and a DistributionNode is
-        // used.
-        auto* modNode = ExecutionNode::castTo<ModificationNode*>(node);
-        modNode->getOptions().ignoreDocumentNotFound = true;
-      }
-
-      auto numberOfShards = collection->numberOfShards();
-      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
-      auto parallelism = GatherNode::evaluateParallelism(*collection);
-
-      return new GatherNode(&plan, plan.nextId(), sortMode, parallelism);
-    } break;
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      return new GatherNode(&plan, plan.nextId(), GatherNode::SortMode::Default);
-    } break;
-    default: {
-      TRI_ASSERT(false);
-      return nullptr;
-    } break;
-  }
-}
-
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on
 /// sharded collections actually work
@@ -3869,15 +3881,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       moveScatterAbove(*plan, node);
     } else {
       // insert a full SCATTER/GATHER
-
-      auto* gatherNode = configureGatherNode(*plan, node);
-
-      auto it = subqueries.find(node);
-      if (it != subqueries.end()) {
-        ExecutionNode::castTo<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
-      }
-
-      insertScatterGatherSnippet(*plan, node, gatherNode);
+      insertScatterGatherSnippet(*plan, node, subqueries);
     }
     wasModified = true;
   }
