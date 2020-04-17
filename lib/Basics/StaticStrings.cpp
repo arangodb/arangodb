@@ -253,7 +253,7 @@ std::string const StaticStrings::WriteConcern("writeConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
-std::string const StaticStrings::GraphIsDisjoint("isDisjoint");
+std::string const StaticStrings::IsDisjoint("isDisjoint");
 std::string const StaticStrings::GraphIsSmart("isSmart");
 std::string const StaticStrings::GraphIsSatellite("isSatellite");
 std::string const StaticStrings::GraphFrom("from");
