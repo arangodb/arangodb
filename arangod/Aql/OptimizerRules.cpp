@@ -3788,7 +3788,7 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
   plan.insertBefore(remoteNode, scatterNode);
 
   // There must be a SCATTER/REMOTE block south of us, which was inserted by
-  // an eaerlier iteration in scatterInClusterRule.
+  // an earlier iteration in scatterInClusterRule.
   // We remove that block, effectively moving the SCATTER/REMOTE past the
   // current node
   // The effect is that in a smart join we get joined up nodes that are
@@ -3803,11 +3803,18 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
         plan.unlinkNode(next, true);
         found = true;
         break;
+      } else {
+        // If we have a SCATTER node, we also have to have a REMOTE node
+        // otherwise the plan is inconsistent.
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Inconsistent plan.");
       }
     }
     current = current->getFirstParent();
   }
   TRI_ASSERT(found);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Inconsistent plan.");
 }
 
 // TODO: move into ExecutionPlan?
