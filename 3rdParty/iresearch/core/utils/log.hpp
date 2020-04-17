@@ -94,20 +94,18 @@ IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
 
 struct log_vararg_wrapper {
   static void log_formatted(const char* function, const char* file, int line,
-    level_t level, const char* format, ...) {
-    if (enabled(level)) {
-      va_list args;
-      va_start(args, format);
-      auto required_len = vsnprintf(nullptr, 0, format, args);
-      va_end(args);
-      if (required_len > 0) {
-        std::vector<char> buf(size_t(required_len) + 1);
-        va_list args1;
-        va_start(args1, format);
-        vsnprintf(buf.data(), buf.size(), format, args1);
-        va_end(args1);
-        log(function, file, line, level, buf.data(), buf.size());
-      }
+                            level_t level, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    auto required_len = vsnprintf(nullptr, 0, format, args);
+    va_end(args);
+    if (required_len > 0) {
+      std::vector<char> buf(size_t(required_len) + 1);
+      va_list args1;
+      va_start(args1, format);
+      vsnprintf(buf.data(), buf.size(), format, args1);
+      va_end(args1);
+      log(function, file, line, level, buf.data(), buf.size());
     }
   }
 };
@@ -122,7 +120,8 @@ NS_END
 
 #if defined(_MSC_VER)
   #define IR_LOG_FORMATED(level, format, ...) \
-    ::iresearch::logger::log_vararg_wrapper::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, __VA_ARGS__)
+    if (::iresearch::logger::enabled(level)) \
+      ::iresearch::logger::log_vararg_wrapper::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, __VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, __VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, __VA_ARGS__)
@@ -133,14 +132,14 @@ NS_END
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
   #define IR_LOG_FORMATED(level, prefix, format, ...) \
     if (::iresearch::logger::enabled(level)) \
-      std::fprintf(::iresearch::logger::output(level), "%s: %s:%d " format "\n", prefix, __FILE__, __LINE__, ##__VA_ARGS__)
+      ::iresearch::logger::log_vararg_wrapper::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
 
-  #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, ##__VA_ARGS__)
-  #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, ##__VA_ARGS__)
-  #define IR_FRMT_WARN(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_WARN, "WARN", format, ##__VA_ARGS__)
-  #define IR_FRMT_INFO(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_INFO, "INFO", format, ##__VA_ARGS__)
-  #define IR_FRMT_DEBUG(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, "DEBUG", format, ##__VA_ARGS__)
-  #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, "TRACE", format, ##__VA_ARGS__)
+  #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, ##__VA_ARGS__)
+  #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, ##__VA_ARGS__)
+  #define IR_FRMT_WARN(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_WARN, format, ##__VA_ARGS__)
+  #define IR_FRMT_INFO(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_INFO, format, ##__VA_ARGS__)
+  #define IR_FRMT_DEBUG(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, format, ##__VA_ARGS__)
+  #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, format, ##__VA_ARGS__)
 #endif
 
 #define IR_LOG_EXCEPTION() \
