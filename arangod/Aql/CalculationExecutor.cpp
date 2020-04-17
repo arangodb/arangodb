@@ -145,8 +145,8 @@ void CalculationExecutor<calculationType>::exitContext() {
 
 template <CalculationType calculationType>
 bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() const {
-  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
-  const bool stream = _infos.getQuery().queryOptions().stream;
+  static bool const isRunningInCluster = ServerState::instance()->isRunningInCluster();
+  bool const stream = _infos.getQuery().queryOptions().stream;
 
   return isRunningInCluster || stream;
 }
