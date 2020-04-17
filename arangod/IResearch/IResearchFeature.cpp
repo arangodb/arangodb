@@ -143,36 +143,31 @@ arangodb::aql::AqlValue startsWithFunc(arangodb::aql::ExpressionContext* ctx,
   auto& prefixes = args[1];
   if (prefixes.isArray()) {
     auto const size = static_cast<int64_t>(prefixes.length());
-    if (0 == size) { // empty prefix
-      result = true;
-    } else {
-      int64_t minMatchCount = arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount;
-      if (argc > 2) {
-        auto& minMatchCountValue = args[2];
-        if (!minMatchCountValue.isNumber()) {
-          return errorAqlValue(ctx, AFN);
-        }
-        minMatchCount = minMatchCountValue.toInt64();
-        if (minMatchCount < 0) {
-          return errorAqlValue(ctx, AFN);
-        }
-        if (0 == minMatchCount) {
-          result = true;
-        }
+    int64_t minMatchCount = arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount;
+    if (argc > 2) {
+      auto& minMatchCountValue = args[2];
+      if (!minMatchCountValue.isNumber()) {
+        return errorAqlValue(ctx, AFN);
       }
-      if (minMatchCount > 0 && minMatchCount <= size) {
-        int64_t matchedCount = 0;
-        for (int64_t i = 0; i < size; ++i) {
-          auto mustDestroy = false;
-          auto prefix = prefixes.at(i, mustDestroy, false);
-          arangodb::aql::AqlValueGuard guard{prefix, mustDestroy};
-          if (!prefix.isString()) {
-            return errorAqlValue(ctx, AFN);
-          }
-          if (isPrefix(prefix.slice().stringRef(), valueRef) && ++matchedCount == minMatchCount) {
-            result = true;
-            break;
-          }
+      minMatchCount = minMatchCountValue.toInt64();
+      if (minMatchCount < 0) {
+        return errorAqlValue(ctx, AFN);
+      }
+    }
+    if (0 == minMatchCount) {
+      result = true;
+    } else if (minMatchCount <= size) {
+      int64_t matchedCount = 0;
+      for (int64_t i = 0; i < size; ++i) {
+        auto mustDestroy = false;
+        auto prefix = prefixes.at(i, mustDestroy, false);
+        arangodb::aql::AqlValueGuard guard{prefix, mustDestroy};
+        if (!prefix.isString()) {
+          return errorAqlValue(ctx, AFN);
+        }
+        if (isPrefix(prefix.slice().stringRef(), valueRef) && ++matchedCount == minMatchCount) {
+          result = true;
+          break;
         }
       }
     }

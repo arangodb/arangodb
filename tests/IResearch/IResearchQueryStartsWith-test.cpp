@@ -343,6 +343,42 @@ TEST_F(IResearchQueryStartsWithTest, test) {
     }
   }
 
+  // execution outside arangosearch (true) via [] empty array
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('abc', [])");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isBool());
+      ASSERT_FALSE(resolved.getBool());
+    }
+  }
+
+  // execution outside arangosearch (true) via [] empty array min match count 0
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('abc', [], 0)");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isBool());
+      ASSERT_TRUE(resolved.getBool());
+    }
+  }
+
   // execution outside arangosearch (true) via [] min match count 0, 1 not success
   {
     auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('abc', ['b', 'd'], 0)");
@@ -863,6 +899,53 @@ TEST_F(IResearchQueryStartsWithTest, test) {
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH starts_with(d.prefix, ['abc', 'def']) SORT d.seq DESC "
+        "RETURN d");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                           resolved, true));
+      ++expectedDoc;
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
+  }
+
+  // d.prefix = empty array, d.seq DESC via []
+  {
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH starts_with(d.prefix, []) SORT d.seq DESC "
+        "RETURN d");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
+  }
+
+  // d.prefix = empty array, d.seq DESC via [] min match count 0
+  {
+    std::map<ptrdiff_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
+    }
+
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH starts_with(d.prefix, [], 0) SORT d.seq DESC "
         "RETURN d");
     ASSERT_TRUE(queryResult.result.ok());
 

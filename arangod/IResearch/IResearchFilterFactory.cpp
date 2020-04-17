@@ -2966,7 +2966,7 @@ arangodb::Result fromFuncStartsWith(
   auto minMatchCount = FilterConstants::DefaultStartsWithMinMatchCount;
   auto const* astPrefixes = args.getMemberUnchecked(currentArgNum);
   TRI_ASSERT(astPrefixes);
-  auto isMultiPrefix = astPrefixes->isArray();
+  auto const isMultiPrefix = astPrefixes->isArray();
   if (isMultiPrefix) {
     auto size = astPrefixes->numMembers();
     if (size > 0) {

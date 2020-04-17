@@ -5234,6 +5234,20 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         &ctx);
   }
 
+  // empty array
+  {
+    irs::Or expected;
+    auto& orFilter = expected.add<irs::Or>();
+    orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d['name'], []) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER starts_with(d.name, []) RETURN d", expected);
+  }
+
   // with scoring limit (int)
   {
     irs::Or expected;
