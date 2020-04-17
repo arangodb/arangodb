@@ -67,7 +67,7 @@ class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInp
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(make_shared_unordered_set()),
         registersToKeep(outputRegisters),
-        infos(0, 1, 1, {}, {}) {}
+        infos(0) {}
 
   auto getSplit() -> FilterExecutorSplitType {
     auto [split] = GetParam();

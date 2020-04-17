@@ -1543,21 +1543,12 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   auto executorInfos =
-      aql::IResearchViewExecutorInfos{aql::RegisterInfos{registerInfos},
-                                      reader,
-                                      firstOutputRegister,
-                                      numScoreRegisters,
-                                      *engine.getQuery(),
-                                      scorers(),
-                                      _sort,
-                                      ::storedValues(*_view),
-                                      *plan(),
-                                      outVariable(),
-                                      filterCondition(),
-                                      volatility(),
-                                      getRegisterPlan()->varInfo,
-                                      getDepth(),
-                                      std::move(outNonMaterializedViewRegs)};
+      aql::IResearchViewExecutorInfos(reader, firstOutputRegister, numScoreRegisters,
+                                      *engine.getQuery(), scorers(), _sort,
+                                      ::storedValues(*_view), *plan(),
+                                      outVariable(), filterCondition(), volatility(),
+                                      getRegisterPlan()->varInfo, getDepth(),
+                                      std::move(outNonMaterializedViewRegs));
 
   TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty()); // guaranteed by optimizer rule
   switch (materializeType) {

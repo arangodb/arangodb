@@ -241,10 +241,10 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   }
   auto registerInfos = createRegisterInfos(inputRegs, make_shared_unordered_set());
   auto executorInfos =
-      SortExecutorInfos(std::move(sortRegs), _limit, engine.itemBlockManager(),
-                        getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                        getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                        calcRegsToKeep(),
+      SortExecutorInfos(registerInfos.numberOfInputRegisters(),
+                        registerInfos.numberOfOutputRegisters(),
+                        registerInfos.registersToClear(), std::move(sortRegs),
+                        _limit, engine.itemBlockManager(),
                         engine.getQuery()->trx()->transactionContextPtr()->getVPackOptions(),
                         _stable);
   if (sorterType() == SorterType::Standard) {

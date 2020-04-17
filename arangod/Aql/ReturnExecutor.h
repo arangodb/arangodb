@@ -40,10 +40,9 @@ namespace aql {
 class RegisterInfos;
 class NoStats;
 
-class ReturnExecutorInfos : public RegisterInfos {
+class ReturnExecutorInfos {
  public:
-  ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters, bool doCount);
+  ReturnExecutorInfos(RegisterId inputRegister, bool doCount);
 
   ReturnExecutorInfos() = delete;
   ReturnExecutorInfos(ReturnExecutorInfos&&) = default;

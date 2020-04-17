@@ -106,11 +106,7 @@ class CalculationExecutorTest
                       RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
                       std::unordered_set<RegisterId>{} /*to clear*/,
                       std::unordered_set<RegisterId>{} /*to keep*/),
-        executorInfos(outRegID /*out reg*/, RegisterCount(1) /*in width*/,
-                      RegisterCount(2) /*out width*/,
-                      std::unordered_set<RegisterId>{} /*to clear*/,
-                      std::unordered_set<RegisterId>{} /*to keep*/,
-                      *fakedQuery.get() /*query*/, expr /*expression*/,
+        executorInfos(outRegID /*out reg*/, *fakedQuery.get() /*query*/, expr /*expression*/,
                       std::vector<Variable const*>{&var} /*expression input variables*/,
                       std::vector<RegisterId>({inRegID}) /*expression input registers*/) {}
 
@@ -120,8 +116,7 @@ class CalculationExecutorTest
   }
 
   auto buildInfos() -> CalculationExecutorInfos {
-    return CalculationExecutorInfos{0,    1,      1,  {}, {}, *fakedQuery.get(),
-                                    expr, {&var}, {0}};
+    return CalculationExecutorInfos{0, *fakedQuery.get(), expr, {&var}, {0}};
   }
 };
 

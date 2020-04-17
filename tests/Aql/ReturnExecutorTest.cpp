@@ -98,8 +98,7 @@ INSTANTIATE_TEST_CASE_P(ReturnExecutor, ReturnExecutorTest,
 TEST_P(ReturnExecutorTest, returns_all_from_upstream) {
   RegisterInfos registerInfos(make_shared_unordered_set({0}),
                               make_shared_unordered_set({0}), 1, 1, {}, {});
-  ReturnExecutorInfos executorInfos(0 /*input register*/, 1 /*nr in*/,
-                                    1 /*nr out*/, doCount());
+  ReturnExecutorInfos executorInfos(0 /*input register*/, doCount());
   AqlCall call{};  // unlimited produce
   makeExecutorTestHelper()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
@@ -117,8 +116,7 @@ TEST_P(ReturnExecutorTest, returns_all_from_upstream) {
 TEST_P(ReturnExecutorTest, handle_soft_limit) {
   RegisterInfos registerInfos(make_shared_unordered_set({0}),
                               make_shared_unordered_set({0}), 1, 1, {}, {});
-  ReturnExecutorInfos executorInfos(0 /*input register*/, 1 /*nr in*/,
-                                    1 /*nr out*/, doCount());
+  ReturnExecutorInfos executorInfos(0 /*input register*/, doCount());
   AqlCall call{};
   call.softLimit = 3;
   makeExecutorTestHelper()
@@ -137,8 +135,7 @@ TEST_P(ReturnExecutorTest, handle_soft_limit) {
 TEST_P(ReturnExecutorTest, handle_hard_limit) {
   RegisterInfos registerInfos(make_shared_unordered_set({0}),
                               make_shared_unordered_set({0}), 1, 1, {}, {});
-  ReturnExecutorInfos executorInfos(0 /*input register*/, 1 /*nr in*/,
-                                    1 /*nr out*/, doCount());
+  ReturnExecutorInfos executorInfos(0 /*input register*/, doCount());
   AqlCall call{};
   call.hardLimit = 5;
   makeExecutorTestHelper()
@@ -157,8 +154,7 @@ TEST_P(ReturnExecutorTest, handle_hard_limit) {
 TEST_P(ReturnExecutorTest, handle_offset) {
   RegisterInfos registerInfos(make_shared_unordered_set({0}),
                               make_shared_unordered_set({0}), 1, 1, {}, {});
-  ReturnExecutorInfos executorInfos(0 /*input register*/, 1 /*nr in*/,
-                                    1 /*nr out*/, doCount());
+  ReturnExecutorInfos executorInfos(0 /*input register*/, doCount());
   AqlCall call{};
   call.offset = 4;
   makeExecutorTestHelper()
@@ -177,8 +173,7 @@ TEST_P(ReturnExecutorTest, handle_offset) {
 TEST_P(ReturnExecutorTest, handle_fullcount) {
   RegisterInfos registerInfos(make_shared_unordered_set({0}),
                               make_shared_unordered_set({0}), 1, 1, {}, {});
-  ReturnExecutorInfos executorInfos(0 /*input register*/, 1 /*nr in*/,
-                                    1 /*nr out*/, doCount());
+  ReturnExecutorInfos executorInfos(0 /*input register*/, doCount());
   AqlCall call{};
   call.hardLimit = 2;
   call.fullCount = true;
@@ -198,8 +193,7 @@ TEST_P(ReturnExecutorTest, handle_fullcount) {
 TEST_P(ReturnExecutorTest, handle_other_inputRegister) {
   RegisterInfos registerInfos(make_shared_unordered_set({1}),
                               make_shared_unordered_set({0}), 2, 1, {}, {});
-  ReturnExecutorInfos executorInfos(1 /*input register*/, 2 /*nr in*/,
-                                    1 /*nr out*/, doCount());
+  ReturnExecutorInfos executorInfos(1 /*input register*/, doCount());
   AqlCall call{};
   call.hardLimit = 5;
   makeExecutorTestHelper<2, 1>()

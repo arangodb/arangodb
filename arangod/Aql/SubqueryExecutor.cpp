@@ -21,29 +21,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SubqueryExecutor.h"
-#include <Logger/LogMacros.h>
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Logger/LogMacros.h"
 
 #define INTERNAL_LOG_SQ LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryExecutorInfos::SubqueryExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> const& registersToClear,
-    std::unordered_set<RegisterId>&& registersToKeep, ExecutionBlock& subQuery,
-    RegisterId outReg, bool subqueryIsConst)
-    : RegisterInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
-                    nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _subQuery(subQuery),
+SubqueryExecutorInfos::SubqueryExecutorInfos(ExecutionBlock& subQuery,
+                                             RegisterId outReg, bool subqueryIsConst)
+    : _subQuery(subQuery),
       _outReg(outReg),
       _returnsData(subQuery.getPlanNode()->getType() == ExecutionNode::RETURN),
       _isConst(subqueryIsConst) {}

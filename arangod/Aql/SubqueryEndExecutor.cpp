@@ -39,17 +39,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> const& registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, velocypack::Options const* const options,
-    RegisterId inReg, RegisterId outReg, bool isModificationSubquery)
-    : RegisterInfos(std::move(readableInputRegisters),
-                    std::move(writeableOutputRegisters), nrInputRegisters,
-                    nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _vpackOptions(options),
+SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(velocypack::Options const* const options,
+                                                   RegisterId inReg, RegisterId outReg,
+                                                   bool isModificationSubquery)
+    : _vpackOptions(options),
       _outReg(outReg),
       _inReg(inReg),
       _isModificationSubquery(isModificationSubquery) {}

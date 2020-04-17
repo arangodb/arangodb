@@ -43,12 +43,9 @@ class FilterStats;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class FilterExecutorInfos : public RegisterInfos {
+class FilterExecutorInfos {
  public:
-  FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters,
-                      std::unordered_set<RegisterId> registersToClear,
-                      std::unordered_set<RegisterId> registersToKeep);
+  explicit FilterExecutorInfos(RegisterId inputRegister);
 
   FilterExecutorInfos() = delete;
   FilterExecutorInfos(FilterExecutorInfos&&) = default;

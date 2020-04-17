@@ -188,25 +188,17 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
-    std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId outputRegister, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+    RegisterId outputRegister, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, 
+    std::vector<size_t> const& coveringIndexAttributePositions,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options, IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
-    : RegisterInfos(make_shared_unordered_set(), writableOutputRegisters,
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _indexes(std::move(indexes)),
+    : _indexes(std::move(indexes)),
       _condition(condition),
       _ast(ast),
       _options(options),

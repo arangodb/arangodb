@@ -262,9 +262,7 @@ class SharedExecutionBlockImplTest {
         (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
     RegisterId regsToWrite =
         (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
-    return LambdaSkipExecutorInfos(readAble, writeAble, regsToRead, regsToWrite,
-                                   {}, registersToKeep, std::move(call),
-                                   std::move(skipCall), std::move(reset));
+    return LambdaSkipExecutorInfos(std::move(call), std::move(skipCall), std::move(reset));
   }
 
   /**
@@ -412,8 +410,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
    */
   std::unique_ptr<ExecutionBlock> createSingleton() {
     auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-        fakedQuery->engine(), generateNodeDummy(),
-        RegisterInfos{{}, {}, 0, 0, {}, {}}, IdExecutorInfos{0, {}, {}, false});
+        IdExecutorInfos{0, {}, {}, false}, 0, std::string(), false);
     InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
     auto const [state, result] = res->initializeCursor(inputRow);
     EXPECT_EQ(state, ExecutionState::DONE);

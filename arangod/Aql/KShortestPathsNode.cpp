@@ -290,9 +290,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     inputRegisters->emplace(varToRegUnchecked(targetInVariable()));
   }
 
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   TRI_ASSERT(usesPathOutVariable());  // This node always produces the path!
-  outputRegisters->emplace(varToRegUnchecked(pathOutVariable()));
+  auto outputRegister = varToRegUnchecked(pathOutVariable());
+  auto outputRegisters = make_shared_unordered_set({outputRegister});
 
   auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
 
@@ -306,10 +306,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
   TRI_ASSERT(finder != nullptr);
   auto executorInfos =
-      KShortestPathsExecutorInfos(inputRegisters, outputRegisters,
-                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                  getRegisterPlan()->nrRegs[getDepth()],
-                                  getRegsToClear(), calcRegsToKeep(), std::move(finder),
+      KShortestPathsExecutorInfos(outputRegister, std::move(finder),
                                   std::move(sourceInput), std::move(targetInput));
   return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

@@ -42,12 +42,9 @@ class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class TestExecutorHelperInfos : public RegisterInfos {
+class TestExecutorHelperInfos {
  public:
-  TestExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                          RegisterId nrOutputRegisters,
-                          std::unordered_set<RegisterId> registersToClear,
-                          std::unordered_set<RegisterId> registersToKeep);
+  explicit TestExecutorHelperInfos(RegisterId inputRegister_);
 
   TestExecutorHelperInfos() = delete;
   TestExecutorHelperInfos(TestExecutorHelperInfos&&) = default;

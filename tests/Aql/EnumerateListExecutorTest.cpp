@@ -77,7 +77,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
   RegisterInfos registerInfos(make_shared_unordered_set({3}),
                               make_shared_unordered_set({4}), 4, 5, {}, {0, 1, 2, 3});
-  EnumerateListExecutorInfos executorInfos(3, 4, 4, 5, {}, {0, 1, 2, 3});
+  EnumerateListExecutorInfos executorInfos(3, 4);
   EnumerateListExecutor testee(fetcher, executorInfos);
   SharedAqlItemBlockPtr inBlock =
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
@@ -114,7 +114,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
   RegisterInfos registerInfos(make_shared_unordered_set({3}),
                               make_shared_unordered_set({4}), 4, 5, {}, {0, 1, 2, 3});
-  EnumerateListExecutorInfos executorInfos(3, 4, 4, 5, {}, {0, 1, 2, 3});
+  EnumerateListExecutorInfos executorInfos(3, 4);
   EnumerateListExecutor testee(fetcher, executorInfos);
   SharedAqlItemBlockPtr inBlock =
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
@@ -151,7 +151,7 @@ class EnumerateListExecutorTestProduce
   SharedAqlItemBlockPtr block;
   NoStats stats;
 
-  EnumerateListExecutorTestProduce() : executorInfos(0, 1, 1, 2, {}, {0}) {}
+  EnumerateListExecutorTestProduce() : executorInfos(0, 1) {}
 
   auto makeRegisterInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1,
                          RegisterId nrInputRegister = 1, RegisterId nrOutputRegister = 2,
@@ -172,7 +172,7 @@ class EnumerateListExecutorTestProduce
       -> EnumerateListExecutorInfos {
     EnumerateListExecutorInfos infos{inputRegister,   outputRegister,
                                      nrInputRegister, nrOutputRegister,
-                                     regToClear,      regToKeep};
+                                     regToClear,      regToKeep}(0, 0);
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }

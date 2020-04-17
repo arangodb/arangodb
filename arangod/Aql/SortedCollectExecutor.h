@@ -50,20 +50,15 @@ class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class SortedCollectExecutorInfos : public RegisterInfos {
+class SortedCollectExecutorInfos {
  public:
-  SortedCollectExecutorInfos(
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep,
-      std::unordered_set<RegisterId>&& readableInputRegisters,
-      std::unordered_set<RegisterId>&& writeableOutputRegisters,
-      std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-      RegisterId collectRegister, RegisterId expressionRegister,
-      Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
-      std::vector<std::pair<std::string, RegisterId>>&& variables,
-      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-      transaction::Methods* trxPtr, bool count);
+  SortedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+                             RegisterId collectRegister, RegisterId expressionRegister,
+                             Variable const* expressionVariable,
+                             std::vector<std::string>&& aggregateTypes,
+                             std::vector<std::pair<std::string, RegisterId>>&& variables,
+                             std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+                             transaction::Methods* trxPtr, bool count);
 
   SortedCollectExecutorInfos() = delete;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;

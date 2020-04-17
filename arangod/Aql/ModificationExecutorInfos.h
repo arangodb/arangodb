@@ -61,17 +61,15 @@ struct IgnoreDocumentNotFound : BoolWrapper {
   explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b) {}
 };
 
-struct ModificationExecutorInfos : public RegisterInfos {
-  ModificationExecutorInfos(
-      RegisterId input1RegisterId, RegisterId input2RegisterId, RegisterId input3RegisterId,
-      RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
-      RegisterId outputRegisterId, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx,
-      OperationOptions options, aql::Collection const* aqlCollection,
-      ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
-      IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
-      IgnoreDocumentNotFound ignoreDocumentNotFound);
+struct ModificationExecutorInfos {
+  ModificationExecutorInfos(RegisterId input1RegisterId, RegisterId input2RegisterId,
+                            RegisterId input3RegisterId, RegisterId outputNewRegisterId,
+                            RegisterId outputOldRegisterId, RegisterId outputRegisterId,
+                            transaction::Methods* trx, OperationOptions options,
+                            aql::Collection const* aqlCollection, ProducesResults producesResults,
+                            ConsultAqlWriteFilter consultAqlWriteFilter,
+                            IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
+                            IgnoreDocumentNotFound ignoreDocumentNotFound);
 
   ModificationExecutorInfos() = delete;
   ModificationExecutorInfos(ModificationExecutorInfos&&) = default;

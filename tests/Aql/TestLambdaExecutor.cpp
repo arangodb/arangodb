@@ -29,16 +29,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-LambdaExecutorInfos::LambdaExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda, ResetCall reset)
-    : RegisterInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
-                    nrOutputRegisters, registersToClear, registersToKeep),
-      _produceLambda(lambda),
-      _resetLambda(reset) {}
+LambdaExecutorInfos::LambdaExecutorInfos(ProduceCall lambda, ResetCall reset)
+    : _produceLambda(lambda), _resetLambda(reset) {}
 
 auto LambdaExecutorInfos::getProduceLambda() const -> ProduceCall const& {
   return _produceLambda;
@@ -46,18 +38,11 @@ auto LambdaExecutorInfos::getProduceLambda() const -> ProduceCall const& {
 
 auto LambdaExecutorInfos::reset() -> void { _resetLambda(); }
 
-LambdaSkipExecutorInfos::LambdaSkipExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
-    SkipCall skipLambda, ResetCall reset)
-    : RegisterInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
-                    nrOutputRegisters, registersToClear, registersToKeep),
-      _produceLambda(lambda),
-      _skipLambda(skipLambda),
-      _resetLambda(reset) {}
+LambdaSkipExecutorInfos::LambdaSkipExecutorInfos(ProduceCall lambda,
+                                                 SkipCall skipLambda, ResetCall reset)
+    : _produceLambda(std::move(lambda)),
+      _skipLambda(std::move(skipLambda)),
+      _resetLambda(std::move(reset)) {}
 
 auto LambdaSkipExecutorInfos::getProduceLambda() const -> ProduceCall const& {
   return _produceLambda;

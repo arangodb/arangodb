@@ -508,16 +508,14 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
 
-  auto executorInfos = IndexExecutorInfos(
-      std::move(writableOutputRegisters),
-      getRegisterPlan()->nrRegs[previousNode->getDepth()], firstOutputRegister,
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-      &engine, this->collection(), _outVariable, isProduceResult(),
-      this->_filter.get(), this->projections(),
-      this->coveringIndexAttributePositions(), std::move(nonConstExpressions),
-      std::move(inVars), std::move(inRegs), hasV8Expression, _condition->root(),
-      this->getIndexes(), _plan->getAst(), this->options(),
-      _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
+  auto executorInfos =
+      IndexExecutorInfos(firstOutputRegister, &engine, this->collection(),
+                         _outVariable, isProduceResult(), this->_filter.get(),
+                         this->projections(), this->coveringIndexAttributePositions(),
+                         std::move(nonConstExpressions), std::move(inVars),
+                         std::move(inRegs), hasV8Expression, _condition->root(),
+                         this->getIndexes(), _plan->getAst(), this->options(),
+                         _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this,
                                                              std::move(registerInfos),

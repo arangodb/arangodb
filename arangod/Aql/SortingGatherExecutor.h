@@ -47,20 +47,15 @@ class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
-class SortingGatherExecutorInfos : public RegisterInfos {
+class SortingGatherExecutorInfos {
  public:
-  SortingGatherExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                             std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep,
-                             std::vector<SortRegister>&& sortRegister,
+  SortingGatherExecutorInfos(std::vector<SortRegister>&& sortRegister,
                              arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode,
                              size_t limit, GatherNode::Parallelism p);
   SortingGatherExecutorInfos() = delete;
-  SortingGatherExecutorInfos(SortingGatherExecutorInfos&&);
+  SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) noexcept = default;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos const&) = delete;
-  ~SortingGatherExecutorInfos();
+  ~SortingGatherExecutorInfos() = default;
 
   std::vector<SortRegister>& sortRegister() { return _sortRegister; }
 

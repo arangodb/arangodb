@@ -34,14 +34,9 @@ namespace aql {
 class AqlItemBlockManager;
 class DistributeNode;
 
-class DistributeExecutorInfos : public RegisterInfos, public ClientsExecutorInfos {
+class DistributeExecutorInfos : public ClientsExecutorInfos {
  public:
-  DistributeExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                          std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                          std::unordered_set<RegisterId> registersToClear,
-                          std::unordered_set<RegisterId> registersToKeep,
-                          std::vector<std::string> clientIds, Collection const* collection,
+  DistributeExecutorInfos(std::vector<std::string> clientIds, Collection const* collection,
                           RegisterId regId, RegisterId alternativeRegId,
                           bool allowSpecifiedKeys, bool allowKeyConversionToObject,
                           bool createKeys, ScatterNode::ScatterType type);

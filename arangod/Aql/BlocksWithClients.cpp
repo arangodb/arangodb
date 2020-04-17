@@ -103,7 +103,7 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
   _clientBlockData.reserve(shardIds.size());
 
   for (auto const& id : shardIds) {
-    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _executorInfos});
+    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _registerInfos});
   }
 }
 

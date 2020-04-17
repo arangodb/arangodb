@@ -49,19 +49,9 @@ void throwArrayExpectedException(AqlValue const& value) {
 }
 }  // namespace
 
-EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep)
-    : RegisterInfos(make_shared_unordered_set({inputRegister}),
-                    make_shared_unordered_set({outputRegister}),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _inputRegister(inputRegister),
-      _outputRegister(outputRegister) {}
+EnumerateListExecutorInfos::EnumerateListExecutorInfos(RegisterId inputRegister,
+                                                       RegisterId outputRegister)
+    : _inputRegister(inputRegister), _outputRegister(outputRegister) {}
 
 RegisterId EnumerateListExecutorInfos::getInputRegister() const noexcept {
   return _inputRegister;

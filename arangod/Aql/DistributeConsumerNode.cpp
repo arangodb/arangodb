@@ -66,9 +66,7 @@ std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
   auto registerInfos =
       createRegisterInfos(make_shared_unordered_set(), make_shared_unordered_set());
   auto executorInfos =
-      IdExecutorInfos(getRegisterPlan()->nrRegs[getDepth()], calcRegsToKeep(),
-                      getRegsToClear(), false, 0, _distributeId,
-                      _isResponsibleForInitializeCursor);
+      IdExecutorInfos(false, 0, _distributeId, _isResponsibleForInitializeCursor);
   return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }

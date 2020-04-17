@@ -658,18 +658,12 @@ class HashedCollectExecutorTestAggregate
 
     writeableOutputRegisters.emplace(3);
 
-    auto infos = HashedCollectExecutorInfos(nrInputRegisters,
-                                      nrOutputRegisters,
-                                      registersToClear,
-                                      registersToKeep,
-                                      std::move(readableInputRegisters),
-                                      std::move(writeableOutputRegisters),
-                                      std::move(groupRegisters),
-                                      collectRegister,
-                                      std::move(aggregateTypes),
-                                      std::move(aggregateRegisters),
-                                      fakedQuery->trx(),
-                                      count);
+    auto infos = HashedCollectExecutorInfos(std::move(readableInputRegisters),
+                                            std::move(writeableOutputRegisters),
+                                            std::move(groupRegisters), collectRegister,
+                                            std::move(aggregateTypes),
+                                            std::move(aggregateRegisters),
+                                            fakedQuery->trx(), count);
     return infos;
   };
 };

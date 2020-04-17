@@ -35,14 +35,10 @@ class SkipResult;
 class ExecutionEngine;
 class ScatterNode;
 
-class ScatterExecutorInfos : public RegisterInfos, public ClientsExecutorInfos {
+class ScatterExecutorInfos : public ClientsExecutorInfos {
  public:
-  ScatterExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                       std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                       std::unordered_set<RegisterId> registersToClear,
-                       std::unordered_set<RegisterId> registersToKeep,
-                       std::vector<std::string> clientIds);
+  explicit ScatterExecutorInfos(std::vector<std::string> clientIds);
+  ScatterExecutorInfos(ScatterExecutorInfos&&) = default;
 };
 
 // The ScatterBlock is actually implemented by specializing ExecutionBlockImpl,
@@ -70,7 +66,7 @@ class ScatterExecutor {
     bool _executorHasMore;
   };
 
-  ScatterExecutor(RegisterInfos const&);
+  explicit ScatterExecutor(Infos const&);
   ~ScatterExecutor() = default;
 
   auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
@@ -85,7 +81,7 @@ template <>
 class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl<ScatterExecutor> {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, ScatterNode const* node,
-                     RegisterInfos registerInfos, ScatterExecutorInfos&& infos);
+                     RegisterInfos registerInfos, ScatterExecutor::Infos&& infos);
 
   ~ExecutionBlockImpl() override = default;
 };

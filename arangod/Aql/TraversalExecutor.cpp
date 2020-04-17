@@ -38,17 +38,11 @@ using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
 TraversalExecutorInfos::TraversalExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, std::unique_ptr<Traverser>&& traverser,
+    std::unique_ptr<Traverser>&& traverser,
     std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
     std::string fixedSource, RegisterId inputRegister,
     std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables)
-    : RegisterInfos(std::move(inputRegisters), std::move(outputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _traverser(std::move(traverser)),
+    : _traverser(std::move(traverser)),
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
@@ -59,10 +53,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() && _inputRegister == RegisterPlan::MaxRegisterId));
 }
-
-TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&& other) = default;
-
-TraversalExecutorInfos::~TraversalExecutorInfos() = default;
 
 Traverser& TraversalExecutorInfos::traverser() {
   TRI_ASSERT(_traverser != nullptr);

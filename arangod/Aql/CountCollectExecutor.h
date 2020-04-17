@@ -47,12 +47,9 @@ class SingleRowFetcher;
 struct AqlCall;
 class AqlItemBlockInputRange;
 
-class CountCollectExecutorInfos : public RegisterInfos {
+class CountCollectExecutorInfos {
  public:
-  CountCollectExecutorInfos(RegisterId collectRegister, RegisterId nrInputRegisters,
-                            RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear,
-                            std::unordered_set<RegisterId> registersToKeep);
+  explicit CountCollectExecutorInfos(RegisterId collectRegister);
 
   CountCollectExecutorInfos() = delete;
   CountCollectExecutorInfos(CountCollectExecutorInfos&&) = default;

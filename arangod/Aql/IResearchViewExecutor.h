@@ -60,18 +60,19 @@ class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class IResearchViewExecutorInfos : public RegisterInfos {
+class IResearchViewExecutorInfos {
  public:
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
   IResearchViewExecutorInfos(
-      RegisterInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
+      std::shared_ptr<const iresearch::IResearchView::Snapshot> reader,
       RegisterId firstOutputRegister, RegisterId numScoreRegisters,
       Query& query, std::vector<iresearch::Scorer> const& scorers,
-      std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
-      iresearch::IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
-      Variable const& outVariable, aql::AstNode const& filterCondition,
-      std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth,
+      std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
+      iresearch::IResearchViewStoredValues const& storedValues,
+      ExecutionPlan const& plan, Variable const& outVariable,
+      aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
+      IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs);
 
   RegisterId getOutputRegister() const noexcept;

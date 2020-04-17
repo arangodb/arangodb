@@ -42,17 +42,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 DistributeExecutorInfos::DistributeExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
     std::vector<std::string> clientIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys, ScatterNode::ScatterType type)
-    : RegisterInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
-                    nrOutputRegisters, registersToClear, registersToKeep),
-      ClientsExecutorInfos(std::move(clientIds)),
+    : ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
       _alternativeRegId(alternativeRegId),
       _allowKeyConversionToObject(allowKeyConversionToObject),
@@ -61,13 +54,7 @@ DistributeExecutorInfos::DistributeExecutorInfos(
       _allowSpecifiedKeys(allowSpecifiedKeys),
       _collection(collection),
       _logCol(collection->getCollection()),
-      _type(type) {
-  TRI_ASSERT(readableInputRegisters->find(_regId) != readableInputRegisters->end());
-  if (hasAlternativeRegister()) {
-    TRI_ASSERT(readableInputRegisters->find(_alternativeRegId) !=
-               readableInputRegisters->end());
-  }
-}
+      _type(type) {}
 
 auto DistributeExecutorInfos::registerId() const noexcept -> RegisterId {
   TRI_ASSERT(_regId != RegisterPlan::MaxRegisterId);
@@ -130,13 +117,7 @@ DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                                                      RegisterInfos const& registerInfos)
     : _blockManager(engine.itemBlockManager()), registerInfos(registerInfos) {
   // We only get shared ptrs to const data. so we need to copy here...
-  auto executorInfos = IdExecutorInfos{registerInfos.numberOfInputRegisters(),
-                                       *registerInfos.registersToKeep(),
-                                       *registerInfos.registersToClear(),
-                                       false,
-                                       0,
-                                       "",
-                                       false};
+  auto executorInfos = IdExecutorInfos{false, 0, "", false};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
   _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
       &engine, node, registerInfos, std::move(executorInfos));

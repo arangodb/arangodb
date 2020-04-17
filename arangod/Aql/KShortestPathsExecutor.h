@@ -55,7 +55,7 @@ class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
 
-class KShortestPathsExecutorInfos : public RegisterInfos {
+class KShortestPathsExecutorInfos {
  public:
   struct InputVertex {
     enum class Type { CONSTANT, REGISTER };
@@ -71,11 +71,7 @@ class KShortestPathsExecutorInfos : public RegisterInfos {
         : type(Type::REGISTER), reg(reg), value("") {}
   };
 
-  KShortestPathsExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                              std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-                              RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                              std::unordered_set<RegisterId> registersToClear,
-                              std::unordered_set<RegisterId> registersToKeep,
+  KShortestPathsExecutorInfos(RegisterId outputRegister,
                               std::unique_ptr<graph::KShortestPathsFinder>&& finder,
                               InputVertex&& source, InputVertex&& target);
 

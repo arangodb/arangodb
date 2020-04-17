@@ -38,8 +38,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher&, Infos&){};
-TestEmptyExecutorHelper::~TestEmptyExecutorHelper() = default;
+TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher&, Infos&) {}
 
 std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRows") {
@@ -54,7 +53,4 @@ std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(Outp
 TestEmptyExecutorHelperInfos::TestEmptyExecutorHelperInfos(
     RegisterId inputRegister, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep)
-    : RegisterInfos(std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
-                    nullptr, nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)) {}
+    std::unordered_set<RegisterId> registersToKeep) {}

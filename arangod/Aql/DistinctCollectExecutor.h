@@ -50,12 +50,9 @@ class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class DistinctCollectExecutorInfos : public RegisterInfos {
+class DistinctCollectExecutorInfos {
  public:
-  DistinctCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                               std::unordered_set<RegisterId> registersToClear,
-                               std::unordered_set<RegisterId> registersToKeep,
-                               std::unordered_set<RegisterId>&& readableInputRegisters,
+  DistinctCollectExecutorInfos(std::unordered_set<RegisterId>&& readableInputRegisters,
                                std::unordered_set<RegisterId>&& writeableInputRegisters,
                                std::pair<RegisterId, RegisterId> groupRegister,
                                transaction::Methods* trxPtr);

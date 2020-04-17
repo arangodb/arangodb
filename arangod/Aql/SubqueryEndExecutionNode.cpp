@@ -106,11 +106,8 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
 
   auto const vpackOptions = trx->transactionContextPtr()->getVPackOptions();
-  auto executorInfos = SubqueryEndExecutorInfos(inputRegisters, outputRegisters,
-                               getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                               getRegisterPlan()->nrRegs[getDepth()],
-                               getRegsToClear(), calcRegsToKeep(), vpackOptions,
-                               inReg, outReg, isModificationNode());
+  auto executorInfos =
+      SubqueryEndExecutorInfos(vpackOptions, inReg, outReg, isModificationNode());
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

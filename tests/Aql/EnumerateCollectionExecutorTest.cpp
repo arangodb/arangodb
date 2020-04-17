@@ -109,9 +109,8 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         random(false),
         registerInfos(make_shared_unordered_set(), make_shared_unordered_set({0}),
                       1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep),
-        executorInfos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
-                      engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
-                      projections, coveringIndexAttributePositions, random),
+        executorInfos(0 /*outReg*/, engine, &aqlCollection, &outVariable, varUsedLater,
+                      nullptr, projections, coveringIndexAttributePositions, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
@@ -293,8 +292,8 @@ class EnumerateCollectionExecutorTestProduce
         random(false),
         registerInfos(make_shared_unordered_set(), make_shared_unordered_set({1}),
                       1 /*nrIn*/, 1 /*nrOut*/, {}, {}),
-        executorInfos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater,
-                      nullptr, projections, coveringIndexAttributePositions, random) {}
+        executorInfos(1, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
+                      projections, coveringIndexAttributePositions, random) {}
 
   auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
                          RegisterId nrOutputRegister = 1,
@@ -318,7 +317,8 @@ class EnumerateCollectionExecutorTestProduce
         regToClear,     regToKeep,       engine,
         &aqlCollection, &outVariable,    varUsedLater,
         nullptr,        projections,     coveringIndexAttributePositions,
-        random};
+        random}(0, nullptr, nullptr, nullptr, false, nullptr, <#initializer #>,
+                <#initializer #>, false);
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }

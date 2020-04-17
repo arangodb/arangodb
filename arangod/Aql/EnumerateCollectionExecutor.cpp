@@ -52,20 +52,11 @@ std::vector<size_t> const emptyAttributePositions;
 }
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+    RegisterId outputRegister, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions,
-    bool random)
-    : RegisterInfos(make_shared_unordered_set(),
-                    make_shared_unordered_set({outputRegister}),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _engine(engine),
+    std::vector<size_t> const& coveringIndexAttributePositions, bool random)
+    : _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),

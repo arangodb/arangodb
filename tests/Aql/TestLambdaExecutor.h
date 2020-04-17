@@ -62,15 +62,10 @@ using ResetCall = std::function<void()>;
  *        Contains basice RegisterPlanning information, and a ProduceCall.
  *        This produceCall will be executed whenever the LambdaExecutor is called with produceRows
  */
-class LambdaExecutorInfos : public RegisterInfos {
+class LambdaExecutorInfos {
  public:
-  LambdaExecutorInfos(
-      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-      std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
-      ResetCall reset = []() -> void {});
+  explicit LambdaExecutorInfos(
+      ProduceCall lambda, ResetCall reset = []() -> void {});
 
   LambdaExecutorInfos() = delete;
   LambdaExecutorInfos(LambdaExecutorInfos&&) = default;
@@ -91,15 +86,10 @@ class LambdaExecutorInfos : public RegisterInfos {
  *        The produceCall will be executed whenever the LambdaExecutor is called with produceRows
  *        The skipCall will be executed whenever the LambdaExecutor is called with skipRowsInRange
  */
-class LambdaSkipExecutorInfos : public RegisterInfos {
+class LambdaSkipExecutorInfos {
  public:
   LambdaSkipExecutorInfos(
-      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-      std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
-      SkipCall skipLambda, ResetCall reset = []() -> void {});
+      ProduceCall lambda, SkipCall skipLambda, ResetCall reset = []() -> void {});
 
   LambdaSkipExecutorInfos() = delete;
   LambdaSkipExecutorInfos(LambdaSkipExecutorInfos&&) = default;

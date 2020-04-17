@@ -45,12 +45,9 @@ class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class LimitExecutorInfos : public RegisterInfos {
+class LimitExecutorInfos {
  public:
-  LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                     std::unordered_set<RegisterId> registersToClear,
-                     std::unordered_set<RegisterId> registersToKeep,
-                     size_t offset, size_t limit, bool fullCount);
+  LimitExecutorInfos(size_t offset, size_t limit, bool fullCount);
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;

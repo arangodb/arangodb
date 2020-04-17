@@ -53,7 +53,7 @@ class SkipResult;
 
 class ClientsExecutorInfos {
  public:
-  ClientsExecutorInfos(std::vector<std::string> clientIds);
+  explicit ClientsExecutorInfos(std::vector<std::string> clientIds);
 
   ClientsExecutorInfos(ClientsExecutorInfos&&) = default;
   ClientsExecutorInfos(ClientsExecutorInfos const&) = delete;

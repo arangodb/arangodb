@@ -289,12 +289,12 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-      auto executorInfos = HashedCollectExecutorInfos(
-          getRegisterPlan()->nrRegs[previousNode->getDepth()],
-          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-          std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-          std::move(groupRegisters), collectRegister, std::move(aggregateTypes),
-          std::move(aggregateRegisters), trxPtr, _count);
+      auto executorInfos =
+          HashedCollectExecutorInfos(std::move(readableInputRegisters),
+                                     std::move(writeableOutputRegisters),
+                                     std::move(groupRegisters), collectRegister,
+                                     std::move(aggregateTypes),
+                                     std::move(aggregateRegisters), trxPtr, _count);
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -342,13 +342,11 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-      auto executorInfos = SortedCollectExecutorInfos(
-          getRegisterPlan()->nrRegs[previousNode->getDepth()],
-          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-          std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-          std::move(groupRegisters), collectRegister, expressionRegister,
-          _expressionVariable, std::move(aggregateTypes), std::move(variables),
-          std::move(aggregateRegisters), trxPtr, _count);
+      auto executorInfos =
+          SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
+                                     expressionRegister, _expressionVariable,
+                                     std::move(aggregateTypes), std::move(variables),
+                                     std::move(aggregateRegisters), trxPtr, _count);
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
                                                                          std::move(registerInfos),
@@ -365,11 +363,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       auto registerInfos =
           createRegisterInfos({}, make_shared_unordered_set({collectRegister}));
 
-      auto executorInfos =
-          CountCollectExecutorInfos(collectRegister,
-                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                    getRegisterPlan()->nrRegs[getDepth()],
-                                    getRegsToClear(), calcRegsToKeep());
+      auto executorInfos = CountCollectExecutorInfos(collectRegister);
 
       return std::make_unique<ExecutionBlockImpl<CountCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -392,11 +386,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
 
       TRI_ASSERT(groupRegisters.size() == 1);
-      auto executorInfos = DistinctCollectExecutorInfos(
-          getRegisterPlan()->nrRegs[previousNode->getDepth()],
-          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-          calcRegsToKeep(), std::move(readableInputRegisters),
-          std::move(writeableOutputRegisters), groupRegisters.front(), trxPtr);
+      auto executorInfos =
+          DistinctCollectExecutorInfos(std::move(readableInputRegisters),
+                                       std::move(writeableOutputRegisters),
+                                       groupRegisters.front(), trxPtr);
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));

@@ -96,9 +96,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         count(false),
         readableInputRegisters{0},
         writeableOutputRegisters{1},
-        infos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-              std::move(groupRegisters), collectRegister, expressionRegister,
+        infos(std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
@@ -188,9 +186,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        infos(1, nrOutputRegister, regToClear, regToKeep,
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-              std::move(groupRegisters), collectRegister, expressionRegister,
+        infos(std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
@@ -415,10 +411,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
 
-  SortedCollectExecutorInfos infos(1, nrOutputRegister, std::move(regToClear),
-                                   std::move(regToKeep), std::move(readableInputRegisters),
-                                   std::move(writeableOutputRegisters),
-                                   std::move(groupRegisters), collectRegister,
+  SortedCollectExecutorInfos infos(std::move(groupRegisters), collectRegister,
                                    expressionRegister, expressionVariable,
                                    std::move(aggregateTypes), std::move(variables),
                                    std::move(aggregateRegisters), trx, false);
@@ -508,10 +501,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   std::vector<std::pair<std::string, RegisterId>> variables;
   writeableOutputRegisters.insert(2);
 
-  SortedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
-                                   std::move(readableInputRegisters),
-                                   std::move(writeableOutputRegisters),
-                                   std::move(groupRegisters), collectRegister,
+  SortedCollectExecutorInfos infos(std::move(groupRegisters), collectRegister,
                                    expressionRegister, expressionVariable,
                                    std::move(aggregateTypes), std::move(variables),
                                    std::move(aggregateRegisters), trx, false);
@@ -633,9 +623,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        infos(1, nrOutputRegister, regToClear, regToKeep,
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-              std::move(groupRegisters), collectRegister, expressionRegister,
+        infos(std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
@@ -957,11 +945,8 @@ class SortedCollectExecutorTestSplit
         registerInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
                       std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
                       1, nrOutputRegister, regToClear, regToKeep),
-        executorInfos(1, nrOutputRegister, regToClear, regToKeep,
-                      std::move(readableInputRegisters),
-                      std::move(writeableOutputRegisters), std::move(groupRegisters),
-                      collectRegister, expressionRegister, expressionVariable,
-                      std::move(aggregateTypes), std::move(variables),
+        executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
+                      expressionVariable, std::move(aggregateTypes), std::move(variables),
                       std::move(aggregateRegisters), trx, count) {}
 };
 

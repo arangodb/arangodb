@@ -57,15 +57,14 @@ struct Variable;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class EnumerateCollectionExecutorInfos : public RegisterInfos {
+class EnumerateCollectionExecutorInfos {
  public:
-  EnumerateCollectionExecutorInfos(
-      RegisterId outputRegister, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
-      Collection const* collection, Variable const* outVariable, bool produceResult,
-      Expression* filter, std::vector<std::string> const& projections,
-      std::vector<size_t> const& coveringIndexAttributePositions, bool random);
+  EnumerateCollectionExecutorInfos(RegisterId outputRegister, ExecutionEngine* engine,
+                                   Collection const* collection, Variable const* outVariable,
+                                   bool produceResult, Expression* filter,
+                                   std::vector<std::string> const& projections,
+                                   std::vector<size_t> const& coveringIndexAttributePositions,
+                                   bool random);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;

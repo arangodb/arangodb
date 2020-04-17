@@ -234,15 +234,8 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
-  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
-
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
-
   auto registerInfos = createRegisterInfos({}, {});
-  auto executorInfos = ScatterExecutorInfos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                           std::move(regsToKeep), _clients);
+  auto executorInfos = ScatterExecutorInfos(_clients);
 
   return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this,
                                                                std::move(registerInfos),
@@ -335,12 +328,6 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
-  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
-
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
-
   RegisterId regId;
   RegisterId alternativeRegId = RegisterPlan::MaxRegisterId;
 
@@ -372,12 +359,9 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     inAndOutRegs->emplace(alternativeRegId);
   }
   auto registerInfos = createRegisterInfos(inAndOutRegs, inAndOutRegs);
-  auto infos =
-      DistributeExecutorInfos(inAndOutRegs, inAndOutRegs, nrInRegs, nrOutRegs,
-                              std::move(regsToClear), std::move(regsToKeep),
-                              clients(), collection(), regId, alternativeRegId,
-                              _allowSpecifiedKeys, _allowKeyConversionToObject,
-                              _createKeys, getScatterType());
+  auto infos = DistributeExecutorInfos(clients(), collection(), regId, alternativeRegId,
+                                       _allowSpecifiedKeys, _allowKeyConversionToObject,
+                                       _createKeys, getScatterType());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
                                                                   std::move(registerInfos),
@@ -531,14 +515,10 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
     if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
-      auto executorInfos =
-          ParallelUnsortedGatherExecutorInfos(getRegisterPlan()->nrRegs[getDepth()],
-                                              calcRegsToKeep(), getRegsToClear());
       return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+          &engine, this, std::move(registerInfos), EmptyExecutorInfos());
     } else {
-      auto executorInfos = IdExecutorInfos(getRegisterPlan()->nrRegs[getDepth()],
-                                           calcRegsToKeep(), getRegsToClear(), false);
+      auto executorInfos = IdExecutorInfos(false, 0, std::string(), false);
 
       return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));

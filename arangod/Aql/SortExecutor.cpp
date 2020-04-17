@@ -80,21 +80,30 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
   return set;
 }
 
-SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
+SortExecutorInfos::SortExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                                     std::shared_ptr<std::unordered_set<RegisterId>> registersToClear,
+                                     std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
-                                     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                     std::unordered_set<RegisterId> registersToClear,
-                                     std::unordered_set<RegisterId> registersToKeep,
                                      velocypack::Options const* options, bool stable)
-    : RegisterInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
+    : _numInRegs(nrInputRegisters),
+      _numOutRegs(nrOutputRegisters),
+      _registersToClear(std::move(registersToClear)),
       _limit(limit),
       _manager(manager),
       _vpackOptions(options),
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
+}
+
+RegisterId SortExecutorInfos::numberOfInputRegisters() const { return _numInRegs; }
+
+RegisterId SortExecutorInfos::numberOfOutputRegisters() const {
+  return _numOutRegs;
+}
+
+std::shared_ptr<std::unordered_set<RegisterId> const> const& SortExecutorInfos::registersToClear() const {
+  return _registersToClear;
 }
 
 std::vector<SortRegister> const& SortExecutorInfos::sortRegisters() const noexcept {

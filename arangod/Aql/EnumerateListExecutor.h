@@ -49,13 +49,9 @@ class NoStats;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class EnumerateListExecutorInfos : public RegisterInfos {
+class EnumerateListExecutorInfos {
  public:
-  // cppcheck-suppress passedByValue
-  EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
-                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep);
+  EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;

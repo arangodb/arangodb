@@ -39,14 +39,9 @@ class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class SubqueryExecutorInfos : public RegisterInfos {
+class SubqueryExecutorInfos {
  public:
-  SubqueryExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                        std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                        RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                        std::unordered_set<RegisterId> const& registersToClear,
-                        std::unordered_set<RegisterId>&& registersToKeep,
-                        ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
+  SubqueryExecutorInfos(ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
 
   SubqueryExecutorInfos() = delete;
   SubqueryExecutorInfos(SubqueryExecutorInfos&&);

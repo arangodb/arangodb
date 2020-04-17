@@ -82,7 +82,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     sortRegisters.emplace_back(std::move(sortReg));
     return SortExecutorInfos(std::move(sortRegisters),
                              /*limit (ignored for default sort)*/ 0, manager(),
-                             1, 1, {}, {0}, vpackOptions, false);
+                             vpackOptions, false);
   }
 
  private:

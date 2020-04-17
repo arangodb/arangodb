@@ -58,12 +58,10 @@ class RegisterInfos;
 class CountStats;
 class OutputAqlItemRow;
 
-class IdExecutorInfos : public RegisterInfos {
+class IdExecutorInfos {
  public:
-  IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-                  std::unordered_set<RegisterId> registersToClear, bool doCount,
-                  RegisterId outputRegister = 0, std::string distributeId = {""},
-                  bool isResponsibleForInitializeCursor = true);
+  IdExecutorInfos(bool doCount, RegisterId outputRegister,
+                  std::string distributeId, bool isResponsibleForInitializeCursor);
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;

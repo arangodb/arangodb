@@ -46,28 +46,23 @@ class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class TraversalExecutorInfos : public RegisterInfos {
+class TraversalExecutorInfos {
  public:
   enum OutputName { VERTEX, EDGE, PATH };
   struct OutputNameHash {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
 
-  TraversalExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                         std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-                         RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                         std::unordered_set<RegisterId> registersToClear,
-                         std::unordered_set<RegisterId> registersToKeep,
-                         std::unique_ptr<traverser::Traverser>&& traverser,
+  TraversalExecutorInfos(std::unique_ptr<traverser::Traverser>&& traverser,
                          std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
                          std::string fixedSource, RegisterId inputRegister,
                          std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables);
 
   TraversalExecutorInfos() = delete;
 
-  TraversalExecutorInfos(TraversalExecutorInfos&&);
+  TraversalExecutorInfos(TraversalExecutorInfos&&) noexcept = default;
   TraversalExecutorInfos(TraversalExecutorInfos const&) = delete;
-  ~TraversalExecutorInfos();
+  ~TraversalExecutorInfos() = default;
 
   traverser::Traverser& traverser();
 

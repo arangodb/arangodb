@@ -51,18 +51,24 @@ class OutputAqlItemRow;
 class AqlItemBlockManager;
 struct SortRegister;
 
-class SortExecutorInfos : public RegisterInfos {
+class SortExecutorInfos {
  public:
-  SortExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
-                    AqlItemBlockManager& manager, RegisterId nrInputRegisters,
-                    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-                    std::unordered_set<RegisterId> registersToKeep,
-                    velocypack::Options const*, bool stable);
+  SortExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                    std::shared_ptr<std::unordered_set<RegisterId>> registersToClear,
+                    std::vector<SortRegister> sortRegisters, std::size_t limit,
+                    AqlItemBlockManager& manager,
+                    velocypack::Options const* options, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
   SortExecutorInfos(SortExecutorInfos const&) = delete;
   ~SortExecutorInfos() = default;
+
+  [[nodiscard]] RegisterId numberOfInputRegisters() const;
+
+  [[nodiscard]] RegisterId numberOfOutputRegisters() const;
+
+  [[nodiscard]] std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToClear() const;
 
   [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
 
@@ -75,6 +81,9 @@ class SortExecutorInfos : public RegisterInfos {
   [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept;
 
  private:
+  RegisterId _numInRegs;
+  RegisterId _numOutRegs;
+  std::shared_ptr<std::unordered_set<RegisterId>> _registersToClear;
   std::size_t _limit;
   AqlItemBlockManager& _manager;
   velocypack::Options const* _vpackOptions;

@@ -47,7 +47,7 @@ template <BlockPassthrough>
 class SingleRowFetcher;
 struct Aggregator;
 
-class HashedCollectExecutorInfos : public RegisterInfos {
+class HashedCollectExecutorInfos {
  public:
   /**
    * @brief Construct a new Hashed Collect Executor Infos object
@@ -69,10 +69,7 @@ class HashedCollectExecutorInfos : public RegisterInfos {
    * @param trxPtr The AQL transaction, as it might be needed for aggregates
    * @param count Flag to enable count, will be written to collectRegister
    */
-  HashedCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep,
-                             std::unordered_set<RegisterId>&& readableInputRegisters,
+  HashedCollectExecutorInfos(std::unordered_set<RegisterId>&& readableInputRegisters,
                              std::unordered_set<RegisterId>&& writeableOutputRegisters,
                              std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,

@@ -43,20 +43,13 @@ using namespace arangodb::aql;
 static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
     std::unordered_set<RegisterId>&& readableInputRegisters,
     std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     transaction::Methods* trxPtr, bool count)
-    : RegisterInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _aggregateTypes(aggregateTypes),
+    : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
       _groupRegisters(groupRegisters),
       _collectRegister(collectRegister),
