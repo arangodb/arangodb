@@ -55,7 +55,7 @@ class SingleServerEdgeCursor;
 class TraverserCache;
 
 struct BaseOptions {
-  public:
+ public:
   struct LookupInfo {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
@@ -93,9 +93,9 @@ struct BaseOptions {
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
-  ///        the planning phase; however, the options have to be prepared again
-  ///        (see GraphNode::prepareOptions() and its overrides)
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works
+  ///        after the planning phase; however, the options have to be prepared
+  ///        again (see GraphNode::prepareOptions() and its overrides)
   BaseOptions(BaseOptions const&, bool allowAlreadyBuiltCopy = false);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
@@ -119,10 +119,10 @@ struct BaseOptions {
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
-  void setCollectionToShard(std::map<std::string, std::string>const&);
+  void setCollectionToShard(std::map<std::string, std::string> const&);
 
   bool produceVertices() const { return _produceVertices; }
-  
+
   void setProduceVertices(bool value) { _produceVertices = value; }
 
   transaction::Methods* trx() const;
@@ -135,13 +135,15 @@ struct BaseOptions {
   /// @brief Creates a complete Object containing all index information
   /// in the given builder.
   virtual void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
-  
+
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
 
   /// @brief whether or not an edge collection shall be excluded
   /// this can be overridden in TraverserOptions
-  virtual bool shouldExcludeEdgeCollection(std::string const& name) const { return false; }
+  virtual bool shouldExcludeEdgeCollection(std::string const& name) const {
+    return false;
+  }
 
   TraverserCache* cache();
   TraverserCache* cache() const;
@@ -153,6 +155,8 @@ struct BaseOptions {
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
   
   aql::RegexCache& regexCache() { return _regexCache; }
+
+  virtual auto estimateDepth() const noexcept -> uint64_t = 0;
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -169,7 +173,7 @@ struct BaseOptions {
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
                               std::string const& collectionName,
                               std::string const& attributeName, aql::AstNode* condition);
-  
+
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
