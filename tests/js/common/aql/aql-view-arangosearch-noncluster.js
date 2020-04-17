@@ -439,6 +439,48 @@ function iResearchAqlTestSuite () {
       assertEqual(result[1].c, 0);
     },
 
+    testStartsWithFilterArrayWithoutMinMatchCount : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g']) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, 'foo');
+      });
+    },
+
+    testStartsWithFilterEmptyArray : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, []) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 0);
+    },
+
+    testStartsWithFilterEmptyArrayMinMatchCountZero : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, [], 0) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 28);
+    },
+
+    testStartsWithFilterArrayWithMinMatchCountZero : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g'], 0) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 28);
+    },
+
+    testStartsWithFilterArrayWithMinMatchCountTrue : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g'], 1) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, 'foo');
+      });
+    },
+
+    testStartsWithFilterArrayWithMinMatchCountFalse : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g'], 2) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 0);
+    },
+
     testInTokensFilterSortTFIDF : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc").toArray();
 

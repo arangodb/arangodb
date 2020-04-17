@@ -374,7 +374,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'shardingStrategy': false,
     'cacheEnabled': true,
     'syncByRevision': true,
-    'validation' : null
+    'schema' : null
   };
   var a;
 
