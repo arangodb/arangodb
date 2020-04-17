@@ -41,7 +41,8 @@ transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
       _currentTransaction(nullptr),
       _embeddable(embeddable) {
   // need to set everything here
-  TRI_GET_GLOBALS2(v8::Isolate::GetCurrent());
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
   _sharedTransactionContext = static_cast<transaction::V8Context*>(v8g->_transactionContext);
 }
 
@@ -165,7 +166,7 @@ std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired
     TRI_vocbase_t& vocbase, bool embeddable) {
   // is V8 enabled and are currently in a V8 scope ?
   if (V8DealerFeature::DEALER != nullptr && v8::Isolate::GetCurrent() != nullptr) {
-    return Create(vocbase, embeddable);
+    return transaction::V8Context::Create(vocbase, embeddable);
   }
 
   return transaction::StandaloneContext::Create(vocbase);

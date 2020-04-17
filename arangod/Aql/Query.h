@@ -150,23 +150,15 @@ class Query : public QueryContext {
   
   void setIsAsyncQuery() { _isAsyncQuery = true; }
 
-  /// @brief prepare a V8 context for execution for this expression
-  /// this needs to be called once before executing any V8 function in this
-  /// expression
-  virtual void prepareV8Context() override;
-
   /// @brief enter a V8 context
   virtual void enterV8Context() override;
 
   /// @brief exits a V8 context
   virtual void exitV8Context() override;
 
-  // @brief resets the contexts load-state of the AQL functions.
-  virtual void unPrepareV8Context() override { _preparedV8Context = false; }
-  
   /// @brief check if the query has a V8 context ready for use
   virtual bool hasEnteredV8Context() const override {
-    return (_contextOwnedByExterior || _V8Context != nullptr);
+    return (_contextOwnedByExterior || _v8Context != nullptr);
   }
 
   /// @brief return the bind parameters as passed by the user
@@ -240,7 +232,7 @@ class Query : public QueryContext {
   std::shared_ptr<transaction::Context> _transactionContext;
 
   /// @brief the currently used V8 context
-  V8Context* _V8Context;
+  V8Context* _v8Context;
 
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
@@ -295,11 +287,6 @@ class Query : public QueryContext {
   
   /// @brief does this query contain async execution nodes
   bool _isAsyncQuery;
-
-  /// @brief whether or not the preparation routine for V8 contexts was run
-  /// once for this expression
-  /// it needs to be run once before any V8-based function is called
-  bool _preparedV8Context;
 
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;

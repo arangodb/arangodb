@@ -62,7 +62,7 @@ using namespace arangodb::graph;
 using VelocyPackHelper = basics::VelocyPackHelper;
 
 namespace {
-static bool ArrayContainsCollection(VPackSlice array, std::string const& colName) {
+static bool arrayContainsCollection(VPackSlice array, std::string const& colName) {
   TRI_ASSERT(array.isArray());
   for (VPackSlice it : VPackArrayIterator(array)) {
     if (it.stringRef() == colName) {
@@ -905,12 +905,12 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
           break;
         }
         // from's
-        if (::ArrayContainsCollection(edgeDefinition.get(StaticStrings::GraphFrom), colName)) {
+        if (::arrayContainsCollection(edgeDefinition.get(StaticStrings::GraphFrom), colName)) {
           collectionUnused = false;
           break;
         }
         // to's
-        if (::ArrayContainsCollection(edgeDefinition.get(StaticStrings::GraphTo), colName)) {
+        if (::arrayContainsCollection(edgeDefinition.get(StaticStrings::GraphTo), colName)) {
           collectionUnused = false;
           break;
         }
@@ -922,7 +922,7 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
     // check orphan collections
     VPackSlice orphanCollections = graph.get(StaticStrings::GraphOrphans);
     if (orphanCollections.isArray()) {
-      if (::ArrayContainsCollection(orphanCollections, colName)) {
+      if (::arrayContainsCollection(orphanCollections, colName)) {
         collectionUnused = false;
         break;
       }

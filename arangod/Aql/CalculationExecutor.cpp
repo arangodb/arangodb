@@ -138,7 +138,6 @@ void CalculationExecutor<calculationType>::exitContext() {
   if (shouldExitContextBetweenBlocks()) {
     // must invalidate the expression now as we might be called from
     // different threads
-    _infos.getExpression().invalidate();
     _infos.getQuery().exitV8Context();
     _hasEnteredContext = false;
   }
@@ -146,8 +145,8 @@ void CalculationExecutor<calculationType>::exitContext() {
 
 template <CalculationType calculationType>
 bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() const {
-  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
-  const bool stream = _infos.getQuery().queryOptions().stream;
+  static bool const isRunningInCluster = ServerState::instance()->isRunningInCluster();
+  bool const stream = _infos.getQuery().queryOptions().stream;
 
   return isRunningInCluster || stream;
 }

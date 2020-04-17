@@ -540,12 +540,6 @@ void IndexExecutor::initIndexes(InputAqlItemRow& input) {
       // must have a V8 context here to protect Expression::execute()
       auto cleanup = [this]() {
         if (arangodb::ServerState::instance()->isRunningInCluster()) {
-          // must invalidate the expression now as we might be called from
-          // different threads
-          for (auto const& e : _infos.getNonConstExpressions()) {
-            e->expression->invalidate();
-          }
-
           _infos.query().exitV8Context();
         }
       };

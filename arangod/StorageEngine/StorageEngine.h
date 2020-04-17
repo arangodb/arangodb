@@ -332,9 +332,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual Result createTickRanges(velocypack::Builder& builder) = 0;
   virtual Result firstTick(uint64_t& tick) = 0;
   virtual Result lastLogger(TRI_vocbase_t& vocbase,
-                            std::shared_ptr<transaction::Context> transactionContext,
                             uint64_t tickStart, uint64_t tickEnd,
-                            std::shared_ptr<velocypack::Builder>& builderSPtr) = 0;
+                            velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
   void getCapabilities(velocypack::Builder& builder) const {

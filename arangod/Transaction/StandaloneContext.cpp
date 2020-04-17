@@ -33,15 +33,15 @@ namespace transaction {
 StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
   : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
 
-/// @brief get transaction state, determine commit responsiblity
+/// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(transaction::Options const& options,
                                                                               bool& responsibleForCommit) {
   if (_state) {
     responsibleForCommit = false;
-    return _state;
+  } else {
+    responsibleForCommit = true;
+    _state = transaction::Context::createState(options);
   }
-  responsibleForCommit = true;
-  _state = transaction::Context::createState(options);
   return _state;
 }
 

@@ -68,4 +68,6 @@ global.aqlQuery = require('@arangodb').aql;
 require('@arangodb/actions').startup();
 
 // initialize AQL
-require('@arangodb/aql');
+if (global._AQL === undefined) { 
+  global._AQL = require('@arangodb/aql'); 
+}

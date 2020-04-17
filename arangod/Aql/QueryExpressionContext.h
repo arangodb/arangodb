@@ -42,8 +42,6 @@ class QueryExpressionContext : public ExpressionContext {
   void registerWarning(int errorCode, char const* msg) override final;
   void registerError(int errorCode, char const* msg) override final;
   
-  void prepareV8Context() override final;
-
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                        bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
