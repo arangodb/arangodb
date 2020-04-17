@@ -3631,9 +3631,8 @@ void insertScatterGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, GatherNo
   // Unlink node from plan, note that we allow removing the root node
   plan.unlinkNode(at, true);
 
-  auto* scatterNode =
-      new ScatterNode(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
-  plan.registerNode(scatterNode);
+  auto* scatterNode = plan.createNode<ScatterNode>(&plan, plan.nextId(),
+                                                   ScatterNode::ScatterType::SHARD);
 
   TRI_ASSERT(at->getDependencies().empty());
   TRI_ASSERT(!nodeDependencies.empty());
@@ -3641,16 +3640,15 @@ void insertScatterGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, GatherNo
 
   // insert REMOTE
   ExecutionNode* remoteNode =
-      new RemoteNode(&plan, plan.nextId(), vocbase, "", "", "");
-  plan.registerNode(remoteNode);
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
   remoteNode->addDependency(scatterNode);
 
   // Wire in `at`
   at->addDependency(remoteNode);
 
   // insert (another) REMOTE
-  remoteNode = new RemoteNode(&plan, plan.nextId(), vocbase, "", "", "");
-  plan.registerNode(remoteNode);
+  remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
   TRI_ASSERT(at);
   remoteNode->addDependency(at);
 
@@ -3678,13 +3676,11 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
   TRI_vocbase_t* vocbase = extractVocbaseFromNode(at);
 
   ExecutionNode* remoteNode =
-      new RemoteNode(&plan, plan.nextId(), vocbase, "", "", "");
-  plan.registerNode(remoteNode);
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
   plan.insertBefore(at, remoteNode);
 
-  auto* scatterNode =
-      new ScatterNode(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
-  plan.registerNode(scatterNode);
+  ExecutionNode* scatterNode =
+      plan.createNode<ScatterNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
   plan.insertBefore(remoteNode, scatterNode);
 
   // There must be a SCATTER/REMOTE block south of us, which was inserted by
