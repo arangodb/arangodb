@@ -36,6 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -665,19 +666,10 @@ Result Collections::updateProperties(LogicalCollection& collection,
     SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 
-    if (!res.ok()) {
-      return res;
+    if (res.ok()) {
+      // try to write new parameter to file
+      res = collection.properties(props, partialUpdate);
     }
-
-    // try to write new parameter to file
-    auto updateRes = collection.properties(props, partialUpdate);
-
-    if (!updateRes.ok()) {
-      return updateRes;
-    }
-
-    auto physical = collection.getPhysical();
-    TRI_ASSERT(physical != nullptr);
 
     return res;
   }
@@ -687,32 +679,16 @@ Result Collections::updateProperties(LogicalCollection& collection,
 /// @brief helper function to rename collections in _graphs as well
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RenameGraphCollections(TRI_vocbase_t* vocbase, std::string const& oldName,
+static int RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& oldName,
                                   std::string const& newName) {
-  V8DealerFeature* dealer = V8DealerFeature::DEALER;
-  if (dealer == nullptr || !dealer->isEnabled()) {
-    return TRI_ERROR_NO_ERROR;  // V8 might is disabled
+  ExecContextSuperuserScope exscope;
+
+  graph::GraphManager gmngr{vocbase};
+  bool r = gmngr.renameGraphCollection(oldName, newName);
+  if (!r) {
+    LOG_DEVEL << "RENAMING FROM " << oldName << " TO " << newName << " FAILED";
+    return TRI_ERROR_FAILED;
   }
-
-  basics::StringBuffer buffer(true);
-  buffer.appendText(
-      "require('@arangodb/general-graph-common')._renameCollection(");
-  buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
-  buffer.appendChar(',');
-  buffer.appendJsonEncoded(newName.c_str(), newName.size());
-  buffer.appendText(");");
-
-  JavaScriptSecurityContext securityContext =
-      JavaScriptSecurityContext::createInternalContext();
-  V8ContextGuard guard(vocbase, securityContext);
-
-  auto isolate = guard.isolate();
-  v8::HandleScope scope(isolate);
-  TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
-                              TRI_V8_ASCII_PAIR_STRING(isolate, buffer.c_str(),
-                                                       buffer.length()),
-                              TRI_V8_ASCII_STRING(isolate, "collection rename"), false);
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -767,7 +743,7 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   // rename collection inside _graphs as well
-  return RenameGraphCollections(&(collection.vocbase()), oldName, newName);
+  return RenameGraphCollections(collection.vocbase(), oldName, newName);
 }
 
 #ifndef USE_ENTERPRISE
