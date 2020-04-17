@@ -211,13 +211,13 @@ template <class T> static bool readValue(GeneralRequest const& req, char const* 
   std::string const& val_str = req.value(name, found);
 
   if (!found) {
-    LOG_TOPIC("f4732", WARN, Logger::AGENCY)
-      << "Mandatory query string " << name << " missing.";
+    LOG_TOPIC("f4732", DEBUG, Logger::AGENCY)
+      << "Query string " << name << " missing.";
     return false;
   } else {
     if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
       LOG_TOPIC("f4237", WARN, Logger::AGENCY)
-        << "Conversion of " << val_str << " to " << typeid(T).name() << " failed";
+        << "Conversion of query string " << name  << " with " << val_str << " to " << typeid(T).name() << " failed";
       return false;
     }
   }
