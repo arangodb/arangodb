@@ -7507,7 +7507,7 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
 AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
-  // SCHEMA_GET(collectionName)
+  // SCHEMA_GET(collectionName) -> schema object
   static char const* AFN = "SCHEMA_GET";
 
   if (parameters.size() != 1) {
@@ -7537,7 +7537,7 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull{});
   }
 
-  auto ruleSlice = slice.get(StaticStrings::ValidatorParameterRule);
+  auto ruleSlice = slice.get(StaticStrings::ValidationParameterRule);
 
   if (!ruleSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -7545,13 +7545,13 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
                                        collectionName + " has no rule object");
   }
 
-  return AqlValue(ruleSlice);
+  return AqlValue(slice);
 }
 
 AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
                                    transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
-  // SCHEMA_VALIDATE(doc, schema)
+  // SCHEMA_VALIDATE(doc, schema object) -> { valid (bool), [errorMessage (string)] }
   static char const* AFN = "SCHEMA_VALIDATE";
   auto const* vpackOptions = trx->transactionContext()->getVPackOptions();
 
@@ -7577,19 +7577,8 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
                                      schemaValue.slice().toJson());
   }
 
-  VPackBuilder validationBuilder(vpackOptions);
-  {
-    VPackObjectBuilder guard(&validationBuilder);
-    validationBuilder.add(StaticStrings::ValidatorParameterRule, schemaValue.slice());
-    validationBuilder.add(StaticStrings::ValidatorParameterMessage,
-                          VPackValue("Schema Test failed"));
-    validationBuilder.add(StaticStrings::ValidatorParameterLevel,
-                          VPackValue(StaticStrings::ValidatorLevelStrict));
-    validationBuilder.add(StaticStrings::ValidatorParameterType,
-                          VPackValue(StaticStrings::ValidatorTypeAQL));
-  }
-
-  arangodb::ValidatorJsonSchema validator(validationBuilder.slice());
+  arangodb::ValidatorJsonSchema validator(schemaValue.slice());
+  validator.setLevel(ValidationLevel::Strict); //override level so the validation will be executed no matter what
   auto res = validator.validateOne(docValue.slice(), vpackOptions);
 
   transaction::BuilderLeaser resultBuilder(trx);

@@ -228,7 +228,7 @@ class StaticStrings {
   static std::string const SyncByRevision;
   static std::string const TempObjectId;
   static std::string const UsesRevisionsAsDocumentIds;
-  static std::string const Validation;
+  static std::string const Schema;
   static std::string const Version;
   static std::string const WriteConcern;
 
@@ -312,28 +312,14 @@ class StaticStrings {
   static std::string const AqlCallListDefault;
 
   // validation
-  static std::string const ValidatorLevelNone;
-  static std::string const ValidatorLevelNew;
-  static std::string const ValidatorLevelModerate;
-  static std::string const ValidatorLevelStrict;
+  static std::string const ValidationLevelNone;
+  static std::string const ValidationLevelNew;
+  static std::string const ValidationLevelModerate;
+  static std::string const ValidationLevelStrict;
 
-  static std::string const ValidatorParameterMessage;
-  static std::string const ValidatorParameterLevel;
-  static std::string const ValidatorParameterType;
-  static std::string const ValidatorParameterRule;
-  static std::string const ValidatorParameterSpecialProperties;
-
-  static std::string const ValidatorTypeJsonSchema;
-  static std::string const ValidatorTypeAQL;
-  static std::string const ValidatorTypeBool;
-
-  static std::string const ValidatorPropertyAll;
-  static std::string const ValidatorPropertyNone;
-  static std::string const ValidatorPropertyKey;
-  static std::string const ValidatorPropertyId;
-  static std::string const ValidatorPropertyRev;
-  static std::string const ValidatorPropertyFrom;
-  static std::string const ValidatorPropertyTo;
+  static std::string const ValidationParameterMessage;
+  static std::string const ValidationParameterLevel;
+  static std::string const ValidationParameterRule;
 
   // metrics prometheus labels
   static std::string const HeartbeatSendTimeMs;
