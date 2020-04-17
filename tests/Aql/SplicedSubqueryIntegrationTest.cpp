@@ -189,6 +189,26 @@ class SplicedSubqueryIntegrationTest
     return RegisterInfos(inRegisterList, outRegisterList, 1, 2, {}, toKeep);
   }
 
+  auto makeAssertExecutorInfos() -> LambdaExe::Infos {
+    auto numRegs = size_t{1};
+    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+
+    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{0});
+    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{1});
+
+    std::unordered_set<RegisterId> toKeep;
+
+    for (RegisterId r = 0; r < numRegs; ++r) {
+      toKeep.emplace(r);
+    }
+
+    return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
+        createAssertCall(), createSkipCall());
+  }
+
   auto makeAssertExecutorInfos(AqlCall call) -> LambdaExe::Infos {
     auto numRegs = size_t{1};
     auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
@@ -551,7 +571,7 @@ TEST_P(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartRegisterInfos(),
                                           makeSubqueryStartExecutorInfos(),
                                           ExecutionNode::SUBQUERY_START)
-      .addConsumer<LambdaExe>(makeAssertRegisterInfos(), makeAssertExecutorInfos(call))
+      .addConsumer<LambdaExe>(makeAssertRegisterInfos(), makeAssertExecutorInfos())
       .addConsumer<SubqueryEndExecutor>(makeSubqueryEndRegisterInfos(0),
                                         makeSubqueryEndExecutorInfos(0),
                                         ExecutionNode::SUBQUERY_END)
@@ -572,7 +592,7 @@ TEST_P(SplicedSubqueryIntegrationTest, check_soft_limit_subquery) {
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartRegisterInfos(),
                                           makeSubqueryStartExecutorInfos(),
                                           ExecutionNode::SUBQUERY_START)
-      .addConsumer<LambdaExe>(makeAssertRegisterInfos(), makeAssertExecutorInfos(call))
+      .addConsumer<LambdaExe>(makeAssertRegisterInfos(), makeAssertExecutorInfos())
       .addConsumer<SubqueryEndExecutor>(makeSubqueryEndRegisterInfos(0),
                                         makeSubqueryEndExecutorInfos(0),
                                         ExecutionNode::SUBQUERY_END)
