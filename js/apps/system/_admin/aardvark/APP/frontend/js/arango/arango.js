@@ -581,6 +581,9 @@
         },
         Settings: {
           route: '#cSettings/' + encodeURIComponent(collectionName)
+        },
+        Schema: {
+          route: '#cSchema/' + encodeURIComponent(collectionName)
         }
       };
 

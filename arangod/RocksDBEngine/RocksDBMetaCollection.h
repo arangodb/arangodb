@@ -76,6 +76,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
 
   bool needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const;
+  rocksdb::SequenceNumber lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq);
   rocksdb::SequenceNumber serializeRevisionTree(std::string& output,
                                                 rocksdb::SequenceNumber commitSeq);
 
@@ -113,7 +114,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
-  rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
+  void applyUpdates(rocksdb::SequenceNumber commitSeq);
 
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;
@@ -130,7 +131,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @revision tree management for replication
   std::unique_ptr<containers::RevisionTree> _revisionTree;
   std::atomic<rocksdb::SequenceNumber> _revisionTreeApplied;
-  std::atomic<rocksdb::SequenceNumber> _revisionTreeSerializedSeq;
+  rocksdb::SequenceNumber _revisionTreeSerializedSeq;
   std::chrono::steady_clock::time_point _revisionTreeSerializedTime;
   mutable std::mutex _revisionTreeLock;
   std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionInsertBuffers;
