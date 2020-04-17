@@ -696,8 +696,20 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
-  auto readableInputRegisters = make_shared_unordered_set({in});
-  auto writableOutputRegisters = make_shared_unordered_set({outputNew, outputOld, out});
+  auto readableInputRegisters = make_shared_unordered_set();
+  if (in < RegisterPlan::MaxRegisterId) {
+    readableInputRegisters->emplace(in);
+  }
+  auto writableOutputRegisters = make_shared_unordered_set();
+  if (out < RegisterPlan::MaxRegisterId) {
+    readableInputRegisters->emplace(out);
+  }
+  if (outputNew < RegisterPlan::MaxRegisterId) {
+    readableInputRegisters->emplace(outputNew);
+  }
+  if (outputOld < RegisterPlan::MaxRegisterId) {
+    readableInputRegisters->emplace(outputOld);
+  }
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
