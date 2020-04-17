@@ -28,7 +28,7 @@ attribute(s)
   additional journals or datafiles that are created. Already
   existing journals or datafiles will not be affected.
 
-- *validation*: Object that specifies the collection level schema validation
+- *schema*: Object that specifies the collection level schema 
   for documents. The attribute keys `rule`, `level` and `message` must follow
   the rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
@@ -66,8 +66,8 @@ On success an object with the following attributes is returned:
     generating keys and supplying own key values in the *_key* attribute
     of documents is considered an error.
 
-* *validation* (optional, default is *null*, **rocksdb-only**):
-  Object that specifies the collection level schema validation for documents.
+* *schema* (optional, default is *null*):
+  Object that specifies the collection level schema for documents.
   The attribute keys `rule`, `level` and `message` must follow the rules
   documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 

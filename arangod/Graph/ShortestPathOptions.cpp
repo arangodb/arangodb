@@ -146,7 +146,8 @@ void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.add("base", VPackValue(VPackValueType::Array));
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
-      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
+      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics,
+                                                  Index::Serialize::Estimates));
     }
   }
   builder.close();
@@ -181,10 +182,12 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
   if (_isCoordinator) {
     return std::make_unique<ClusterShortestPathEdgeCursor>(this, backward);
   }
-  
-  return std::make_unique<SingleServerEdgeCursor>(this, _tmpVar, nullptr, backward ? _reverseLookupInfos : _baseLookupInfos);
+
+  return std::make_unique<SingleServerEdgeCursor>(this, _tmpVar, nullptr,
+                                                  backward ? _reverseLookupInfos
+                                                           : _baseLookupInfos);
 }
-  
+
 void ShortestPathOptions::fetchVerticesCoordinator(
     std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
   // TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
@@ -215,6 +218,14 @@ void ShortestPathOptions::isQueryKilledCallback() const {
   if (query()->killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+}
+
+auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
+  // We vertainly have no clue how the depth actually is.
+  // So we return a "random" number here.
+  // By the six degrees of seperation rule, which defines most vertices in a naturally created graph
+  // are 6 steps away from each other, 7 seems to be a quite good worst-case estimate.
+  return 7;
 }
 
 ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,

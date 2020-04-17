@@ -42,7 +42,7 @@ using namespace arangodb::rest;
 using namespace arangodb::consensus;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server
+/// @brief Rest agency handler
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& server,
@@ -163,11 +163,10 @@ RestStatus RestAgencyHandler::pollIndex(
     .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
       VPackSlice res = rb->slice();
 
-      TRI_ASSERT(res.hasKey("result"));
       if (res.hasKey("result")) {
         resetResponse(rest::ResponseCode::OK);
         VPackSlice slice = res.get("result");
-        
+
         if (slice.hasKey("log")) {
           VPackBuilder builder;
           {
@@ -206,6 +205,24 @@ RestStatus RestAgencyHandler::pollIndex(
 
 }
 
+namespace {
+template <class T> static bool readValue(GeneralRequest const& req, char const* name, T& val) {
+  bool found = true;
+  std::string const& val_str = req.value(name, found);
+
+  if (!found) {
+    LOG_TOPIC("f4732", DEBUG, Logger::AGENCY)
+      << "Query string " << name << " missing.";
+    return false;
+  } else {
+    if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
+      LOG_TOPIC("f4237", WARN, Logger::AGENCY)
+        << "Conversion of query string " << name  << " with " << val_str << " to " << typeid(T).name() << " failed";
+      return false;
+    }
+  }
+  return true;
+}}
 
 RestStatus RestAgencyHandler::handlePoll() {
 
@@ -227,8 +244,8 @@ RestStatus RestAgencyHandler::handlePoll() {
   index_t index = 0;
   double timeout = 60.0;
 
-  readValue("index", index);
-  readValue("timeout", timeout);
+  readValue(*_request, "index", index);
+  readValue(*_request, "timeout", timeout);
 
   return pollIndex(index, timeout);
 

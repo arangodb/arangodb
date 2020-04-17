@@ -1432,7 +1432,7 @@ void Agent::clearExpiredPolls() {
 
 
 /// Clear expired polls
-/// Wake up everybody with quertand delete with empty
+/// Wake up everybody with query and delete with empty.
 /// If qu is nullptr, we're resigning.
 void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
 
