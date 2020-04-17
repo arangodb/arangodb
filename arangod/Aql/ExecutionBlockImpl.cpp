@@ -902,15 +902,16 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
     // we need to reset the ExecutorHasReturnedDone, it will
     // return done after every subquery is fully collected.
     _executorReturnedDone = false;
+
   } else {
     _outputItemRow->decreaseShadowRowDepth(shadowRow);
   }
 
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
-  // we need to update the Top of the stack now
-  auto& topCall = stack.modifyTopCall();
-  topCall = _outputItemRow->getClientCall();
+  // The stack in used here contains all calls for within the subquery.
+  // Hence any inbound subquery needs to be counted on its level
+  countShadowRowProduced(stack, shadowRow.getDepth());
 
   if (state == ExecutorState::DONE) {
     // We have consumed everything, we are
@@ -1595,12 +1596,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
         if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
           TRI_ASSERT(!stack.empty());
-          AqlCall const& subqueryCall = stack.peek();
-          AqlCall copyCall = subqueryCall;
-          ensureOutputBlock(std::move(copyCall), _lastRange);
-        } else {
-          ensureOutputBlock(std::move(clientCall), _lastRange);
         }
+        ensureOutputBlock(std::move(clientCall), _lastRange);
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
         if constexpr (executorHasSideEffects<Executor>) {
@@ -1657,6 +1654,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   }
   LOG_QUERY("80c24", DEBUG) << printBlockInfo() << " local statemachine done. Return now.";
   // If we do not have an output, we simply return a nullptr here.
+
+  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+    // We can never return less rows then what we got!
+    TRI_ASSERT(_outputItemRow == nullptr || _outputItemRow->numRowsLeft() == 0);
+  }
+
   auto outputBlock = _outputItemRow != nullptr ? _outputItemRow->stealBlock()
                                                : SharedAqlItemBlockPtr{nullptr};
   // We are locally done with our output.
