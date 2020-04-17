@@ -107,7 +107,7 @@ class BlocksWithClients {
 
 template <class Executor>
 class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
-  using Infos = typename Executor::Infos;
+  using ExecutorInfos = typename Executor::Infos;
 
  public:
   BlocksWithClientsImpl(ExecutionEngine* engine, ExecutionNode const* ep,
@@ -187,7 +187,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
    *        the template class needs to implement the logic
    *        to produce a single row from the upstream information.
    */
-  Infos _executorInfos;
+  ExecutorInfos _executorInfos;
 
   Executor _executor;
 
