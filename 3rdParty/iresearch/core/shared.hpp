@@ -256,6 +256,8 @@
   #define CURRENT_FUNCTION __PRETTY_FUNCTION__
 #elif defined(_MSC_VER)
   #define CURRENT_FUNCTION __FUNCSIG__
+#else
+#define CURRENT_FUNCTION __FUNCTION__
 #endif
 
 #ifndef __has_feature

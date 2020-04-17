@@ -26,7 +26,9 @@
 
 #include <string>
 #include <iostream>
+#include <vector>
 #include "shared.hpp"
+#include "stdarg.h"
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
   #define IR_FILEPATH_SPECIFIER  "%ws"
@@ -66,15 +68,47 @@ enum level_t {
   IRL_TRACE
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief log appender callback
+//////////////////////////////////////////////////////////////////////////////
+typedef void  (*log_appender_callback_t)(void* context, const char* function, const char* file, int line,
+                              level_t level, const char* message, 
+                              size_t message_len);
+
 IRESEARCH_API bool enabled(level_t level);
-IRESEARCH_API FILE* output(level_t level);
+
+// Backward compatible fd-appender control functions
 IRESEARCH_API void output(level_t level, FILE* out); // nullptr == /dev/null
 IRESEARCH_API void output_le(level_t level, FILE* out); // nullptr == /dev/null
+// Custom appender control functions
+IRESEARCH_API void output(level_t level, log_appender_callback_t appender); // nullptr == log level disabled
+IRESEARCH_API void output_le(level_t level, log_appender_callback_t appender); // nullptr == log level disabled
+
+IRESEARCH_API void log(const char* function, const char* file, int line,
+                       level_t level, const char* message, size_t len);
+
 IRESEARCH_API void stack_trace(level_t level);
 IRESEARCH_API void stack_trace(level_t level, const std::exception_ptr& eptr);
 IRESEARCH_API irs::logger::level_t stack_trace_level(); // stack trace output level
 IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
-IRESEARCH_API std::ostream& stream(level_t level);
+
+FORCE_INLINE void log(char const* function, char const* file, int line,
+                      level_t level, char const* format, ...) {
+  if (enabled(level)) {
+    va_list args;
+    va_start(args, format);
+    auto required_len = vsnprintf(nullptr, 0, format, args);
+    va_end(args);
+    if (required_len > 0) {
+      std::vector<char> buf(size_t(required_len) + 1);
+      va_list args1;
+      va_start(args1, format);
+      vsnprintf(buf.data(), buf.size(), format, args1);
+      va_end(args1);
+      log(function, file, line, level, buf.data(), buf.size());
+    }
+  }
+}
 
 #ifndef _MSC_VER
   // +1 to skip stack_trace_nomalloc(...)
@@ -85,16 +119,15 @@ NS_END // logger
 NS_END
 
 #if defined(_MSC_VER)
-  #define IR_LOG_FORMATED(level, prefix, format, ...) \
-    if (::iresearch::logger::enabled(level)) \
-      std::fprintf(::iresearch::logger::output(level), "%s: %s:%d " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
+  #define IR_LOG_FORMATED(level, format, ...) \
+    ::iresearch::logger::log(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, __VA_ARGS__)
 
-  #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, __VA_ARGS__)
-  #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, __VA_ARGS__)
-  #define IR_FRMT_WARN(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_WARN, "WARN", format, __VA_ARGS__)
-  #define IR_FRMT_INFO(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_INFO, "INFO", format, __VA_ARGS__)
-  #define IR_FRMT_DEBUG(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, "DEBUG", format, __VA_ARGS__)
-  #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, "TRACE", format, __VA_ARGS__)
+  #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, __VA_ARGS__)
+  #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, __VA_ARGS__)
+  #define IR_FRMT_WARN(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_WARN, format, __VA_ARGS__)
+  #define IR_FRMT_INFO(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_INFO, format, __VA_ARGS__)
+  #define IR_FRMT_DEBUG(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, format, __VA_ARGS__)
+  #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, format, __VA_ARGS__)
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
   #define IR_LOG_FORMATED(level, prefix, format, ...) \
     if (::iresearch::logger::enabled(level)) \
@@ -110,12 +143,12 @@ NS_END
 
 #define IR_LOG_EXCEPTION() \
   if (::iresearch::logger::enabled(::iresearch::logger::stack_trace_level())) { \
-    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "EXCEPTION", "@%s\nstack trace:", __FUNCTION__); \
+    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\n Exception stack trace:",CURRENT_FUNCTION); \
     ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level(), std::current_exception()); \
   }
 #define IR_LOG_STACK_TRACE() \
   if (::iresearch::logger::enabled(::iresearch::logger::stack_trace_level())) { \
-    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "STACK_TRACE", "@%s\nstack trace:", __FUNCTION__); \
+    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\nstack trace:", CURRENT_FUNCTION); \
     ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level()); \
   }
 

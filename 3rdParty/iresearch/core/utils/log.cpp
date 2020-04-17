@@ -23,6 +23,7 @@
 
 #include <memory>
 #include <mutex>
+#include <sstream>
 
 #if defined(_MSC_VER)
   #include <Windows.h> // must be included before DbgHelp.h
@@ -60,6 +61,7 @@
 
 #include "misc.hpp"
 #include "log.hpp"
+#include <map>
 
 NS_LOCAL
 
@@ -70,6 +72,32 @@ static FILE* dev_null() {
 }
 MSVC_ONLY(__pragma(warning(pop)))
 
+void noop_log_appender(void*, char const*, char const*, 
+                                         int, irs::logger::level_t,
+                                         char const*, size_t) {}
+
+
+void fd_log_appender_callback(void* context, char const* function, char const* file, int line,
+    irs::logger::level_t level, char const* message,
+    size_t) {
+  FILE* fd = reinterpret_cast<FILE*>(context);
+  if (fd != nullptr) {
+    char const* prefix = "UNKNOWN";
+    switch (level) {
+    case irs::logger::IRL_FATAL: prefix = "FATAL"; break;
+    case irs::logger::IRL_ERROR: prefix = "ERROR"; break;
+    case irs::logger::IRL_WARN: prefix = "WARN"; break;
+    case irs::logger::IRL_INFO: prefix = "INFO"; break;
+    case irs::logger::IRL_DEBUG: prefix = "DEBUG"; break;
+    case irs::logger::IRL_TRACE: prefix = "TRACE"; break;
+    }
+    std::fprintf(fd, "%s: %s:%d %s\n", prefix, (file ? file : "<no file provided>"), line, message);
+    if (irs::logger::IRL_FATAL == level) {
+      std::fflush(fd);
+    }
+  }
+}
+
 class logger_ctx: public iresearch::singleton<logger_ctx> {
  public:
   logger_ctx()
@@ -77,15 +105,21 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
       stack_trace_level_(irs::logger::level_t::IRL_DEBUG) {
     // set everything up to and including INFO to stderr
     for (size_t i = 0, last = iresearch::logger::IRL_INFO; i <= last; ++i) {
-      out_[i].file_ = stderr;
+      out_[i].appender_context_ = stderr;
+      out_[i].appender_ = fd_log_appender_callback;
     }
   }
 
-  bool enabled(iresearch::logger::level_t level) const { return dev_null() != out_[level].file_; }
-  FILE* file(iresearch::logger::level_t level) const { return out_[level].file_; }
+  bool enabled(iresearch::logger::level_t level) const { return noop_log_appender != out_[level].appender_; }
 
   logger_ctx& output(iresearch::logger::level_t level, FILE* out) {
-    out_[level].file_ = out ? out : dev_null();
+    if (out != nullptr) {
+      out_[level].appender_ = noop_log_appender; // to play safe - as noop never uses context and noop log never breaks
+      out_[level].appender_context_ = out;
+      out_[level].appender_ = fd_log_appender_callback;
+    } else {
+      out_[level].appender_ = noop_log_appender;
+    }
     return *this;
   }
 
@@ -102,10 +136,16 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     return *this;
   }
 
+  void log(const char* function, const char* file, int line,
+           iresearch::logger::level_t level, const char* message, size_t len) {
+    out_[level].appender_(out_[level].appender_context_, function, file, line, level, message, len);
+  }
+
  private:
   struct level_ctx_t {
-    FILE* file_;
-    level_ctx_t(): file_(dev_null()) {}
+    irs::logger::log_appender_callback_t appender_;
+    void* appender_context_;
+    level_ctx_t(): appender_(nullptr), appender_context_(nullptr) {}
   };
 
   level_ctx_t out_[iresearch::logger::IRL_TRACE + 1]; // IRL_TRACE is the last value, +1 for 0'th id
@@ -118,13 +158,11 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
 #if defined(_MSC_VER)
   DWORD stack_trace_win32(iresearch::logger::level_t level, struct _EXCEPTION_POINTERS* ex) {
-    auto* out = output(level);
     static std::mutex mutex;
     SCOPED_LOCK(mutex); // win32 stack trace API is not thread safe
 
     if (!ex || !ex->ContextRecord) {
-      std::fprintf(out, "No stack_trace available\n");
-      std::fflush(out);
+      IR_LOG_FORMATED(level, "No stack_trace available");
       return EXCEPTION_EXECUTE_HANDLER;
     }
 
@@ -147,8 +185,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     DWORD module_handle_size;
 
     if (!EnumProcessModules(process, &module_handle, sizeof(HMODULE), &module_handle_size)) {
-      std::fprintf(out, "Failed to enumerate modules for current process\n");
-      std::fflush(out);
+      IR_LOG_FORMATED(level, "Failed to enumerate modules for current process");
       return EXCEPTION_EXECUTE_HANDLER;
     }
 
@@ -191,30 +228,26 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
         continue;
       }
-
-      std::fprintf(out, "#%Iu ", ++frame_count);
+      std::ostringstream ss;
+      ss << "#" << ++frame_count << " ";
 
       if (has_module) {
-        std::fprintf(out, "%s", module.ModuleName);
+        ss << module.ModuleName;
       }
 
       if (has_symbol) {
-        std::fprintf(out, "(%s+0x%Ix)", symbol.Name, offset_from_symbol);
+        ss <<"(" << symbol.Name  << "+0x" << std::hex << offset_from_symbol << ")";
       }
 
       if (has_line) {
-        std::fprintf(out, ": %s:%u+0x%x", line.FileName, line.LineNumber, offset_from_line);
+        ss << ": " << line.FileName << ":" << line.LineNumber << "+0x" << offset_from_line;
       }
-
-      std::fprintf(out, "\n");
+      IR_LOG_FORMATED(level, "%s", ss.str().c_str());
     }
 
     if (skip_frame) {
-      std::fprintf(out, "No stack_trace available outside of logger\n");
+      IR_LOG_FORMATED(level, "No stack_trace available outside of logger");
     }
-
-    std::fflush(out);
-
     return EXCEPTION_EXECUTE_HANDLER;
   }
 #else
@@ -678,6 +711,11 @@ NS_END
 NS_ROOT
 NS_BEGIN(logger)
 
+void log(const char* function, const char* file, int line,
+  level_t level, const char* message, size_t len) {
+  logger_ctx::instance().log(function, file, line, level, message, len);
+}
+
 bool enabled(level_t level) {
   return logger_ctx::instance().enabled(level);
 }
@@ -688,10 +726,6 @@ void output(level_t level, FILE* out) {
 
 void output_le(level_t level, FILE* out) {	
   logger_ctx::instance().output_le(level, out);	
-}
-
-FILE* output(level_t level) {
-  return logger_ctx::instance().file(level);
 }
 
 void stack_trace(level_t level) {
