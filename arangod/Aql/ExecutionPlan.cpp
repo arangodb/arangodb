@@ -2517,7 +2517,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
   }
 
   static LoggerStream& logNode(LoggerStream& log, ExecutionNode const& node) {
-    return log << "[" << node.id() << "]" << detailedNodeType(node) << " depth = " <<  node.getDepth() << " registerPlan = " << *node.getRegisterPlan();
+    return log << "[" << node.id() << "]" << detailedNodeType(node);
   }
 
   static std::string detailedNodeType(ExecutionNode const& node) {

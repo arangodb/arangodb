@@ -159,7 +159,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       if (!isCluster) {
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query, {}, {profile: 4});
+        let result = AQL_EXECUTE(query);
         assertEqual(4, result.json.length);
         let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
         result.json.forEach(function(doc) {

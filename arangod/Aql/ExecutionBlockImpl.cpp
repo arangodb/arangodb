@@ -535,10 +535,6 @@ void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call,
                                                      DataRange const& inputRange) {
   if (_outputItemRow == nullptr || !_outputItemRow->isInitialized()) {
     _outputItemRow = allocateOutputBlock(std::move(call), inputRange);
-    if (_outputItemRow->_block != nullptr) {
-      VPackBuilder builder;
-      _outputItemRow->_block->rowToSimpleVPack(0, nullptr, builder);
-    }
   } else {
     _outputItemRow->setCall(std::move(call));
   }
