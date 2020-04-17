@@ -429,6 +429,48 @@
         assertEqual(result[1].c, 0);
       },
 
+      testStartsWithFilterArrayWithoutMinMatchCount : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g']) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result.length, 10);
+        result.forEach(function(res) {
+          assertEqual(res.a, 'foo');
+        });
+      },
+
+      testStartsWithFilterEmptyArray : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, []) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result.length, 0);
+      },
+
+      testStartsWithFilterEmptyArrayMinMatchCountZero : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, [], 0) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result.length, 28);
+      },
+
+      testStartsWithFilterArrayWithMinMatchCountZero : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g'], 0) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result.length, 28);
+      },
+
+      testStartsWithFilterArrayWithMinMatchCountTrue : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g'], 1) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result.length, 10);
+        result.forEach(function(res) {
+          assertEqual(res.a, 'foo');
+        });
+      },
+
+      testStartsWithFilterArrayWithMinMatchCountFalse : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g'], 2) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result.length, 0);
+      },
+
       testWildcardFilter : function() {
         {
           let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_a_' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
