@@ -148,13 +148,12 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
                             arangodb::AccessMode::Type accessType);
   virtual bool canAccess(arangodb::AccessMode::Type accessType) const override;
   virtual bool hasOperations() const override;
-  virtual void release() override;
-  virtual void unuse(int nestingLevel) override;
-  virtual int use(int nestingLevel) override;
+  virtual void releaseUsage() override;
+  virtual int lockUsage() override;
 
  private:
-  int doLock(arangodb::AccessMode::Type type, int nestingLevel) override;
-  int doUnlock(arangodb::AccessMode::Type type, int nestingLevel) override;
+  int doLock(arangodb::AccessMode::Type type) override;
+  int doUnlock(arangodb::AccessMode::Type type) override;
 };
 
 class TransactionStateMock : public arangodb::TransactionState {
@@ -200,7 +199,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual arangodb::Result createTickRanges(VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
       arangodb::TransactionState& state, TRI_voc_cid_t cid,
-      arangodb::AccessMode::Type, int nestingLevel) override;
+      arangodb::AccessMode::Type) override;
   virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
       arangodb::transaction::ManagerFeature&) override;
   virtual std::shared_ptr<arangodb::TransactionState> createTransactionState(

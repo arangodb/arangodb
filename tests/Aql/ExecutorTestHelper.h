@@ -107,7 +107,9 @@ struct ExecutorTestHelper {
         _unorderedSkippedRows{0},
         _query(query),
         _itemBlockManager(itemBlockManager),
-        _dummyNode{std::make_unique<SingletonNode>(_query.plan(), ExecutionNodeId{42})} {}
+        _dummyNode{std::make_unique<SingletonNode>(
+            const_cast<ExecutionPlan*>(_query.rootEngine()->root()->getPlanNode()->plan()),
+            ExecutionNodeId{42})} {}
 
   auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
     _callStack = stack;
@@ -331,7 +333,7 @@ struct ExecutorTestHelper {
     }
 
     if (_testStats) {
-      auto actualStats = _query.engine()->getStats();
+      auto actualStats = _query.rootEngine()->execStats();
       EXPECT_EQ(actualStats, _expectedStats);
     }
   };
@@ -352,9 +354,11 @@ struct ExecutorTestHelper {
                        ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecBlock {
     auto& testeeNode = _execNodes.emplace_back(
-        std::make_unique<MockTypedNode>(_query.plan(),
-                                        ExecutionNodeId{_execNodes.size()}, nodeType));
-    return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
+        std::make_unique<MockTypedNode>(
+          const_cast<ExecutionPlan*>(_query.rootEngine()->root()->getPlanNode()->plan()),
+          ExecutionNodeId{_execNodes.size()},
+          nodeType));
+    return std::make_unique<ExecutionBlockImpl<E>>(_query.rootEngine(), testeeNode.get(),
                                                    std::move(infos));
   }
 
@@ -409,7 +413,7 @@ struct ExecutorTestHelper {
       blockDeque.emplace_back(nullptr);
     }
 
-    return std::make_unique<WaitingExecutionBlockMock>(_query.engine(),
+    return std::make_unique<WaitingExecutionBlockMock>(_query.rootEngine(),
                                                        _dummyNode.get(),
                                                        std::move(blockDeque),
                                                        _waitingBehaviour);

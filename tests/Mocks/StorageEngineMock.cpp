@@ -1502,7 +1502,7 @@ arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
 
 std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransactionCollection(
     arangodb::TransactionState& state, TRI_voc_cid_t cid,
-    arangodb::AccessMode::Type accessType, int nestingLevel) {
+    arangodb::AccessMode::Type accessType) {
   return std::unique_ptr<arangodb::TransactionCollection>(
       new TransactionCollectionMock(&state, cid, accessType));
 }
@@ -1763,18 +1763,18 @@ void TransactionCollectionMock::release() {
   }
 }
 
-void TransactionCollectionMock::unuse(int nestingLevel) {
+void TransactionCollectionMock::releaseUsage() {
   // NOOP, assume success
 }
 
-int TransactionCollectionMock::use(int nestingLevel) {
+int TransactionCollectionMock::lockUsage() {
   TRI_vocbase_col_status_e status;
 
   bool shouldLock = !arangodb::AccessMode::isNone(_accessType);
 
   if (shouldLock && !isLocked()) {
     // r/w lock the collection
-    int res = doLock(_accessType, nestingLevel);
+    int res = doLock(_accessType);
 
     if (res == TRI_ERROR_LOCKED) {
       // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
@@ -1802,7 +1802,7 @@ int TransactionCollectionMock::use(int nestingLevel) {
   return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
 }
 
-int TransactionCollectionMock::doLock(arangodb::AccessMode::Type type, int nestingLevel) {
+int TransactionCollectionMock::doLock(arangodb::AccessMode::Type type) {
   if (_lockType > _accessType) {
     return TRI_ERROR_INTERNAL;
   }
@@ -1812,7 +1812,7 @@ int TransactionCollectionMock::doLock(arangodb::AccessMode::Type type, int nesti
   return TRI_ERROR_NO_ERROR;
 }
 
-int TransactionCollectionMock::doUnlock(arangodb::AccessMode::Type type, int nestingLevel) {
+int TransactionCollectionMock::doUnlock(arangodb::AccessMode::Type type) {
   if (_lockType != type) {
     return TRI_ERROR_INTERNAL;
   }
@@ -1834,7 +1834,7 @@ TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, TRI_voc_tid_t
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
-  unuseCollections(nestingLevel());
+  releaseUsage();
   // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
   const_cast<TRI_voc_tid_t&>(_id) = 0;
 
@@ -1845,7 +1845,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
   ++beginTransactionCount;
   _hints = hints;
 
-  auto res = useCollections(nestingLevel());
+  auto res = lockUsage();
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
@@ -1853,22 +1853,16 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
     const_cast<TRI_voc_tid_t&>(_id) = 0;
     return res;
   }
-
-  if (nestingLevel() == 0) {
-    updateStatus(arangodb::transaction::Status::RUNNING);
-  }
-
+  updateStatus(arangodb::transaction::Status::RUNNING);
   return arangodb::Result();
 }
 
 arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
-  if (nestingLevel() == 0) {
-    updateStatus(arangodb::transaction::Status::COMMITTED);
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    const_cast<TRI_voc_tid_t&>(_id) = 0;
-  }
-  unuseCollections(nestingLevel());
+  updateStatus(arangodb::transaction::Status::COMMITTED);
+  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  const_cast<TRI_voc_tid_t&>(_id) = 0;
+  releaseUsage();
 
   return arangodb::Result();
 }
