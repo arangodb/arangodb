@@ -3590,33 +3590,19 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, false);
 }
 
-// For nodes that store a vocbase, extract and return a pointer to it
-// TODO: this should of course be a method in ExecutionNode that asserts
-//       if one tries to extract vocbase from a node that doesn't have one
 auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
-  auto const nodeType = at->getType();
+  auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode const*>(at);
 
-  switch (nodeType) {
-    case ExecutionNode::ENUMERATE_COLLECTION: {
-      return ExecutionNode::castTo<EnumerateCollectionNode const*>(at)->vocbase();
-    }
-    case ExecutionNode::INDEX: {
-      return ExecutionNode::castTo<IndexNode const*>(at)->vocbase();
-    }
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      // Really? Yes, the & below is correct.
-      return &ExecutionNode::castTo<IResearchViewNode const*>(at)->vocbase();
-    }
-    case ExecutionNode::INSERT:
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::REMOVE:
-    case ExecutionNode::UPSERT: {
-      return ExecutionNode::castTo<ModificationNode const*>(at)->vocbase();
-    }
-    default:
-      TRI_ASSERT(false);
-      return nullptr;
+  if (collectionAccessingNode != nullptr) {
+    return collectionAccessingNode->vocbase();
+  } else if (at->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+    // Really? Yes, the & below is correct.
+    return &ExecutionNode::castTo<IResearchViewNode const*>(at)->vocbase();
+  } else {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Cannot determine vocbase for execution node.");
+    return nullptr;
   }
 }
 
