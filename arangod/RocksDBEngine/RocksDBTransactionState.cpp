@@ -550,9 +550,11 @@ Result RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, TRI_voc_rid_t re
 uint64_t RocksDBTransactionState::sequenceNumber() const {
   if (_rocksTransaction) {
     return static_cast<uint64_t>(_rocksTransaction->GetSnapshot()->GetSequenceNumber());
-  } else if (_readSnapshot != nullptr) {
+  } 
+  if (_readSnapshot != nullptr) {
     return static_cast<uint64_t>(_readSnapshot->GetSequenceNumber());
-  } else if (isReadOnlyTransaction() && isSingleOperation()) {
+  } 
+  if (isReadOnlyTransaction() && isSingleOperation()) {
     return rocksutils::latestSequenceNumber();
   }
   TRI_ASSERT(false);

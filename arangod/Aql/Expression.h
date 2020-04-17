@@ -175,15 +175,14 @@ class Expression {
   bool findInArray(AqlValue const&, AqlValue const&, transaction::Methods*,
                    AstNode const*) const;
 
-  /// @brief analyze the expression (determine its type etc.)
-  void initExpression();
+  /// @brief analyze the expression (determine its type)
+  void determineType();
   
   /// @brief init the accessor specialization
   void initAccessor(ExpressionContext* ctx);
 
-  /// @brief build the expression (if appropriate, compile it into
-  /// executable code)
-  void buildExpression(transaction::Methods*, ExpressionContext* ctx);
+  /// @brief prepare the expression for execution
+  void prepareForExecution(transaction::Methods*, ExpressionContext* ctx);
 
   /// @brief execute an expression of type SIMPLE
   AqlValue executeSimpleExpression(AstNode const*, transaction::Methods*,

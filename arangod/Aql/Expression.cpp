@@ -63,18 +63,27 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the expression
 Expression::Expression(Ast* ast, AstNode* node)
-    : _ast(ast), _node(node), _data(nullptr), _type(UNPROCESSED), _expressionContext(nullptr) {
+    : _ast(ast), 
+      _node(node), 
+      _data(nullptr), 
+      _type(UNPROCESSED), 
+      _expressionContext(nullptr) {
   _ast->query().unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
 
   TRI_ASSERT(_data == nullptr);
   TRI_ASSERT(_accessor == nullptr);
+
+  determineType();
+  TRI_ASSERT(_type != UNPROCESSED);
 }
 
 /// @brief create an expression from VPack
 Expression::Expression(Ast* ast, arangodb::velocypack::Slice const& slice)
-    : Expression(ast, new AstNode(ast, slice.get("expression"))) {}
+    : Expression(ast, new AstNode(ast, slice.get("expression"))) {
+  TRI_ASSERT(_type != UNPROCESSED);
+}
 
 /// @brief destroy the expression
 Expression::~Expression() { freeInternals(); }
@@ -87,7 +96,7 @@ void Expression::variables(::arangodb::containers::HashSet<Variable const*>& res
 /// @brief execute the expression
 AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   auto& trx = ctx->trx();
-  buildExpression(&trx, ctx);
+  prepareForExecution(&trx, ctx);
 
   TRI_ASSERT(_type != UNPROCESSED);
       
@@ -181,13 +190,15 @@ void Expression::freeInternals() noexcept {
 void Expression::invalidateAfterReplacements() {
   if (_type == ATTRIBUTE_ACCESS || _type == SIMPLE) {
     freeInternals();
-    // must even set back the expression type so the expression will be analyzed
-    // again
-    _type = UNPROCESSED;
     _node->clearFlagsRecursive();  // recursively delete the node's flags
   }
 
   const_cast<AstNode*>(_node)->clearFlags();
+
+  // must even set back the expression type so the expression will be analyzed
+  // again
+   _type = UNPROCESSED;
+  determineType();
 }
 
 /// @brief invalidates an expression
@@ -305,9 +316,12 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
   return false;
 }
 
-/// @brief analyze the expression (determine its type etc.)
-void Expression::initExpression() {
+/// @brief analyze the expression (determine its type)
+void Expression::determineType() {
   TRI_ASSERT(_type == UNPROCESSED);
+  
+  TRI_ASSERT(_data == nullptr);
+  TRI_ASSERT(_accessor == nullptr);
 
   if (_node->isConstant()) {
     // expression is a constant value
@@ -316,15 +330,21 @@ void Expression::initExpression() {
     return;
   }
 
-  TRI_ASSERT(_data == nullptr);
-  TRI_ASSERT(_accessor == nullptr);
-
   // expression is a simple expression
   _type = SIMPLE;
 
   if (_node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // optimization for attribute accesses
-    _type = ATTRIBUTE_ACCESS;
+    TRI_ASSERT(_node->numMembers() == 1);
+    auto member = _node->getMemberUnchecked(0);
+
+    while (member->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      member = member->getMemberUnchecked(0);
+    }
+
+    if (member->type == NODE_TYPE_REFERENCE) {
+      _type = ATTRIBUTE_ACCESS;
+    }
   }
 }
 
@@ -341,9 +361,7 @@ void Expression::initAccessor(ExpressionContext* ctx) {
     member = member->getMemberUnchecked(0);
   }
 
-  if (member->type != NODE_TYPE_REFERENCE) {
-    return;
-  }
+  TRI_ASSERT(member->type == NODE_TYPE_REFERENCE);
   auto v = static_cast<Variable const*>(member->getData());
 
   TRI_ASSERT(ctx != nullptr);
@@ -353,28 +371,29 @@ void Expression::initAccessor(ExpressionContext* ctx) {
   TRI_ASSERT(_accessor != nullptr);
 }
 
-/// @brief build the expression
-void Expression::buildExpression(transaction::Methods* trx, ExpressionContext* ctx) {
-  if (_type == UNPROCESSED) {
-    initExpression();
-  }
-  
-  if (_type == ATTRIBUTE_ACCESS && _accessor == nullptr) {
-    initAccessor(ctx);
-    // initAccessor can abort early without having created an accessor.
-    // in this case we need to turn the type back to SIMPLE
-    if (_accessor == nullptr) {
-      _type = SIMPLE;
-    }
-  }
-  
-  if (_type == JSON && _data == nullptr) {
-    // generate a constant value
-    transaction::BuilderLeaser builder(trx);
-    _node->toVelocyPackValue(*builder.get());
+/// @brief prepare the expression for execution
+void Expression::prepareForExecution(transaction::Methods* trx, ExpressionContext* ctx) {
+  TRI_ASSERT(_type != UNPROCESSED);
 
-    _data = new uint8_t[static_cast<size_t>(builder->size())];
-    memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
+  switch (_type) {
+    case JSON: {
+      if (_data == nullptr) {
+        // generate a constant value
+        transaction::BuilderLeaser builder(trx);
+        _node->toVelocyPackValue(*builder.get());
+
+        _data = new uint8_t[static_cast<size_t>(builder->size())];
+        memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
+      }
+      break;
+    }
+    case ATTRIBUTE_ACCESS: {
+      if (_accessor == nullptr) {
+        initAccessor(ctx);
+      }
+      break;
+    }
+    default: {}
   }
 }
 
@@ -1646,51 +1665,32 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
   // this will convert NaN, +inf & -inf to null
   return AqlValue(AqlValueHintDouble(result));
 }
+
 void Expression::replaceNode(AstNode* node) {
   if (node != _node) {
     _node = node;
     invalidateAfterReplacements();
   }
 }
+
 Ast* Expression::ast() const noexcept { return _ast; }
+
 AstNode const* Expression::node() const { return _node; }
 AstNode* Expression::nodeForModification() const { return _node; }
+
 bool Expression::canRunOnDBServer() {
-  if (_type == UNPROCESSED) {
-    initExpression();
-  }
-
-  if (_type == JSON) {
-    // can always run on DB server
-    return true;
-  }
-
-  return _node->canRunOnDBServer();
+  TRI_ASSERT(_type != UNPROCESSED);
+  return (_type == JSON || _node->canRunOnDBServer());
 }
 
 bool Expression::isDeterministic() {
-  if (_type == UNPROCESSED) {
-    initExpression();
-  }
-
-  if (_type == JSON) {
-    // always deterministic
-    return true;
-  }
-
-  return _node->isDeterministic();
+  TRI_ASSERT(_type != UNPROCESSED);
+  return (_type == JSON || _node->isDeterministic());
 }
 
 bool Expression::willUseV8() {
-  if (_type == UNPROCESSED) {
-    initExpression();
-  }
-
-  if (_type != SIMPLE) {
-    return false;
-  }
-
-  return _node->willUseV8();
+  TRI_ASSERT(_type != UNPROCESSED);
+  return (_type == SIMPLE && _node->willUseV8());
 }
 
 std::unique_ptr<Expression> Expression::clone(ExecutionPlan* plan, Ast* ast) {
@@ -1704,9 +1704,7 @@ void Expression::toVelocyPack(arangodb::velocypack::Builder& builder, bool verbo
 }
 
 std::string Expression::typeString() {
-  if (_type == UNPROCESSED) {
-    initExpression();
-  }
+  TRI_ASSERT(_type != UNPROCESSED);
 
   switch (_type) {
     case JSON:
