@@ -112,6 +112,24 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
 
   bool enabled(iresearch::logger::level_t level) const { return noop_log_appender != out_[level].appender_; }
 
+  logger_ctx& output(iresearch::logger::level_t level, iresearch::logger::log_appender_callback_t appender, void* context) {
+    if (appender != nullptr) {
+      out_[level].appender_ = noop_log_appender; // to play safe - as noop never uses context and noop log never breaks
+      out_[level].appender_context_ = context;
+      out_[level].appender_ = appender;
+    } else {
+      out_[level].appender_ = noop_log_appender;
+    }
+    return *this;
+  }
+
+  logger_ctx& output_le(iresearch::logger::level_t level, iresearch::logger::log_appender_callback_t appender, void* context) {
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out_); i < count; ++i) {
+      output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : appender, context);
+    }
+    return *this;
+  }
+
   logger_ctx& output(iresearch::logger::level_t level, FILE* out) {
     if (out != nullptr) {
       out_[level].appender_ = noop_log_appender; // to play safe - as noop never uses context and noop log never breaks
@@ -726,6 +744,13 @@ void output(level_t level, FILE* out) {
 
 void output_le(level_t level, FILE* out) {	
   logger_ctx::instance().output_le(level, out);	
+}
+
+void output(level_t level, log_appender_callback_t appender, void* context) {
+  logger_ctx::instance().output(level, appender, context);
+}
+void output_le(level_t level, log_appender_callback_t appender, void* context) {
+  logger_ctx::instance().output_le(level, appender, context);
 }
 
 void stack_trace(level_t level) {
