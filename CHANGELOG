@@ -1,6 +1,14 @@
 devel
 -----
 
+* Allow STARTS_WITH function to process several prefixes with min match count parameter.
+
+* Added collection property changes into auditing.
+
+* Fix creation of example graphs when `--cluster.min-replication-factor` is set
+  and no replication factor was specified for a graph. In this case, the new
+  graph will use the configured minimum replication factor.
+
 * Show some index details in index overview of the web interface, e.g. the 
   `minLength` attribute for fulltext indexes or the `expireAfter` attribute for
   TTL indexes.
@@ -264,11 +272,11 @@ devel
         RETURN { doc, sub1, sub2 }
 
 * Added JSON-Schema (draft-4) document validation. The validation can be
-  specified by providing the new `validation` collection property when creating a
+  specified by providing the new `schema` collection property when creating a
   new collection or when updating the properties of an existing collection:
 
       db.mycollection.properties({
-        validation: {
+        schema: {
           rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
           message : "Json-Schema validation failed"
         }

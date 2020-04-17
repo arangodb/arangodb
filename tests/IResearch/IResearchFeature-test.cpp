@@ -140,7 +140,7 @@ TEST_F(IResearchFeatureTest, test_start) {
     // filter functions
     { "EXISTS", { ".|.,.", FunctionType::FILTER } },
     { "PHRASE", { ".,.|.+", FunctionType::FILTER } },
-    { "STARTS_WITH", { ".,.|.", FunctionType::FILTER } },
+    { "STARTS_WITH", { ".,.|.,.", FunctionType::FILTER } },
     { "MIN_MATCH", { ".,.|.+", FunctionType::FILTER } },
 
     // context functions

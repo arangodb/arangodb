@@ -123,7 +123,9 @@ irs::doc_iterator::ptr make_conjunction(
     itrs.emplace_back(std::move(docs));
   }
 
-  return irs::make_conjunction<conjunction_t>(std::move(itrs), ord);
+  return irs::make_conjunction<conjunction_t>(
+     std::move(itrs), ord, std::forward<Args>(args)...
+  );
 }
 
 NS_END // LOCAL
@@ -265,7 +267,7 @@ class or_query final : public boolean_query {
 //////////////////////////////////////////////////////////////////////////////
 class min_match_query final : public boolean_query {
  public:
-  min_match_query(size_t min_match_count)
+  explicit min_match_query(size_t min_match_count)
     : min_match_count_(min_match_count) {
     assert(min_match_count_ > 1);
   }
@@ -397,14 +399,6 @@ filter::prepared::ptr boolean_filter::prepare(
     incl.push_back(&all_docs);
   }
 
-  if (incl.empty()) {
-    // empty query
-    return prepared::empty();
-  } if (1 == incl.size() && excl.empty()) {
-    // single node case
-    return incl[0]->prepare(rdr, ord, this->boost()*boost, ctx);
-  }
-
   return prepare(incl, excl, rdr, ord, boost, ctx);
 }
 
@@ -493,8 +487,18 @@ filter::prepared::ptr And::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx) const {
+  boost *= this->boost();
+
+  if (incl.empty()) {
+    // empty query
+    return prepared::empty();
+  } else if (1 == incl.size() && excl.empty()) {
+    // single node case
+    return incl.front()->prepare(rdr, ord, boost, ctx);
+  }
+
   auto q = and_query::make<and_query>();
-  q->prepare(rdr, ord, this->boost()*boost, ctx, incl, excl);
+  q->prepare(rdr, ord, boost, ctx, incl, excl);
   return q;
 }
 
@@ -537,18 +541,39 @@ filter::prepared::ptr Or::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx) const {
-  size_t min_match_count = std::max(size_t(1), min_match_count_);
+  boost *= this->boost();
 
-  boolean_query::ptr q;
-  if (min_match_count >= incl.size()) {
-    q = boolean_query::make<and_query>();
-  } else if (min_match_count == 1) {
-    q = boolean_query::make<or_query>();
-  } else { /* min_match_count > 1 && min_match_count < incl.size() */
-    q = boolean_query::make<min_match_query>(min_match_count);
+  if (0 == min_match_count_) {
+    // all conditions are satisfied
+    return all().prepare(rdr, ord, boost, ctx);
   }
 
-  q->prepare(rdr, ord, this->boost()*boost, ctx, incl, excl);
+  if (min_match_count_ > incl.size()) {
+    // can't satisfy 'min_match_count' conditions
+    // having only 'incl.size()' queries
+    return prepared::empty();
+  }
+
+  if (incl.empty()) {
+    // empty query
+    return prepared::empty();
+  } else if (1 == incl.size() && excl.empty()) {
+    // single node case
+    return incl.front()->prepare(rdr, ord, boost, ctx);
+  }
+
+  assert(min_match_count_ > 0 && min_match_count_ <= incl.size());
+
+  boolean_query::ptr q;
+  if (min_match_count_ == incl.size()) {
+    q = boolean_query::make<and_query>();
+  } else if (1 == min_match_count_) {
+    q = boolean_query::make<or_query>();
+  } else { // min_match_count > 1 && min_match_count < incl.size()
+    q = boolean_query::make<min_match_query>(min_match_count_);
+  }
+
+  q->prepare(rdr, ord, boost, ctx, incl, excl);
   return q;
 }
 
@@ -607,7 +632,3 @@ bool Not::equals(const irs::filter& rhs) const noexcept {
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

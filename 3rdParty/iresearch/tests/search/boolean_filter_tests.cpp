@@ -7248,9 +7248,8 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // empty query
   {
     check_query(irs::Or(), docs_t{}, rdr);
-  }
+  } 
 
-  // name=V
   {
     irs::Or root;
     root.add<irs::by_term>().field("name").term("V"); // 22
@@ -7323,6 +7322,43 @@ TEST_P(boolean_filter_test_case, or_sequential) {
       docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
       rdr
     );
+  }
+
+  // min match count == 0
+  {
+    irs::Or root;
+    root.min_match_count(0);
+    append<irs::by_term>(root, "name", "V"); // 22
+
+    check_query(
+      root,
+      docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
+      rdr);
+  }
+
+  // min match count == 0
+  {
+    irs::Or root;
+    root.min_match_count(0);
+
+    check_query(
+      root,
+      docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
+      rdr
+    );
+  }
+
+  // min match count is geater than a number of conditions
+  {
+    irs::Or root;
+    append<irs::by_term>(root, "name", "A"); // 1
+    append<irs::by_term>(root, "name", "Q"); // 17
+    append<irs::by_term>(root, "name", "Z"); // 26
+    append<irs::by_term>(root, "same", "xyz"); // 1..32
+    append<irs::by_term>(root, "same", "invalid_term");
+    root.min_match_count(root.size()+1);
+
+    check_query(root, docs_t{ }, rdr);
   }
 
   // name=A OR false
@@ -8302,7 +8338,3 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 NS_END // tests
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

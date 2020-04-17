@@ -129,15 +129,14 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
             indexIdSlice.toString().c_str());
     }
 
-    IndexId const indexId{indexIdSlice.getNumber<IndexId::BaseType>()};
+    _outNonMaterializedIndVars.first = IndexId(indexIdSlice.getNumber<IndexId::BaseType>());
 
     auto const indexValuesVarsSlice = base.get("indexValuesVars");
     if (!indexValuesVarsSlice.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "\"indexValuesVars\" attribute should be an array");
     }
-    std::vector<std::pair<size_t, Variable const*>> indexValuesVars;
-    indexValuesVars.reserve(indexValuesVarsSlice.length());
+    _outNonMaterializedIndVars.second.reserve(indexValuesVarsSlice.length());
     for (auto const indVar : velocypack::ArrayIterator(indexValuesVarsSlice)) {
       auto const fieldNumberSlice = indVar.get("fieldNumber");
       if (!fieldNumberSlice.isNumber<size_t>()) {
@@ -162,10 +161,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
             TRI_ERROR_BAD_PARAMETER, "\"indexValuesVars[*].id\" unable to find variable by id %d",
               varId);
       }
-      indexValuesVars.emplace_back(fieldNumber, var);
+      _outNonMaterializedIndVars.second.try_emplace(var, fieldNumber);
     }
-    _outNonMaterializedIndVars.first = indexId;
-    _outNonMaterializedIndVars.second = std::move(indexValuesVars);
   }
 }
 
@@ -232,7 +229,7 @@ void IndexNode::planNodeRegisters(RegisterPlan& registerPlan) const {
     registerPlan.registerVariable(_outNonMaterializedDocId);
     // plan registers for index references
     for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
-      registerPlan.registerVariable(fieldVar.second);
+      registerPlan.registerVariable(fieldVar.first);
     }
   } else {
     registerPlan.registerVariable(_outVariable);
@@ -286,12 +283,12 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
     VPackArrayBuilder arrayScope(&builder, "indexValuesVars");
     for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
       VPackObjectBuilder objectScope(&builder);
-      builder.add("fieldNumber", VPackValue(fieldVar.first));
-      builder.add("id", VPackValue(fieldVar.second->id));
-      builder.add("name", VPackValue(fieldVar.second->name)); // for explainer.js
+      builder.add("fieldNumber", VPackValue(fieldVar.second));
+      builder.add("id", VPackValue(fieldVar.first->id));
+      builder.add("name", VPackValue(fieldVar.first->name)); // for explainer.js
       std::string fieldName;
-      TRI_ASSERT(fieldVar.first < fields.size());
-      basics::TRI_AttributeNamesToString(fields[fieldVar.first], fieldName, true);
+      TRI_ASSERT(fieldVar.second < fields.size());
+      basics::TRI_AttributeNamesToString(fields[fieldVar.second], fieldName, true);
       builder.add("field", VPackValue(fieldName)); // for explainer.js
     }
   }
@@ -333,7 +330,7 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node,
   return node;
 }
 
-void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,
+void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                                std::vector<RegisterId>& inRegs,
                                std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                                transaction::Methods* trxPtr) const {
@@ -503,26 +500,28 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   std::transform(_outNonMaterializedIndVars.second.cbegin(), _outNonMaterializedIndVars.second.cend(),
                  std::inserter(outNonMaterializedIndRegs.second, outNonMaterializedIndRegs.second.end()),
                  [&varInfos](auto const& indVar) {
-                   auto it = varInfos.find(indVar.second->id);
+                   auto it = varInfos.find(indVar.first->id);
                    TRI_ASSERT(it != varInfos.cend());
 
-                   return std::make_pair(indVar.first, it->second.registerId);
+                   return std::make_pair(indVar.second, it->second.registerId);
                  });
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
 
   auto executorInfos =
-      IndexExecutorInfos(std::move(writableOutputRegisters),
-                         getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                         firstOutputRegister, getRegisterPlan()->nrRegs[getDepth()],
-                         getRegsToClear(), calcRegsToKeep(), &engine,
-                         this->collection(), _outVariable, isProduceResult(),
-                         this->_filter.get(), this->projections(),
-                         this->coveringIndexAttributePositions(),
-                         std::move(nonConstExpressions), std::move(inVars),
-                         std::move(inRegs), hasV8Expression, _condition->root(),
-                         this->getIndexes(), _plan->getAst(), this->options(),
-                         std::move(outNonMaterializedIndRegs));
+        IndexExecutorInfos(std::move(writableOutputRegisters),
+                           getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                           firstOutputRegister,
+                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                           calcRegsToKeep(), &engine, this->collection(), _outVariable,
+                           isProduceResult(),
+                           this->_filter.get(), this->projections(),
+                           this->coveringIndexAttributePositions(),
+                           std::move(nonConstExpressions), std::move(inVars),
+                           std::move(inRegs), hasV8Expression, _condition->root(),
+                           this->getIndexes(), _plan->getAst(), this->options(),
+                           _outNonMaterializedIndVars,
+                           std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this,
                                                              std::move(registerInfos),
@@ -533,16 +532,20 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
   auto outVariable = _outVariable;
   auto outNonMaterializedDocId = _outNonMaterializedDocId;
-  auto outNonMaterializedIndVars = _outNonMaterializedIndVars;
+  IndexValuesVars outNonMaterializedIndVars;
 
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
     if (outNonMaterializedDocId != nullptr) {
       outNonMaterializedDocId = plan->getAst()->variables()->createVariable(outNonMaterializedDocId);
     }
-    for (auto& indVar : outNonMaterializedIndVars.second) {
-      indVar.second = plan->getAst()->variables()->createVariable(indVar.second);
+    outNonMaterializedIndVars.first = _outNonMaterializedIndVars.first;
+    outNonMaterializedIndVars.second.reserve(_outNonMaterializedIndVars.second.size());
+    for (auto& indVar : _outNonMaterializedIndVars.second) {
+      outNonMaterializedIndVars.second.try_emplace(plan->getAst()->variables()->createVariable(indVar.first), indVar.second);
     }
+  } else {
+    outNonMaterializedIndVars = _outNonMaterializedIndVars;
   }
 
   auto c = std::make_unique<IndexNode>(plan, _id, collection(), outVariable, _indexes,
@@ -626,7 +629,7 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
                  _outNonMaterializedIndVars.second.cend(),
                  std::back_inserter(vars),
                  [](auto const& indVar) {
-    return indVar.second;
+    return indVar.first;
   });
 
   return vars;
@@ -638,11 +641,12 @@ std::vector<transaction::Methods::IndexHandle> const& IndexNode::getIndexes() co
 
 void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
                                     IndexVarsInfo const& indexVariables) {
-  _outNonMaterializedIndVars.second.clear();
-  _outNonMaterializedIndVars.first = commonIndexId;
   _outNonMaterializedDocId = docIdVariable;
+  _outNonMaterializedIndVars.first = commonIndexId;
+  _outNonMaterializedIndVars.second.clear();
+  _outNonMaterializedIndVars.second.reserve(indexVariables.size());
   for (auto& indVars : indexVariables) {
-    _outNonMaterializedIndVars.second.emplace_back(indVars.second.indexFieldNum, indVars.second.var);
+    _outNonMaterializedIndVars.second.try_emplace(indVars.second.var, indVars.second.indexFieldNum);
   }
 }
 
