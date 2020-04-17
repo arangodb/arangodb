@@ -60,6 +60,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/HashSet.h"
+#include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
 #include "Graph/TraverserOptions.h"
@@ -818,6 +819,7 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::containers;
 using namespace arangodb::iresearch;
 using EN = arangodb::aql::ExecutionNode;
 
@@ -3709,18 +3711,15 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
 // TODO: move into ExecutionPlan?
 // TODO: Is this still needed after register planning is refactored?
 // Find all Subquery Nodes
-auto findSubqueriesInPlan(ExecutionPlan& plan)
-    -> std::unordered_map<ExecutionNode*, ExecutionNode*> {
-  std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
-
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type s;
-  ::arangodb::containers::SmallVector<ExecutionNode*> subs{s};
+void findSubqueriesInPlan(ExecutionPlan& plan,
+                          SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type s;
+  SmallVector<ExecutionNode*> subs{s};
   plan.findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
 
   for (auto& it : subs) {
     subqueries.emplace(ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery(), it);
   }
-  return subqueries;
 }
 
 // Sets up a Gather node for scatterInClusterRule.
@@ -3824,7 +3823,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
   // We cache the subquery map to not compute it over and over again
   // It is needed to setup the gather node later on
-  auto subqueries = findSubqueriesInPlan(*plan);
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+  findSubqueriesInPlan(*plan, subqueries);
 
   // we are a coordinator. now look in the plan for nodes of type
   // EnumerateCollectionNode, IndexNode, IResearchViewNode, and modification nodes
