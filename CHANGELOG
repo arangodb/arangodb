@@ -1,6 +1,8 @@
 devel
 -----
 
+* Allow STARTS_WITH function to process several prefixes with min match count parameter.
+
 * Added collection property changes into auditing.
 
 * Fix creation of example graphs when `--cluster.min-replication-factor` is set
