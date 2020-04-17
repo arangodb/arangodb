@@ -54,8 +54,8 @@ This option is meaningful for the MMFiles storage engine only.
 additional options for key generation. If specified, then *keyOptions*
 should be a JSON array containing the following attributes:
 
-@RESTBODYPARAM{validation,object,optional,post_api_collection_opts}
-Optional object that specifies the collection level schema validation for
+@RESTBODYPARAM{schema,object,optional,post_api_collection_opts}
+Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
 rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
@@ -93,21 +93,6 @@ Not used for other key generator types.
 The following values for *type* are valid:<br>
 - *2*: document collection
 - *3*: edge collection
-
-@RESTBODYPARAM{indexBuckets,integer,optional,int64}
-The number of buckets into which indexes using a hash
-table are split. The default is 16 and this number has to be a
-power of 2 and less than or equal to 1024.
-
-For very large collections one should increase this to avoid long pauses
-when the hash table has to be initially built or resized, since buckets
-are resized individually and can be initially built in parallel. For
-example, 64 might be a sensible value for a collection with 100
-000 000 documents. Currently, only the edge index respects this
-value, but other index types might follow in future ArangoDB versions.
-Changes (see below) are applied when the collection is loaded the next
-time.
-This option is meaningful for the MMFiles storage engine only.
 
 @RESTBODYPARAM{numberOfShards,integer,optional,int64}
 (The default is *1*): in a cluster, this value determines the

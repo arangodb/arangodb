@@ -59,7 +59,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        
+
         collections = doc.parsed_response["result"]
         realCollections = [ ]
 
@@ -171,10 +171,10 @@ describe ArangoDB do
       after do
         ArangoDB.drop_collection(@cn)
       end
-      
+
       it "sets an invalid schema" do
         cmd = api + "/" + @cn + "/properties"
-        body = "{ \"validation\": { \"rule\": \"peng!\", \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }"
+        body = "{ \"schema\": { \"rule\": \"peng!\", \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }"
         doc = ArangoDB.log_put("#{prefix}-schema", cmd, :body => body)
 
         doc.code.should eq(400)
@@ -185,7 +185,7 @@ describe ArangoDB do
 
       it "sets a valid schema" do
         cmd = api + "/" + @cn + "/properties"
-        body = "{ \"validation\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }"
+        body = "{ \"schema\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }"
         doc = ArangoDB.log_put("#{prefix}-schema", cmd, :body => body)
         doc = ArangoDB.log_get("#{prefix}-get-schema", cmd)
 
@@ -195,13 +195,13 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        doc.parsed_response['validation']['level'].should eq("strict")
-        doc.parsed_response['validation']['message'].should eq("document has an invalid schema!")
+        doc.parsed_response['schema']['level'].should eq("strict")
+        doc.parsed_response['schema']['message'].should eq("document has an invalid schema!")
       end
-          
+
       it "stores valid documents" do
         cmd = api + "/" + @cn + "/properties"
-        body = "{ \"validation\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }"
+        body = "{ \"schema\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }"
         doc = ArangoDB.log_put("#{prefix}-schema", cmd, :body => body)
         doc.code.should eq(200)
 
@@ -209,44 +209,44 @@ describe ArangoDB do
         body = "{ \"name\": { \"first\": \"test\", \"last\": \"test\" }, \"status\": \"active\" }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc", "/_api/document/?collection=" + @cn, :body => body)
         doc.code.should eq(202)
-        
+
         body = "{ \"name\": { \"first\": \"a\", \"last\": \"b\" }, \"status\": \"inactive\" }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc", "/_api/document/?collection=" + @cn, :body => body)
         doc.code.should eq(202)
       end
-      
+
       it "stores invalid documents" do
         cmd = api + "/" + @cn + "/properties"
-        body = "{ \"validation\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }"
+        body = "{ \"schema\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }"
         doc = ArangoDB.log_put("#{prefix}-schema", cmd, :body => body)
-        
+
         sleep 2
 
         body = "{ \"name\": { \"first\" : \"\", \"last\": \"test\" }, \"status\": \"active\" }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc-invalid", "/_api/document/?collection=" + @cn, :body => body)
         doc.code.should eq(400)
         doc.parsed_response['errorNum'].should eq(1620)
-        
+
         body = "{ \"name\": { \"first\" : \"\", \"last\": \"\" }, \"status\": \"active\" }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc-invalid", "/_api/document/?collection=" + @cn, :body => body)
         doc.code.should eq(400)
         doc.parsed_response['errorNum'].should eq(1620)
-        
+
         body = "{ \"name\": { \"first\" : \"test\", \"last\": \"test\" } }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc-invalid", "/_api/document/?collection=" + @cn, :body => body)
         doc.code.should eq(400)
         doc.parsed_response['errorNum'].should eq(1620)
-        
+
         body = "{ \"name\": { \"first\" : \"test\", \"last\": \"test\" }, \"status\": \"foo\" }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc-invalid", "/_api/document/?collection=" + @cn, :body => body)
         doc.code.should eq(400)
         doc.parsed_response['errorNum'].should eq(1620)
-        
+
         body = "{ \"name\": { }, \"status\": \"active\" }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc-invalid", "/_api/document/?collection=" + @cn, :body => body)
         doc.code.should eq(400)
         doc.parsed_response['errorNum'].should eq(1620)
-        
+
         body = "{ \"first\": \"abc\", \"last\": \"test\", \"status\": \"active\" }"
         doc = ArangoDB.log_post("#{prefix}-schema-doc-invalid", "/_api/document/?collection=" + @cn, :body => body)
         doc.code.should eq(400)
@@ -363,7 +363,7 @@ describe ArangoDB do
         doc.parsed_response['waitForSync'].should eq(true)
         doc.parsed_response['isSystem'].should eq(false)
       end
-      
+
       describe "figures", :timecritical => true do
         # get figures
         it "extracting the figures for a collection" do
@@ -402,7 +402,7 @@ describe ArangoDB do
           # flush wal
           ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
           sleep 6
-          
+
           doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
           doc.code.should eq(200)
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -424,11 +424,11 @@ describe ArangoDB do
             body = "{ \"test" + i.to_s + "\" : 1 }"
             doc = ArangoDB.log_post("#{prefix}-get-collection-figures", "/_api/document/?collection=" + @cn, :body => body)
           }
-          
+
           # flush wal
           ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
           sleep 6
-          
+
           doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
           doc.code.should eq(200)
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -444,17 +444,17 @@ describe ArangoDB do
             doc.parsed_response['figures']['cacheLifeTimeHitRate'].should be_kind_of(double)
             doc.parsed_response['figures']['cacheWindowedHitRate'].should be_kind_of(double)
           end
-          
+
           # delete a few documents, this should change counts
           body = "{ \"collection\" : \"" + @cn + "\", \"example\": { \"test\" : 5 } }"
           doc = ArangoDB.log_put("#{prefix}-get-collection-figures", "/_api/simple/remove-by-example", :body => body)
           body = "{ \"collection\" : \"" + @cn + "\", \"example\": { \"test3\" : 1 } }"
           doc = ArangoDB.log_put("#{prefix}-get-collection-figures", "/_api/simple/remove-by-example", :body => body)
-          
+
           # flush wal
           ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
           sleep 3
-          
+
           doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
           doc.code.should eq(200)
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -472,7 +472,7 @@ describe ArangoDB do
           end
         end
       end
-      
+
       # get revision id
       it "extracting the revision id of a collection" do
         cmd = api + "/" + @cn + "/revision"
@@ -492,7 +492,7 @@ describe ArangoDB do
         # create a new document
         body = "{ \"test\" : 1 }"
         doc = ArangoDB.log_post("#{prefix}-get-collection-revision", "/_api/document/?collection=" + @cn, :body => body)
-        
+
         # fetch revision again
         doc = ArangoDB.log_get("#{prefix}-get-collection-revision", cmd)
 
@@ -505,10 +505,10 @@ describe ArangoDB do
         r2 = doc.parsed_response['revision']
         r2.should_not eq("");
         r2.should_not eq(r1);
-        
+
         # create another document
         doc = ArangoDB.log_post("#{prefix}-get-collection-revision", "/_api/document/?collection=" + @cn, :body => body)
-        
+
         # fetch revision again
         doc = ArangoDB.log_get("#{prefix}-get-collection-revision", cmd)
 
@@ -525,7 +525,7 @@ describe ArangoDB do
 
         # truncate
         doc = ArangoDB.log_put("#{prefix}-get-collection-revision", "/_api/collection/#{@cn}/truncate", :body => "")
-        
+
         # fetch revision again
         doc = ArangoDB.log_get("#{prefix}-get-collection-revision", cmd)
 
@@ -604,7 +604,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should be_kind_of(String) 
+        doc.parsed_response['id'].should be_kind_of(String)
         doc.parsed_response['name'].should eq(@cn)
         doc.parsed_response['waitForSync'].should eq(false)
 
@@ -636,7 +636,7 @@ describe ArangoDB do
 
         ArangoDB.drop_collection(@cn)
       end
-      
+
       it "create a collection, invalid name" do
         cmd = api
         body = "{ \"name\" : \"_invalid\" }"
@@ -647,7 +647,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
       end
-      
+
       it "create a collection, already existing" do
         ArangoDB.drop_collection(@cn)
         cmd = api
@@ -658,7 +658,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-              
+
         body = "{ \"name\" : \"#{@cn}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-collection-existing", cmd, :body => body)
 
@@ -666,7 +666,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(409)
-  
+
         ArangoDB.drop_collection(@cn)
       end
     end
@@ -751,7 +751,7 @@ describe ArangoDB do
       it "load a collection by name without count" do
         ArangoDB.drop_collection(@cn)
         cid = ArangoDB.create_collection(@cn)
-        
+
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
         doc = ArangoDB.post(cmd, :body => body)
@@ -911,7 +911,7 @@ describe ArangoDB do
         doc.parsed_response['isSystem'].should eq(false)
         doc.parsed_response['keyOptions']['type'].should eq("traditional")
         doc.parsed_response['keyOptions']['allowUserKeys'].should eq(true)
-        
+
         body = "{ \"doCompact\" : false }"
         doc = ArangoDB.log_put("#{prefix}-identifier-properties-no-compact", cmd, :body => body)
 

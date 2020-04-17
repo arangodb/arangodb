@@ -1737,6 +1737,9 @@ Result RocksDBCollection::upgrade() {
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
                                        ::injectNewTemporaryObjectId, false);
   if (res.fail()) {
+    LOG_TOPIC("ad41c", WARN, Logger::ENGINES)
+        << "failed to allocate temporary id for writing while upgrading '"
+        << _logicalCollection.name() << "': " << res.errorMessage();
     return res;
   }
 
@@ -1747,11 +1750,17 @@ Result RocksDBCollection::upgrade() {
     SingleCollectionTransaction trx(context, _logicalCollection, AccessMode::Type::EXCLUSIVE);
     res = trx.begin();
     if (res.fail()) {
+      LOG_TOPIC("ad51c", WARN, Logger::ENGINES)
+          << "failed to lock collection for writing while upgrading '"
+          << _logicalCollection.name() << "': " << res.errorMessage();
       return res;
     }
 
     res = ::copyCollectionToNewObjectIdSpace(*engine.db(), _logicalCollection);
     if (res.fail()) {
+      LOG_TOPIC("af51c", WARN, Logger::ENGINES)
+          << "failed to upgrade collection data while upgrading '"
+          << _logicalCollection.name() << "': " << res.errorMessage();
       return res;
     }
 
@@ -1759,6 +1768,9 @@ Result RocksDBCollection::upgrade() {
     for (auto const& index : indices) {
       res = ::copyIndexToNewObjectIdSpace(*engine.db(), _logicalCollection, *index);
       if (res.fail()) {
+        LOG_TOPIC("af61c", WARN, Logger::ENGINES)
+            << "failed to upgrade index data while upgrading '"
+            << _logicalCollection.name() << "': " << res.errorMessage();
         return res;
       }
     }
@@ -1766,6 +1778,17 @@ Result RocksDBCollection::upgrade() {
     res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
                                          ::swapObjectIds, true);
     if (res.fail()) {
+      LOG_TOPIC("af62c", WARN, Logger::ENGINES)
+          << "failed to finalize upgrade while upgrading '"
+          << _logicalCollection.name() << "': " << res.errorMessage();
+      return res;
+    }
+
+    res = rebuildRevisionTree();
+    if (res.fail()) {
+      LOG_TOPIC("af82c", WARN, Logger::ENGINES)
+          << "failed to rebuild revision tree while upgrading '"
+          << _logicalCollection.name() << "': " << res.errorMessage();
       return res;
     }
   }
