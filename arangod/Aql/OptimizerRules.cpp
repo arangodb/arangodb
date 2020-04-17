@@ -3723,8 +3723,9 @@ auto insertGatherNode(ExecutionPlan& plan, ExecutionNode* node,
 // uses a list of subqueries which are precomputed at the beginning
 // of the optimizer rule; once that list is gone the configuration of the
 // gather node can be moved into this function.
-void insertScatterGatherSnippet(ExecutionPlan& plan, ExecutionNode* at,
-                                SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries) {
+void arangodb::aql::insertScatterGatherSnippet(
+    ExecutionPlan& plan, ExecutionNode* at,
+    SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries) {
   // TODO: necessary?
   TRI_vocbase_t* vocbase = extractVocbaseFromNode(at);
   auto const isRootNode = plan.isRoot(at);
@@ -3820,8 +3821,8 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
 // TODO: move into ExecutionPlan?
 // TODO: Is this still needed after register planning is refactored?
 // Find all Subquery Nodes
-void findSubqueriesInPlan(ExecutionPlan& plan,
-                          SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries) {
+void arangodb::aql::findSubqueriesInPlan(ExecutionPlan& plan,
+                                         SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type s;
   SmallVector<ExecutionNode*> subs{s};
   plan.findNodesOfType(subs, ExecutionNode::SUBQUERY, true);

@@ -29,6 +29,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Common.h"
 #include "ClusterNodes.h"
+#include "Containers/SmallUnorderedMap.h"
 #include "ExecutionNode.h"
 #include "VocBase/vocbase.h"
 
@@ -271,6 +272,15 @@ void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
+//// @brief enclose a node in SCATTER/GATHER
+void insertScatterGatherSnippet(
+    ExecutionPlan& plan, ExecutionNode* at,
+    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries);
+
+//// @brief find all subqueries in a plan and store a map from subqueries to nodes
+void findSubqueriesInPlan(ExecutionPlan& plan,
+                          containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
 
 }  // namespace aql
 }  // namespace arangodb
