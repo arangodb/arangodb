@@ -1439,6 +1439,8 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   if (qu == nullptr) { // We have resigned
     qu = std::make_shared<VPackBuilder>();
     VPackObjectBuilder qb(qu.get());
+    qu->add("error", VPackValue(true));
+    qu->add("code", VPackValue(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE));
     qu->add(VPackValue("result"));
     VPackArrayBuilder arr(qu.get());
   }
