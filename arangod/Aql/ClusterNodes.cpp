@@ -702,13 +702,13 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   }
   auto writableOutputRegisters = make_shared_unordered_set();
   if (out < RegisterPlan::MaxRegisterId) {
-    readableInputRegisters->emplace(out);
+    writableOutputRegisters->emplace(out);
   }
   if (outputNew < RegisterPlan::MaxRegisterId) {
-    readableInputRegisters->emplace(outputNew);
+    writableOutputRegisters->emplace(outputNew);
   }
   if (outputOld < RegisterPlan::MaxRegisterId) {
-    readableInputRegisters->emplace(outputOld);
+    writableOutputRegisters->emplace(outputOld);
   }
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
