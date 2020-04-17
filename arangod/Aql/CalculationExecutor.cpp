@@ -138,7 +138,6 @@ void CalculationExecutor<calculationType>::exitContext() {
   if (shouldExitContextBetweenBlocks()) {
     // must invalidate the expression now as we might be called from
     // different threads
-    _infos.getExpression().invalidate();
     _infos.getQuery().exitV8Context();
     _hasEnteredContext = false;
   }

@@ -153,12 +153,6 @@ class Expression {
 
   void replaceAttributeAccess(Variable const*, std::vector<std::string> const& attribute);
 
-  /// @brief invalidates an expression
-  /// this only has an effect for V8-using functions, which need to be created,
-  /// used and destroyed in the same context. when a V8 function is used across
-  /// multiple V8 contexts, it must be invalidated in between
-  void invalidate();
-
   void setVariable(Variable const* variable, arangodb::velocypack::Slice value);
 
   void clearVariable(Variable const* variable);

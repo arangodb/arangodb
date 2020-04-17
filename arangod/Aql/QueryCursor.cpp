@@ -200,11 +200,6 @@ QueryStreamCursor::~QueryStreamCursor() {
   cleanupStateCallback();
 
   _queryResults.clear();
-  /*
-  while (!_queryResults.empty()) {
-    _queryResults.pop_front();
-  }
-  */
 
   // now remove the continue handler we may have registered in the query
   _query->sharedState()->invalidate();

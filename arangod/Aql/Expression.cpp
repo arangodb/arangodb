@@ -68,7 +68,6 @@ Expression::Expression(Ast* ast, AstNode* node)
       _data(nullptr), 
       _type(UNPROCESSED), 
       _expressionContext(nullptr) {
-  _ast->query().unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
 
@@ -199,15 +198,6 @@ void Expression::invalidateAfterReplacements() {
   // again
    _type = UNPROCESSED;
   determineType();
-}
-
-/// @brief invalidates an expression
-/// this only has an effect for V8-based functions, which need to be created,
-/// used and destroyed in the same context. when a V8 function is used across
-/// multiple V8 contexts, it must be invalidated in between
-void Expression::invalidate() {
-  // context may change next time, so "prepare for re-preparation"
-  _ast->query().unPrepareV8Context();
 }
 
 /// @brief find a value in an AQL array node
@@ -939,7 +929,6 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
     TRI_ASSERT(isolate != nullptr);
     v8::HandleScope scope(isolate);                                   \
     auto context = TRI_IGETC;
-    _ast->query().prepareV8Context();
 
     std::string jsName;
     size_t const n = member->numMembers();

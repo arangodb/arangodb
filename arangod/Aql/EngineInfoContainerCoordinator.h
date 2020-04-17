@@ -37,7 +37,6 @@ class Result;
 namespace aql {
 
 class AqlItemBlockManager;
-class ExecutionEngineResult;
 class ExecutionNode;
 class QueryContext;
 class QueryRegistry;

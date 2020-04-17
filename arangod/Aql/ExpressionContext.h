@@ -59,8 +59,6 @@ class ExpressionContext {
   virtual void registerWarning(int errorCode, char const* msg) = 0;
   virtual void registerError(int errorCode, char const* msg) = 0;
   
-  virtual void prepareV8Context() = 0;
-
   virtual icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                                bool caseInsensitive) = 0;
   virtual icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,

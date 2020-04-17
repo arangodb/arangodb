@@ -195,9 +195,8 @@ class RocksDBEngine final : public StorageEngine {
   Result createTickRanges(velocypack::Builder& builder) override;
   Result firstTick(uint64_t& tick) override;
   Result lastLogger(TRI_vocbase_t& vocbase,
-                    std::shared_ptr<transaction::Context> transactionContext,
                     uint64_t tickStart, uint64_t tickEnd,
-                    std::shared_ptr<velocypack::Builder>& builderSPtr) override;
+                    velocypack::Builder& builder) override;
   WalAccess const* walAccess() const override;
 
   // database, collection and index management

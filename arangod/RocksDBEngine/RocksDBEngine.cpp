@@ -2379,22 +2379,15 @@ Result RocksDBEngine::firstTick(uint64_t& tick) {
 }
 
 Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase,
-                                 std::shared_ptr<transaction::Context> transactionContext,
                                  uint64_t tickStart, uint64_t tickEnd,
-                                 std::shared_ptr<VPackBuilder>& builderSPtr) {
+                                 VPackBuilder& builder) {
   bool includeSystem = true;
   size_t chunkSize = 32 * 1024 * 1024;  // TODO: determine good default value?
 
-  // construct vocbase with proper handler
-  auto builder = std::make_unique<VPackBuilder>(transactionContext->getVPackOptions());
-
-  builder->openArray();
-
+  builder.openArray();
   RocksDBReplicationResult rep = rocksutils::tailWal(&vocbase, tickStart, tickEnd, chunkSize,
-                                                     includeSystem, 0, *builder);
-
-  builder->close();
-  builderSPtr = std::move(builder);
+                                                     includeSystem, 0, builder);
+  builder.close();
 
   return std::move(rep).result();
 }
