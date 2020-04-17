@@ -78,21 +78,23 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   return *_resolver;
 }
 
-/// @brief get transaction state, determine commit responsiblity
+/// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState> transaction::V8Context::acquireState(transaction::Options const& options,
                                                                                    bool& responsibleForCommit) {
   
   TRI_ASSERT(_sharedTransactionContext != nullptr);
-  
+ /* 
   if (_currentTransaction) {
     responsibleForCommit = false;
     return _currentTransaction;
   }
+  */
   
   auto state = _sharedTransactionContext->_currentTransaction;
   if (!state) {
     state = transaction::Context::createState(options);
-    _currentTransaction = state;
+//    _currentTransaction = state;
+    enterV8Context(state);
     responsibleForCommit = true;
   } else {
     if (!isEmbeddable()) {

@@ -43,7 +43,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <stdio.h>
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -343,7 +342,8 @@ struct V8Cursor final {
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
         
-    auto q = std::make_unique<aql::Query>(transaction::V8Context::Create(*vocbase, true),
+    auto ctx = transaction::V8Context::CreateWhenRequired(*vocbase, true);
+    auto q = std::make_unique<aql::Query>(ctx,
                                           aql::QueryString(queryString), std::move(bindVars),
                                           std::move(options));
     

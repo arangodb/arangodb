@@ -89,21 +89,23 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _startTime(TRI_microtime()),
       _queryHash(DontCache),
       _executionPhase(ExecutionPhase::INITIALIZE),
-      _contextOwnedByExterior(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
+      _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _killed(false),
       _isAsyncQuery(false),
       _preparedV8Context(false),
       _queryHashCalculated(false) {
+  
+  if (!_transactionContext) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "failed to create query transaction context");
+  }
+
   if (_contextOwnedByExterior) {
     // copy transaction options from global state into our local query options
     auto state = transaction::V8Context::getParentState();
     if (state != nullptr) {
       _queryOptions.transactionOptions = state->options();
     }
-  }
-  if (!_transactionContext) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "failed to create query transaction context");
   }
 
   // populate query options
