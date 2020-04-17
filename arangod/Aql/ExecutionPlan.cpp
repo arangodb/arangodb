@@ -2538,8 +2538,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
       case ExecutionNode::INSERT:
       case ExecutionNode::REMOVE:
       case ExecutionNode::REPLACE:
-      case ExecutionNode::UPSERT:
-      /*case ExecutionNode::MATERIALIZE:*/ {
+      case ExecutionNode::UPSERT: {
         auto const& colAccess = *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
         auto type = std::string{node.getTypeString()};
         type += " (";
