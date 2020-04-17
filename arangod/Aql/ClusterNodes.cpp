@@ -699,7 +699,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   auto readableInputRegisters = make_shared_unordered_set({in});
   auto writableOutputRegisters = make_shared_unordered_set({outputNew, outputOld, out});
 
-  auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   auto executorInfos = SingleRemoteModificationInfos(
       in, outputNew, outputOld, out,
