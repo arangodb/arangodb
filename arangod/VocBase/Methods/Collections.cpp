@@ -23,6 +23,7 @@
 #include "Collections.h"
 #include "Basics/Common.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
@@ -54,11 +55,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "V8/JavaScriptSecurityContext.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/vocbase.h"
@@ -467,6 +464,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   }
   for (auto const& info : infos) {
     events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+    events::PropertyUpdateCollection(vocbase.name(), info.name, info.properties);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -660,7 +658,12 @@ Result Collections::updateProperties(LogicalCollection& collection,
       return res;
     }
 
-    return info->properties(props, partialUpdate);
+    auto rv = info->properties(props, partialUpdate);
+    if (rv.ok()) {
+      events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
+    }
+    return rv;
+
   } else {
     auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
     SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::EXCLUSIVE);
@@ -669,6 +672,9 @@ Result Collections::updateProperties(LogicalCollection& collection,
     if (res.ok()) {
       // try to write new parameter to file
       res = collection.properties(props, partialUpdate);
+      if (res.ok()) {
+        events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
+      }
     }
 
     return res;
@@ -686,7 +692,6 @@ static int RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& old
   graph::GraphManager gmngr{vocbase};
   bool r = gmngr.renameGraphCollection(oldName, newName);
   if (!r) {
-    LOG_DEVEL << "RENAMING FROM " << oldName << " TO " << newName << " FAILED";
     return TRI_ERROR_FAILED;
   }
   return TRI_ERROR_NO_ERROR;
