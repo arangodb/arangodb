@@ -129,6 +129,9 @@ One of the possible log levels.
 @RESTBODYPARAM{aql,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{arangosearch,string,optional,string}
+One of the possible log levels.
+
 @RESTBODYPARAM{audit-authentication,string,optional,string}
 One of the possible log levels (_Enterprise Edition only_).
 
