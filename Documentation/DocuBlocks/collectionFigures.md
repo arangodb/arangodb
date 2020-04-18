@@ -7,6 +7,7 @@ Returns an object containing statistics about the collection.
 
 * *indexes.count*: The total number of indexes defined for the
 * *indexes.size*: The total memory allocated for indexes in bytes.
+<!-- TODO: describe RocksDB figures -->
 * *documentsSize*
 * *cacheInUse*
 * *cacheSize*
