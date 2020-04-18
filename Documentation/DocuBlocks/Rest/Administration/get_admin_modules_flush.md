@@ -126,10 +126,43 @@ One of the possible log levels.
 @RESTBODYPARAM{agencycomm,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{aql,string,optional,string}
+One of the possible log levels.
+
+@RESTBODYPARAM{arangosearch,string,optional,string}
+One of the possible log levels.
+
+@RESTBODYPARAM{audit-authentication,string,optional,string}
+One of the possible log levels (_Enterprise Edition only_).
+
+@RESTBODYPARAM{audit-authorization,string,optional,string}
+One of the possible log levels (_Enterprise Edition only_).
+
+@RESTBODYPARAM{audit-collection,string,optional,string}
+One of the possible log levels (_Enterprise Edition only_).
+
+@RESTBODYPARAM{audit-database,string,optional,string}
+One of the possible log levels (_Enterprise Edition only_).
+
+@RESTBODYPARAM{audit-document,string,optional,string}
+One of the possible log levels (_Enterprise Edition only_).
+
+@RESTBODYPARAM{audit-hotbackup,string,optional,string}
+One of the possible log levels (_Enterprise Edition only_).
+
+@RESTBODYPARAM{audit-view,string,optional,string}
+One of the possible log levels (_Enterprise Edition only_).
+
+@RESTBODYPARAM{audit-service,string,optional,string}
+One of the possible log levels (_Enterprise Edition only_).
+
 @RESTBODYPARAM{authentication,string,optional,string}
 One of the possible log levels.
 
 @RESTBODYPARAM{authorization,string,optional,string}
+One of the possible log levels.
+
+@RESTBODYPARAM{backup,string,optional,string}
 One of the possible log levels.
 
 @RESTBODYPARAM{cache,string,optional,string}
@@ -144,6 +177,9 @@ One of the possible log levels.
 @RESTBODYPARAM{communication,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{clustercomm,string,optional,string}
+One of the possible log levels.
+
 @RESTBODYPARAM{compactor,string,optional,string}
 One of the possible log levels.
 
@@ -156,7 +192,13 @@ One of the possible log levels.
 @RESTBODYPARAM{development,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{dump,string,optional,string}
+One of the possible log levels.
+
 @RESTBODYPARAM{engines,string,optional,string}
+One of the possible log levels.
+
+@RESTBODYPARAM{flush,string,optional,string}
 One of the possible log levels.
 
 @RESTBODYPARAM{general,string,optional,string}
@@ -166,6 +208,15 @@ One of the possible log levels.
 One of the possible log levels.
 
 @RESTBODYPARAM{heartbeat,string,optional,string}
+One of the possible log levels.
+
+@RESTBODYPARAM{httpclient,string,optional,string}
+One of the possible log levels.
+
+@RESTBODYPARAM{ldap,string,optional,string}
+One of the possible log levels (_Enterprise Edition only_).
+
+@RESTBODYPARAM{maintenance,string,optional,string}
 One of the possible log levels.
 
 @RESTBODYPARAM{memory,string,optional,string}
@@ -189,13 +240,22 @@ One of the possible log levels.
 @RESTBODYPARAM{requests,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{restore,string,optional,string}
+One of the possible log levels.
+
 @RESTBODYPARAM{rocksdb,string,optional,string}
+One of the possible log levels.
+
+@RESTBODYPARAM{security,string,optional,string}
 One of the possible log levels.
 
 @RESTBODYPARAM{ssl,string,optional,string}
 One of the possible log levels.
 
 @RESTBODYPARAM{startup,string,optional,string}
+One of the possible log levels.
+
+@RESTBODYPARAM{statistics,string,optional,string}
 One of the possible log levels.
 
 @RESTBODYPARAM{supervision,string,optional,string}
@@ -210,34 +270,13 @@ One of the possible log levels.
 @RESTBODYPARAM{trx,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{ttl,string,optional,string}
+One of the possible log levels.
+
 @RESTBODYPARAM{v8,string,optional,string}
 One of the possible log levels.
 
 @RESTBODYPARAM{views,string,optional,string}
-One of the possible log levels.
-
-@RESTBODYPARAM{ldap,string,optional,string}
-One of the possible log levels.
-
-@RESTBODYPARAM{audit-authentication,string,optional,string}
-One of the possible log levels.
-
-@RESTBODYPARAM{audit-authorization,string,optional,string}
-One of the possible log levels.
-
-@RESTBODYPARAM{audit-database,string,optional,string}
-One of the possible log levels.
-
-@RESTBODYPARAM{audit-collection,string,optional,string}
-One of the possible log levels.
-
-@RESTBODYPARAM{audit-view,string,optional,string}
-One of the possible log levels.
-
-@RESTBODYPARAM{audit-document,string,optional,string}
-One of the possible log levels.
-
-@RESTBODYPARAM{audit-service,string,optional,string}
 One of the possible log levels.
 
 @RESTRETURNCODES
