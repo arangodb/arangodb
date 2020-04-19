@@ -101,12 +101,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _lastKey(VPackSlice::nullSlice()) {
     TRI_ASSERT(_keys != nullptr);
     TRI_ASSERT(_keys->slice().isArray());
-
-    auto* mthds = RocksDBTransactionState::toMethods(trx);
-    // intentional copy of the options
-    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-    ro.fill_cache = EdgeIndexFillBlockCache;
-    _iterator = mthds->NewIterator(ro, index->columnFamily());
   }
 
   ~RocksDBEdgeIndexLookupIterator() {
@@ -230,7 +224,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   // calls cb(documentId)
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
     return nextImplementation([&cb](LocalDocumentId docId,
-                                    VPackSlice fromTo) {
+                                    VPackSlice /*fromTo*/) {
       cb(docId);
     }, limit);
   }
@@ -240,6 +234,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     transaction::BuilderLeaser coveringBuilder(_trx);
     return nextImplementation([&](LocalDocumentId docId,
                                   VPackSlice fromTo) {
+      TRI_ASSERT(_lastKey.isString());
+      TRI_ASSERT(fromTo.isString());
       coveringBuilder->clear();
       coveringBuilder->openArray(/*unindexed*/true);
       coveringBuilder->add(_lastKey);
@@ -307,12 +303,23 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void lookupInRocksDB(VPackStringRef fromTo) {
     // Bad case read from RocksDB
+    if (_iterator == nullptr) {
+      // create _iterator only on demand, so we save the allocation in case
+      // the reads can be satisfied from the cache
+      auto* mthds = RocksDBTransactionState::toMethods(_trx);
+      // intentional copy of the options
+      rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
+      ro.fill_cache = EdgeIndexFillBlockCache;
+      _iterator = mthds->NewIterator(ro, _index->columnFamily());
+    }
+
+    TRI_ASSERT(_iterator != nullptr);
+
     _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->objectId(), fromTo);
-    resetInplaceMemory();
     rocksdb::Comparator const* cmp = _index->comparator();
     auto end = _bounds.end();
 
-    cache::Cache* cc = _cache.get();
+    resetInplaceMemory();
     _builder.openArray(true);
     for (_iterator->Seek(_bounds.start());
          _iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0);
@@ -329,6 +336,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // validate that Iterator is in a good shape and hasn't failed
     arangodb::rocksutils::checkIteratorStatus(_iterator.get());
 
+    cache::Cache* cc = _cache.get();
     if (cc != nullptr) {
       // TODO Add cache retry on next call
       // Now we have something in _inplaceMemory.
