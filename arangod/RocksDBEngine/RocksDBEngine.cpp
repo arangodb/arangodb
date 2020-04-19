@@ -437,6 +437,9 @@ void RocksDBEngine::start() {
   _options.optimize_filters_for_hits = opts._optimizeFiltersForHits;
   _options.use_direct_reads = opts._useDirectReads;
   _options.use_direct_io_for_flush_and_compaction = opts._useDirectIoForFlushAndCompaction;
+
+  _options.target_file_size_base = opts._targetFileSizeBase;
+  _options.target_file_size_multiplier = opts._targetFileSizeMultiplier;
   // during startup, limit the total WAL size to a small value so we do not see
   // large WAL files created at startup.
   // Instead, we will start with a small value here and up it later in the startup process
