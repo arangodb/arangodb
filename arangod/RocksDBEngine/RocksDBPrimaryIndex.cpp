@@ -317,7 +317,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
  public:
   char const* typeName() const override {
-    return "rocksdb-range-index-iterator";
+    return "primary-index-range-iterator";
   }
 
   /// @brief Get the next limit many elements in the index
