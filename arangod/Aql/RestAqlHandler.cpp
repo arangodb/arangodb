@@ -893,6 +893,9 @@ void RestAqlHandler::handleFinishQuery(std::string const& idString) {
   
   auto query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode, false);
   if (!query) {
+    // this may be a race between query garbage collection and the client
+    // shutting down the query. it is debatable whether this is an actual error 
+    // if we only want to abort the query...
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }

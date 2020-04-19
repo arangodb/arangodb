@@ -233,15 +233,16 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     auto m = _queries.find(vocbase);
 
     if (m == _queries.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER, "vocbase not found in query registry");
+      // database not found. this can happen as a consequence of a race between garbage collection
+      // and shutdown
+      return nullptr;
     }
-
+    
     auto q = m->second.find(id);
 
     if (q == m->second.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
+          TRI_ERROR_BAD_PARAMETER, "query with given id not found in query registry");
     }
 
     if (q->second->_numOpen > 0 && !ignoreOpened) {
