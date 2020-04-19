@@ -72,7 +72,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
