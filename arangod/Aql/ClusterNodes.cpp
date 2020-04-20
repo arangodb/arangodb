@@ -305,6 +305,8 @@ CostEstimate ScatterNode::estimateCost() const {
   return estimate;
 }
 
+auto ScatterNode::getOutputVariables() const -> VariableIdSet { return {}; }
+
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ScatterNode(plan, base),
@@ -501,8 +503,8 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       VelocyPackHelper::getStringValue(base, "parellelism", "")));
 }
 
-GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id, SortMode sortMode,
-                       Parallelism parallelism) noexcept
+GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id,
+                       SortMode sortMode, Parallelism parallelism) noexcept
     : ExecutionNode(plan, id),
       _vocbase(&(plan->getAst()->query()->vocbase())),
       _sortmode(sortMode),
@@ -681,9 +683,26 @@ GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
   return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap : SortMode::MinElement;
 }
 
+GatherNode::Parallelism GatherNode::evaluateParallelism(Collection const& collection) noexcept {
+  // single-sharded collections don't require any parallelism. collections with more than
+  // one shard are eligible for later parallelization (the Undefined allows this)
+  return (((collection.isSmart() && collection.type() == TRI_COL_TYPE_EDGE) ||
+           (collection.numberOfShards() <= 1 && !collection.isSatellite()))
+              ? Parallelism::Serial
+              : Parallelism::Undefined);
+}
+
+auto GatherNode::getOutputVariables() const -> VariableIdSet { return {}; }
+
+void GatherNode::getVariablesUsedHere(containers::HashSet<const Variable*>& vars) const {
+  for (auto const& p : _elements) {
+    vars.emplace(p.var);
+  }
+}
+
 SingleRemoteOperationNode::SingleRemoteOperationNode(
-    ExecutionPlan* plan, ExecutionNodeId id, NodeType mode, bool replaceIndexNode,
-    std::string const& key, Collection const* collection,
+    ExecutionPlan* plan, ExecutionNodeId id, NodeType mode,
+    bool replaceIndexNode, std::string const& key, Collection const* collection,
     ModificationOptions const& options, Variable const* in, Variable const* out,
     Variable const* OLD, Variable const* NEW)
     : ExecutionNode(plan, id),
@@ -818,4 +837,34 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
 CostEstimate SingleRemoteOperationNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
   return estimate;
+}
+
+VariableIdSet SingleRemoteOperationNode::getOutputVariables() const {
+  VariableIdSet vars;
+  for (auto const& it : getVariablesSetHere()) {
+    vars.insert(it->id);
+  }
+  return vars;
+}
+
+std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere() const {
+  std::vector<Variable const*> vec;
+
+  if (_outVariable) {
+    vec.push_back(_outVariable);
+  }
+  if (_outVariableNew) {
+    vec.push_back(_outVariableNew);
+  }
+  if (_outVariableOld) {
+    vec.push_back(_outVariableOld);
+  }
+
+  return vec;
+}
+
+void SingleRemoteOperationNode::getVariablesUsedHere(containers::HashSet<const Variable*>& vars) const {
+  if (_inVariable) {
+    vars.emplace(_inVariable);
+  }
 }

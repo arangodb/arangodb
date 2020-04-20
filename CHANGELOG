@@ -1,5 +1,17 @@
 devel
 -----
+* Fix a bug in the optimizer which handled combinations of smart joins with
+  query components that had to run on a coordinator wrong.
+
+* Remove the scatter-arangosearch-view-in-cluster optimizer rule; it was
+  integrated into scatter-in-cluster.
+
+* Issue #11447: expose extra RocksDB options `--rocksdb.target-file-size-base` and 
+  `--rocksdb.target-file-size-multiplier` to make them configurable.
+
+* Allow STARTS_WITH function to process several prefixes with min match count parameter.
+
+* Added collection property changes into auditing.
 
 * Fix creation of example graphs when `--cluster.min-replication-factor` is set
   and no replication factor was specified for a graph. In this case, the new
@@ -286,11 +298,11 @@ devel
         RETURN { doc, sub1, sub2 }
 
 * Added JSON-Schema (draft-4) document validation. The validation can be
-  specified by providing the new `validation` collection property when creating a
+  specified by providing the new `schema` collection property when creating a
   new collection or when updating the properties of an existing collection:
 
       db.mycollection.properties({
-        validation: {
+        schema: {
           rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
           message : "Json-Schema validation failed"
         }

@@ -2081,9 +2081,11 @@ function debug(query, bindVars, options) {
   }
   let result = {
     engine: db._engine(),
+    engineStats: db._engineStats(),
     version: db._version(true),
     database: db._name(),
     query: input,
+    queryCache: require('@arangodb/aql/cache').properties(),
     collections: {},
     views: {}
   };

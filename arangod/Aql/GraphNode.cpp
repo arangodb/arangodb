@@ -606,7 +606,33 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 CostEstimate GraphNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   size_t incoming = estimate.estimatedNrItems;
-  estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems);
+  if (_optionsBuilt) {
+    // We know which indexes are in use.
+    estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems);
+  } else {
+    // Some hard-coded value, this is identical to build lookupInfos
+    // if no index estimate is availble (and it is not as long as the options are not built)
+    double baseCost = 1;
+    size_t baseNumItems = 0;
+    for (auto& e : _edgeColls) {
+      auto count = e->count(_options->trx());
+      // Assume an estimate if 10% hit rate
+      baseCost *= count / 10;
+      baseNumItems += static_cast<size_t>(std::ceil(count / 10));
+    }
+
+    size_t estDepth = _options->estimateDepth();
+    double tmpNrItems = incoming * std::pow(baseNumItems, estDepth);
+    // Protect against size_t overflow, just to be sure.
+    if (tmpNrItems > std::numeric_limits<size_t>::max()) {
+      // This will be an expensive query...
+      estimate.estimatedNrItems = std::numeric_limits<size_t>::max();
+    } else {
+      estimate.estimatedNrItems += static_cast<size_t>(tmpNrItems);
+    }
+    estimate.estimatedCost += incoming * std::pow(baseCost, estDepth);
+  }
+
   return estimate;
 }
 
@@ -763,3 +789,11 @@ bool GraphNode::isSatelliteNode() const { return false; }
 void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const* engine) const {}
 
 #endif
+
+VariableIdSet GraphNode::getOutputVariables() const {
+  VariableIdSet vars;
+  for (auto const& it : getVariablesSetHere()) {
+    vars.insert(it->id);
+  }
+  return vars;
+}
