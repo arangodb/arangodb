@@ -3814,8 +3814,12 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
     }
     current = current->getFirstParent();
   }
-  TRI_ASSERT(found);
   if (!found) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    plan.show();
+#endif
+    // TODO: maybe we should *not* throw in maintainer mode, as the optimizer
+    //       gives more useful error messages?
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Inconsistent plan.");
   }
 }
