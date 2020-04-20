@@ -198,6 +198,7 @@ class ScatterNode : public ExecutionNode {
 
   void setScatterType(ScatterType targetType) { _type = targetType; }
 
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  protected:
   void writeClientsToVelocyPack(velocypack::Builder& builder) const;
   bool readClientsFromVelocyPack(velocypack::Slice base);
@@ -260,7 +261,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -355,11 +356,7 @@ class GatherNode final : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
-    for (auto const& p : _elements) {
-      vars.emplace(p.var);
-    }
-  }
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief get Variables used here including ASC/DESC
   SortElementVector const& elements() const { return _elements; }
@@ -375,13 +372,14 @@ class GatherNode final : public ExecutionNode {
   size_t constrainedSortLimit() const noexcept;
 
   bool isSortingGather() const noexcept;
-  
+
   void setParallelism(Parallelism value);
+  
   Parallelism parallelism() const noexcept {
     return _parallelism;
   }
   
-  void cloneRegisterPlan(ExecutionNode* dependency);
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief the underlying database
@@ -393,7 +391,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief sorting mode
   SortMode _sortmode;
-  
+
   /// @brief parallelism
   Parallelism _parallelism;
 
@@ -450,33 +448,17 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
-    if (_inVariable) {
-      vars.emplace(_inVariable);
-    }
-  }
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief getVariablesSetHere
-  virtual std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> vec;
-
-    if (_outVariable) {
-      vec.push_back(_outVariable);
-    }
-    if (_outVariableNew) {
-      vec.push_back(_outVariableNew);
-    }
-    if (_outVariableOld) {
-      vec.push_back(_outVariableOld);
-    }
-
-    return vec;
-  }
+  virtual std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
   std::string const& key() const { return _key; }
+
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   // whether we replaced an index node
