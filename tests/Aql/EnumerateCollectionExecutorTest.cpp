@@ -105,11 +105,17 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         engine(fakedQuery->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        block(new AqlItemBlock(itemBlockManager, 1000, 2),
-        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep, engine,
-              &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
-              coveringIndexAttributePositions, random)
-          )
+        infos(static_cast<RegisterId>(0) /*outReg*/, static_cast<RegisterId>(1) /*nrIn*/, static_cast<RegisterId>(1) /*nrOut*/,
+              regToClear, regToKeep,
+              dynamic_cast<QueryContext&>(*fakedQuery),
+              &aqlCollection,
+              &outVariable,
+              true,
+              static_cast<Expression*>(nullptr),
+              projections,
+              coveringIndexAttributePositions,
+              random),
+        block(new AqlItemBlock(itemBlockManager, 1000, 2))
     {
     try {
       collection = vocbase.createCollection(json->slice());
@@ -284,8 +290,16 @@ class EnumerateCollectionExecutorTestProduce
         engine(fakedQuery.get()->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
-              projections, coveringIndexAttributePositions, random) {}
+        infos(static_cast<RegisterId>(1) /*outReg*/, static_cast<RegisterId>(1) /*nrIn*/, static_cast<RegisterId>(2) /*nrOut*/,
+              {}, {},
+              dynamic_cast<QueryContext&>(*fakedQuery),
+              &aqlCollection,
+              &outVariable,
+              true,
+              static_cast<Expression*>(nullptr),
+              projections,
+              coveringIndexAttributePositions,
+              random) {}
 
   auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
                  RegisterId nrOutputRegister = 1,
@@ -294,8 +308,8 @@ class EnumerateCollectionExecutorTestProduce
       -> EnumerateCollectionExecutorInfos {
     EnumerateCollectionExecutorInfos infos{
         outputRegister, nrInputRegister, nrOutputRegister,
-        regToClear,     regToKeep,       engine,
-        &aqlCollection, &outVariable,    varUsedLater,
+        regToClear,     regToKeep,       dynamic_cast<QueryContext&>(*fakedQuery),
+        &aqlCollection, &outVariable,    true,
         nullptr,        projections,     coveringIndexAttributePositions,
         random};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
@@ -348,7 +362,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
   std::vector<std::string> queryResults;
   std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
   EXPECT_EQ(vocbase.lookupCollection("UnitTestCollection")
-                ->numberDocuments(fakedQuery->_trx, transaction::CountType::Normal),
+            ->numberDocuments(&(*fakedQuery->_trx), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked
 
   makeExecutorTestHelper<1, 1>()

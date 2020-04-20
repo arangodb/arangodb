@@ -1657,8 +1657,8 @@ TRI_voc_tick_t StorageEngineMock::recoveryTick() {
 }
 
 arangodb::Result StorageEngineMock::lastLogger(
-    TRI_vocbase_t& vocbase, std::shared_ptr<arangodb::transaction::Context> transactionContext,
-    uint64_t tickStart, uint64_t tickEnd, std::shared_ptr<VPackBuilder>& builderSPtr) {
+    TRI_vocbase_t& vocbase, 
+    uint64_t tickStart, uint64_t tickEnd, velocypack::Builder& builderSPtr) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }

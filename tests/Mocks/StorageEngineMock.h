@@ -236,10 +236,11 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                           std::string const& keysId) override;
   virtual arangodb::RecoveryState recoveryState() override;
   virtual TRI_voc_tick_t recoveryTick() override;
+
   virtual arangodb::Result lastLogger(TRI_vocbase_t& vocbase,
-                                      std::shared_ptr<arangodb::transaction::Context> transactionContext,
                                       uint64_t tickStart, uint64_t tickEnd,
-                                      std::shared_ptr<VPackBuilder>& builderSPtr) override;
+                                      arangodb::velocypack::Builder& builderSPtr) override;
+
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                                       bool isUpgrade) override;
   virtual void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker,
