@@ -900,7 +900,6 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
     // we need to reset the ExecutorHasReturnedDone, it will
     // return done after every subquery is fully collected.
     _executorReturnedDone = false;
-
   } else {
     _outputItemRow->decreaseShadowRowDepth(shadowRow);
   }
