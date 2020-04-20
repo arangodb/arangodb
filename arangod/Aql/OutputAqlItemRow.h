@@ -239,6 +239,7 @@ class OutputAqlItemRow {
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
+ public:
   SharedAqlItemBlockPtr _block;
 
   /**
@@ -251,7 +252,7 @@ class OutputAqlItemRow {
    * @brief Whether the input registers were copied from a source row.
    */
   bool _inputRowCopied;
-  
+
   /**
    * @brief Set if and only if the current ExecutionBlock passes the
    * AqlItemBlocks through.
