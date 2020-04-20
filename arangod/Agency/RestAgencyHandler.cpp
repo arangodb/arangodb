@@ -163,7 +163,14 @@ RestStatus RestAgencyHandler::pollIndex(
     .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
       VPackSlice res = rb->slice();
 
-      if (res.hasKey("result")) {
+      if (res.isObject() && res.hasKey("result")) {
+
+        if (res.hasKey("error")) { // leadership loss
+          generateError(
+            rest::ResponseCode::SERVICE_UNAVAILABLE,
+            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+        }
+
         resetResponse(rest::ResponseCode::OK);
         VPackSlice slice = res.get("result");
 
@@ -191,7 +198,7 @@ RestStatus RestAgencyHandler::pollIndex(
         }
       } else {
         generateError(
-          rest::ResponseCode::SERVICE_UNAVAILABLE,
+          rest::ResponseCode::SERVER_ERROR,
           TRI_ERROR_HTTP_SERVER_ERROR, "No leader");
       }
     })
