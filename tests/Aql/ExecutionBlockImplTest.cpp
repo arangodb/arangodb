@@ -73,9 +73,11 @@ class SharedExecutionBlockImplTest {
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
   SharedExecutionBlockImplTest() {
+    /* TODO
     auto engine =
         std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
     fakedQuery->setEngine(engine.release());
+    */
   }
 
   /**
@@ -86,7 +88,8 @@ class SharedExecutionBlockImplTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   ExecutionNode* generateNodeDummy() {
-    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()});
+    auto dummy = std::make_unique<SingletonNode>(
+      const_cast<ExecutionPlan*>(fakedQuery->rootEngine()->root()->getPlanNode()->plan()), ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -341,7 +344,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
    */
   std::unique_ptr<ExecutionBlock> createSingleton() {
     auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-        fakedQuery->engine(), generateNodeDummy(), IdExecutorInfos{0, {}, {}, false});
+        fakedQuery->rootEngine(), generateNodeDummy(), IdExecutorInfos{0, {}, {}, false});
     InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
     auto const [state, result] = res->initializeCursor(inputRow);
     EXPECT_EQ(state, ExecutionState::DONE);
@@ -362,7 +365,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     }
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
-        fakedQuery->engine(), generateNodeDummy(),
+        fakedQuery->rootEngine(), generateNodeDummy(),
         ExecutorInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
     res->addDependency(dependency);
     return res;
@@ -381,13 +384,13 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     auto stack = buildStack(call);
     auto singleton = createSingleton();
     if (GetParam()) {
-      ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(),
+      ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
                                                       makeInfos(prod)};
       testee.addDependency(singleton.get());
       return testee.execute(stack);
     } else {
-      ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), generateNodeDummy(),
+      ExecutionBlockImpl<LambdaExe> testee{fakedQuery->rootEngine(), generateNodeDummy(),
                                            makeSkipInfos(prod, skip)};
       testee.addDependency(singleton.get());
       return testee.execute(stack);
@@ -437,7 +440,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     };
 
     std::unique_ptr<ExecutionBlock> res =
-        std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->engine(),
+        std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->rootEngine(),
                                                         generateNodeDummy(),
                                                         makeSkipInfos(prodCall, skipCall,
                                                                       inReg, outReg));
@@ -573,11 +576,11 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_relevant_shadowrow_does_not_f
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   auto subqueryStart = createSubqueryStart(singleton.get(), 0);
   // Produce one full block. The shadowRow has no space left
@@ -618,11 +621,11 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_in_
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
@@ -674,11 +677,11 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
@@ -1087,10 +1090,10 @@ class ExecutionBlockImplExecuteIntegrationTest
   std::unique_ptr<ExecutionBlock> createSingleton() {
     std::deque<SharedAqlItemBlockPtr> blockDeque;
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
     return std::make_unique<WaitingExecutionBlockMock>(
-        fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+        fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
         doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                       : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   }
@@ -1174,7 +1177,7 @@ class ExecutionBlockImplExecuteIntegrationTest
                              : makeSkipInfos(std::move(writeData), skipData,
                                              outReg - 1, outReg, resetCall);
     auto producer =
-        std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->engine(),
+        std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->rootEngine(),
                                                         generateNodeDummy(),
                                                         std::move(infos));
     producer->addDependency(dependency);
@@ -1206,7 +1209,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-        fakedQuery->engine(), generateNodeDummy(),
+        fakedQuery->rootEngine(), generateNodeDummy(),
         makeInfos(std::move(forwardData), maxReg, maxReg));
     producer->addDependency(dependency);
     return producer;
@@ -1266,7 +1269,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, skipped, request};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->engine(), generateNodeDummy(),
+        fakedQuery->rootEngine(), generateNodeDummy(),
         makeSkipInfos(std::move(forwardData), std::move(skipData), maxReg, maxReg));
     producer->addDependency(dependency);
     return producer;
@@ -1285,7 +1288,7 @@ class ExecutionBlockImplExecuteIntegrationTest
     }
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
-        fakedQuery->engine(), generateNodeDummy(),
+        fakedQuery->rootEngine(), generateNodeDummy(),
         ExecutorInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
     res->addDependency(dependency);
     return res;
@@ -1392,11 +1395,11 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_waiting_block_mock) {
     }
     builder->close();
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), std::move(matrix));
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), std::move(matrix));
     blockDeque.push_back(std::move(block));
   }
 
-  WaitingExecutionBlockMock testee{fakedQuery->engine(), generateNodeDummy(),
+  WaitingExecutionBlockMock testee{fakedQuery->rootEngine(), generateNodeDummy(),
                                    std::move(blockDeque),
                                    doesWaiting()
                                        ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
@@ -1612,7 +1615,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
   };
 
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
-      fakedQuery->engine(), generateNodeDummy(),
+      fakedQuery->rootEngine(), generateNodeDummy(),
       makeSkipInfos(std::move(forwardCall), std::move(forwardSkipCall), outReg, outReg));
   lower->addDependency(upper.get());
 
@@ -1645,14 +1648,14 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls) {
   builder->openArray();
   for (size_t i = 0; i < 1000; ++i) {
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{i}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{i}});
     blockDeque.push_back(std::move(block));
     builder->add(VPackValue(i));
   }
   builder->close();
 
   auto producer = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -1698,14 +1701,14 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
   builder->openArray();
   for (size_t i = 0; i < 1000; ++i) {
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{i}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{i}});
     blockDeque.push_back(std::move(block));
     builder->add(VPackValue(i));
   }
   builder->close();
 
   auto producer = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -1825,7 +1828,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
   builder.openArray();
   for (size_t i = 0; i < 3; ++i) {
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{i}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{i}});
     blockDeque.push_back(std::move(block));
     builder.add(VPackValue(0));
   }
@@ -1833,7 +1836,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
 
   // We have 3 consecutive shadowRows of Depth 0
   auto producer = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -1858,7 +1861,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
     return {input.upstreamState(), NoStats{}, call.getSkipCount(), call};
   };
   auto filterData = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-      fakedQuery->engine(), generateNodeDummy(),
+      fakedQuery->rootEngine(), generateNodeDummy(),
       makeSkipInfos(std::move(filterAllCallback), std::move(skipAllCallback), 0, 0));
   filterData->addDependency(subqueryStart.get());
 
@@ -1912,11 +1915,11 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -1966,11 +1969,11 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRo
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -2026,17 +2029,17 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
   {
     // First subquery
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{1}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{1}});
     blockDeque.push_back(std::move(block));
   }
   {
     // Second subquery
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{2}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{2}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -2139,11 +2142,11 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     // 1 query with 0 row + 1 ShadowRows (depth 0)
     // 1 query with 0 row + 2 ShadowRow (depth 0, depth 1)
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{3}, {6}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{3}, {6}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ONCE
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -2194,7 +2197,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   };
 
   auto producerDepth0 = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-      fakedQuery->engine(), generateNodeDummy(),
+      fakedQuery->rootEngine(), generateNodeDummy(),
       makeSkipInfos(std::move(produceDepth0), std::move(skipDepth0), 0, 1));
   producerDepth0->addDependency(subqueryOuterStart.get());
 
@@ -2235,7 +2238,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   };
 
   auto producerDepth1 = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-      fakedQuery->engine(), generateNodeDummy(),
+      fakedQuery->rootEngine(), generateNodeDummy(),
       makeSkipInfos(std::move(produceDepth1), std::move(skipDepth1), 1, 2));
   producerDepth1->addDependency(subqueryInnerStart.get());
 

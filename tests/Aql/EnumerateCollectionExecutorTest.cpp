@@ -361,10 +361,11 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
   uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
   std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  /* TODO: protected _trx
   EXPECT_EQ(vocbase.lookupCollection("UnitTestCollection")
             ->numberDocuments(&(*fakedQuery->_trx), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked
-
+  */
   makeExecutorTestHelper<1, 1>()
       .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)
