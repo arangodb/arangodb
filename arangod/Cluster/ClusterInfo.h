@@ -505,6 +505,11 @@ class ClusterInfo final {
   std::vector<std::shared_ptr<LogicalView>> const getViews(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about an analyzer revision
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<AnalyzerRevision> getAnalyzerRevision(DatabaseID const& databaseID);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
   /// all shards in the collection.
   /// If it is not found in the cache, the cache is reloaded once.
@@ -987,6 +992,10 @@ class ClusterInfo final {
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`
                               // execution
+
+  // database ID => analyzer revision
+  std::unordered_map<DatabaseID, std::shared_ptr<AnalyzerRevision>> _dbAnalyzerRevision; // from Plan/Analyzers
+
   std::atomic<std::thread::id> _planLoader;  // thread id that is loading plan
 
   // The Current state:

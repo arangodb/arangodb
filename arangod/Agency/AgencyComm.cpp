@@ -1851,6 +1851,16 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
+      builder.add(VPackValue("Analyzers"));
+      {
+        VPackObjectBuilder d(&builder);
+        builder.add(VPackValue("_system"));
+        {
+          VPackObjectBuilder d2(&builder);
+          builder.add("Revision", VPackValue(0));
+          builder.add("BuildingRevision", VPackValue(0));
+        }
+      }
     }
 
     builder.add(VPackValue("Sync"));  // Sync ----------------------------------

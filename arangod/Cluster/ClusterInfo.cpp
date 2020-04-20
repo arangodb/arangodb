@@ -603,10 +603,12 @@ void ClusterInfo::loadPlan() {
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
+  decltype(_dbAnalyzerRevision) newDbAnalyzerRevision;
 
   bool swapDatabases = false;
   bool swapCollections = false;
   bool swapViews = false;
+  bool swapAnalyzers = false;
 
   auto planDatabasesSlice = planSlice.get("Databases");
 
@@ -780,6 +782,73 @@ void ClusterInfo::loadPlan() {
           continue;
         }
       }
+    }
+  }
+
+  // "Plan":{"Analyzers": {
+  //  "_system": {
+  //    "Revision": 0,
+  //    "BuildingRevision": 0
+  //  },...
+  // }}
+
+  // Now the same for analyzers:
+  auto planAnalyzersSlice = planSlice.get("Analyzers");  // format above
+
+  if (planAnalyzersSlice.isObject()) {
+    swapAnalyzers = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
+
+    for (auto const databasePairSlice : velocypack::ObjectIterator(planAnalyzersSlice)) {
+      auto const& analyzerSlice = databasePairSlice.value;
+
+      if (!analyzerSlice.isObject()) {
+        LOG_TOPIC("bc53f", INFO, Logger::AGENCY)
+            << "Analyzers in the plan is not a valid json object."
+            << " Analyzers will be ignored for now and the invalid information"
+            << " will be repaired. VelocyPack: " << analyzerSlice.toJson();
+
+        continue;
+      }
+
+      auto const databaseName = databasePairSlice.key.copyString();
+      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+
+      if (!vocbase) {
+        // No database with this name found.
+        // We have an invalid state here.
+        LOG_TOPIC("e5a6b", WARN, Logger::AGENCY)
+            << "No database '" << databaseName << "' found,"
+            << " corresponding analyzer will be ignored for now and the "
+            << "invalid information will be repaired. VelocyPack: "
+            << analyzerSlice.toJson();
+        planValid &= !analyzerSlice.length();  // cannot find vocbase for defined analyzers (allow empty analyzers for missing vocbase)
+
+        continue;
+      }
+
+      auto const revisionSlice = analyzerSlice.get("Revision");
+      if (!revisionSlice.isNumber()) {
+        LOG_TOPIC("dd4e1", WARN, Logger::AGENCY)
+            << "Invalid analyzer revision for database '" << databaseName << "',"
+            << " corresponding analyzer will be ignored for now and the "
+            << "invalid information will be repaired. VelocyPack: "
+            << analyzerSlice.toJson();
+        continue;
+      }
+
+      auto const buildingRevisionSlice = analyzerSlice.get("BuildingRevision");
+      if (!buildingRevisionSlice.isNumber()) {
+        LOG_TOPIC("f0c72", WARN, Logger::AGENCY)
+            << "Invalid analyzer building revision for database '" << databaseName << "',"
+            << " corresponding analyzer will be ignored for now and the "
+            << "invalid information will be repaired. VelocyPack: "
+            << analyzerSlice.toJson();
+        continue;
+      }
+
+      newDbAnalyzerRevision[databaseName] = std::make_shared<AnalyzerRevision>(
+            revisionSlice.getNumber<AnalyzerRevision::Revision>(),
+            buildingRevisionSlice.getNumber<AnalyzerRevision::Revision>());
     }
   }
 
@@ -1053,6 +1122,10 @@ void ClusterInfo::loadPlan() {
 
   if (swapViews) {
     _plannedViews.swap(_newPlannedViews);
+  }
+
+  if (swapAnalyzers) {
+    _dbAnalyzerRevision.swap(newDbAnalyzerRevision);
   }
 
   // mark plan as fully loaded only if all incoming objects were fully loaded
@@ -1490,6 +1563,38 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
   }
 
   return result;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief ask about an analyzer revision
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<AnalyzerRevision> ClusterInfo::getAnalyzerRevision(DatabaseID const& databaseID) {
+  int tries = 0;
+
+  if (!_planProt.isValid) {
+    loadPlan();
+    ++tries;
+  }
+
+  while (true) {  // left by break
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+      // look up database by id
+      auto it = _dbAnalyzerRevision.find(databaseID);
+
+      if (it != _dbAnalyzerRevision.cend()) {
+        return it->second;
+      }
+    }
+    if (++tries >= 2) {
+      break;
+    }
+
+    // must load analyzers outside the lock
+    loadPlan();
+  }
+  return nullptr;
 }
 
 // Build the VPackSlice that contains the `isBuilding` entry

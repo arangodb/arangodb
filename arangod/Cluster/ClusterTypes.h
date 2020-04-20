@@ -76,6 +76,32 @@ class RebootId {
   uint64_t _value;
 };
 
+class AnalyzerRevision {
+ public:
+  using Revision = uint64_t;
+
+  AnalyzerRevision(Revision revision, Revision buildingRevision)
+    : _revision(revision), _buildingRevision(buildingRevision) {}
+
+  AnalyzerRevision() = default;
+  AnalyzerRevision(AnalyzerRevision const&) = default;
+  AnalyzerRevision(AnalyzerRevision&&) = default;
+  AnalyzerRevision& operator=(AnalyzerRevision const&) = default;
+  AnalyzerRevision& operator=(AnalyzerRevision&&) = default;
+
+  Revision getRevision() const noexcept {
+    return _revision;
+  }
+
+  Revision getBuildingRevision() const noexcept {
+    return _buildingRevision;
+  }
+
+ private:
+  Revision _revision;
+  Revision _buildingRevision;
+};
+
 }  // namespace arangodb
 
 std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r);
