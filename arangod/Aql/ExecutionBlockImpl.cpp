@@ -1082,7 +1082,6 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
                                                       AqlCall& clientCall)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType> {
   auto type = fastForwardType(clientCall, _executor);
-
   switch (type) {
     case FastForwardVariant::FULLCOUNT: {
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
@@ -1647,6 +1646,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   }
   LOG_QUERY("80c24", DEBUG) << printBlockInfo() << " local statemachine done. Return now.";
   // If we do not have an output, we simply return a nullptr here.
+
+  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+    // We can never return less rows then what we got!
+    TRI_ASSERT(_outputItemRow == nullptr || _outputItemRow->numRowsLeft() == 0);
+  }
 
   auto outputBlock = _outputItemRow != nullptr ? _outputItemRow->stealBlock()
                                                : SharedAqlItemBlockPtr{nullptr};
