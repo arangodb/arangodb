@@ -60,6 +60,7 @@ class SubqueryStartNode : public ExecutionNode {
 
   bool isModificationSubqueryNode();
 
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  private:
   /// @brief This is only required for Explain output.
   ///        it has no practical usage other then to print this information during explain.
