@@ -233,9 +233,8 @@ class Methods {
   ENTERPRISE_VIRT OperationResult any(std::string const& collectionName);
 
   /// @brief add a collection to the transaction for read, at runtime
-  ENTERPRISE_VIRT TRI_voc_cid_t
-  addCollectionAtRuntime(TRI_voc_cid_t cid, std::string const& collectionName,
-                         AccessMode::Type type);
+  TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid, std::string const& collectionName,
+                                       AccessMode::Type type);
 
   /// @brief add a collection to the transaction for read, at runtime
   virtual TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName,
