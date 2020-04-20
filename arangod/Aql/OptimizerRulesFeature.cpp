@@ -241,6 +241,13 @@ void OptimizerRulesFeature::addRules() {
   registerRule("remove-data-modification-out-variables", removeDataModificationOutVariablesRule,
                OptimizerRule::removeDataModificationOutVariablesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  
+  // replace inaccessible EnumerateCollectionNode with NoResult nodes
+#ifdef USE_ENTERPRISE
+  registerRule("skip-inaccessible-collections", skipInaccessibleCollectionsRule,
+               OptimizerRule::skipInaccessibleCollectionsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::Hidden));
+#endif
 
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   // try to replace simple OR conditions with IN
@@ -305,8 +312,9 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeTraversalPathVariable,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // prepare traversal info
 #if 0
+#warning TODO
+  // prepare traversal info
   registerRule("prepare-traversals", prepareTraversalsRule, OptimizerRule::prepareTraversalsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::Hidden));
 #endif

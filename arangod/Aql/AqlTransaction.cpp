@@ -41,7 +41,8 @@ std::unique_ptr<AqlTransaction> AqlTransaction::create(
     aql::Collections const& collections, transaction::Options const& options,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
-  if (options.skipInaccessibleCollections) {
+#warning TODO
+  if (false) {
     return std::make_unique<transaction::IgnoreNoAccessAqlTransaction>(
         transactionContext, collections, options,
         std::move(inaccessibleCollections));

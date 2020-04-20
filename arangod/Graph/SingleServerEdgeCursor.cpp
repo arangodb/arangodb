@@ -88,7 +88,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, EdgeC
   collection->readDocumentWithCallback(
       _trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
-        if (_trx->state()->options().skipInaccessibleCollections) {
+        if (_trx->skipInaccessible()) {
           // TODO: we only need to check one of these
           VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
           VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
@@ -165,8 +165,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
         auto extraCB = [&](LocalDocumentId const& token, VPackSlice edge) {
           if (token.isSet()) {
 #ifdef USE_ENTERPRISE
-            if (_trx->state()->options().skipInaccessibleCollections &&
-                CheckInaccessible(_trx, edge)) {
+            if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
               return false;
             }
 #endif
@@ -224,7 +223,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
       if (cursor->hasExtra()) {
         auto cb = [&](LocalDocumentId const& token, VPackSlice edge) {
 #ifdef USE_ENTERPRISE
-          if (_trx->state()->options().skipInaccessibleCollections &&
+          if (_trx->skipInaccessible() &&
               CheckInaccessible(_trx, edge)) {
             return false;
           }
@@ -237,7 +236,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
         auto cb = [&](LocalDocumentId const& token) {
           return collection->readDocumentWithCallback(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
-            if (_trx->state()->options().skipInaccessibleCollections) {
+            if (_trx->skipInaccessible()) {
               // TODO: we only need to check one of these
               VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
               VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);

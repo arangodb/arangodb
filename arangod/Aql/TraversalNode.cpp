@@ -505,8 +505,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 #ifdef USE_ENTERPRISE
     if (isSmart()) {
       traverser.reset(
-          new arangodb::traverser::SmartGraphTraverser(opts, engines(),
-                                                       trx->vocbase().name(), trx));
+          new arangodb::traverser::SmartGraphTraverser(opts, engines()));
     } else {
 #endif
       traverser.reset(new arangodb::traverser::ClusterTraverser(opts, engines(), engine.getQuery().vocbase().name()));

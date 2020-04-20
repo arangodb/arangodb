@@ -226,6 +226,12 @@ void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 void removeDataModificationOutVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                             OptimizerRule const&);
 
+// replace inaccessible EnumerateCollectionNode with NoResult nodes
+#ifdef USE_ENTERPRISE
+void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                     OptimizerRule const& rule);
+#endif
+
 /// @brief patch UPDATE statement on single collection that iterates over the
 /// entire collection to operate in batches
 void patchUpdateStatementsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,

@@ -222,6 +222,10 @@ class TransactionState {
  private:
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
+  
+#ifdef USE_ENTERPRISE
+  void addInaccessibleCollection(std::string const& cname);
+#endif
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction

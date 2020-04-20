@@ -62,7 +62,7 @@ class EngineInfoContainerDBServerServerBased {
    public:
     TraverserEngineShardLists(GraphNode const*, ServerID const& server,
                               std::unordered_map<ShardID, ServerID> const& shardMapping,
-                              QueryContext const& query);
+                              QueryContext& query);
 
     ~TraverserEngineShardLists() = default;
 

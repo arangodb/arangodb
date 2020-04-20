@@ -3464,7 +3464,8 @@ Result RestReplicationHandler::createBlockingTransaction(
         ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
                                           f, comment));
       transaction::Methods trx{mgr->leaseManagedTrx(id, AccessMode::Type::WRITE)};
-      trx.state()->cookie(this, std::move(rGuard));
+      void* key = this; // simon: not important to get it again
+      trx.state()->cookie(key, std::move(rGuard));
     }
 
   } catch (...) {
