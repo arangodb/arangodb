@@ -128,6 +128,8 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   /// in SmartGraph case
   void disableStatistics() { _countStats = false; }
 
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+
  protected:
   void cloneCommon(ModificationNode*) const;
 

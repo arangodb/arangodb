@@ -86,7 +86,8 @@ class SharedExecutionBlockImplTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   ExecutionNode* generateNodeDummy() {
-    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()});
+    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(),
+                                                 ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -228,20 +229,23 @@ class SharedExecutionBlockImplTest {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
       nrCalls++;
+
+      EXPECT_EQ(clientCall.getOffset(), expectedCall.getOffset());
+      EXPECT_EQ(clientCall.softLimit, expectedCall.softLimit);
+      EXPECT_EQ(clientCall.hardLimit, expectedCall.hardLimit);
+      EXPECT_EQ(clientCall.needsFullCount(), expectedCall.needsFullCount());
       if (input.hasDataRow()) {
         // We expact only the empty initial row, so just consume it
         auto const [state, row] = input.nextDataRow();
         EXPECT_EQ(state, ExecutorState::DONE);
         EXPECT_TRUE(row.isInitialized());
         EXPECT_EQ(output.numRowsLeft(), numRowsLeftWithInput);
+        output.copyRow(row);
+        output.advanceRow();
+
       } else {
         EXPECT_EQ(output.numRowsLeft(), numRowsLeftNoInput);
       }
-      EXPECT_EQ(clientCall.getOffset(), expectedCall.getOffset());
-      EXPECT_EQ(clientCall.softLimit, expectedCall.softLimit);
-      EXPECT_EQ(clientCall.hardLimit, expectedCall.hardLimit);
-      EXPECT_EQ(clientCall.needsFullCount(), expectedCall.needsFullCount());
-
       NoStats stats{};
       AqlCall call{};
       return {input.upstreamState(), stats, call};
@@ -462,7 +466,8 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
 
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(skipped.getSkipCount(), 0);
-  EXPECT_EQ(block, nullptr);
+  EXPECT_NE(block, nullptr);
+  EXPECT_EQ(block->size(), 1);
   // Once with empty, once with the line by Singleton
   EXPECT_EQ(nrCalls, 2);
 }
@@ -484,7 +489,9 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
 
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(skipped.getSkipCount(), 0);
-  EXPECT_EQ(block, nullptr);
+  // We produce one row
+  ASSERT_NE(block, nullptr);
+  EXPECT_EQ(block->size(), 1);
   // Once with empty, once with the line by Singleton
   EXPECT_EQ(nrCalls, 2);
 }
@@ -506,7 +513,9 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
 
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(skipped.getSkipCount(), 0);
-  EXPECT_EQ(block, nullptr);
+  // We produce one row
+  ASSERT_NE(block, nullptr);
+  EXPECT_EQ(block->size(), 1);
   // Once with empty, once with the line by Singleton
   EXPECT_EQ(nrCalls, 2);
 }

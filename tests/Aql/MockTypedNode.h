@@ -52,6 +52,8 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
 
   ::arangodb::aql::CostEstimate estimateCost() const override;
 
+  [[nodiscard]] auto getOutputVariables() const -> ::arangodb::aql::VariableIdSet override;;
+
  private:
   NodeType _mockedType{};
 };
