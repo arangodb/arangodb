@@ -362,7 +362,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
       _plan(plan) {
   TRI_ASSERT(_registerPlan == nullptr);
   _registerPlan = std::make_shared<RegisterPlan>(slice, _depth);
-  
+
   VPackSlice regsToClearList = slice.get("regsToClear");
   if (!regsToClearList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -815,9 +815,9 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   } else {
     v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
   }
-  v->setSharedPtr(&v);
 
-  walk(*v);
+  RegisterPlanWalkerT walker(v);
+  walk(walker);
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
     if (s->getType() == ExecutionNode::NodeType::SUBQUERY) {
@@ -825,15 +825,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
       sq->getSubquery()->planRegisters(s);
     }
   }
-  v->reset();
-
-  // Just for debugging:
-  /*
-  std::cout << std::endl;
-  RegisterPlanningDebugger debugger;
-  walk(debugger);
-  std::cout << std::endl;
-  */
+  walker.reset();
 }
 
 RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
@@ -1001,11 +993,7 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id)
-    : _id(id), 
-      _depth(0), 
-      _varUsageValid(false), 
-      _isInSplicedSubquery(false),
-      _plan(plan) {} 
+    : _id(id), _depth(0), _varUsageValid(false), _isInSplicedSubquery(false), _plan(plan) {}
 
 ExecutionNodeId ExecutionNode::id() const { return _id; }
 
@@ -1199,6 +1187,28 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   return RegisterPlan::MaxRegisterId;
 }
 
+bool ExecutionNode::isIncreaseDepth() const {
+  switch (getType()) {
+    case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::INDEX:
+    case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::COLLECT:
+
+
+    case ExecutionNode::TRAVERSAL:
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS:
+
+    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+    case ExecutionNode::MATERIALIZE:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
@@ -1259,6 +1269,10 @@ SingletonNode::SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     : ExecutionNode(plan, base) {}
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
+
+VariableIdSet SingletonNode::getOutputVariables() const {
+  return {};
+}
 
 EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice const& base)
@@ -1332,6 +1346,10 @@ bool EnumerateCollectionNode::isDeterministic() { return !_random; }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
+}
+
+VariableIdSet EnumerateCollectionNode::getOutputVariables() const {
+  return {_outVariable->id};
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -1482,6 +1500,10 @@ Variable const* EnumerateListNode::inVariable() const { return _inVariable; }
 
 Variable const* EnumerateListNode::outVariable() const { return _outVariable; }
 
+VariableIdSet EnumerateListNode::getOutputVariables() const {
+  return {_outVariable->id};
+}
+
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _offset(base.get("offset").getNumericValue<decltype(_offset)>()),
@@ -1555,6 +1577,10 @@ bool LimitNode::fullCount() const noexcept { return _fullCount; }
 size_t LimitNode::offset() const { return _offset; }
 
 size_t LimitNode::limit() const { return _limit; }
+
+auto LimitNode::getOutputVariables() const -> VariableIdSet {
+  return {};
+}
 
 CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -1722,6 +1748,10 @@ std::vector<Variable const*> CalculationNode::getVariablesSetHere() const {
 
 bool CalculationNode::isDeterministic() {
   return _expression->isDeterministic();
+}
+
+VariableIdSet CalculationNode::getOutputVariables() const {
+  return {_outVariable->id};
 }
 
 SubqueryNode::SubqueryNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -2011,6 +2041,10 @@ std::vector<Variable const*> SubqueryNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
 }
 
+VariableIdSet SubqueryNode::getOutputVariables() const {
+  return {_outVariable->id};
+}
+
 FilterNode::FilterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
@@ -2056,7 +2090,8 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  return cloneHelper(std::make_unique<FilterNode>(plan, _id, inVariable), withDependencies, withProperties);
+  return cloneHelper(std::make_unique<FilterNode>(plan, _id, inVariable),
+                     withDependencies, withProperties);
 }
 
 /// @brief estimateCost
@@ -2089,6 +2124,8 @@ void FilterNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Vari
 }
 
 Variable const* FilterNode::inVariable() const { return _inVariable; }
+
+auto FilterNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -2200,6 +2237,8 @@ Variable const* ReturnNode::inVariable() const { return _inVariable; }
 
 void ReturnNode::inVariable(Variable const* v) { _inVariable = v; }
 
+auto ReturnNode::getOutputVariables() const -> VariableIdSet { return {}; }
+
 /// @brief toVelocyPack, for NoResultsNode
 void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                        std::unordered_set<ExecutionNode const*>& seen) const {
@@ -2242,6 +2281,8 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::make_unique<NoResultsNode>(plan, _id),
                      withDependencies, withProperties);
 }
+
+auto NoResultsNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 SortElement::SortElement(Variable const* v, bool asc)
     : var(v), ascending(asc) {}
@@ -2536,4 +2577,9 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan, bool withDepend
                                                    *inNonMaterializedDocId, *outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+auto materialize::MaterializeNode::getOutputVariables() const
+    -> VariableIdSet {
+  return {_outVariable->id};
 }

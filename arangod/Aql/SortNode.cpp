@@ -272,3 +272,7 @@ CostEstimate SortNode::estimateCost() const {
 SortNode::SorterType SortNode::sorterType() const {
   return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap : SorterType::Standard;
 }
+
+auto SortNode::getOutputVariables() const -> VariableIdSet {
+  return {};
+}

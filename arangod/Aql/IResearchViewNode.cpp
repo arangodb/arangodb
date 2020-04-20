@@ -46,6 +46,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "RegisterPlan.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -131,14 +132,12 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice c
 // --SECTION--                            helpers for IResearchViewNode::Options
 // -----------------------------------------------------------------------------
 namespace {
-  std::map<std::string, arangodb::aql::ConditionOptimization> const conditionOptimizationTypeMap = {
+std::map<std::string, arangodb::aql::ConditionOptimization> const conditionOptimizationTypeMap = {
     {"auto", arangodb::aql::ConditionOptimization::Auto},
     {"nodnf", arangodb::aql::ConditionOptimization::NoDNF},
     {"noneg", arangodb::aql::ConditionOptimization::NoNegation},
-    {"none", arangodb::aql::ConditionOptimization::None}
-  };
+    {"none", arangodb::aql::ConditionOptimization::None}};
 }
-
 
 void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
@@ -192,7 +191,8 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
 
   // conditionOptimization
   {
-    auto const conditionOptimizationSlice = optionsSlice.get("conditionOptimization");
+    auto const conditionOptimizationSlice =
+        optionsSlice.get("conditionOptimization");
     if (!conditionOptimizationSlice.isNone() && !conditionOptimizationSlice.isNull()) {
       if (!conditionOptimizationSlice.isString()) {
         return false;
@@ -344,9 +344,9 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
          return true;
        }},
       // cppcheck-suppress constStatement
-      {"waitForSync", [](aql::Query& /*query*/, LogicalView const& /*view*/,
-                         aql::AstNode const& value,
-                         IResearchViewNode::Options& options, std::string& error) {
+      {"waitForSync",
+       [](aql::Query& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
+          IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
            error = "boolean value expected for option 'waitForSync'";
            return false;
@@ -356,21 +356,21 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
          return true;
        }},
       // cppcheck-suppress constStatement
-      {"noMaterialization", [](aql::Query& /*query*/, LogicalView const& /*view*/,
-                               aql::AstNode const& value,
-                               IResearchViewNode::Options& options, std::string& error) {
-           if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
-             error = "boolean value expected for option 'noMaterialization'";
-             return false;
-           }
+      {"noMaterialization",
+       [](aql::Query& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
+          IResearchViewNode::Options& options, std::string& error) {
+         if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
+           error = "boolean value expected for option 'noMaterialization'";
+           return false;
+         }
 
-           options.noMaterialization = value.getBoolValue();
-           return true;
+         options.noMaterialization = value.getBoolValue();
+         return true;
        }},
-       // cppcheck-suppress constStatement
-       {"conditionOptimization", [](aql::Query& /*query*/, LogicalView const& /*view*/,
-                         aql::AstNode const& value,
-                         IResearchViewNode::Options& options, std::string& error) {
+      // cppcheck-suppress constStatement
+      {"conditionOptimization",
+       [](aql::Query& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
+          IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_STRING)) {
            error = "string value expected for option 'conditionOptimization'";
            return false;
@@ -378,7 +378,8 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
          auto type = value.getString();
          auto conditionTypeIt = conditionOptimizationTypeMap.find(type);
          if (conditionTypeIt == conditionOptimizationTypeMap.end()) {
-           error = "unknown value '" + type + "' for option 'conditionOptimization'";
+           error =
+               "unknown value '" + type + "' for option 'conditionOptimization'";
            return false;
          }
          options.conditionOptimization = conditionTypeIt->second;
@@ -770,18 +771,18 @@ void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
                       IResearchViewNode::ViewVariable const& fieldVar) {
   nodes.add(NODE_VIEW_VALUES_VAR_FIELD_NUMBER, VPackValue(fieldVar.fieldNum));
   nodes.add(NODE_VIEW_VALUES_VAR_ID, VPackValue(fieldVar.var->id));
-  nodes.add(NODE_VIEW_VALUES_VAR_NAME, VPackValue(fieldVar.var->name)); // for explainer.js
-  nodes.add(NODE_VIEW_VALUES_VAR_FIELD, VPackValue(fieldName)); // for explainer.js
+  nodes.add(NODE_VIEW_VALUES_VAR_NAME, VPackValue(fieldVar.var->name));  // for explainer.js
+  nodes.add(NODE_VIEW_VALUES_VAR_FIELD, VPackValue(fieldName));  // for explainer.js
 }
 
 void extractViewValuesVar(aql::VariableGenerator const* vars,
                           IResearchViewNode::ViewValuesVars& viewValuesVars,
-                          ptrdiff_t const columnNumber,
-                          velocypack::Slice const& fieldVar) {
+                          ptrdiff_t const columnNumber, velocypack::Slice const& fieldVar) {
   auto const fieldNumberSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_FIELD_NUMBER);
   if (!fieldNumberSlice.isNumber<size_t>()) {
     THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].fieldNumber\" %s should be a number",
+        TRI_ERROR_BAD_PARAMETER,
+        "\"viewValuesVars[*].fieldNumber\" %s should be a number",
         fieldNumberSlice.toString().c_str());
   }
   auto const fieldNumber = fieldNumberSlice.getNumber<size_t>();
@@ -789,7 +790,8 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
   auto const varIdSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_ID);
   if (!varIdSlice.isNumber<aql::VariableId>()) {
     THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].id\" variable id %s should be a number",
+        TRI_ERROR_BAD_PARAMETER,
+        "\"viewValuesVars[*].id\" variable id %s should be a number",
         varIdSlice.toString().c_str());
   }
 
@@ -798,8 +800,8 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
 
   if (!var) {
     THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].id\" unable to find variable by id %d",
-        varId);
+        TRI_ERROR_BAD_PARAMETER,
+        "\"viewValuesVars[*].id\" unable to find variable by id %d", varId);
   }
   viewValuesVars[columnNumber].emplace_back(IResearchViewNode::ViewVariable{fieldNumber, var});
 }
@@ -850,8 +852,8 @@ namespace iresearch {
 
 const ptrdiff_t IResearchViewNode::SortColumnNumber = -1;
 
-IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id,
-                                     TRI_vocbase_t& vocbase,
+IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
+                                     aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
                                      std::shared_ptr<const LogicalView> const& view,
                                      aql::Variable const& outVariable,
                                      aql::AstNode* filterCondition,
@@ -885,8 +887,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNod
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice const& base)
     : aql::ExecutionNode(&plan, base),
       _vocbase(plan.getAst()->query()->vocbase()),
-      _outVariable(
-          aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_VARIABLE_PARAM)),
+      _outVariable(aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_VARIABLE_PARAM)),
       _outNonMaterializedDocId(
           aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_NM_DOC_PARAM, true)),
       _outNonMaterializedColPtr(
@@ -896,10 +897,13 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       _filterCondition(&ALL),
       _scorers(fromVelocyPack(plan, base.get(NODE_SCORERS_PARAM))) {
   if ((_outNonMaterializedColPtr != nullptr) != (_outNonMaterializedDocId != nullptr)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-      std::string("invalid node config, '").append(NODE_OUT_NM_DOC_PARAM)
-        .append("' attribute should be consistent with '")
-        .append(NODE_OUT_NM_COL_PARAM).append("' attribute"));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("invalid node config, '")
+            .append(NODE_OUT_NM_DOC_PARAM)
+            .append("' attribute should be consistent with '")
+            .append(NODE_OUT_NM_COL_PARAM)
+            .append("' attribute"));
   }
 
   // view
@@ -908,8 +912,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   if (!viewIdSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("invalid vpack format, '").append(NODE_VIEW_ID_PARAM)
-          .append("' attribute is intended to be a string"));
+        std::string("invalid vpack format, '").append(NODE_VIEW_ID_PARAM).append("' attribute is intended to be a string"));
   }
 
   auto const viewId = viewIdSlice.copyString();
@@ -1044,7 +1047,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     auto const noMaterializationSlice = base.get(NODE_VIEW_NO_MATERIALIZATION);
     if (!noMaterializationSlice.isBool()) {
       THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_BAD_PARAMETER, "\"noMaterialization\" %s should be a bool value",
+          TRI_ERROR_BAD_PARAMETER,
+          "\"noMaterialization\" %s should be a bool value",
           noMaterializationSlice.toString().c_str());
     }
     _noMaterialization = noMaterializationSlice.getBool();
@@ -1058,29 +1062,34 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
     auto const viewValuesVarsSlice = base.get(NODE_VIEW_VALUES_VARS);
     if (!viewValuesVarsSlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "\"viewValuesVars\" attribute should be an array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "\"viewValuesVars\" attribute should be an array");
     }
     ViewValuesVars viewValuesVars;
     for (auto const columnFieldsVars : velocypack::ArrayIterator(viewValuesVarsSlice)) {
-      if (columnFieldsVars.hasKey(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER)) { // not SortColumnNumber
-        auto const columnNumberSlice = columnFieldsVars.get(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER);
+      if (columnFieldsVars.hasKey(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER)) {  // not SortColumnNumber
+        auto const columnNumberSlice =
+            columnFieldsVars.get(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER);
         if (!columnNumberSlice.isNumber<size_t>()) {
           THROW_ARANGO_EXCEPTION_FORMAT(
-              TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].columnNumber\" %s should be a number",
+              TRI_ERROR_BAD_PARAMETER,
+              "\"viewValuesVars[*].columnNumber\" %s should be a number",
               columnNumberSlice.toString().c_str());
         }
         auto const columnNumber = columnNumberSlice.getNumber<ptrdiff_t>();
-        auto const viewStoredValuesVarsSlice = columnFieldsVars.get(NODE_VIEW_STORED_VALUES_VARS);
+        auto const viewStoredValuesVarsSlice =
+            columnFieldsVars.get(NODE_VIEW_STORED_VALUES_VARS);
         if (!viewStoredValuesVarsSlice.isArray()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_BAD_PARAMETER,
-                "\"viewValuesVars[*].viewStoredValuesVars\" attribute should be an array");
+              TRI_ERROR_BAD_PARAMETER,
+              "\"viewValuesVars[*].viewStoredValuesVars\" attribute should be "
+              "an array");
         }
         for (auto const fieldVar : velocypack::ArrayIterator(viewStoredValuesVarsSlice)) {
           extractViewValuesVar(vars, viewValuesVars, columnNumber, fieldVar);
         }
-      } else { // SortColumnNumber
+      } else {  // SortColumnNumber
         extractViewValuesVar(vars, viewValuesVars, SortColumnNumber, columnFieldsVars);
       }
     }
@@ -1093,24 +1102,24 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 void IResearchViewNode::planNodeRegisters(aql::RegisterPlan& registerPlan) const {
   // plan registers for output scores
   for (auto const& scorer : _scorers) {
-    registerPlan.registerVariable(scorer.var);
+    registerPlan.registerVariable(scorer.var->id);
   }
 
   if (isLateMaterialized() || noMaterialization()) {
     if (isLateMaterialized()) {
-      registerPlan.registerVariable(_outNonMaterializedColPtr);
-      registerPlan.registerVariable(_outNonMaterializedDocId);
+      registerPlan.registerVariable(_outNonMaterializedColPtr->id);
+      registerPlan.registerVariable(_outNonMaterializedDocId->id);
     } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
       // there is no variable if noMaterialization()
       registerPlan.addRegister();
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldVar : columnFieldsVars.second) {
-        registerPlan.registerVariable(fieldVar.var);
+        registerPlan.registerVariable(fieldVar.var->id);
       }
     }
-  } else { // plan register for document-id only block
-    registerPlan.registerVariable(_outVariable);
+  } else {  // plan register for document-id only block
+    registerPlan.registerVariable(_outVariable->id);
   }
 }
 
@@ -1119,7 +1128,7 @@ std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const
     _volatilityMask = evaluateVolatility(*this);
   }
 
-  return std::make_pair(irs::check_bit<0>(_volatilityMask),  // filter
+  return std::make_pair(irs::check_bit<0>(_volatilityMask),   // filter
                         irs::check_bit<1>(_volatilityMask));  // sort
 }
 
@@ -1165,7 +1174,8 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
         auto const& columns = storedValues.columns();
         auto const storedColumnNumber = static_cast<size_t>(columnFieldsVars.first);
         TRI_ASSERT(storedColumnNumber < columns.size());
-        nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER, VPackValue(static_cast<size_t>(columnFieldsVars.first)));
+        nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER,
+                  VPackValue(static_cast<size_t>(columnFieldsVars.first)));
         VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_STORED_VALUES_VARS);
         for (auto const& fieldVar : columnFieldsVars.second) {
           VPackObjectBuilder objectScope(&nodes);
@@ -1180,7 +1190,8 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
           VPackObjectBuilder objectScope(&nodes);
           fieldName.clear();
           TRI_ASSERT(fieldVar.fieldNum < primarySort.fields().size());
-          basics::TRI_AttributeNamesToString(primarySort.fields()[fieldVar.fieldNum], fieldName, true);
+          basics::TRI_AttributeNamesToString(primarySort.fields()[fieldVar.fieldNum],
+                                             fieldName, true);
           addViewValuesVar(nodes, fieldName, fieldVar);
         }
       }
@@ -1274,11 +1285,13 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
     if (outNonMaterializedDocId != nullptr) {
       TRI_ASSERT(_outNonMaterializedColPtr != nullptr);
-      outNonMaterializedDocId = plan->getAst()->variables()->createVariable(outNonMaterializedDocId);
+      outNonMaterializedDocId =
+          plan->getAst()->variables()->createVariable(outNonMaterializedDocId);
     }
     if (outNonMaterializedColId != nullptr) {
       TRI_ASSERT(_outNonMaterializedDocId != nullptr);
-      outNonMaterializedColId = plan->getAst()->variables()->createVariable(outNonMaterializedColId);
+      outNonMaterializedColId =
+          plan->getAst()->variables()->createVariable(outNonMaterializedColId);
     }
     for (auto& columnFieldsVars : outNonMaterializedViewVars) {
       for (auto& fieldVar : columnFieldsVars.second) {
@@ -1348,7 +1361,7 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
   vars.reserve(reserve);
 
   std::transform(_scorers.cbegin(), _scorers.cend(), std::back_inserter(vars),
-    [](auto const& scorer) { return scorer.var; });
+                 [](auto const& scorer) { return scorer.var; });
   if (isLateMaterialized() || noMaterialization()) {
     if (isLateMaterialized()) {
       vars.emplace_back(_outNonMaterializedColPtr);
@@ -1356,9 +1369,8 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       std::transform(columnFieldsVars.second.cbegin(),
-                     columnFieldsVars.second.cend(),
-                     std::back_inserter(vars),
-        [](auto const& fieldVar) { return fieldVar.var; });
+                     columnFieldsVars.second.cend(), std::back_inserter(vars),
+                     [](auto const& fieldVar) { return fieldVar.var; });
     }
   } else {
     vars.emplace_back(_outVariable);
@@ -1398,9 +1410,9 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
   return ::filterConditionIsEmpty(_filterCondition);
 }
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wswitch"
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch"
 #endif
 
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
@@ -1502,11 +1514,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   // the input registers.
   auto const firstOutputRegister = getNrInputRegisters();
   auto numScoreRegisters = static_cast<aql::RegisterCount>(_scorers.size());
-  auto numViewVarsRegisters = std::accumulate(_outNonMaterializedViewVars.cbegin(), _outNonMaterializedViewVars.cend(),
-    static_cast<aql::RegisterCount>(0),
-    [](aql::RegisterCount const sum, auto const& columnFieldsVars) {
-      return sum + static_cast<aql::RegisterCount>(columnFieldsVars.second.size());
-    });
+  auto numViewVarsRegisters =
+      std::accumulate(_outNonMaterializedViewVars.cbegin(),
+                      _outNonMaterializedViewVars.cend(),
+                      static_cast<aql::RegisterCount>(0),
+                      [](aql::RegisterCount const sum, auto const& columnFieldsVars) {
+                        return sum + static_cast<aql::RegisterCount>(
+                                         columnFieldsVars.second.size());
+                      });
   if (numViewVarsRegisters > 0) {
     materializeType |= MaterializeType::UseStoredValues;
   }
@@ -1515,16 +1530,19 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   // the output register(s) for documents (one or two + vars, depending on late materialization)
   // These must of course fit in the available registers.
   // There may be unused registers reserved for later blocks.
-  TRI_ASSERT(getNrInputRegisters() + numDocumentRegs + numScoreRegisters + numViewVarsRegisters <= getNrOutputRegisters());
+  TRI_ASSERT(getNrInputRegisters() + numDocumentRegs + numScoreRegisters + numViewVarsRegisters <=
+             getNrOutputRegisters());
   std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
       aql::make_shared_unordered_set();
   writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
   for (aql::RegisterId reg = firstOutputRegister;
-       reg < firstOutputRegister + numScoreRegisters + numDocumentRegs + numViewVarsRegisters; ++reg) {
+       reg < firstOutputRegister + numScoreRegisters + numDocumentRegs + numViewVarsRegisters;
+       ++reg) {
     writableOutputRegisters->emplace(reg);
   }
 
-  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
+  TRI_ASSERT(writableOutputRegisters->size() ==
+             numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
   TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
@@ -1533,11 +1551,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   ViewValuesRegisters outNonMaterializedViewRegs;
+
   for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
     for (auto const& fieldsVars : columnFieldsVars.second) {
       auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
       auto const it = varInfos.find(fieldsVars.var->id);
       TRI_ASSERT(it != varInfos.cend());
+
       fields.emplace(fieldsVars.fieldNum, it->second.registerId);
     }
   }
@@ -1559,7 +1579,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                       getDepth(),
                                       std::move(outNonMaterializedViewRegs)};
 
-  TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty()); // guaranteed by optimizer rule
+  TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty());  // guaranteed by optimizer rule
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
       return ::executors<MaterializeType::NotMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
@@ -1583,30 +1603,58 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 }
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
+aql::VariableIdSet IResearchViewNode::getOutputVariables() const {
+  aql::VariableIdSet vars;
+  // plan registers for output scores
+
+  for (auto const& scorer : _scorers) {
+    vars.insert(scorer.var->id);
+  }
+
+  if (isLateMaterialized() || noMaterialization()) {
+    if (isLateMaterialized()) {
+      vars.insert(_outNonMaterializedColPtr->id);
+      vars.insert(_outNonMaterializedDocId->id);
+    } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
+      // there is no variable if noMaterialization()
+      vars.insert(aql::RegisterPlan::MaxRegisterId);
+    }
+    for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
+      for (auto const& fieldVar : columnFieldsVars.second) {
+        vars.insert(fieldVar.var->id);
+      }
+    }
+  } else {  // plan register for document-id only block
+    vars.insert(_outVariable->id);
+  }
+  return vars;
+}
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 
 bool IResearchViewNode::OptimizationState::canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const {
-  return _nodesToChange.find(calclulationNode) != _nodesToChange.cend(); // contains()
+  return _nodesToChange.find(calclulationNode) != _nodesToChange.cend();  // contains()
 }
 
-void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrsColumn> const& nodesToChange) {
+void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(
+    std::vector<aql::latematerialized::NodeWithAttrsColumn> const& nodesToChange) {
   TRI_ASSERT(!nodesToChange.empty());
   TRI_ASSERT(_nodesToChange.empty());
   _nodesToChange.clear();
   for (auto& node : nodesToChange) {
     auto& calcNodeData = _nodesToChange[node.node];
     calcNodeData.reserve(node.attrs.size());
-    std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(calcNodeData, calcNodeData.end()),
-      [](auto const& attrAndField) {
-        return attrAndField.afData;
-      });
+    std::transform(node.attrs.cbegin(), node.attrs.cend(),
+                   std::inserter(calcNodeData, calcNodeData.end()),
+                   [](auto const& attrAndField) { return attrAndField.afData; });
   }
 }
 
-IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes,
-                                                                                           arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
+IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceViewVariables(
+    std::vector<aql::CalculationNode*> const& calcNodes,
+    arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
   TRI_ASSERT(!calcNodes.empty());
   ViewVarsInfo uniqueVariables;
   // at first use variables from simple expressions
@@ -1623,8 +1671,11 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
     if (afData.parentNode == nullptr && afData.postfix.empty()) {
       TRI_ASSERT(calcNodeData.size() == 1);
       // we can unlink one redundant variable only for each field
-      if (uniqueVariables.try_emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber,
-        calcNode->outVariable()}, afData.columnNumber}).second) {
+      if (uniqueVariables
+              .try_emplace(afData.field,
+                           ViewVariableWithColumn{{afData.fieldNumber, calcNode->outVariable()},
+                                                  afData.columnNumber})
+              .second) {
         toUnlink.emplace(calcNode);
       }
     }
@@ -1644,8 +1695,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
       // create a variable if necessary
       if ((afData.parentNode != nullptr || !afData.postfix.empty()) &&
           uniqueVariables.find(afData.field) == uniqueVariables.cend()) {
-        uniqueVariables.emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber,
-          ast->variables()->createTemporaryVariable()}, afData.columnNumber});
+        uniqueVariables.emplace(afData.field,
+                                ViewVariableWithColumn{{afData.fieldNumber,
+                                                        ast->variables()->createTemporaryVariable()},
+                                                       afData.columnNumber});
       }
     }
   }
@@ -1678,7 +1731,8 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
   return uniqueVariables;
 }
 
-IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAllViewVariables(arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
+IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAllViewVariables(
+    arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
   ViewVarsInfo uniqueVariables;
   if (_nodesToChange.empty()) {
     return uniqueVariables;
@@ -1694,8 +1748,12 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
     if (afData.parentNode == nullptr && afData.postfix.empty()) {
       TRI_ASSERT(calcNode.second.size() == 1);
       // we can unlink one redundant variable only for each field
-      if (uniqueVariables.try_emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber,
-        calcNode.first->outVariable()}, afData.columnNumber}).second) {
+      if (uniqueVariables
+              .try_emplace(afData.field,
+                           ViewVariableWithColumn{{afData.fieldNumber,
+                                                   calcNode.first->outVariable()},
+                                                  afData.columnNumber})
+              .second) {
         toUnlink.emplace(calcNode.first);
       }
     }
@@ -1712,8 +1770,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
       // create a variable if necessary
       if ((afData.parentNode != nullptr || !afData.postfix.empty()) &&
           uniqueVariables.find(afData.field) == uniqueVariables.cend()) {
-        uniqueVariables.emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber,
-          ast->variables()->createTemporaryVariable()}, afData.columnNumber});
+        uniqueVariables.emplace(afData.field,
+                                ViewVariableWithColumn{{afData.fieldNumber,
+                                                        ast->variables()->createTemporaryVariable()},
+                                                       afData.columnNumber});
       }
     }
   }
