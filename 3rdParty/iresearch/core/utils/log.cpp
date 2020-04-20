@@ -172,7 +172,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
 
 typedef std::function<void(const char* file, size_t line, const char* fn)> bfd_callback_type_t;
 bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj, void* addr); // predeclaration
-bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
+bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); // predeclaration
 
 #if defined(_MSC_VER)
   DWORD stack_trace_win32(iresearch::logger::level_t level, struct _EXCEPTION_POINTERS* ex) {
@@ -258,7 +258,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       }
 
       if (has_line) {
-        ss << ": " << line.FileName << ":" << line.LineNumber << "+0x" << offset_from_line;
+        ss << ": " << line.FileName << ":" << std::dec << line.LineNumber << "+0x" << std::hex << offset_from_line;
       }
       IR_LOG_FORMATED(level, "%s", ss.str().c_str());
     }
@@ -270,8 +270,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
   }
 #else
   #if defined(__APPLE__)
-    bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr) {
-      auto fd = fileno(output(level));
+    bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr, int fd) {
       auto pid = fork();
 
       if (!pid) {
@@ -294,8 +293,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
     }
   #else
-    bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr) {
-      auto fd = fileno(output(level));
+    bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr, int fd) {
       auto pid = fork();
 
       if (!pid) {
@@ -341,8 +339,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
   }
 
   #if defined(__APPLE__)
-    bool stack_trace_gdb(iresearch::logger::level_t level) {
-      auto fd = fileno(output(level));
+    bool stack_trace_gdb(iresearch::logger::level_t level, int fd) {
       auto pid = fork();
 
       if (!pid) {
@@ -369,8 +366,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
     }
   #else
-    bool stack_trace_gdb(iresearch::logger::level_t level) {
-      auto fd = fileno(output(level));
+    bool stack_trace_gdb(iresearch::logger::level_t level, int fd) {
       auto pid = fork();
 
       if (!pid) {
@@ -398,8 +394,8 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     }
   #endif
 
-  void stack_trace_posix(iresearch::logger::level_t level) {
-    auto* out = output(level);
+  void stack_trace_posix(iresearch::logger::level_t level, int out_pipe) {
+    auto* out = fdopen(out_pipe, "w");
     constexpr const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
@@ -414,16 +410,15 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     int pipefd[2];
 
     if (pipe(pipefd)) {
-      std::fprintf(out, "Failed to output detailed stack trace to stream, outputting plain stack trace\n");
-      std::fflush(out);
-      backtrace_symbols_fd(frames_buf_ptr, frames_count, fileno(out)); // fallback plain output
+      IR_LOG_FORMATED(level, "Failed to output detailed stack trace to stream, outputting plain stack trace");
+      backtrace_symbols_fd(frames_buf_ptr, frames_count, fileno(stderr)); // fallback plain output
       return;
     }
 
     size_t buf_len = 0;
     constexpr size_t buf_size = 1024; // arbitrary size
     char buf[buf_size];
-    std::thread thread([&pipefd, level, out, &buf, &buf_len]()->void {
+    std::thread thread([&pipefd, level, out, &buf, &buf_len, out_pipe]()->void {
       for (char ch; read(pipefd[0], &ch, 1) > 0;) {
         if (ch != '\n') {
           if (buf_len < buf_size - 1) {
@@ -479,7 +474,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
         auto fn_end = offset_start ? offset_start - 1 : nullptr;
         auto path_end = fn_start ? fn_start - 1 : (addr_start ? addr_start - 1 : nullptr);
-        bfd_callback_type_t callback = [out](
+        bfd_callback_type_t callback = [out, out_pipe](
           const char* file, size_t line, const char* fn
         )->void {
           UNUSED(fn);
@@ -516,7 +511,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
               *offset_end = '\0';
               *path_end = '\0';
 
-              if (!file_line_bfd(callback, path_start, offset_start) && !file_line_addr2line(level, path_start, offset_start)) {
+              if (!file_line_bfd(callback, path_start, offset_start) && !file_line_addr2line(level, path_start, offset_start, out_pipe)) {
                 std::fprintf(out, "\n");
                 std::fflush(out);
               }
@@ -530,7 +525,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
             *addr_end = '\0';
             *path_end = '\0';
 
-            if (!file_line_bfd(callback, path_start, addr_start) && !file_line_addr2line(level, path_start, addr_start)) {
+            if (!file_line_bfd(callback, path_start, addr_start) && !file_line_addr2line(level, path_start, addr_start, out_pipe)) {
               std::fprintf(out, "\n");
               std::fflush(out);
             }
@@ -617,7 +612,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     return file_line_addr2line(level, obj, addr_buf);
   }
 
-  bool stack_trace_libunwind(iresearch::logger::level_t level) {
+  bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe) {
     unw_context_t ctx;
     unw_cursor_t cursor;
 
@@ -630,7 +625,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       return true; // nothing to log
     }
 
-    auto* out = output(level);
+    auto* out = fdopen(output_pipe, "w");
     unw_word_t instruction_pointer;
 
     while (unw_step(&cursor) > 0) {
@@ -719,7 +714,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     return true;
   }
 #else
-  bool stack_trace_libunwind(iresearch::logger::level_t) {
+  bool stack_trace_libunwind(iresearch::logger::level_t, int) {
     return false;
   }
 #endif
@@ -752,6 +747,65 @@ void output(level_t level, log_appender_callback_t appender, void* context) {
 void output_le(level_t level, log_appender_callback_t appender, void* context) {
   logger_ctx::instance().output_le(level, appender, context);
 }
+#if !defined(_MSC_VER)
+class stack_trace_printer {
+ public:
+   int start(level_t level) {
+     pipes_opened_ = pipe(pipefd_);
+     if (!pipes_opened_) {
+       IR_LOG_FORMATED(level, "Failed to output detailed stack trace to stream, outputting plain stack trace to stderr");
+       return fileno(stderr);
+     }
+     size_t buf_len = 0;
+     constexpr size_t buf_size = 1024; // arbitrary size
+     char buf[buf_size];
+     pipe_reader_ = std::thread([this, level, &buf, &buf_len]()->void {
+       for (char ch; read(pipefd_[0], &ch, 1) > 0;) {
+         if (ch != '\n') {
+           if (buf_len < buf_size - 1) {
+             buf[buf_len++] = ch;
+             continue;
+           }
+
+           if (buf_len < buf_size) {
+             buf[buf_len++] = 0;
+             IR_LOG_FORMATED(level, "%s", buf);
+             buf_len = 1;
+             buf[0] = ch;
+           }
+         }
+       }
+       if (buf_len) {
+         buf[buf_len] = 0;
+         IR_LOG_FORMATED(level, "%s", buf);
+       }
+       });
+     return pipefd_[1];
+   }
+
+   void stop() {
+     if (pipes_opened_) {
+       close(pipefd_[1]);
+     }
+     if (pipe_reader_.joinable()) {
+       pipe_reader_.join();
+     }
+     if (pipes_opened_) {
+       close(pipefd_[0]);
+     }
+     pipes_opened_ = false;
+   }
+
+   ~stack_trace_printer() {
+     stop();
+   }
+
+ private:
+  std::thread pipe_reader_;
+  int pipefd_[2];
+  bool pipes_opened_{ false };
+};
+#endif
 
 void stack_trace(level_t level) {
   if (!enabled(level)) {
@@ -767,16 +821,19 @@ void stack_trace(level_t level) {
 
     stack_trace_win32(level, nullptr);
   #else
+    stack_trace_printer printer;
+    int fd = printer.start();
     try {
-      if (!stack_trace_libunwind(level) && !stack_trace_gdb(level)) {
-        stack_trace_posix(level);
+      if (!stack_trace_libunwind(level, fd) && !stack_trace_gdb(level, fd)) {
+        stack_trace_posix(level, fd);
       }
     } catch(std::bad_alloc&) {
-      stack_trace_nomalloc(level, 2); // +2 to skip stack_trace()
+      stack_trace_nomalloc(level, 2, fd); // +2 to skip stack_trace()
       throw;
     }
   #endif
 }
+
 
 void stack_trace(level_t level, const std::exception_ptr& eptr) {
   UNUSED(eptr); // no known way to get original instruction pointer from exception_ptr
@@ -795,19 +852,22 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
 
     stack_trace_win32(level, nullptr);
   #else
+    stack_trace_printer printer;
+    int fd = printer.start();
     try {
-      if (!stack_trace_libunwind(level) && !stack_trace_gdb(level)) {
-        stack_trace_posix(level);
+
+      if (!stack_trace_libunwind(level, fd) && !stack_trace_gdb(level, fd)) {
+        stack_trace_posix(level, fd);
       }
     } catch(std::bad_alloc&) {
-      stack_trace_nomalloc(level, 2); // +2 to skip stack_trace()
+      stack_trace_nomalloc(level, 2, fd); // +2 to skip stack_trace()
       throw;
     }
   #endif
 }
 
 #ifndef _MSC_VER
-  void stack_trace_nomalloc(level_t level, size_t skip) {
+  void stack_trace_nomalloc(level_t level, size_t skip, int fd) {
     if (!enabled(level)) {
       return; // skip generating trace if logging is disabled for this level altogether
     }
@@ -819,7 +879,7 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
     if (frames_count > 0 && size_t(frames_count) > skip) {
       static std::mutex mtx;
       SCOPED_LOCK(mtx);
-      backtrace_symbols_fd(frames_buf + skip, frames_count - skip, fileno(output(level)));
+      backtrace_symbols_fd(frames_buf + skip, frames_count - skip, fd);
     }
   }
 #endif
