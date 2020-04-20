@@ -305,9 +305,7 @@ CostEstimate ScatterNode::estimateCost() const {
   return estimate;
 }
 
-auto ScatterNode::getOutputVariables() const -> VariableIdSet {
-  return {};
-}
+auto ScatterNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -643,6 +641,15 @@ void GatherNode::setParallelism(GatherNode::Parallelism value) {
 GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
                                                   size_t shardsRequiredForHeapMerge) noexcept {
   return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap : SortMode::MinElement;
+}
+
+GatherNode::Parallelism GatherNode::evaluateParallelism(Collection const& collection) noexcept {
+  // single-sharded collections don't require any parallelism. collections with more than
+  // one shard are eligible for later parallelization (the Undefined allows this)
+  return (((collection.isSmart() && collection.type() == TRI_COL_TYPE_EDGE) ||
+           (collection.numberOfShards() <= 1 && !collection.isSatellite()))
+              ? Parallelism::Serial
+              : Parallelism::Undefined);
 }
 
 auto GatherNode::getOutputVariables() const -> VariableIdSet { return {}; }
