@@ -30,13 +30,10 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/TraversalStats.h"
 #include "Aql/Variable.h"
+#include "Graph/Traverser.h"
 
 namespace arangodb {
 class Result;
-
-namespace traverser {
-class Traverser;
-}
 
 namespace aql {
 
@@ -96,7 +93,7 @@ class TraversalExecutorInfos {
  private:
   std::unique_ptr<traverser::Traverser> _traverser;
   std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
-  std::string const _fixedSource;
+  std::string _fixedSource;
   RegisterId _inputRegister;
   std::vector<std::pair<Variable const*, RegisterId>> _filterConditionVariables;
 };

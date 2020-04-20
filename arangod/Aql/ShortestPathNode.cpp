@@ -295,11 +295,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 
   TRI_ASSERT(finder != nullptr);
   auto executorInfos =
-      ShortestPathExecutorInfos(inputRegisters, outputRegisters,
-                                getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                getRegisterPlan()->nrRegs[getDepth()],
-                                getRegsToClear(), calcRegsToKeep(),
-                                std::move(finder), std::move(outputRegisterMapping),
+      ShortestPathExecutorInfos(std::move(finder), std::move(outputRegisterMapping),
                                 std::move(sourceInput), std::move(targetInput));
   return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

@@ -532,12 +532,10 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
-  auto executorInfos = SortingGatherExecutorInfos(
-      make_shared_unordered_set(), make_shared_unordered_set(),
-      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-      std::move(sortRegister), _plan->getAst()->query()->trx(), sortMode(),
-      constrainedSortLimit(), p);
+  auto executorInfos =
+      SortingGatherExecutorInfos(std::move(sortRegister),
+                                 _plan->getAst()->query()->trx(), sortMode(),
+                                 constrainedSortLimit(), p);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

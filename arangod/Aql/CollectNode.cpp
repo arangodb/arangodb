@@ -331,6 +331,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       // calculate the variable names
       std::vector<std::pair<std::string, RegisterId>> variables;
       calcVariableNames(variables);
+      auto inputVariables = std::vector<std::pair<std::string, RegisterId>>();
+      // TODO We should be provided with a list of input variables instead!
+      std::copy_if(variables.begin(), variables.end(), std::back_inserter(inputVariables),
+                   [this](auto it) { return it.second < getNrInputRegisters(); });
 
       TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
       TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
@@ -345,7 +349,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       auto executorInfos =
           SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                      expressionRegister, _expressionVariable,
-                                     std::move(aggregateTypes), std::move(variables),
+                                     std::move(aggregateTypes), std::move(inputVariables),
                                      std::move(aggregateRegisters), trxPtr, _count);
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,

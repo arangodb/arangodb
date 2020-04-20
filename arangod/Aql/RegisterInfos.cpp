@@ -85,9 +85,9 @@ std::shared_ptr<std::unordered_set<RegisterId> const> RegisterInfos::getOutputRe
   return _outRegs;
 }
 
-RegisterId RegisterInfos::numberOfInputRegisters() const { return _numInRegs; }
+RegisterCount RegisterInfos::numberOfInputRegisters() const { return _numInRegs; }
 
-RegisterId RegisterInfos::numberOfOutputRegisters() const {
+RegisterCount RegisterInfos::numberOfOutputRegisters() const {
   return _numOutRegs;
 }
 

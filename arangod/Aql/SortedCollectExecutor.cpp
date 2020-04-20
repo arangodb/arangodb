@@ -126,15 +126,15 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, RegisterId expressionRegister,
     Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
-    std::vector<std::pair<std::string, RegisterId>>&& variables,
+    std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     transaction::Methods* trxPtr, bool count)
-    : _aggregateTypes(aggregateTypes),
-      _aggregateRegisters(aggregateRegisters),
-      _groupRegisters(groupRegisters),
+    : _aggregateTypes(std::move(aggregateTypes)),
+      _aggregateRegisters(std::move(aggregateRegisters)),
+      _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
       _expressionRegister(expressionRegister),
-      _variables(variables),
+      _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
       _count(count),
       _trxPtr(trxPtr) {}
@@ -180,13 +180,9 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
       // copy variables / keep variables into result register
 
       _builder.openObject();
-      for (auto const& pair : infos.getVariables()) {
-        // Only collect input variables, the variable names DO! contain more.
-        // e.g. the group variable name
-        if (pair.second < infos.numberOfInputRegisters()) {
-          _builder.add(VPackValue(pair.first));
-          input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
-        }
+      for (auto const& pair : infos.getInputVariables()) {
+        _builder.add(VPackValue(pair.first));
+        input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
       }
       _builder.close();
     }

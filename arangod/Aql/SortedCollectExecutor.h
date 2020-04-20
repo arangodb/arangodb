@@ -82,8 +82,9 @@ class SortedCollectExecutorInfos {
     return _expressionRegister;
   };
   Variable const* getExpressionVariable() const { return _expressionVariable; }
-  std::vector<std::pair<std::string, RegisterId>> const& getVariables() const {
-    return _variables;
+
+  std::vector<std::pair<std::string, RegisterId>> const& getInputVariables() const {
+    return _inputVariables;
   }
 
  private:
@@ -108,6 +109,8 @@ class SortedCollectExecutorInfos {
 
   /// @brief list of variables names for the registers
   std::vector<std::pair<std::string, RegisterId>> _variables;
+
+  std::vector<std::pair<std::string, RegisterId>> _inputVariables;
 
   /// @brief input expression variable (might be null)
   Variable const* _expressionVariable;

@@ -71,17 +71,9 @@ class OurLessThan {
 
 }  // namespace
 
-static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
-    std::vector<SortRegister> const& sortRegisters) {
-  auto set = make_shared_unordered_set();
-  std::transform(sortRegisters.begin(), sortRegisters.end(),
-                 std::inserter(*set, set->begin()),
-                 [](SortRegister const& sortReg) { return sortReg.reg; });
-  return set;
-}
-
-SortExecutorInfos::SortExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                     std::shared_ptr<std::unordered_set<RegisterId>> registersToClear,
+SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
+                                     RegisterCount nrOutputRegisters,
+                                     std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
                                      std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
                                      velocypack::Options const* options, bool stable)
@@ -96,9 +88,9 @@ SortExecutorInfos::SortExecutorInfos(RegisterId nrInputRegisters, RegisterId nrO
   TRI_ASSERT(!_sortRegisters.empty());
 }
 
-RegisterId SortExecutorInfos::numberOfInputRegisters() const { return _numInRegs; }
+RegisterCount SortExecutorInfos::numberOfInputRegisters() const { return _numInRegs; }
 
-RegisterId SortExecutorInfos::numberOfOutputRegisters() const {
+RegisterCount SortExecutorInfos::numberOfOutputRegisters() const {
   return _numOutRegs;
 }
 
