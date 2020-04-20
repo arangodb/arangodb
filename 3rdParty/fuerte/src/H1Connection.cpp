@@ -200,16 +200,18 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
 
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
 
-  // _state.load() after queuing request, to prevent race with connect
-  Connection::State state = this->_state.load();
-  if (state == Connection::State::Connected) {
-    startWriting();
-  } else if (state == Connection::State::Disconnected) {
-    FUERTE_LOG_HTTPTRACE << "sendRequest: not connected\n";
-    this->start();  // <- thread-safe connection start
-  } else if (state == Connection::State::Failed) {
-    FUERTE_LOG_ERROR << "queued request on failed connection\n";
-    drainQueue(fuerte::Error::ConnectionClosed);
+  // Note that we have first posted on the queue with std::memory_order_seq_cst
+  // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
+  // barber with the check-set-check combination in `asyncWriteNextRequest`.
+  // If we are the ones to exchange the value to `true`, then we post
+  // on the `_io_context` to activate the connection. Note that the
+  // connection can be in the `Disconnected` or `Connected` or `Failed`
+  // state, but not in the `Connecting` state in this case.
+  if (!this->_active.exchange(true)) {
+    this->_io_context->post([self(Connection::shared_from_this())] {
+        auto& me = static_cast<H1Connection<ST>&>(*self);
+        me.activate();
+      });
   }
 }
 
@@ -223,32 +225,51 @@ size_t H1Connection<ST>::requestsLeft() const {
 }
 
 template <SocketType ST>
-void H1Connection<ST>::finishConnect() {
-  auto exp = Connection::State::Connecting;
-  if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
-    startWriting();  // starts writing queue if non-empty
+void H1Connection<ST>::activate() {
+  FUERTE_ASSERT(_active.load());
+  Connection::State state = this->_state.load();
+  FUERTE_ASSERT(state != Connection::State::Connecting);
+  if (state == Connection::State::Connected) {
+    FUERTE_LOG_HTTPTRACE << "activate: connected\n";
+    startWriting();
+  } else if (state == Connection::State::Disconnected) {
+    FUERTE_LOG_HTTPTRACE << "activate: not connected\n";
+    this->startConnection();
+  } else if (state == Connection::State::Failed) {
+    FUERTE_LOG_ERROR << "activate: queued request on failed connection\n";
+    drainQueue(fuerte::Error::ConnectionClosed);
+    _active.store(false);    // No more activity from our side
   }
 }
 
-// Thread-Safe: activate the combined write-read loop
+template <SocketType ST>
+void H1Connection<ST>::finishConnect() {
+  // Note that the connection timeout alarm has already been disarmed.
+  // If it has already gone off, we
+  auto exp = Connection::State::Connecting;
+  if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
+    startWriting();  // starts writing queue if non-empty
+  } else {
+    FUERTE_LOG_ERROR << "finishConnect: found state other than 'Connecting'";
+    FUERTE_ASSERT(false);
+    // If this happens, we probably have a sleeping barber
+  }
+}
+
+// startWriting must only be executed on the IO thread
 template <SocketType ST>
 void H1Connection<ST>::startWriting() {
-  FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
-  if (!_active) {
-    this->_io_context->post([self(Connection::shared_from_this())] {
-      auto& me = static_cast<H1Connection<ST>&>(*self);
-      FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << &me << "\n";
-      if (!me._active.exchange(true)) {  // we are the only ones here now
-        // we might get in a race with shutdownConnection()
-        Connection::State state = me._state.load();
-        if (state != Connection::State::Connected) {
-          me._active.store(false);
-          me.startConnection();
-        } else {
-          me.asyncWriteNextRequest();
-        }
-      }
-    });
+  FUERTE_ASSERT(_active.load());
+  FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
+  // we might get in a race with shutdownConnection()
+  Connection::State state = this->_state.load();
+  if (state == Connection::State::Connected) {
+    this->asyncWriteNextRequest();
+  } else if (state == Connection::State::Disconnected) {
+    this->startConnection();
+  } else {
+    FUERTE_LOG_ERROR << "startWriting: found state other than 'Connected' or 'Disconnected': " << static_cast<int>(state);
+    FUERTE_ASSERT(false);
   }
 }
 
@@ -331,9 +352,9 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   FUERTE_ASSERT(_item == nullptr);
 
   RequestItem* ptr = nullptr;
-  if (!_queue.pop(ptr)) {
-    _active.store(false);
-    if (_queue.empty()) {
+  if (!_queue.pop(ptr)) {     // check
+    _active.store(false);      // set
+    if (_queue.empty()) {        // check again
       FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this="
                            << this << "\n";
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
@@ -391,6 +412,8 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     auto err = translateError(ec, Error::WriteError);
     if (item) { // may be null if connection was canceled
       if (ec == asio_ns::error::broken_pipe && nwrite == 0) {  // re-queue
+        // Note that this has the potential to change the order in which requests
+        // are sent off from the client call order to something else!
         sendRequest(std::move(item->request), item->callback);
       } else {
         // let user know that this request caused the error

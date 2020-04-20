@@ -45,12 +45,16 @@ class GeneralConnection : public fuerte::Connection {
     return _state.load(std::memory_order_acquire);
   }
 
+  /// The following public methods can be called from any thread:
+
   /// @brief cancel the connection, unusable afterwards
   void cancel() override;
 
   // Activate this connection
   void start() override;
 
+  /// All protected or private methods below here must only be called on the
+  /// IO thread.
  protected:
   void startConnection();
   // shutdown connection, cancel async operations

@@ -126,7 +126,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries,
 
   _proto.timer.expires_at(start + _config._connectTimeout);
   _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
-    if (!ec) {
+    if (!ec && self->state() == Connection::State::Connecting) {
       // the connect handler below gets 'operation_aborted' error
       static_cast<GeneralConnection<ST>&>(*self)._proto.cancel();
     }
@@ -135,6 +135,10 @@ void GeneralConnection<ST>::tryConnect(unsigned retries,
   _proto.connect(_config, [self, start, retries](auto const& ec) mutable {
     GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
     me._proto.timer.cancel();
+    // Note that is is possible that the alarm has already gone off, in which
+    // case its closure might already be queued right after ourselves! However,
+    // we now quickly set the state to `Connected` in which case the closure will
+    // no longer shut down the socket and ruin our success.
     if (!ec) {
       me.finishConnect();
       return;
