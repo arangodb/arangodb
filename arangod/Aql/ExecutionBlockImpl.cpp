@@ -1655,11 +1655,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   LOG_QUERY("80c24", DEBUG) << printBlockInfo() << " local statemachine done. Return now.";
   // If we do not have an output, we simply return a nullptr here.
 
-  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
-    // We can never return less rows then what we got!
-    TRI_ASSERT(_outputItemRow == nullptr || _outputItemRow->numRowsLeft() == 0);
-  }
-
   auto outputBlock = _outputItemRow != nullptr ? _outputItemRow->stealBlock()
                                                : SharedAqlItemBlockPtr{nullptr};
   // We are locally done with our output.
