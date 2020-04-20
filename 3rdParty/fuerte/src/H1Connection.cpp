@@ -228,7 +228,6 @@ template <SocketType ST>
 void H1Connection<ST>::activate() {
   FUERTE_ASSERT(_active.load());
   Connection::State state = this->_state.load();
-  FUERTE_ASSERT(state != Connection::State::Connecting);
   if (state == Connection::State::Connected) {
     FUERTE_LOG_HTTPTRACE << "activate: connected\n";
     startWriting();
@@ -240,6 +239,9 @@ void H1Connection<ST>::activate() {
     drainQueue(fuerte::Error::ConnectionClosed);
     _active.store(false);    // No more activity from our side
   }
+  // If the state is `Connecting`, we do not need to do anything, this can
+  // happen if this `activate` was posted when the connection was still
+  // `Disconnected`, but in the meantime the connect has started.
 }
 
 template <SocketType ST>
