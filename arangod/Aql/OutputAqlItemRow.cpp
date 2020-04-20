@@ -119,6 +119,7 @@ void OutputAqlItemRow::consumeShadowRow(RegisterId registerId,
                                         ShadowAqlItemRow const& sourceRow,
                                         AqlValueGuard& guard) {
   TRI_ASSERT(sourceRow.isRelevant());
+
   moveValueInto(registerId, sourceRow, guard);
   TRI_ASSERT(produced());
   block().makeDataRow(_baseIndex);
@@ -130,6 +131,7 @@ bool OutputAqlItemRow::reuseLastStoredValue(RegisterId registerId,
   if (_lastBaseIndex == _baseIndex) {
     return false;
   }
+
   // Do not clone the value, we explicitly want to recycle it.
   AqlValue ref = block().getValue(_lastBaseIndex, registerId);
   // The initial row is still responsible
