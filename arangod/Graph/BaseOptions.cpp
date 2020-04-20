@@ -40,7 +40,6 @@
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
-#include "Utils/OperationCursor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
