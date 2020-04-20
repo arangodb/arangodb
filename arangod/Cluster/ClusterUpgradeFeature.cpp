@@ -110,7 +110,8 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-  auto [acb, idx] = cache.get(std::vector<std::string>{AgencyCommManager::path(::upgradeVersionKey)});
+  auto [acb, idx] = cache.get(
+    std::vector<std::string>{AgencyCommManager::path(::upgradeVersionKey)});
   auto res = acb->slice();
 
   if (!res.isArray()) {

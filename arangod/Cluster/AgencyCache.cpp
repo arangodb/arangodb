@@ -23,6 +23,8 @@
 #include "AgencyCache.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "GeneralServer/RestHandler.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -72,6 +74,16 @@ std::tuple <query_t, index_t> const AgencyCache::get(
     _readDB.read(query, result);
   }
   return std::tuple(result, _commitIndex);
+}
+
+futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
+  std::lock_guard s(_storeLock);
+  if (index < _commitIndex) {
+    LOG_DEVEL << "done before";
+    return futures::makeFuture(arangodb::Result());
+  }
+  std::lock_guard w(_waitLock);
+  return _waiting.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
 }
 
 index_t AgencyCache::index() const {
@@ -133,10 +145,11 @@ void AgencyCache::run() {
             TRI_ASSERT(rs.get("firstIndex").isNumber());
             index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
             index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
+            
             if (firstIndex > 0) {
+              std::lock_guard g(_storeLock);
               TRI_ASSERT(rs.hasKey("log"));
               TRI_ASSERT(rs.get("log").isArray());
-              std::lock_guard g(_storeLock);
               for (auto const& i : VPackArrayIterator(rs.get("log"))) {
                 _readDB.applyTransaction(i); // apply logs
                 for (auto const& q : VPackObjectIterator(i.get("query"))) {
@@ -155,6 +168,7 @@ void AgencyCache::run() {
               _readDB = rs;                  // overwrite
               _commitIndex = commitIndex;
             }
+            triggerWaitingNoLock(commitIndex);
             for (auto i : toCall) {
               auto cb = _callbackRegistry.getCallback(i);
               if (cb.get() != nullptr) {
@@ -198,6 +212,27 @@ void AgencyCache::run() {
 
   }
 
+}
+
+void AgencyCache::triggerWaitingNoLock(index_t commitIndex) {
+
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  auto pit = _waiting.begin();
+  while (pit != _waiting.end()) {
+    if (pit->first > commitIndex) {
+      break;
+    }
+    auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
+    bool queued = scheduler->queue(
+      RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
+    if (!queued) {
+      LOG_TOPIC("c6473", WARN, Logger::AGENCY) <<
+        "Failed to schedule logsForTrigger running in main thread";
+      pp->setValue(Result());
+    }
+    pit = _waiting.erase(pit);
+  }
+  
 }
 
 

@@ -2273,7 +2273,10 @@ Result ClusterInfo::createCollectionsCoordinator(
         return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
       }
 
-      // Update our cache:
+      auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+      auto r = cache.waitFor(
+        res.slice().get("results")[0].getNumber<uint64_t>()).get();
+
       loadPlan();
     }
   }

@@ -588,11 +588,13 @@ void ClusterFeature::start() {
       << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
       << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
 
-  AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
+  auto [acb,idx] = _agencyCache->get(
+    std::vector<std::string>{AgencyCommManager::path("Sync/HeartbeatIntervalMs")});
+  auto result = acb->slice();
 
-  if (result.successful()) {
-    velocypack::Slice HeartbeatIntervalMs = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Sync", "HeartbeatIntervalMs"}));
+  if (result.isArray()) {
+    velocypack::Slice HeartbeatIntervalMs = result[0].get(
+      std::vector<std::string>({AgencyCommManager::path(), "Sync", "HeartbeatIntervalMs"}));
 
     if (HeartbeatIntervalMs.isInteger()) {
       try {

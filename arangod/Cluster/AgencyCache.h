@@ -27,6 +27,7 @@
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
+#include "Futures/Promise.h"
 #include "GeneralServer/RestHandler.h"
 
 #include <map>
@@ -76,9 +77,16 @@ public:
   /// @brief Register local callback
   bool unregisterCallback(std::string const& key, uint32_t const& id);
 
+  futures::Future<Result> waitFor(consensus::index_t index);
+
 private:
 
+  /// @brief trigger all waiting call backs for index <= _commitIndex
+  ///        caller must hold lock
+  void triggerWaitingNoLock(consensus::index_t commitIndex);
+  
   /// @brief Guard for _readDB
+  std::condition_variable _cv;
   mutable std::mutex _storeLock;
 
   /// @brief Commit index
@@ -93,6 +101,10 @@ private:
   /// @brief Stored call backs key -> callback registry's id
   mutable std::mutex _callbacksLock;
   std::multimap<std::string, uint32_t> _callbacks;
+
+  /// @brief Waiting room for indexes during office hours
+  mutable std::mutex _waitLock;
+  std::multimap<consensus::index_t, futures::Promise<Result>> _waiting;
 };
 
 } // namespace
