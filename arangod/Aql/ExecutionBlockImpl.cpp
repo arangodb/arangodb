@@ -894,11 +894,9 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
   }
   auto const& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
-  bool didConsume = false;
   if (shadowRow.isRelevant()) {
     // We need to consume the row, and write the Aggregate to it.
     _executor.consumeShadowRow(shadowRow, *_outputItemRow);
-    didConsume = true;
     // we need to reset the ExecutorHasReturnedDone, it will
     // return done after every subquery is fully collected.
     _executorReturnedDone = false;
@@ -929,11 +927,6 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
     // Need to return!
     return ExecState::DONE;
   } else {
-    if (didConsume) {
-      // We did only consume the input
-      // ask upstream
-      return ExecState::CHECKCALL;
-    }
     // End of input, we are done for now
     // Need to call again
     return ExecState::NEXTSUBQUERY;
