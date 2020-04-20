@@ -3949,7 +3949,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         // check if there is a node type that needs distribution
         if (nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE ||
             nodeType == ExecutionNode::UPDATE || nodeType == ExecutionNode::REPLACE ||
-            nodeType == ExecutionNode::UPSERT) {
+            nodeType == ExecutionNode::UPSERT || nodeType == ExecutionNode::TRAVERSAL ||
+            nodeType == ExecutionNode::SHORTEST_PATH ||
+            nodeType == ExecutionNode::K_SHORTEST_PATHS) {
           // found a node!
           break;
         }
@@ -3975,10 +3977,12 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
       }
 
-      // when we get here, we have found a matching data-modification node!
+      // when we get here, we have found a matching data-modification or traversal/shortest_path/k_shortest_paths node!
       TRI_ASSERT(nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE ||
                  nodeType == ExecutionNode::UPDATE || nodeType == ExecutionNode::REPLACE ||
-                 nodeType == ExecutionNode::UPSERT);
+                 nodeType == ExecutionNode::UPSERT || nodeType == ExecutionNode::TRAVERSAL ||
+                 nodeType == ExecutionNode::SHORTEST_PATH ||
+                 nodeType == ExecutionNode::K_SHORTEST_PATHS);
 
       ExecutionNode* originalParent = nullptr;
       if (node->hasParent()) {
@@ -4004,6 +4008,12 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         continue;
       }
 #endif
+      // For non-enterprise code, we don't care about these.
+      if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
+          nodeType == ExecutionNode::K_SHORTEST_PATHS) {
+        continue;
+      }
+
       bool const defaultSharding = collection->usesDefaultSharding();
 
       if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
