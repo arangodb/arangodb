@@ -187,6 +187,8 @@ class CollectNode : public ExecutionNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const final;
 
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+
  private:
   /// @brief options for the aggregation
   CollectOptions _options;
