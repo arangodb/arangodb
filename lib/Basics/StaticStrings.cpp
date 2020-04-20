@@ -102,6 +102,10 @@ std::string const StaticStrings::StatisticsCollection("_statistics");
 std::string const StaticStrings::Statistics15Collection("_statistics15");
 std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
 
+// analyzers names
+std::string const StaticStrings::AnalyzersRevision("Revision");
+std::string const StaticStrings::AnalyzersBuildingRevision("BuildingRevision");
+
 // Database definition fields
 std::string const StaticStrings::DatabaseId("id");
 std::string const StaticStrings::DatabaseName("name");

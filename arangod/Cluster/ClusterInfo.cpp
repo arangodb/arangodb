@@ -1733,8 +1733,10 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
       {AgencyOperation("Plan/Databases/" + database.getName(),
                        AgencyValueOperationType::SET, builder.slice()),
        AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
-      AgencyPrecondition("Plan/Databases/" + database.getName(),
-                         AgencyPrecondition::Type::EMPTY, true));
+      {AgencyPrecondition("Plan/Databases/" + database.getName(),
+                          AgencyPrecondition::Type::EMPTY, true),
+       AgencyPrecondition("Plan/Analyzers/" + database.getName(),
+                          AgencyPrecondition::Type::EMPTY, true)});
 
   // TODO: Should this never timeout?
   res = ac.sendTransactionWithFailover(trx, 0.0);
@@ -1780,12 +1782,18 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
   VPackBuilder entryBuilder;
   buildFinalSlice(database, entryBuilder);
 
+  VPackBuilder analyzersBuilder;
+  AgencyComm::buildInitialAnalyzersSlice(analyzersBuilder);
+
   AgencyWriteTransaction trx(
       {AgencyOperation("Plan/Databases/" + database.getName(),
                        AgencyValueOperationType::SET, entryBuilder.slice()),
-       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
-      AgencyPrecondition("Plan/Databases/" + database.getName(),
-                         AgencyPrecondition::Type::VALUE, pcBuilder.slice()));
+       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP),
+       AgencyOperation("Plan/Analyzers/" + database.getName(), AgencyValueOperationType::SET, analyzersBuilder.slice())},
+      {AgencyPrecondition("Plan/Databases/" + database.getName(),
+                          AgencyPrecondition::Type::VALUE, pcBuilder.slice()),
+       AgencyPrecondition("Plan/Analyzers/" + database.getName(),
+                          AgencyPrecondition::Type::EMPTY, true)});
 
   auto res = ac.sendTransactionWithFailover(trx, 0.0);
 
@@ -1903,6 +1911,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   AgencyOperation delPlanCollections("Plan/Collections/" + name,
                                      AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanViews("Plan/Views/" + name, AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delPlanAnalyzers("Plan/Analyzers/" + name, AgencySimpleOperationType::DELETE_OP);
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition databaseExists("Plan/Databases/" + name,
                                     AgencyPrecondition::Type::EMPTY, false);

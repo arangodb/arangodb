@@ -1855,11 +1855,7 @@ bool AgencyComm::tryInitializeStructure() {
       {
         VPackObjectBuilder d(&builder);
         builder.add(VPackValue("_system"));
-        {
-          VPackObjectBuilder d2(&builder);
-          builder.add("Revision", VPackValue(0));
-          builder.add("BuildingRevision", VPackValue(0));
-        }
+        buildInitialAnalyzersSlice(builder);
       }
     }
 
@@ -1994,4 +1990,10 @@ bool AgencyComm::shouldInitializeStructure() {
   }
 
   return false;
+}
+
+void AgencyComm::buildInitialAnalyzersSlice(VPackBuilder& builder) {
+  VPackObjectBuilder guard(&builder);
+  builder.add(StaticStrings::AnalyzersRevision, VPackValue(0));
+  builder.add(StaticStrings::AnalyzersBuildingRevision, VPackValue(0));
 }

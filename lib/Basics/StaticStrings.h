@@ -99,6 +99,10 @@ class StaticStrings {
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
 
+  // analyzers names
+  static std::string const AnalyzersRevision;
+  static std::string const AnalyzersBuildingRevision;
+
   // database definition fields
   static std::string const DatabaseId;
   static std::string const DatabaseName;

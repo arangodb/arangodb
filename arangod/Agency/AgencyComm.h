@@ -726,6 +726,8 @@ class AgencyComm {
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
                                     std::string const&, velocypack::Slice);
 
+  static void buildInitialAnalyzersSlice(VPackBuilder& builder);
+
  private:
   bool lock(std::string const&, double, double, arangodb::velocypack::Slice const&);
 
