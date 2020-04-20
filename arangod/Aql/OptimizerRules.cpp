@@ -3815,7 +3815,9 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
     current = current->getFirstParent();
   }
   TRI_ASSERT(found);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Inconsistent plan.");
+  if (!found) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Inconsistent plan.");
+  }
 }
 
 // TODO: move into ExecutionPlan?
