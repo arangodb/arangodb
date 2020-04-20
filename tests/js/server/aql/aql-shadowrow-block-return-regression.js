@@ -38,14 +38,8 @@ var db = require("@arangodb").db, indexId;
 ////////////////////////////////////////////////////////////////////////////////
 
 function blockReturnRegressionSuite() {
-<<<<<<< HEAD
-  const profile = 0;
-  const activateSplicing = {profile, optimizer: {rules: ["+splice-subqueries"]}};
-  const deactivateSplicing = {profile, optimizer: {rules: ["-splice-subqueries"]}};
-=======
   const activateSplicing = {optimizer: {rules: ["+splice-subqueries"]}};
   const deactivateSplicing = {optimizer: {rules: ["-splice-subqueries"]}};
->>>>>>> f7f3cdce0105014496ed320f380750998f007498
 
   const deepAssertElements = (left, right, path) => {
     if (Array.isArray(left)) {
