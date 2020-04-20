@@ -38,8 +38,8 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
-}
+}  // namespace velocypack
+}  // namespace arangodb
 
 namespace arangodb::aql {
 
@@ -52,11 +52,30 @@ struct VarInfo {
   unsigned int depth;
   RegisterId registerId;
 
-  VarInfo() = delete;
-  VarInfo(int depth, RegisterId registerId);
+  VarInfo() = default;
+  VarInfo(unsigned int depth, RegisterId registerId);
 };
 
-struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
+template <typename T>
+struct RegisterPlanT;
+
+template <typename T>
+struct RegisterPlanWalkerT final : public WalkerWorker<T> {
+  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlanT<T>> plan)
+      : plan(std::move(plan)) {}
+  virtual ~RegisterPlanWalkerT() noexcept = default;
+
+  void after(T* eb) final;
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
+    return false;  // do not walk into subquery
+  }
+
+  std::shared_ptr<RegisterPlanT<T>> plan;
+};
+
+template <typename T>
+struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T>> {
+  friend struct RegisterPlanWalkerT<T>;
   // The following are collected for global usage in the ExecutionBlock,
   // although they are stored here in the node:
 
@@ -72,47 +91,51 @@ struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
   // We collect the subquery nodes to deal with them at the end:
   std::vector<ExecutionNode*> subQueryNodes;
 
- private:
-  // Local for the walk:
-  unsigned int depth;
-  
-  unsigned int totalNrRegs;
-
-  // This is used to tell all nodes and share a pointer to ourselves
-  std::shared_ptr<RegisterPlan>* me;
-
- public:
-  RegisterPlan();
-  RegisterPlan(arangodb::velocypack::Slice slice, unsigned int depth);
-  // Copy constructor used for a subquery:
-  RegisterPlan(RegisterPlan const& v, unsigned int newdepth);
-  ~RegisterPlan() = default;
-  
-  void setSharedPtr(std::shared_ptr<RegisterPlan>* shared) { me = shared; }
-
-  std::shared_ptr<RegisterPlan> clone();
-
-  void registerVariable(Variable const* v);
-  
-  void increaseDepth();
-  
-  void addRegister();
-
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  
-  static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
-
-  virtual bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return false;  // do not walk into subquery
-  }
-
-  virtual void after(ExecutionNode* eb) override final;
-
- public:
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = 1000;
+
+ public:
+  RegisterPlanT();
+  RegisterPlanT(arangodb::velocypack::Slice slice, unsigned int depth);
+  // Copy constructor used for a subquery:
+  RegisterPlanT(RegisterPlan const& v, unsigned int newdepth);
+  ~RegisterPlanT() = default;
+
+  std::shared_ptr<RegisterPlanT> clone();
+
+  void registerVariable(VariableId v);
+  void increaseDepth();
+  void addRegister();
+  void addSubqueryNode(ExecutionNode* subquery);
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
+
+ private:
+  unsigned int depth;
+  unsigned int totalNrRegs;
 };
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r) {
+  // level -> variable, info
+  std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
+
+  for (auto [id, info] : r.varInfo) {
+    frames[info.depth][id] = info;
+  }
+
+  for (auto [depth, vars] : frames) {
+    os << "depth " << depth << std::endl;
+    os << "------------------------------------" << std::endl;
+
+    for (auto [id, info] : vars) {
+      os << "id = " << id << " register = " << info.registerId << std::endl;
+    }
+  }
+  return os;
+}
 
 }  // namespace arangodb::aql
 

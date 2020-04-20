@@ -38,6 +38,27 @@ var db = require("@arangodb").db, indexId;
 ////////////////////////////////////////////////////////////////////////////////
 
 function blockReturnRegressionSuite() {
+  const activateSplicing = {optimizer: {rules: ["+splice-subqueries"]}};
+  const deactivateSplicing = {optimizer: {rules: ["-splice-subqueries"]}};
+
+  const deepAssertElements = (left, right, path) => {
+    if (Array.isArray(left)) {
+      assertTrue(Array.isArray(right), `On ${path}`);
+      assertEqual(left.length, right.length, `On ${path}`);
+      for (let i = 0; i < left.length; ++i) {
+        deepAssertElements(left[i], right[i], `${path}[${i}]`);
+      }
+    } else if (left instanceof Object) {
+      assertTrue(right instanceof Object, `On ${path}`);
+      assertEqual(Object.keys(left).sort(), Object.keys(right).sort(), `On ${path}`);
+      for (const [key, val] of Object.entries(left)) {
+        deepAssertElements(val, right[key], `${path}.${key}`);
+      }
+    } else {
+      assertEqual(left, right,`On ${path}`);
+    }
+  };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +76,7 @@ function blockReturnRegressionSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test WITHIN_RECTANGLE as result
+/// @brief test reuse of blocks in subquery, they are of identical size each time
 ////////////////////////////////////////////////////////////////////////////////
 
     testBlockReuseOkWithSubquery : function () {
@@ -63,6 +84,45 @@ function blockReturnRegressionSuite() {
       var actual = db._query(query);
       assertEqual(actual.toArray().length , 1000);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generated subquery, tends to show a difference 
+////////////////////////////////////////////////////////////////////////////////
+
+    testHeavyNestedSubquery : function () {
+      
+      const query = `
+      FOR fv0 IN 1..20
+        LET sq1 = (FOR fv2 IN 1..20
+          LIMIT 10,0
+          COLLECT WITH COUNT INTO counter 
+          RETURN {counter})
+        LET sq3 = (FOR fv4 IN 1..20
+          LET sq5 = (FOR fv6 IN 1..20
+            LET sq7 = (FOR fv8 IN 1..20
+              LET sq9 = (FOR fv10 IN 1..20
+                LIMIT 4,7
+                COLLECT WITH COUNT INTO counter 
+                RETURN {counter})
+              LIMIT 11,11
+              RETURN {fv8, sq1, sq9})
+            LET sq11 = (FOR fv12 IN 1..20
+              LIMIT 19,17
+              RETURN {fv12, sq1, sq7})
+            LIMIT 12,5
+            RETURN {fv6, sq1, sq7, sq11})
+          LIMIT 11,5
+          RETURN {fv4, sq1, sq5})
+        LIMIT 10,11
+        RETURN {fv0, sq1, sq3}
+      `;
+
+      const splicedRes = db._query(query, {}, activateSplicing).toArray();
+      const nosplicedRes = db._query(query, {}, deactivateSplicing).toArray();
+      deepAssertElements(splicedRes, nosplicedRes, "");
+    }
+
+
   };
 }
 
