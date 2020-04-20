@@ -287,10 +287,13 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   {
     arangodb::OperationOptions opOptions;
     opOptions.waitForSync = true;
+    opOptions.returnOld = true;
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
 
     // find and load collection given by name or identifier
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
     SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     res = trx.begin();
     if (res.fail()) {
@@ -300,9 +303,9 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
     arangodb::OperationResult result;
     result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
 
-    if (result.result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-      replacedExisting = true;
-      result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
+    if (result.ok()) {
+      VPackSlice oldSlice = result.slice().get(StaticStrings::Old);
+      replacedExisting = !(oldSlice.isNone() || oldSlice.isNull());
     }
     // Will commit if no error occured.
     // or abort if an error occured.

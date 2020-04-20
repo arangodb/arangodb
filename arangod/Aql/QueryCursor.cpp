@@ -150,7 +150,6 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
                                      size_t batchSize, double ttl)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
-      _ctx(nullptr),
       _query(std::move(q)),
       _queryResultPos(0),
       _exportCount(-1) {
@@ -182,7 +181,7 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
   // otherwise we just get issues because we might still try to use the trx
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
   // things break if the Query outlives a V8 transaction
-  _stateChangeCb = [this](transaction::Methods& trx, transaction::Status status) {
+  _stateChangeCb = [this](transaction::Methods& /*trx*/, transaction::Status status) {
     if (status == transaction::Status::COMMITTED ||
         status == transaction::Status::ABORTED) {
       this->setDeleted();
@@ -194,18 +193,18 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
-  if (_query) {  // cursor is canceled or timed-out
-    cleanupStateCallback();
-
-    while (!_queryResults.empty()) {
-      _queryResults.pop_front();
-    }
-
-    // now remove the continue handler we may have registered in the query
-    _query->sharedState()->invalidate();
-    // Query destructor will cleanup plan and abort transaction
-    _query.reset();
+  if (!_query) {
+    return;
   }
+  // cursor is canceled or timed-out
+  cleanupStateCallback();
+
+  _queryResults.clear();
+
+  // now remove the continue handler we may have registered in the query
+  _query->sharedState()->invalidate();
+  // Query destructor will cleanup plan and abort transaction
+  _query.reset();
 }
 
 void QueryStreamCursor::kill() {

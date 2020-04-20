@@ -1133,8 +1133,6 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
     v8::HandleScope scope(isolate);
     auto context = TRI_IGETC;
 
-    expressionContext->prepareV8Context();
-
     std::string jsName;
     int const n = static_cast<int>(invokeParams.size());
     int const callArgs = (func == nullptr ? 3 : n);

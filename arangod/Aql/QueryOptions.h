@@ -57,7 +57,7 @@ struct QueryOptions {
   explicit QueryOptions(QueryRegistryFeature&);
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice const&);
+  void fromVelocyPack(arangodb::velocypack::Slice const& slice);
   void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; };
 

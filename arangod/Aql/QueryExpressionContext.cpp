@@ -39,10 +39,6 @@ void QueryExpressionContext::registerError(int errorCode, char const* msg) {
   _query.warnings().registerError(errorCode, msg);
 }
 
-void QueryExpressionContext::prepareV8Context() {
-  _query.prepareV8Context();
-}
-
 icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(char const* ptr, size_t length,
                                                              bool caseInsensitive) {
   return _regexCache.buildRegexMatcher(ptr, length, caseInsensitive);

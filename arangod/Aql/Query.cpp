@@ -81,7 +81,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
-      _V8Context(nullptr),
+      _v8Context(nullptr),
       _bindParameters(bindParameters),
       _options(options),
       _queryOptions(_vocbase.server().getFeature<QueryRegistryFeature>()),
@@ -89,21 +89,22 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _startTime(TRI_microtime()),
       _queryHash(DontCache),
       _executionPhase(ExecutionPhase::INITIALIZE),
-      _contextOwnedByExterior(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
+      _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _killed(false),
       _isAsyncQuery(false),
-      _preparedV8Context(false),
       _queryHashCalculated(false) {
+  
+  if (!_transactionContext) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "failed to create query transaction context");
+  }
+
   if (_contextOwnedByExterior) {
     // copy transaction options from global state into our local query options
     auto state = transaction::V8Context::getParentState();
     if (state != nullptr) {
       _queryOptions.transactionOptions = state->options();
     }
-  }
-  if (!_transactionContext) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "failed to create query transaction context");
   }
 
   // populate query options
@@ -959,72 +960,38 @@ bool Query::isModificationQuery() const {
 /// @brief mark a query as modification query
 void Query::setIsModificationQuery() { return _ast->setContainsModificationNode(); }
 
-/// @brief prepare a V8 context for execution for this expression
-/// this needs to be called once before executing any V8 function in this
-/// expression
-void Query::prepareV8Context() {
-  TRI_ASSERT(!_isAsyncQuery);
-  if (_preparedV8Context) {
-    // already done
-    return;
-  }
-
-  TRI_ASSERT(_trx != nullptr);
-
-  ISOLATE;
-  TRI_ASSERT(isolate != nullptr);
-
-  std::string body(
-      "if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); }");
-
-  {
-    v8::HandleScope scope(isolate);
-    v8::ScriptOrigin scriptOrigin(TRI_V8_ASCII_STRING(isolate, "--script--"));
-    v8::Handle<v8::Script> compiled =
-        v8::Script::Compile(TRI_IGETC, TRI_V8_STD_STRING(isolate, body), &scriptOrigin)
-            .FromMaybe(v8::Local<v8::Script>());
-
-    if (!compiled.IsEmpty()) {
-      compiled->Run(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());  // TODO: Result?
-      _preparedV8Context = true;
-    }
-  }
-}
-
 /// @brief enter a V8 context
 void Query::enterV8Context() {
   TRI_ASSERT(!_isAsyncQuery);
   if (!_contextOwnedByExterior) {
-    if (_V8Context == nullptr) {
+    if (_v8Context == nullptr) {
       if (V8DealerFeature::DEALER == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "V8 engine is disabled");
       }
-      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createQueryContext();
-      _V8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
+      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
+      _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
 
-      if (_V8Context == nullptr) {
+      if (_v8Context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_RESOURCE_LIMIT,
             "unable to enter V8 context for query execution");
       }
 
-      // register transaction and resolver in context
+      // register transaction in context
       TRI_ASSERT(_trx != nullptr);
 
-      ISOLATE;
-      TRI_GET_GLOBALS();
-      _preparedV8Context = false;
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
       auto ctx = static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->enterV8Context(_trx->stateShrdPtr());
       }
     }
-    _preparedV8Context = false;
 
-    TRI_ASSERT(_V8Context != nullptr);
+    TRI_ASSERT(_v8Context != nullptr);
   }
 }
 
@@ -1032,20 +999,19 @@ void Query::enterV8Context() {
 void Query::exitV8Context() {
   TRI_ASSERT(!_isAsyncQuery);
   if (!_contextOwnedByExterior) {
-    if (_V8Context != nullptr) {
-      // unregister transaction and resolver in context
-      ISOLATE;
-      TRI_GET_GLOBALS();
+    if (_v8Context != nullptr) {
+      // unregister transaction in context
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
       auto ctx = static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->exitV8Context();
       }
 
       TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      V8DealerFeature::DEALER->exitContext(_V8Context);
-      _V8Context = nullptr;
+      V8DealerFeature::DEALER->exitContext(_v8Context);
+      _v8Context = nullptr;
     }
-    _preparedV8Context = false;
   }
 }
 
@@ -1294,7 +1260,7 @@ ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
 
 ClusterQuery::~ClusterQuery() try {
   _traversers.clear();
-} catch(...) {}
+} catch (...) {}
 
 void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice collections,

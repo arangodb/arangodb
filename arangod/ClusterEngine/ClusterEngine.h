@@ -134,9 +134,8 @@ class ClusterEngine final : public StorageEngine {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result lastLogger(TRI_vocbase_t& vocbase,
-                    std::shared_ptr<transaction::Context> transactionContext,
                     uint64_t tickStart, uint64_t tickEnd,
-                    std::shared_ptr<velocypack::Builder>& builderSPtr) override {
+                    velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   WalAccess const* walAccess() const override {

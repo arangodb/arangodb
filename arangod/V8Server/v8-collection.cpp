@@ -2417,6 +2417,7 @@ static void JS_CompletionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& arg
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_engineStats()")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_executeTransaction()")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_exists()")).FromMaybe(false);
+  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_explain()")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_id")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_isSystem()")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_databases()")).FromMaybe(false);

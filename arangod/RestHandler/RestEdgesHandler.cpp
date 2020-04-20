@@ -32,7 +32,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>

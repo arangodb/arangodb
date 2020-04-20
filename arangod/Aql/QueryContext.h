@@ -122,10 +122,6 @@ class QueryContext {
   
 public:
   
-  virtual void unPrepareV8Context() {}
-  
-  virtual void prepareV8Context();
-  
   virtual void enterV8Context();
   
   virtual void exitV8Context() {}

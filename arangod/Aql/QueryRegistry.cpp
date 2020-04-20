@@ -41,36 +41,8 @@ using namespace arangodb::aql;
 using namespace arangodb::cluster;
 
 QueryRegistry::~QueryRegistry() {
-  std::vector<std::pair<std::string, QueryId>> toDelete;
-
-  {
-    WRITE_LOCKER(writeLocker, _lock);
-
-    try {
-      for (auto& x : _queries) {
-        // x.first is a TRI_vocbase_t* and
-        // x.second is a std::unordered_map<QueryId, QueryInfo*>
-        for (auto& y : x.second) {
-          // y.first is a QueryId and
-          // y.second is a QueryInfo*
-          toDelete.emplace_back(x.first, y.first);
-        }
-      }
-    } catch (...) {
-      // the emplace_back() above might fail
-      // prevent throwing exceptions in the destructor
-    }
-  }
-
-  // note: destroy() will acquire _lock itself, so it must be called without
-  // holding the lock
-  for (auto& p : toDelete) {
-    try {  // just in case
-      //cppcheck-suppress virtualCallInConstructor
-      destroyQuery(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED, false);
-    } catch (...) {
-    }
-  }
+  disallowInserts();
+  destroyAll();
 }
 
 /// @brief insert
@@ -233,15 +205,16 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     auto m = _queries.find(vocbase);
 
     if (m == _queries.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER, "vocbase not found in query registry");
+      // database not found. this can happen as a consequence of a race between garbage collection
+      // and shutdown
+      return nullptr;
     }
-
+    
     auto q = m->second.find(id);
 
     if (q == m->second.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
+          TRI_ERROR_BAD_PARAMETER, "query with given id not found in query registry");
     }
 
     if (q->second->_numOpen > 0 && !ignoreOpened) {
@@ -395,7 +368,7 @@ size_t QueryRegistry::numberRegisteredQueries() {
 }
 
 /// @brief for shutdown, we need to shut down all queries:
-void QueryRegistry::destroyAll() {
+void QueryRegistry::destroyAll() try {
   std::vector<std::pair<std::string, QueryId>> allQueries;
   {
     READ_LOCKER(readlock, _lock);
@@ -426,6 +399,9 @@ void QueryRegistry::destroyAll() {
     LOG_TOPIC("43bf8", INFO, arangodb::Logger::AQL)
         << "number of remaining queries in query registry at shutdown: " << count;
   }
+} catch (std::exception const& ex) {
+  LOG_TOPIC("30bdb", INFO, arangodb::Logger::AQL)
+        << "caught exception during shutdown of query registry: " << ex.what();
 }
 
 void QueryRegistry::disallowInserts() {

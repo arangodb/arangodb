@@ -41,7 +41,8 @@ transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
       _currentTransaction(nullptr),
       _embeddable(embeddable) {
   // need to set everything here
-  TRI_GET_GLOBALS2(v8::Isolate::GetCurrent());
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
   _sharedTransactionContext = static_cast<transaction::V8Context*>(v8g->_transactionContext);
 }
 
@@ -78,21 +79,23 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   return *_resolver;
 }
 
-/// @brief get transaction state, determine commit responsiblity
+/// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState> transaction::V8Context::acquireState(transaction::Options const& options,
                                                                                    bool& responsibleForCommit) {
   
   TRI_ASSERT(_sharedTransactionContext != nullptr);
-  
+ /* 
   if (_currentTransaction) {
     responsibleForCommit = false;
     return _currentTransaction;
   }
+  */
   
   auto state = _sharedTransactionContext->_currentTransaction;
   if (!state) {
     state = transaction::Context::createState(options);
-    _currentTransaction = state;
+//    _currentTransaction = state;
+    enterV8Context(state);
     responsibleForCommit = true;
   } else {
     if (!isEmbeddable()) {
@@ -163,7 +166,7 @@ std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired
     TRI_vocbase_t& vocbase, bool embeddable) {
   // is V8 enabled and are currently in a V8 scope ?
   if (V8DealerFeature::DEALER != nullptr && v8::Isolate::GetCurrent() != nullptr) {
-    return Create(vocbase, embeddable);
+    return transaction::V8Context::Create(vocbase, embeddable);
   }
 
   return transaction::StandaloneContext::Create(vocbase);
