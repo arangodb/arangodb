@@ -676,6 +676,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   } else if constexpr (Traits::MaterializeType == MaterializeType::NotMaterialize && !Traits::Ordered) {
     AqlValue v(VPackSlice::noneSlice());
     AqlValueGuard guard{v, true};
+
     ctx.outputRow.moveValueInto(infos().getOutputRegister(), ctx.inputRow, guard);
   }
   // in the ordered case we have to write scores as well as a document
@@ -685,6 +686,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
       TRI_ASSERT(infos().isScoreReg(scoreReg));
       AqlValueGuard guard{it, false};
+
       ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
       ++scoreReg;
     }

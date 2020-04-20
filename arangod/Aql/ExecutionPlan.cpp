@@ -43,6 +43,7 @@
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
@@ -246,7 +247,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
       }
     }
   }
-  
+
   return options;
 }
 
@@ -2537,8 +2538,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
       case ExecutionNode::INSERT:
       case ExecutionNode::REMOVE:
       case ExecutionNode::REPLACE:
-      case ExecutionNode::UPSERT:
-      case ExecutionNode::MATERIALIZE: {
+      case ExecutionNode::UPSERT: {
         auto const& colAccess = *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
         auto type = std::string{node.getTypeString()};
         type += " (";
