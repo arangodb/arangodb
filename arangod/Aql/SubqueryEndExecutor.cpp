@@ -158,8 +158,12 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {
-  _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-  _builder = std::make_unique<VPackBuilder>(*_buffer);
+  if (_buffer == nullptr) {
+    _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+    _builder = std::make_unique<VPackBuilder>(*_buffer);
+  } else {
+    _builder->clear();
+  }
   TRI_ASSERT(_builder != nullptr);
   _builder->openArray();
   _numValues = 0;
