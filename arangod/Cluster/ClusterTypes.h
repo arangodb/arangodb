@@ -98,8 +98,8 @@ class AnalyzerRevision {
   }
 
  private:
-  Revision _revision;
-  Revision _buildingRevision;
+  Revision _revision{};
+  Revision _buildingRevision{};
 };
 
 }  // namespace arangodb

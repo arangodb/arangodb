@@ -798,8 +798,8 @@ void ClusterInfo::loadPlan() {
   if (planAnalyzersSlice.isObject()) {
     swapAnalyzers = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
 
-    for (auto const databasePairSlice : velocypack::ObjectIterator(planAnalyzersSlice)) {
-      auto const& analyzerSlice = databasePairSlice.value;
+    for (auto const databaseDataSlice : velocypack::ObjectIterator(planAnalyzersSlice)) {
+      auto const& analyzerSlice = databaseDataSlice.value;
 
       if (!analyzerSlice.isObject()) {
         LOG_TOPIC("bc53f", INFO, Logger::AGENCY)
@@ -810,7 +810,7 @@ void ClusterInfo::loadPlan() {
         continue;
       }
 
-      auto const databaseName = databasePairSlice.key.copyString();
+      auto const databaseName = databaseDataSlice.key.copyString();
       auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
       if (!vocbase) {
@@ -826,7 +826,7 @@ void ClusterInfo::loadPlan() {
         continue;
       }
 
-      auto const revisionSlice = analyzerSlice.get("Revision");
+      auto const revisionSlice = analyzerSlice.get(StaticStrings::AnalyzersRevision);
       if (!revisionSlice.isNumber()) {
         LOG_TOPIC("dd4e1", WARN, Logger::AGENCY)
             << "Invalid analyzer revision for database '" << databaseName << "',"
@@ -836,7 +836,7 @@ void ClusterInfo::loadPlan() {
         continue;
       }
 
-      auto const buildingRevisionSlice = analyzerSlice.get("BuildingRevision");
+      auto const buildingRevisionSlice = analyzerSlice.get(StaticStrings::AnalyzersBuildingRevision);
       if (!buildingRevisionSlice.isNumber()) {
         LOG_TOPIC("f0c72", WARN, Logger::AGENCY)
             << "Invalid analyzer building revision for database '" << databaseName << "',"
