@@ -44,6 +44,7 @@
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchRocksDBLink.h"
@@ -109,6 +110,17 @@ arangodb::aql::AqlValue contextFunc(arangodb::aql::ExpressionContext*,
   return args[0];
 }
 
+/// Check whether prefix is a value prefix
+inline bool isPrefix(arangodb::velocypack::StringRef const& prefix, arangodb::velocypack::StringRef const& value) {
+  return prefix.size() <= value.size() && value.substr(0, prefix.size()) == prefix;
+}
+
+/// Register invalid argument warning
+inline arangodb::aql::AqlValue errorAqlValue(arangodb::aql::ExpressionContext* ctx, char const* afn) {
+  arangodb::aql::registerInvalidArgumentWarning(ctx, afn);
+  return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+}
+
 /// Executes STARTS_WITH function with const parameters locally the same way
 /// it will be done in ArangoSearch at runtime
 /// This will allow optimize out STARTS_WITH call if all arguments are const
@@ -117,27 +129,54 @@ arangodb::aql::AqlValue startsWithFunc(arangodb::aql::ExpressionContext* ctx,
                                        arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
   static char const* AFN = "STARTS_WITH";
 
-  TRI_ASSERT(args.size() >= 2); // ensured by function signature
+  auto const argc = args.size();
+  TRI_ASSERT(argc >= 2 && argc <= 4); // ensured by function signature
   auto& value = args[0];
 
-  if (ADB_UNLIKELY(!value.isString())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+  if (!value.isString()) {
+    return errorAqlValue(ctx, AFN);
   }
-
-  auto& prefix = args[1];
-
-  if (ADB_UNLIKELY(!prefix.isString())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
-  }
-
   auto const valueRef = value.slice().stringRef();
-  auto const prefixRef = prefix.slice().stringRef();
 
-  bool const result = prefixRef.size() <= valueRef.size() &&
-                      valueRef.substr(0, prefixRef.size()) == prefixRef;
+  auto result = false;
 
+  auto& prefixes = args[1];
+  if (prefixes.isArray()) {
+    auto const size = static_cast<int64_t>(prefixes.length());
+    int64_t minMatchCount = arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount;
+    if (argc > 2) {
+      auto& minMatchCountValue = args[2];
+      if (!minMatchCountValue.isNumber()) {
+        return errorAqlValue(ctx, AFN);
+      }
+      minMatchCount = minMatchCountValue.toInt64();
+      if (minMatchCount < 0) {
+        return errorAqlValue(ctx, AFN);
+      }
+    }
+    if (0 == minMatchCount) {
+      result = true;
+    } else if (minMatchCount <= size) {
+      int64_t matchedCount = 0;
+      for (int64_t i = 0; i < size; ++i) {
+        auto mustDestroy = false;
+        auto prefix = prefixes.at(i, mustDestroy, false);
+        arangodb::aql::AqlValueGuard guard{prefix, mustDestroy};
+        if (!prefix.isString()) {
+          return errorAqlValue(ctx, AFN);
+        }
+        if (isPrefix(prefix.slice().stringRef(), valueRef) && ++matchedCount == minMatchCount) {
+          result = true;
+          break;
+        }
+      }
+    }
+  } else {
+    if (!prefixes.isString()) {
+      return errorAqlValue(ctx, AFN);
+    }
+    result = isPrefix(prefixes.slice().stringRef(), valueRef);
+  }
   return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintBool{result}};
 }
 
@@ -152,8 +191,7 @@ arangodb::aql::AqlValue minMatchFunc(arangodb::aql::ExpressionContext* ctx,
   TRI_ASSERT(args.size() > 1); // ensured by function signature
   auto& minMatchValue = args.back();
   if (ADB_UNLIKELY(!minMatchValue.isNumber())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    return errorAqlValue(ctx, AFN);
   }
 
   auto matchesLeft = minMatchValue.toInt64();
@@ -398,7 +436,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
                                          arangodb::aql::Function::Flags::Cacheable,
                                          arangodb::aql::Function::Flags::CanRunOnDBServer);
   addFunction(functions, { "EXISTS", ".|.,.", flags, &dummyFilterFunc });  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
-  addFunction(functions, { "STARTS_WITH", ".,.|.", flags, &startsWithFunc });  // (attribute, prefix, scoring-limit)
+  addFunction(functions, { "STARTS_WITH", ".,.|.,.", flags, &startsWithFunc });  // (attribute, [ '[' ] prefix [, prefix, ... ']' ] [, scoring-limit|min-match-count ] [, scoring-limit ])
   addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
   addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &minMatchFunc });  // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, { "BOOST", ".,.", flags, &contextFunc });  // (filter expression, boost)
