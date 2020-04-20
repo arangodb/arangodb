@@ -53,31 +53,10 @@ class OurLessThan {
 
       int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
-      if (cmp != 0) {
-        /*
-          the expression
-
-            return ((cmp < 0) ^ (!_sortRegister.asc));
-          
-          should produce the same result as its more complex equivalent
-
-            if (cmp < 0) {
-              return reg.asc;
-            } else if (cmp > 0) {
-              return !reg.asc;
-            }
-
-          but it is translated into assembly with one branch instead of two.
-          so we should have less branch mispredictions here.
-
-          cmp < 0    asc       result
-          ----------------------------
-          true       true      true
-          true       false     false
-          false      true      false
-          false      false     true
-        */
-        return ((cmp < 0) ^ (!reg.asc));
+      if (cmp < 0) {
+        return reg.asc;
+      } else if (cmp > 0) {
+        return !reg.asc;
       }
     }
 
