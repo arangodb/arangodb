@@ -207,13 +207,16 @@ class TransactionState {
   TRI_voc_tick_t lastOperationTick() const noexcept {
     return _lastWrittenOperationTick;
   }
+  
+  #ifdef USE_ENTERPRISE
+    void addInaccessibleCollection(TRI_voc_cid_t cid, std::string const& cname);
+    bool isInaccessibleCollection(TRI_voc_cid_t cid);
+    bool isInaccessibleCollection(std::string const& cname);
+  #endif
 
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
-
-  /// @brief release collection locks for a transaction
-  void releaseCollections();
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
@@ -221,12 +224,9 @@ class TransactionState {
 
  private:
   /// @brief check if current user can access this collection
-  Result checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
+  Result checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
+                                   AccessMode::Type);
   
-#ifdef USE_ENTERPRISE
-  void addInaccessibleCollection(std::string const& cname);
-#endif
-
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
   TRI_voc_tid_t const _id;  /// @brief local trx id

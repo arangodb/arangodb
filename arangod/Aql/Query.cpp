@@ -157,7 +157,20 @@ Query::~Query() {
   }
 
   // this will reset _trx, so _trx is invalid after here
-  cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
+  auto* engine = rootEngine();
+  if (engine) {
+    try {
+      auto ss = engine->sharedState();
+      while(true) {
+        auto [state, res] = engine->shutdown(TRI_ERROR_INTERNAL);
+        if (state == ExecutionState::WAITING) {
+          ss->waitForAsyncWakeup();
+        } else {
+          break;
+        }
+      }
+    } catch (...) {}
+  }
 
   exitV8Context();
   
@@ -256,8 +269,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // needs to be created after the AST collected all collections
   std::unordered_set<std::string> inaccessibleCollections;
 #ifdef USE_ENTERPRISE
-  // TODO: Remove once we have cluster wide transactions
-  if (_queryOptions.skipInaccessibleCollections) {
+  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
     inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
 #endif
@@ -1207,14 +1219,6 @@ CollectionNameResolver const& Query::resolver() const {
 
 /// @brief create a transaction::Context
 std::shared_ptr<transaction::Context> Query::newTrxContext() const {
-//  if (!_transactionContext) {
-//    if (_contextOwnedByExterior) {
-//      // we must use v8
-//      _transactionContext = transaction::V8Context::Create(_vocbase, true);
-//    } else {
-//      _transactionContext = transaction::StandaloneContext::Create(_vocbase);
-//    }
-//  }
 
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
@@ -1284,8 +1288,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   // needs to be created after the AST collected all collections
   std::unordered_set<std::string> inaccessibleCollections;
 #ifdef USE_ENTERPRISE
-  // TODO: Remove once we have cluster wide transactions
-  if (_queryOptions.skipInaccessibleCollections) {
+  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
     inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
 #endif

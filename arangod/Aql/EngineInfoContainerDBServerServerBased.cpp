@@ -96,7 +96,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
     auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
 #ifdef USE_ENTERPRISE
     for (auto const& s : shards) {
-      if (query.trxForOptimization().isInaccessibleCollectionId(col->getPlanId())) {
+      if (query.trxForOptimization().isInaccessibleCollection(col->getPlanId())) {
         _inaccessibleShards.insert(s);
         _inaccessibleShards.insert(std::to_string(col->id()));
       }
@@ -554,13 +554,13 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
   builder.add(VPackValue("options"));
   // toVelocyPack will open & close the "options" object
 #ifdef USE_ENTERPRISE
-  if (_query.queryOptions().skipInaccessibleCollections/* trx()->state()->options().skipInaccessibleCollections*/) {
+  if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
     aql::QueryOptions opts = _query.queryOptions();
-    TRI_ASSERT(opts.skipInaccessibleCollections);
+    TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
     auto usedCollections = _shardLocking.getUsedCollections();
     for (auto const& it : usedCollections) {
       TRI_ASSERT(it != nullptr);
-      if (_query.trxForOptimization().isInaccessibleCollectionId(it->getPlanId())) {
+      if (_query.trxForOptimization().isInaccessibleCollection(it->getPlanId())) {
         for (ShardID const& sid : _shardLocking.getShardsForCollection(server, it)) {
           opts.inaccessibleCollections.insert(sid);
         }

@@ -5658,19 +5658,6 @@ void arangodb::aql::removeDataModificationOutVariablesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-// replace inaccessible EnumerateCollectionNode with NoResult nodes
-#ifdef USE_ENTERPRISE
-void arangodb::aql::skipInaccessibleCollectionsRule(Optimizer* opt,
-                                                    std::unique_ptr<ExecutionPlan> plan,
-                                                    OptimizerRule const& rule) {
-  bool wasModified = false;
-  if (!plan->getAst()->query().queryOptions().skipInaccessibleCollections) {
-    opt->addPlan(std::move(plan), rule, wasModified);
-    return;
-  }
-}
-#endif
-
 /// @brief patch UPDATE statement on single collection that iterates over the
 /// entire collection to operate in batches
 void arangodb::aql::patchUpdateStatementsRule(Optimizer* opt,
