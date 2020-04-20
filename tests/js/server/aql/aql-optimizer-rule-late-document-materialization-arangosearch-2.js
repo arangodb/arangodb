@@ -374,7 +374,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       // sort by d.value node`s limit must be appended with materializer (identified by limit value = 1)
       // as last SORT needs materialized document
       // and SORT by d.foo is not lowest possible variant
-      // However in cluster only first sort suitable, as later sorts depend 
+      // However in cluster only first sort suitable, as later sorts depend
       // on all db servers results and performed on coordinator
       plan.nodes.forEach(function(node) {
         if (node.type === "MaterializeNode") {
@@ -387,8 +387,8 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       assertTrue(materializeNodeFound);
     },
     testQueryResultsMultipleLimits2() {
-      // almost the same as testQueryResultsMultipleLimits but without last sort - this 
-      // will not create addition variable for sort 
+      // almost the same as testQueryResultsMultipleLimits but without last sort - this
+      // will not create addition variable for sort
       // value but it should not affect results especially on cluster!
       let query = " FOR d IN " + svn  + " SEARCH d.value > 5 SORT d.value DESC " +
                   " LIMIT 1, 5 SORT d.foo LIMIT 1, 3 " +
@@ -398,7 +398,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       let materializeNodeFound = false;
       // sort by d.foo node`s limit must be appended with materializer (identified by limit value = 3)
       // as SORT by d.value is not lowest possible variant
-      // However in cluster only first sort suitable, as later sorts depend 
+      // However in cluster only first sort suitable, as later sorts depend
       // on all db servers results and performed on coordinator
       let nodeDependency = null;
       plan.nodes.forEach(function(node) {
