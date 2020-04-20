@@ -61,6 +61,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/HashSet.h"
+#include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
 #include "Graph/TraverserOptions.h"
@@ -595,6 +596,7 @@ std::vector<arangodb::aql::ExecutionNode::NodeType> const interchangeAdjacentEnu
 std::vector<arangodb::aql::ExecutionNode::NodeType> const scatterInClusterNodeTypes{
     arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
     arangodb::aql::ExecutionNode::INDEX,
+    arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
     arangodb::aql::ExecutionNode::INSERT,
     arangodb::aql::ExecutionNode::UPDATE,
     arangodb::aql::ExecutionNode::REPLACE,
@@ -819,6 +821,8 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::containers;
+using namespace arangodb::iresearch;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace arangodb {
@@ -3602,140 +3606,55 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, false);
 }
 
-void arangodb::aql::createScatterGatherSnippet(
-    ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
-    bool const isRootNode, std::vector<ExecutionNode*> const& nodeDependencies,
-    std::vector<ExecutionNode*> const& nodeParents,
-    SortElementVector const& elements, size_t const numberOfShards,
-    std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
-    Collection const* collection) {
-  // insert a scatter node
-  auto* scatterNode =
-      new ScatterNode(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
-  plan.registerNode(scatterNode);
-  TRI_ASSERT(node->getDependencies().empty());
-  TRI_ASSERT(!nodeDependencies.empty());
-  scatterNode->addDependency(nodeDependencies[0]);
+auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
+  auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode const*>(at);
 
-  // insert a remote node
-  ExecutionNode* remoteNode =
-      new RemoteNode(&plan, plan.nextId(), vocbase, "", "", "");
-  plan.registerNode(remoteNode);
-  TRI_ASSERT(scatterNode);
-  remoteNode->addDependency(scatterNode);
-
-  // re-link with the remote node
-  node->addDependency(remoteNode);
-
-  // insert another remote node
-  remoteNode = new RemoteNode(&plan, plan.nextId(), vocbase, "", "", "");
-  plan.registerNode(remoteNode);
-  TRI_ASSERT(node);
-  remoteNode->addDependency(node);
-
-  // insert a gather node
-  auto const sortMode = GatherNode::evaluateSortMode(numberOfShards);
-  // single-sharded collections don't require any parallelism. collections with more than
-  // one shard are eligible for later parallelization (the Undefined allows this)
-  auto const parallelism =
-      (((collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) ||
-        (collection->numberOfShards() <= 1 && !collection->isSatellite()))
-           ? GatherNode::Parallelism::Serial
-           : GatherNode::Parallelism::Undefined);
-  auto* gatherNode = new GatherNode(&plan, plan.nextId(), sortMode, parallelism);
-  plan.registerNode(gatherNode);
-  TRI_ASSERT(remoteNode);
-  gatherNode->addDependency(remoteNode);
-  // On SmartEdge collections we have 0 shards and we need the elements
-  // to be injected here as well. So do not replace it with > 1
-  if (!elements.empty() && numberOfShards != 1) {
-    gatherNode->elements(elements);
-  }
-
-  // and now link the gather node with the rest of the plan
-  if (nodeParents.size() == 1) {
-    nodeParents[0]->replaceDependency(nodeDependencies[0], gatherNode);
-  }
-
-  // check if the node that we modified was at the end of a subquery
-  auto it = subqueries.find(node);
-
-  if (it != subqueries.end()) {
-    ExecutionNode::castTo<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
-  }
-
-  if (isRootNode) {
-    // if we replaced the root node, set a new root node
-    plan.root(gatherNode);
+  if (collectionAccessingNode != nullptr) {
+    return collectionAccessingNode->vocbase();
+  } else if (at->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+    // Really? Yes, the & below is correct.
+    return &ExecutionNode::castTo<IResearchViewNode const*>(at)->vocbase();
+  } else {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Cannot determine vocbase for execution node.");
+    return nullptr;
   }
 }
 
-/// @brief scatter operations in cluster
-/// this rule inserts scatter, gather and remote nodes so operations on sharded
-/// collections actually work
-/// it will change plans in place
-void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                                         OptimizerRule const& rule) {
-  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-  bool wasModified = false;
+// Sets up a Gather node for scatterInClusterRule.
+//
+// Each of EnumerateCollectionNode, IndexNode, IResearchViewNode, and
+// ModificationNode needs slightly different treatment.
+//
+// In an ideal world the node itself would know how to compute these parameters
+// for GatherNode (sortMode, parallelism, and elements), and we'd just ask it.
+auto insertGatherNode(ExecutionPlan& plan, ExecutionNode* node,
+                      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries)
+    -> GatherNode* {
+  TRI_ASSERT(node);
 
-  // find subqueries
-  std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
+  GatherNode* gatherNode{nullptr};
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type s;
-  ::arangodb::containers::SmallVector<ExecutionNode*> subs{s};
-  plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
+  auto nodeType = node->getType();
+  switch (nodeType) {
+    case ExecutionNode::ENUMERATE_COLLECTION: {
+      auto collection =
+          ExecutionNode::castTo<EnumerateCollectionNode const*>(node)->collection();
+      auto numberOfShards = collection->numberOfShards();
 
-  for (auto& it : subs) {
-    subqueries.emplace(ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery(), it);
-  }
+      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+      auto parallelism = GatherNode::evaluateParallelism(*collection);
 
-  // we are a coordinator. now look in the plan for nodes of type
-  // EnumerateCollectionNode, IndexNode and modification nodes
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, ::scatterInClusterNodeTypes, true);
-
-  TRI_ASSERT(plan->getAst());
-
-  for (auto& node : nodes) {
-    // found a node we need to replace in the plan
-
-    // intentional copy of the parents and dependencies, as we will be modifying
-    // them later on
-    auto const parents = node->getParents();
-    auto const deps = node->getDependencies();
-    TRI_ASSERT(deps.size() == 1);
-
-    // don't do this if we are already distributing!
-    if (deps[0]->getType() == ExecutionNode::REMOTE &&
-        deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
-      continue;
-    }
-
-    if (plan->shouldExcludeFromScatterGather(node)) {
-      continue;
-    }
-
-    auto const isRootNode = plan->isRoot(node);
-    plan->unlinkNode(node, true);
-
-    auto const nodeType = node->getType();
-
-    // extract database and collection from plan node
-    TRI_vocbase_t* vocbase = nullptr;
-    Collection const* collection = nullptr;
-
-    SortElementVector elements;
-
-    if (nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
-      vocbase = ExecutionNode::castTo<EnumerateCollectionNode const*>(node)->vocbase();
-      collection = ExecutionNode::castTo<EnumerateCollectionNode const*>(node)->collection();
-    } else if (nodeType == ExecutionNode::INDEX) {
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode, parallelism);
+    } break;
+    case ExecutionNode::INDEX: {
+      auto elements = SortElementVector{};
       auto idxNode = ExecutionNode::castTo<IndexNode const*>(node);
-      vocbase = idxNode->vocbase();
-      collection = idxNode->collection();
+      auto collection = idxNode->collection();
       TRI_ASSERT(collection != nullptr);
+      auto numberOfShards = collection->numberOfShards();
+
       Variable const* sortVariable = idxNode->outVariable();
       bool isSortAscending = idxNode->options().ascending;
       auto allIndexes = idxNode->getIndexes();
@@ -3756,11 +3675,24 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
           }
         }
       }
-    } else if (nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::UPDATE ||
-               nodeType == ExecutionNode::REPLACE || nodeType == ExecutionNode::REMOVE ||
-               nodeType == ExecutionNode::UPSERT) {
-      vocbase = ExecutionNode::castTo<ModificationNode*>(node)->vocbase();
-      collection = ExecutionNode::castTo<ModificationNode*>(node)->collection();
+
+      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+      auto parallelism = GatherNode::evaluateParallelism(*collection);
+
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode, parallelism);
+
+      if (!elements.empty() && numberOfShards != 1) {
+        gatherNode->elements(elements);
+      }
+      return gatherNode;
+    } break;
+    case ExecutionNode::INSERT:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::UPSERT: {
+      auto collection = ExecutionNode::castTo<ModificationNode*>(node)->collection();
+
       if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
         // Note that in the REPLACE or UPSERT case we are not getting here,
         // since the distributeInClusterRule fires and a DistributionNode is
@@ -3768,16 +3700,214 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
         auto* modNode = ExecutionNode::castTo<ModificationNode*>(node);
         modNode->getOptions().ignoreDocumentNotFound = true;
       }
-    } else {
-      TRI_ASSERT(false);
+
+      auto numberOfShards = collection->numberOfShards();
+      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+      auto parallelism = GatherNode::evaluateParallelism(*collection);
+
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode, parallelism);
+    } break;
+    default: {
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(),
+                                               GatherNode::SortMode::Default);
+
+    } break;
+  }
+
+  auto it = subqueries.find(node);
+  if (it != subqueries.end()) {
+    ExecutionNode::castTo<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
+  }
+
+  return gatherNode;
+}
+
+// replace
+//
+// A -> at -> B
+//
+// by
+//
+// A -> SCATTER -> REMOTE -> at -> REMOTE -> GATHER -> B
+//
+// in plan
+//
+// gatherNode is a parameter because it needs to be configured depending
+// on they type of `at`, in particular at the moment this configuration
+// uses a list of subqueries which are precomputed at the beginning
+// of the optimizer rule; once that list is gone the configuration of the
+// gather node can be moved into this function.
+void arangodb::aql::insertScatterGatherSnippet(
+    ExecutionPlan& plan, ExecutionNode* at,
+    SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries) {
+  // TODO: necessary?
+  TRI_vocbase_t* vocbase = extractVocbaseFromNode(at);
+  auto const isRootNode = plan.isRoot(at);
+  auto const nodeDependencies = at->getDependencies();
+  auto const nodeParents = at->getParents();
+
+  // Unlink node from plan, note that we allow removing the root node
+  plan.unlinkNode(at, true);
+
+  auto* scatterNode = plan.createNode<ScatterNode>(&plan, plan.nextId(),
+                                                   ScatterNode::ScatterType::SHARD);
+
+  TRI_ASSERT(at->getDependencies().empty());
+  TRI_ASSERT(!nodeDependencies.empty());
+  scatterNode->addDependency(nodeDependencies[0]);
+
+  // insert REMOTE
+  ExecutionNode* remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+  remoteNode->addDependency(scatterNode);
+
+  // Wire in `at`
+  at->addDependency(remoteNode);
+
+  // insert (another) REMOTE
+  remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+  TRI_ASSERT(at);
+  remoteNode->addDependency(at);
+
+  // GATHER needs some setup, so this happens in a separate function
+  auto gatherNode = insertGatherNode(plan, at, subqueries);
+  TRI_ASSERT(gatherNode);
+  TRI_ASSERT(remoteNode);
+  gatherNode->addDependency(remoteNode);
+
+  // Link the gather node with the rest of the plan (if we have any)
+  // TODO: what other cases can occur here?
+  if (nodeParents.size() == 1) {
+    nodeParents[0]->replaceDependency(nodeDependencies[0], gatherNode);
+  }
+
+  if (isRootNode) {
+    // if we replaced the root node, set a new root node
+    plan.root(gatherNode);
+  }
+}
+
+// Moves a SCATTER/REMOTE from below `at` (where it was previously inserted by
+// scatterInClusterRule), to just above `at`, because `at` was marked as
+// excludeFromScatter by the smartJoinRule.
+void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
+  TRI_vocbase_t* vocbase = extractVocbaseFromNode(at);
+
+  ExecutionNode* remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+  plan.insertBefore(at, remoteNode);
+
+  ExecutionNode* scatterNode =
+      plan.createNode<ScatterNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
+  plan.insertBefore(remoteNode, scatterNode);
+
+  // There must be a SCATTER/REMOTE block south of us, which was inserted by
+  // an earlier iteration in scatterInClusterRule.
+  // We remove that block, effectively moving the SCATTER/REMOTE past the
+  // current node
+  // The effect is that in a smart join we get joined up nodes that are
+  // all executed on the DBServer
+  auto found = false;
+  auto* current = at->getFirstParent();
+  while (current != nullptr) {
+    if (current->getType() == ExecutionNode::SCATTER) {
+      auto* next = current->getFirstParent();
+      if (next != nullptr && next->getType() == ExecutionNode::REMOTE) {
+        plan.unlinkNode(current, true);
+        plan.unlinkNode(next, true);
+        found = true;
+        break;
+      } else {
+        // If we have a SCATTER node, we also have to have a REMOTE node
+        // otherwise the plan is inconsistent.
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Inconsistent plan.");
+      }
+    }
+    current = current->getFirstParent();
+  }
+  if (!found) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    plan.show();
+#endif
+    // TODO: maybe we should *not* throw in maintainer mode, as the optimizer
+    //       gives more useful error messages?
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Inconsistent plan.");
+  }
+}
+
+// TODO: move into ExecutionPlan?
+// TODO: Is this still needed after register planning is refactored?
+// Find all Subquery Nodes
+void arangodb::aql::findSubqueriesInPlan(ExecutionPlan& plan,
+                                         SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type s;
+  SmallVector<ExecutionNode*> subs{s};
+  plan.findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
+
+  for (auto& it : subs) {
+    subqueries.emplace(ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery(), it);
+  }
+}
+
+/// @brief scatter operations in cluster
+/// this rule inserts scatter, gather and remote nodes so operations on
+/// sharded collections actually work
+/// it will change plans in place
+void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                         OptimizerRule const& rule) {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  bool wasModified = false;
+
+  // We cache the subquery map to not compute it over and over again
+  // It is needed to setup the gather node later on
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+  findSubqueriesInPlan(*plan, subqueries);
+
+  // we are a coordinator. now look in the plan for nodes of type
+  // EnumerateCollectionNode, IndexNode, IResearchViewNode, and modification nodes
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, ::scatterInClusterNodeTypes, true);
+
+  TRI_ASSERT(plan->getAst());
+
+  for (auto& node : nodes) {
+    // found a node we need to replace in the plan
+
+    auto const deps = node->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+
+    // don't do this if we are already distributing!
+    if (deps[0]->getType() == ExecutionNode::REMOTE &&
+        deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
+      continue;
     }
 
-    TRI_ASSERT(collection != nullptr);
+    // TODO: sonderlocke for ENUMERATE_IRESEARCH_VIEW to skip views that are
+    // empty Can this be done better?
+    if (node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+      auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+      auto& options = viewNode.options();
 
-    size_t numberOfShards = collection->numberOfShards();
-    createScatterGatherSnippet(*plan, vocbase, node, isRootNode, deps, parents,
-                               elements, numberOfShards, subqueries, collection);
+      if (viewNode.empty() || (options.restrictSources && options.sources.empty())) {
+        // nothing to scatter, view has no associated collections
+        // or node is restricted to empty collection list
+        continue;
+      }
+    }
 
+    if (plan->shouldExcludeFromScatterGather(node)) {
+      // If the smart-joins rule marked this node as not requiring a full
+      // scatter..gather setup, we move the scatter/remote from below above
+      moveScatterAbove(*plan, node);
+    } else {
+      // insert a full SCATTER/GATHER
+      insertScatterGatherSnippet(*plan, node, subqueries);
+    }
     wasModified = true;
   }
 
@@ -3946,8 +4076,8 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(node);
         if (defaultSharding && updateReplaceNode->inKeyVariable() != nullptr) {
           // We only look into _inKeyVariable
-          // This is the _inKeyVariable! This works, since we use a ScatterNode
-          // for non-default-sharding attributes.
+          // This is the _inKeyVariable! This works, since we use a
+          // ScatterNode for non-default-sharding attributes.
           inputVariable = updateReplaceNode->inKeyVariable();
         } else {
           // We only look into _inDocVariable
@@ -4106,8 +4236,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
           }
         }
 
-        // we may have moved another CollectNode here already. if so, we need to
-        // move the new CollectNode to the front of multiple CollectNodes
+        // we may have moved another CollectNode here already. if so, we need
+        // to move the new CollectNode to the front of multiple CollectNodes
         ExecutionNode* target = current;
         while (previous != nullptr && previous->getType() == ExecutionNode::COLLECT) {
           target = previous;
@@ -4169,9 +4299,9 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             removeGatherNodeSort = true;
           } else if (collectNode->aggregationMethod() ==
                      CollectOptions::CollectMethod::DISTINCT) {
-            // clone a COLLECT DISTINCT operation from the coordinator to the DB
-            // server(s), and leave an aggregate COLLECT node on the coordinator
-            // for total aggregation
+            // clone a COLLECT DISTINCT operation from the coordinator to the
+            // DB server(s), and leave an aggregate COLLECT node on the
+            // coordinator for total aggregation
 
             // create a new result variable
             auto const& groupVars = collectNode->groupVariables();
@@ -4606,8 +4736,8 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(Optimizer* opt,
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
   for (auto& n : nodes) {
-    // check if the remote node is preceeded by a scatter node and any number of
-    // calculation and singleton nodes. if yes, remove remote and scatter
+    // check if the remote node is preceeded by a scatter node and any number
+    // of calculation and singleton nodes. if yes, remove remote and scatter
     if (!n->hasDependency()) {
       continue;
     }
@@ -4751,9 +4881,9 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
           auto const& deps = current->getDependencies();
           if (deps.size() && deps[0]->getType() == ExecutionNode::REMOTE) {
             // if we can apply the single-shard optimization, but still have a
-            // REMOTE node in front of us, we can probably move the remote parts
-            // of the query to our side. this is only the case if the remote
-            // part does not call any remote parts itself
+            // REMOTE node in front of us, we can probably move the remote
+            // parts of the query to our side. this is only the case if the
+            // remote part does not call any remote parts itself
             ::arangodb::containers::HashSet<ExecutionNode*> toRemove;
 
             auto c = deps[0];
@@ -4945,8 +5075,8 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                 auto value = sub->getMember(0);
 
                 if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-                  // check if all values for the shard keys are referring to the
-                  // same FOR loop variable
+                  // check if all values for the shard keys are referring to
+                  // the same FOR loop variable
                   auto var = value->getMember(0);
                   if (var->type == NODE_TYPE_REFERENCE) {
                     auto accessedVariable = static_cast<Variable const*>(var->getData());
@@ -5369,8 +5499,8 @@ struct OrSimplifier {
 ///   x.val == 1 || x.val == 2 || x.val == 3
 //  with
 //    x.val IN [1,2,3]
-//  when the OR conditions are present in the same FILTER node, and refer to the
-//  same (single) attribute.
+//  when the OR conditions are present in the same FILTER node, and refer to
+//  the same (single) attribute.
 void arangodb::aql::replaceOrWithInRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -5527,8 +5657,8 @@ struct RemoveRedundantOr {
         return true;
       }
       // if hasRedundantConditionWalker(lhs) and
-      // hasRedundantConditionWalker(rhs), then one of the conditions in the OR
-      // statement is of the form x == x intentionally falls through if
+      // hasRedundantConditionWalker(rhs), then one of the conditions in the
+      // OR statement is of the form x == x intentionally falls through if
     } else if (type == NODE_TYPE_REFERENCE || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                type == NODE_TYPE_INDEXED_ACCESS) {
       // get a string representation of the node for comparisons
@@ -5912,8 +6042,8 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt,
               // no condition left...
               // FILTER node can be completely removed
               toUnlink.emplace(node);
-              // note: we must leave the calculation node intact, in case it is
-              // still used by other nodes in the plan
+              // note: we must leave the calculation node intact, in case it
+              // is still used by other nodes in the plan
               modified = true;
               handled = true;
             } else if (newNode != condition.root()) {
@@ -6265,8 +6395,8 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   // note: this only modifies "info" if the function returns true
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess1;
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess2;
-  // first and second should be based on the same document - need to provide the
-  // document in order to see which collection is bound to it and if that
+  // first and second should be based on the same document - need to provide
+  // the document in order to see which collection is bound to it and if that
   // collections supports geo-index
   if (!latArg->isAttributeAccessForVariable(attributeAccess1, true) ||
       !lngArg->isAttributeAccessForVariable(attributeAccess2, true)) {
@@ -6924,8 +7054,8 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
 void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                   OptimizerRule const& rule) {
   bool mod = false;
-  // If there isn't a limit node, and at least one sort or gather node, there's
-  // nothing to do.
+  // If there isn't a limit node, and at least one sort or gather node,
+  // there's nothing to do.
   if (!plan->contains(EN::LIMIT) ||
       (!plan->contains(EN::SORT) && !plan->contains(EN::GATHER))) {
     opt->addPlan(std::move(plan), rule, mod);
@@ -6948,8 +7078,8 @@ void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan>
           mod = true;
         }
       } else if (current->getType() == EN::GATHER) {
-        // Make sorting gather nodes aware of the limit, so they may skip after
-        // it
+        // Make sorting gather nodes aware of the limit, so they may skip
+        // after it
         auto gatherNode = ExecutionNode::castTo<GatherNode*>(current);
         if (gatherNode->isSortingGather()) {
           gatherNode->setConstrainedSortLimit(limitNode->offset() + limitNode->limit());
@@ -6957,9 +7087,9 @@ void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan>
         }
       }
 
-      // Stop on nodes that may not be between sort & limit (or between sorting
-      // gather & limit) for the limit to be applied to the sort (or sorting
-      // gather) node safely.
+      // Stop on nodes that may not be between sort & limit (or between
+      // sorting gather & limit) for the limit to be applied to the sort (or
+      // sorting gather) node safely.
       if (!isAllowedIntermediateSortLimitNode(current)) {
         break;
       }
@@ -7541,8 +7671,8 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
     using BoolStack = std::stack<bool, BoolVec>;
 
     BoolArena _isSuitableArena;
-    // _isSuitable.top() says whether there is a node that skips in the current
-    // (sub)query level.
+    // _isSuitable.top() says whether there is a node that skips in the
+    // current (sub)query level.
     BoolStack _isSuitableLevel;
   };
 

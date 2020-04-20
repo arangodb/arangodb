@@ -1,5 +1,10 @@
 devel
 -----
+* Fix a bug in the optimizer which handled combinations of smart joins with
+  query components that had to run on a coordinator wrong.
+
+* Remove the scatter-arangosearch-view-in-cluster optimizer rule; it was
+  integrated into scatter-in-cluster.
 
 * Issue #11447: expose extra RocksDB options `--rocksdb.target-file-size-base` and 
   `--rocksdb.target-file-size-multiplier` to make them configurable.
