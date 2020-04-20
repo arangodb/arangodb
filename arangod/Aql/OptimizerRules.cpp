@@ -3949,9 +3949,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         // check if there is a node type that needs distribution
         if (nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE ||
             nodeType == ExecutionNode::UPDATE || nodeType == ExecutionNode::REPLACE ||
-            nodeType == ExecutionNode::UPSERT || nodeType == ExecutionNode::TRAVERSAL ||
-            nodeType == ExecutionNode::SHORTEST_PATH ||
-            nodeType == ExecutionNode::K_SHORTEST_PATHS) {
+            nodeType == ExecutionNode::UPSERT) { /* } || nodeType ==
+            ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH
+            || nodeType == ExecutionNode::K_SHORTEST_PATHS) { */
           // found a node!
           break;
         }
@@ -3980,9 +3980,10 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       // when we get here, we have found a matching data-modification or traversal/shortest_path/k_shortest_paths node!
       TRI_ASSERT(nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE ||
                  nodeType == ExecutionNode::UPDATE || nodeType == ExecutionNode::REPLACE ||
-                 nodeType == ExecutionNode::UPSERT || nodeType == ExecutionNode::TRAVERSAL ||
+                 nodeType == ExecutionNode::UPSERT);
+      /* || nodeType == ExecutionNode::TRAVERSAL ||
                  nodeType == ExecutionNode::SHORTEST_PATH ||
-                 nodeType == ExecutionNode::K_SHORTEST_PATHS);
+                 nodeType == ExecutionNode::K_SHORTEST_PATHS);  */
 
       ExecutionNode* originalParent = nullptr;
       if (node->hasParent()) {
