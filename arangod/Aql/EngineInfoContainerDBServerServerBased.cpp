@@ -76,7 +76,7 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId, std
 
 EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngineShardLists(
     GraphNode const* node, ServerID const& server,
-    std::unordered_map<ShardID, ServerID> const& shardMapping, QueryContext const& query)
+    std::unordered_map<ShardID, ServerID> const& shardMapping, QueryContext& query)
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
@@ -554,13 +554,13 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
   builder.add(VPackValue("options"));
   // toVelocyPack will open & close the "options" object
 #ifdef USE_ENTERPRISE
-  if (_query.trx()->state()->options().skipInaccessibleCollections) {
+  if (_query.queryOptions().skipInaccessibleCollections/* trx()->state()->options().skipInaccessibleCollections*/) {
     aql::QueryOptions opts = _query.queryOptions();
-    TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
+    TRI_ASSERT(opts.skipInaccessibleCollections);
     auto usedCollections = _shardLocking.getUsedCollections();
     for (auto const& it : usedCollections) {
       TRI_ASSERT(it != nullptr);
-      if (_query.trx()->isInaccessibleCollectionId(it->getPlanId())) {
+      if (_query.trxForOptimization().isInaccessibleCollectionId(it->getPlanId())) {
         for (ShardID const& sid : _shardLocking.getShardsForCollection(server, it)) {
           opts.inaccessibleCollections.insert(sid);
         }

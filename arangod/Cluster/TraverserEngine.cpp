@@ -43,6 +43,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
@@ -134,20 +138,23 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
   // FIXME: in the future this needs to be replaced with cluster wide transactions
   transaction::Options trxOpts;
 
+//#ifdef USE_ENTERPRISE
+//  VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
+//  if (inaccessSlice.isArray()) {
+//    trxOpts.skipInaccessibleCollections = true;
+//    std::unordered_set<ShardID> inaccessible;
+//    for (VPackSlice const& shard : VPackArrayIterator(inaccessSlice)) {
+//      TRI_ASSERT(shard.isString());
+//      inaccessible.insert(shard.copyString());
+//    }
+//    trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
+//                                      std::move(inaccessible));
+//  } else {
+//    trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
+//  }
+//#else
 #ifdef USE_ENTERPRISE
-  VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
-  if (inaccessSlice.isArray()) {
-    trxOpts.skipInaccessibleCollections = true;
-    std::unordered_set<ShardID> inaccessible;
-    for (VPackSlice const& shard : VPackArrayIterator(inaccessSlice)) {
-      TRI_ASSERT(shard.isString());
-      inaccessible.insert(shard.copyString());
-    }
-    trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
-                                      std::move(inaccessible));
-  } else {
-    trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
-  }
+  _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(), trxOpts);
 #else
   _trx = new transaction::Methods(_query.newTrxContext());
 #endif

@@ -379,7 +379,10 @@ class Methods {
   
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
-
+  
+  ENTERPRISE_VIRT bool skipInaccessible() const {
+    return false;
+  }
   ENTERPRISE_VIRT bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) const {
     return false;
   }

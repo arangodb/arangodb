@@ -296,34 +296,42 @@ Result TransactionState::checkCollectionPermission(std::string const& cname,
   TRI_ASSERT(!cname.empty());
   ExecContext const& exec = ExecContext::current();
 
-  Result res;
   // no need to check for superuser, cluster_sync tests break otherwise
-  if (!exec.isSuperuser()) {
-    auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
-    TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
+  if (exec.isSuperuser()) {
+    return Result{};
+  }
+  
+  auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
+  TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
 
-    if (level == auth::Level::NONE) {
-      LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
-          << "User " << exec.user() << " has collection auth::Level::NONE";
+  if (level == auth::Level::NONE) {
+    LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
+        << "User " << exec.user() << " has collection auth::Level::NONE";
+    
+#ifdef USE_ENTERPRISE
+    if (accessType == AccessMode::Type::READ) {
+      
+      return Result();
+    }
+#endif
 
-      res.reset(TRI_ERROR_FORBIDDEN,
-                std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " + cname + 
+    return Result(TRI_ERROR_FORBIDDEN,
+              std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " + cname +
+              " [" + AccessMode::typeString(accessType) + "]");
+  } else {
+    bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
+
+    if (level == auth::Level::RO && collectionWillWrite) {
+      LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
+          << "User " << exec.user() << " has no write right for collection " << cname;
+
+      Result(TRI_ERROR_ARANGO_READ_ONLY,
+                std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) + ": " + cname +
                 " [" + AccessMode::typeString(accessType) + "]");
-    } else {
-      bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
-
-      if (level == auth::Level::RO && collectionWillWrite) {
-        LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
-            << "User " << exec.user() << " has no write right for collection " << cname;
-
-        res.reset(TRI_ERROR_ARANGO_READ_ONLY,
-                  std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) + ": " + cname +
-                  " [" + AccessMode::typeString(accessType) + "]");
-      }
     }
   }
 
-  return res;
+  return Result{};
 }
 
 /// @brief release collection locks for a transaction

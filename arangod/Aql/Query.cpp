@@ -256,7 +256,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   std::unordered_set<std::string> inaccessibleCollections;
 #ifdef USE_ENTERPRISE
   // TODO: Remove once we have cluster wide transactions
-  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
+  if (_queryOptions.skipInaccessibleCollections) {
     inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
 #endif
@@ -1319,7 +1319,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   std::unordered_set<std::string> inaccessibleCollections;
 #ifdef USE_ENTERPRISE
   // TODO: Remove once we have cluster wide transactions
-  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
+  if (_queryOptions.skipInaccessibleCollections) {
     inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
 #endif

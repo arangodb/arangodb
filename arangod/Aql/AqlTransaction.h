@@ -64,7 +64,7 @@ class AqlTransaction : public transaction::Methods {
                  aql::Collections const& collections,
                  transaction::Options const& options);
 
- private:
+ protected:
   /// @brief add a collection to the transaction
   Result processCollection(aql::Collection*);
 };

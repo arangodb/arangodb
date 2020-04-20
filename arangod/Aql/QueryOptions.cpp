@@ -52,7 +52,11 @@ QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
       fullCount(false),
       count(false),
       verboseErrors(false),
-      inspectSimplePlans(true) {
+      inspectSimplePlans(true)
+#ifdef USE_ENTERPRISE
+      , skipInaccessibleCollections(false)
+#endif
+{
   // now set some default values from server configuration options
   // use global memory limit value
   uint64_t globalLimit = feature.queryMemoryLimit();
@@ -213,6 +217,13 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isString()) {
     exportCollection = value.copyString();
   }
+  
+#ifdef USE_ENTERPRISE
+  value = slice.get("skipInaccessibleCollections");
+  if (value.isBool()) {
+    skipInaccessibleCollections = value.getBool();
+  }
+#endif
 
   // also handle transaction options
   transactionOptions.fromVelocyPack(slice);
@@ -271,8 +282,12 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     builder.close();  // inaccessibleCollections
   }
 #endif
-
-  // "exportCollection" is only used internally and not exposed via toVelocyPack 
+  
+#ifdef USE_ENTERPRISE
+  builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));
+#endif
+  
+  // "exportCollection" is only used internally and not exposed via toVelocyPack
 
   // also handle transaction options
   transactionOptions.toVelocyPack(builder);

@@ -17,10 +17,6 @@
 
 #include <velocypack/Slice.h>
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
-#endif
-
 namespace arangodb {
 
 Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
