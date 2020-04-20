@@ -45,18 +45,39 @@ class OurLessThan {
       : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
   bool operator()(AqlItemMatrix::RowIndex const& a, AqlItemMatrix::RowIndex const& b) const {
-    InputAqlItemRow left = _input.getRow(a);
-    InputAqlItemRow right = _input.getRow(b);
+    InputAqlItemRow const& left = _input.getRow(a);
+    InputAqlItemRow const& right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
       AqlValue const& lhs = left.getValue(reg.reg);
       AqlValue const& rhs = right.getValue(reg.reg);
 
       int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
-      if (cmp < 0) {
-        return reg.asc;
-      } else if (cmp > 0) {
-        return !reg.asc;
+      if (cmp != 0) {
+        /*
+          the expression
+
+            return ((cmp < 0) ^ (!_sortRegister.asc));
+          
+          should produce the same result as its more complex equivalent
+
+            if (cmp < 0) {
+              return reg.asc;
+            } else if (cmp > 0) {
+              return !reg.asc;
+            }
+
+          but it is translated into assembly with one branch instead of two.
+          so we should have less branch mispredictions here.
+
+          cmp < 0    asc       result
+          ----------------------------
+          true       true      true
+          true       false     false
+          false      true      false
+          false      false     true
+        */
+        return ((cmp < 0) ^ (!reg.asc));
       }
     }
 
