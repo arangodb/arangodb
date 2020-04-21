@@ -57,8 +57,7 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::c
 
 template <typename T>
 arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters, T const collectionSource,
-    RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
+    T collectionSource, RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
     : _collectionSource(collectionSource),
       _inNonMaterializedDocRegId(inNmDocId),
       _outMaterializedDocumentRegId(outDocRegId),

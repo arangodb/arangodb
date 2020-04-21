@@ -55,7 +55,7 @@ class ClientsExecutorInfos {
  public:
   explicit ClientsExecutorInfos(std::vector<std::string> clientIds);
 
-  ClientsExecutorInfos(ClientsExecutorInfos&&) = default;
+  ClientsExecutorInfos(ClientsExecutorInfos&&) noexcept = default;
   ClientsExecutorInfos(ClientsExecutorInfos const&) = delete;
   ~ClientsExecutorInfos() = default;
 

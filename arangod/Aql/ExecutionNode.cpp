@@ -2455,9 +2455,7 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
   auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
 
   auto executorInfos =
-      MaterializerExecutorInfos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                getRegisterPlan()->nrRegs[getDepth()],
-                                inNmColPtrRegId, inNmDocIdRegId,
+      MaterializerExecutorInfos(inNmColPtrRegId, inNmDocIdRegId,
                                 outDocumentRegId, engine.getQuery()->trx());
 
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(inNmColPtrRegId)>>>(
@@ -2541,10 +2539,9 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
 
   auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
 
-  auto executorInfos = MaterializerExecutorInfos<decltype(name)>(
-      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], name, inNmDocIdRegId,
-      outDocumentRegId, engine.getQuery()->trx());
+  auto executorInfos =
+      MaterializerExecutorInfos<decltype(name)>(name, inNmDocIdRegId, outDocumentRegId,
+                                                engine.getQuery()->trx());
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }

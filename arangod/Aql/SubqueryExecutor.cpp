@@ -41,10 +41,6 @@ SubqueryExecutorInfos::SubqueryExecutorInfos(ExecutionBlock& subQuery,
       _returnsData(subQuery.getPlanNode()->getType() == ExecutionNode::RETURN),
       _isConst(subqueryIsConst) {}
 
-SubqueryExecutorInfos::SubqueryExecutorInfos(SubqueryExecutorInfos&& other) = default;
-
-SubqueryExecutorInfos::~SubqueryExecutorInfos() = default;
-
 template <bool isModificationSubquery>
 SubqueryExecutor<isModificationSubquery>::SubqueryExecutor(Fetcher& fetcher,
                                                            SubqueryExecutorInfos& infos)
@@ -57,9 +53,6 @@ SubqueryExecutor<isModificationSubquery>::SubqueryExecutor(Fetcher& fetcher,
       _subquery(infos.getSubquery()),
       _subqueryResults(nullptr),
       _input(CreateInvalidInputRowHint{}) {}
-
-template <bool isModificationSubquery>
-SubqueryExecutor<isModificationSubquery>::~SubqueryExecutor() = default;
 
 template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::initializeSubquery(AqlItemBlockInputRange& input)

@@ -50,12 +50,11 @@ class NoStats;
 template <typename T>
 class MaterializerExecutorInfos {
  public:
-  MaterializerExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                            T collectionSource, RegisterId inNmDocId,
+  MaterializerExecutorInfos(T collectionSource, RegisterId inNmDocId,
                             RegisterId outDocRegId, transaction::Methods* trx);
 
   MaterializerExecutorInfos() = delete;
-  MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
+  MaterializerExecutorInfos(MaterializerExecutorInfos&&) noexcept = default;
   MaterializerExecutorInfos(MaterializerExecutorInfos const&) = delete;
   ~MaterializerExecutorInfos() = default;
 

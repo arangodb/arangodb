@@ -63,9 +63,6 @@ KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
       _target(std::move(target)),
       _outputRegister(outputRegister) {}
 
-KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) = default;
-KShortestPathsExecutorInfos::~KShortestPathsExecutorInfos() = default;
-
 arangodb::graph::KShortestPathsFinder& KShortestPathsExecutorInfos::finder() const {
   TRI_ASSERT(_finder);
   return *_finder.get();

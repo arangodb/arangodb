@@ -77,9 +77,9 @@ class KShortestPathsExecutorInfos {
 
   KShortestPathsExecutorInfos() = delete;
 
-  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&);
+  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) noexcept = default;
   KShortestPathsExecutorInfos(KShortestPathsExecutorInfos const&) = delete;
-  ~KShortestPathsExecutorInfos();
+  ~KShortestPathsExecutorInfos() = default;
 
   [[nodiscard]] auto finder() const -> arangodb::graph::KShortestPathsFinder&;
 
@@ -122,12 +122,12 @@ class KShortestPathsExecutorInfos {
   std::unique_ptr<arangodb::graph::KShortestPathsFinder> _finder;
 
   /// @brief Information about the source vertex
-  InputVertex const _source;
+  InputVertex _source;
 
   /// @brief Information about the target vertex
-  InputVertex const _target;
+  InputVertex _target;
 
-  RegisterId const _outputRegister;
+  RegisterId _outputRegister;
 };
 
 /**

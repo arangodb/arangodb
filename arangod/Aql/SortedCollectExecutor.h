@@ -61,7 +61,7 @@ class SortedCollectExecutorInfos {
                              transaction::Methods* trxPtr, bool count);
 
   SortedCollectExecutorInfos() = delete;
-  SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;
+  SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) noexcept = default;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos const&) = delete;
   ~SortedCollectExecutorInfos() = default;
 

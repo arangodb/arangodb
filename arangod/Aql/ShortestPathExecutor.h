@@ -83,7 +83,7 @@ class ShortestPathExecutorInfos {
 
   ShortestPathExecutorInfos() = delete;
 
-  ShortestPathExecutorInfos(ShortestPathExecutorInfos&&) = default;
+  ShortestPathExecutorInfos(ShortestPathExecutorInfos&&) noexcept = default;
   ShortestPathExecutorInfos(ShortestPathExecutorInfos const&) = delete;
   ~ShortestPathExecutorInfos() = default;
 
@@ -141,10 +141,10 @@ class ShortestPathExecutorInfos {
   std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
 
   /// @brief Information about the source vertex
-  InputVertex const _source;
+  InputVertex _source;
 
   /// @brief Information about the target vertex
-  InputVertex const _target;
+  InputVertex _target;
 };
 
 /**
