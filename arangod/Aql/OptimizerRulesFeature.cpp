@@ -355,8 +355,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
   // distribute operations in cluster
-  registerRule("distribute-filtercalc-to-cluster", distributeFilternCalcToClusterRule,
-               OptimizerRule::distributeFilternCalcToClusterRule,
+  registerRule("distribute-filtercalc-to-cluster", distributeFilterCalcToClusterRule,
+               OptimizerRule::distributeFilterCalcToClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
@@ -404,6 +404,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
+  registerRule("decay-unnecessary-sorted-gather", decayUnnecessarySortedGather,
+               OptimizerRule::decayUnnecessarySortedGatherRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
   // apply late materialization for index queries
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
@@ -432,10 +437,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // finally sort all rules by their level
-  std::sort(_rules.begin(), _rules.end(),
-            [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
-              return (lhs.level < rhs.level);
-            });
+  std::sort(
+      _rules.begin(), _rules.end(),
+      [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
+        return (lhs.level < rhs.level);
+      });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // make the rules database read-only from now on
