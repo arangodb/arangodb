@@ -80,13 +80,13 @@ class GraphOperations {
                           std::optional<TRI_voc_rid_t> rev);
 
   /// @brief Remove a single edge document from definitionName.
-  OperationResult removeEdge(const std::string& definitionName, const std::string& key,
-                             std::optional<TRI_voc_rid_t> rev,
+  OperationResult removeEdge(const std::string& definitionName,
+                             const std::string& key, std::optional<TRI_voc_rid_t> rev,
                              bool waitForSync, bool returnOld);
 
   /// @brief Remove a vertex and all incident edges in the graph
-  OperationResult removeVertex(const std::string& collectionName, const std::string& key,
-                               std::optional<TRI_voc_rid_t> rev,
+  OperationResult removeVertex(const std::string& collectionName,
+                               const std::string& key, std::optional<TRI_voc_rid_t> rev,
                                bool waitForSync, bool returnOld);
 
   /// @brief Remove an edge or vertex and all incident edges in the graph
@@ -123,11 +123,9 @@ class GraphOperations {
 
   // @brief This function is checking whether the given document defines _from and _to attributes or not
   // and checks if they are correct or invalid if they are available.
-  std::pair<OperationResult, bool> validateEdgeContent(const VPackSlice& document, std::string& fromCollectionName,
-                                      std::string& fromCollectionKey,
-                                      std::string& toCollectionName,
-                                      std::string& toCollectionKey,
-                                      bool isUpdate);
+  std::pair<OperationResult, bool> validateEdgeContent(
+      const VPackSlice& document, std::string& fromCollectionName, std::string& fromCollectionKey,
+      std::string& toCollectionName, std::string& toCollectionKey, bool isUpdate);
 
   OperationResult updateVertex(const std::string& collectionName,
                                const std::string& key, VPackSlice document,
@@ -213,6 +211,10 @@ class GraphOperations {
   Result checkEdgeDefinitionPermissions(EdgeDefinition const& edgeDefinition) const;
 
   bool collectionExists(std::string const& collection) const;
+
+#ifdef USE_ENTERPRISE
+  bool isUsedAsInitialCollection(std::string const& collectionName);
+#endif
 };
 }  // namespace graph
 }  // namespace arangodb
