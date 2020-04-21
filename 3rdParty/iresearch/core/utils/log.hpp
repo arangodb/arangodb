@@ -130,7 +130,7 @@ NS_END
   #define IR_FRMT_DEBUG(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, format, __VA_ARGS__)
   #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, format, __VA_ARGS__)
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
-  #define IR_LOG_FORMATED(level, prefix, format, ...) \
+  #define IR_LOG_FORMATED(level, format, ...) \
     if (::iresearch::logger::enabled(level)) \
       ::iresearch::logger::log_vararg_wrapper::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
 
