@@ -459,6 +459,10 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
     queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
   }
   queryOptions->close();
+  if (queryString.empty()) {
+    queryString = "RETURN 1";
+  }
+  
   aql::QueryString fakeQueryString(queryString);
   auto query =
       std::make_unique<arangodb::aql::Query>(arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),

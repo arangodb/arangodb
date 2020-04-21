@@ -55,12 +55,11 @@ static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
                              bindVars, options);
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
   arangodb::aql::QueryResult result;
   while (true) {
     auto state = query.execute(result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      ss->waitForAsyncWakeup();
+      query.sharedState()->waitForAsyncWakeup();
     } else {
       break;
     }
