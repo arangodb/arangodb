@@ -194,8 +194,8 @@ class GraphEnumerator : public PathEnumerator {
 
 class TraverserHelper : public Traverser {
  public:
-  TraverserHelper(TraverserOptions* opts, transaction::Methods* trx, TestGraph const& g)
-      : Traverser(opts, trx), _graph(g) {
+  TraverserHelper(TraverserOptions* opts, TestGraph const& g)
+      : Traverser(opts), _graph(g) {
     _enumerator.reset(new GraphEnumerator(this, _opts, _graph));
   }
 
@@ -248,7 +248,8 @@ class TraverserHelper : public Traverser {
 };
 
 static TraverserOptions generateOptions(arangodb::aql::Query* query, size_t min, size_t max) {
-  TraverserOptions options{query};
+  arangodb::velocypack::Slice definition; // TODO
+  TraverserOptions options{*query, definition};
   options.minDepth = min;
   options.maxDepth = max;
   return options;
@@ -266,7 +267,6 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   SharedAqlItemBlockPtr block;
 
   TraverserOptions traversalOptions;
-  arangodb::transaction::Methods* trx;
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
 
   TestGraph myGraph;
@@ -287,9 +287,8 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)),
         traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
-        trx(fakedQuery->trx()),
         myGraph("v", "e"),
-        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, trx, myGraph)),
+        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, myGraph)),
         inReg(0),
         outReg(1),
         traverser(traverserPtr.get()),
@@ -451,7 +450,6 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   SharedAqlItemBlockPtr block;
 
   TraverserOptions traversalOptions;
-  arangodb::transaction::Methods* trx;
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
 
   TestGraph myGraph;
@@ -471,9 +469,8 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)),
         traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
-        trx(fakedQuery->trx()),
         myGraph("v", "e"),
-        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, trx, myGraph)),
+        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, myGraph)),
         outReg(1),
         traverser(traverserPtr.get()),
         inputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
