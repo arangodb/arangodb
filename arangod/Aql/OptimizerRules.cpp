@@ -3949,9 +3949,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         // check if there is a node type that needs distribution
         if (nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE ||
             nodeType == ExecutionNode::UPDATE || nodeType == ExecutionNode::REPLACE ||
-            nodeType == ExecutionNode::UPSERT) { /* } || nodeType ==
-            ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH
-            || nodeType == ExecutionNode::K_SHORTEST_PATHS) { */
+            nodeType == ExecutionNode::UPSERT || nodeType == ExecutionNode::TRAVERSAL ||
+            nodeType == ExecutionNode::SHORTEST_PATH ||
+            nodeType == ExecutionNode::K_SHORTEST_PATHS) {
           // found a node!
           break;
         }
@@ -3980,10 +3980,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       // when we get here, we have found a matching data-modification or traversal/shortest_path/k_shortest_paths node!
       TRI_ASSERT(nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE ||
                  nodeType == ExecutionNode::UPDATE || nodeType == ExecutionNode::REPLACE ||
-                 nodeType == ExecutionNode::UPSERT);
-      /* || nodeType == ExecutionNode::TRAVERSAL ||
+                 nodeType == ExecutionNode::UPSERT || nodeType == ExecutionNode::TRAVERSAL ||
                  nodeType == ExecutionNode::SHORTEST_PATH ||
-                 nodeType == ExecutionNode::K_SHORTEST_PATHS);  */
+                 nodeType == ExecutionNode::K_SHORTEST_PATHS);
 
       ExecutionNode* originalParent = nullptr;
       if (node->hasParent()) {
@@ -3995,24 +3994,29 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         TRI_ASSERT(node == root);
       }
 
-      Collection const* collection =
-          ExecutionNode::castTo<ModificationNode*>(node)->collection();
+      auto const* collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
+      TRI_ASSERT(collectionAccessingNode != nullptr);
+      auto const* collection = collectionAccessingNode->collection();
 
-#ifdef USE_ENTERPRISE
-      auto& ci = collection->vocbase()->server().getFeature<ClusterFeature>().clusterInfo();
-      auto collInfo =
-          ci.getCollection(collection->vocbase()->name(), collection->name());
-      // Throws if collection is not found!
-      if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
-        node = distributeInClusterRuleSmartEdgeCollection(plan.get(), snode, node,
-                                                          originalParent, wasModified);
-        continue;
-      }
-#endif
       // For non-enterprise code, we don't care about these.
       if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
           nodeType == ExecutionNode::K_SHORTEST_PATHS) {
-        continue;
+        auto const* graph = ExecutionNode::castTo<GraphNode*>(node);
+        if (!graph->isDisjoint()) {
+          continue;
+        }
+      } else {
+#ifdef USE_ENTERPRISE
+        auto& ci = collection->vocbase()->server().getFeature<ClusterFeature>().clusterInfo();
+        auto collInfo =
+            ci.getCollection(collection->vocbase()->name(), collection->name());
+        // Throws if collection is not found!
+        if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
+          node = distributeInClusterRuleSmartEdgeCollection(plan.get(), snode, node,
+                                                            originalParent, wasModified);
+          continue;
+        }
+#endif
       }
 
       bool const defaultSharding = collection->usesDefaultSharding();
@@ -4055,7 +4059,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
 
       // extract database from plan node
-      TRI_vocbase_t* vocbase = ExecutionNode::castTo<ModificationNode*>(node)->vocbase();
+      TRI_vocbase_t* vocbase = collectionAccessingNode->vocbase();
 
       // insert a distribute node
       ExecutionNode* distNode = nullptr;
