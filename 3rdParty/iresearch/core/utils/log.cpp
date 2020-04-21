@@ -828,7 +828,7 @@ void stack_trace(level_t level) {
         stack_trace_posix(level, fd);
       }
     } catch(std::bad_alloc&) {
-      stack_trace_nomalloc(level, 2, fd); // +2 to skip stack_trace()
+      stack_trace_nomalloc(level, fd, 2); // +2 to skip stack_trace()
       throw;
     }
   #endif
@@ -860,14 +860,14 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
         stack_trace_posix(level, fd);
       }
     } catch(std::bad_alloc&) {
-      stack_trace_nomalloc(level, 2, fd); // +2 to skip stack_trace()
+      stack_trace_nomalloc(level, fd, 2); // +2 to skip stack_trace()
       throw;
     }
   #endif
 }
 
 #ifndef _MSC_VER
-  void stack_trace_nomalloc(level_t level, size_t skip, int fd) {
+  void stack_trace_nomalloc(level_t level, int fd, size_t skip) {
     if (!enabled(level)) {
       return; // skip generating trace if logging is disabled for this level altogether
     }

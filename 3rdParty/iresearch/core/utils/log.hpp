@@ -112,7 +112,7 @@ struct log_vararg_wrapper {
 
 #ifndef _MSC_VER
   // +1 to skip stack_trace_nomalloc(...)
-  void IRESEARCH_API stack_trace_nomalloc(level_t level, size_t skip = 1);
+  void IRESEARCH_API stack_trace_nomalloc(level_t level, int fd, size_t skip = 1);
 #endif
 
 NS_END // logger
