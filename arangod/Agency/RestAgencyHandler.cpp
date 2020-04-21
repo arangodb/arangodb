@@ -42,7 +42,7 @@ using namespace arangodb::rest;
 using namespace arangodb::consensus;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server
+/// @brief Rest agency handler
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& server,
@@ -150,7 +150,117 @@ RestStatus RestAgencyHandler::handleTransient() {
   return RestStatus::DONE;
 }
 
+
+/// Poll from agency starting with start.
+/// The result is of shape
+/// { accepted:bool, result: { firstIndex, commitIndex, logs:[{index, log}] } }
+/// if !accepted, lost leadership
+/// else respond
+RestStatus RestAgencyHandler::pollIndex(
+  index_t const& start, double const& timeout) {
+  return waitForFuture(
+    _agent->poll(start, timeout)
+    .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
+      VPackSlice res = rb->slice();
+
+      if (res.isObject() && res.hasKey("result")) {
+
+        if (res.hasKey("error")) { // leadership loss
+          generateError(
+            rest::ResponseCode::SERVICE_UNAVAILABLE,
+            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+        }
+
+        resetResponse(rest::ResponseCode::OK);
+        VPackSlice slice = res.get("result");
+
+        if (slice.hasKey("log")) {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder ob(&builder);
+            builder.add(StaticStrings::Error, VPackValue(false));
+            builder.add("code", VPackValue(int(ResponseCode::OK)));
+            builder.add(VPackValue("result"));
+            VPackObjectBuilder r(&builder);
+            auto const firstIndex = slice.get("firstIndex");
+            builder.add("commitIndex", slice.get("commitIndex"));
+            builder.add("firstIndex", firstIndex);
+            VPackSlice logs = slice.get("log");
+            builder.add(VPackValue("log"));
+            VPackArrayBuilder a(&builder);
+            for (size_t i = start - firstIndex.getNumber<uint64_t>(); i < logs.length(); i++) {
+              builder.add(logs[i]);
+            }
+          }
+          response()->setPayload(std::move(*builder.steal()));
+        } else {
+          response()->setPayload(std::move(*rb->steal()));
+        }
+      } else {
+        generateError(
+          rest::ResponseCode::SERVER_ERROR,
+          TRI_ERROR_HTTP_SERVER_ERROR, "No leader");
+      }
+    })
+    .thenError<VPackException>([this](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    })
+    .thenError<std::exception>([this](std::exception const& e) {
+      generateError(
+        rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
+
+}
+
+namespace {
+template <class T> static bool readValue(GeneralRequest const& req, char const* name, T& val) {
+  bool found = true;
+  std::string const& val_str = req.value(name, found);
+
+  if (!found) {
+    LOG_TOPIC("f4732", DEBUG, Logger::AGENCY)
+      << "Query string " << name << " missing.";
+    return false;
+  } else {
+    if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
+      LOG_TOPIC("f4237", WARN, Logger::AGENCY)
+        << "Conversion of query string " << name  << " with " << val_str << " to " << typeid(T).name() << " failed";
+      return false;
+    }
+  }
+  return true;
+}}
+
+RestStatus RestAgencyHandler::handlePoll() {
+
+  // GET only
+  if (_request->requestType() != rest::RequestType::GET) {
+    return reportMethodNotAllowed();
+  }
+
+  // WARNING ////////////////////////////////////////////////////
+  // Leader only
+  if (!_agent->leading()) {  // Redirect to leader
+    if (_agent->leaderID() == NO_LEADER) {
+      return reportMessage(
+        rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+    } // WARNING REDIRECTS NEEDS BE DOING
+  }
+
+  // Get queryString index
+  index_t index = 0;
+  double timeout = 60.0;
+
+  readValue(*_request, "index", index);
+  readValue(*_request, "timeout", timeout);
+
+  return pollIndex(index, timeout);
+
+}
+
+
 RestStatus RestAgencyHandler::handleStores() {
+
   if (_request->requestType() == rest::RequestType::GET) {
     Builder body;
     {
@@ -611,6 +721,8 @@ RestStatus RestAgencyHandler::execute() {
         return handleWrite();
       } else if (suffixes[0] == "read") {
         return handleRead();
+      } else if (suffixes[0] == "poll") {
+        return handlePoll();
       } else if (suffixes[0] == "inquire") {
         return handleInquire();
       } else if (suffixes[0] == "transient") {
