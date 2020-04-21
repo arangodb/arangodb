@@ -80,8 +80,10 @@ class AnalyzerRevision {
  public:
   using Revision = uint64_t;
 
-  AnalyzerRevision(Revision revision, Revision buildingRevision)
-    : _revision(revision), _buildingRevision(buildingRevision) {}
+  AnalyzerRevision(Revision revision, Revision buildingRevision,
+                   ServerID&& serverID, uint64_t rebootID)
+    : _revision(revision), _buildingRevision(buildingRevision),
+      _serverID(std::move(serverID)), _rebootID(rebootID) {}
 
   AnalyzerRevision() = default;
   AnalyzerRevision(AnalyzerRevision const&) = default;
@@ -97,9 +99,19 @@ class AnalyzerRevision {
     return _buildingRevision;
   }
 
+  ServerID const& getServerID() const noexcept {
+    return _serverID;
+  }
+
+  RebootId const& getRebootID() const noexcept {
+    return _rebootID;
+  }
+
  private:
   Revision _revision{};
   Revision _buildingRevision{};
+  ServerID _serverID{};
+  RebootId _rebootID{0};
 };
 
 }  // namespace arangodb

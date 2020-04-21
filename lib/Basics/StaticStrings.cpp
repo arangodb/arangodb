@@ -105,6 +105,8 @@ std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
 // analyzers names
 std::string const StaticStrings::AnalyzersRevision("Revision");
 std::string const StaticStrings::AnalyzersBuildingRevision("BuildingRevision");
+std::string const StaticStrings::AnalyzersCoordinator("Coordinator");
+std::string const StaticStrings::AnalyzersRebootID("RebootID");
 
 // Database definition fields
 std::string const StaticStrings::DatabaseId("id");

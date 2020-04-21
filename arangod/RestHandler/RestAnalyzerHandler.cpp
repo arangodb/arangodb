@@ -28,6 +28,7 @@
 
 #include "Basics/StringUtils.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -195,6 +196,14 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(server().hasFeature<arangodb::ClusterFeature>());
+    auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
+    auto res = engine.startModifyingAnalyzerCoordinator(splittedAnalyzerName.first);
+    if (res.fail()) {
+      // try again if precondition
+    }
+  }
   IResearchAnalyzerFeature::EmplaceResult result;
   auto res = analyzers.emplace(result, name, type, properties, features);
 
@@ -217,6 +226,15 @@ void RestAnalyzerHandler::createAnalyzer( // create
   arangodb::velocypack::Builder builder;
 
   pool->toVelocyPack(builder, false);
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(server().hasFeature<arangodb::ClusterFeature>());
+    auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
+    auto res = engine.finishModifyingAnalyzerCoordinator(splittedAnalyzerName.first);
+    if (res.fail()) {
+      // error
+    }
+  }
 
   generateResult(
     result.second // new analyzer v.s. existing analyzer

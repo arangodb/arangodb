@@ -788,7 +788,9 @@ void ClusterInfo::loadPlan() {
   // "Plan":{"Analyzers": {
   //  "_system": {
   //    "Revision": 0,
-  //    "BuildingRevision": 0
+  //    "BuildingRevision": 0,
+  //    "Coordinator": "",
+  //    "RebootID": 0
   //  },...
   // }}
 
@@ -846,9 +848,40 @@ void ClusterInfo::loadPlan() {
         continue;
       }
 
+      ServerID coordinatorID;
+      if (analyzerSlice.hasKey(StaticStrings::AnalyzersCoordinator)) {
+        auto const coordinatorSlice = analyzerSlice.get(StaticStrings::AnalyzersCoordinator);
+        if (!coordinatorSlice.isString()) {
+          LOG_TOPIC("67bc9", WARN, Logger::AGENCY)
+              << "Invalid analyzer coordinator for database '" << databaseName << "',"
+              << " corresponding analyzer will be ignored for now and the "
+              << "invalid information will be repaired. VelocyPack: "
+              << analyzerSlice.toJson();
+          continue;
+        }
+        velocypack::ValueLength length;
+        auto const* cID = coordinatorSlice.getString(length);
+        coordinatorID = ServerID(cID, length);
+      }
+
+      uint64_t rebootID = 0;
+      if (analyzerSlice.hasKey(StaticStrings::AnalyzersRebootID)) {
+        auto const rebootIDSlice = analyzerSlice.get(StaticStrings::AnalyzersRebootID);
+        if (!rebootIDSlice.isNumber()) {
+          LOG_TOPIC("e3f08", WARN, Logger::AGENCY)
+              << "Invalid analyzer reboot ID for database '" << databaseName << "',"
+              << " corresponding analyzer will be ignored for now and the "
+              << "invalid information will be repaired. VelocyPack: "
+              << analyzerSlice.toJson();
+          continue;
+        }
+        rebootID = rebootIDSlice.getNumber<uint64_t>();
+      }
+
       newDbAnalyzerRevision[databaseName] = std::make_shared<AnalyzerRevision>(
             revisionSlice.getNumber<AnalyzerRevision::Revision>(),
-            buildingRevisionSlice.getNumber<AnalyzerRevision::Revision>());
+            buildingRevisionSlice.getNumber<AnalyzerRevision::Revision>(),
+            std::move(coordinatorID), rebootID);
     }
   }
 
@@ -2976,6 +3009,147 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 
   loadPlan();
   return {};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start creating or deleting an analyzer in coordinator,
+/// the return value is an ArangoDB error code
+/// and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databaseName) {
+  AnalyzerRevision::Revision revision;
+  {
+    // Get current revision for precondition
+    loadPlan();
+    READ_LOCKER(readLocker, _planProt.lock);
+    auto it = _dbAnalyzerRevision.find(databaseName);
+    if (it == _dbAnalyzerRevision.cend()) {
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
+                    "start modifying analyzer: unknown database name '" + databaseName + "'");
+    }
+    revision = it->second->getRevision();
+  }
+
+  AgencyComm ac(_server);
+
+  VPackBuilder revisionBuilder;
+  revisionBuilder.add(VPackValue(revision));
+
+  VPackBuilder serverIDBuilder;
+  serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
+
+  VPackBuilder rebootIDBuilder;
+  rebootIDBuilder.add(VPackValue(ServerState::instance()->getRebootId().value()));
+
+  AgencyWriteTransaction const transaction{
+      {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+            AgencySimpleOperationType::INCREMENT_OP},
+       {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersCoordinator,
+            AgencyValueOperationType::SET, serverIDBuilder.slice()},
+       {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersRebootID,
+            AgencyValueOperationType::SET, rebootIDBuilder.slice()},
+       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+      {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+            AgencyPrecondition::Type::VALUE, revisionBuilder.slice()}}};
+
+  auto const res = ac.sendTransactionWithFailover(transaction);
+
+  // Only if not precondition failed
+  if (!res.successful()) {
+    if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+      // Dump agency plan
+      logAgencyDump();
+
+      return Result(
+          TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
+          "start modifying analyzer precondition for database " + databaseName + ": Revision " +
+            revisionBuilder.toString() + " is not equal to BuildingRevision. Cannot modify an analyzer.");
+    }
+
+    return Result(
+        TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
+        std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+            " HTTP code: " + std::to_string(res.httpCode()) +
+            " error message: " + res.errorMessage() +
+            " error details: " + res.errorDetails() + " body: " + res.body());
+  }
+
+  // Update our cache
+  loadPlan();
+
+  return Result(TRI_ERROR_NO_ERROR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finish creating or deleting an analyzer in coordinator,
+/// the return value is an ArangoDB error code
+/// and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+Result ClusterInfo::finishModifyingAnalyzerCoordinator(std::string const& databaseName) {
+  AnalyzerRevision::Revision revision;
+  {
+    // Get current revision for precondition
+    loadPlan();
+    READ_LOCKER(readLocker, _planProt.lock);
+    auto it = _dbAnalyzerRevision.find(databaseName);
+    if (it == _dbAnalyzerRevision.cend()) {
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
+                    "finish modifying analyzer: unknown database name '" + databaseName + "'");
+    }
+    revision = it->second->getRevision();
+  }
+
+  AgencyComm ac(_server);
+
+  VPackBuilder revisionBuilder;
+  revisionBuilder.add(VPackValue(++revision));
+
+  VPackBuilder serverIDBuilder;
+  serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
+
+  VPackBuilder rebootIDBuilder;
+  rebootIDBuilder.add(VPackValue(ServerState::instance()->getRebootId().value()));
+
+  AgencyWriteTransaction const transaction{
+      {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+            AgencySimpleOperationType::INCREMENT_OP},
+       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+      {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+            AgencyPrecondition::Type::VALUE, revisionBuilder.slice()},
+       {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersCoordinator,
+            AgencyPrecondition::Type::VALUE, serverIDBuilder.slice()},
+       {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersRebootID,
+            AgencyPrecondition::Type::VALUE, rebootIDBuilder.slice()}}};
+
+  auto const res = ac.sendTransactionWithFailover(transaction);
+
+  // Only if not precondition failed
+  if (!res.successful()) {
+    if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+      // Dump agency plan
+      logAgencyDump();
+
+      return Result(
+          TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
+          "finish modifying analyzer precondition for database " + databaseName + ": Revision " +
+            revisionBuilder.toString() + " + 1 is not equal to BuildingRevision " +
+            "or incorrect coordinator or rebootID. Cannot modify an analyzer.");
+    }
+
+    return Result(
+        TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
+        std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+            " HTTP code: " + std::to_string(res.httpCode()) +
+            " error message: " + res.errorMessage() +
+            " error details: " + res.errorDetails() + " body: " + res.body());
+  }
+
+  // Update our cache
+  loadPlan();
+
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

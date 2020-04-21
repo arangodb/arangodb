@@ -630,6 +630,24 @@ class ClusterInfo final {
   Result setViewPropertiesCoordinator(std::string const& databaseName,
                                       std::string const& viewID, VPackSlice const& json);
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief start creating or deleting an analyzer in coordinator,
+  /// the return value is an ArangoDB error code
+  /// and the errorMsg is set accordingly. One possible error
+  /// is a timeout, a timeout of 0.0 means no timeout.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  Result startModifyingAnalyzerCoordinator(std::string const& databaseName);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief finish creating or deleting an analyzer in coordinator,
+  /// the return value is an ArangoDB error code
+  /// and the errorMsg is set accordingly. One possible error
+  /// is a timeout, a timeout of 0.0 means no timeout.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  Result finishModifyingAnalyzerCoordinator(std::string const& databaseName);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
