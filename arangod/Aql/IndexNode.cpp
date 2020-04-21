@@ -137,7 +137,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
                                     indexIdSlice.toString().c_str());
     }
 
-    _outNonMaterializedIndVars.first = IndexId(indexIdSlice.getNumber<IndexId::BaseType>());
+    _outNonMaterializedIndVars.first =
+        IndexId(indexIdSlice.getNumber<IndexId::BaseType>());
 
     auto const indexValuesVarsSlice = base.get("indexValuesVars");
     if (!indexValuesVarsSlice.isArray()) {
@@ -296,11 +297,11 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
       VPackObjectBuilder objectScope(&builder);
       builder.add("fieldNumber", VPackValue(fieldVar.second));
       builder.add("id", VPackValue(fieldVar.first->id));
-      builder.add("name", VPackValue(fieldVar.first->name)); // for explainer.js
+      builder.add("name", VPackValue(fieldVar.first->name));  // for explainer.js
       std::string fieldName;
       TRI_ASSERT(fieldVar.second < fields.size());
       basics::TRI_AttributeNamesToString(fields[fieldVar.second], fieldName, true);
-      builder.add("field", VPackValue(fieldName)); // for explainer.js
+      builder.add("field", VPackValue(fieldName));  // for explainer.js
     }
   }
 
@@ -458,6 +459,14 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
+  if (!engine.waitForSatellites(collection())) {
+    double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+                                   "collection " + collection()->name() +
+                                       " did not come into sync in time (" +
+                                       std::to_string(maxWait) + ")");
+  }
+
   bool hasV8Expression = false;
   /// @brief _inVars, a vector containing for each expression above
   /// a vector of Variable*, used to execute the expression
@@ -547,7 +556,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
     outNonMaterializedIndVars.first = _outNonMaterializedIndVars.first;
     outNonMaterializedIndVars.second.reserve(_outNonMaterializedIndVars.second.size());
     for (auto& indVar : _outNonMaterializedIndVars.second) {
-      outNonMaterializedIndVars.second.try_emplace(plan->getAst()->variables()->createVariable(indVar.first), indVar.second);
+      outNonMaterializedIndVars.second.try_emplace(
+          plan->getAst()->variables()->createVariable(indVar.first), indVar.second);
     }
   } else {
     outNonMaterializedIndVars = _outNonMaterializedIndVars;
@@ -632,11 +642,8 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
   vars.reserve(1 + _outNonMaterializedIndVars.second.size());
   vars.emplace_back(_outNonMaterializedDocId);
   std::transform(_outNonMaterializedIndVars.second.cbegin(),
-                 _outNonMaterializedIndVars.second.cend(),
-                 std::back_inserter(vars),
-                 [](auto const& indVar) {
-    return indVar.first;
-  });
+                 _outNonMaterializedIndVars.second.cend(), std::back_inserter(vars),
+                 [](auto const& indVar) { return indVar.first; });
 
   return vars;
 }
@@ -653,7 +660,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId 
   _outNonMaterializedIndVars.second.reserve(indexVariables.size());
   for (auto& indVars : indexVariables) {
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
-                                                   indVars.second.indexFieldNum);
+                                                  indVars.second.indexFieldNum);
   }
 }
 

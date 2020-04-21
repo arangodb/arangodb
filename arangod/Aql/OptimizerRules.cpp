@@ -4455,9 +4455,9 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 /// this rule modifies the plan in place
 /// filters are moved as far up in the plan as possible to make result sets
 /// as small as possible as early as possible
-void arangodb::aql::distributeFilternCalcToClusterRule(Optimizer* opt,
-                                                       std::unique_ptr<ExecutionPlan> plan,
-                                                       OptimizerRule const& rule) {
+void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
+                                                      std::unique_ptr<ExecutionPlan> plan,
+                                                      OptimizerRule const& rule) {
   bool modified = false;
 
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -4685,16 +4685,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
             plan->insertDependency(rn, inspectNode);
           }
 
-          auto const* collection = GatherNode::findCollection(*gatherNode);
-
-          // For views (when 'collection == nullptr') we don't need
-          // to check number of shards
-          // On SmartEdge collections we have 0 shards and we need the elements
-          // to be injected here as well. So do not replace it with > 1
-          if (!collection || collection->numberOfShards() != 1) {
-            gatherNode->elements(thisSortNode->elements());
-          }
-
+          gatherNode->elements(thisSortNode->elements());
           modified = true;
           // ready to rumble!
           break;
@@ -4736,8 +4727,8 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(Optimizer* opt,
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
   for (auto& n : nodes) {
-    // check if the remote node is preceeded by a scatter node and any number
-    // of calculation and singleton nodes. if yes, remove remote and scatter
+    // check if the remote node is preceded by a scatter node and any number of
+    // calculation and singleton nodes. if yes, remove remote and scatter
     if (!n->hasDependency()) {
       continue;
     }
@@ -7416,13 +7407,21 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   bool before(ExecutionNode* node) override final {
     if (node->getType() == ExecutionNode::SCATTER ||
         node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE ||
-        node->getType() == ExecutionNode::TRAVERSAL ||
-        node->getType() == ExecutionNode::SHORTEST_PATH ||
-        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+        node->getType() == ExecutionNode::DISTRIBUTE) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
+
+    if (node->getType() == ExecutionNode::TRAVERSAL ||
+        node->getType() == ExecutionNode::SHORTEST_PATH ||
+        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+      auto* gn = ExecutionNode::castTo<GraphNode*>(node);
+      if (!gn->isSatelliteNode()) {
+        _isParallelizable = false;
+        return true;  // true to abort the whole walking process
+      }
+    }
+
     // write operations of type REMOVE, REPLACE and UPDATE
     // can be parallelized, provided the rest of the plan
     // does not prohibit this
@@ -7506,18 +7505,24 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && !plan->contains(EN::TRAVERSAL) &&
-      !plan->contains(EN::SHORTEST_PATH) && !plan->contains(EN::K_SHORTEST_PATHS) &&
-      !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
+  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
     TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
     bool parallelizeWrites = vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites();
-
     GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
 
     if (!gn->isInSubquery() && isParallelizable(gn, parallelizeWrites)) {
-      // TODO do a cost estimation to enable async parallelism on DBServers
-      gn->setParallelism(GatherNode::Parallelism::Parallel);
-      modified = true;
+      // find all graph nodes and make sure that they all are using satellite
+      nodes.clear();
+      plan->findNodesOfType(nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::K_SHORTEST_PATHS}, true);
+      bool const allSatellite = std::all_of(nodes.begin(), nodes.end(), [](auto n) {
+        GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
+        return graphNode->isSatelliteNode();
+      });
+
+      if (allSatellite) {
+        gn->setParallelism(GatherNode::Parallelism::Parallel);
+        modified = true;
+      }
     }
   }
 
@@ -7829,5 +7834,34 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     TRI_ASSERT(sq->getParents().empty());
   }
 
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+void arangodb::aql::decayUnnecessarySortedGather(Optimizer* opt,
+                                                 std::unique_ptr<ExecutionPlan> plan,
+                                                 OptimizerRule const& rule) {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::GATHER, true);
+
+  bool modified = false;
+
+  for (auto& n : nodes) {
+    auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
+    if (gatherNode->elements().empty()) {
+      continue;
+    }
+
+    auto const* collection = GatherNode::findCollection(*gatherNode);
+
+    // For views (when 'collection == nullptr') we don't need
+    // to check number of shards
+    // On SmartEdge collections we have 0 shards and we need the elements
+    // to be injected here as well. So do not replace it with > 1
+    if (collection && collection->numberOfShards() == 1) {
+      modified = true;
+      gatherNode->elements().clear();
+    }
+  }
   opt->addPlan(std::move(plan), rule, modified);
 }

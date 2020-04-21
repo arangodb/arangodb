@@ -117,7 +117,8 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(Graph& graph,
   return trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 }
 
-OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::string const& edgeDefinitionName,
+OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync,
+                                                     std::string const& edgeDefinitionName,
                                                      bool dropCollection) {
   // check if edgeCollection is available
   OperationResult result = checkEdgeCollectionAvailability(edgeDefinitionName);
@@ -159,11 +160,20 @@ OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::stri
     // add the edge collection itself for removal
     gmngr.pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(), collectionsToBeRemoved);
     for (auto const& cname : collectionsToBeRemoved) {
-
       std::shared_ptr<LogicalCollection> coll;
       res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
         TRI_ASSERT(coll);
+#ifdef USE_ENTERPRISE
+        {
+          if (coll->type() == TRI_COL_TYPE_DOCUMENT) {
+            bool initial = isUsedAsInitialCollection(cname);
+            if (initial) {
+              return OperationResult(TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL);
+            }
+          }
+        }
+#endif
         res = methods::Collections::drop(*coll, false, -1.0);
         if (res.fail()) {
           res = trx.finish(result.result);
@@ -265,7 +275,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
 
   for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
     std::unique_ptr<Graph> graph =
-        Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
+        Graph::fromPersistence(_vocbase, singleGraph.resolveExternals());
     if (graph->hasEdgeCollection(edgeDefinition.getName())) {
       // only try to modify the edgeDefinition if it's available.
       result = changeEdgeDefinitionForGraph(*(graph.get()), edgeDefinition, waitForSync, trx);
@@ -321,9 +331,16 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
                      std::string{TRI_errno_string(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
     }
   } else {
+    // Hint: Now needed because of the initial property
+    res = gmngr.ensureCollections(&_graph, waitForSync);
+    if (res.fail()) {
+      return OperationResult{std::move(res)};
+    }
+
     if (def->type() != TRI_COL_TYPE_DOCUMENT) {
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
     }
+
     res = _graph.validateCollection(*(def.get()));
     if (res.fail()) {
       return OperationResult{std::move(res)};
@@ -355,8 +372,20 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   return result;
 }
 
-OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::string const& collectionName,
+OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync,
+                                                       std::string const& collectionName,
                                                        bool dropCollection) {
+#ifdef USE_ENTERPRISE
+  {
+    if (dropCollection) {
+      bool initial = isUsedAsInitialCollection(collectionName);
+      if (initial) {
+        return OperationResult(TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL);
+      }
+    }
+  }
+#endif
+
   // check if collection exists within the orphan collections
   bool found = false;
   for (auto const& oName : _graph.orphanCollections()) {
@@ -510,8 +539,8 @@ OperationResult GraphOperations::getDocument(std::string const& collectionName,
   return result;
 }
 
-GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(std::string const& key, 
-                                                                 std::optional<TRI_voc_rid_t>& rev) const {
+GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
+    std::string const& key, std::optional<TRI_voc_rid_t>& rev) const {
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);

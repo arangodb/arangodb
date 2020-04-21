@@ -42,6 +42,8 @@ namespace aql {
 
 class AqlCallStack;
 class AqlItemBlock;
+class AqlItemBlockManager;
+class Collection;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
@@ -144,6 +146,8 @@ class ExecutionEngine {
   void setShutdown() {
     _wasShutdown = true;
   }
+  
+  bool waitForSatellites(Collection const* collection) const;
   
  private:
   
