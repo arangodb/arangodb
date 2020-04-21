@@ -143,30 +143,6 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
 #else
   _trx = new transaction::Methods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
 #endif
-  
-#if 0
-#warning TODO this might be unneccessary
-  VPackSlice variablesSlice = info.get(VARIABLES);
-  if (!variablesSlice.isNone()) {
-    if (!variablesSlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "The optional " + VARIABLES +
-                                         " has to be an array.");
-    }
-    for (VPackSlice v : VPackArrayIterator(variablesSlice)) {
-      arangodb::aql::VariableId id = arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<arangodb::aql::VariableId>(v, "id");
-      TRI_ASSERT(_query.ast()->variables()->getVariable(id) != nullptr);
-      _query.ast()->variables()->createVariable(v);
-    }
-  }
-#endif
-
-  // We begin the transaction before we lock.
-  // We also setup indexes before we lock.
-//  Result res = _trx->begin();
-//  if (res.fail()) {
-//    THROW_ARANGO_EXCEPTION(res);
-//  }
 }
 
 BaseEngine::~BaseEngine() {
