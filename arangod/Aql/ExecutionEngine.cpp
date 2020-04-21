@@ -656,6 +656,9 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
 }
 
 Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
+  if (_root == nullptr || _wasShutdown) {
+    return Result();
+  }
   
   Result res{TRI_ERROR_INTERNAL, "unable to shutdown query"};
   ExecutionState state = ExecutionState::WAITING;
@@ -681,21 +684,6 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
   } catch (...) {
     res.reset(TRI_ERROR_INTERNAL);
   }
-
-//  if (res.fail() && ServerState::instance()->isCoordinator()) {
-//    // shutdown attempt has failed...
-//    // in a cluster, try to at least abort all other coordinator parts
-//    auto queryRegistry = QueryRegistryFeature::registry();
-//    if (queryRegistry != nullptr) {
-//      for (auto const& id : _coordinatorQueryIds) {
-//        try {
-//          queryRegistry->destroy(_query.vocbase().name(), id, errorCode, false);
-//        } catch (...) {
-//          // we want to abort all parts, even if aborting other parts fails
-//        }
-//      }
-//    }
-//  }
 
   return res;
   
