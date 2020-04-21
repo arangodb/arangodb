@@ -43,9 +43,9 @@ using namespace arangodb::application_features;
 AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
-    : key(key), 
-      _agency(server), 
-      _cb(cb), 
+    : key(key),
+      _agency(server),
+      _cb(cb),
       _needsValue(needsValue),
       _wasSignaled(false) {
   if (_needsValue && needsInitialValue) {
@@ -69,7 +69,6 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck, 
   std::shared_ptr<VPackBuilder> builder;
   consensus::index_t idx = 0;
   if (local) {
-    LOG_DEVEL << AgencyCommManager::path(key);
     auto& _cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
     std::tie(builder, idx) = _cache.get(std::vector<std::string>{AgencyCommManager::path(key)});
     result = builder->slice();

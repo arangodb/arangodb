@@ -3183,6 +3183,10 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   AgencyWriteTransaction trx({newValue, incrementVersion}, oldValue);
 
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto r = cache.waitFor(
+    result.slice().get("results")[0].getNumber<uint64_t>()).get();
+
 
   // This object watches whether the collection is still present in Plan
   // It assumes that the collection *is* present and only changes state
@@ -3231,8 +3235,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         // index has not shown up in Current yet,  follow up check to
         // ensure it is still in plan (not dropped between iterations)
 
-        auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-        auto [acb, index] = agencyCache.get(planIndexesKey);
+        auto [acb, index] = cache.get(planIndexesKey);
         auto indexes = acb->slice();
 
         bool found = false;
