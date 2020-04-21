@@ -196,7 +196,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         expressionVariable(nullptr),
         count(false),
         registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-                      1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep),
+                      1 /*nrIn*/, 3 /*nrOut*/, regToClear, regToKeep),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes),
                       std::move(variables), std::move(aggregateRegisters), trx, count),
