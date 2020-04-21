@@ -66,10 +66,9 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
   virtual ~RegisterPlanWalkerT() noexcept = default;
 
   void after(T* eb) final;
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
+  bool enterSubquery(T*, T*) final {
     return false;  // do not walk into subquery
   }
-
 
   std::unordered_set<RegisterId> reusableRegisters;
   std::unordered_set<RegisterId> unusedRegisters;
@@ -92,7 +91,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   std::vector<RegisterId> nrRegs;
 
   // We collect the subquery nodes to deal with them at the end:
-  std::vector<ExecutionNode*> subQueryNodes;
+  std::vector<T*> subQueryNodes;
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
@@ -107,11 +106,11 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   std::shared_ptr<RegisterPlanT> clone();
 
-  void registerVariable(VariableId v, std::unordered_set<RegisterId> & unusedRegisters);
+  void registerVariable(VariableId v, std::unordered_set<RegisterId>& unusedRegisters);
   void registerVariable(VariableId v);
   void increaseDepth();
   auto addRegister() -> RegisterId;
-  void addSubqueryNode(ExecutionNode* subquery);
+  void addSubqueryNode(T* subquery);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
@@ -121,7 +120,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   unsigned int totalNrRegs;
 };
 
-template<typename T>
+template <typename T>
 std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r);
 
 }  // namespace arangodb::aql

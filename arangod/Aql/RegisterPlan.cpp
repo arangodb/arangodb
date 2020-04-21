@@ -275,7 +275,7 @@ void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
 }
 
 template <typename T>
-void RegisterPlanT<T>::addSubqueryNode(ExecutionNode* subquery) {
+void RegisterPlanT<T>::addSubqueryNode(T* subquery) {
   subQueryNodes.emplace_back(subquery);
 }
 
@@ -301,4 +301,5 @@ std::ostream& aql::operator<<(std::ostream& os, const RegisterPlanT<T>& r) {
 
 template struct aql::RegisterPlanT<ExecutionNode>;
 template struct aql::RegisterPlanWalkerT<ExecutionNode>;
-template std::ostream& aql::operator<<<ExecutionNode>(std::ostream& os, const RegisterPlanT<ExecutionNode>& r);
+template std::ostream& aql::operator<<<ExecutionNode>(std::ostream& os,
+                                                      const RegisterPlanT<ExecutionNode>& r);
