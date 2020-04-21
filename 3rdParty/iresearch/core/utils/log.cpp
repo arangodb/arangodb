@@ -163,7 +163,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   struct level_ctx_t {
     irs::logger::log_appender_callback_t appender_;
     void* appender_context_;
-    level_ctx_t(): appender_(nullptr), appender_context_(nullptr) {}
+    level_ctx_t(): appender_(noop_log_appender), appender_context_(nullptr) {}
   };
 
   level_ctx_t out_[iresearch::logger::IRL_TRACE + 1]; // IRL_TRACE is the last value, +1 for 0'th id
