@@ -221,12 +221,16 @@ void AgencyCache::triggerWaitingNoLock(index_t commitIndex) {
     if (pit->first > commitIndex) {
       break;
     }
-    auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
-    bool queued = scheduler->queue(
-      RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
-    if (!queued) {
-      LOG_TOPIC("c6473", WARN, Logger::AGENCY) <<
-        "Failed to schedule logsForTrigger running in main thread";
+    if (!this->isStopping()) {
+      auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
+      bool queued = scheduler->queue(
+        RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
+      if (!queued) {
+        LOG_TOPIC("c6473", WARN, Logger::AGENCY) <<
+          "Failed to schedule logsForTrigger running in main thread";
+        pp->setValue(Result());
+      }
+    } else {
       pp->setValue(Result());
     }
     pit = _waiting.erase(pit);
@@ -280,12 +284,12 @@ void AgencyCache::beginShutdown() {
     for (auto const& i : _callbacks) {
       auto cb = _callbackRegistry.getCallback(i.second);
       if (cb.get() != nullptr) {
-        LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+        LOG_TOPIC("76bb8", DEBUG, Logger::CLUSTER)
           << "Agency callback " << i << " has been triggered. refetching!";
         try {
           cb->refetchAndUpdate(true, false);
         } catch (arangodb::basics::Exception const& e) {
-          LOG_TOPIC("c3091", WARN, Logger::AGENCYCOMM)
+          LOG_TOPIC("c3111", WARN, Logger::AGENCYCOMM)
             << "Error executing callback: " << e.message();
         }
       }
