@@ -118,7 +118,6 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 /// @brief add a collection to a transaction
 Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
                                        AccessMode::Type accessType, bool lockUsage) {
-  
   Result res;
 
   // upgrade transaction type if required
@@ -141,7 +140,7 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
                       AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                   "AccessMode::Type total order fail");
     LOG_TRX("ad6d0", TRACE, this) << "updating collection usage " << cid << ": '" << cname << "'";
-    
+   
     // we may need to recheck permissions here
     if (trxColl->accessType() < accessType) {
       res.reset(checkCollectionPermission(cid, cname, accessType));
@@ -172,7 +171,7 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname +
                      " [" + AccessMode::typeString(accessType) + "]");
   }
-
+    
   // now check the permissions
   res = checkCollectionPermission(cid, cname, accessType);
 
