@@ -4128,50 +4128,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       TRI_vocbase_t* vocbase = collectionAccessingNode->vocbase();
 
       // insert a distribute node
-      ExecutionNode* distNode = nullptr;
-      Variable const* inputVariable;
-      if (nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE) {
-        // in case of an INSERT, the DistributeNode is responsible for
-        // generating keys if none present
-        bool const createKeys = (nodeType == ExecutionNode::INSERT);
-        if (nodeType == ExecutionNode::INSERT) {
-          inputVariable = ExecutionNode::castTo<InsertNode const*>(node)->inVariable();
-        } else {
-          inputVariable = ExecutionNode::castTo<RemoveNode const*>(node)->inVariable();
-        }
-        distNode = new DistributeNode(plan.get(), plan->nextId(),
-                                      ScatterNode::ScatterType::SHARD, collection,
-                                      inputVariable, inputVariable, createKeys, true);
-      } else if (nodeType == ExecutionNode::REPLACE || nodeType == ExecutionNode::UPDATE) {
-        auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(node);
-        if (defaultSharding && updateReplaceNode->inKeyVariable() != nullptr) {
-          // We only look into _inKeyVariable
-          // This is the _inKeyVariable! This works, since we use a
-          // ScatterNode for non-default-sharding attributes.
-          inputVariable = updateReplaceNode->inKeyVariable();
-        } else {
-          // We only look into _inDocVariable
-          // was only UPDATE <doc> IN <collection>
-          inputVariable = updateReplaceNode->inDocVariable();
-        }
-        distNode = new DistributeNode(plan.get(), plan->nextId(),
-                                      ScatterNode::ScatterType::SHARD, collection,
-                                      inputVariable, inputVariable, false,
-                                      updateReplaceNode->inKeyVariable() != nullptr);
-      } else if (nodeType == ExecutionNode::UPSERT) {
-        // an UPSERT node has two input variables!
-        auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
-        auto d = new DistributeNode(plan.get(), plan->nextId(),
-                                    ScatterNode::ScatterType::SHARD, collection,
-                                    upsertNode->inDocVariable(),
-                                    upsertNode->insertVariable(), true, true);
-        d->setAllowSpecifiedKeys(true);
-        distNode = ExecutionNode::castTo<ExecutionNode*>(d);
-      } else {
-        TRI_ASSERT(false);
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
-      }
-
+      DistributeNode* distNode = createDistributeNodeFor(*plan, node);
       TRI_ASSERT(distNode != nullptr);
 
       plan->registerNode(distNode);
