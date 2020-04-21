@@ -325,9 +325,9 @@ Result TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
       LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
           << "User " << exec.user() << " has no write right for collection " << cname;
 
-      Result(TRI_ERROR_ARANGO_READ_ONLY,
-                std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) + ": " + cname +
-                " [" + AccessMode::typeString(accessType) + "]");
+      return Result(TRI_ERROR_ARANGO_READ_ONLY,
+                    std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) + ": " + cname +
+                    " [" + AccessMode::typeString(accessType) + "]");
     }
   }
 
