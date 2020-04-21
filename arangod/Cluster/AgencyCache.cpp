@@ -79,7 +79,6 @@ std::tuple <query_t, index_t> const AgencyCache::get(
 futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
   std::lock_guard s(_storeLock);
   if (index <= _commitIndex) {
-    LOG_DEVEL << "done before";
     return futures::makeFuture(arangodb::Result());
   }
   std::lock_guard w(_waitLock);
@@ -256,7 +255,6 @@ bool AgencyCache::unregisterCallback(std::string const& key, uint32_t const& id)
   auto range = _callbacks.equal_range(AgencyCommManager::path(key));
   for (auto it = range.first; it != range.second;) {
     if (it->second == id) {
-      //LOG_DEVEL << AgencyCommManager::path(key) << " " << id;
       it = _callbacks.erase(it);
       break;
     } else {

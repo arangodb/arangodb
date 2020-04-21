@@ -1641,6 +1641,9 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
   }
 
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  
   // Now update our own cache of planned databases:
   loadPlan();
 
@@ -2042,7 +2045,7 @@ Result ClusterInfo::createCollectionsCoordinator(
                     << "Did not find shard in _shardServers: " << p.key.copyString()
                     << ". Maybe the collection is already dropped.";
                 *errMsg = "Error in creation of collection: " + p.key.copyString() +
-                          ". Collection already dropped. " + __FILE__ + ":" +
+                          ". Collection already dropped. " + __PRETTY_FUNCTION__ + ":" +
                           std::to_string(__LINE__);
                 dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                       std::memory_order_release);
@@ -2086,7 +2089,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         }
         if (!tmpError.empty()) {
           *errMsg = "Error in creation of collection:" + tmpError + " " +
-                    __FILE__ + std::to_string(__LINE__);
+                    __PRETTY_FUNCTION__ + std::to_string(__LINE__);
           dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                 std::memory_order_release);
           // We cannot get into bad state after a collection was created
@@ -2109,11 +2112,11 @@ Result ClusterInfo::createCollectionsCoordinator(
     // AgencyCallback for this.
 
     auto agencyCallback =
-        std::make_shared<AgencyCallback>(_server,
-                                         "Current/Collections/" + databaseName +
-                                             "/" + info.collectionID,
-                                         closure, true, false);
-    _agencyCallbackRegistry->registerCallback(agencyCallback);
+        std::make_shared<AgencyCallback>(
+          _server, "Current/Collections/" + databaseName + "/" + info.collectionID,
+          closure, true, false);
+
+      _agencyCallbackRegistry->registerCallback(agencyCallback);
     agencyCallbacks.emplace_back(std::move(agencyCallback));
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
@@ -2274,10 +2277,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
 
       auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-      auto s1 = std::chrono::steady_clock::now();
       auto r = cache.waitFor(
         res.slice().get("results")[0].getNumber<uint64_t>()).get();
-      LOG_DEVEL << std::chrono::duration<double>(std::chrono::steady_clock::now() - s1).count();
       loadPlan();
     }
   }
@@ -2340,11 +2341,9 @@ Result ClusterInfo::createCollectionsCoordinator(
         // Note that this is not strictly necessary, just to avoid an
         // unneccessary request when we're sure that we don't need it anymore.
         deleteCollectionGuard.cancel();
-        LOG_DEVEL << "waiting for " << res.slice().toJson();
         auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
         auto r = cache.waitFor(
           res.slice().get("results")[0].getNumber<uint64_t>()).get();
-        LOG_DEVEL << "done " << res.slice().toJson();
 
       }
 
@@ -2560,6 +2559,9 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
   }
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(
+    res.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   // Update our own cache:
   loadPlan();
@@ -2766,7 +2768,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
     events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN);
     return Result(                                        // result
         TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,  // code
-        std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+        std::string("file: ") + __PRETTY_FUNCTION__ + " line: " + std::to_string(__LINE__) +
             " HTTP code: " + std::to_string(res.httpCode()) +
             " error message: " + res.errorMessage() +
             " error details: " + res.errorDetails() + " body: " + res.body());
@@ -2817,7 +2819,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
     } else {
       result = Result(                                            // result
           TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
-          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+          std::string("file: ") + __PRETTY_FUNCTION__ + " line: " + std::to_string(__LINE__) +
               " HTTP code: " + std::to_string(res.httpCode()) +
               " error message: " + res.errorMessage() +
               " error details: " + res.errorDetails() + " body: " + res.body());
@@ -3184,9 +3186,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto r = cache.waitFor(
-    result.slice().get("results")[0].getNumber<uint64_t>()).get();
-
+  cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   // This object watches whether the collection is still present in Plan
   // It assumes that the collection *is* present and only changes state
@@ -3204,7 +3204,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         std::string(" Failed to execute ") + trx.toJson() +
             " ResultCode: " + std::to_string(result.errorCode()) +
             " HttpCode: " + std::to_string(result.httpCode()) + " " +
-            std::string(__FILE__) + ":" + std::to_string(__LINE__));
+            std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__));
   }
 
   // From here on we want to roll back the index creation if we run into
