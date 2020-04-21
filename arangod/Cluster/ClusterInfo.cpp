@@ -1696,6 +1696,9 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
   }
 
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+
   // Make sure we're all aware of collections that have been created
   loadPlan();
 
@@ -2774,6 +2777,9 @@ Result ClusterInfo::createViewCoordinator(  // create view
             " error details: " + res.errorDetails() + " body: " + res.body());
   }
 
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  
   // Update our cache:
   loadPlan();
 
@@ -2801,6 +2807,9 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
 
   AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
+
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   // Update our own cache
   loadPlan();
@@ -2872,6 +2881,9 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage()};
   }
 
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  
   loadPlan();
   return {};
 }
@@ -2937,6 +2949,8 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (res.successful()) {
+    auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
     loadPlan();
     return Result();
   }
@@ -3535,6 +3549,8 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   AgencyPrecondition prec(planCollKey, AgencyPrecondition::Type::VALUE, collection);
   AgencyWriteTransaction trx({planErase, incrementVersion}, prec);
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   if (!result.successful()) {
     events::DropIndex(databaseName, collectionID, idString,

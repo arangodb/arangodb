@@ -176,7 +176,7 @@ void AgencyCache::run() {
                 try {
                   cb->refetchAndUpdate(true, false);
                 } catch (arangodb::basics::Exception const& e) {
-                  LOG_TOPIC("c3910", WARN, Logger::AGENCYCOMM)
+                  LOG_TOPIC("c3091", WARN, Logger::AGENCYCOMM)
                     << "Error executing callback: " << e.message();
                 }
               }
@@ -269,5 +269,30 @@ bool AgencyCache::unregisterCallback(std::string const& key, uint32_t const& id)
 
 /// Orderly shutdown
 void AgencyCache::beginShutdown() {
+  // trigger all waiting for an index
+  {  
+    std::lock_guard g(_storeLock);
+    triggerWaitingNoLock(std::numeric_limits<uint64_t>::max());
+  }
+
+  {
+    std::lock_guard g(_callbacksLock);
+    for (auto const& i : _callbacks) {
+      auto cb = _callbackRegistry.getCallback(i.second);
+      if (cb.get() != nullptr) {
+        LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+          << "Agency callback " << i << " has been triggered. refetching!";
+        try {
+          cb->refetchAndUpdate(true, false);
+        } catch (arangodb::basics::Exception const& e) {
+          LOG_TOPIC("c3091", WARN, Logger::AGENCYCOMM)
+            << "Error executing callback: " << e.message();
+        }
+      }
+    }
+    _callbacks.clear();
+  }
+  
+
   Thread::beginShutdown();
 }
