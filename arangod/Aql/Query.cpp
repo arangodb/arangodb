@@ -1242,14 +1242,7 @@ transaction::Methods& Query::trxForOptimization() {
 /// @brief return the query's shared state
 std::shared_ptr<SharedQueryState> Query::sharedState() const {
   if (!_snippets.empty()) {
-    if (_snippets[0].first != 0) {
-#warning TODO remove debug output
-      LOG_DEVEL << "SNIPPET LIST: " << _snippets.size(); 
-      for (auto const& it : _snippets) {
-        LOG_DEVEL << "- SNIPPET ID: " << it.first << ", PTR: " << it.second.get(); 
-      }
-    }
-    TRI_ASSERT(_snippets[0].first == 0);
+    TRI_ASSERT(ServerState::instance()->isDBServer() || _snippets[0].first == 0);
     return _snippets[0].second->sharedState();
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "query is not initalized");
@@ -1257,8 +1250,7 @@ std::shared_ptr<SharedQueryState> Query::sharedState() const {
 
 ExecutionEngine* Query::rootEngine() const {
   if (!_snippets.empty()) {
-    TRI_ASSERT(!ServerState::instance()->isDBServer() ||
-               _snippets[0].first == 0);
+    TRI_ASSERT(ServerState::instance()->isDBServer() || _snippets[0].first == 0);
     return _snippets[0].second.get();
   }
   return nullptr;
@@ -1337,6 +1329,8 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   answerBuilder.add("snippets", VPackValue(VPackValueType::Object));
   for (auto pair : VPackObjectIterator(snippets, /*sequential*/true)) {
     instantiateSnippet(pair.value);
+
+    TRI_ASSERT(!_snippets.empty());
     
     QueryId qId = _snippets.back().first;
     if (_trx->state()->isDBServer()) {
@@ -1350,7 +1344,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   }
   answerBuilder.close(); // snippets
   
-  if (_snippets.size() > 0) {
+  if (!_snippets.empty()) {
     TRI_ASSERT(_trx->state()->isDBServer() || _snippets[0].first == 0);
     // simon: for AQL_EXECUTEJSON
     if (_trx->state()->isCoordinator()) {  // register coordinator snippets
