@@ -154,6 +154,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/ServerDefaults.cpp
   Cluster/TraverserEngine.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
@@ -597,6 +598,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
+  Cluster/ServerDefaults.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
   Cluster/TakeoverShardLeadership.cpp

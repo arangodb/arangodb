@@ -42,11 +42,13 @@ namespace aql {
 
 class AqlCallStack;
 class AqlItemBlock;
+class AqlItemBlockManager;
+class Collection;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
-class QueryRegistry;
 class QueryContext;
+class QueryRegistry;
 class SkipResult;
 class SharedQueryState;
 
@@ -144,6 +146,8 @@ class ExecutionEngine {
   void setShutdown() {
     _wasShutdown = true;
   }
+  
+  bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
   
  private:
   

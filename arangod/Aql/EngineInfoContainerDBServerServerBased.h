@@ -71,9 +71,11 @@ class EngineInfoContainerDBServerServerBased {
     bool hasShard() const { return _hasShard; }
     
     /// inaccessible edge and verte collection names
+#ifdef USE_ENTERPRISE
     std::set<CollectionID> inaccessibleCollNames() const {
       return _inaccessible;
     }
+#endif
 
    private:
     std::vector<ShardID> getAllLocalShards(std::unordered_map<ShardID, ServerID> const& shardMapping,

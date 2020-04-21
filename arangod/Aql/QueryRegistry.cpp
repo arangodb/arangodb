@@ -155,6 +155,8 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   if (ei._queryInfo) {
     ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     ei._queryInfo->_numOpen++;
+
+    TRI_ASSERT(ei._queryInfo->_numOpen == 1 || !ei._queryInfo->_query->isModificationQuery());
   }
   
   LOG_TOPIC("50eff", DEBUG, arangodb::Logger::AQL) << "Engine with id " << id << " is now in use";
