@@ -894,23 +894,22 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
   }
   auto const& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
-  bool didConsume = false;
   if (shadowRow.isRelevant()) {
     // We need to consume the row, and write the Aggregate to it.
     _executor.consumeShadowRow(shadowRow, *_outputItemRow);
-    didConsume = true;
     // we need to reset the ExecutorHasReturnedDone, it will
     // return done after every subquery is fully collected.
     _executorReturnedDone = false;
+
   } else {
     _outputItemRow->decreaseShadowRowDepth(shadowRow);
   }
 
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
-  // we need to update the Top of the stack now
-  auto& topCall = stack.modifyTopCall();
-  topCall = _outputItemRow->getClientCall();
+  // The stack in used here contains all calls for within the subquery.
+  // Hence any inbound subquery needs to be counted on its level
+  countShadowRowProduced(stack, shadowRow.getDepth());
 
   if (state == ExecutorState::DONE) {
     // We have consumed everything, we are
@@ -928,11 +927,6 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
     // Need to return!
     return ExecState::DONE;
   } else {
-    if (didConsume) {
-      // We did only consume the input
-      // ask upstream
-      return ExecState::CHECKCALL;
-    }
     // End of input, we are done for now
     // Need to call again
     return ExecState::NEXTSUBQUERY;
@@ -1088,7 +1082,6 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
                                                       AqlCall& clientCall)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType> {
   auto type = fastForwardType(clientCall, _executor);
-
   switch (type) {
     case FastForwardVariant::FULLCOUNT: {
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
@@ -1595,12 +1588,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
         if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
           TRI_ASSERT(!stack.empty());
-          AqlCall const& subqueryCall = stack.peek();
-          AqlCall copyCall = subqueryCall;
-          ensureOutputBlock(std::move(copyCall), _lastRange);
-        } else {
-          ensureOutputBlock(std::move(clientCall), _lastRange);
         }
+        ensureOutputBlock(std::move(clientCall), _lastRange);
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
         if constexpr (executorHasSideEffects<Executor>) {
@@ -1657,6 +1646,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   }
   LOG_QUERY("80c24", DEBUG) << printBlockInfo() << " local statemachine done. Return now.";
   // If we do not have an output, we simply return a nullptr here.
+
+  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+    // We can never return less rows then what we got!
+    TRI_ASSERT(_outputItemRow == nullptr || _outputItemRow->numRowsLeft() == 0);
+  }
+
   auto outputBlock = _outputItemRow != nullptr ? _outputItemRow->stealBlock()
                                                : SharedAqlItemBlockPtr{nullptr};
   // We are locally done with our output.
@@ -1753,8 +1748,7 @@ auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const noexcept -> bool 
 
 template <>
 template <>
-RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const
-    noexcept {
+RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const noexcept {
   return _infos.getOutputRegister();
 }
 
@@ -1776,8 +1770,8 @@ void ExecutionBlockImpl<Executor>::initOnce() {
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const
-    noexcept -> bool {
+auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const noexcept
+    -> bool {
   if constexpr (isMultiDepExecutor<Executor>) {
     // call is an AqlCallSet. We need to call upstream if it's not empty.
     return !call.empty();

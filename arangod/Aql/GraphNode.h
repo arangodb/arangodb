@@ -55,17 +55,21 @@ namespace aql {
 //        * traverser-engine creation
 //        * option preparation
 //        * Smart Graph Handling
+class ExecutionEngine;
 
 class GraphNode : public ExecutionNode {
  protected:
   /// @brief constructor with a vocbase and a collection name
-  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase, AstNode const* direction,
-            AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
+  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+            AstNode const* direction, AstNode const* graph,
+            std::unique_ptr<graph::BaseOptions> options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
  public:
   bool isUsedAsSatellite() const;
+  bool isSatelliteNode() const;
+  void waitForSatelliteIfRequired(ExecutionEngine const *engine) const;
 
   bool isEligibleAsSatelliteTraversal() const;
 
@@ -73,8 +77,8 @@ class GraphNode : public ExecutionNode {
   /// @brief Internal constructor to clone the node.
   GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
             std::vector<Collection*> const& edgeColls,
-            std::vector<Collection*> const& vertexColls,
-            TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> directions,
+            std::vector<Collection*> const& vertexColls, TRI_edge_direction_e defaultDirection,
+            std::vector<TRI_edge_direction_e> directions,
             std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
 
   /// @brief Clone constructor, used for constructors of derived classes.
@@ -168,6 +172,8 @@ class GraphNode : public ExecutionNode {
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
     _collectionToShard.emplace(coll, shard);
   }
+
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  public:
   graph::Graph const* graph() const noexcept;

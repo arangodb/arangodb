@@ -137,8 +137,18 @@ auto SubqueryEndExecutor::isModificationSubquery() const noexcept -> bool {
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {
-  _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-  _builder = std::make_unique<VPackBuilder>(*_buffer);
+  if (_buffer == nullptr) {
+    // no Buffer present
+    _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+    // we need to recreate the builder even if the old one still exists.
+    // this is because the Builder points to the Buffer
+    _builder = std::make_unique<VPackBuilder>(*_buffer);
+  } else {
+    // Buffer still present. we can get away with reusing and clearing 
+    // the existing Builder, which points to the Buffer
+    TRI_ASSERT(_builder != nullptr);
+    _builder->clear();
+  }
   TRI_ASSERT(_builder != nullptr);
   _builder->openArray();
   _numValues = 0;

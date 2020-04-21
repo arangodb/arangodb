@@ -71,6 +71,8 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   uint64_t _maxSubcompactions;
   uint32_t _numThreadsHigh;
   uint32_t _numThreadsLow;
+  uint64_t _targetFileSizeBase;
+  uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
   uint64_t _tableBlockSize;

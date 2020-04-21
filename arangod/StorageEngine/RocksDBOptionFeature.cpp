@@ -71,6 +71,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _maxSubcompactions(rocksDBDefaults.max_subcompactions),
       _numThreadsHigh(0),
       _numThreadsLow(0),
+      _targetFileSizeBase(rocksDBDefaults.target_file_size_base),
+      _targetFileSizeMultiplier(rocksDBDefaults.target_file_size_multiplier),
       _blockCacheSize((PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30))
                           ? static_cast<uint64_t>(
                                 ((PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.3))
@@ -139,6 +141,16 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "If not set, the WAL directory will be located inside the "
                      "regular data directory",
                      new StringParameter(&_walDirectory));
+  
+  options->addOption(
+      "--rocksdb.target-file-size-base",
+      "per-file target file size for compaction (in bytes). the actual target file size for each level is `--rocksdb.target-file-size-base` multiplied by `--rocksdb.target-file-size-multiplier` ^ (level - 1)",
+      new UInt64Parameter(&_targetFileSizeBase));
+  
+  options->addOption(
+      "--rocksdb.target-file-size-multiplier",
+      "multiplier for `--rocksdb.target-file-size`, a value of 1 means that files in different levels will have the same size",
+      new UInt64Parameter(&_targetFileSizeMultiplier));
 
   options->addOption(
       "--rocksdb.transaction-lock-timeout",
@@ -353,6 +365,10 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_targetFileSizeMultiplier < 1) {
+    LOG_TOPIC("664be", FATAL, arangodb::Logger::FIXME)
+        << "invalid value for '--rocksdb.target-file-size-multiplier'";
+  }
   if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
     LOG_TOPIC("4ce44", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.write-buffer-size'";
@@ -426,6 +442,8 @@ void RocksDBOptionFeature::start() {
       << ", max_bytes_for_level_multiplier: " << _maxBytesForLevelMultiplier
       << ", max_background_jobs: " << _maxBackgroundJobs
       << ", max_sub_compactions: " << _maxSubcompactions
+      << ", target_file_size_base: " << _targetFileSizeBase 
+      << ", target_file_size_multiplier: " << _targetFileSizeMultiplier
       << ", num_threads_high: " << _numThreadsHigh
       << ", num_threads_low: " << _numThreadsLow << ", block_cache_size: " << _blockCacheSize
       << ", block_cache_shard_bits: " << _blockCacheShardBits
