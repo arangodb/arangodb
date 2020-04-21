@@ -83,7 +83,7 @@ class ShortestPathExecutorInfos {
 
   ShortestPathExecutorInfos() = delete;
 
-  ShortestPathExecutorInfos(ShortestPathExecutorInfos&&) noexcept = default;
+  ShortestPathExecutorInfos(ShortestPathExecutorInfos&&) = default;
   ShortestPathExecutorInfos(ShortestPathExecutorInfos const&) = delete;
   ~ShortestPathExecutorInfos() = default;
 

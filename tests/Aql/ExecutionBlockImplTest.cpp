@@ -150,41 +150,6 @@ class SharedExecutionBlockImplTest {
     return LambdaExecutorInfos(std::move(call));
   }
 
-  RegisterInfos makeSkipRegisterInfos(RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
-                                      RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      EXPECT_LE(inputRegisters, outputRegisters);
-      // We cannot have no output registers here.
-      EXPECT_LT(outputRegisters, RegisterPlan::MaxRegisterId);
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      // Special case: we do not have input registers, but need an output register.
-      // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
-      EXPECT_EQ(outputRegisters, 0);
-    }
-
-    auto readAble = make_shared_unordered_set();
-    auto writeAble = make_shared_unordered_set();
-    auto registersToKeep = std::unordered_set<RegisterId>{};
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= inputRegisters; ++i) {
-        readAble->emplace(i);
-        registersToKeep.emplace(i);
-      }
-      for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
-      }
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
-      }
-    }
-    RegisterId regsToRead =
-        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
-    RegisterId regsToWrite =
-        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
-    return RegisterInfos(readAble, writeAble, regsToRead, regsToWrite, {}, registersToKeep);
-  }
-
   /**
    * @brief Prepare the executor infos for a LambdaExecutor with implemented skip.
    *
@@ -337,6 +302,8 @@ class SharedExecutionBlockImplTest {
 class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTest,
                                               public testing::TestWithParam<bool> {
  protected:
+  bool passthrough() const { return GetParam(); }
+
   /**
    * @brief Create a Singleton ExecutionBlock. Just like the original one in the
    * query. it is already initialized and ready to use.
@@ -388,16 +355,16 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
     auto stack = buildStack(call);
     auto singleton = createSingleton();
-    if (GetParam()) {
+    if (passthrough()) {
       ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(),
                                                       generateNodeDummy(),
-                                                      makeRegisterInfos(),
+                                                      makeRegisterInfos(0, 0),
                                                       makeExecutorInfos(prod)};
       testee.addDependency(singleton.get());
       return testee.execute(stack);
     } else {
       ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), generateNodeDummy(),
-                                           makeSkipRegisterInfos(),
+                                           makeRegisterInfos(0, 0),
                                            makeSkipExecutorInfos(prod, skip)};
       testee.addDependency(singleton.get());
       return testee.execute(stack);
@@ -447,7 +414,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     };
 
     std::unique_ptr<ExecutionBlock> res = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->engine(), generateNodeDummy(), makeSkipRegisterInfos(inReg, outReg),
+        fakedQuery->engine(), generateNodeDummy(), makeRegisterInfos(inReg, outReg),
         makeSkipExecutorInfos(prodCall, skipCall));
     res->addDependency(dependency);
     return res;
@@ -463,8 +430,8 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
   // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
   // in the executor.
   // Non passthrough does not make an estimate for this, so Batchsize is used.
-  ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
-                                    : generateProduceCall(nrCalls, fullCall);
+  ProduceCall execImpl = passthrough() ? generateProduceCall(nrCalls, fullCall, 0, 1)
+                                       : generateProduceCall(nrCalls, fullCall);
   SkipCall skipCall = generateNeverSkipCall();
   auto [state, skipped, block] = runTest(execImpl, skipCall, fullCall);
 
@@ -486,8 +453,9 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
   // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
   // in the executor.
   // Non passthrough the available lines (visible to executor) are only the given soft limit.
-  ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
-                                    : generateProduceCall(nrCalls, fullCall, 0, 20);
+  ProduceCall execImpl = passthrough()
+                             ? generateProduceCall(nrCalls, fullCall, 0, 1)
+                             : generateProduceCall(nrCalls, fullCall, 0, 20);
   SkipCall skipCall = generateNeverSkipCall();
   auto [state, skipped, block] = runTest(execImpl, skipCall, fullCall);
 
@@ -510,8 +478,9 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
   // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
   // in the executor.
   // Non passthrough the available lines (visible to executor) are only the given soft limit.
-  ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
-                                    : generateProduceCall(nrCalls, fullCall, 0, 20);
+  ProduceCall execImpl = passthrough()
+                             ? generateProduceCall(nrCalls, fullCall, 0, 1)
+                             : generateProduceCall(nrCalls, fullCall, 0, 20);
   SkipCall skipCall = generateNeverSkipCall();
   auto [state, skipped, block] = runTest(execImpl, skipCall, fullCall);
 
@@ -731,8 +700,19 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
   }
 }
 
-INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest,
-                        ExecutionBlockImplExecuteSpecificTest, ::testing::Bool());
+auto printTestCase = [](testing::TestParamInfo<bool> const& paramInfo) -> std::string {
+  using namespace std::string_literals;
+
+  auto const passthrough = paramInfo.param;
+  if (passthrough) {
+    return "passthrough"s;
+  } else {
+    return "noPassthrough"s;
+  }
+};
+
+INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest, ExecutionBlockImplExecuteSpecificTest,
+                        ::testing::Bool(), printTestCase);
 
 enum class CallAsserterState { INITIAL, SKIP, GET, COUNT, DONE };
 
@@ -1183,7 +1163,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, skipped, call};
     };
     auto const inReg = outReg == 0 ? RegisterPlan::MaxRegisterId : outReg - 1;
-    auto registerInfos = makeSkipRegisterInfos(inReg, outReg);
+    auto registerInfos = makeRegisterInfos(inReg, outReg);
     auto executorInfos = makeSkipExecutorInfos(std::move(writeData), skipData, resetCall);
     auto producer =
         std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->engine(),
@@ -1279,7 +1259,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, skipped, request};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->engine(), generateNodeDummy(), makeSkipRegisterInfos(maxReg, maxReg),
+        fakedQuery->engine(), generateNodeDummy(), makeRegisterInfos(maxReg, maxReg),
         makeSkipExecutorInfos(std::move(forwardData), std::move(skipData)));
     producer->addDependency(dependency);
     return producer;
@@ -1626,7 +1606,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
   };
 
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
-      fakedQuery->engine(), generateNodeDummy(), makeSkipRegisterInfos(outReg, outReg),
+      fakedQuery->engine(), generateNodeDummy(), makeRegisterInfos(outReg, outReg),
       makeSkipExecutorInfos(std::move(forwardCall), std::move(forwardSkipCall)));
   lower->addDependency(upper.get());
 
@@ -1872,7 +1852,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
     return {input.upstreamState(), NoStats{}, call.getSkipCount(), call};
   };
   auto filterData = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-      fakedQuery->engine(), generateNodeDummy(), makeSkipRegisterInfos(0, 0),
+      fakedQuery->engine(), generateNodeDummy(), makeRegisterInfos(0, 0),
       makeSkipExecutorInfos(std::move(filterAllCallback), std::move(skipAllCallback)));
   filterData->addDependency(subqueryStart.get());
 
@@ -2208,7 +2188,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   };
 
   auto producerDepth0 = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-      fakedQuery->engine(), generateNodeDummy(), makeSkipRegisterInfos(0, 1),
+      fakedQuery->engine(), generateNodeDummy(), makeRegisterInfos(0, 1),
       makeSkipExecutorInfos(std::move(produceDepth0), std::move(skipDepth0)));
   producerDepth0->addDependency(subqueryOuterStart.get());
 
@@ -2249,7 +2229,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   };
 
   auto producerDepth1 = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-      fakedQuery->engine(), generateNodeDummy(), makeSkipRegisterInfos(1, 2),
+      fakedQuery->engine(), generateNodeDummy(), makeRegisterInfos(1, 2),
       makeSkipExecutorInfos(std::move(produceDepth1), std::move(skipDepth1)));
   producerDepth1->addDependency(subqueryInnerStart.get());
 

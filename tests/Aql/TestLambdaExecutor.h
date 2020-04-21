@@ -82,7 +82,7 @@ class LambdaExecutorInfos {
 
 /**
  * @brief Executorinfos for the lambda executors.
- *        Contains basice RegisterPlanning information, a ProduceCall, and a SkipCall
+ *        Contains basic RegisterPlanning information, a ProduceCall, and a SkipCall
  *        The produceCall will be executed whenever the LambdaExecutor is called with produceRows
  *        The skipCall will be executed whenever the LambdaExecutor is called with skipRowsInRange
  */
