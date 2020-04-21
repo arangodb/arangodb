@@ -28,6 +28,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
+#include "Graph/KShortestPathsFinder.h"
 
 #include <velocypack/Builder.h>
 
