@@ -221,8 +221,8 @@ void AgencyCache::triggerWaitingNoLock(index_t commitIndex) {
     if (pit->first > commitIndex) {
       break;
     }
+    auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (!this->isStopping()) {
-      auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
       bool queued = scheduler->queue(
         RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
       if (!queued) {
@@ -278,7 +278,6 @@ void AgencyCache::beginShutdown() {
     std::lock_guard g(_storeLock);
     triggerWaitingNoLock(std::numeric_limits<uint64_t>::max());
   }
-
   {
     std::lock_guard g(_callbacksLock);
     for (auto const& i : _callbacks) {
@@ -296,7 +295,6 @@ void AgencyCache::beginShutdown() {
     }
     _callbacks.clear();
   }
-  
 
   Thread::beginShutdown();
 }
