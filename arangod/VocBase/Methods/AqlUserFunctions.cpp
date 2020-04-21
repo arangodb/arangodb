@@ -293,7 +293,6 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
     // find and load collection given by name or identifier
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
     SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     res = trx.begin();
     if (res.fail()) {

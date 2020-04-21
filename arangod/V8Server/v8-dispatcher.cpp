@@ -354,7 +354,6 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection, AccessMode::Type::EXCLUSIVE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
 
   if (!res.ok()) {
