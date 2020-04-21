@@ -221,6 +221,11 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
     auto const& resultHeaders = response.response->messageHeader().meta();
     for (auto const& it : resultHeaders) {
+      if (it.first == "http/1.1") {
+        // never forward this header, as the HTTP response code was already set
+        // via "resetResponse" above
+        continue;
+      }
       _response->setHeader(it.first, it.second);
     }
     _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);

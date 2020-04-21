@@ -90,6 +90,7 @@ class TraversalNode : public GraphNode {
                 std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
                 std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
                 Variable const* inVariable, std::string const& vertexId,
+                TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
                 std::unique_ptr<graph::BaseOptions> options);
 

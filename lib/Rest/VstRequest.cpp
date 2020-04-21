@@ -21,12 +21,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string.h>
 #include <cstdint>
 #include <exception>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -40,6 +38,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Logger/LogMacros.h"
@@ -81,7 +80,8 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
   if (_contentType == ContentType::JSON) {
     if (!_vpackBuilder && _buffer.size() > _payloadOffset) {
       _vpackBuilder = VPackParser::fromJson(_buffer.data() + _payloadOffset,
-                                            _buffer.size() - _payloadOffset);
+                                            _buffer.size() - _payloadOffset,
+                                            &basics::VelocyPackHelper::requestValidationOptions);
     }
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
@@ -90,11 +90,9 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
     if (_buffer.size() > _payloadOffset) {
       uint8_t const* ptr = _buffer.data() + _payloadOffset;
       if (!_validatedPayload) {
-        VPackOptions validationOptions = *options;  // intentional copy
+        VPackOptions validationOptions = basics::VelocyPackHelper::requestValidationOptions;  // intentional copy
         validationOptions.validateUtf8Strings = true;
-        validationOptions.checkAttributeUniqueness = true;
-        validationOptions.disallowExternals = true;
-        validationOptions.disallowCustom = true;
+
         VPackValidator validator(&validationOptions);
         // will throw on error
         _validatedPayload = validator.validate(ptr, _buffer.size() - _payloadOffset);

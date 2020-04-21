@@ -52,6 +52,7 @@
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1189,10 +1190,15 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
-  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+      _vocbase.sharding() == "single") {
+    auto const isSatellite =
+        VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
+                                       velocypack::StringRef{""}) == StaticStrings::Satellite;
+
     // force one shard, and force distributeShardsLike to be "_graphs"
     toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-    if (!_vocbase.IsSystemName(name)) {
+    if (!_vocbase.IsSystemName(name) && !isSatellite) {
       // system-collections will be sharded normally. only user collections will
       // get the forced sharding
       toMerge.add(StaticStrings::DistributeShardsLike,
@@ -1212,14 +1218,6 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
     } else {
       numberOfShards = numberOfShardsSlice.getUInt();
-    }
-
-    if (_vocbase.sharding() == "single" &&
-        parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
-        !_vocbase.IsSystemName(name) && numberOfShards <= 1) {
-      // shard like _graphs
-      toMerge.add(StaticStrings::DistributeShardsLike,
-                  VPackValue(_vocbase.shardingPrototypeName()));
     }
   }
 
@@ -1427,9 +1425,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 Result RestReplicationHandler::parseBatch(std::string const& collectionName,
                                           std::unordered_map<std::string, VPackValueLength>& latest,
                                           VPackBuilder& allMarkers) {
-  VPackOptions options = VPackOptions::Defaults;
-  options.checkAttributeUniqueness = true;
-  VPackBuilder builder(&options);
+  VPackBuilder builder(&basics::VelocyPackHelper::requestValidationOptions);
 
   allMarkers.clear();
 
@@ -1470,6 +1466,11 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         Result res =
             restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
         if (res.fail()) {
+          if (res.errorNumber() == TRI_ERROR_HTTP_CORRUPTED_JSON) {
+            using namespace std::literals::string_literals;
+            auto data = std::string(ptr, pos);
+            res.appendErrorMessage(" in message '"s + data + "'");
+          }
           return res;
         }
 

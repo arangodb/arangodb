@@ -202,6 +202,48 @@ function ahuacatlSubqueryTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief regression test for ES-544: subquery containing a view with no
+/// documents on one dbserver.
+/// Spliced subqueries must not contain NoResultsExecutors, but Views created
+/// them under these circumstances (no document locally).
+/// Note that originally, the query doesn't terminate and the test runs in a
+/// timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryWithView : function () {
+      const colName = `UnitTestsAhuacatlSubqueryCol`;
+      const viewName = `UnitTestsAhuacatlSubqueryView`;
+      try {
+        const col = db._create(colName, {numberOfShards: 9});
+        db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+        col.insert({foo: "bar"});
+        const query = `
+          FOR i IN 1..2
+          LET res = (
+            FOR d IN ${viewName} OPTIONS { waitForSync: true }
+              RETURN d.foo
+          )
+          RETURN {i, res}
+        `;
+        const explainResult = AQL_EXPLAIN(query);
+
+        const subqueryStartNodes = findExecutionNodes(explainResult, "SubqueryStartNode");
+        const subqueryNodes = findExecutionNodes(explainResult, "SubqueryNode");
+        // Assert the subquery is not inlined
+        assertTrue(subqueryNodes.length > 0 || subqueryStartNodes.length > 0,
+          `No subquery node found`);
+
+        const expected = [{i: 1, res: ["bar"]}, {i: 2, res: ["bar"]}];
+        const actual = getQueryResults(query);
+        assertEqual(expected, actual);
+
+      } finally {
+        db._dropView(viewName);
+        db._drop(colName);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test subquery as function parameter
 ////////////////////////////////////////////////////////////////////////////////
 
