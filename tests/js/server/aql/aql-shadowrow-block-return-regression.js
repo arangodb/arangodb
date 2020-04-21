@@ -119,13 +119,47 @@ function blockReturnRegressionSuite() {
 
       const splicedRes = db._query(query, {}, activateSplicing).toArray();
       const nosplicedRes = db._query(query, {}, deactivateSplicing).toArray();
-      deepAssertElements(splicedRes, nosplicedRes, "");
+      deepAssertElements(splicedRes, nosplicedRes, "result");
+    },
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief generated subquery, tends to show a difference 
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testHeavyNestedSubquery2 : function () {
+      const query = `  
+        FOR fv62 IN 1..100
+        LET sq63 = (FOR fv64 IN 1..100
+          LET sq65 = (FOR fv66 IN 1..100
+            LET sq67 = (FOR fv68 IN 1..100
+                        LIMIT 11,19
+                        RETURN {fv68})
+            LET sq69 = (FOR fv70 IN 1..100
+              LET sq71 = (FOR fv72 IN 1..100
+                          LIMIT 12,10
+                          RETURN {fv72, sq67})
+                       FILTER fv70 < 7
+                       LIMIT 11,0
+                       RETURN {fv70, sq67, sq71})
+                LIMIT 2,6
+                RETURN {fv66, sq67, sq69})
+          LET sq73 = (FOR fv74 IN 1..100
+                      LIMIT 15,15
+                      RETURN {fv74, sq65})
+          FILTER fv62 < 13
+          LIMIT 4,13
+          COLLECT WITH COUNT INTO counter
+          RETURN {counter})
+        LIMIT 6,19
+        RETURN {fv62, sq63}
+      `;
+      const splicedRes = db._query(query, {}, activateSplicing).toArray();
+      const nosplicedRes = db._query(query, {}, deactivateSplicing).toArray();
+      deepAssertElements(splicedRes, nosplicedRes, "result");
     }
 
-
   };
-}
 
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
